@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{100A163A-A7F3-417E-AA4E-335DEA964ECD}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Ngs.Shell</RootNamespace>
+    <AssemblyName>NGSMain</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ExternalConsole>true</ExternalConsole>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ExternalConsole>true</ExternalConsole>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="NGSEngine.Interop">
+      <HintPath>..\BUILD\NGSEngine\NGSEngine.Interop.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NGSGame\NGSGame.csproj">
+      <Project>{3BDBD0EB-E07B-48F6-A2B3-9C5548894F99}</Project>
+      <Name>NGSGame</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\NGSGameKit\NGSGameKit.csproj">
+      <Project>{1AFC9413-32D3-4A6F-93FD-7FC01D9EE842}</Project>
+      <Name>NGSGameKit</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\NGSToolkit\NGSToolkit.csproj">
+      <Project>{9CB59503-70EA-4C67-BA72-51AF87589CCF}</Project>
+      <Name>NGSToolkit</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+</Project>
