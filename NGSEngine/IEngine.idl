@@ -1,0 +1,10 @@
+#include "nsISupports.idl"
+#include "Interop/Types.idl"
+
+#include "World/IVoxelTerrain.idl"
+
+[scriptable, uuid(d0c02ad7-4185-403d-b5c3-79ecfcc57c1f)]
+interface IEngine : nsISupports
+{
+    IVoxelTerrain CreateVoxelTerrain(in ngsIntVector3 dimensions);
+};

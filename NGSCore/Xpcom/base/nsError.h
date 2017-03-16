@@ -40,50 +40,7 @@
  */
 
 #define NS_ERROR_MODULE_XPCOM      1
-#define NS_ERROR_MODULE_BASE       2
-#define NS_ERROR_MODULE_GFX        3
-#define NS_ERROR_MODULE_WIDGET     4
-#define NS_ERROR_MODULE_CALENDAR   5
-#define NS_ERROR_MODULE_NETWORK    6
-#define NS_ERROR_MODULE_PLUGINS    7
-#define NS_ERROR_MODULE_LAYOUT     8
-#define NS_ERROR_MODULE_HTMLPARSER 9
-#define NS_ERROR_MODULE_RDF        10
-#define NS_ERROR_MODULE_UCONV      11
-#define NS_ERROR_MODULE_REG        12
-#define NS_ERROR_MODULE_FILES      13
-#define NS_ERROR_MODULE_DOM        14
-#define NS_ERROR_MODULE_IMGLIB     15
-#define NS_ERROR_MODULE_MAILNEWS   16
-#define NS_ERROR_MODULE_EDITOR     17
-#define NS_ERROR_MODULE_XPCONNECT  18
-#define NS_ERROR_MODULE_PROFILE    19
-#define NS_ERROR_MODULE_LDAP       20
-#define NS_ERROR_MODULE_SECURITY   21
-#define NS_ERROR_MODULE_DOM_XPATH  22
-/* 23 used to be NS_ERROR_MODULE_DOM_RANGE (see bug 711047) */
-#define NS_ERROR_MODULE_URILOADER  24
-#define NS_ERROR_MODULE_CONTENT    25
-#define NS_ERROR_MODULE_PYXPCOM    26
-#define NS_ERROR_MODULE_XSLT       27
-#define NS_ERROR_MODULE_IPC        28
-#define NS_ERROR_MODULE_SVG        29
-#define NS_ERROR_MODULE_STORAGE    30
-#define NS_ERROR_MODULE_SCHEMA     31
-#define NS_ERROR_MODULE_DOM_FILE   32
-#define NS_ERROR_MODULE_DOM_INDEXEDDB 33
-#define NS_ERROR_MODULE_DOM_FILEHANDLE 34
-#define NS_ERROR_MODULE_SIGNED_JAR 35
-#define NS_ERROR_MODULE_DOM_FILESYSTEM 36
-#define NS_ERROR_MODULE_DOM_BLUETOOTH 37
-#define NS_ERROR_MODULE_SIGNED_APP 38
-#define NS_ERROR_MODULE_DOM_ANIM 39
-#define NS_ERROR_MODULE_DOM_PUSH 40
-#define NS_ERROR_MODULE_DOM_MEDIA 41
-#define NS_ERROR_MODULE_URL_CLASSIFIER 42
-/* ErrorResult gets its own module to reduce the chance of someone accidentally
-   defining an error code matching one of the ErrorResult ones. */
-#define NS_ERROR_MODULE_ERRORRESULT 43
+#define NS_ERROR_MODULE_NGSENGINE  2
 
 /* NS_ERROR_MODULE_GENERAL should be used by modules that do not
  * care if return code values overlap. Callers of methods that

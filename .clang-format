@@ -1,0 +1,19 @@
+---
+BasedOnStyle: Mozilla
+IndentWidth: 4
+---
+Language: Cpp
+TabWidth: 4
+ContinuationIndentWidth: 2
+UseTab: ForIndentation
+ColumnLimit: 100
+
+AccessModifierOffset: -4
+NamespaceIndentation: Inner
+IndentCaseLabels: true
+
+SpaceBeforeParens: ControlStatements
+PointerAlignment: Right
+
+AllowShortFunctionsOnASingleLine: Inline
+ConstructorInitializerAllOnOneLineOrOnePerLine: true

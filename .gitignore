@@ -14,3 +14,5 @@ obj
 # Cache files
 *.pyc
 
+# Local files
+NOTES.md

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "ITestInterface.h"
+#include <ITestInterface.h>
 
 #if defined(_MSC_VER)
 #define NGS_API __declspec(dllexport)
@@ -14,7 +14,7 @@ namespace
     class TestClass : public ITestInterface
     {
     public:
-        NS_DECL_ISUPPORTS
+        NS_DECL_THREADSAFE_ISUPPORTS
         NS_DECL_ITESTINTERFACE
 
         TestClass()

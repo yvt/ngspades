@@ -1,0 +1,15 @@
+{
+    "namespace": "Ngs.Engine",
+    "typeMappings": {
+        "int8_t": "sbyte",
+        "uint8_t": "byte",
+        "int16_t": "short",
+        "uint16_t": "ushort",
+        "int32_t": "int",
+        "uint32_t": "uint",
+        "int64_t": "long",
+        "uint64_t": "ulong",
+        "ngsIntVector3": "Ngs.Utils.IntVector3",
+        "ngsTerrainVoxelInfo": "Ngs.Engine.TerrainVoxelInfo"
+    }
+}

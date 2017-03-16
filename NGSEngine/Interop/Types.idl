@@ -1,0 +1,7 @@
+%{C++
+#include <Utils/Geometry.h>
+#include <World/TerrainVoxelInfo.h>
+%}
+
+native ngsIntVector3(ngs::IntVector3D);
+native ngsTerrainVoxelInfo(ngs::TerrainVoxelInfo);

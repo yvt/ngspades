@@ -31,26 +31,26 @@ foreach(CURRENT_H ${PUBLIC_HEADER_FILES})
     get_filename_component(CURRENT_H_BASENAME ${CURRENT_H} NAME)
     configure_file(
         ${CURRENT_H}
-        ${CMAKE_CURRENT_BINARY_DIR}/include/${CURRENT_H_BASENAME}
+        ${CMAKE_CURRENT_BINARY_DIR}/Headers/${CURRENT_H_BASENAME}
         COPYONLY)
 endforeach()
 foreach(CURRENT_H ${MOZILLA_PUBLIC_HEADER_FILES})
     get_filename_component(CURRENT_H_BASENAME ${CURRENT_H} NAME)
     configure_file(
         ${CURRENT_H}
-        ${CMAKE_CURRENT_BINARY_DIR}/include/mozilla/${CURRENT_H_BASENAME}
+        ${CMAKE_CURRENT_BINARY_DIR}/Headers/mozilla/${CURRENT_H_BASENAME}
         COPYONLY)
 endforeach()
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/Headers)
 
 # Config files
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/xpcom-config.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/xpcom-config.h)
+    ${CMAKE_CURRENT_BINARY_DIR}/Headers/xpcom-config.h)
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/xpcom-private.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/xpcom-private.h)
+    ${CMAKE_CURRENT_BINARY_DIR}/Headers/xpcom-private.h)
 
 # IDL C++ header files
 set(XPCOM_IDL_FILES
@@ -64,7 +64,7 @@ make_directory(${CMAKE_CURRENT_BINARY_DIR}/Xpcom/base)
 foreach(CURRENT_IDL ${XPCOM_IDL_FILES})
     string(REGEX REPLACE "\\.idl$" ".h" CURRENT_H ${CURRENT_IDL})
     get_filename_component(CURRENT_H ${CURRENT_H} NAME)
-    string(CONCAT CURRENT_H "include/" ${CURRENT_H})
+    string(CONCAT CURRENT_H "Headers/" ${CURRENT_H})
 
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_H}
