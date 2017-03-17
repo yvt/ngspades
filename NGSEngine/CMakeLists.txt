@@ -64,7 +64,7 @@ add_library(NGSEngine MODULE
     ${IDL_HEADER_FILES}
     ${CXX_FILES})
 
-set_property(TARGET NGSEngine PROPERTY CXX_STANDARD 11)
+set_property(TARGET NGSEngine PROPERTY CXX_STANDARD 14)
 target_link_libraries(NGSEngine NGSCore)
 
 # COM interop assembly generation
