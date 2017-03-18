@@ -1,5 +1,5 @@
-#include <cstdlib>
 #include <cassert>
+#include <cstdlib>
 
 #include "SegmentedHeap.h"
 

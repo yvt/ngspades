@@ -2,12 +2,11 @@
 
 #include <cstdint>
 
-namespace ngs
+namespace ngs {
+struct TerrainVoxelInfo
 {
-    struct TerrainVoxelInfo
-    {
-        std::uint32_t color;
-        std::uint16_t kind;
-        std::uint8_t health;
-    };
+    std::uint32_t color;
+    std::uint16_t kind;
+    std::uint8_t health;
+};
 }

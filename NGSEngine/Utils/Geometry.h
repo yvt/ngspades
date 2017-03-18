@@ -1,10 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <type_traits>
-#include <cmath>
-#include <algorithm>
 
 namespace ngs {
 
@@ -630,5 +630,4 @@ struct BaseMatrix4
 
 using Matrix4 = BaseMatrix4<float>;
 using DMatrix4 = BaseMatrix4<double>;
-
 }

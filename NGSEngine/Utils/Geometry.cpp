@@ -134,5 +134,4 @@ BaseMatrix4<T>::operator*=(const BaseMatrix4<T> &o)
 
 template struct BaseMatrix4<float>;
 template struct BaseMatrix4<double>;
-
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Utils/Geometry.h>
 #include <IVoxelTerrain.h>
+#include <Utils/Geometry.h>
 
 namespace ngs {
 

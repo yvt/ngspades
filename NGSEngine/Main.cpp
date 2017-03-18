@@ -1,5 +1,5 @@
-#include <iostream>
 #include <ITestInterface.h>
+#include <iostream>
 
 #if defined(_MSC_VER)
 #define NGS_API __declspec(dllexport)
@@ -9,34 +9,31 @@
 #define NGS_API
 #endif
 
-namespace
+namespace {
+class TestClass : public ITestInterface
 {
-    class TestClass : public ITestInterface
-    {
-    public:
-        NS_DECL_THREADSAFE_ISUPPORTS
-        NS_DECL_ITESTINTERFACE
+public:
+    NS_DECL_THREADSAFE_ISUPPORTS
+    NS_DECL_ITESTINTERFACE
 
-        TestClass()
-        {
-        }
+    TestClass() {}
 
-    private:
-        ~TestClass()
-        {
-        }
-    };
+private:
+    ~TestClass() {}
+};
 
-    NS_IMPL_ISUPPORTS(TestClass, ITestInterface)
+NS_IMPL_ISUPPORTS(TestClass, ITestInterface)
 
-    NS_IMETHODIMP TestClass::Hello()
-    {
-        std::cout << "Hello world!" << std::endl;
-        return NS_OK;
-    }
+NS_IMETHODIMP
+TestClass::Hello()
+{
+    std::cout << "Hello world!" << std::endl;
+    return NS_OK;
+}
 }
 
-extern "C" NGS_API nsresult NgsCreateTestInstance(ITestInterface **outInstance)
+extern "C" NGS_API nsresult
+NgsCreateTestInstance(ITestInterface **outInstance)
 {
     (new TestClass())->QueryInterface(ITESTINTERFACE_IID, (void **)outInstance);
     return NS_OK;

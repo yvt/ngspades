@@ -1,5 +1,5 @@
-#include <cstdlib>
 #include <cassert>
+#include <cstdlib>
 
 #include "Heap.h"
 
@@ -9,17 +9,19 @@ namespace ngs {
 
 HeapBase::~HeapBase()
 {
-    for (void *block: m_allocations) {
+    for (void *block : m_allocations) {
         std::free(block);
     }
 }
 
-void HeapBase::Initialize() noexcept
+void
+HeapBase::Initialize() noexcept
 {
     // TODO: HeapBase
 }
 
-void *HeapBase::Allocate(std::size_t size) noexcept
+void *
+HeapBase::Allocate(std::size_t size) noexcept
 {
     // TODO: HeapBase
     void *block = std::malloc(size);
@@ -28,11 +30,11 @@ void *HeapBase::Allocate(std::size_t size) noexcept
     return block;
 }
 
-void HeapBase::Free(void *region) noexcept
+void
+HeapBase::Free(void *region) noexcept
 {
     // TODO: HeapBase
     std::free(region);
     m_allocations.erase(m_allocations.find(region));
 }
-
 }

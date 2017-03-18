@@ -1,8 +1,8 @@
 #pragma once
 
+#include <unordered_set>
 #include <utility>
 #include <vector>
-#include <unordered_set>
 
 #include <Utils/UninitializedMemoryBlock.h>
 
@@ -43,20 +43,14 @@ class BasicHeap
 {
 public:
     template <class... Args>
-    BasicHeap(Args &&...args) : m_storage{ std::forward<Args>(args)... }
+    BasicHeap(Args &&... args) : m_storage{ std::forward<Args>(args)... }
     {
         GetHeapBase().Initialize();
     }
 
-    void *Allocate(std::size_t size)
-    {
-        return GetHeapBase().Allocate(size);
-    }
+    void *Allocate(std::size_t size) { return GetHeapBase().Allocate(size); }
 
-    void Free(void *block)
-    {
-        return GetHeapBase().Free(block);
-    }
+    void Free(void *block) { return GetHeapBase().Free(block); }
 
     template <class F>
     void ForEachAllocatedBlock(F callback)
@@ -75,5 +69,4 @@ private:
 };
 
 using Heap = BasicHeap<UninitializedMemoryBlock>;
-
 }

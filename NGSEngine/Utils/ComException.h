@@ -20,7 +20,8 @@ private:
 };
 
 template <class T>
-inline nsresult RunProtected(T functor)
+inline nsresult
+RunProtected(T functor)
 {
     try {
         functor();
@@ -29,5 +30,4 @@ inline nsresult RunProtected(T functor)
         return ex.GetNSResult();
     }
 }
-
 }
