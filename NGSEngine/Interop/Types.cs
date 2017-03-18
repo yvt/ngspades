@@ -5,6 +5,13 @@ using System.Runtime.InteropServices;
 
 namespace Ngs.Engine
 {
+    enum FullScreenMode : int
+    {
+        Windowed = 0,
+        FullScreenWindow,
+        FullScreen
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct TerrainVoxelInfo
     {

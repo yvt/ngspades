@@ -30,6 +30,7 @@ else()
 endif()
 
 # C++ source files
+file(GLOB BACKEND_FILES Backend/Common/*.cpp Backend/Common/*.h)
 file(GLOB UTILS_FILES Utils/*.cpp Utils/*.h)
 file(GLOB WORLD_FILES World/*.cpp World/*.h)
 
@@ -39,6 +40,9 @@ set(CXX_FILES Main.cpp ${UTILS_FILES} ${WORLD_FILES})
 set(IDL_FILES
     ITestInterface.idl
     IEngine.idl
+    Backend/Common/IKeyboardEvent.idl
+    Backend/Common/IViewport.idl
+    Backend/Common/IViewportListener.idl
     World/IVoxelTerrain.idl
     Interop/Types.idl)
 

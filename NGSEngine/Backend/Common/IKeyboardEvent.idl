@@ -1,0 +1,8 @@
+#include "nsISupports.idl"
+#include "Interop/Types.idl"
+
+[scriptable, uuid(74f49795-979e-42bf-a9c9-2a3cc83a916b)]
+interface IKeyboardEvent : nsISupports
+{
+    readonly attribute long ScanCode;
+};

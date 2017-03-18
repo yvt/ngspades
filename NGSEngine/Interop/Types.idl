@@ -1,7 +1,9 @@
 %{C++
 #include <Utils/Geometry.h>
 #include <World/TerrainVoxelInfo.h>
+#include <Backend/Viewport.h>
 %}
 
 native ngsIntVector3(ngs::IntVector3D);
 native ngsTerrainVoxelInfo(ngs::TerrainVoxelInfo);
+native ngsFullScreenMode(ngs::FullScreenMode);

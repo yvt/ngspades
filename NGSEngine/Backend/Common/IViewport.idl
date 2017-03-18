@@ -1,0 +1,12 @@
+#include "nsISupports.idl"
+#include "Interop/Types.idl"
+
+[scriptable, uuid(c77ded14-6119-45a4-b650-dea3f641862a)]
+interface IViewport : nsISupports
+{
+    readonly attribute long VideoWidth;
+    readonly attribute long VideoHeight;
+    readonly attribute ngsFullScreenMode FullScreenMode;
+
+    void SetVideoMode(long videoWidth, long videoHeight, ngsFullScreenMode fullScreenMode);
+};
