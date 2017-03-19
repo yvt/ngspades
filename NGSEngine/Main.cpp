@@ -52,6 +52,12 @@ TestClass::SetHogeAttr(const ngs::BString *aHogeAttr)
               << std::endl;
     return NS_OK;
 }
+
+/* void SimpleMethod (); */
+NS_IMETHODIMP TestClass::SimpleMethod()
+{
+    return NS_OK;
+}
 }
 
 extern "C" NGS_API nsresult

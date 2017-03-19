@@ -5,4 +5,5 @@ interface ITestInterface : nsISupports
 {
     attribute bstring HogeAttr;
     bstring Hello(in bstring str);
+    void SimpleMethod();
 };
