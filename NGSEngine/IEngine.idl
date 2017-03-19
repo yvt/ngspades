@@ -1,4 +1,3 @@
-#include "nsISupports.idl"
 #include "Interop/Types.idl"
 
 #include "World/IVoxelTerrain.idl"

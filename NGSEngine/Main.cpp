@@ -26,11 +26,12 @@ private:
 NS_IMPL_ISUPPORTS(TestClass, ITestInterface)
 
 NS_IMETHODIMP
-TestClass::Hello(const char16_t *str)
+TestClass::Hello(const ngs::BString *str, ngs::BString **_retval)
 {
     std::cout << "Hello world!" << std::endl;
     std::cout << std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}
-        .to_bytes(str) << std::endl;
+        .to_bytes(*str) << std::endl;
+    *_retval = ngs::BString::Create<>(u"hOI! \0(null character here)").release();
     return NS_OK;
 }
 }

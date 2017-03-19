@@ -14,7 +14,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 # pyxpidl scripts
 # (csinterop.py isn't a part of pyxpidl but placed in the same directory for convenience)
 set(PYXPIDL_HEADER_COMMAND ${PROJECT_SOURCE_DIR}/../NGSCore/Xpcom/idl-parser/xpidl/header.py)
-set(PYXPIDL_HEADER_FLAGS -I${PROJECT_SOURCE_DIR}/../NGSCore/Xpcom/base -I${CMAKE_CURRENT_SOURCE_DIR} --cachedir=${PROJECT_BINARY_DIR}/../NGSCore/xpidlcache)
+set(PYXPIDL_HEADER_FLAGS -I${PROJECT_SOURCE_DIR}/../NGSCore/Xpcom/base -I${PROJECT_SOURCE_DIR}/../NGSCore/Utils -I${CMAKE_CURRENT_SOURCE_DIR} --cachedir=${PROJECT_BINARY_DIR}/../NGSCore/xpidlcache)
 
 set(CSINTEROP_COMMAND ${PROJECT_SOURCE_DIR}/../NGSCore/Xpcom/idl-parser/xpidl/csinterop.py)
 set(CSINTEROP_FLAGS ${PYXPIDL_HEADER_FLAGS} -c ${PROJECT_SOURCE_DIR}/Interop/CSInteropConfig.json)

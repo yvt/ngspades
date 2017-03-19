@@ -1,4 +1,3 @@
-#include "nsISupports.idl"
 #include "Interop/Types.idl"
 
 #include "Backend/Common/IKeyboardEvent.idl"

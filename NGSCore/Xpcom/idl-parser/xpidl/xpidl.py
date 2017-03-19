@@ -386,6 +386,7 @@ class Native(object):
         'utf8string': 'nsACString',
         'cstring': 'nsACString',
         'astring': 'nsAString',
+        'bstring': 'ngs::BString', # yvt: added for nightingales
         'jsval': 'JS::Value'
         }
 

@@ -1,7 +1,7 @@
-#include "nsISupports.idl"
+#include "Interop/Types.idl"
 
 [scriptable, uuid(35edff15-0b38-47d8-9b7c-e00fa2acdf9d)]
 interface ITestInterface : nsISupports
 {
-    void Hello(in wstring str);
+    bstring Hello(in bstring str);
 };

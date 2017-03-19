@@ -9,6 +9,7 @@
         "uint32_t": "uint",
         "int64_t": "long",
         "uint64_t": "ulong",
+        "bstring": "[MarshalAs(UnmanagedType.BStr)] string",
         "ngsVector2": "Ngs.Utils.Vector2",
         "ngsVector3": "Ngs.Utils.Vector3",
         "ngsVector4": "Ngs.Utils.Vector4",

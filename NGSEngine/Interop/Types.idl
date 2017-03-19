@@ -1,3 +1,5 @@
+#include "NGSCore.idl"
+
 %{C++
 #include <Utils/Geometry.h>
 #include <World/TerrainVoxelInfo.h>

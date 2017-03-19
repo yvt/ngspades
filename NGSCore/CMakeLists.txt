@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 project(NGSCore)
 
 set(PYXPIDL_HEADER_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/idl-parser/xpidl/header.py)
-set(PYXPIDL_HEADER_FLAGS -I${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/base --cachedir=${CMAKE_CURRENT_BINARY_DIR}/xpidlcache)
+set(PYXPIDL_HEADER_FLAGS -I${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/base -I${CMAKE_CURRENT_SOURCE_DIR}/Utils --cachedir=${CMAKE_CURRENT_BINARY_DIR}/xpidlcache)
 
 add_definitions(-DMOZ_NO_MOZALLOC -DXPCOM_GLUE)
 if(win32)
@@ -14,6 +14,7 @@ endif()
 file(GLOB XPCOM_BASE_FILES Xpcom/base/*.cpp Xpcom/base/*.h)
 file(GLOB XPCOM_BUILD_FILES Xpcom/build/*.cpp Xpcom/build/*.h)
 file(GLOB MFBT_FILES Mfbt/*.cpp Mfbt/*.h)
+file(GLOB UTILS_FILES Utils/*.cpp Utils/*.h)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/build)
@@ -21,6 +22,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/reflect)
 
 # Public header files
 file(GLOB PUBLIC_HEADER_FILES
+    Utils/*.h
     Xpcom/base/*.h
     Xpcom/build/nsXPCOM.h
     Xpcom/build/nsXPCOMCID.h
@@ -54,6 +56,7 @@ configure_file(
 
 # IDL C++ header files
 set(XPCOM_IDL_FILES
+    Utils/NGSCore.idl
     Xpcom/base/nsrootidl.idl
     Xpcom/base/nsISupports.idl
     Xpcom/base/nsIMemory.idl
@@ -78,6 +81,7 @@ add_library(NGSCore STATIC
     ${XPCOM_BASE_FILES}
     ${XPCOM_BUILD_FILES}
     ${XPCOM_IDL_H_FILES}
-    ${MFBT_FILES})
+    ${MFBT_FILES}
+    ${UTILS_FILES})
 set_property(TARGET NGSCore PROPERTY CXX_STANDARD 11)
 
