@@ -2,7 +2,7 @@
 
 #include <Utils/Heap.h>
 #include <list>
-#if __has_include(<optional>)
+#if defined(_MSC_VER) || __has_include(<optional>)
 #include <optional> // C++17
 #else
 #include <experimental/optional>

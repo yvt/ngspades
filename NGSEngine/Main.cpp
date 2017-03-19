@@ -25,12 +25,18 @@ private:
 
 NS_IMPL_ISUPPORTS(TestClass, ITestInterface)
 
+std::string ConvertUTF16ToUTF8(const ngs::U16StringView &str)
+{
+	return std::wstring_convert<std::codecvt_utf8_utf16<int16_t>, int16_t>{}.to_bytes(
+		reinterpret_cast<const int16_t *>(str.data()), reinterpret_cast<const int16_t *>(str.data() + str.size()));
+}
+
 /* bstring Hello (in bstring str); */
 NS_IMETHODIMP
 TestClass::Hello(const ngs::BString *str, ngs::BString **_retval)
 {
     std::cout << "Hello world!" << std::endl;
-    std::cout << std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(*str)
+    std::cout << ConvertUTF16ToUTF8(*str)
               << std::endl;
     *_retval = ngs::BString::Create<>(u"hOI! \0(null character here)").release();
     return NS_OK;
@@ -47,8 +53,7 @@ NS_IMETHODIMP
 TestClass::SetHogeAttr(const ngs::BString *aHogeAttr)
 {
     std::cout << "SetHogeAttr: I'm getting this: ";
-    std::cout << std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(
-                   *aHogeAttr)
+    std::cout << ConvertUTF16ToUTF8(*aHogeAttr)
               << std::endl;
     return NS_OK;
 }

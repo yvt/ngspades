@@ -158,7 +158,6 @@ struct BaseVector3D
       : x(static_cast<T>(o.x)), y(static_cast<T>(o.y)), z(static_cast<T>(o.z))
     {
     }
-    constexpr inline BaseVector3D(const BaseVector3D<T &> o) : x(o.x), y(o.y), z(o.z) {}
 
     inline BaseVector3D &operator=(const RefRemoved &o) const
     {
@@ -319,7 +318,6 @@ struct BaseVector4D
       , w(static_cast<T>(o.w))
     {
     }
-    constexpr inline BaseVector4D(const BaseVector4D<T &> o) : x(o.x), y(o.y), z(o.z), w(o.w) {}
 
     inline BaseVector4D &operator=(const RefRemoved &o) const
     {

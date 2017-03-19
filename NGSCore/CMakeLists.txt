@@ -1,10 +1,12 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.4)
 project(NGSCore)
+
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 
 set(PYXPIDL_HEADER_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/idl-parser/xpidl/header.py)
 set(PYXPIDL_HEADER_FLAGS -I${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/base -I${CMAKE_CURRENT_SOURCE_DIR}/Utils --cachedir=${CMAKE_CURRENT_BINARY_DIR}/xpidlcache)
 
-add_definitions(-DMOZ_NO_MOZALLOC -DXPCOM_GLUE)
+add_definitions(-DMOZ_NO_MOZALLOC -DXPCOM_GLUE -DIMPL_MFBT)
 if(win32)
     add_definitions(-DXP_WIN)
 else()
@@ -83,5 +85,8 @@ add_library(NGSCore STATIC
     ${XPCOM_IDL_H_FILES}
     ${MFBT_FILES}
     ${UTILS_FILES})
-set_property(TARGET NGSCore PROPERTY CXX_STANDARD 11)
+	
+# Use C++17
+include(EnableCxx17)
+target_enable_cxx17(NGSCore)
 

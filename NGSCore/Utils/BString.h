@@ -6,7 +6,7 @@
 #include <memory>
 #include <string>
 
-#if __has_include(<string_view>)
+#if defined(_MSC_VER) || __has_include(<string_view>)
 #include <string_view> // C++17
 namespace ngs {
 using U16StringView = std::u16string_view;

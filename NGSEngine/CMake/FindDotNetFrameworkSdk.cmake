@@ -76,8 +76,9 @@ if( CSHARP_DOTNET_FOUND )
 
   # Set the compiler version
   # Do not force, so that the user can manually select their own version if they wish
-  if ( DEFINED CSHARP_DOTNET_COMPILER_v2.0.50727 )
-    # If available, select .NET v2.0.50727 (this is the minimal version as it supports generics, and allows use of VS2008)
+  if ( DEFINED CSHARP_DOTNET_COMPILER_v4.0.30319 )
+    set( CSHARP_DOTNET_VERSION "v4.0.30319" CACHE STRING "C# .NET compiler version" )
+  elseif ( DEFINED CSHARP_DOTNET_COMPILER_v2.0.50727 )
     set( CSHARP_DOTNET_VERSION "v2.0.50727" CACHE STRING "C# .NET compiler version" )
   else( )
     # Select the highest version (first in reverse sorted list)

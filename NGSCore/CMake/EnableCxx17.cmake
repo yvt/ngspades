@@ -1,0 +1,7 @@
+macro(target_enable_cxx17 TARGET)
+    if((CMAKE_COMPILER_IS_GNUCXX) OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
+        target_compile_options(${TARGET} PUBLIC -std=gnu++1z)
+    elseif(MSVC)
+        target_compile_options(${TARGET} PUBLIC /std:c++latest)
+    endif()
+endmacro()
