@@ -628,4 +628,42 @@ struct BaseMatrix4
 
 using Matrix4 = BaseMatrix4<float>;
 using DMatrix4 = BaseMatrix4<double>;
+
+template <class T>
+class BaseBox2D
+{
+    BaseVector2D<T> min, max;
+
+    using Self = BaseBox2D<T>;
+    using RefRemoved = BaseBox2D<typename std::remove_reference<T>::type>;
+
+    BaseBox2D() = default;
+    constexpr inline BaseBox2D(T xMin, T yMin, T xMax, T yMax) :
+        min{xMin, yMin}, max{xMax, yMax} {}
+    constexpr inline BaseBox2D(const BaseBox2D<T> &min, const BaseBox2D<T> &max) :
+        min{min}, max{max} {}
+    template <class S>
+    explicit constexpr inline BaseBox2D(S xMin, S yMin, S xMax, S yMax) :
+        min{static_cast<T>(xMin), static_cast<T>(yMin)}, max{static_cast<T>(xMax), static_cast<T>(yMax)} {}
+    template <class S>
+    explicit constexpr inline BaseBox2D(const BaseBox2D<S> &min, const BaseBox2D<S> &max) :
+        min{static_cast<BaseVector2D<T>>(min)}, max{static_cast<BaseVector2D<T>>(max)} {}
+
+    inline T GetMinX() const { return min.x; }
+    inline T GetMaxX() const { return max.x; }
+    inline T GetMinY() const { return min.y; }
+    inline T GetMaxY() const { return max.y; }
+    inline RefRemoved GetWidth() const { return GetMaxX() - GetMinX(); }
+    inline RefRemoved GetHeight() const { return GetMaxY() - GetMinY(); }
+
+    inline BaseVector2D<T> GetTopLeft() const { return min; }
+    inline BaseVector2D<T> GetTopRight() const { return {max.x, min.y}; }
+    inline BaseVector2D<T> GetBottomLeft() const { return {min.x, max.y}; }
+    inline BaseVector2D<T> GetBottomRight() const { return max; }
+};
+
+using Box2D = BaseBox2D<float>;
+using DBox2D = BaseBox2D<double>;
+using IntBox2D = BaseBox2D<std::int32_t>;
+
 }

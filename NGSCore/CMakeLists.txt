@@ -16,7 +16,12 @@ endif()
 file(GLOB XPCOM_BASE_FILES Xpcom/base/*.cpp Xpcom/base/*.h)
 file(GLOB XPCOM_BUILD_FILES Xpcom/build/*.cpp Xpcom/build/*.h)
 file(GLOB MFBT_FILES Mfbt/*.cpp Mfbt/*.h)
-file(GLOB UTILS_FILES Utils/*.cpp Utils/*.h)
+file(GLOB UTILS_FILES
+    Utils/BString.cpp
+    Utils/BString.h
+    Utils/RefCounted.cpp
+    Utils/RefCounted.h
+    Utils/NGSCore.h)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Xpcom/build)
@@ -58,7 +63,7 @@ configure_file(
 
 # IDL C++ header files
 set(XPCOM_IDL_FILES
-    Utils/NGSCore.idl
+    Utils/NGSCoreRoot.idl
     Xpcom/base/nsrootidl.idl
     Xpcom/base/nsISupports.idl
     Xpcom/base/nsIMemory.idl

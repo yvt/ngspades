@@ -7,7 +7,7 @@ namespace Ngs.Utils
     {
         private float x, y;
 
-        Vector2(float x, float y)
+        public Vector2(float x, float y)
         {
             this.x = x;
             this.y = y;
@@ -31,7 +31,7 @@ namespace Ngs.Utils
     {
         private float x, y, z;
 
-        Vector3(float x, float y, float z)
+        public Vector3(float x, float y, float z)
         {
             this.x = x;
             this.y = y;
@@ -62,7 +62,7 @@ namespace Ngs.Utils
     {
         private float x, y, z, w;
 
-        Vector4(float x, float y, float z, float w)
+        public Vector4(float x, float y, float z, float w)
         {
             this.x = x;
             this.y = y;
@@ -100,7 +100,7 @@ namespace Ngs.Utils
     {
         private int x, y;
 
-        IntVector2(int x, int y)
+        public IntVector2(int x, int y)
         {
             this.x = x;
             this.y = y;
@@ -124,7 +124,7 @@ namespace Ngs.Utils
     {
         private int x, y, z;
 
-        IntVector3(int x, int y, int z)
+        public IntVector3(int x, int y, int z)
         {
             this.x = x;
             this.y = y;
@@ -155,7 +155,7 @@ namespace Ngs.Utils
     {
         private int x, y, z, w;
 
-        IntVector4(int x, int y, int z, int w)
+        public IntVector4(int x, int y, int z, int w)
         {
             this.x = x;
             this.y = y;
@@ -185,6 +185,30 @@ namespace Ngs.Utils
         {
             get { return this.w; }
             set { this.w = value; }
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Box2D
+    {
+        private Vector2 min, max;
+
+        public Box2D(Vector2 min, Vector2 max)
+        {
+            this.min = min;
+            this.max = max;
+        }
+
+        public Vector2 Min
+        {
+            get { return this.min; }
+            set { this.min = value; }
+        }
+
+        public Vector2 Max
+        {
+            get { return this.max; }
+            set { this.max = value; }
         }
     }
 }
