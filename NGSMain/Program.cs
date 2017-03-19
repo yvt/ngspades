@@ -18,6 +18,11 @@ namespace Ngs.Shell
 			Console.WriteLine("Entering obj.Hello()");
 			string ret = obj.Hello("Message from managed code");
 			Console.WriteLine($"Got: \"{ret}\" (length = {ret.Length})");
+
+			obj.HogeAttr = "Test value";
+			ret = obj.HogeAttr;
+			Console.WriteLine($"HogeAttr: \"{ret}\" (length = {ret.Length})");
+			
 			Console.WriteLine("Leaving obj.Hello()");
 		}
 	}

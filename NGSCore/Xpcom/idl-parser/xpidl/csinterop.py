@@ -59,10 +59,32 @@ def write_interface(iface, fd):
 
         raise Exception("Cannot map the type %s" % t)
 
+    # [hoge] piyo --> [target: hoge] piyo
+    def attr_explicit_target(target, cs_type):
+        if cs_type[0] == '[':
+            return '[' + target + ': ' + cs_type[1:]
+        else:
+            return cs_type
+
     # [hoge] piyo --> [return: hoge] piyo
     def attr_to_return_value(cs_type):
-        if cs_type[0:1] == '[':
-            return '[return: ' + cs_type[1:]
+        return attr_explicit_target('return', cs_type)
+
+    # [hoge] piyo --> [hoge]
+    #        piyo --> (empty)
+    def leave_only_attr(cs_type):
+        if cs_type[0] == '[':
+            assert ']' in cs_type
+            return cs_type[0:cs_type.find(']') + 1]
+        else:
+            return ''
+
+    # [hoge] piyo --> piyo
+    #        piyo --> piyo
+    def remove_attr(cs_type):
+        if cs_type[0] == '[':
+            assert ']' in cs_type
+            return cs_type[cs_type.find(']') + 1:].strip()
         else:
             return cs_type
 
@@ -93,10 +115,17 @@ def write_interface(iface, fd):
 
     def write_attr_decl(a):
         fd.write('\t\t/* %s */\n' % (a.toIDL()))
-        fd.write('\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
-        fd.write('\t\t%s Get%s();\n' % (attr_to_return_value(type_as_cs(a.realtype)), a.name))
+        cs_type = type_as_cs(a.realtype)
+        fd.write('\t\t%s %s\n' % (remove_attr(cs_type), a.name))
+        fd.write('\t\t{\n')
+        fd.write('\t\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
+        fd.write('\t\t\t%s\n' % (leave_only_attr(attr_explicit_target('return', cs_type))))
+        fd.write('\t\t\tget;\n')
         if not a.readonly:
-            fd.write('\t\tvoid Set%s(%s value);\n' % (a.name, type_as_cs(a.realtype)))
+            fd.write('\t\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
+            fd.write('\t\t\t%s\n' % (leave_only_attr(attr_explicit_target('param', cs_type))))
+            fd.write('\t\t\tset;\n')
+        fd.write('\t\t}\n')
 
     if iface.namemap is None:
         raise Exception("Interface was not resolved.")
