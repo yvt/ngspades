@@ -1,7 +1,7 @@
 #include "RefCounted.h"
 
 namespace ngs {
-RefCounted::RefCounted()
+RefCounted::RefCounted() : m_refCount{ 1 }
 {
 }
 
