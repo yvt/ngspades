@@ -30,11 +30,27 @@ else()
 endif()
 
 # C++ source files
-file(GLOB BACKEND_FILES Backend/Common/*.cpp Backend/Common/*.h)
-file(GLOB UTILS_FILES Utils/*.cpp Utils/*.h)
-file(GLOB WORLD_FILES World/*.cpp World/*.h)
+file(GLOB BACKEND_FILES
+    Backend/Common/GraphicsBackendBase.h
+    Backend/Common/RenderPassBase.h
+    Backend/Common/Viewport.h)
+file(GLOB UTILS_FILES
+    Utils/ComException.cpp
+    Utils/ComException.h
+    Utils/Geometry.cpp
+    Utils/Geometry.h
+    Utils/Heap.cpp
+    Utils/Heap.h
+    Utils/SegmentedHeap.cpp
+    Utils/SegmentedHeap.h
+    Utils/UninitializedMemoryBlock.cpp
+    Utils/UninitializedMemoryBlock.h)
+file(GLOB WORLD_FILES
+    World/TerrainVoxelInfo.h
+    World/VoxelTerrain.cpp
+    World/VoxelTerrain.h)
 
-set(CXX_FILES Main.cpp ${UTILS_FILES} ${WORLD_FILES})
+set(CXX_FILES Main.cpp ${BACKEND_FILES} ${UTILS_FILES} ${WORLD_FILES})
 
 # IDL C++ header files
 set(IDL_FILES

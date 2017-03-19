@@ -61,7 +61,7 @@ configure_file(
 
 # IDL C++ header files
 set(XPCOM_IDL_FILES
-    Utils/NGSCore.idl
+    Utils/NGSCoreRoot.idl
     Xpcom/base/nsrootidl.idl
     Xpcom/base/nsISupports.idl
     Xpcom/base/nsIMemory.idl
