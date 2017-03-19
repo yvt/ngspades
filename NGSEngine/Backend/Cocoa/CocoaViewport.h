@@ -2,9 +2,17 @@
 
 #include <Backend/Common/IViewport.idl>
 
-namespace ngs
+namespace ngs {
+
+class CocoaViewport : public IViewport
 {
+public:
+    NS_DECL_ISUPPORTS
+    NS_DECL_IVIEWPORT
 
-class CocoaV
+    CocoaViewport();
 
+private:
+    ~CocoaViewport();
+};
 }

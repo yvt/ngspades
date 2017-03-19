@@ -12,6 +12,7 @@ native ngsVector4(ngs::Vector4D);
 native ngsIntVector2(ngs::IntVector2D);
 native ngsIntVector3(ngs::IntVector3D);
 native ngsIntVector4(ngs::IntVector4D);
+native ngsBox2D(ngs::Box2D);
 native ngsTerrainVoxelInfo(ngs::TerrainVoxelInfo);
 native ngsFullScreenMode(ngs::FullScreenMode);
 native ngsWheelDeltaMode(ngs::WheelDeltaMode);

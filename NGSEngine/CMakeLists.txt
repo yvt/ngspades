@@ -58,6 +58,8 @@ set(IDL_FILES
     IEngine.idl
     Backend/Common/IKeyboardEvent.idl
     Backend/Common/IMouseEvent.idl
+    Backend/Common/ITextCompositionEvent.idl
+    Backend/Common/ITextInputEvent.idl
     Backend/Common/IViewport.idl
     Backend/Common/IViewportListener.idl
     World/IVoxelTerrain.idl

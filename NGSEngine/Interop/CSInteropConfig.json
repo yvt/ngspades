@@ -16,6 +16,7 @@
         "ngsIntVector2": "Ngs.Utils.IntVector2",
         "ngsIntVector3": "Ngs.Utils.IntVector3",
         "ngsIntVector4": "Ngs.Utils.IntVector4",
+        "ngsBox2D": "Ngs.Utils.Box2D",
         "ngsTerrainVoxelInfo": "Ngs.Engine.TerrainVoxelInfo",
         "ngsFullScreenMode": "Ngs.Engine.FullScreenMode",
         "ngsWheelDeltaMode": "Ngs.Engine.WheelDeltaMode"
