@@ -12,4 +12,5 @@ interface IViewportListener : nsISupports
     void MouseDown(in IMouseEvent mouseEvent);
     void MouseMove(in IMouseEvent mouseEvent);
     void MouseUp(in IMouseEvent mouseEvent);
+    void MouseWheel(in IMouseEvent mouseEvent);
 };
