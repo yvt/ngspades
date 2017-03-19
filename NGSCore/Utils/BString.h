@@ -57,7 +57,7 @@ public:
 
     inline std::size_t GetLength() const noexcept
     {
-        return *reinterpret_cast<const std::uint32_t *>(GetMemoryBlock());
+        return *reinterpret_cast<const std::uint32_t *>(GetMemoryBlock()) >> 1;
     }
 
     inline U16StringView GetView() const noexcept { return { GetData(), GetLength() }; }
