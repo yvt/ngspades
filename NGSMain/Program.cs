@@ -12,7 +12,8 @@ namespace Ngs.Shell
 	sealed unsafe class TestInterfaceRCW
 	{
 		private IntPtr self;
-        
+
+        [System.Security.SuppressUnmanagedCodeSecurity]
         private delegate int SimpleMethodDelegate(IntPtr selfptr);
 		private SimpleMethodDelegate simpleMethodImpl;
         
