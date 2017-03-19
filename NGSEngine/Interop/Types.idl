@@ -1,9 +1,15 @@
 %{C++
 #include <Utils/Geometry.h>
 #include <World/TerrainVoxelInfo.h>
-#include <Backend/Viewport.h>
+#include <Backend/Common/Viewport.h>
 %}
 
+native ngsVector2(ngs::Vector2D);
+native ngsVector3(ngs::Vector3D);
+native ngsVector4(ngs::Vector4D);
+native ngsIntVector2(ngs::IntVector2D);
 native ngsIntVector3(ngs::IntVector3D);
+native ngsIntVector4(ngs::IntVector4D);
 native ngsTerrainVoxelInfo(ngs::TerrainVoxelInfo);
 native ngsFullScreenMode(ngs::FullScreenMode);
+native ngsWheelDeltaMode(ngs::WheelDeltaMode);

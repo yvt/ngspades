@@ -1,0 +1,13 @@
+#include "nsISupports.idl"
+#include "Interop/Types.idl"
+
+[scriptable, uuid(9a6d2519-a9f6-4fcb-9515-d82c5da55466)]
+interface IMouseEvent : nsISupports
+{
+    readonly attribute ngsVector2 Location;
+    readonly attribute unsigned long Buttons;
+    readonly attribute unsigned long ChangedButtons;
+
+    readonly attribute ngsVector2 WheelDelta;
+    readonly attribute ngsWheelDeltaMode WheelDeltaMode;
+};

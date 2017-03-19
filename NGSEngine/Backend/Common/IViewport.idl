@@ -8,5 +8,5 @@ interface IViewport : nsISupports
     readonly attribute long VideoHeight;
     readonly attribute ngsFullScreenMode FullScreenMode;
 
-    void SetVideoMode(long videoWidth, long videoHeight, ngsFullScreenMode fullScreenMode);
+    void SetVideoMode(in long videoWidth, in long videoHeight, in ngsFullScreenMode fullScreenMode);
 };

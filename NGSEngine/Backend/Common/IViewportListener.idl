@@ -2,10 +2,15 @@
 #include "Interop/Types.idl"
 
 #include "Backend/Common/IKeyboardEvent.idl"
+#include "Backend/Common/IMouseEvent.idl"
 
 [scriptable, uuid(570e1466-cd26-4363-acb8-00eb73269497)]
 interface IViewportListener : nsISupports
 {
-    void KeyDown(in IKeyboardEvent event);
-    void KeyUp(in IKeyboardEvent event);
+    void KeyDown(in IKeyboardEvent keyboardEvent);
+    void KeyUp(in IKeyboardEvent keyboardEvent);
+
+    void MouseDown(in IMouseEvent mouseEvent);
+    void MouseMove(in IMouseEvent mouseEvent);
+    void MouseUp(in IMouseEvent mouseEvent);
 };

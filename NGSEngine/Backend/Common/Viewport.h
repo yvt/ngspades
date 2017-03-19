@@ -10,4 +10,11 @@ namespace ngs
         FullScreenWindow,
         FullScreen
     };
+
+    enum class WheelDeltaMode : std::int32_t
+    {
+        Pixel = 0,
+        Line,
+        Page
+    };
 }

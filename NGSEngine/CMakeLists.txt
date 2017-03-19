@@ -41,6 +41,7 @@ set(IDL_FILES
     ITestInterface.idl
     IEngine.idl
     Backend/Common/IKeyboardEvent.idl
+    Backend/Common/IMouseEvent.idl
     Backend/Common/IViewport.idl
     Backend/Common/IViewportListener.idl
     World/IVoxelTerrain.idl
