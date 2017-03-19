@@ -1,5 +1,6 @@
 #include <ITestInterface.h>
 #include <iostream>
+#include <codecvt>
 
 #if defined(_MSC_VER)
 #define NGS_API __declspec(dllexport)
@@ -25,9 +26,11 @@ private:
 NS_IMPL_ISUPPORTS(TestClass, ITestInterface)
 
 NS_IMETHODIMP
-TestClass::Hello()
+TestClass::Hello(const char16_t *str)
 {
     std::cout << "Hello world!" << std::endl;
+    std::cout << std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}
+        .to_bytes(str) << std::endl;
     return NS_OK;
 }
 }

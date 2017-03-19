@@ -16,7 +16,7 @@ namespace Ngs.Shell
 			Ngs.Engine.ITestInterface obj;
 			NativeMethods.NgsCreateTestInstance(out obj);
 			Console.WriteLine("Entering obj.Hello()");
-			obj.Hello();
+			obj.Hello("Message from managed code");
 			Console.WriteLine("Leaving obj.Hello()");
 		}
 	}
