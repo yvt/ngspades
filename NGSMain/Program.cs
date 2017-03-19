@@ -12,11 +12,10 @@ namespace Ngs.Shell
 	sealed unsafe class TestInterfaceRCW
 	{
 		private IntPtr self;
-
-		private delegate int SimpleMethodDelegate(IntPtr selfptr);
+        
+        private delegate int SimpleMethodDelegate(IntPtr selfptr);
 		private SimpleMethodDelegate simpleMethodImpl;
-
-		[return: MarshalAs(UnmanagedType.BStr)]
+        
 		private delegate int HelloDelegate(IntPtr selfptr, [MarshalAs(UnmanagedType.BStr)] string prm,
 		                                  [MarshalAs(UnmanagedType.BStr)] out string retval);
 		private HelloDelegate helloImpl;
