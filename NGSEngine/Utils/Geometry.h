@@ -26,7 +26,7 @@ struct BaseVector2D
     }
     constexpr inline BaseVector2D(const BaseVector2D<T &> o) : x(o.x), y(o.y) {}
 
-    inline BaseVector2D &operator=(const RefRemoved &o) const
+    inline BaseVector2D &operator=(const RefRemoved &o)
     {
         x = o.x;
         y = o.y;
@@ -159,7 +159,7 @@ struct BaseVector3D
     {
     }
 
-    inline BaseVector3D &operator=(const RefRemoved &o) const
+    inline BaseVector3D &operator=(const RefRemoved &o)
     {
         x = o.x;
         y = o.y;
@@ -319,7 +319,7 @@ struct BaseVector4D
     {
     }
 
-    inline BaseVector4D &operator=(const RefRemoved &o) const
+    inline BaseVector4D &operator=(const RefRemoved &o)
     {
         x = o.x;
         y = o.y;
