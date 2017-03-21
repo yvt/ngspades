@@ -31,9 +31,49 @@ endif()
 
 # C++ source files
 file(GLOB BACKEND_FILES
-    Backend/Common/GraphicsBackendBase.h
-    Backend/Common/RenderPassBase.h
-    Backend/Common/Viewport.h)
+    Backend/Common/BlendFactor.h
+    Backend/Common/BlendOperation.h
+    Backend/Common/ColorWriteMask.h
+    Backend/Common/GPUFunction.h
+    Backend/Common/GraphicsBackend.cpp
+    Backend/Common/GraphicsBackend.h
+    Backend/Common/PixelFormat.h
+    Backend/Common/RenderPass.h
+    Backend/Common/RenderPassAttachmentDescriptor.cpp
+    Backend/Common/RenderPassAttachmentDescriptor.h
+    Backend/Common/RenderPassDescriptor.cpp
+    Backend/Common/RenderPassDescriptor.h
+    Backend/Common/RenderPipelineAttachmentDescriptor.cpp
+    Backend/Common/RenderPipelineAttachmentDescriptor.h
+    Backend/Common/RenderPipelineDescriptor.cpp
+    Backend/Common/RenderPipelineDescriptor.h
+    Backend/Common/RenderPipelineState.h
+    Backend/Common/Texture.h
+    Backend/Common/Viewport.h
+    Backend/SDL/ImportSDL.h
+    Backend/SDL/SDLViewport.cpp
+    Backend/SDL/SDLViewport.h)
+
+if(APPLE)
+    file(GLOB BACKEND_METAL_FILES
+        Backend/Metal/MetalGraphicsBackend.h
+        Backend/Metal/MetalGraphicsBackend.mm
+        Backend/Metal/MetalGraphicsBackendPrivate.h
+        Backend/Metal/NGSMetalView.h
+        Backend/Metal/NGSMetalView.mm)
+    set(BACKEND_FILES ${BACKEND_FILES} ${BACKEND_METAL_FILES})
+
+    find_library(METAL_LIBRARY Metal)
+    mark_as_advanced(METAL_LIBRARY)
+    list(APPEND EXTRA_LIBS ${METAL_LIBRARY})
+
+    find_library(METALKIT_LIBRARY MetalKit)
+    mark_as_advanced(METALKIT_LIBRARY)
+    list(APPEND EXTRA_LIBS ${METALKIT_LIBRARY})
+else()
+    message(FATAL_ERROR "Unsupported platform")
+endif()
+
 file(GLOB UTILS_FILES
     Utils/ComException.cpp
     Utils/ComException.h
@@ -88,7 +128,7 @@ add_library(NGSEngine MODULE
     ${CXX_FILES})
 
 set_property(TARGET NGSEngine PROPERTY CXX_STANDARD 14)
-target_link_libraries(NGSEngine NGSCore)
+target_link_libraries(NGSEngine NGSCore ${EXTRA_LIBS})
 
 # Use C++17
 include(EnableCxx17)
@@ -111,7 +151,7 @@ endforeach()
 file(GLOB AUX_CS_FILES
     Interop/Geometry.cs
     Interop/CSTypes.cs)
-	
+
 foreach(CURRENT_CS ${AUX_CS_FILES})
     get_filename_component(CURRENT_CS_NEW ${CURRENT_CS} NAME)
     string(CONCAT CURRENT_CS_NEW "InteropAssembly/" ${CURRENT_CS_NEW})
@@ -119,7 +159,7 @@ foreach(CURRENT_CS ${AUX_CS_FILES})
         ${CURRENT_CS}
         ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS_NEW}
         COPYONLY)
-		
+
     list(APPEND AUX_CS_FILES_COPIED ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS_NEW})
 endforeach()
 

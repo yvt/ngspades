@@ -7,12 +7,11 @@ namespace ngs {
 class RefCounted
 {
 public:
-    RefCounted();
-
     void AddRef();
     void Release();
 
 protected:
+    RefCounted();
     virtual ~RefCounted();
 
 private:
