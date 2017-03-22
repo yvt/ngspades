@@ -1,10 +1,11 @@
 #pragma once
 
-#include <array>
+#include <vector>
 
 #include <NGSCore.h>
 
 #include "RenderPassAttachmentDescriptor.h"
+#include "RenderSubpassDescriptor.h"
 
 namespace ngs {
 
@@ -13,27 +14,40 @@ class RenderPassDescriptor final : public RefCounted
 public:
     RenderPassDescriptor();
 
-    void SetColorAttachment(std::size_t index, RenderPassAttachmentDescriptor *value)
+    void SetAttachment(std::size_t index, RenderPassAttachmentDescriptor *value)
     {
-        m_colorAttachments.at(index) = value;
+        if (index + 1 > m_attachments.size()) {
+            m_attachments.resize(index + 1);
+        }
+        m_attachments.at(index) = value;
     }
-    RenderPassAttachmentDescriptor *GetColorAttachment(std::size_t index)
+    RenderPassAttachmentDescriptor *GetAttachment(std::size_t index)
     {
-        return m_colorAttachments.at(index);
+        if (index >= m_attachments.size()) {
+            return nullptr;
+        }
+        return m_attachments.at(index);
     }
+    std::size_t GetAttachmentCount() { return m_attachments.size(); }
 
-    void SetDepthAttachment(RenderPassAttachmentDescriptor *value) { m_depthAttachment = value; }
-    RenderPassAttachmentDescriptor *GetDepthAttachment() { return m_depthAttachment; }
-
-    void SetStencilAttachment(RenderPassAttachmentDescriptor *value)
+    void SetSubpass(std::size_t index, RenderSubpassDescriptor *value)
     {
-        m_stencilAttachment = value;
+        if (index + 1 > m_subpasses.size()) {
+            m_subpasses.resize(index + 1);
+        }
+        m_subpasses.at(index) = value;
     }
-    RenderPassAttachmentDescriptor *GetStencilAttachment() { return m_stencilAttachment; }
+    RenderSubpassDescriptor *GetSubpass(std::size_t index)
+    {
+        if (index >= m_subpasses.size()) {
+            return nullptr;
+        }
+        return m_subpasses.at(index);
+    }
+    std::size_t GetSubpassCount() { return m_subpasses.size(); }
 
 private:
-    std::array<RefPtr<RenderPassAttachmentDescriptor>, 8> m_colorAttachments;
-    RefPtr<RenderPassAttachmentDescriptor> m_depthAttachment;
-    RefPtr<RenderPassAttachmentDescriptor> m_stencilAttachment;
+    std::vector<RefPtr<RenderPassAttachmentDescriptor>> m_attachments;
+    std::vector<RefPtr<RenderSubpassDescriptor>> m_subpasses;
 };
 }

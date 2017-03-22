@@ -41,6 +41,8 @@ file(GLOB BACKEND_FILES
     Backend/Common/RenderPass.h
     Backend/Common/RenderPassAttachmentDescriptor.cpp
     Backend/Common/RenderPassAttachmentDescriptor.h
+    Backend/Common/RenderPassAttachmentReference.cpp
+    Backend/Common/RenderPassAttachmentReference.h
     Backend/Common/RenderPassDescriptor.cpp
     Backend/Common/RenderPassDescriptor.h
     Backend/Common/RenderPipelineAttachmentDescriptor.cpp
@@ -48,6 +50,8 @@ file(GLOB BACKEND_FILES
     Backend/Common/RenderPipelineDescriptor.cpp
     Backend/Common/RenderPipelineDescriptor.h
     Backend/Common/RenderPipelineState.h
+    Backend/Common/RenderSubpassDescriptor.cpp
+    Backend/Common/RenderSubpassDescriptor.h
     Backend/Common/Texture.h
     Backend/Common/Viewport.h
     Backend/SDL/ImportSDL.h

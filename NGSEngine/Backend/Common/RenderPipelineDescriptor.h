@@ -5,6 +5,7 @@
 #include <NGSCore.h>
 
 #include "GPUFunction.h"
+#include "RenderPass.h"
 #include "RenderPipelineAttachmentDescriptor.h"
 
 namespace ngs {
@@ -13,6 +14,12 @@ class RenderPipelineDescriptor final : public RefCounted
 {
 public:
     RenderPipelineDescriptor();
+
+    void SetRenderPass(RenderPass *value) { m_renderPass = value; }
+    RenderPass *GetRenderPass() { return m_renderPass; }
+
+    void SetRenderSubpassIndex(std::size_t value) { m_renderSubpassIndex = value; }
+    std::size_t GetRenderSubpassIndex() { return m_renderSubpassIndex; }
 
     void SetFragmentFunction(GPUFunction *value) { m_fragmentFunction = value; }
     GPUFunction *GetFragmentFunction() { return m_fragmentFunction; }
@@ -29,7 +36,10 @@ public:
         return m_colorAttachments.at(index);
     }
 
-    void SetDepthAttachment(RenderPipelineAttachmentDescriptor *value) { m_depthAttachment = value; }
+    void SetDepthAttachment(RenderPipelineAttachmentDescriptor *value)
+    {
+        m_depthAttachment = value;
+    }
     RenderPipelineAttachmentDescriptor *GetDepthAttachment() { return m_depthAttachment; }
 
     void SetStencilAttachment(RenderPipelineAttachmentDescriptor *value)
@@ -39,6 +49,8 @@ public:
     RenderPipelineAttachmentDescriptor *GetStencilAttachment() { return m_stencilAttachment; }
 
 private:
+    RefPtr<RenderPass> m_renderPass;
+    std::size_t m_renderSubpassIndex;
     RefPtr<GPUFunction> m_fragmentFunction;
     RefPtr<GPUFunction> m_vertexFunction;
     std::array<RefPtr<RenderPipelineAttachmentDescriptor>, 8> m_colorAttachments;

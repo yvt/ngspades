@@ -1,7 +1,7 @@
 #include "RenderPipelineDescriptor.h"
 
 namespace ngs {
-RenderPipelineDescriptor::RenderPipelineDescriptor()
+RenderPipelineDescriptor::RenderPipelineDescriptor() : m_renderSubpassIndex{ 0 }
 {
 }
 }
