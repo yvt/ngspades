@@ -1,5 +1,7 @@
 #pragma once
 
+#include <NGSCore.h>
+
 namespace ngs {
 class RenderPassAttachmentReference final : public RefCounted
 {

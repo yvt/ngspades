@@ -3,6 +3,7 @@
 #include <NGSCore.h>
 
 #include "Texture.h"
+#include <Utils/Geometry.h>
 
 namespace ngs {
 
