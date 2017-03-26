@@ -10,6 +10,8 @@ BUILD
 DerivedFiles
 bin
 obj
+NGSEngineInterop/Generated/*.cs
+NGSEngineInterop/Generated/xpidlcache
 
 # Cache files
 *.pyc

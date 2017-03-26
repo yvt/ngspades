@@ -3,12 +3,6 @@ project(NGSEngine)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" "${CMAKE_CURRENT_SOURCE_DIR}/../NGSCore/CMake")
 
-# Find C# compiler (required to create an interop assembly)
-find_package(CSharp)
-if(NOT CSHARP_FOUND)
-    message(FATAL_ERROR "C# compiler was not found.")
-endif()
-
 include_directories(${PROJECT_SOURCE_DIR})
 
 # pyxpidl scripts
@@ -142,51 +136,3 @@ target_link_libraries(NGSEngine NGSCore ${EXTRA_LIBS})
 include(EnableCxx17)
 target_enable_cxx17(NGSEngine)
 
-# NuGet package creation
-configure_file(
-    NGSEngine.nuspec.in
-    ${CMAKE_CURRENT_BINARY_DIR}/NGSEngine.nuspec
-    COPYONLY)
-
-# COM interop assembly generation
-foreach(CURRENT_IDL ${IDL_FILES})
-    string(REGEX REPLACE "\\.idl$" ".cs" CURRENT_CS ${CURRENT_IDL})
-    get_filename_component(CURRENT_CS ${CURRENT_CS} NAME)
-    string(CONCAT CURRENT_CS "InteropAssembly/" ${CURRENT_CS})
-
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS}
-        COMMAND ${CSINTEROP_COMMAND} ${CSINTEROP_FLAGS} -o ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS} ${CMAKE_CURRENT_SOURCE_DIR}/${CURRENT_IDL}
-        DEPENDS ${CURRENT_IDL})
-
-    list(APPEND IDL_CS_FILES ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS})
-endforeach()
-
-file(GLOB AUX_CS_FILES
-    Interop/Geometry.cs
-    Interop/CSTypes.cs)
-
-foreach(CURRENT_CS ${AUX_CS_FILES})
-    get_filename_component(CURRENT_CS_NEW ${CURRENT_CS} NAME)
-    string(CONCAT CURRENT_CS_NEW "InteropAssembly/" ${CURRENT_CS_NEW})
-    configure_file(
-        ${CURRENT_CS}
-        ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS_NEW}
-        COPYONLY)
-
-    list(APPEND AUX_CS_FILES_COPIED ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS_NEW})
-endforeach()
-
-set(INTEROP_DLL ${CMAKE_CURRENT_BINARY_DIR}/NGSEngineInterop.dll)
-if(CSHARP_TYPE STREQUAL ".NET")
-    set(CS_FLAGS "/out:${INTEROP_DLL}" "/target:library")
-else()
-    set(CS_FLAGS "-out:${INTEROP_DLL}" "-target:library")
-endif()
-add_custom_target(NGSEngineInterop ALL
-    COMMAND ${CSHARP_COMPILER} ${CS_FLAGS} ${AUX_CS_FILES_COPIED} ${IDL_CS_FILES}
-    BYPRODUCTS ${INTEROP_DLL}
-    DEPENDS ${IDL_CS_FILES} ${AUX_CS_FILES_COPIED}
-	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/InteropAssembly
-    COMMENT "Creating COM interop assembly"
-    SOURCES ${IDL_FILES} ${AUX_CS_FILES})

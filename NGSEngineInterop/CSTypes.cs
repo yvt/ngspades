@@ -1,8 +1,5 @@
 using System.Runtime.InteropServices;
 
-[assembly: PrimaryInteropAssembly(0, 0)]
-[assembly: ImportedFromTypeLib("NGSCore")]
-
 namespace Ngs.Engine
 {
     public enum FullScreenMode : int

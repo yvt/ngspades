@@ -5,8 +5,8 @@ namespace Ngs.Shell
 {
     static class NativeMethods
     {
-        [DllImport("NGSEngine", PreserveSig = false)]
-        public static extern void NgsCreateTestInstance([MarshalAs(UnmanagedType.Interface)] out Ngs.Engine.ITestInterface outInstance);
+        [DllImport("NGSEngine")]
+        public static extern int NgsCreateTestInstance(out IntPtr outInstance);
     }
 
     sealed unsafe class TestInterfaceRCW
@@ -20,18 +20,21 @@ namespace Ngs.Shell
                                           [MarshalAs(UnmanagedType.BStr)] out string retval);
         private HelloDelegate helloImpl;
 
-        public TestInterfaceRCW(Ngs.Engine.ITestInterface obj)
+        public TestInterfaceRCW(IntPtr iface)
         {
+            /*
             IntPtr unk = Marshal.GetIUnknownForObject(obj);
             IntPtr iface;
             Guid guid = new Guid("35edff15-0b38-47d8-9b7c-e00fa2acdf9d");
-            Marshal.QueryInterface(unk, ref guid, out iface);
+            Marshal.QueryInterface(unk, ref guid, out iface); */
 
             IntPtr** ifacePtr = (IntPtr**) iface.ToPointer();
             IntPtr* vtable = ifacePtr[0];
 
-            IntPtr hello = vtable[5];
-            helloImpl = Marshal.GetDelegateForFunctionPointer<HelloDelegate>(hello);
+            // FIXME: Doesn't work with .NET Core
+            // System.Runtime.InteropServices.MarshalDirectiveException: Cannot marshal 'parameter #2': Unknown error
+            // IntPtr hello = vtable[5];
+            // helloImpl = Marshal.GetDelegateForFunctionPointer<HelloDelegate>(hello);
 
             IntPtr simpleMethod = vtable[6];
             simpleMethodImpl = Marshal.GetDelegateForFunctionPointer<SimpleMethodDelegate>(simpleMethod);
@@ -90,7 +93,14 @@ namespace Ngs.Shell
 
         public static void Main(string[] args)
         {
+            IntPtr obj;
+            Console.WriteLine("Creating obj");
+            NativeMethods.NgsCreateTestInstance(out obj);
+
+            /*
+            // FIXME: Doesn't work with .NET Core
             Ngs.Engine.ITestInterface obj;
+            Console.WriteLine("Creating obj");
             NativeMethods.NgsCreateTestInstance(out obj);
 
             Console.WriteLine("Entering obj.Hello()");
@@ -107,16 +117,17 @@ namespace Ngs.Shell
             Benchmark(((IHoge)(new HogeClass())).Hoge);
 
             Console.WriteLine("Benchmarking obj.SimpleMethod()");
-            Benchmark(obj.SimpleMethod);
+            Benchmark(obj.SimpleMethod);*/
 
             Console.WriteLine("-- Testing custom RCW");
             var rcw = new TestInterfaceRCW(obj);
 
-            Console.WriteLine("Entering obj.Hello()");
-            ret = rcw.Hello("Message from managed code (with custom RCW)");
-            Console.WriteLine("Leaving obj.Hello()");
+            // FIXME: Doesn't work with .NET Core
+            //Console.WriteLine("Entering obj.Hello()");
+            //string ret = rcw.Hello("Message from managed code (with custom RCW)");
+            //Console.WriteLine("Leaving obj.Hello()");
 
-            Console.WriteLine($"Got: \"{ret}\" (length = {ret.Length})");
+            //Console.WriteLine($"Got: \"{ret}\" (length = {ret.Length})");
 
             Console.WriteLine("Benchmarking obj.SimpleMethod()");
             Benchmark(rcw.SimpleMethod);

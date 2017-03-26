@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp1.1</TargetFramework>
+
+    <!-- Custom Properties -->
+    <NGSGenerateInterfaces>True</NGSGenerateInterfaces>
+  </PropertyGroup>
+
+  <Target Name="GenerateCOMInteropInterfaces"
+      BeforeTargets="ResolveReferences"
+      Condition="'$(NGSGenerateInterfaces)' == 'True'">
+    <Exec Command="powershell ./GenerateSources.ps1" />
+  </Target>
+
+</Project>

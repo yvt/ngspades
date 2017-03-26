@@ -109,7 +109,7 @@ def write_interface(iface, fd):
 
     def write_method_decl(m):
         fd.write('\t\t/* %s */\n' % (m.toIDL()))
-        fd.write('\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
+        # fd.write('\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
         fd.write('\t\t%s %s(%s);\n\n' % (attr_to_return_value(get_return_type_as_cs(m)), m.name,
             get_param_list_as_cs(m)))
 
@@ -118,11 +118,11 @@ def write_interface(iface, fd):
         cs_type = type_as_cs(a.realtype)
         fd.write('\t\t%s %s\n' % (remove_attr(cs_type), a.name))
         fd.write('\t\t{\n')
-        fd.write('\t\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
+        # fd.write('\t\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
         fd.write('\t\t\t%s\n' % (leave_only_attr(attr_explicit_target('return', cs_type))))
         fd.write('\t\t\tget;\n')
         if not a.readonly:
-            fd.write('\t\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
+            # fd.write('\t\t\t[MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]\n')
             fd.write('\t\t\t%s\n' % (leave_only_attr(attr_explicit_target('param', cs_type))))
             fd.write('\t\t\tset;\n')
         fd.write('\t\t}\n')
