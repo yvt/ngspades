@@ -67,6 +67,10 @@ if(APPLE)
         Backend/Metal/NGSMetalView.mm)
     set(BACKEND_FILES ${BACKEND_FILES} ${BACKEND_METAL_FILES})
 
+    find_library(FOUNDATION_LIBRARY Foundation)
+    mark_as_advanced(FOUNDATION_LIBRARY)
+    list(APPEND EXTRA_LIBS ${FOUNDATION_LIBRARY})
+
     find_library(METAL_LIBRARY Metal)
     mark_as_advanced(METAL_LIBRARY)
     list(APPEND EXTRA_LIBS ${METAL_LIBRARY})
@@ -138,6 +142,12 @@ target_link_libraries(NGSEngine NGSCore ${EXTRA_LIBS})
 include(EnableCxx17)
 target_enable_cxx17(NGSEngine)
 
+# NuGet package creation
+configure_file(
+    NGSEngine.nuspec.in
+    ${CMAKE_CURRENT_BINARY_DIR}/NGSEngine.nuspec
+    COPYONLY)
+
 # COM interop assembly generation
 foreach(CURRENT_IDL ${IDL_FILES})
     string(REGEX REPLACE "\\.idl$" ".cs" CURRENT_CS ${CURRENT_IDL})
@@ -167,7 +177,7 @@ foreach(CURRENT_CS ${AUX_CS_FILES})
     list(APPEND AUX_CS_FILES_COPIED ${CMAKE_CURRENT_BINARY_DIR}/${CURRENT_CS_NEW})
 endforeach()
 
-set(INTEROP_DLL ${CMAKE_CURRENT_BINARY_DIR}/NGSEngine.Interop.dll)
+set(INTEROP_DLL ${CMAKE_CURRENT_BINARY_DIR}/NGSEngineInterop.dll)
 if(CSHARP_TYPE STREQUAL ".NET")
     set(CS_FLAGS "/out:${INTEROP_DLL}" "/target:library")
 else()

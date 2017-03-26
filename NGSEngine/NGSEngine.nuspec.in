@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+    <metadata>
+        <id>Nightingales.Engine</id>
+        <version>0.0.1.0</version>
+        <authors>yvt</authors>
+        <owners>yvt</owners>
+
+        <licenseUrl></licenseUrl>
+        <projectUrl></projectUrl>
+        <iconUrl></iconUrl>
+
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+
+        <releaseNotes>Internal release</releaseNotes>
+        <description></description>
+
+        <copyright>Copyright ©2017 yvt</copyright>
+        <tags></tags>
+
+        <dependencies>
+        </dependencies>
+    </metadata>
+
+    <files>
+        <file src="Debug/libNGSEngine.so" target="lib/netcoreapp1.1" />
+        <file src="NGSEngine.Interop.dll" target="lib/netcoreapp1.1" />
+    </files>
+
+    <packageTypes>
+        <packageType name="DotnetCliTool" />
+    </packageTypes>
+</package>
+

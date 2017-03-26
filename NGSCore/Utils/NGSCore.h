@@ -53,7 +53,7 @@ Cast(TIn &&value)
         a = a & b;                                                                                 \
         return a;                                                                                  \
     }                                                                                              \
-    explicit inline operator bool(FlagsType a)                                                     \
+    inline bool Any(FlagsType a)                                                                   \
     {                                                                                              \
         using T = std::underlying_type_t<FlagsType>;                                               \
         return static_cast<T>(a) != 0;                                                             \
