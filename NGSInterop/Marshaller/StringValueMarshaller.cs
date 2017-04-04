@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Linq;
@@ -7,23 +7,24 @@ using System.Collections.Generic;
 
 namespace Ngs.Interop.Marshaller
 {
-    sealed class SimpleValueMarshaller : ValueMarshaller
-    {
-        private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
-        {
-            ILGenerator generator;
+	sealed class StringValueMarshaller : ValueMarshaller
+	{
+		private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
+		{
+			ILGenerator generator;
 
-            public ToNativeGenerator(ILGenerator generator)
-            {
-                this.generator = generator;
-            }
+			public ToNativeGenerator(ILGenerator generator)
+			{
+				this.generator = generator;
+			}
 
-            public override void EmitToNative(Storage inputStorage, Storage outputStorage)
-            {
-                inputStorage.EmitLoad();
-                outputStorage.EmitStore();
-            }
-        }
+			public override void EmitToNative(Storage inputStorage, Storage outputStorage)
+			{
+				// TODO: marshal string values in a correct way
+				inputStorage.EmitLoad();
+				outputStorage.EmitStore();
+			}
+		}
 
 		private sealed class ToRuntimeGenerator : ValueToRuntimeMarshallerGenerator
 		{
@@ -36,16 +37,10 @@ namespace Ngs.Interop.Marshaller
 
 			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage)
 			{
+				// TODO: marshal string values in a correct way
 				inputStorage.EmitLoad();
 				outputStorage.EmitStore();
 			}
-		}
-
-        Type type;
-
-        public SimpleValueMarshaller(Type type)
-        {
-            this.type = type;
 		}
 
 		public override ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator)
@@ -58,9 +53,9 @@ namespace Ngs.Interop.Marshaller
 			return new ToRuntimeGenerator(generator);
 		}
 
-        public override Type NativeParameterType
-        {
-            get { return type; }
-        }
-    }
+		public override Type NativeParameterType
+		{
+			get { return typeof(string); } // TODO: this won't work, of course
+		}
+	}
 }

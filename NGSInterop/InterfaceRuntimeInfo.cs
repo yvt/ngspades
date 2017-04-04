@@ -33,6 +33,15 @@ namespace Ngs.Interop
 				if (rcwFactory == null)
 				{
 					rcwFactory = DynamicModuleInfo.Instance.RcwGenerator.CreateRCWFactory<T>().FactoryDelegate;
+
+					// debug
+					if (false) {
+						var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
+						var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] {typeof(string)});
+						if (saveMethod != null) {
+							saveMethod.Invoke(asm, new object[] {"DebugOutput.dll"});
+						}
+					}
 				}
 
 				WeakReference<INativeObject<T>> rcwref;

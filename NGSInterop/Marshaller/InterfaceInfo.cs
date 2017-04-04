@@ -80,11 +80,11 @@ namespace Ngs.Interop.Marshaller
 
 			if (!TypeInfo.IsInterface)
 			{
-				throw new ArgumentException("The specified type is not an interface type.", nameof(type));
+				throw new ArgumentException($"The specified type {type.FullName} is not an interface type.", nameof(type));
 			}
-			if (!TypeInfo.IsSubclassOf(typeof(IUnknown)))
+			if (!typeof(IUnknown).GetTypeInfo().IsAssignableFrom(TypeInfo))
 			{
-				throw new ArgumentException("The specified type is not marshallable.", nameof(type));
+				throw new ArgumentException($"The specified type {type.FullName} is not marshallable.", nameof(type));
 			}
 
 			var guidAttr = type.GetTypeInfo().GetCustomAttribute<System.Runtime.InteropServices.GuidAttribute>();
@@ -186,12 +186,15 @@ namespace Ngs.Interop.Marshaller
 
 		public bool HasReturnValueParameter => !PreserveSig && MethodInfo.ReturnType != typeof(void);
 
-		public bool ReturnsHresult => PreserveSig;
+		public bool ReturnsHresult => !PreserveSig;
 
 		public bool ReturnsReturnValue => PreserveSig && MethodInfo.ReturnType != typeof(void);
 
 		private IEnumerable<ComMethodParameterInfo> parameterInfos;
 
+		/**
+		 * Doesn't include "this" pointer.
+		 */
 		public IEnumerable<ComMethodParameterInfo> ParameterInfos
 		{
 			get
@@ -228,7 +231,7 @@ namespace Ngs.Interop.Marshaller
 		}
 
 		public Type NativeReturnType => ReturnsHresult ? typeof(int) :
-			returnValueMarshaller?.NativeParameterType ?? typeof(void);
+			ReturnValueMarshaller?.NativeParameterType ?? typeof(void);
 	}
 
 	sealed class ComMethodParameterInfo
@@ -236,8 +239,10 @@ namespace Ngs.Interop.Marshaller
 		public ParameterInfo ParameterInfo { get; }
 		public bool IsReturnValue => ParameterInfo == null;
 		public ComMethodInfo ComMethodInfo { get; }
-		public bool IsOut => IsReturnValue ? true : ParameterInfo.IsOut;
-		public bool IsIn => IsReturnValue ? false : ParameterInfo.IsIn;
+		public bool IsByRef => IsReturnValue ? true : ParameterInfo.ParameterType.IsByRef;
+		public bool IsMissingInOut => !(ParameterInfo.IsIn || ParameterInfo.IsOut) || (IsByRef && !ParameterInfo.IsOut);
+		public bool IsOut => IsReturnValue ? true : IsMissingInOut ? IsByRef : ParameterInfo.IsOut;
+		public bool IsIn => IsReturnValue ? false : IsMissingInOut ? true : ParameterInfo.IsIn;
 
 		public ComMethodParameterInfo(ComMethodInfo methodInfo, ParameterInfo paramInfo)
 		{
@@ -261,7 +266,9 @@ namespace Ngs.Interop.Marshaller
 			}
 		}
 
+		/** For by-ref parameters, this returns a non-by-ref type. */
 		public Type Type => IsReturnValue ? ComMethodInfo.MethodInfo.ReturnType :
+														 IsByRef ? ParameterInfo.ParameterType.GetElementType() :
 														 ParameterInfo.ParameterType;
 
 		public Type NativeType => (IsReturnValue || ParameterInfo.IsOut) ? Type.MakePointerType() : Type;

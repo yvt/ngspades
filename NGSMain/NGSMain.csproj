@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NGSEngineInterop\NGSEngineInterop.csproj" />
+    <ProjectReference Include="..\NGSInterop\NGSInterop.csproj" />
   </ItemGroup>
 
 </Project>

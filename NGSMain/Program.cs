@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using Ngs.Interop;
 
 namespace Ngs.Shell
 {
@@ -54,9 +55,9 @@ namespace Ngs.Shell
 
         public void SimpleMethod()
         {
-            if (simpleMethodImpl(self) < 0)
-            {
-                throw new COMException();
+            int result = simpleMethodImpl(self);
+            if (result < 0) {
+                Marshal.ThrowExceptionForHR(result);
             }
         }
     }
@@ -74,18 +75,15 @@ namespace Ngs.Shell
             }
         }
 
-        private static void Benchmark(Action fn)
+        private static void Benchmark(Action<int> fn)
         {
             var sw = new System.Diagnostics.Stopwatch();
             long totalIter = 0;
-            fn();
+            fn(100);
             sw.Start();
             while (sw.ElapsedMilliseconds < 1000)
             {
-                for (int i = 0; i < 100000; ++i)
-                {
-                    fn();
-                }
+                fn(100000);
                 totalIter += 100000;
             }
             Console.WriteLine($"Result: {totalIter / sw.Elapsed.TotalSeconds} call/sec");
@@ -97,12 +95,10 @@ namespace Ngs.Shell
             Console.WriteLine("Creating obj");
             NativeMethods.NgsCreateTestInstance(out obj);
 
-            /*
-            // FIXME: Doesn't work with .NET Core
-            Ngs.Engine.ITestInterface obj;
-            Console.WriteLine("Creating obj");
-            NativeMethods.NgsCreateTestInstance(out obj);
+			var rcw = NgscomMarshal.GetRCWForInterfacePtr<Ngs.Engine.ITestInterface>(obj, false);
 
+            /*
+			// string isn't marshallable yet
             Console.WriteLine("Entering obj.Hello()");
             string ret = obj.Hello("Message from managed code");
             Console.WriteLine("Leaving obj.Hello()");
@@ -112,15 +108,27 @@ namespace Ngs.Shell
             obj.HogeAttr = "Test value";
             ret = obj.HogeAttr;
             Console.WriteLine($"HogeAttr: \"{ret}\" (length = {ret.Length})");
+			*/
 
             Console.WriteLine("Benchmarking IHoge.Hoge()");
-            Benchmark(((IHoge)(new HogeClass())).Hoge);
+            var ihoge = (IHoge)(new HogeClass());
+			Benchmark((count) => {
+                var theObject = ihoge;
+                for (int i = 0; i < count; ++i) {
+                    theObject.Hoge();
+                }
+            });
 
-            Console.WriteLine("Benchmarking obj.SimpleMethod()");
-            Benchmark(obj.SimpleMethod);*/
+			Console.WriteLine("Benchmarking obj.SimpleMethod()");
+			Benchmark((count) => {
+                var theObject = rcw;
+                for (int i = 0; i < count; ++i) {
+                    theObject.SimpleMethod();
+                }
+            });
 
             Console.WriteLine("-- Testing custom RCW");
-            var rcw = new TestInterfaceRCW(obj);
+            var rcw2 = new TestInterfaceRCW(obj);
 
             // FIXME: Doesn't work with .NET Core
             //Console.WriteLine("Entering obj.Hello()");
@@ -130,7 +138,12 @@ namespace Ngs.Shell
             //Console.WriteLine($"Got: \"{ret}\" (length = {ret.Length})");
 
             Console.WriteLine("Benchmarking obj.SimpleMethod()");
-            Benchmark(rcw.SimpleMethod);
+			Benchmark((count) => {
+                var theObject = rcw2;
+                for (int i = 0; i < count; ++i) {
+                    theObject.SimpleMethod();
+                }
+            });
         }
     }
 }

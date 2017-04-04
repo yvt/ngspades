@@ -20,15 +20,26 @@ namespace Ngs.Interop
 			}
 		}
 
+		public AssemblyBuilder AssemblyBuilder { get; }
 		public ModuleBuilder ModuleBuilder { get; }
 		public Marshaller.RcwGenerator RcwGenerator { get; }
 		public Marshaller.CcwGenerator CcwGenerator { get; }
 
 		private DynamicModuleInfo()
 		{
-			var asmName = new AssemblyName("");
-			var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndCollect);
-			ModuleBuilder = asmBuilder.DefineDynamicModule("pinkiepie.dll");
+			var asmName = new AssemblyName("NGSInteropDynamicAssembly");
+			AssemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndCollect);
+
+			// Use one of the overloads of GetRuntimeMethod with a dll name argument to ease
+			// the debug if possible
+			var method = AssemblyBuilder.GetType().GetRuntimeMethod("DefineDynamicModule",
+				new [] { typeof(string), typeof(string) });
+			if (method != null) {
+				ModuleBuilder = (ModuleBuilder) method.Invoke(AssemblyBuilder, new object[] {"PinkiePie", "DebugOutput.dll"});
+			} else {
+				ModuleBuilder = AssemblyBuilder.DefineDynamicModule("PinkiePie");
+			}
+
 			RcwGenerator = new Marshaller.RcwGenerator(ModuleBuilder);
 			CcwGenerator = new Marshaller.CcwGenerator(ModuleBuilder);
 		}

@@ -16,7 +16,8 @@ namespace Ngs.Interop
 			{
 				try
 				{
-					var ptr = nativeObj.QueryNativeInterface(InterfaceRuntimeInfo<T>.ComGuid);
+					var guid = InterfaceRuntimeInfo<T>.ComGuid;
+					var ptr = nativeObj.QueryNativeInterface(ref guid);
 					return InterfaceRuntimeInfo<T>.CreateRCW(ptr, true);
 				}
 				catch (System.Runtime.InteropServices.COMException ex) // TODO: use C# 7.0 filter clause
@@ -40,7 +41,8 @@ namespace Ngs.Interop
 			var nativeObj = obj as INativeObject<T>;
 			if (nativeObj != null)
 			{
-				var ptr = nativeObj.QueryNativeInterface(InterfaceRuntimeInfo<T>.ComGuid);
+				var guid = InterfaceRuntimeInfo<T>.ComGuid;
+				var ptr = nativeObj.QueryNativeInterface(ref guid);
 				return InterfaceRuntimeInfo<T>.CreateRCW(ptr, true);
 			}
 			return (T) obj;

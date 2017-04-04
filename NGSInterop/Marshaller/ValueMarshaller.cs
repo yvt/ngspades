@@ -20,6 +20,7 @@ namespace Ngs.Interop.Marshaller
             {typeof(ulong), new SimpleValueMarshaller(typeof(ulong))},
             {typeof(float), new SimpleValueMarshaller(typeof(float))},
             {typeof(double), new SimpleValueMarshaller(typeof(double))},
+			{typeof(string), new StringValueMarshaller()},
         };
 
         public static ValueMarshaller GetMarshaller(Type type)
@@ -33,7 +34,7 @@ namespace Ngs.Interop.Marshaller
 
 				var typeInfo = type.GetTypeInfo();
 
-				if (typeInfo.IsSubclassOf(typeof(Enum))) {
+				if (typeInfo.IsSubclassOf(typeof(ValueType))) {
                     marshaller = new SimpleValueMarshaller(type);
                 }
 

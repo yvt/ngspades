@@ -8,7 +8,7 @@ namespace Ngs.Interop
 	public interface IUnknown
 	{
 		[SecurityCritical]
-		IntPtr QueryNativeInterface(Guid guid);
+		IntPtr QueryNativeInterface([In] ref Guid guid);
 
 		[PreserveSig, SecurityCritical]
 		uint AddRef();

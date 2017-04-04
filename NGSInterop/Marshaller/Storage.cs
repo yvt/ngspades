@@ -79,7 +79,7 @@ namespace Ngs.Interop.Marshaller
 
 		static Type Dereference(Type t)
 		{
-			if (t.IsPointer)
+			if (t.IsPointer || t.IsByRef)
 			{
 				return t.GetElementType();
 			}
@@ -95,7 +95,7 @@ namespace Ngs.Interop.Marshaller
 		public override void EmitLoad()
 		{
 			baseStorage.EmitLoad();
-			ILGenerator.Emit(OpCodes.Ldind_Ref, baseStorage.Type);
+			ILGenerator.Emit(OpCodes.Ldobj, Type);
 		}
 
 		public override void EmitLoadAddress()
@@ -107,12 +107,12 @@ namespace Ngs.Interop.Marshaller
 		{
 			if (temporary == null)
 			{
-				temporary = ILGenerator.DeclareLocal(baseStorage.Type);
+				temporary = ILGenerator.DeclareLocal(Type);
 			}
 			ILGenerator.Emit(OpCodes.Stloc, temporary);
 			baseStorage.EmitLoad();
 			ILGenerator.Emit(OpCodes.Ldloc, temporary);
-			ILGenerator.Emit(OpCodes.Ldind_Ref, baseStorage.Type);
+			ILGenerator.Emit(OpCodes.Stobj, Type);
 		}
 	}
     
