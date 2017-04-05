@@ -64,11 +64,20 @@ namespace Ngs.Interop.Marshaller
 
     abstract class ValueToNativeMarshallerGenerator
     {
+        /**
+         * Emits a code that converts a managed value into a native one.
+         */
         public abstract void EmitToNative(Storage inputStorage, Storage outputStorage);
+        public abstract void EmitDestructNativeValue(Storage nativeStorage);
     }
 
     abstract class ValueToRuntimeMarshallerGenerator
     {
+        /**
+         * Emits a code that converts a native value into a managed one.
+         * The original native value can possibly be destroyed.
+         */
         public abstract void EmitToRuntime(Storage inputStorage, Storage outputStorage);
+        public abstract void EmitDestructNativeValue(Storage nativeStorage);
     }
 }

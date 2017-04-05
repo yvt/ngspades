@@ -8,62 +8,6 @@ namespace Ngs.Interop.Marshaller
 {
 	sealed class InterfaceInfo
 	{
-		private class MethodListImpl : IEnumerable<ComMethodInfo>
-		{
-			private Type type;
-
-			public MethodListImpl(Type type)
-			{
-				this.type = type;
-			}
-
-			public IEnumerator<ComMethodInfo> GetEnumerator()
-			{
-				var stack = new Stack<Tuple<Type, bool>>();
-				stack.Push(Tuple.Create(type, false));
-
-				var processedTypeSet = new HashSet<Type>();
-
-				int vtableOffset = 0;
-
-				while (stack.Count > 0)
-				{
-					var e = stack.Pop();
-					if (processedTypeSet.Contains(e.Item1))
-					{
-						continue;
-					}
-					if (!e.Item2)
-					{
-						stack.Push(Tuple.Create(type, true));
-						foreach (var t in type.GetTypeInfo().ImplementedInterfaces)
-						{
-							stack.Push(Tuple.Create(t, false));
-						}
-					}
-					else
-					{
-						processedTypeSet.Add(e.Item1);
-
-						var t = e.Item1;
-
-						foreach (var method in t.GetTypeInfo().DeclaredMethods)
-						{
-							yield return new ComMethodInfo(method, vtableOffset++);
-						}
-					}
-				}
-			}
-
-			IEnumerator IEnumerable.GetEnumerator()
-			{
-				foreach (var e in this)
-				{
-					yield return e;
-				}
-			}
-		}
-
 		public Type Type { get; }
 		public TypeInfo TypeInfo { get; }
 		public Guid ComGuid { get; }
@@ -142,7 +86,7 @@ namespace Ngs.Interop.Marshaller
 
 			foreach (var method in type.GetTypeInfo().DeclaredMethods)
 			{
-				outMethods.Add(new ComMethodInfo(method, vtableOffset++));
+				outMethods.Add(new ComMethodInfo(method, vtableOffset++, ComMethodType.RCWMethod));
 			}
 		}
 
@@ -167,22 +111,35 @@ namespace Ngs.Interop.Marshaller
 
 	}
 
+	enum ComMethodType
+	{
+		RCWMethod,
+		FunctionPtrThunk
+	}
+
 	sealed class ComMethodInfo
 	{
 		public MethodInfo MethodInfo { get; }
 		public int VTableOffset { get; }
 		public bool PreserveSig { get; }
+		public ComMethodType MethodType { get; }
 
-		public ComMethodInfo(MethodInfo baseMethod, int vtableOffset)
+		public ComMethodInfo(MethodInfo baseMethod, int vtableOffset, ComMethodType methodType)
 		{
 			MethodInfo = baseMethod;
 			VTableOffset = vtableOffset;
+			MethodType = methodType;
 
-			if (baseMethod.GetCustomAttribute<System.Runtime.InteropServices.PreserveSigAttribute>() != null)
+			if (methodType == ComMethodType.FunctionPtrThunk ||
+				baseMethod.GetCustomAttribute<System.Runtime.InteropServices.PreserveSigAttribute>() != null)
 			{
 				PreserveSig = true;
 			}
 		}
+
+		public bool IsFirstParameterFunctionPtr => MethodType == ComMethodType.FunctionPtrThunk;
+
+		public bool IsFirstNativeParameterInterfacePtr => MethodType == ComMethodType.RCWMethod;
 
 		public bool HasReturnValueParameter => !PreserveSig && MethodInfo.ReturnType != typeof(void);
 
@@ -203,6 +160,10 @@ namespace Ngs.Interop.Marshaller
 				if (ret == null)
 				{
 					var list = MethodInfo.GetParameters().Select((p) => new ComMethodParameterInfo(this, p)).ToList();
+
+					if (IsFirstParameterFunctionPtr) {
+						list.RemoveAt(0);
+					}
 
 					if (HasReturnValueParameter)
 					{

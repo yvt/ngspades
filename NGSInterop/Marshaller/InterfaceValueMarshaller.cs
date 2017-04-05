@@ -9,6 +9,42 @@ namespace Ngs.Interop.Marshaller
 {
 	sealed class InterfaceValueMarshaller : ValueMarshaller
 	{
+		static void EmitDestruct(ILGenerator generator, Storage nativeStorage)
+		{
+			var ptrIsNullLabel = generator.DefineLabel();
+
+			// is the interface pointer null?
+			nativeStorage.EmitLoad();
+			generator.Emit(OpCodes.Ldc_I4_0);
+			generator.Emit(OpCodes.Conv_I);
+			generator.Emit(OpCodes.Beq, ptrIsNullLabel);
+			
+			// get the interface pointer for arg #1
+			nativeStorage.EmitLoad();
+
+			// get the interface pointer for vtable entry fetch
+			nativeStorage.EmitLoad();
+
+			// get vtable
+			generator.Emit(OpCodes.Ldind_I);
+
+			// load the vtable element "IUnknown::Release"
+			int vtableIndex = 2;
+			generator.Emit(OpCodes.Sizeof, typeof(IntPtr));
+			generator.Emit(OpCodes.Ldc_I4, vtableIndex);
+			generator.Emit(OpCodes.Mul);
+			generator.Emit(OpCodes.Conv_I);
+			generator.Emit(OpCodes.Add);
+			generator.Emit(OpCodes.Ldind_I);
+
+			generator.EmitCalli(OpCodes.Calli, CallingConventions.Standard, typeof(uint),
+				new [] {typeof(IntPtr)}, null);
+			
+			generator.Emit(OpCodes.Pop);
+
+			generator.MarkLabel(ptrIsNullLabel);
+		}
+
 		private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
 		{
 			ILGenerator generator;
@@ -22,6 +58,11 @@ namespace Ngs.Interop.Marshaller
 			{
 				// requires CCW
 				throw new NotImplementedException();
+			}
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
+				EmitDestruct(generator, nativeStorage);
 			}
 		}
 
@@ -49,6 +90,11 @@ namespace Ngs.Interop.Marshaller
 				generator.EmitCall(OpCodes.Call, getRCWForInterfacePtrMethod, null);
 
 				outputStorage.EmitStore();
+			}
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
+				EmitDestruct(generator, nativeStorage);
 			}
 		}
 

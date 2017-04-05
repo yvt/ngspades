@@ -96,19 +96,15 @@ namespace Ngs.Shell
             NativeMethods.NgsCreateTestInstance(out obj);
 
 			var rcw = NgscomMarshal.GetRCWForInterfacePtr<Ngs.Engine.ITestInterface>(obj, false);
-
-            /*
-			// string isn't marshallable yet
             Console.WriteLine("Entering obj.Hello()");
-            string ret = obj.Hello("Message from managed code");
+            string ret = rcw.Hello("Message from managed code");
             Console.WriteLine("Leaving obj.Hello()");
 
             Console.WriteLine($"Got: \"{ret}\" (length = {ret.Length})");
-
-            obj.HogeAttr = "Test value";
-            ret = obj.HogeAttr;
+            
+            rcw.HogeAttr = "Test value";
+            ret = rcw.HogeAttr;
             Console.WriteLine($"HogeAttr: \"{ret}\" (length = {ret.Length})");
-			*/
 
             Console.WriteLine("Benchmarking IHoge.Hoge()");
             var ihoge = (IHoge)(new HogeClass());

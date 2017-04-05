@@ -18,6 +18,16 @@ namespace Ngs.Interop.Marshaller
 		public RcwFactory<T> FactoryDelegate { get; set; }
 	}
 
+	/**
+	 * Contains information about a RCFPW (runtime callable function pointer wrapper).
+	 */
+	struct RcfpwInfo<T> where T : class
+	{
+		public TypeInfo ClassTypeInfo { get; set; }
+		public MethodInfo MethodInfo { get; set; }
+		public T Delegate { get; set; }
+	}
+
 	sealed class RcwGenerator
 	{
 		static readonly MethodInfo throwExceptionForHRMethod =
@@ -25,10 +35,35 @@ namespace Ngs.Interop.Marshaller
 
 		ModuleBuilder moduleBuilder;
 		Dictionary<Type, RcwFactoryInfo<IUnknown>> rcws = new Dictionary<Type, RcwFactoryInfo<IUnknown>>();
+		Dictionary<Type, RcfpwInfo<object>> rcfpws = new Dictionary<Type, RcfpwInfo<object>>();
 
 		public RcwGenerator(ModuleBuilder moduleBuilder)
 		{
 			this.moduleBuilder = moduleBuilder;
+		}
+
+		public RcfpwInfo<object> CreateRcfpw(Type delegateType)
+		{
+			RcfpwInfo<object> rcfpw;
+			if (!rcfpws.TryGetValue(delegateType, out rcfpw))
+			{
+				rcfpw = new RcfpwInfo<object>();
+				rcfpw.ClassTypeInfo = CreateRcfpwClass(delegateType);
+				rcfpw.MethodInfo = rcfpw.ClassTypeInfo.GetDeclaredMethod("Invoke");
+				rcfpw.Delegate = rcfpw.MethodInfo.CreateDelegate(delegateType);
+				rcfpws[delegateType] = rcfpw;
+			}
+			return rcfpw;
+		}
+
+		public RcfpwInfo<T> CreateRcfpw<T>() where T : class
+		{
+			var info = CreateRcfpw(typeof(T));
+			return new RcfpwInfo<T>() {
+				ClassTypeInfo = info.ClassTypeInfo,
+				MethodInfo = info.MethodInfo,
+				Delegate = (T)info.Delegate
+			};
 		}
 
 		public RcwFactoryInfo<IUnknown> CreateRCWFactory(Type interfaceType)
@@ -57,13 +92,35 @@ namespace Ngs.Interop.Marshaller
 			};
 		}
 
-		public TypeInfo CreateRCWClass(InterfaceInfo interfaceInfo)
+		TypeInfo CreateRCWClass(InterfaceInfo interfaceInfo)
 		{
 			var typeBuilder = moduleBuilder.DefineType(interfaceInfo.Type.FullName + "<RCW>",
 			                                           TypeAttributes.Class | TypeAttributes.Sealed |
 			                                           TypeAttributes.NotPublic);
 			
-			CreateRCWClass(interfaceInfo, typeBuilder);
+			DefineRCWClass(interfaceInfo, typeBuilder);
+			return typeBuilder.CreateTypeInfo();
+		}
+
+		TypeInfo CreateRcfpwClass(Type delegateType)
+		{
+			if (delegateType.GetTypeInfo().BaseType != typeof(MulticastDelegate))
+			{
+				throw new ArgumentException("Not a delegate.", nameof(delegateType));
+			}
+			if (delegateType.IsConstructedGenericType)
+			{
+				throw new ArgumentException("Generic delegate type isn't supported yet.", nameof(delegateType));
+			}
+
+			var typeBuilder = moduleBuilder.DefineType(delegateType.FullName + "<RCFPW>",
+			                                           TypeAttributes.Class | TypeAttributes.Sealed |
+			                                           TypeAttributes.NotPublic);
+			
+			var invokeMethod = delegateType.GetRuntimeMethods().First((m) => m.Name == "Invoke");
+			var mi = new ComMethodInfo(invokeMethod, 0, ComMethodType.FunctionPtrThunk);
+			CreateFunctionPtrWrapperMethod(mi, typeBuilder);
+
 			return typeBuilder.CreateTypeInfo();
 		}
 
@@ -74,7 +131,7 @@ namespace Ngs.Interop.Marshaller
 		static readonly PropertyInfo interfaceProp = typeof(INativeObject<>)
 			.GetRuntimeProperty(nameof(INativeObject<IUnknown>.Interface));
 
-		static void CreateRCWClass(InterfaceInfo interfaceInfo, TypeBuilder typeBuilder)
+		static void DefineRCWClass(InterfaceInfo interfaceInfo, TypeBuilder typeBuilder)
 		{
 			var type = typeBuilder.AsType();
 
@@ -277,18 +334,50 @@ namespace Ngs.Interop.Marshaller
 					parameter.Attributes, parameter.Name);
 			}
 
+			CreateRCWMethodBody(comMethodInfo, ptrFieldInfo, methodBuilder);
+		}
+
+		static void CreateFunctionPtrWrapperMethod(ComMethodInfo comMethodInfo, TypeBuilder typeBuilder)
+		{
+			var methodInfo = comMethodInfo.MethodInfo;
+			var methodBuilder = typeBuilder.DefineMethod("Invoke",
+														 MethodAttributes.Static | MethodAttributes.HideBySig, CallingConventions.Standard,
+														 methodInfo.ReturnType,
+														 methodInfo.GetParameters().Select((p) => p.ParameterType).ToArray());
+				
+			// define a method
+			foreach (var parameter in methodInfo.GetParameters())
+			{
+				methodBuilder.DefineParameter(parameter.Position + 1,
+					parameter.Attributes, parameter.Name);
+			}
+
+			CreateRCWMethodBody(comMethodInfo, null, methodBuilder);
+		}
+
+		static void CreateRCWMethodBody(ComMethodInfo comMethodInfo, FieldInfo ptrFieldInfo, MethodBuilder methodBuilder)
+		{
+			var methodInfo = comMethodInfo.MethodInfo;
+
+			if ((ptrFieldInfo == null) != comMethodInfo.IsFirstParameterFunctionPtr) {
+				throw new InvalidOperationException();
+			}
+
 			// generate a method body
 			var gen = methodBuilder.GetILGenerator();
 
 			LocalBuilder returnValueLocal = methodInfo.ReturnType != typeof(void) ?
 															   gen.DeclareLocal(methodInfo.ReturnType) : null;
 
+			bool isInstanceMethod = (methodBuilder.Attributes & MethodAttributes.Static) == 0;
+
 			// create parameter marshallers
 			var paramInfos = comMethodInfo.ParameterInfos
 				.Select((p) =>
 				{
 					var marshaller = p.ValueMarshaller;
-					var nativeLocal = gen.DeclareLocal(marshaller.NativeParameterType, pinned: p.IsOut);
+					var nativeLocal = gen.DeclareLocal(marshaller.NativeParameterType);
+					var nativeLocalPin = p.IsOut ? gen.DeclareLocal(p.NativeType.MakePointerType(), true) : null;
 					var toNativeGenerator = p.IsIn ? marshaller.CreateToNativeGenerator(gen) : null;
 					var toRuntimeGenerator = p.IsOut ? marshaller.CreateToRuntimeGenerator(gen) : null;
 					Storage storage;
@@ -299,25 +388,26 @@ namespace Ngs.Interop.Marshaller
 					}
 					else if (p.IsOut)
 					{
-						storage = new ParameterStorage(gen, p.ParameterInfo.ParameterType, p.ParameterInfo.Position + 1);
+						storage = new ParameterStorage(gen, p.ParameterInfo.ParameterType, p.ParameterInfo.Position + (isInstanceMethod ? 1 : 0));
 						storage = new IndirectStorage(storage);
 					}
 					else
 					{
-						storage = new ParameterStorage(gen, p.Type, p.ParameterInfo.Position + 1);
+						storage = new ParameterStorage(gen, p.Type, p.ParameterInfo.Position + (isInstanceMethod ? 1 : 0));
 					}
 
 					return new
 					{
 						ParameterInfo = p,
 						NativeLocal = nativeLocal,
+						NativeLocalPin = nativeLocalPin,
 						Marshaller = marshaller,
 						ToNativeGenerator = toNativeGenerator,
 						ToRuntimeGenerator = toRuntimeGenerator,
 						Storage = storage,
 						NativeStorage = new LocalStorage(gen, nativeLocal),
 					};
-				}).ToList();
+				}).ToArray();
 
 			// marshal in parameters
 			foreach (var paramInfo in paramInfos)
@@ -328,9 +418,24 @@ namespace Ngs.Interop.Marshaller
 				}
 			}
 
+			// pin by-ref parameters
+			foreach (var paramInfo in paramInfos)
+			{
+				if (paramInfo.ParameterInfo.IsOut)
+				{
+					paramInfo.NativeStorage.EmitLoadAddress();
+					gen.Emit(OpCodes.Stloc, paramInfo.NativeLocalPin);
+				}
+			}
+
 			// push the interface pointer
-			gen.Emit(OpCodes.Ldarg_0);
-			gen.Emit(OpCodes.Ldfld, ptrFieldInfo);
+			if (comMethodInfo.IsFirstNativeParameterInterfacePtr) {
+				if (ptrFieldInfo == null) {
+					throw new InvalidOperationException();
+				}
+				gen.Emit(OpCodes.Ldarg_0);
+				gen.Emit(OpCodes.Ldfld, ptrFieldInfo);
+			}
 
 			// push each parameters
 			foreach (var paramInfo in paramInfos)
@@ -338,7 +443,7 @@ namespace Ngs.Interop.Marshaller
 				if (paramInfo.ParameterInfo.IsOut)
 				{
 					// out/inout parameter
-					paramInfo.NativeStorage.EmitLoadAddress();
+					gen.Emit(OpCodes.Ldloc, paramInfo.NativeLocalPin);
 				}
 				else
 				{
@@ -346,29 +451,39 @@ namespace Ngs.Interop.Marshaller
 				}
 			}
 
-			// get the interface pointer
-			gen.Emit(OpCodes.Ldarg_0);
-			gen.Emit(OpCodes.Ldfld, ptrFieldInfo);
+			if (comMethodInfo.IsFirstParameterFunctionPtr) {
+				// load the function ptr
+				gen.Emit(OpCodes.Ldarg_0);
+			} else {
+				// get the interface pointer
+				gen.Emit(OpCodes.Ldarg_0);
+				gen.Emit(OpCodes.Ldfld, ptrFieldInfo);
 
-			// get vtable
-			gen.Emit(OpCodes.Ldind_I);
+				// get vtable
+				gen.Emit(OpCodes.Ldind_I);
 
-			// load the vtable element
-			int vtableIndex = comMethodInfo.VTableOffset;
-			if (vtableIndex > 0)
-			{
-				gen.Emit(OpCodes.Sizeof, typeof(IntPtr));
-				if (vtableIndex > 1)
+				// load the vtable element
+				int vtableIndex = comMethodInfo.VTableOffset;
+				if (vtableIndex > 0)
 				{
-					gen.Emit(OpCodes.Ldc_I4, vtableIndex);
-					gen.Emit(OpCodes.Mul);
+					gen.Emit(OpCodes.Sizeof, typeof(IntPtr));
+					if (vtableIndex > 1)
+					{
+						gen.Emit(OpCodes.Ldc_I4, vtableIndex);
+						gen.Emit(OpCodes.Mul);
+					}
+					gen.Emit(OpCodes.Conv_I);
+					gen.Emit(OpCodes.Add);
 				}
-				gen.Emit(OpCodes.Conv_I);
-				gen.Emit(OpCodes.Add);
+				gen.Emit(OpCodes.Ldind_I);
 			}
-			gen.Emit(OpCodes.Ldind_I);
 
-			var nativeParamTypes = new List<Type> { typeof(IntPtr) };
+			var nativeParamTypes = new List<Type>();
+
+			if (comMethodInfo.IsFirstNativeParameterInterfacePtr) {
+				nativeParamTypes.Add(typeof(IntPtr));
+			}
+
 			nativeParamTypes.AddRange(paramInfos.Select((p) => p.ParameterInfo.IsOut ?
 			 	p.Marshaller.NativeParameterType.MakePointerType() : p.Marshaller.NativeParameterType));
 
@@ -387,6 +502,23 @@ namespace Ngs.Interop.Marshaller
 				var noErrorLabel = gen.DefineLabel();
 				gen.Emit(OpCodes.Ldc_I4_0);
 				gen.Emit(OpCodes.Bge, noErrorLabel);
+
+				// clean-up
+				foreach (var paramInfo in paramInfos)
+				{
+					// destruct "out" parameters and optionally return value parameter
+					if (paramInfo.ToRuntimeGenerator != null)
+					{
+						paramInfo.ToRuntimeGenerator.EmitDestructNativeValue(paramInfo.NativeStorage);
+					}
+					
+					// destruct native values for "in" parameters
+					if (!paramInfo.ParameterInfo.IsOut && paramInfo.ToNativeGenerator != null)
+					{
+						paramInfo.ToNativeGenerator.EmitDestructNativeValue(paramInfo.NativeStorage);	
+					}
+				}
+
 				gen.Emit(OpCodes.Ldloc, resultLocal);
 				gen.EmitCall(OpCodes.Call, throwExceptionForHRMethod, null);
 				gen.MarkLabel(noErrorLabel);
@@ -408,12 +540,29 @@ namespace Ngs.Interop.Marshaller
 											new LocalStorage(gen, returnValueLocal));
 			}
 
-			// marshal "out" parameters and optionally return value parameter
+			// unpin by-ref parameters
 			foreach (var paramInfo in paramInfos)
 			{
+				if (paramInfo.ParameterInfo.IsOut)
+				{
+					gen.Emit(OpCodes.Ldc_I4_0);
+					gen.Emit(OpCodes.Conv_I);
+					gen.Emit(OpCodes.Stloc, paramInfo.NativeLocalPin);
+				}
+			}
+
+			foreach (var paramInfo in paramInfos)
+			{
+				// marshal "out" parameters and optionally return value parameter
 				if (paramInfo.ToRuntimeGenerator != null)
 				{
 					paramInfo.ToRuntimeGenerator.EmitToRuntime(paramInfo.NativeStorage, paramInfo.Storage);
+				}
+
+				// destruct native values for "in" parameters
+				if (!paramInfo.ParameterInfo.IsOut && paramInfo.ToNativeGenerator != null)
+				{
+					paramInfo.ToNativeGenerator.EmitDestructNativeValue(paramInfo.NativeStorage);	
 				}
 			}
 

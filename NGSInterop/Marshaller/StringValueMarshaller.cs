@@ -9,6 +9,15 @@ namespace Ngs.Interop.Marshaller
 {
 	sealed class StringValueMarshaller : ValueMarshaller
 	{
+		static readonly MethodInfo allocBStringMethod = typeof(NgscomMarshal)
+			.GetRuntimeMethod(nameof(NgscomMarshal.AllocBString), new [] {typeof(string)});
+
+		static readonly MethodInfo bStringToStringMethod = typeof(NgscomMarshal)
+			.GetRuntimeMethod(nameof(NgscomMarshal.BStringToString), new [] {typeof(IntPtr)});
+
+		static readonly MethodInfo freeBStringMethod = typeof(NgscomMarshal)
+			.GetRuntimeMethod(nameof(NgscomMarshal.FreeBString), new Type[] {typeof(IntPtr)});
+			
 		private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
 		{
 			ILGenerator generator;
@@ -18,11 +27,18 @@ namespace Ngs.Interop.Marshaller
 				this.generator = generator;
 			}
 
+
 			public override void EmitToNative(Storage inputStorage, Storage outputStorage)
 			{
-				// TODO: marshal string values in a correct way
 				inputStorage.EmitLoad();
+				generator.Emit(OpCodes.Call, allocBStringMethod);
 				outputStorage.EmitStore();
+			}
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
+				nativeStorage.EmitLoad();
+				generator.Emit(OpCodes.Call, freeBStringMethod);
 			}
 		}
 
@@ -37,9 +53,18 @@ namespace Ngs.Interop.Marshaller
 
 			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage)
 			{
-				// TODO: marshal string values in a correct way
 				inputStorage.EmitLoad();
+				generator.Emit(OpCodes.Call, bStringToStringMethod);
 				outputStorage.EmitStore();
+
+				inputStorage.EmitLoad();
+				generator.Emit(OpCodes.Call, freeBStringMethod);
+			}
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
+				nativeStorage.EmitLoad();
+				generator.Emit(OpCodes.Call, freeBStringMethod);
 			}
 		}
 
@@ -55,7 +80,7 @@ namespace Ngs.Interop.Marshaller
 
 		public override Type NativeParameterType
 		{
-			get { return typeof(string); } // TODO: this won't work, of course
+			get { return typeof(void*); }
 		}
 	}
 }

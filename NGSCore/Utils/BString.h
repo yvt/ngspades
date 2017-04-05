@@ -9,20 +9,27 @@
 #if defined(_MSC_VER) || __has_include(<string_view>)
 #include <string_view> // C++17
 namespace ngs {
-using U16StringView = std::u16string_view;
+using StringView = std::string_view;
 }
 #else
 // support legacy compiler
 #include <experimental/string_view>
 namespace ngs {
-using U16StringView = std::experimental::u16string_view;
+using StringView = std::experimental::string_view;
 }
 #endif
 
 namespace ngs {
 
+class BString;
+
+struct BStringVTable
+{
+    void (*Destruct)(BString *);
+};
+
 /**
- * Something like COM's BSTR
+ * Not alike COM's BSTR
  */
 class BString
 {
@@ -34,46 +41,36 @@ public:
 
     using Ref = std::unique_ptr<BString, BString::Deleter>;
 
-    inline void *GetMemoryBlock() noexcept { return reinterpret_cast<std::uint32_t *>(this) - 1; }
-    inline const void *GetMemoryBlock() const noexcept
-    {
-        return reinterpret_cast<const std::uint32_t *>(this) - 1;
-    }
-
-    void Free() noexcept;
+    void Free() noexcept { m_vtable.Destruct(this); }
 
     inline Ref Clone() const noexcept { return Create(*this); }
 
-    inline char16_t *GetData() noexcept
-    {
-        return reinterpret_cast<char16_t *>(GetMemoryBlock()) + 2;
-    }
-    inline const char16_t *GetData() const noexcept
-    {
-        return reinterpret_cast<const char16_t *>(GetMemoryBlock()) + 2;
-    }
-    inline operator char16_t *() noexcept { return GetData(); }
-    inline operator const char16_t *() const noexcept { return GetData(); }
+    inline char *GetData() noexcept { return m_data; }
+    inline const char *GetData() const noexcept { return m_data; }
+    inline operator char *() noexcept { return GetData(); }
+    inline operator const char *() const noexcept { return GetData(); }
 
-    inline std::size_t GetLength() const noexcept
-    {
-        return *reinterpret_cast<const std::uint32_t *>(GetMemoryBlock()) >> 1;
-    }
+    inline std::size_t GetLength() const noexcept { return static_cast<std::size_t>(m_length); }
 
-    inline U16StringView GetView() const noexcept { return { GetData(), GetLength() }; }
-    inline operator U16StringView() const noexcept { return GetView(); }
+    inline StringView GetView() const noexcept { return { GetData(), GetLength() }; }
+    inline operator StringView() const noexcept { return GetView(); }
 
     static Ref Allocate(std::size_t length) noexcept;
-    static Ref Create(U16StringView str) noexcept;
+    static Ref Create(StringView str) noexcept;
     template<std::size_t length>
-    static Ref Create(const char16_t (&str)[length]) noexcept
+    static Ref Create(const char (&str)[length]) noexcept
     {
-        return Create(U16StringView{ str, length });
+        return Create(StringView{ str, length - 1 });
     }
 
 private:
-    BString() = delete;
-    ~BString() = delete;
+    BString(std::int32_t length);
+    BString(const BString &) = delete;
+    void operator=(const BString &) = delete;
+
+    const BStringVTable &m_vtable;
+    std::int32_t const m_length;
+    char m_data[1];
 };
 
 using BStringRef = BString::Ref;
@@ -84,7 +81,7 @@ using BStringRef = BString::Ref;
 
     - `BString` is an unsized object which is created by `BString::Allocate` and
       freed by `BString::Free`. You can't instantiate `BString` directly.
-    - `BString *` is the pointer to the UTF-16 string data. You can use `BString *`
+    - `BString *` is the pointer to the UTF-8 string data. You can use `BString *`
       to pass strings during COM calls.
     - `BStringRef` is a smart pointer for `BString`. Leaving the scope automatically
       frees the held `BString *` unless you `BStringRef::release()` it.
@@ -99,9 +96,8 @@ using BStringRef = BString::Ref;
 
     void ExampleFunction(const BString *in, BString **out)
     {
-        *out = BString::Create<>(u"SomeRandomString").release();
+        *out = BString::Create<>("SomeRandomString").release();
     }
 
  */
-
 }

@@ -23,6 +23,10 @@ namespace Ngs.Interop.Marshaller
                 inputStorage.EmitLoad();
                 outputStorage.EmitStore();
             }
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
+			}
         }
 
 		private sealed class ToRuntimeGenerator : ValueToRuntimeMarshallerGenerator
@@ -38,6 +42,10 @@ namespace Ngs.Interop.Marshaller
 			{
 				inputStorage.EmitLoad();
 				outputStorage.EmitStore();
+			}
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
 			}
 		}
 

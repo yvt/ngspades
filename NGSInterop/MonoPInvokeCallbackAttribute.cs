@@ -3,7 +3,7 @@ namespace Ngs.Interop
 {
 	// 
 	// http://answers.unity3d.com/questions/191234/unity-ios-function-pointers.html
-	public class MonoPInvokeCallbackAttribute
+	public sealed class MonoPInvokeCallbackAttribute : Attribute
 	{
 		private Type type;
 

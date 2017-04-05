@@ -7,6 +7,7 @@ using System.Collections.Generic;
 
 namespace Ngs.Interop.Marshaller
 {
+    // FIXME: unused?
     sealed class SimplePointerValueMarshaller : ValueMarshaller
     {
         private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
@@ -23,6 +24,10 @@ namespace Ngs.Interop.Marshaller
                 inputStorage.EmitLoad();
                 outputStorage.EmitStore();
             }
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
+			}
         }
 
         Type type;

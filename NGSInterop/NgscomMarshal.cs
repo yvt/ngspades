@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 namespace Ngs.Interop
 {
-	public static class NgscomMarshal
+	public static partial class NgscomMarshal
 	{
 		[System.Security.SecurityCritical]
 		public static T GetRCWForInterfacePtr<T>(IntPtr ptr, bool addRef) where T : class, IUnknown
 		{
+			if (ptr == IntPtr.Zero) {
+				return null;
+			}
 			return InterfaceRuntimeInfo<T>.CreateRCW(ptr, addRef);
 		}
 
