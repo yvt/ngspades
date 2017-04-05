@@ -66,7 +66,7 @@ namespace Ngs.Interop.Marshaller
 			};
 		}
 
-		public RcwFactoryInfo<IUnknown> CreateRCWFactory(Type interfaceType)
+		public RcwFactoryInfo<IUnknown> CreateRcwFactory(Type interfaceType)
 		{
 			RcwFactoryInfo<IUnknown> rcw;
 			if (!rcws.TryGetValue(interfaceType, out rcw))
@@ -81,9 +81,9 @@ namespace Ngs.Interop.Marshaller
 			return rcw;
 		}
 
-		public RcwFactoryInfo<T> CreateRCWFactory<T>() where T : class, IUnknown
+		public RcwFactoryInfo<T> CreateRcwFactory<T>() where T : class, IUnknown
 		{
-			var info = CreateRCWFactory(typeof(T));
+			var info = CreateRcwFactory(typeof(T));
 			return new RcwFactoryInfo<T>()
 			{
 				ClassTypeInfo = info.ClassTypeInfo,
@@ -98,7 +98,7 @@ namespace Ngs.Interop.Marshaller
 			                                           TypeAttributes.Class | TypeAttributes.Sealed |
 			                                           TypeAttributes.NotPublic);
 			
-			DefineRCWClass(interfaceInfo, typeBuilder);
+			DefineRcwClass(interfaceInfo, typeBuilder);
 			return typeBuilder.CreateTypeInfo();
 		}
 
@@ -131,7 +131,7 @@ namespace Ngs.Interop.Marshaller
 		static readonly PropertyInfo interfaceProp = typeof(INativeObject<>)
 			.GetRuntimeProperty(nameof(INativeObject<IUnknown>.Interface));
 
-		static void DefineRCWClass(InterfaceInfo interfaceInfo, TypeBuilder typeBuilder)
+		static void DefineRcwClass(InterfaceInfo interfaceInfo, TypeBuilder typeBuilder)
 		{
 			var type = typeBuilder.AsType();
 
@@ -149,13 +149,13 @@ namespace Ngs.Interop.Marshaller
 			FieldInfo unknownPtrField = typeBuilder.DefineField("iUnknownPtr", typeof(IntPtr), 0);
 
 			// generate constructor
-			var ctor = CreateRCWConstructor(typeBuilder, interfacePtrField, unknownPtrField);
+			var ctor = CreateRcwConstructor(typeBuilder, interfacePtrField, unknownPtrField);
 
 			// generate finalizer
-			CreateRCWFinalizer(typeBuilder);
+			CreateRcwFinalizer(typeBuilder);
 
 			// generate factory
-			CreateRCWFactoryMethod(typeBuilder, ctor);
+			CreateRcwFactoryMethod(typeBuilder, ctor);
 
 			var methodNameUniqifier = new Utils.UniqueNameGenerator();
 			methodNameUniqifier.Uniquify("interfacePtr");
@@ -164,7 +164,7 @@ namespace Ngs.Interop.Marshaller
 			methodNameUniqifier.Uniquify("Create");
 			foreach (var method in interfaceInfo.ComMethodInfos)
 			{
-				CreateRCWMethod(method, typeBuilder, interfacePtrField, methodNameUniqifier);
+				CreateRcwMethod(method, typeBuilder, interfacePtrField, methodNameUniqifier);
 			}
 
 			// implement INativeObject
@@ -188,7 +188,7 @@ namespace Ngs.Interop.Marshaller
 		static readonly MethodInfo queryNativeInterfaceMethod = typeof(IUnknown).GetTypeInfo()
 			.GetDeclaredMethod(nameof(IUnknown.QueryNativeInterface));
 		
-		static ConstructorBuilder CreateRCWConstructor(TypeBuilder typeBuilder, FieldInfo interfacePtrField, FieldInfo unknownPtrField)
+		static ConstructorBuilder CreateRcwConstructor(TypeBuilder typeBuilder, FieldInfo interfacePtrField, FieldInfo unknownPtrField)
 		{
 			var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard,
 			                                                new Type[] { typeof(IntPtr) });
@@ -232,7 +232,7 @@ namespace Ngs.Interop.Marshaller
 			new CustomAttributeBuilder(typeof(SecurityCriticalAttribute).GetTypeInfo().DeclaredConstructors.First((ctor) => ctor.GetParameters().Length == 0),
 				new object[] {});
 
-		static MethodBuilder CreateRCWFactoryMethod(TypeBuilder typeBuilder, ConstructorBuilder ctorInfo)
+		static MethodBuilder CreateRcwFactoryMethod(TypeBuilder typeBuilder, ConstructorBuilder ctorInfo)
 		{
 			var nativeObjectType = typeof(INativeObject<>).GetTypeInfo().MakeGenericType(typeBuilder.AsType());
 			var methodBuilder = typeBuilder.DefineMethod("Create",
@@ -251,7 +251,7 @@ namespace Ngs.Interop.Marshaller
 			return methodBuilder;
 		}
 
-		static void CreateRCWFinalizer(TypeBuilder typeBuilder)
+		static void CreateRcwFinalizer(TypeBuilder typeBuilder)
 		{
 			var methodBuilder = typeBuilder.DefineMethod("Finalize",
 			                                             MethodAttributes.Virtual | MethodAttributes.Family | MethodAttributes.HideBySig,
@@ -315,7 +315,7 @@ namespace Ngs.Interop.Marshaller
 			prop.SetGetMethod(methodBuilder);
 		}
 
-		static void CreateRCWMethod(ComMethodInfo comMethodInfo, TypeBuilder typeBuilder,
+		static void CreateRcwMethod(ComMethodInfo comMethodInfo, TypeBuilder typeBuilder,
 									FieldInfo ptrFieldInfo, Utils.UniqueNameGenerator methodNameUniqifier)
 		{
 			var methodInfo = comMethodInfo.MethodInfo;

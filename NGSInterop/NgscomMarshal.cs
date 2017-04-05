@@ -5,12 +5,12 @@ namespace Ngs.Interop
 	public static partial class NgscomMarshal
 	{
 		[System.Security.SecurityCritical]
-		public static T GetRCWForInterfacePtr<T>(IntPtr ptr, bool addRef) where T : class, IUnknown
+		public static T GetRcwForInterfacePtr<T>(IntPtr ptr, bool addRef) where T : class, IUnknown
 		{
 			if (ptr == IntPtr.Zero) {
 				return null;
 			}
-			return InterfaceRuntimeInfo<T>.CreateRCW(ptr, addRef);
+			return InterfaceRuntimeInfo<T>.CreateRcw(ptr, addRef);
 		}
 
 		public static T QueryInterfaceOrNull<T>(IUnknown obj) where T : class, IUnknown
@@ -22,7 +22,7 @@ namespace Ngs.Interop
 				{
 					var guid = InterfaceRuntimeInfo<T>.ComGuid;
 					var ptr = nativeObj.QueryNativeInterface(ref guid);
-					return InterfaceRuntimeInfo<T>.CreateRCW(ptr, true);
+					return InterfaceRuntimeInfo<T>.CreateRcw(ptr, true);
 				}
 				catch (System.Runtime.InteropServices.COMException ex) // TODO: use C# 7.0 filter clause
 				{
@@ -47,7 +47,7 @@ namespace Ngs.Interop
 			{
 				var guid = InterfaceRuntimeInfo<T>.ComGuid;
 				var ptr = nativeObj.QueryNativeInterface(ref guid);
-				return InterfaceRuntimeInfo<T>.CreateRCW(ptr, true);
+				return InterfaceRuntimeInfo<T>.CreateRcw(ptr, true);
 			}
 			return (T) obj;
 		}

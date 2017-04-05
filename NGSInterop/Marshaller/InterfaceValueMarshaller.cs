@@ -77,17 +77,17 @@ namespace Ngs.Interop.Marshaller
 				this.parent = parent;
 			}
 
-			static MethodInfo getRCWForInterfacePtrMethodGeneric = typeof(NgscomMarshal)
-				.GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetRCWForInterfacePtr));
+			static MethodInfo getRcwForInterfacePtrMethodGeneric = typeof(NgscomMarshal)
+				.GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetRcwForInterfacePtr));
 
 			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage)
 			{
-				var getRCWForInterfacePtrMethod = getRCWForInterfacePtrMethodGeneric.MakeGenericMethod(parent.type);
+				var getRcwForInterfacePtrMethod = getRcwForInterfacePtrMethodGeneric.MakeGenericMethod(parent.type);
 
 				inputStorage.EmitLoad();
 				generator.Emit(OpCodes.Ldc_I4_0); // addRef = false; interface pointer's ownership is transferred to RCW
 
-				generator.EmitCall(OpCodes.Call, getRCWForInterfacePtrMethod, null);
+				generator.EmitCall(OpCodes.Call, getRcwForInterfacePtrMethod, null);
 
 				outputStorage.EmitStore();
 			}

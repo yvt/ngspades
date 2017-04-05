@@ -10,7 +10,7 @@ namespace Ngs.Shell
         public static extern int NgsCreateTestInstance(out IntPtr outInstance);
     }
 
-    sealed unsafe class TestInterfaceRCW
+    sealed unsafe class TestInterfaceRcw
     {
         private IntPtr self;
 
@@ -21,7 +21,7 @@ namespace Ngs.Shell
                                           [MarshalAs(UnmanagedType.BStr)] out string retval);
         private HelloDelegate helloImpl;
 
-        public TestInterfaceRCW(IntPtr iface)
+        public TestInterfaceRcw(IntPtr iface)
         {
             /*
             IntPtr unk = Marshal.GetIUnknownForObject(obj);
@@ -95,7 +95,7 @@ namespace Ngs.Shell
             Console.WriteLine("Creating obj");
             NativeMethods.NgsCreateTestInstance(out obj);
 
-			var rcw = NgscomMarshal.GetRCWForInterfacePtr<Ngs.Engine.ITestInterface>(obj, false);
+			var rcw = NgscomMarshal.GetRcwForInterfacePtr<Ngs.Engine.ITestInterface>(obj, false);
             Console.WriteLine("Entering obj.Hello()");
             string ret = rcw.Hello("Message from managed code");
             Console.WriteLine("Leaving obj.Hello()");
@@ -124,7 +124,7 @@ namespace Ngs.Shell
             });
 
             Console.WriteLine("-- Testing custom RCW");
-            var rcw2 = new TestInterfaceRCW(obj);
+            var rcw2 = new TestInterfaceRcw(obj);
 
             // FIXME: Doesn't work with .NET Core
             //Console.WriteLine("Entering obj.Hello()");

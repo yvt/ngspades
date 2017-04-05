@@ -86,7 +86,7 @@ namespace Ngs.Interop.Marshaller
 
 			foreach (var method in type.GetTypeInfo().DeclaredMethods)
 			{
-				outMethods.Add(new ComMethodInfo(method, vtableOffset++, ComMethodType.RCWMethod));
+				outMethods.Add(new ComMethodInfo(method, vtableOffset++, ComMethodType.RcwMethod));
 			}
 		}
 
@@ -113,7 +113,7 @@ namespace Ngs.Interop.Marshaller
 
 	enum ComMethodType
 	{
-		RCWMethod,
+		RcwMethod,
 		FunctionPtrThunk
 	}
 
@@ -139,7 +139,7 @@ namespace Ngs.Interop.Marshaller
 
 		public bool IsFirstParameterFunctionPtr => MethodType == ComMethodType.FunctionPtrThunk;
 
-		public bool IsFirstNativeParameterInterfacePtr => MethodType == ComMethodType.RCWMethod;
+		public bool IsFirstNativeParameterInterfacePtr => MethodType == ComMethodType.RcwMethod;
 
 		public bool HasReturnValueParameter => !PreserveSig && MethodInfo.ReturnType != typeof(void);
 

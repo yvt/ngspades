@@ -11,7 +11,7 @@ namespace Ngs.Interop
 
 		public static Guid ComGuid => info.ComGuid;
 
-		public static void ForgetRCW(INativeObject<T> obj)
+		public static void ForgetRcw(INativeObject<T> obj)
 		{
 			lock (rcwInstances)
 			{
@@ -26,13 +26,13 @@ namespace Ngs.Interop
 			}
 		}
 
-		internal static T CreateRCW(IntPtr interfacePtr, bool addRef)
+		internal static T CreateRcw(IntPtr interfacePtr, bool addRef)
 		{
 			lock (rcwInstances)
 			{
 				if (rcwFactory == null)
 				{
-					rcwFactory = DynamicModuleInfo.Instance.RcwGenerator.CreateRCWFactory<T>().FactoryDelegate;
+					rcwFactory = DynamicModuleInfo.Instance.RcwGenerator.CreateRcwFactory<T>().FactoryDelegate;
 
 					// debug
 					if (false) {
