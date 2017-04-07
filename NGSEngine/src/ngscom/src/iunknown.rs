@@ -63,6 +63,18 @@ impl IUnknown {
     }
 }
 
+impl IUnknownTrait for IUnknown {
+    unsafe fn query_interface(&mut self, iid: &IID, object: *mut *mut c_void) -> HResult {
+        self.query_interface(iid, object)
+    }
+    unsafe fn add_ref(&mut self) -> u32 {
+        self.add_ref()
+    }
+    unsafe fn release(&mut self) -> u32 {
+        self.release()
+    }
+}
+
 struct IUnknownThunk();
 
 impl IUnknownThunk {
