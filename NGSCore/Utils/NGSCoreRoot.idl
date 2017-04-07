@@ -1,6 +1,0 @@
-#include "nsISupports.idl"
-%{C++
-#include <BString.h>
-%}
-
-[ptr, bstring] native bstring(ngs::BString);

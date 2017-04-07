@@ -6,8 +6,8 @@ namespace Ngs.Shell
 {
     static class NativeMethods
     {
-        [DllImport("NGSEngine")]
-        public static extern int NgsCreateTestInstance(out IntPtr outInstance);
+        [DllImport("ngsengine")]
+        public static extern int create_test_instance(out IntPtr outInstance);
     }
 
     sealed unsafe class TestInterfaceRcw
@@ -93,7 +93,7 @@ namespace Ngs.Shell
         {
             IntPtr obj;
             Console.WriteLine("Creating obj");
-            NativeMethods.NgsCreateTestInstance(out obj);
+            NativeMethods.create_test_instance(out obj);
 
 			var rcw = NgscomMarshal.GetRcwForInterfacePtr<Ngs.Engine.ITestInterface>(obj, false);
             Console.WriteLine("Entering obj.Hello()");
@@ -101,7 +101,7 @@ namespace Ngs.Shell
             Console.WriteLine("Leaving obj.Hello()");
 
             Console.WriteLine($"Got: \"{ret}\" (length = {ret.Length})");
-            
+
             rcw.HogeAttr = "Test value";
             ret = rcw.HogeAttr;
             Console.WriteLine($"HogeAttr: \"{ret}\" (length = {ret.Length})");

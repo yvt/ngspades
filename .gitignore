@@ -10,6 +10,7 @@ BUILD
 DerivedFiles
 bin
 obj
+NGSEngine/target
 NGSEngineInterop/Generated/*.cs
 NGSEngineInterop/Generated/xpidlcache
 
@@ -19,3 +20,4 @@ NGSEngineInterop/Generated/xpidlcache
 # Local files
 NOTES.md
 x64/
+*~

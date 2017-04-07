@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\BUILD\NGSEngine\libNGSEngine.so" CopyToOutputDirectory="Always" />
+    <Content Include="..\NGSEngine\target\debug\libngsengine.dylib" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <ItemGroup>

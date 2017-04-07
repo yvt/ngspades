@@ -21,7 +21,10 @@ namespace Ngs.Interop
          *          operator delete(this);
          *      }
          *      
-         *      int32_t const m_length;
+		 *      union {
+         *      	int32_t const m_length;
+		 *			size_t const m_pad;
+		 *		};
          *      char m_data[1]; // variable length, UTF-8 encoded
          *  };
          */
@@ -75,11 +78,12 @@ namespace Ngs.Interop
 				if (length < 0) {
 					throw new ArgumentOutOfRangeException(nameof(length));
 				}
-				var ptr = Marshal.AllocHGlobal(length + sizeof(IntPtr) + sizeof(int) + 1);
+				var ptr = Marshal.AllocHGlobal(length + sizeof(IntPtr) * 2 + 1);
 				byte *bptr = (byte *)ptr.ToPointer();
 				*((IntPtr*)bptr) = GetVTable();
+				*((IntPtr*)(bptr + sizeof(IntPtr))) = IntPtr.Zero;
 				*((int*)(bptr + sizeof(IntPtr))) = length;
-                bptr[sizeof(IntPtr) + sizeof(int) + length] = 0; // null terminator
+                bptr[sizeof(IntPtr) * 2 + length] = 0; // null terminator
 				return ptr;
 			}
 		}
@@ -106,7 +110,7 @@ namespace Ngs.Interop
 		[System.Security.SecurityCritical]
 		public unsafe static byte *GetBStringDataPtr(IntPtr ptr)
 		{
-			return (byte *)ptr + sizeof(IntPtr) + sizeof(int);
+			return (byte *)ptr + sizeof(IntPtr) * 2;
 		}
 
 		[System.Security.SecurityCritical]

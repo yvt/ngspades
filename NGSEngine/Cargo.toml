@@ -1,0 +1,11 @@
+[package]
+name = "ngsengine"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+ngscom = { path = "src/ngscom", version = "0.1" }
+lazy_static = { version = "0.2" }
