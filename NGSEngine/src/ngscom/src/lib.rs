@@ -3,6 +3,23 @@
 Nightingales COM (NGSCOM) for Rust
 */
 
+//
+// Copyright 2017 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
+//
+// This source code is based on com-rs. The original license text is shown below:
+//
+//     Copyright (c) 2016 com-rs developers
+//
+//     Licensed under the Apache License, Version 2.0
+//     <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0> or the MIT
+//     license <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+//     option. All files in the project carrying such notice may not be copied,
+//     modified, or distributed except according to those terms.
+//
+
 // #![deny(dead_code)]
 #![deny(missing_debug_implementations)]
 // #![deny(missing_docs)]
@@ -11,15 +28,6 @@ mod bstring;
 #[macro_use] mod implmacros;
 
 pub use bstring::{BString, BStringVtable, BStringRef};
-
-// This file contains a portion of com-rs library. The original copyright text:
-//     Copyright (c) 2016 com-rs developers
-//
-//     Licensed under the Apache License, Version 2.0
-//     <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0> or the MIT
-//     license <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-//     option. All files in the project carrying such notice may not be copied,
-//     modified, or distributed except according to those terms.
 
 /*
 # com-rs 0.1.4

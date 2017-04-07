@@ -1,3 +1,9 @@
+//
+// Copyright 2017 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
+
 /*
  * The lazy_static crate is required to use this macro
  * (unless #[macro_reexport] goes into a stable state):
