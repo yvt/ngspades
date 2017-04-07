@@ -7,11 +7,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "field-offset"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "lazy_static"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -25,12 +20,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "ngscom"
 version = "0.1.0"
 dependencies = [
- "field-offset 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [metadata]
-"checksum field-offset 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "64e9bc339e426139e02601fa69d101e96a92aee71b58bc01697ec2a63a5c9e68"
 "checksum lazy_static 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2f61b8421c7a4648c391611625d56fdd5c7567da05af1be655fd8cacc643abb3"
 "checksum libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)" = "88ee81885f9f04bff991e306fea7c1c60a5f0f9e409e99f6b40e3311a3363135"

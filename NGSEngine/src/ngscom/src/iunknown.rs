@@ -36,24 +36,28 @@ iid!(IID_IUNKNOWN = 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x
 impl IUnknown {
     /// Retrieves pointers to the supported interfaces on an object.
     /// Use [`ComPtr::from`](struct.ComPtr.html#method.from) instead.
-    pub unsafe fn query_interface(&mut self, iid: &IID, object: *mut *mut c_void)
+    pub unsafe fn query_interface(&self, iid: &IID, object: *mut *mut c_void)
                                   -> HResult {
-        ((*self.vtable).query_interface)(self, iid, object)
+        ((*self.vtable).query_interface)(self as *const Self as *mut Self, iid, object)
     }
 
     /// Increments the reference count for an interface on an object.
     /// Should never need to call this directly.
-    pub unsafe fn add_ref(&mut self) -> u32 {
-        ((*self.vtable).add_ref)(self)
+    pub unsafe fn add_ref(&self) -> u32 {
+        ((*self.vtable).add_ref)(self as *const Self as *mut Self)
     }
 
     /// Decrements the reference count for an interface on an object.
     /// Should never need to call this directly.
-    pub unsafe fn release(&mut self) -> u32 {
-        ((*self.vtable).release)(self)
+    pub unsafe fn release(&self) -> u32 {
+        ((*self.vtable).release)(self as *const Self as *mut Self)
     }
 
-    pub unsafe fn fill_vtable<T, S>() -> IUnknownVtbl
+    pub fn from_vtable(vtable: *const IUnknownVtbl) -> Self {
+        Self { vtable: vtable }
+    }
+
+    pub fn fill_vtable<T, S>() -> IUnknownVtbl
         where T: IUnknownTrait, S: StaticOffset {
         IUnknownVtbl {
             query_interface: IUnknownThunk::query_interface::<T, S>,
@@ -61,17 +65,9 @@ impl IUnknown {
             release: IUnknownThunk::release::<T, S>,
         }
     }
-}
 
-impl IUnknownTrait for IUnknown {
-    unsafe fn query_interface(&mut self, iid: &IID, object: *mut *mut c_void) -> HResult {
-        self.query_interface(iid, object)
-    }
-    unsafe fn add_ref(&mut self) -> u32 {
-        self.add_ref()
-    }
-    unsafe fn release(&mut self) -> u32 {
-        self.release()
+    pub fn scan_iid(iid: &IID) -> bool {
+        *iid == IID_IUNKNOWN
     }
 }
 
@@ -79,21 +75,21 @@ struct IUnknownThunk();
 
 impl IUnknownThunk {
     extern "C" fn query_interface<T: IUnknownTrait, S: StaticOffset>(this: *mut IUnknown, iid: &IID, object: *mut *mut c_void) -> HResult {
-        unsafe { resolve_parent_object::<S, IUnknown, T>(this).query_interface(iid, object) }
+        unsafe { T::query_interface(resolve_parent_object::<S, IUnknown, T>(this), iid, object) }
     }
     extern "C" fn add_ref<T: IUnknownTrait, S: StaticOffset>(this: *mut IUnknown) -> u32 {
-        unsafe { resolve_parent_object::<S, IUnknown, T>(this).add_ref() }
+        unsafe { T::add_ref(resolve_parent_object::<S, IUnknown, T>(this)) }
     }
     extern "C" fn release<T: IUnknownTrait, S: StaticOffset>(this: *mut IUnknown) -> u32 {
-        unsafe { resolve_parent_object::<S, IUnknown, T>(this).release() }
+        unsafe { T::release(resolve_parent_object::<S, IUnknown, T>(this)) }
     }
 }
 
 pub trait IUnknownTrait {
-    unsafe fn query_interface(&mut self, iid: &IID, object: *mut *mut c_void)
-                                  -> HResult;
-    unsafe fn add_ref(&mut self) -> u32;
-    unsafe fn release(&mut self) -> u32;
+    unsafe fn query_interface(this: *mut Self, iid: &IID, object: *mut *mut c_void)
+                                  -> HResult where Self: Sized;
+    unsafe fn add_ref(this: *mut Self) -> u32 where Self: Sized;
+    unsafe fn release(this: *mut Self) -> u32 where Self: Sized;
 }
 
 unsafe impl AsComPtr<IUnknown> for IUnknown { }
@@ -103,7 +99,7 @@ unsafe impl ::ComInterface for IUnknown {
     type Vtable = IUnknownVtbl;
     #[doc(hidden)]
     type Trait = IUnknownTrait;
-    fn iid() -> ::IID { unsafe { IID_IUNKNOWN } }
+    fn iid() -> ::IID { IID_IUNKNOWN }
 }
 
 #[macro_export]

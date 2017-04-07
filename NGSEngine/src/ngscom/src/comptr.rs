@@ -161,7 +161,7 @@ impl<T: ComInterface> Deref for ComPtr<T> {
     /// panic. Use the [`is_null`](#method.is_null) method before dereferencing.
     fn deref<'a>(&'a self) -> &'a T {
         assert!(!self.is_null(), "dereferenced null ComPtr");
-        unsafe { &*self.ptr }
+        unsafe { &mut *self.ptr }
     }
 }
 

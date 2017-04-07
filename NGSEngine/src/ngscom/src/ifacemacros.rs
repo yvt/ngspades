@@ -16,15 +16,17 @@ Macro for generating COM interface definitions.
 ```
 #[macro_use]
 extern crate ngscom;
-use ngscom::IUnknown;
+use ngscom::{IUnknown, IUnknownTrait};
 
 iid!(IID_IFOO =
     0x12345678, 0x90AB, 0xCDEF, 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF);
 
 com_interface! {
-    interface IFoo: IUnknown {
+    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
         iid: IID_IFOO,
         vtable: IFooVtbl,
+        thunk: IFooThunk,
+
         fn foo() -> bool;
     }
 }
@@ -48,21 +50,25 @@ to the type definitions. e.g:
 ```
 # #[macro_use]
 # extern crate ngscom;
-# use ngscom::IUnknown;
+# use ngscom::{IUnknown, IUnknownTrait};
 # iid!(IID_IFOO = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 # com_interface! {
-#     interface IFoo: IUnknown {
-#         iid: IID_IFOO,
-#         vtable: IFooVtbl,
-#         fn foo() -> bool;
-#     }
+#    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
+#        iid: IID_IFOO,
+#        vtable: IFooVtbl,
+#        thunk: IFooThunk,
+#
+#        fn foo() -> bool;
+#    }
 # }
 iid!(IID_IBAR =
     0x12345678, 0x90AB, 0xCDEF, 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF);
 com_interface! {
-    interface IBar: IFoo, IUnknown {
+    interface (IBar, IBarTrait): (IFoo, IFooTrait), IUnknown {
         iid: IID_IBAR,
         vtable: IBarVtbl,
+        thunk: IBarThunk,
+
         fn bar(baz: i32) -> ();
     }
 }
@@ -110,27 +116,39 @@ macro_rules! com_interface {
 
         impl $thunk {
             $(extern "C" fn $func<T: $trait_ident, S: $crate::StaticOffset>(this: *mut $iface $(, $i: $t)*) -> $rt {
-                unsafe { $crate::resolve_parent_object::<S, $iface, T>(this).$func($($i,)*) }
+                unsafe { T::$func($crate::resolve_parent_object::<S, $iface, T>(this), $($i),*) }
             })*
         }
 
         impl $iface {
             $($(#[$fn_attr])*
-            pub unsafe fn $func(&mut self $(, $i: $t)*) -> $rt {
-                ((*self.vtable).$func)(self $(,$i)*)
+            pub unsafe fn $func(&self $(, $i: $t)*) -> $rt {
+                ((*self.vtable).$func)(self as *const Self as *mut Self $(,$i)*)
             })*
 
-            pub unsafe fn fill_vtable<T, S>() -> $vtable
+            pub fn from_vtable(vtable: *const $vtable) -> Self {
+                Self { vtable: vtable }
+            }
+
+            pub fn fill_vtable<T, S>() -> $vtable
                 where T: $trait_ident, S: $crate::StaticOffset {
                 $vtable {
                     base: <$base_iface>::fill_vtable::<T, S>(),
                     $($func: $thunk::$func::<T, S>,)*
                 }
             }
+
+            pub fn scan_iid(iid: &$crate::IID) -> bool {
+                if $iid == *iid {
+                    true
+                } else {
+                    <$base_iface>::scan_iid(iid)
+                }
+            }
         }
 
         pub trait $trait_ident: $base_trait {
-            $(fn $func(&mut self, $($i: $t),*) -> $rt;)*
+            $(unsafe fn $func(this: *mut Self, $($i: $t),*) -> $rt where Self: Sized;)*
         }
 
         impl ::std::ops::Deref for $iface {
@@ -151,14 +169,14 @@ macro_rules! com_interface {
             #[allow(unused_unsafe)]
             fn iid() -> $crate::IID { unsafe { $iid } }
         }
-    )
+    );
 
-    // not supported in NGSCOM
-    /*(
+    (
         $(#[$iface_attr:meta])*
-        interface $iface:ident: $base_iface:ty, $($extra_base:ty),+ {
+        interface ($iface:ident, $trait_ident:ident): ($base_iface:ty, $base_trait:path), $($extra_base:ty),+ {
             iid: $iid:ident,
             vtable: $vtable:ident,
+            thunk: $thunk:ident,
             $(
                 $(#[$fn_attr:meta])*
                 fn $func:ident($($i:ident: $t:ty),*) -> $rt:ty;
@@ -167,15 +185,16 @@ macro_rules! com_interface {
     ) => (
         com_interface! {
             $(#[$iface_attr])*
-            interface $iface: $base_iface {
+            interface ($iface, $trait_ident): ($base_iface, $base_trait) {
                 iid: $iid,
                 vtable: $vtable,
+                thunk: $thunk,
                 $($(#[$fn_attr])* fn $func($($i: $t),*) -> $rt;)*
             }
         }
 
         $(unsafe impl $crate::AsComPtr<$extra_base> for $iface {})*
-    )*/
+    )
 }
 
 /**
@@ -229,7 +248,7 @@ macro_rules! iid {
  * Helper functions for macros
  */
 #[doc(hidden)]
-pub unsafe fn resolve_parent_object<'a, TOffset, TInterface, TClass>(this: *mut TInterface) -> &'a mut TClass
+pub unsafe fn resolve_parent_object<'a, TOffset, TInterface, TClass>(this: *mut TInterface) -> *mut TClass
   where TOffset : StaticOffset {
     let addr: isize = mem::transmute(this);
     mem::transmute(addr + TOffset::offset())

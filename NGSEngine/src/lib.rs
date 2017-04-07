@@ -6,7 +6,7 @@ extern crate lazy_static;
 
 use std::os::raw::c_void;
 use std::mem;
-use ngscom::{IUnknown, IUnknownTrait, BString, BStringRef, HResult, IID, E_OK, ComPtr};
+use ngscom::{IUnknown, IUnknownTrait, BString, BStringRef, HResult, ComPtr, E_OK, E_NOINTERFACE};
 
 iid!(IID_ITESTINTERFACE =
     0x35edff15, 0x0b38, 0x47d8, 0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d);
@@ -24,68 +24,46 @@ com_interface! {
     }
 }
 
-com_impl!(TESTCLASS_VTABLE, ITestInterfaceVTable, ITestInterface, TestClass);
-
-#[derive(Debug)]
-struct TestClass {
-    itestinterface: ITestInterface,
-}
-
-impl IUnknownTrait for TestClass {
-    unsafe fn query_interface(&mut self, iid: &IID, object: *mut *mut c_void) -> HResult {
-        println!("query_interface({:?}, {}): not implemented", self, iid);
-        self.add_ref();
-        *object = mem::transmute(self);
-        E_OK
-        // TODO: implement somehow!
-    }
-    unsafe fn add_ref(&mut self) -> u32 {
-        println!("add_ref({:?}): not implemented", self);
-        0
-        // TODO: implement somehow!
-    }
-    unsafe fn release(&mut self) -> u32 {
-        println!("release({:?}): not implemented", self);
-        0
-        // TODO: implement somehow!
+com_impl! {
+    #[derive(Debug)]
+    class TestClass {
+        com_private: TestClassPrivate;
+        itestinterface: (ITestInterface, ITestInterfaceVTable, TestClassVTable);
     }
 }
 
 impl ITestInterfaceTrait for TestClass {
-    fn get_hoge_attr(&mut self, retval: &mut BStringRef) -> HResult {
+    unsafe fn get_hoge_attr(this: *mut Self, retval: &mut BStringRef) -> HResult {
         *retval = BStringRef::new("You successfully GetHogeAttr'd!");
         E_OK
     }
-    fn set_hoge_attr(&mut self, value: &BString) -> HResult {
+    unsafe fn set_hoge_attr(this: *mut Self, value: &BString) -> HResult {
         println!("SetHogeAttr: I'm getting this: {:?}", value);
         E_OK
     }
-    fn hello(&mut self, value: &BString, retval: &mut BStringRef) -> HResult {
+    unsafe fn hello(this: *mut Self, value: &BString, retval: &mut BStringRef) -> HResult {
         println!("Hello! (got {:?})", value);
         unsafe { println!("BString addr: {:x}, data: {:x}",
             mem::transmute::<_, usize>(value), mem::transmute::<_, usize>(&value.data()[0])) };
         *retval = BStringRef::new("hOI! \0(null character here)");
         E_OK
     }
-    fn simple_method(&mut self) -> HResult {
+    unsafe fn simple_method(this: *mut Self) -> HResult {
         E_OK
     }
 }
 
 impl TestClass {
-    fn new() -> *mut TestClass {
-        let new_box = Box::new(TestClass {
-            itestinterface: ITestInterface {
-                vtable: &*TESTCLASS_VTABLE as *const ITestInterfaceVTable
-            }
-        });
-        Box::into_raw(new_box)
+    fn new() -> ComPtr<ITestInterface> {
+        ComPtr::from(&TestClass::alloc(TestClass{
+            com_private: Self::new_private()
+        }).0)
     }
 }
 
 #[no_mangle]
-pub unsafe extern fn create_test_instance(retval: *mut *mut ITestInterface) -> HResult {
-    *retval = &mut (*TestClass::new()).itestinterface;
+pub unsafe extern fn create_test_instance(retval: &mut ComPtr<ITestInterface>) -> HResult {
+    *retval = TestClass::new();
     E_OK
 }
 

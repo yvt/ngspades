@@ -7,12 +7,6 @@ Nightingales COM (NGSCOM) for Rust
 #![deny(missing_debug_implementations)]
 // #![deny(missing_docs)]
 
-#[macro_use]
-extern crate field_offset;
-
-#[macro_use]
-extern crate lazy_static;
-
 mod bstring;
 #[macro_use] mod implmacros;
 
@@ -99,10 +93,15 @@ fn iid_display() {
 pub type HResult = i32;
 
 pub const E_OK: HResult = 0;
+#[allow(overflowing_literals)]
+pub const E_NOINTERFACE: HResult = 0x80004002 as i32;
 
 #[macro_use] mod ifacemacros;
 
-pub use ifacemacros::resolve_parent_object;
-
 mod comptr;
 mod iunknown;
+
+// Utility functions for macros
+pub use ifacemacros::resolve_parent_object;
+pub use implmacros::{new_obj_raw, delete_obj_raw};
+pub use std::sync::atomic::{AtomicIsize, Ordering, fence};
