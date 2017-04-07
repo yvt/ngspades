@@ -46,6 +46,7 @@ impl ITestInterfaceTrait for TestClass {
         unsafe { println!("BString addr: {:x}, data: {:x}",
             mem::transmute::<_, usize>(value), mem::transmute::<_, usize>(&value.data()[0])) };
         *retval = BStringRef::new("hOI! \0(null character here)");
+        println!("Returning {:?}", retval);
         E_OK
     }
     unsafe fn simple_method(this: *mut Self) -> HResult {
