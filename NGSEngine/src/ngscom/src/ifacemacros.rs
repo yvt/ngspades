@@ -6,9 +6,6 @@
 // option. All files in the project carrying such notice may not be copied,
 // modified, or distributed except according to those terms.
 
-use std::mem;
-use super::{StaticOffset};
-
 /**
 Macro for generating COM interface definitions.
 
@@ -116,7 +113,7 @@ macro_rules! com_interface {
 
         impl $thunk {
             $(extern "C" fn $func<T: $trait_ident, S: $crate::StaticOffset>(this: *mut $iface $(, $i: $t)*) -> $rt {
-                unsafe { T::$func($crate::resolve_parent_object::<S, $iface, T>(this), $($i),*) }
+                unsafe { T::$func($crate::detail::resolve_parent_object::<S, $iface, T>(this), $($i),*) }
             })*
         }
 
@@ -243,14 +240,3 @@ macro_rules! iid {
         };
     );
 }
-
-/*
- * Helper functions for macros
- */
-#[doc(hidden)]
-pub unsafe fn resolve_parent_object<'a, TOffset, TInterface, TClass>(this: *mut TInterface) -> *mut TClass
-  where TOffset : StaticOffset {
-    let addr: isize = mem::transmute(this);
-    mem::transmute(addr + TOffset::offset())
-}
-

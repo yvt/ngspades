@@ -12,7 +12,7 @@ macro_rules! com_vtable {
     ( $vtable:ident, $vtable_type: ty, $interface_type:ty, $obj_type:ty ) => (
         lazy_static! {
             static ref $vtable: $vtable_type =
-                unsafe { <$interface_type>::fill_vtable::<$obj_type, $crate::StaticZeroOffset>() };
+                <$interface_type>::fill_vtable::<$obj_type, $crate::StaticZeroOffset>();
         }
     )
 }
@@ -38,7 +38,7 @@ macro_rules! com_impl {
         #[doc(hidden)]
         struct $private_type {
             $( $interface_ident: $interface_type, )*
-            ref_count: $crate::AtomicIsize,
+            ref_count: $crate::detail::AtomicIsize,
         }
         $(#[$iface_attr])*
         pub struct $obj_type {
@@ -47,7 +47,7 @@ macro_rules! com_impl {
         }
         impl $obj_type {
             fn alloc(x: $obj_type) -> ($crate::ComPtr<$crate::IUnknown>, *mut Self) {
-                let ptr = $crate::new_obj_raw(x);
+                let ptr = $crate::detail::new_obj_raw(x);
                 let mut comptr: $crate::ComPtr<$crate::IUnknown> = ComPtr::new();
                 (*comptr.as_mut_ptr()) = ptr as *mut $crate::IUnknown;
                 ( comptr, ptr )
@@ -58,7 +58,7 @@ macro_rules! com_impl {
                     $(
                     $interface_ident: <$interface_type>::from_vtable(&*$vtable as *const $vtable_type),
                     )*
-                    ref_count: $crate::AtomicIsize::new(1)
+                    ref_count: $crate::detail::AtomicIsize::new(1)
                 }
             }
         }
@@ -75,31 +75,18 @@ macro_rules! com_impl {
                 }
             }
             unsafe fn add_ref(this: *mut Self) -> u32 {
-                let orig_ref_count = (*this).com_private.ref_count.fetch_add(1, $crate::Ordering::Relaxed);
+                let orig_ref_count = (*this).com_private.ref_count.fetch_add(1, $crate::detail::Ordering::Relaxed);
                 (orig_ref_count + 1) as u32
             }
             unsafe fn release(this: *mut Self) -> u32 {
-                let orig_ref_count = (*this).com_private.ref_count.fetch_sub(1, $crate::Ordering::Release);
+                let orig_ref_count = (*this).com_private.ref_count.fetch_sub(1, $crate::detail::Ordering::Release);
                 assert!(orig_ref_count > 0);
                 if orig_ref_count == 1 {
-                    $crate::fence($crate::Ordering::Acquire);
-                    $crate::delete_obj_raw(this);
+                    $crate::detail::fence($crate::detail::Ordering::Acquire);
+                    $crate::detail::delete_obj_raw(this);
                 }
                 (orig_ref_count - 1) as u32
             }
         }
     )
-}
-
-/*
- * Helper functions for macros
- */
-#[doc(hidden)]
-pub fn new_obj_raw<T>(x: T) -> *mut T {
-    Box::into_raw(Box::new(x))
-}
-
-#[doc(hidden)]
-pub unsafe fn delete_obj_raw<T>(x: *mut T) {
-    Box::from_raw(x);
 }

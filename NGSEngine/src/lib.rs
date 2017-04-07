@@ -4,9 +4,8 @@ extern crate ngscom;
 #[macro_use]
 extern crate lazy_static;
 
-use std::os::raw::c_void;
 use std::mem;
-use ngscom::{IUnknown, IUnknownTrait, BString, BStringRef, HResult, ComPtr, E_OK, E_NOINTERFACE};
+use ngscom::{IUnknown, IUnknownTrait, BString, BStringRef, HResult, ComPtr, E_OK};
 
 iid!(IID_ITESTINTERFACE =
     0x35edff15, 0x0b38, 0x47d8, 0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d);
@@ -28,28 +27,28 @@ com_impl! {
     #[derive(Debug)]
     class TestClass {
         com_private: TestClassPrivate;
-        itestinterface: (ITestInterface, ITestInterfaceVTable, TestClassVTable);
+        itestinterface: (ITestInterface, ITestInterfaceVTable, TESTCLASS_VTABLE);
     }
 }
 
 impl ITestInterfaceTrait for TestClass {
-    unsafe fn get_hoge_attr(this: *mut Self, retval: &mut BStringRef) -> HResult {
+    unsafe fn get_hoge_attr(_: *mut Self, retval: &mut BStringRef) -> HResult {
         *retval = BStringRef::new("You successfully GetHogeAttr'd!");
         E_OK
     }
-    unsafe fn set_hoge_attr(this: *mut Self, value: &BString) -> HResult {
+    unsafe fn set_hoge_attr(_: *mut Self, value: &BString) -> HResult {
         println!("SetHogeAttr: I'm getting this: {:?}", value);
         E_OK
     }
-    unsafe fn hello(this: *mut Self, value: &BString, retval: &mut BStringRef) -> HResult {
+    unsafe fn hello(_: *mut Self, value: &BString, retval: &mut BStringRef) -> HResult {
         println!("Hello! (got {:?})", value);
-        unsafe { println!("BString addr: {:x}, data: {:x}",
-            mem::transmute::<_, usize>(value), mem::transmute::<_, usize>(&value.data()[0])) };
+        println!("BString addr: {:x}, data: {:x}",
+            mem::transmute::<_, usize>(value), mem::transmute::<_, usize>(&value.data()[0]));
         *retval = BStringRef::new("hOI! \0(null character here)");
         println!("Returning {:?}", retval);
         E_OK
     }
-    unsafe fn simple_method(this: *mut Self) -> HResult {
+    unsafe fn simple_method(_: *mut Self) -> HResult {
         E_OK
     }
 }

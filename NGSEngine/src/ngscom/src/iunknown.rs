@@ -8,7 +8,8 @@
 
 use std::os::raw::c_void;
 
-use super::{AsComPtr, HResult, IID, StaticOffset, resolve_parent_object};
+use super::{AsComPtr, HResult, IID, StaticOffset};
+use super::detail::resolve_parent_object;
 
 /// Base interface for all COM types.
 ///

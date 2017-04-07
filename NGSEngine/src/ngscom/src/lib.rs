@@ -102,6 +102,5 @@ mod comptr;
 mod iunknown;
 
 // Utility functions for macros
-pub use ifacemacros::resolve_parent_object;
-pub use implmacros::{new_obj_raw, delete_obj_raw};
-pub use std::sync::atomic::{AtomicIsize, Ordering, fence};
+#[doc(hidden)]
+pub mod detail;
