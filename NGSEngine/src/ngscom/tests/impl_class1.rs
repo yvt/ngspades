@@ -24,7 +24,7 @@ com_impl! {
     #[derive(Debug)]
     class TestClass {
         com_private: TestClassPrivate;
-        itestinterface: (ITestInterface, ITestInterfaceVTable, TestClassVTable);
+        itestinterface: (ITestInterface, ITestInterfaceVTable, TESTCLASS_VTABLE);
         test_field: i32
     }
 }
