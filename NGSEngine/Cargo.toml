@@ -8,4 +8,5 @@ crate-type = ["dylib"]
 
 [dependencies]
 ngscom = { path = "src/ngscom", version = "0.1" }
+ngsbase = { path = "src/ngsbase", version = "0.1" }
 lazy_static = { version = "0.2" }

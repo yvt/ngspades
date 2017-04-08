@@ -97,15 +97,9 @@ fn iid_display() {
                "{00000000-0000-0000-C000-000000000046}");
 }
 
-/// Result type.
-pub type HResult = i32;
-
-pub const E_OK: HResult = 0;
-#[allow(overflowing_literals)]
-pub const E_NOINTERFACE: HResult = 0x80004002 as i32;
-
+mod hresult;
+pub use hresult::*;
 #[macro_use] mod ifacemacros;
-
 mod comptr;
 mod iunknown;
 

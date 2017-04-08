@@ -11,8 +11,7 @@ DerivedFiles
 bin
 obj
 NGSEngine/target
-NGSEngineInterop/Generated/*.cs
-NGSEngineInterop/Generated/xpidlcache
+NGSEngine/src/ngsbase/src/interop.rs
 
 # Cache files
 *.pyc

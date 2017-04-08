@@ -90,6 +90,9 @@ namespace Ngs.Interop.Marshaller
 			}
 		}
 
+		/**
+		 * Includes inherited methods.
+		 */
 		public IEnumerable<ComMethodInfo> ComMethodInfos
 		{
 			get
