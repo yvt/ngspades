@@ -1,4 +1,4 @@
-Nightingales COM (NGSCOM) for Rust
+Nightingales COM (NgsCOM) for Rust
 ==================================
 
 Credits

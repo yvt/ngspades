@@ -6,9 +6,9 @@ namespace Ngs.Interop
 	{
 
         /*
-         * BString in NGSCOM is a completely different thing from XPCOM/MSCOM's BSTR and
+         * BString in NgsCOM is a completely different thing from XPCOM/MSCOM's BSTR and
          * is defined like this:
-         * 
+         *
          *  class BString {
          *  public:
          *      BString(int32_t length) : m_length{length} {
@@ -20,7 +20,7 @@ namespace Ngs.Interop
          *      virtual void Destroy() { // vtable[0]
          *          operator delete(this);
          *      }
-         *      
+         *
 		 *      union {
          *      	int32_t const m_length;
 		 *			size_t const m_pad;
@@ -62,7 +62,7 @@ namespace Ngs.Interop
 					return gcHandle.AddrOfPinnedObject();
 				}
 			}
-			
+
 			static void ReleaseVTable()
 			{
 				lock (sync) {
@@ -118,7 +118,7 @@ namespace Ngs.Interop
 		{
 			return *(int *)((byte *)ptr + sizeof(IntPtr));
 		}
-        
+
 		[System.Security.SecurityCritical]
 		public unsafe static string BStringToString(IntPtr ptr)
 		{
