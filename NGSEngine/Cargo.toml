@@ -10,3 +10,4 @@ crate-type = ["dylib"]
 ngscom = { path = "src/ngscom", version = "0.1" }
 ngsbase = { path = "src/ngsbase", version = "0.1" }
 lazy_static = { version = "0.2" }
+enet = { path = "src/enet", version = "0.1" }

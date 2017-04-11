@@ -2,10 +2,25 @@
 name = "ngsengine"
 version = "0.1.0"
 dependencies = [
+ "enet 0.1.0",
  "lazy_static 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsbase 0.1.0",
  "ngscom 0.1.0",
 ]
+
+[[package]]
+name = "enet"
+version = "0.1.0"
+dependencies = [
+ "gcc 0.3.45 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unsafe_unions 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "gcc"
+version = "0.3.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "lazy_static"
@@ -32,6 +47,13 @@ dependencies = [
  "libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
+[[package]]
+name = "unsafe_unions"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
 [metadata]
+"checksum gcc 0.3.45 (registry+https://github.com/rust-lang/crates.io-index)" = "40899336fb50db0c78710f53e87afc54d8c7266fb76262fecc78ca1a7f09deae"
 "checksum lazy_static 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2f61b8421c7a4648c391611625d56fdd5c7567da05af1be655fd8cacc643abb3"
 "checksum libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)" = "88ee81885f9f04bff991e306fea7c1c60a5f0f9e409e99f6b40e3311a3363135"
+"checksum unsafe_unions 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "341f7545dc74e91208745b518ae893e9e8006a93624f3cb740f82488a49142cf"
