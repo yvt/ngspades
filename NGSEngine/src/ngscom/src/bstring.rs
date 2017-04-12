@@ -8,6 +8,7 @@ extern crate libc;
 use std::ops::{Deref, DerefMut};
 use std::{str, mem, i32, fmt, slice, ptr};
 
+#[doc(hidden)]
 #[derive(Debug)]
 #[repr(C)]
 pub struct BStringHeader {
@@ -15,12 +16,14 @@ pub struct BStringHeader {
     pub length: usize,
 }
 
+/// NgsCOM string type.
 #[repr(C)]
 pub struct BString {
     pub header: BStringHeader,
     pub raw_data: [u8; 0],
 }
 
+#[doc(hidden)]
 #[derive(Debug)]
 #[repr(C)]
 pub struct BStringVtable {
@@ -36,6 +39,7 @@ static BSTR_VTABLE: BStringVtable = BStringVtable {
 };
 
 impl BString {
+    /// Creates a new instance of `BString` without initializing the contents.
     pub unsafe fn alloc_uninitialized(len: usize) -> *mut BString {
         assert!(len <= (i32::MAX / 2) as usize);
 
@@ -51,6 +55,7 @@ impl BString {
         bstr
     }
 
+    /// Creates a new instance of `BString` and initializes it with the given `&str`.
     pub fn alloc(s: &str) -> *mut BString {
         unsafe {
             let bstr = BString::alloc_uninitialized(s.len());
@@ -59,22 +64,27 @@ impl BString {
         }
     }
 
+    /// Extracts a slice of the underlying raw data.
     pub fn data(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(mem::transmute(&self.raw_data), self.len())}
     }
 
+    /// Extracts a mutable slice of the underlying raw data.
     pub fn data_mut(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(mem::transmute(&self.raw_data), self.len())}
     }
 
+    /// Extracts a slice of the underlying string.
     pub fn as_str(&self) -> &str {
         unsafe { str::from_utf8_unchecked(self.data()) }
     }
 
+    /// Destroys a `BString` and frees the memory allocated for it.
     pub unsafe fn free(&mut self) {
         ((*self.header.vtable).destruct)(self as *mut BString);
     }
 
+    /// Returns the length of the given `BString`, measured in bytes.
     pub fn len(&self) -> usize { self.header.length }
 }
 
@@ -91,21 +101,31 @@ impl fmt::Debug for BString {
     }
 }
 
+/// A safe wrapper for `*mut BString`.
 pub struct BStringRef(*mut BString);
 
 impl BStringRef {
+    /// Creates a new `BStringRef` whose contents initialized with the given `&str`.
     pub fn new(s: &str) -> BStringRef {
         BStringRef::from_raw(BString::alloc(s))
     }
 
+    /// Creates a null `BStringRef`.
+    pub fn null() -> BStringRef {
+        BStringRef(ptr::null_mut())
+    }
+
+    /// Constructs a new `BStringRef` from a raw `*mut BString`.
     pub fn from_raw(raw: *mut BString) -> BStringRef {
         BStringRef(raw)
     }
 
+    /// Consumes the `BStringRef`, returning the raw `*mut BString`.
     pub fn into_raw(self) -> *mut BString {
         self.0
     }
 
+    /// Returns whether this `BStringRef` has a non-null reference to `BString`.
     pub fn is_null(&self) -> bool {
         self.0.is_null()
     }

@@ -1,3 +1,8 @@
+//! Nightingales Base / Interop
+//! =============================
+//!
+//! This crate includes basic data types and definitions of COM interfaces.
+
 //
 // Copyright 2017 yvt, all rights reserved.
 //
