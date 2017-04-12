@@ -6,6 +6,7 @@ dependencies = [
  "lazy_static 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsbase 0.1.0",
  "ngscom 0.1.0",
+ "ngsgfxbase 0.1.0",
 ]
 
 [[package]]
@@ -46,6 +47,10 @@ dependencies = [
  "lazy_static 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "ngsgfxbase"
+version = "0.1.0"
 
 [[package]]
 name = "unsafe_unions"
