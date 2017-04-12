@@ -13,6 +13,13 @@ dependencies = [
 name = "enet"
 version = "0.1.0"
 dependencies = [
+ "enet-ll 0.1.0",
+]
+
+[[package]]
+name = "enet-ll"
+version = "0.1.0"
+dependencies = [
  "gcc 0.3.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "unsafe_unions 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
