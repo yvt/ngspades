@@ -66,11 +66,10 @@ fn test_patterns<T : yfft::Num>(size: usize) -> Vec<Vec<T>> {
     vec
 }
 
-#[test]
-fn fft_correctness_f32() {
+fn fft_forward<T : Num>() {
     for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49] {
         let size = *size_ref;
-        let setup: Setup<f32> = Setup::new(&Options {
+        let setup: Setup<T> = Setup::new(&Options {
             input_data_order: DataOrder::Natural,
             output_data_order: DataOrder::Natural,
             input_data_format: DataFormat::Complex,
@@ -79,15 +78,68 @@ fn fft_correctness_f32() {
             inverse: false
         }).unwrap();
         let mut se = Env::new(&setup);
-        let mut result_1 = vec![0f32; size * 2];
-        let mut result_2 = vec![0f32; size * 2];
-        for pat in test_patterns::<f32>(size) {
+        let mut result_1 = vec![T::zero(); size * 2];
+        let mut result_2 = vec![T::zero(); size * 2];
+        for pat in test_patterns::<T>(size) {
             result_1.copy_from_slice(pat.as_slice());
             se.transform(result_1.as_mut_slice());
 
             naive_dft(pat.as_slice(), result_2.as_mut_slice(), false);
 
-            assert_num_slice_approx_eq(result_1.as_slice(), result_2.as_slice(), 1.0e-4f32);
+            assert_num_slice_approx_eq(result_1.as_slice(), result_2.as_slice(), T::from(1.0e-4).unwrap());
         }
     }
 }
+
+#[test]
+fn fft_forward_f32() { fft_forward::<f32>(); }
+
+#[test]
+fn fft_forward_f64() { fft_forward::<f64>(); }
+
+fn fft_roundtrip_shortcut<T : Num>() {
+    for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49] {
+        let size = *size_ref;
+
+        let setup1: Setup<T> = Setup::new(&Options {
+            input_data_order: DataOrder::Natural,
+            output_data_order: DataOrder::Swizzled,
+            input_data_format: DataFormat::Complex,
+            output_data_format: DataFormat::Complex,
+            len: size,
+            inverse: false
+        }).unwrap();
+        let setup2: Setup<T> = Setup::new(&Options {
+            input_data_order: DataOrder::Swizzled,
+            output_data_order: DataOrder::Natural,
+            input_data_format: DataFormat::Complex,
+            output_data_format: DataFormat::Complex,
+            len: size,
+            inverse: true
+        }).unwrap();
+
+        let mut env1 = Env::new(&setup1);
+        let mut env2 = Env::new(&setup2);
+
+        let factor = T::one() / T::from(size).unwrap();
+
+        let mut result = vec![T::zero(); size * 2];
+        for pat in test_patterns::<T>(size) {
+            result.copy_from_slice(pat.as_slice());
+            env1.transform(result.as_mut_slice());
+            env2.transform(result.as_mut_slice());
+
+            for e in &mut result {
+                *e = *e * factor;
+            }
+
+            assert_num_slice_approx_eq(result.as_slice(), pat.as_slice(), T::from(1.0e-4).unwrap());
+        }
+    }
+}
+
+#[test]
+fn fft_roundtrip_shortcut_f32() { fft_roundtrip_shortcut::<f32>(); }
+
+#[test]
+fn fft_roundtrip_shortcut_f64() { fft_roundtrip_shortcut::<f64>(); }
