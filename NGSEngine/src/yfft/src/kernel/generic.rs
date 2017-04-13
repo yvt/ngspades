@@ -12,7 +12,7 @@
 //! According to a benchmark result, this kernel runs about 100x slower than a commercial-level FFT library on a Skylake
 //! machine.
 
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor};
 
 use num_complex::Complex;
 use num_traits::{Zero, One};
@@ -65,8 +65,8 @@ struct GenericDifKernel<T> {
 impl<T> Kernel<T> for GenericDitKernel<T> where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs[0 .. cparams.size * 2];
-        let ref mut wa = params.work_area[0 .. cparams.radix * 2];
+        let mut data = SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]);
+        let mut wa = SliceAccessor::new(&mut params.work_area[0 .. cparams.radix * 2]);
 
         let twiddle_delta = self.twiddle_delta;
         let coef_delta = self.coef_delta;

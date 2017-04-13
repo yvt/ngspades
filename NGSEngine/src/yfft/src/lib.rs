@@ -8,7 +8,6 @@
 //! -------
 //!
 //! Follows the license of the parent project (Nightingales).
-//!
 
 //
 // Copyright 2017 yvt, all rights reserved.
@@ -17,6 +16,7 @@
 //
 
 #![feature(test)]
+#![feature(slice_get_slice)]
 
 extern crate num_complex;
 extern crate num_iter;

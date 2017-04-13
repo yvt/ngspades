@@ -3,12 +3,15 @@
 //
 // This source code is a part of Nightingales.
 //
+mod accessor;
 mod bitreversal;
 mod generic;
 mod generic2;
 
 use std::fmt::Debug;
 use super::Num;
+
+use self::accessor::SliceAccessor;
 
 pub use self::bitreversal::new_bit_reversal_kernel;
 

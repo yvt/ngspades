@@ -13,7 +13,7 @@
 //! According to a benchmark result, this kernel runs about 10x slower than a commercial-level FFT library on a Skylake
 //! machine.
 
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor};
 
 use num_complex::Complex;
 use num_traits::{Zero, One};
@@ -60,10 +60,10 @@ fn new_specialized_generic_kernel_inner<T, TSmallFFT>(cparams: &KernelCreationPa
 
 trait SmallFFT<T> : Debug + Default + 'static {
     fn radix() -> usize;
-    fn load(&mut self, data: &[T], offset: usize, stride: usize);
+    fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize);
     fn twiddle(&mut self, c: Complex<T>);
     fn transform(&mut self);
-    fn store(&self, data: &mut[T], offset: usize, stride: usize);
+    fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize);
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -74,7 +74,7 @@ struct SmallFFT2<T> {
 
 impl<T: Num> SmallFFT<T> for SmallFFT2<T> {
     #[inline] fn radix() -> usize { 2 }
-    #[inline] fn load(&mut self, data: &[T], offset: usize, stride: usize) {
+    #[inline] fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         self.x1.re = data[offset];
         self.x1.im = data[offset + 1];
         self.x2.re = data[offset + stride];
@@ -88,7 +88,7 @@ impl<T: Num> SmallFFT<T> for SmallFFT2<T> {
         self.x1 = orig.x1 + orig.x2;
         self.x2 = orig.x1 - orig.x2;
     }
-    #[inline] fn store(&self, data: &mut[T], offset: usize, stride: usize) {
+    #[inline] fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         data[offset] = self.x1.re;
         data[offset + 1] = self.x1.im;
         data[offset + stride] = self.x2.re;
@@ -106,7 +106,7 @@ struct SmallForwardFFT4<T> {
 
 impl<T: Num> SmallFFT<T> for SmallForwardFFT4<T> {
     #[inline] fn radix() -> usize { 4 }
-    #[inline] fn load(&mut self, data: &[T], offset: usize, stride: usize) {
+    #[inline] fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         self.x1.re = data[offset];
         self.x1.im = data[offset + 1];
         self.x2.re = data[offset + stride];
@@ -132,7 +132,7 @@ impl<T: Num> SmallFFT<T> for SmallForwardFFT4<T> {
         self.x3 = t1 - t2;
         self.x4 = t3 + mul_pos_i(t4);
     }
-    #[inline] fn store(&self, data: &mut[T], offset: usize, stride: usize) {
+    #[inline] fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         data[offset] = self.x1.re;
         data[offset + 1] = self.x1.im;
         data[offset + stride] = self.x2.re;
@@ -154,7 +154,7 @@ struct SmallBackwardFFT4<T> {
 
 impl<T: Num> SmallFFT<T> for SmallBackwardFFT4<T> {
     #[inline] fn radix() -> usize { 4 }
-    #[inline] fn load(&mut self, data: &[T], offset: usize, stride: usize) {
+    #[inline] fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         self.x1.re = data[offset];
         self.x1.im = data[offset + 1];
         self.x2.re = data[offset + stride];
@@ -180,7 +180,7 @@ impl<T: Num> SmallFFT<T> for SmallBackwardFFT4<T> {
         self.x3 = t1 - t2;
         self.x4 = t3 - mul_pos_i(t4);
     }
-    #[inline] fn store(&self, data: &mut[T], offset: usize, stride: usize) {
+    #[inline] fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         data[offset] = self.x1.re;
         data[offset + 1] = self.x1.im;
         data[offset + stride] = self.x2.re;
@@ -212,7 +212,7 @@ impl<T, TSmallFFT> Kernel<T> for SpecializedGenericDitKernel<T, TSmallFFT>
 
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs[0 .. cparams.size * 2];
+        let mut data = SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]);
 
         let twiddle_delta = self.twiddle_delta;
         let mut small_fft = TSmallFFT::default();
@@ -223,10 +223,10 @@ impl<T, TSmallFFT> Kernel<T> for SpecializedGenericDitKernel<T, TSmallFFT>
         for x in range_step(0, cparams.size, cparams.unit * radix) {
             let mut twiddle_1: Complex<T> = Complex::one();
             for y in 0 .. cparams.unit {
-                small_fft.load(data, (x + y) * 2, cparams.unit * 2);
+                small_fft.load(&data, (x + y) * 2, cparams.unit * 2);
                 small_fft.twiddle(twiddle_1);
                 small_fft.transform();
-                small_fft.store(data, (x + y) * 2, cparams.unit * 2);
+                small_fft.store(&mut data, (x + y) * 2, cparams.unit * 2);
                 twiddle_1 = twiddle_1 * twiddle_delta;
             }
         }
@@ -239,7 +239,7 @@ impl<T, TSmallFFT> Kernel<T> for SpecializedGenericDifKernel<T, TSmallFFT>
 
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs[0 .. cparams.size * 2];
+        let mut data = SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]);
 
         let twiddle_delta = self.twiddle_delta;
         let mut small_fft = TSmallFFT::default();
@@ -250,10 +250,10 @@ impl<T, TSmallFFT> Kernel<T> for SpecializedGenericDifKernel<T, TSmallFFT>
         for x in range_step(0, cparams.size, cparams.unit * radix) {
             let mut twiddle_1: Complex<T> = Complex::one();
             for y in 0 .. cparams.unit {
-                small_fft.load(data, (x + y) * 2, cparams.unit * 2);
+                small_fft.load(&data, (x + y) * 2, cparams.unit * 2);
                 small_fft.transform();
                 small_fft.twiddle(twiddle_1);
-                small_fft.store(data, (x + y) * 2, cparams.unit * 2);
+                small_fft.store(&mut data, (x + y) * 2, cparams.unit * 2);
                 twiddle_1 = twiddle_1 * twiddle_delta;
             }
         }
