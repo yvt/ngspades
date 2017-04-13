@@ -21,6 +21,7 @@
 extern crate num_complex;
 extern crate num_iter;
 extern crate num_traits;
+#[cfg(any(target_arch="x86", target_arch="x86_64"))] extern crate immintrin;
 
 use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
 use std::fmt::Debug;

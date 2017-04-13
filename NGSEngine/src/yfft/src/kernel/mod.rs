@@ -8,6 +8,13 @@ mod bitreversal;
 mod generic;
 mod generic2;
 
+#[cfg(any(target_arch="x86", target_arch="x86_64"))] mod x86;
+
+// Stub for non-x86 systems
+#[cfg(not(any(target_arch="x86", target_arch="x86_64")))] mod x86 {
+    pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>> { None }
+}
+
 use std::fmt::Debug;
 use super::Num;
 
@@ -52,7 +59,8 @@ pub trait Kernel<T> : Debug {
 
 impl<T> Kernel<T> where T : Num + 'static {
     pub fn new(cparams: &KernelCreationParams) -> Box<Kernel<T>> {
-        generic2::new_specialized_generic_kernel(cparams)
+        x86::new_x86_kernel(cparams)
+            .or_else(|| generic2::new_specialized_generic_kernel(cparams))
             .unwrap_or_else(|| generic::new_generic_kernel(cparams))
     }
 }
