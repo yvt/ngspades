@@ -3,6 +3,15 @@
 //
 // This source code is a part of Nightingales.
 //
+
+//! Defines generic FFT kernels that don't make any assumptions about radix or instruction set.
+//!
+//! Performances
+//! ------------
+//!
+//! According to a benchmark result, this kernel runs about 100x slower than a commercial-level FFT library on a Skylake
+//! machine.
+
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType};
 
 use num_complex::Complex;

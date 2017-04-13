@@ -5,6 +5,7 @@
 //
 mod bitreversal;
 mod generic;
+mod generic2;
 
 use std::fmt::Debug;
 use num_complex::Complex;
@@ -50,6 +51,7 @@ pub trait Kernel<T> : Debug {
 
 impl<T> Kernel<T> where T : Num + 'static {
     pub fn new(cparams: &KernelCreationParams) -> Box<Kernel<T>> {
-        generic::new_generic_kernel(cparams)
+        generic2::new_specialized_generic_kernel(cparams)
+            .unwrap_or_else(|| generic::new_generic_kernel(cparams))
     }
 }

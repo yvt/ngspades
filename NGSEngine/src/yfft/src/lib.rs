@@ -25,19 +25,29 @@ extern crate num_traits;
 use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
 use std::fmt::Debug;
 
+use num_complex::Complex;
+
 mod setup;
 mod kernel;
 mod env;
 
 pub trait Num :
-    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
+    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + Default +
+    num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
 impl<T> Num for T where T :
-    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
+    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + Default +
+    num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
 
 #[inline]
-fn complex_from_slice<T : Num>(x: &[T]) -> num_complex::Complex<T> {
-    num_complex::Complex::new(x[0], x[1])
+fn complex_from_slice<T : Num>(x: &[T]) -> Complex<T> {
+    Complex::new(x[0], x[1])
 }
+
+#[inline]
+fn mul_pos_i<T : Num>(x: Complex<T>) -> Complex<T> { Complex::new(-x.im, x.re) }
+
+#[inline]
+fn mul_neg_i<T : Num>(x: Complex<T>) -> Complex<T> { Complex::new(x.im, -x.re) }
 
 pub use setup::{DataOrder, DataFormat, Options, Setup};
 pub use env::Env;
