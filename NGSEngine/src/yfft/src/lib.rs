@@ -84,6 +84,4 @@ mod tests {
     #[bench] fn simple_benchmark_04096(b: &mut Bencher) { run_single_benchmark(4096, b); }
     #[bench] fn simple_benchmark_08192(b: &mut Bencher) { run_single_benchmark(8192, b); }
     #[bench] fn simple_benchmark_16384(b: &mut Bencher) { run_single_benchmark(16384, b); }
-    #[bench] fn simple_benchmark_32768(b: &mut Bencher) { run_single_benchmark(32768, b); }
-    #[bench] fn simple_benchmark_65536(b: &mut Bencher) { run_single_benchmark(65536, b); }
 }

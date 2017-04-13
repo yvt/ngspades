@@ -42,8 +42,8 @@ pub struct Setup<T> {
 }
 
 pub fn factorize(mut x: usize) -> Result<Vec<usize>, ()> {
-
     let mut vec = Vec::new();
+    let mut possible_factor_min = 3;
 
     while x > 1 {
         let radix =
@@ -52,7 +52,13 @@ pub fn factorize(mut x: usize) -> Result<Vec<usize>, ()> {
             } else if x % 2 == 0 {
                 2
             } else {
-                return Err(())
+                let found_radix = (0..)
+                    .map(|r| r * 2 + possible_factor_min)
+                    .filter(|r| x % r == 0)
+                    .nth(0)
+                    .unwrap();
+                possible_factor_min = found_radix;
+                found_radix
             };
         vec.push(radix);
         x /= radix;

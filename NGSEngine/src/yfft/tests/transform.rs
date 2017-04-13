@@ -68,7 +68,7 @@ fn test_patterns<T : yfft::Num>(size: usize) -> Vec<Vec<T>> {
 
 #[test]
 fn fft_correctness_f32() {
-    for size_ref in &[1, 2, 4, 8, 16, 32] {
+    for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49] {
         let size = *size_ref;
         let setup: Setup<f32> = Setup::new(&Options {
             input_data_order: DataOrder::Natural,
