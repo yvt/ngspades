@@ -26,7 +26,6 @@ use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
 use std::fmt::Debug;
 
 mod setup;
-mod twiddles;
 mod kernel;
 mod env;
 

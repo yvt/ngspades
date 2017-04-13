@@ -7,7 +7,6 @@
 use num_complex::Complex;
 use std::result::Result;
 use super::Num;
-use super::twiddles::{TwiddlesTable, factorize};
 use super::kernel::{Kernel, KernelType, KernelCreationParams, new_bit_reversal_kernel};
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
@@ -38,10 +37,27 @@ pub struct Options {
 
 #[derive(Debug)]
 pub struct Setup<T> {
-    // #[doc(hidden)]
-    // pub twiddles_table: TwiddlesTable<T>,
     #[doc(hidden)]
     pub kernels: Vec<Box<Kernel<T>>>
+}
+
+pub fn factorize(mut x: usize) -> Result<Vec<usize>, ()> {
+
+    let mut vec = Vec::new();
+
+    while x > 1 {
+        let radix =
+            if x % 4 == 0 {
+                4
+            } else if x % 2 == 0 {
+                2
+            } else {
+                return Err(())
+            };
+        vec.push(radix);
+        x /= radix;
+    }
+    Ok(vec)
 }
 
 impl<T> Setup<T> where T : Num {
