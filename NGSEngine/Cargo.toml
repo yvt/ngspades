@@ -12,3 +12,4 @@ lazy_static = { version = "0.2" }
 ngsbase = { path = "src/ngsbase" }
 ngscom = { path = "src/ngscom" }
 ngsgfxbase = { path = "src/ngsgfxbase" }
+yfft = { path = "src/yfft" }

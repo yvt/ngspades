@@ -1,0 +1,10 @@
+[package]
+name = "yfft"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+num-complex = "0.1.36"
+num-iter = "0.1.33"
+num-traits = "0.1.37"
+x86intrin = "0.4.1"
