@@ -14,8 +14,13 @@ pub enum DataOrder {
     /// The data is ordered in a natural order.
     Natural,
 
-    /// The data is ordered in a bit-reversal order.
-    Swizzled
+    /// The data is ordered in a bit-reversal order with arbitrary radixes.
+    /// Use this data order if you intend to process the output in an order-independent way.
+    Swizzled,
+
+    /// The data is ordered in a Radix-2 bit-reversal order.
+    /// The data length must be a power of two.
+    BitReversed
 }
 
 
@@ -41,7 +46,15 @@ pub struct Setup<T> {
     pub kernels: Vec<Box<Kernel<T>>>
 }
 
-pub fn factorize(mut x: usize) -> Result<Vec<usize>, ()> {
+pub fn factorize_radix2(mut x: usize) -> Result<Vec<usize>, ()> {
+    if (x & (x - 1)) == 0 {
+        Ok(vec![2; x.trailing_zeros() as usize])
+    } else {
+        Err(())
+    }
+}
+
+pub fn factorize(mut x: usize) -> Vec<usize> {
     let mut vec = Vec::new();
     let mut possible_factor_min = 3;
 
@@ -63,7 +76,8 @@ pub fn factorize(mut x: usize) -> Result<Vec<usize>, ()> {
         vec.push(radix);
         x /= radix;
     }
-    Ok(vec)
+
+    vec
 }
 
 impl<T> Setup<T> where T : Num {
@@ -72,12 +86,28 @@ impl<T> Setup<T> where T : Num {
             return Err(())
         }
 
+        let constain_radix2 =
+            options.input_data_order == DataOrder::BitReversed ||
+            options.output_data_order == DataOrder::BitReversed;
+
+        let input_swizzled = match options.input_data_order {
+            DataOrder::Natural => false,
+            DataOrder::Swizzled => true,
+            DataOrder::BitReversed => true
+        };
+
+        let output_swizzled = match options.output_data_order {
+            DataOrder::Natural => false,
+            DataOrder::Swizzled => true,
+            DataOrder::BitReversed => true
+        };
+
         let (post_bit_reversal, kernel_type) =
-            match (options.input_data_order, options.output_data_order) {
-                (DataOrder::Natural,  DataOrder::Natural)  => (true,  KernelType::Dif),
-                (DataOrder::Swizzled, DataOrder::Natural)  => (false, KernelType::Dit),
-                (DataOrder::Natural,  DataOrder::Swizzled) => (false, KernelType::Dif),
-                (DataOrder::Swizzled, DataOrder::Swizzled) => return Err(())
+            match (input_swizzled, output_swizzled) {
+                (false, false) => (true,  KernelType::Dif),
+                (true,  false) => (false, KernelType::Dit),
+                (false, true)  => (false, KernelType::Dif),
+                (true,  true)  => return Err(())
             };
 
         match (options.input_data_format, options.output_data_format, options.inverse) {
@@ -87,7 +117,11 @@ impl<T> Setup<T> where T : Num {
             _ => return Err(())
         }
 
-        let mut radixes = try!(factorize(options.len));
+        let mut radixes = if constain_radix2 {
+            try!(factorize_radix2(options.len))
+        } else {
+            factorize(options.len)
+        };
         if kernel_type == KernelType::Dit {
             radixes.reverse();
         }
@@ -125,5 +159,21 @@ impl<T> Setup<T> where T : Num {
         self.kernels.iter()
             .map(|k| k.required_work_area_size())
             .max().unwrap_or(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_factorize() {
+        assert_eq!(factorize(2), vec![2]);
+    }
+
+    #[test]
+    fn test_factorize_radix2() {
+        assert_eq!(factorize_radix2(4), Ok(vec![2, 2]));
+        assert_eq!(factorize_radix2(5), Err(()));
     }
 }
