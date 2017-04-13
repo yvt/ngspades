@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{Kernel, KernelParams};
+use super::{Kernel, KernelParams, SliceAccessor};
 
 use super::super::Num;
 
@@ -54,11 +54,11 @@ struct BitReversalKernel {
 
 impl<T> Kernel<T> for BitReversalKernel where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
-        let indices = &self.indices;
+        let indices = SliceAccessor::new(&self.indices);
         let size = self.indices.len();
-        let ref mut data = params.coefs;
-        let ref mut wa = params.work_area[0 .. size * 2];
-        wa.copy_from_slice(data);
+        let mut data = SliceAccessor::new(&mut params.coefs[0 .. size * 2]);
+        let mut wa = SliceAccessor::new(&mut params.work_area[0 .. size * 2]);
+        wa.copy_from_slice(*data);
         for i in 0 .. size {
             let index = indices[i];
             data[i * 2] = wa[index * 2];
