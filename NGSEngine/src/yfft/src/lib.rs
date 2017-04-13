@@ -84,4 +84,51 @@ mod tests {
     #[bench] fn simple_benchmark_04096(b: &mut Bencher) { run_single_benchmark(4096, b); }
     #[bench] fn simple_benchmark_08192(b: &mut Bencher) { run_single_benchmark(8192, b); }
     #[bench] fn simple_benchmark_16384(b: &mut Bencher) { run_single_benchmark(16384, b); }
+
+    // Following tests doesn't include the bit revesal pass, so the result cannot be compared
+    // with other benchmarks
+
+    fn run_dif_benchmark(size: usize, b: &mut Bencher) {
+        let setup: Setup<f32> = Setup::new(&Options {
+            input_data_order: DataOrder::Natural,
+            output_data_order: DataOrder::Swizzled,
+            input_data_format: DataFormat::Complex,
+            output_data_format: DataFormat::Complex,
+            len: size,
+            inverse: false
+        }).unwrap();
+        let mut senv = Env::new(&setup);
+        let mut buf = vec![0f32; size * 2];
+        b.iter(move || {
+            senv.transform(buf.as_mut_slice());
+        })
+    }
+
+    #[bench] fn dif_benchmark_00064(b: &mut Bencher) { run_dif_benchmark(64, b); }
+    #[bench] fn dif_benchmark_00256(b: &mut Bencher) { run_dif_benchmark(256, b); }
+    #[bench] fn dif_benchmark_00512(b: &mut Bencher) { run_dif_benchmark(512, b); }
+    #[bench] fn dif_benchmark_02048(b: &mut Bencher) { run_dif_benchmark(2048, b); }
+    #[bench] fn dif_benchmark_08192(b: &mut Bencher) { run_dif_benchmark(8192, b); }
+
+    fn run_dit_benchmark(size: usize, b: &mut Bencher) {
+        let setup: Setup<f32> = Setup::new(&Options {
+            input_data_order: DataOrder::Swizzled,
+            output_data_order: DataOrder::Natural,
+            input_data_format: DataFormat::Complex,
+            output_data_format: DataFormat::Complex,
+            len: size,
+            inverse: false
+        }).unwrap();
+        let mut senv = Env::new(&setup);
+        let mut buf = vec![0f32; size * 2];
+        b.iter(move || {
+            senv.transform(buf.as_mut_slice());
+        })
+    }
+
+    #[bench] fn dit_benchmark_00064(b: &mut Bencher) { run_dit_benchmark(64, b); }
+    #[bench] fn dit_benchmark_00256(b: &mut Bencher) { run_dit_benchmark(256, b); }
+    #[bench] fn dit_benchmark_00512(b: &mut Bencher) { run_dit_benchmark(512, b); }
+    #[bench] fn dit_benchmark_02048(b: &mut Bencher) { run_dit_benchmark(2048, b); }
+    #[bench] fn dit_benchmark_08192(b: &mut Bencher) { run_dit_benchmark(8192, b); }
 }
