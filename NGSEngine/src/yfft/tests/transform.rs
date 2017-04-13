@@ -10,7 +10,6 @@ extern crate num_traits;
 use num_complex::Complex;
 use num_traits::{Zero, One};
 
-use std::rc::Rc;
 use yfft::*;
 
 fn naive_dft<T : yfft::Num>(input: &[T], output: &mut[T], inverse: bool) {

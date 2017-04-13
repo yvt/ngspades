@@ -19,5 +19,5 @@ fn test() {
         inverse: false
     }).unwrap();
     let setup_rc = Rc::new(setup);
-    let se = Env::new(setup_rc);
+    Env::new(setup_rc);
 }
