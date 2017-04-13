@@ -7,9 +7,8 @@ use std::borrow::Borrow;
 use super::{Setup, Num};
 use num_traits::Zero;
 use super::kernel::{KernelParams};
-use std::mem;
-use num_complex::Complex;
 
+/// Encapsulates the working area required for a transformation.
 #[derive(Debug)]
 pub struct Env<TNum, TSetupRef> {
     setup: TSetupRef,
@@ -28,6 +27,11 @@ impl<TNum, TSetupRef> Env<TNum, TSetupRef>
         }
     }
 
+    /// Transforms the supplied complex array `data` and writes the result to the same array (therefore this is an
+    /// in-place operation).
+    ///
+    /// The array must be arranged in a interleaved order, in which the odd-th and even-th elements represent the real
+    /// and imaginary components, respectively.
     pub fn transform(&mut self, data: &mut [TNum]) {
         let mut kernel_param = KernelParams {
             coefs: data,

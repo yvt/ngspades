@@ -19,7 +19,7 @@ use num_complex::Complex;
 use num_traits::{Zero, One};
 use num_iter::range_step;
 
-use super::super::{Num, complex_from_slice, mul_neg_i, mul_pos_i};
+use super::super::{Num, mul_pos_i};
 
 use std::fmt::Debug;
 use std::marker::PhantomData;

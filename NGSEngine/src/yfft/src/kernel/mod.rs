@@ -8,8 +8,6 @@ mod generic;
 mod generic2;
 
 use std::fmt::Debug;
-use num_complex::Complex;
-use num_traits::Zero;
 use super::Num;
 
 pub use self::bitreversal::new_bit_reversal_kernel;

@@ -3,13 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType};
+use super::{Kernel, KernelParams};
 
-use num_complex::Complex;
-use num_traits::{Zero, One};
-use num_iter::range_step;
-
-use super::super::{Num, complex_from_slice};
+use super::super::Num;
 
 /// Creates a bit reversal kernel.
 ///

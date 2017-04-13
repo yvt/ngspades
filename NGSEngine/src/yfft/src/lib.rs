@@ -46,10 +46,7 @@ fn complex_from_slice<T : Num>(x: &[T]) -> Complex<T> {
 #[inline]
 fn mul_pos_i<T : Num>(x: Complex<T>) -> Complex<T> { Complex::new(-x.im, x.re) }
 
-#[inline]
-fn mul_neg_i<T : Num>(x: Complex<T>) -> Complex<T> { Complex::new(x.im, -x.re) }
-
-pub use setup::{DataOrder, DataFormat, Options, Setup};
+pub use setup::{DataOrder, DataFormat, Options, Setup, PlanError};
 pub use env::Env;
 
 extern crate test;
