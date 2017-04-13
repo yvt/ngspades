@@ -65,21 +65,18 @@ impl<T> Kernel<T> for GenericDitKernel<T> where T : Num {
         for x in range_step(0, cparams.size, cparams.unit * cparams.radix) {
             let mut twiddle_1: Complex<T> = Complex::one();
             for y in 0 .. cparams.unit {
-                let mut twiddle_2 = Complex::one();
                 for z in 0 .. cparams.radix {
-                    let c = complex_from_slice(&data[(x + y + z * cparams.unit) * 2 ..]) *
-                        twiddle_2;
-                    wa[z * 2    ] = c.re;
-                    wa[z * 2 + 1] = c.im;
-                    twiddle_2 = twiddle_2 * twiddle_1;
+                    wa[z * 2    ] = data[(x + y + z * cparams.unit) * 2];
+                    wa[z * 2 + 1] = data[(x + y + z * cparams.unit) * 2 + 1];
                 }
                 let mut coef_1 = Complex::one();
                 for z in 0 .. cparams.radix {
                     let mut c: Complex<T> = Complex::zero();
                     let mut coef_2 = Complex::one();
+                    let coef_1_tw = coef_1 * twiddle_1;
                     for w in 0 .. cparams.radix {
                         c = c + coef_2 * complex_from_slice(&wa[w * 2 ..]);
-                        coef_2 = coef_2 * coef_1;
+                        coef_2 = coef_2 * coef_1_tw;
                     }
                     data[(x + y + z * cparams.unit) * 2    ] = c.re;
                     data[(x + y + z * cparams.unit) * 2 + 1] = c.im;

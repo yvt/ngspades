@@ -30,9 +30,9 @@ mod kernel;
 mod env;
 
 pub trait Num :
-    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + num_traits::Float + num_traits::FloatConst + num_traits::Zero {}
+    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
 impl<T> Num for T where T :
-    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + num_traits::Float + num_traits::FloatConst + num_traits::Zero {}
+    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
 
 #[inline]
 fn complex_from_slice<T : Num>(x: &[T]) -> num_complex::Complex<T> {
