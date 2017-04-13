@@ -17,7 +17,7 @@ pub struct Env<TNum, TSetupRef> {
 }
 
 impl<TNum, TSetupRef> Env<TNum, TSetupRef>
-    where TNum: Num,
+    where TNum: Num + 'static,
           TSetupRef: Borrow<Setup<TNum>> {
 
     pub fn new(setup: TSetupRef) -> Self {

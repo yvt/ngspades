@@ -80,7 +80,7 @@ pub fn factorize(mut x: usize) -> Vec<usize> {
     vec
 }
 
-impl<T> Setup<T> where T : Num {
+impl<T> Setup<T> where T : Num + 'static {
     pub fn new(options: &Options) -> Result<Self, ()> {
         if options.len == 0 {
             return Err(())

@@ -48,7 +48,7 @@ pub trait Kernel<T> : Debug {
     fn required_work_area_size(&self) -> usize { 0 }
 }
 
-impl<T> Kernel<T> where T : Num {
+impl<T> Kernel<T> where T : Num + 'static {
     pub fn new(cparams: &KernelCreationParams) -> Box<Kernel<T>> {
         generic::new_generic_kernel(cparams)
     }

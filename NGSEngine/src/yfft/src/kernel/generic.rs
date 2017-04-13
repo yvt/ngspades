@@ -12,36 +12,55 @@ use num_iter::range_step;
 use super::super::{Num, complex_from_slice};
 
 
-pub fn new_generic_kernel<T>(cparams: &KernelCreationParams) -> Box<Kernel<T>>
+pub fn new_generic_kernel<T : 'static>(cparams: &KernelCreationParams) -> Box<Kernel<T>>
     where T : Num {
 
+    let full_circle = if cparams.inverse { 2 } else { -2 };
+
     match cparams.kernel_type {
-        KernelType::Dit => Box::new(GenericDitKernel{ cparams: *cparams }),
-        KernelType::Dif => Box::new(GenericDifKernel{ cparams: *cparams }),
+        KernelType::Dit => Box::new(GenericDitKernel {
+            cparams: *cparams,
+            twiddle_delta: Complex::new(Zero::zero(),
+                T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
+                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp(),
+            coef_delta: Complex::new(Zero::zero(),
+                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap()).exp()
+        }),
+        KernelType::Dif => Box::new(GenericDifKernel {
+            cparams: *cparams,
+            twiddle_delta: Complex::new(Zero::zero(),
+                T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
+                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp(),
+            coef_delta: Complex::new(Zero::zero(),
+                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap()).exp()
+        }),
     }
 }
 
 #[derive(Debug)]
-struct GenericDitKernel { cparams: KernelCreationParams }
+struct GenericDitKernel<T> {
+    cparams: KernelCreationParams,
+    twiddle_delta: Complex<T>,
+    /// sub-FFT twiddle unit
+    coef_delta: Complex<T>,
+}
 
 #[derive(Debug)]
-struct GenericDifKernel { cparams: KernelCreationParams }
+struct GenericDifKernel<T> {
+    cparams: KernelCreationParams,
+    twiddle_delta: Complex<T>,
+    /// sub-FFT twiddle unit
+    coef_delta: Complex<T>,
+}
 
-impl<T> Kernel<T> for GenericDitKernel where T : Num {
+impl<T> Kernel<T> for GenericDitKernel<T> where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
         let ref mut data = params.coefs;
         let ref mut wa = params.work_area[0 .. cparams.radix * 2];
 
-        let full_circle = if cparams.inverse { 2 } else { -2 };
-
-        let twiddle_delta: Complex<T> = Complex::new(Zero::zero(),
-            T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
-            T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp();
-
-        // sub-FFT twiddle unit
-        let coef_delta = Complex::new(Zero::zero(),
-            T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap()).exp();
+        let twiddle_delta = self.twiddle_delta;
+        let coef_delta = self.coef_delta;
 
         for x in range_step(0, cparams.size, cparams.unit * cparams.radix) {
             let mut twiddle_1: Complex<T> = Complex::one();
@@ -74,21 +93,14 @@ impl<T> Kernel<T> for GenericDitKernel where T : Num {
     fn required_work_area_size(&self) -> usize { self.cparams.radix * 2 }
 }
 
-impl<T> Kernel<T> for GenericDifKernel where T : Num {
+impl<T> Kernel<T> for GenericDifKernel<T> where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
         let ref mut data = params.coefs;
         let ref mut wa = params.work_area[0 .. cparams.radix * 2];
 
-        let full_circle = if cparams.inverse { 2 } else { -2 };
-
-        let twiddle_delta: Complex<T> = Complex::new(Zero::zero(),
-            T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
-            T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp();
-
-        // sub-FFT twiddle unit
-        let coef_delta = Complex::new(Zero::zero(),
-            T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap()).exp();
+        let twiddle_delta = self.twiddle_delta;
+        let coef_delta = self.coef_delta;
 
         for x in range_step(0, cparams.size, cparams.unit * cparams.radix) {
             let mut twiddle_1: Complex<T> = Complex::one();
