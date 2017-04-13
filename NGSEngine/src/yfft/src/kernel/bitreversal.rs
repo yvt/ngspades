@@ -29,7 +29,6 @@ pub fn new_bit_reversal_kernel<T>(radixes: &[usize]) -> Box<Kernel<T>>
         factors[i + 1] = factors[i] * radixes[i];
     }
 
-    // TODO: needs verification by means of mixed radix testing
     let mut cur: usize = 0;
     for i in 0 .. len {
         indices[cur] = i;
