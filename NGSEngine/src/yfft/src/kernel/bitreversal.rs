@@ -24,9 +24,9 @@ pub fn new_bit_reversal_kernel<T>(radixes: &[usize]) -> Box<Kernel<T>>
 
     let mut digits = vec![0; radixes.len()];
     let mut factors = vec![0; radixes.len()];
-    factors[radixes.len() - 1] = 1;
-    for i in (0 .. radixes.len() - 1).rev() {
-        factors[i] = factors[i + 1] * radixes[i + 1];
+    factors[0] = 1;
+    for i in 0 .. radixes.len() - 1 {
+        factors[i + 1] = factors[i] * radixes[i];
     }
 
     // TODO: needs verification by means of mixed radix testing
@@ -34,15 +34,15 @@ pub fn new_bit_reversal_kernel<T>(radixes: &[usize]) -> Box<Kernel<T>>
     for i in 0 .. len {
         indices[cur] = i;
         if i < len - 1 {
-            digits[0] += 1; cur += factors[0];
-            for k in 0 .. radixes.len() {
+            digits[radixes.len() - 1] += 1; cur += factors[radixes.len() - 1];
+            for k in (0 .. radixes.len()).rev() {
                 if digits[k] < radixes[k] {
                     break;
                 }
-                digits[k + 1] += 1;
+                digits[k - 1] += 1;
                 digits[k] = 0;
                 cur -= factors[k] * radixes[k];
-                cur += factors[k + 1];
+                cur += factors[k - 1];
             }
         }
     }
