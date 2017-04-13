@@ -142,7 +142,20 @@ impl<T> Setup<T> where T : Num {
                     }));
                 }
             },
-            KernelType::Dit => unimplemented!()
+            KernelType::Dit => {
+                let mut unit = 1;
+                for radix_ref in &radixes {
+                    let radix = *radix_ref;
+                    kernels.push(Kernel::new(&KernelCreationParams {
+                        size: options.len,
+                        kernel_type: kernel_type,
+                        radix: radix,
+                        unit: unit,
+                        inverse: options.inverse,
+                    }));
+                    unit *= radix;
+                }
+            },
         }
 
         if post_bit_reversal && options.len > 1 {
