@@ -212,7 +212,7 @@ impl<T, TSmallFFT> Kernel<T> for SpecializedGenericDitKernel<T, TSmallFFT>
 
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs;
+        let ref mut data = params.coefs[0 .. cparams.size * 2];
 
         let twiddle_delta = self.twiddle_delta;
         let mut small_fft = TSmallFFT::default();
@@ -239,7 +239,7 @@ impl<T, TSmallFFT> Kernel<T> for SpecializedGenericDifKernel<T, TSmallFFT>
 
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs;
+        let ref mut data = params.coefs[0 .. cparams.size * 2];
 
         let twiddle_delta = self.twiddle_delta;
         let mut small_fft = TSmallFFT::default();

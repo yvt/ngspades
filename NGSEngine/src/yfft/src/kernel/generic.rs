@@ -65,7 +65,7 @@ struct GenericDifKernel<T> {
 impl<T> Kernel<T> for GenericDitKernel<T> where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs;
+        let ref mut data = params.coefs[0 .. cparams.size * 2];
         let ref mut wa = params.work_area[0 .. cparams.radix * 2];
 
         let twiddle_delta = self.twiddle_delta;
@@ -102,7 +102,7 @@ impl<T> Kernel<T> for GenericDitKernel<T> where T : Num {
 impl<T> Kernel<T> for GenericDifKernel<T> where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs;
+        let ref mut data = params.coefs[0 .. cparams.size * 2];
         let ref mut wa = params.work_area[0 .. cparams.radix * 2];
 
         let twiddle_delta = self.twiddle_delta;
