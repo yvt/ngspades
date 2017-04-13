@@ -65,8 +65,8 @@ struct GenericDifKernel<T> {
 impl<T> Kernel<T> for GenericDitKernel<T> where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let mut data = SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]);
-        let mut wa = SliceAccessor::new(&mut params.work_area[0 .. cparams.radix * 2]);
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut wa = unsafe { SliceAccessor::new(&mut params.work_area[0 .. cparams.radix * 2]) };
 
         let twiddle_delta = self.twiddle_delta;
         let coef_delta = self.coef_delta;
@@ -102,8 +102,8 @@ impl<T> Kernel<T> for GenericDitKernel<T> where T : Num {
 impl<T> Kernel<T> for GenericDifKernel<T> where T : Num {
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
-        let ref mut data = params.coefs[0 .. cparams.size * 2];
-        let ref mut wa = params.work_area[0 .. cparams.radix * 2];
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut wa = unsafe { SliceAccessor::new(&mut params.work_area[0 .. cparams.radix * 2]) };
 
         let twiddle_delta = self.twiddle_delta;
         let coef_delta = self.coef_delta;

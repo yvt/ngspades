@@ -15,12 +15,12 @@ pub struct SliceAccessor<T> {
 }
 
 impl<T> SliceAccessor<T> {
-    pub fn new(x: T) -> Self { SliceAccessor { slice: x } }
+    pub unsafe fn new(x: T) -> Self { SliceAccessor { slice: x } }
 }
 
 impl<'a, T> convert::Into<SliceAccessor<&'a [T]>> for SliceAccessor<&'a mut[T]> {
     fn into(self) -> SliceAccessor<&'a [T]> {
-        SliceAccessor::new(self.slice)
+        unsafe { SliceAccessor::new(self.slice) }
     }
 }
 

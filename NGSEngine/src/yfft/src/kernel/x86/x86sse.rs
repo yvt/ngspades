@@ -72,7 +72,7 @@ struct SseDifKernel {
 impl Kernel<f32> for SseDitKernel {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
-        let mut data = SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]);
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
 
         let twiddle_delta = self.twiddle_delta;
         unimplemented!()
@@ -82,7 +82,7 @@ impl Kernel<f32> for SseDitKernel {
 impl Kernel<f32> for SseDifKernel {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
-        let mut data = SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]);
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
 
         let twiddle_delta = self.twiddle_delta;
         unimplemented!()
