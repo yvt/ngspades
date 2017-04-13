@@ -66,7 +66,7 @@ fn test_patterns<T : yfft::Num>(size: usize) -> Vec<Vec<T>> {
     vec
 }
 
-fn fft_forward<T : Num>() {
+fn simple_fft<T : Num>(inverse: bool) {
     for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49] {
         let size = *size_ref;
         let setup: Setup<T> = Setup::new(&Options {
@@ -75,7 +75,7 @@ fn fft_forward<T : Num>() {
             input_data_format: DataFormat::Complex,
             output_data_format: DataFormat::Complex,
             len: size,
-            inverse: false
+            inverse: inverse
         }).unwrap();
         let mut se = Env::new(&setup);
         let mut result_1 = vec![T::zero(); size * 2];
@@ -84,7 +84,7 @@ fn fft_forward<T : Num>() {
             result_1.copy_from_slice(pat.as_slice());
             se.transform(result_1.as_mut_slice());
 
-            naive_dft(pat.as_slice(), result_2.as_mut_slice(), false);
+            naive_dft(pat.as_slice(), result_2.as_mut_slice(), inverse);
 
             assert_num_slice_approx_eq(result_1.as_slice(), result_2.as_slice(), T::from(1.0e-4).unwrap());
         }
@@ -92,10 +92,16 @@ fn fft_forward<T : Num>() {
 }
 
 #[test]
-fn fft_forward_f32() { fft_forward::<f32>(); }
+fn fft_forward_f32() { simple_fft::<f32>(false); }
 
 #[test]
-fn fft_forward_f64() { fft_forward::<f64>(); }
+fn fft_forward_f64() { simple_fft::<f64>(false); }
+
+#[test]
+fn fft_backward_f32() { simple_fft::<f32>(true); }
+
+#[test]
+fn fft_backward_f64() { simple_fft::<f64>(true); }
 
 fn fft_roundtrip_shortcut<T : Num>() {
     for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49] {
