@@ -33,7 +33,10 @@ pub enum DataFormat {
     Complex,
 
     /// Not supported.
-    Real
+    Real,
+
+    /// Not supported.
+    HalfComplex,
 }
 
 /// The FFT kernel configuration.
@@ -162,8 +165,8 @@ impl<T> Setup<T> where T : Num + 'static {
 
         match (options.input_data_format, options.output_data_format, options.inverse) {
             (DataFormat::Complex, DataFormat::Complex, _) => {},
-            (DataFormat::Real, DataFormat::Complex, false) => unimplemented!(),
-            (DataFormat::Complex, DataFormat::Real, true) => unimplemented!(),
+            (DataFormat::Real, DataFormat::HalfComplex, false) => unimplemented!(),
+            (DataFormat::HalfComplex, DataFormat::Real, true) => unimplemented!(),
             _ => return Err(PlanError::InvalidInput)
         }
 
