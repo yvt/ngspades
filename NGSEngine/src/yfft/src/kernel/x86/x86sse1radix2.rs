@@ -9,7 +9,9 @@
 //! Performances
 //! ------------
 //!
-//! Yet to be measured.
+//! According to a benchmark result, this kernel runs about 2-4x slower than a commercial-level FFT library (with
+//! all optimizations and instruction sets including ones that this kernel doesn't support enabled) on a Skylake
+//! machine.
 
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
 use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params};

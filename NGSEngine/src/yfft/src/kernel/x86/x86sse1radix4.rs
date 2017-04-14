@@ -9,7 +9,9 @@
 //! Performances
 //! ------------
 //!
-//! Yet to be measured.
+//! According to a benchmark result, this kernel runs about 1-3x slower than a commercial-level FFT library (with
+//! all optimizations and instruction sets including ones that this kernel doesn't support enabled) on a Skylake
+//! machine.
 
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
 use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params};
@@ -50,7 +52,201 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
 
         match cparams.unit {
             unit if unit % 4 == 0 => Some(Box::new(SseRadix4Kernel3::new(cparams, sparams))),
+            unit if unit % 2 == 0 => Some(Box::new(SseRadix4Kernel2::new(cparams, sparams))),
+            1                     => Some(Box::new(SseRadix4Kernel1::new(cparams, sparams))),
             _ => None
+        }
+    }
+}
+
+/// This Radix-4 kernel is specialized for the case where `unit == 1` and computes one small FFTs in a single iteration.
+#[derive(Debug)]
+struct SseRadix4Kernel1<T> {
+    cparams: KernelCreationParams,
+    sparams: T,
+}
+
+impl<T: StaticParams> SseRadix4Kernel1<T> {
+    fn new(cparams: &KernelCreationParams, sparams: T) -> Self {
+        sparams.check_param(cparams);
+        assert_eq!(cparams.radix, 4);
+        assert_eq!(cparams.unit, 1);
+        Self {
+            cparams: *cparams,
+            sparams: sparams,
+        }
+    }
+}
+
+impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel1<T> {
+    fn transform(&self, params: &mut KernelParams<f32>) {
+        let cparams = &self.cparams;
+        let sparams = &self.sparams;
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+
+        // TODO: check alignment?
+
+        let neg_mask_raw: [u32; 4] =
+            if sparams.inverse() { [0, 0, 0x80000000, 0] } else { [0, 0, 0, 0x80000000] };
+        let neg_mask = unsafe { *(&neg_mask_raw as *const u32 as *const f32x4) };
+
+        for x in range_step(0, cparams.size * 2, 8) {
+            let cur1 = &mut data[x] as *mut f32 as *mut f32x4;
+            let cur2 = &mut data[x + 4] as *mut f32 as *mut f32x4;
+
+            // riri format
+            let x1 = unsafe { *cur1 };
+            let y1 = unsafe { *cur2 };
+
+            // perform size-4 small FFT (see generic2.rs for human-readable code)
+            let t_1_2 = x1 + y1;
+            let t_3_4 = x1 - y1;
+            let t_1_3 =  f32x4_shuffle!(t_1_2, t_3_4, [0, 1, 4, 5]);
+            let t_2_4t = f32x4_shuffle!(t_1_2, t_3_4, [2, 3, 7, 6]);
+
+            // multiply the last elem (t4) by I (backward) or -I (forward)
+            let t_2_4 = f32x4_bitxor(t_2_4t, neg_mask);
+            let x2 = t_1_3 + t_2_4;
+            let y2 = t_1_3 - t_2_4;
+
+            unsafe { *cur1 = x2 };
+            unsafe { *cur2 = y2 };
+        }
+    }
+}
+
+/// This Radix-4 kernel computes two small FFTs in a single iteration.
+#[derive(Debug)]
+struct SseRadix4Kernel2<T> {
+    cparams: KernelCreationParams,
+    twiddles: Vec<f32x4>,
+    sparams: T
+}
+
+impl<T: StaticParams> SseRadix4Kernel2<T> {
+    fn new(cparams: &KernelCreationParams, sparams: T) -> Self {
+        sparams.check_param(cparams);
+        assert_eq!(cparams.radix, 4);
+        assert_eq!(cparams.unit % 2, 0);
+
+        let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
+        let mut twiddles = Vec::new();
+        for i in range_step(0, cparams.unit, 2) {
+            let c1 = Complex::new(0f32, full_circle * (i) as f32 /
+                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+            let c2 = Complex::new(0f32, full_circle * (i + 1) as f32 /
+                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+            // rr-ii format
+            twiddles.push(f32x4::new(c1.re, c2.re, c1.im, c2.im));
+
+            let c12 = c1 * c1;
+            let c22 = c2 * c2;
+            twiddles.push(f32x4::new(c12.re, c22.re, c12.im, c22.im));
+
+            let c13 = c12 * c1;
+            let c23 = c22 * c2;
+            twiddles.push(f32x4::new(c13.re, c23.re, c13.im, c23.im));
+        }
+
+        Self {
+            cparams: *cparams,
+            twiddles: twiddles,
+            sparams: sparams,
+        }
+    }
+}
+
+impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
+    fn transform(&self, params: &mut KernelParams<f32>) {
+        let cparams = &self.cparams;
+        let sparams = &self.sparams;
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+
+        // TODO: check alignment?
+
+        let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
+
+        let neg_mask_raw: [u32; 4] = [0x80000000, 0x80000000, 0, 0];
+        let neg_mask = unsafe { *(&neg_mask_raw as *const u32 as *const f32x4) };
+
+        let neg_mask2_raw: [u32; 4] = [0x80000000, 0, 0x80000000, 0];
+        let neg_mask2 = unsafe { *(&neg_mask2_raw as *const u32 as *const f32x4) };
+
+        let pre_twiddle = sparams.kernel_type() == KernelType::Dit;
+        let post_twiddle = sparams.kernel_type() == KernelType::Dif;
+
+        for x in range_step(0, cparams.size * 2, cparams.unit * 8) {
+            for y in 0 .. cparams.unit / 2 {
+                let cur1 = &mut data[x + y * 4] as *mut f32 as *mut f32x4;
+                let cur2 = &mut data[x + y * 4 + cparams.unit * 2] as *mut f32 as *mut f32x4;
+                let cur3 = &mut data[x + y * 4 + cparams.unit * 4] as *mut f32 as *mut f32x4;
+                let cur4 = &mut data[x + y * 4 + cparams.unit * 6] as *mut f32 as *mut f32x4;
+
+                // rrii format
+                let twiddle_1 = twiddles[y * 3];
+                let twiddle_2 = twiddles[y * 3 + 1];
+                let twiddle_3 = twiddles[y * 3 + 2];
+
+                // riri format
+                let x1 = unsafe { *cur1 };
+                let y1 = unsafe { *cur2 };
+                let z1 = unsafe { *cur3 };
+                let w1 = unsafe { *cur4 };
+
+                // apply twiddle factor
+                let x2 = x1;
+                let y2 = if pre_twiddle {
+                    let t1 = f32x4_shuffle!(y1, y1, [0, 2, 5, 7]); // riri to rrii
+                    let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
+                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                } else { y1 };
+                let z2 = if pre_twiddle {
+                    let t1 = f32x4_shuffle!(z1, z1, [0, 2, 5, 7]); // riri to rrii
+                    let t2 = f32x4_complex_mul_rrii(t1, twiddle_2, neg_mask);
+                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                } else { z1 };
+                let w2 = if pre_twiddle {
+                    let t1 = f32x4_shuffle!(w1, w1, [0, 2, 5, 7]); // riri to rrii
+                    let t2 = f32x4_complex_mul_rrii(t1, twiddle_3, neg_mask);
+                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                } else { w1 };
+
+                // perform size-4 FFT
+                let x3 = x2 + z2; let y3 = y2 + w2;
+                let z3 = x2 - z2; let w3t = y2 - w2;
+
+                // w3 = w3t * i
+                let w3 = f32x4_bitxor(f32x4_shuffle!(w3t, w3t, [1, 0, 7, 6]), neg_mask2);
+
+                let (x4, y4, z4, w4) = if sparams.inverse() {
+                    (x3 + y3, z3 + w3, x3 - y3, z3 - w3)
+                } else {
+                    (x3 + y3, z3 - w3, x3 - y3, z3 + w3)
+                };
+
+                // apply twiddle factor
+                let x5 = x4;
+                let y5 = if post_twiddle {
+                    let t1 = f32x4_shuffle!(y4, y4, [0, 2, 5, 7]); // riri to rrii
+                    let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
+                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                } else { y4 };
+                let z5 = if post_twiddle {
+                    let t1 = f32x4_shuffle!(z4, z4, [0, 2, 5, 7]); // riri to rrii
+                    let t2 = f32x4_complex_mul_rrii(t1, twiddle_2, neg_mask);
+                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                } else { z4 };
+                let w5 = if post_twiddle {
+                    let t1 = f32x4_shuffle!(w4, w4, [0, 2, 5, 7]); // riri to rrii
+                    let t2 = f32x4_complex_mul_rrii(t1, twiddle_3, neg_mask);
+                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                } else { w4 };
+
+                unsafe { *cur1 = x5 };
+                unsafe { *cur2 = y5 };
+                unsafe { *cur3 = z5 };
+                unsafe { *cur4 = w5 };
+            }
         }
     }
 }
