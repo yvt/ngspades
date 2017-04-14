@@ -176,10 +176,10 @@ impl Kernel<f32> for SseRadix2DitKernel2 {
         let neg_mask = unsafe { *(&neg_mask_raw as *const u32 as *const f32x4) };
 
         for x in range_step(0, cparams.size * 2, cparams.unit * 4) {
-            for y in range_step(0, cparams.unit * 2, 4) {
-                let cur1 = &mut data[x + y] as *mut f32 as *mut f32x4;
-                let cur2 = &mut data[x + y + cparams.unit * 2] as *mut f32 as *mut f32x4;
-                let twiddle_1 = twiddles[y >> 2];
+            for y in 0 .. cparams.unit / 2 {
+                let cur1 = &mut data[x + y * 4] as *mut f32 as *mut f32x4;
+                let cur2 = &mut data[x + y * 4 + cparams.unit * 2] as *mut f32 as *mut f32x4;
+                let twiddle_1 = twiddles[y];
 
                 // x1a, x1b : Complex<f32> = X[x1/2 .. x1/2 + 2]
                 // (x1a.r, x1a.i, x1b.r, x1b.i)
