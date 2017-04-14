@@ -7,7 +7,10 @@
 //! Defines the `SliceAccessor` type that can be used to bypass bounds checking
 //! on the release builds.
 
-use std::{ops, convert, slice};
+use std::{ops, convert};
+
+#[cfg(not(debug_assertions))]
+use std::slice;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SliceAccessor<T> {

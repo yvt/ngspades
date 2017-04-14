@@ -12,22 +12,15 @@
 //! Yet to be measured.
 
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::{f32x4_bitxor};
+use super::super::super::simdutils::{f32x4_bitxor, f32x4_complex_mul_rrii};
 
 use num_complex::Complex;
-use num_traits::{Zero, One, FloatConst};
 use num_iter::range_step;
 
-use simd::{f32x4, i32x4};
+use simd::f32x4;
 
-use super::super::super::mul_pos_i;
-
-use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::any::TypeId;
-use std::mem;
-use std::f32;
-use std::ops;
+use std::{mem, f32};
 
 pub fn new_x86_sse_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
     where T : Num {
@@ -48,51 +41,6 @@ pub fn new_x86_sse_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kerne
     // This is perfectly safe because we can reach here only when T == f32
     // TODO: move this dirty unsafety somewhere outside
     Some(unsafe{mem::transmute(kern)})
-}
-
-#[inline]
-fn complex_mul_rrii(x: f32x4, y: f32x4, neg_mask: f32x4) -> f32x4 {
-    let y_iirr = f32x4_shuffle!(y, y, [2, 3, 4, 5]);
-
-    // (y1a.r * ta.r, y1b.r * tb.r, y1a.i * ta.i, y1b.i * tb.i)
-    let t2 = x * y;
-
-    // (y1a.r * ta.i, y1b.r * tb.i, y1a.i * ta.r, y1b.i * tb.r)
-    let t3 = x * y_iirr;
-
-    // (y1a.r * ta.r, y1b.r * tb.r, y1a.r * ta.i, y1b.r * tb.i)
-    let t4 = f32x4_shuffle!(t2, t3, [0, 1, 4, 5]);
-
-    // (y1a.i * ta.i, y1b.i * tb.i, y1a.i * ta.r, y1b.i * tb.r)
-    let t5 = f32x4_shuffle!(t2, t3, [2, 3, 6, 7]);
-
-    // (-y1a.i * ta.i, -y1b.i * tb.i, y1a.i * ta.r, y1b.i * tb.r)
-    let t6 = f32x4_bitxor(t5, neg_mask);
-
-    // (y3a.r, y3b.r, y3a.i, y3b.i) =
-    // (y1a.r * ta.r - y1a.i * ta.i, y1b.r * tb.r - y1b.i * tb.i,
-    //  y1a.r * ta.i + y1a.i * ta.r, y1b.r * tb.i + y1b.i * tb.r)
-    t4 + t6
-}
-
-#[test]
-fn test_complex_mul_rrii() {
-    let neg_mask_raw: [u32; 4] = [0x80000000, 0x80000000, 0, 0];
-    let neg_mask = unsafe { *(&neg_mask_raw as *const u32 as *const f32x4) };
-
-    let c1: Complex<f32> = Complex::new(123f32, 456f32);
-    let c2: Complex<f32> = Complex::new(789f32, 135f32);
-    let c3: Complex<f32> = Complex::new(114f32, 514f32);
-    let c4: Complex<f32> = Complex::new(987f32, 654f32);
-
-    let d1 = c1 * c3;
-    let d2 = c2 * c4;
-
-    let x = f32x4::new(c1.re, c2.re, c1.im, c2.im);
-    let y = f32x4::new(c3.re, c4.re, c3.im, c4.im);
-    let z = complex_mul_rrii(x, y, neg_mask);
-
-    assert_eq!(super::f32x4_to_array(z), [d1.re, d2.re, d1.im, d2.im]);
 }
 
 #[derive(Debug)]
@@ -139,13 +87,11 @@ struct SseRadix2DitKernel2 {
 impl SseRadix2DitKernel2 {
     fn new(cparams: &KernelCreationParams) -> Self {
         let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
-        let twiddle_delta = Complex::new(Zero::zero(), full_circle *
-            f32::consts::PI / (cparams.radix * cparams.unit) as f32).exp();
         let twiddles = range_step(0, cparams.unit, 2)
             .map(|i| {
-                let c1 = Complex::new(Zero::zero(), full_circle * (i) as f32 /
+                let c1 = Complex::new(0f32, full_circle * (i) as f32 /
                     (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-                let c2 = Complex::new(Zero::zero(), full_circle * (i + 1) as f32 /
+                let c2 = Complex::new(0f32, full_circle * (i + 1) as f32 /
                     (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
                 // rrii format
                 f32x4::new(c1.re, c2.re, c1.im, c2.im)
@@ -192,7 +138,7 @@ impl Kernel<f32> for SseRadix2DitKernel2 {
                 // (y1a.r, y1b.r, y1a.i, y1b.i)
                 let y2t1 = f32x4_shuffle!(y1, y1, [0, 2, 5, 7]);
 
-                let y3 = complex_mul_rrii(y2t1, twiddle_1, neg_mask);
+                let y3 = f32x4_complex_mul_rrii(y2t1, twiddle_1, neg_mask);
 
                 // perform size-2 FFT
                 // (y3a.r, y3a.i, y3b.r, y3b.i)

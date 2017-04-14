@@ -27,6 +27,7 @@ use std::fmt::Debug;
 
 use num_complex::Complex;
 
+#[macro_use] mod simdutils;
 mod setup;
 mod kernel;
 mod env;
