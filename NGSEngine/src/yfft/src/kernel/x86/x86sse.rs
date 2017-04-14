@@ -34,6 +34,8 @@ pub fn new_x86_sse_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kerne
         (_, 2, 1) => Box::new(SseRadix2Kernel1 {
             cparams: *cparams
         }),
+        (KernelType::Dit, 2, unit) if unit % 4 == 0 => Box::new(SseRadix2DitKernel3::new(cparams)),
+        (KernelType::Dif, 2, unit) if unit % 4 == 0 => Box::new(SseRadix2DifKernel3::new(cparams)),
         (KernelType::Dit, 2, unit) if unit % 2 == 0 => Box::new(SseRadix2DitKernel2::new(cparams)),
         (KernelType::Dif, 2, unit) if unit % 2 == 0 => Box::new(SseRadix2DifKernel2::new(cparams)),
         _ => return None
@@ -155,6 +157,103 @@ impl Kernel<f32> for SseRadix2DitKernel2 {
 }
 
 #[derive(Debug)]
+struct SseRadix2DitKernel3 {
+    cparams: KernelCreationParams,
+    twiddles: Vec<f32x4>
+}
+
+impl SseRadix2DitKernel3 {
+    fn new(cparams: &KernelCreationParams) -> Self {
+        let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
+        let twiddles = range_step(0, cparams.unit, 2)
+            .map(|i| {
+                let k = i / 4 * 4;
+                let c1 = Complex::new(0f32, full_circle * (k) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c2 = Complex::new(0f32, full_circle * (k + 1) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c3 = Complex::new(0f32, full_circle * (k + 2) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c4 = Complex::new(0f32, full_circle * (k + 3) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                // rrrr-iiii format
+                // TODO: more efficient creation
+                if i % 4 != 0 {
+                    f32x4::new(c1.im, c2.im, c3.im, c4.im)
+                } else {
+                    f32x4::new(c1.re, c2.re, c3.re, c4.re)
+                }
+            })
+            .collect();
+
+        Self {
+            cparams: *cparams,
+            twiddles: twiddles,
+        }
+    }
+}
+
+impl Kernel<f32> for SseRadix2DitKernel3 {
+    fn transform(&self, params: &mut KernelParams<f32>) {
+        let cparams = &self.cparams;
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+
+        assert_eq!(cparams.kernel_type, KernelType::Dit);
+        assert_eq!(cparams.radix, 2);
+        assert_eq!(cparams.unit % 4, 0);
+
+        // TODO: check alignment?
+
+        let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
+
+        for x in range_step(0, cparams.size * 2, cparams.unit * 4) {
+            for y in 0 .. cparams.unit / 4 {
+                let cur1a = &mut data[x + y * 8] as *mut f32 as *mut f32x4;
+                let cur1b = &mut data[x + y * 8 + 4] as *mut f32 as *mut f32x4;
+                let cur2a = &mut data[x + y * 8 + cparams.unit * 2] as *mut f32 as *mut f32x4;
+                let cur2b = &mut data[x + y * 8 + cparams.unit * 2 + 4] as *mut f32 as *mut f32x4;
+                let twiddle_r = twiddles[y * 2];
+                let twiddle_i = twiddles[y * 2 + 1];
+
+                let x1a = unsafe { *cur1a };
+                let x1b = unsafe { *cur1b };
+                let y1a = unsafe { *cur2a };
+                let y1b = unsafe { *cur2b };
+
+                // convert riri-riri to rrrr-iiii (shufps)
+                let x2r = f32x4_shuffle!(x1a, x1b, [0, 2, 4, 6]);
+                let x2i = f32x4_shuffle!(x1a, x1b, [1, 3, 5, 7]);
+                let y2r = f32x4_shuffle!(y1a, y1b, [0, 2, 4, 6]);
+                let y2i = f32x4_shuffle!(y1a, y1b, [1, 3, 5, 7]);
+
+                // apply twiddle factor
+                let x3r = x2r;
+                let x3i = x2i;
+                let y3r = y2r * twiddle_r - y2i * twiddle_i;
+                let y3i = y2r * twiddle_i + y2i * twiddle_r;
+
+                // perform size-2 FFT
+                let x4r = x3r + y3r;
+                let x4i = x3i + y3i;
+                let y4r = x3r - y3r;
+                let y4i = x3i - y3i;
+
+                // convert to rrrr-iiii to riri-riri (unpcklps/unpckups)
+                let x5a = f32x4_shuffle!(x4r, x4i, [0, 4, 1, 5]);
+                let x5b = f32x4_shuffle!(x4r, x4i, [2, 6, 3, 7]);
+                let y5a = f32x4_shuffle!(y4r, y4i, [0, 4, 1, 5]);
+                let y5b = f32x4_shuffle!(y4r, y4i, [2, 6, 3, 7]);
+
+                unsafe { *cur1a = x5a };
+                unsafe { *cur1b = x5b };
+                unsafe { *cur2a = y5a };
+                unsafe { *cur2b = y5b };
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
 struct SseRadix2DifKernel2 {
     cparams: KernelCreationParams,
     twiddles: Vec<f32x4>
@@ -225,6 +324,103 @@ impl Kernel<f32> for SseRadix2DifKernel2 {
 
                 unsafe { *cur1 = x3 };
                 unsafe { *cur2 = y3 };
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+struct SseRadix2DifKernel3 {
+    cparams: KernelCreationParams,
+    twiddles: Vec<f32x4>
+}
+
+impl SseRadix2DifKernel3 {
+    fn new(cparams: &KernelCreationParams) -> Self {
+        let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
+        let twiddles = range_step(0, cparams.unit, 2)
+            .map(|i| {
+                let k = i / 4 * 4;
+                let c1 = Complex::new(0f32, full_circle * (k) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c2 = Complex::new(0f32, full_circle * (k + 1) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c3 = Complex::new(0f32, full_circle * (k + 2) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c4 = Complex::new(0f32, full_circle * (k + 3) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                // rrrr-iiii format
+                // TODO: more efficient creation
+                if i % 4 != 0 {
+                    f32x4::new(c1.im, c2.im, c3.im, c4.im)
+                } else {
+                    f32x4::new(c1.re, c2.re, c3.re, c4.re)
+                }
+            })
+            .collect();
+
+        Self {
+            cparams: *cparams,
+            twiddles: twiddles,
+        }
+    }
+}
+
+impl Kernel<f32> for SseRadix2DifKernel3 {
+    fn transform(&self, params: &mut KernelParams<f32>) {
+        let cparams = &self.cparams;
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+
+        assert_eq!(cparams.kernel_type, KernelType::Dif);
+        assert_eq!(cparams.radix, 2);
+        assert_eq!(cparams.unit % 4, 0);
+
+        // TODO: check alignment?
+
+        let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
+
+        for x in range_step(0, cparams.size * 2, cparams.unit * 4) {
+            for y in 0 .. cparams.unit / 4 {
+                let cur1a = &mut data[x + y * 8] as *mut f32 as *mut f32x4;
+                let cur1b = &mut data[x + y * 8 + 4] as *mut f32 as *mut f32x4;
+                let cur2a = &mut data[x + y * 8 + cparams.unit * 2] as *mut f32 as *mut f32x4;
+                let cur2b = &mut data[x + y * 8 + cparams.unit * 2 + 4] as *mut f32 as *mut f32x4;
+                let twiddle_r = twiddles[y * 2];
+                let twiddle_i = twiddles[y * 2 + 1];
+
+                let x1a = unsafe { *cur1a };
+                let x1b = unsafe { *cur1b };
+                let y1a = unsafe { *cur2a };
+                let y1b = unsafe { *cur2b };
+
+                // convert riri-riri to rrrr-iiii (shufps)
+                let x2r = f32x4_shuffle!(x1a, x1b, [0, 2, 4, 6]);
+                let x2i = f32x4_shuffle!(x1a, x1b, [1, 3, 5, 7]);
+                let y2r = f32x4_shuffle!(y1a, y1b, [0, 2, 4, 6]);
+                let y2i = f32x4_shuffle!(y1a, y1b, [1, 3, 5, 7]);
+
+                // perform size-2 FFT
+                let x3r = x2r + y2r;
+                let x3i = x2i + y2i;
+                let y3r = x2r - y2r;
+                let y3i = x2i - y2i;
+
+                // apply twiddle factor
+                let x4r = x3r;
+                let x4i = x3i;
+                let y4r = y3r * twiddle_r - y3i * twiddle_i;
+                let y4i = y3r * twiddle_i + y3i * twiddle_r;
+
+                // convert to rrrr-iiii to riri-riri (unpcklps/unpckups)
+                let x5a = f32x4_shuffle!(x4r, x4i, [0, 4, 1, 5]);
+                let x5b = f32x4_shuffle!(x4r, x4i, [2, 6, 3, 7]);
+                let y5a = f32x4_shuffle!(y4r, y4i, [0, 4, 1, 5]);
+                let y5b = f32x4_shuffle!(y4r, y4i, [2, 6, 3, 7]);
+
+                unsafe { *cur1a = x5a };
+                unsafe { *cur1b = x5b };
+                unsafe { *cur2a = y5a };
+                unsafe { *cur2b = y5b };
             }
         }
     }

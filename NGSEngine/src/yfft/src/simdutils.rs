@@ -10,6 +10,7 @@ use std::mem;
 #[cfg(test)]
 use num_complex::Complex;
 
+/// Shuffles `f32x4` elements.
 macro_rules! f32x4_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
         unsafe { $crate::simdutils::simd_shuffle4::<$crate::simdutils::f32x4, $crate::simdutils::f32x4>($x, $y, $idx) }
