@@ -8,6 +8,7 @@
 
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor};
 use super::super::Num;
+use super::utils;
 
 mod x86sse;
 mod x86sse2;

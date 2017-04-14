@@ -25,23 +25,22 @@ pub fn new_generic_kernel<T : 'static>(cparams: &KernelCreationParams) -> Box<Ke
     where T : Num {
 
     let full_circle = if cparams.inverse { 2 } else { -2 };
+    let twiddle_delta = Complex::new(Zero::zero(),
+        T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
+        T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp();
+    let coef_delta = Complex::new(Zero::zero(),
+        T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap()).exp();
 
     match cparams.kernel_type {
         KernelType::Dit => Box::new(GenericDitKernel {
             cparams: *cparams,
-            twiddle_delta: Complex::new(Zero::zero(),
-                T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
-                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp(),
-            coef_delta: Complex::new(Zero::zero(),
-                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap()).exp()
+            twiddle_delta: twiddle_delta,
+            coef_delta: coef_delta,
         }),
         KernelType::Dif => Box::new(GenericDifKernel {
             cparams: *cparams,
-            twiddle_delta: Complex::new(Zero::zero(),
-                T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
-                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp(),
-            coef_delta: Complex::new(Zero::zero(),
-                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap()).exp()
+            twiddle_delta: twiddle_delta,
+            coef_delta: coef_delta,
         }),
     }
 }

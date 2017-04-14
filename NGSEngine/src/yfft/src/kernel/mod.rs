@@ -7,6 +7,7 @@ mod accessor;
 mod bitreversal;
 mod generic;
 mod generic2;
+mod utils;
 
 #[cfg(any(target_arch="x86", target_arch="x86_64"))] mod x86;
 
