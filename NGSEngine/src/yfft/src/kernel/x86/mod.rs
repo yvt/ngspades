@@ -10,7 +10,8 @@ use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccesso
 use super::super::Num;
 use super::utils;
 
-mod x86sse;
+mod x86sse1radix2;
+mod x86sse1radix4;
 mod x86sse2;
 mod x86sse3;
 
@@ -18,5 +19,6 @@ pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>
     where T : Num {
     x86sse3::new_x86_sse3_kernel(cparams)
         .or_else(|| x86sse2::new_x86_sse2_kernel(cparams))
-        .or_else(|| x86sse::new_x86_sse_kernel(cparams))
+        .or_else(|| x86sse1radix2::new_x86_sse_radix2_kernel(cparams))
+        .or_else(|| x86sse1radix4::new_x86_sse_radix4_kernel(cparams))
 }
