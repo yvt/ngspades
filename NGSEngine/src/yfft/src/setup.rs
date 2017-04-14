@@ -110,7 +110,7 @@ pub fn factorize(mut x: usize) -> Vec<usize> {
 
     while x > 1 {
         let radix =
-            if x % 4 == 0 {
+            if x % 4 == 0 && false {
                 4
             } else if x % 2 == 0 {
                 2

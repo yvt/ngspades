@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 
-//! Defines FFT kernels optimized by using SSSE3 instruction set.
+//! Defines FFT kernels optimized by using SSE3 instruction set.
 //!
 //! Performances
 //! ------------
