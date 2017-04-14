@@ -37,46 +37,17 @@ pub fn new_x86_sse_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kerne
         return None
     }
 
-    let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
-    let twiddle_delta = Complex::new(Zero::zero(), full_circle * f32::consts::PI / (cparams.radix * cparams.unit) as f32).exp();
-    let twiddle_delta2 = twiddle_delta * twiddle_delta;
-
     let kern: Box<Kernel<f32>> = match (cparams.kernel_type, cparams.radix, cparams.unit) {
         (KernelType::Dit, 2, 1) => Box::new(SseRadix2DitKernel1 {
             cparams: *cparams
         }),
-        (KernelType::Dit, 2, unit) if unit % 2 == 0 => Box::new(SseRadix2DitKernel2 {
-            cparams: *cparams,
-            twiddle_delta: twiddle_delta,
-        }),
+        (KernelType::Dit, 2, unit) if unit % 2 == 0 => Box::new(SseRadix2DitKernel2::new(cparams)),
         _ => return None
     };
 
     // This is perfectly safe because we can reach here only when T == f32
     // TODO: move this dirty unsafety somewhere outside
     Some(unsafe{mem::transmute(kern)})
-}
-
-#[derive(Debug)]
-struct SseRadix2DitKernel1 {
-    cparams: KernelCreationParams,
-}
-
-#[derive(Debug)]
-struct SseRadix2DitKernel2 {
-    cparams: KernelCreationParams,
-    twiddle_delta: Complex<f32>,
-}
-
-#[derive(Debug)]
-struct SseRadix2DifKernel1 {
-    cparams: KernelCreationParams,
-}
-
-#[derive(Debug)]
-struct SseRadix2DifKernel2 {
-    cparams: KernelCreationParams,
-    twiddle_delta: Complex<f32>,
 }
 
 #[inline]
@@ -124,6 +95,11 @@ fn test_complex_mul_rrii() {
     assert_eq!(super::f32x4_to_array(z), [d1.re, d2.re, d1.im, d2.im]);
 }
 
+#[derive(Debug)]
+struct SseRadix2DitKernel1 {
+    cparams: KernelCreationParams,
+}
+
 impl Kernel<f32> for SseRadix2DitKernel1 {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
@@ -154,6 +130,35 @@ impl Kernel<f32> for SseRadix2DitKernel1 {
     }
 }
 
+#[derive(Debug)]
+struct SseRadix2DitKernel2 {
+    cparams: KernelCreationParams,
+    twiddles: Vec<f32x4>
+}
+
+impl SseRadix2DitKernel2 {
+    fn new(cparams: &KernelCreationParams) -> Self {
+        let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
+        let twiddle_delta = Complex::new(Zero::zero(), full_circle *
+            f32::consts::PI / (cparams.radix * cparams.unit) as f32).exp();
+        let twiddles = range_step(0, cparams.unit, 2)
+            .map(|i| {
+                let c1 = Complex::new(Zero::zero(), full_circle * (i) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c2 = Complex::new(Zero::zero(), full_circle * (i + 1) as f32 /
+                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                // rrii format
+                f32x4::new(c1.re, c2.re, c1.im, c2.im)
+            })
+            .collect();
+
+        Self {
+            cparams: *cparams,
+            twiddles: twiddles,
+        }
+    }
+}
+
 impl Kernel<f32> for SseRadix2DitKernel2 {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
@@ -165,23 +170,16 @@ impl Kernel<f32> for SseRadix2DitKernel2 {
 
         // TODO: check alignment?
 
-        let twiddle_delta = self.twiddle_delta;
-        let twiddle_delta2 = twiddle_delta * twiddle_delta;
-        let twiddle_delta2_simd = f32x4::new(
-            twiddle_delta2.re, twiddle_delta2.re,
-            twiddle_delta2.im, twiddle_delta2.im);
-        let twiddle_1_init = f32x4::new(
-            1f32, twiddle_delta.re,
-            0f32, twiddle_delta.im); // rrii
+        let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
 
         let neg_mask_raw: [u32; 4] = [0x80000000, 0x80000000, 0, 0];
         let neg_mask = unsafe { *(&neg_mask_raw as *const u32 as *const f32x4) };
 
         for x in range_step(0, cparams.size * 2, cparams.unit * 4) {
-            let mut twiddle_1 = twiddle_1_init;
             for y in range_step(0, cparams.unit * 2, 4) {
                 let cur1 = &mut data[x + y] as *mut f32 as *mut f32x4;
                 let cur2 = &mut data[x + y + cparams.unit * 2] as *mut f32 as *mut f32x4;
+                let twiddle_1 = twiddles[y >> 2];
 
                 // x1a, x1b : Complex<f32> = X[x1/2 .. x1/2 + 2]
                 // (x1a.r, x1a.i, x1b.r, x1b.i)
@@ -205,11 +203,14 @@ impl Kernel<f32> for SseRadix2DitKernel2 {
 
                 unsafe { *cur1 = x3 };
                 unsafe { *cur2 = y3 };
-
-                twiddle_1 = complex_mul_rrii(twiddle_1, twiddle_delta2_simd, neg_mask);
             }
         }
     }
+}
+
+#[derive(Debug)]
+struct SseRadix2DifKernel1 {
+    cparams: KernelCreationParams,
 }
 
 impl Kernel<f32> for SseRadix2DifKernel1 {
@@ -223,6 +224,12 @@ impl Kernel<f32> for SseRadix2DifKernel1 {
 
         unimplemented!()
     }
+}
+
+#[derive(Debug)]
+struct SseRadix2DifKernel2 {
+    cparams: KernelCreationParams,
+    twiddle_delta: Complex<f32>,
 }
 
 impl Kernel<f32> for SseRadix2DifKernel2 {
