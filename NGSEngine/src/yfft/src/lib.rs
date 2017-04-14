@@ -15,13 +15,12 @@
 // This source code is a part of Nightingales.
 //
 
-#![feature(test)]
-#![feature(slice_get_slice)]
+#![feature(test, slice_get_slice, platform_intrinsics)]
 
 extern crate num_complex;
 extern crate num_iter;
 extern crate num_traits;
-#[cfg(any(target_arch="x86", target_arch="x86_64"))] extern crate immintrin;
+extern crate simd;
 
 use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
 use std::fmt::Debug;
