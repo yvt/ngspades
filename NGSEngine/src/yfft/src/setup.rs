@@ -110,7 +110,8 @@ pub fn factorize(mut x: usize) -> Vec<usize> {
 
     while x > 1 {
         let radix =
-            if x % 4 == 0 && false {
+            // SSE Radix-4 kernel isn't available for small cases yet
+            if x % 4 == 0 && x >= 16 {
                 4
             } else if x % 2 == 0 {
                 2
