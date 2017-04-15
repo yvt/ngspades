@@ -4,7 +4,9 @@
 // This source code is a part of Nightingales.
 //
 
-pub use simd::{Simd, f32x4, i32x4};
+pub use simd::{Simd, f32x4, i32x4, u32x4};
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+use simd::x86::sse3::Sse3F32x4;
 use std::mem;
 
 #[cfg(test)]
@@ -94,4 +96,51 @@ fn test_f32x4_complex_mul_rrii() {
     let z = f32x4_complex_mul_rrii(x, y, neg_mask);
 
     assert_eq!(f32x4_to_array(z), [d1.re, d2.re, d1.im, d2.im]);
+}
+
+/// See `sse3_f32x4_complex_mul_riri` for usage.
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+#[inline]
+pub fn sse3_f32x4_complex_mul_riri_inner(x: f32x4, y1: f32x4, y2: f32x4) -> f32x4 {
+    // (r1, i1, ...) * (r3, i3, ...)
+    //   --> (r1 * r3 - i1 * i3, r1 * i3 + i1 * r3, ...)
+
+    // (r1 * r3, -i1 * i3, ...)
+    let t1 = x * y1;
+
+    // (r1 * i3, i1 * r3, ...)
+    let t2 = x * y2;
+
+    // (r1 * r3 - i1 * i3, ..., r1 * i3 + i1 * r3, ...)
+    let t3 = t1.hadd(t2);
+
+    f32x4_shuffle!(t3, t3, [0, 2, 5, 7])
+}
+
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+#[inline]
+pub fn sse3_f32x4_complex_mul_riri(x: f32x4, y: f32x4) -> f32x4 {
+    let neg_mask: f32x4 = unsafe { mem::transmute(u32x4::new(0, 0x80000000, 0, 0x80000000)) };
+
+    sse3_f32x4_complex_mul_riri_inner(x,
+        f32x4_bitxor(y, neg_mask), f32x4_shuffle!(y, y, [1, 0, 7, 6]))
+}
+
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+#[test]
+#[allow(dead_code)]
+fn test_sse3_f32x4_complex_mul_riri() {
+    let c1: Complex<f32> = Complex::new(123f32, 456f32);
+    let c2: Complex<f32> = Complex::new(789f32, 135f32);
+    let c3: Complex<f32> = Complex::new(114f32, 514f32);
+    let c4: Complex<f32> = Complex::new(987f32, 654f32);
+
+    let d1 = c1 * c3;
+    let d2 = c2 * c4;
+
+    let x = f32x4::new(c1.re, c1.im, c2.re, c2.im);
+    let y = f32x4::new(c3.re, c3.im, c4.re, c4.im);
+    let z = sse3_f32x4_complex_mul_riri(x, y);
+
+    assert_eq!(f32x4_to_array(z), [d1.re, d1.im, d2.re, d2.im]);
 }
