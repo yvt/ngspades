@@ -12,6 +12,8 @@ use num_traits::{Zero, One};
 
 use yfft::*;
 
+// TODO: test all kernels --- currently, only the kernels for the highest possible ISA are tested
+
 fn naive_dft<T : yfft::Num>(input: &[T], output: &mut[T], inverse: bool) {
     let len = input.len() / 2;
     let full_circle = if inverse { 2 } else { -2 };
@@ -45,7 +47,7 @@ fn assert_num_slice_approx_eq<T : yfft::Num>(got: &[T], expected: &[T], releps: 
         if (a - b).abs() > eps {
             assert!((a - b).abs() < eps,
                 "assertion failed: `got almost equal to expected` \
-                    (got: `{:?}`, expected: `{:?}`)", got, expected);
+                    (got: `{:?}`, expected: `{:?}`, diff=`{:?}`)", got, expected, (a - b).abs());
         }
     }
 }
@@ -75,7 +77,7 @@ fn test_patterns<T : yfft::Num>(size: usize) -> Vec<Vec<T>> {
 }
 
 fn simple_fft<T : Num>(inverse: bool) {
-    for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49] {
+    for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49, 64, 128] {
         let size = *size_ref;
         let setup: Setup<T> = Setup::new(&Options {
             input_data_order: DataOrder::Natural,
@@ -94,7 +96,7 @@ fn simple_fft<T : Num>(inverse: bool) {
 
             naive_dft(pat.as_slice(), result_2.as_mut_slice(), inverse);
 
-            assert_num_slice_approx_eq(result_1.as_slice(), result_2.as_slice(), T::from(1.0e-4).unwrap());
+            assert_num_slice_approx_eq(result_1.as_slice(), result_2.as_slice(), T::from(1.0e-3).unwrap());
         }
     }
 }
@@ -112,7 +114,7 @@ fn fft_backward_f32() { simple_fft::<f32>(true); }
 fn fft_backward_f64() { simple_fft::<f64>(true); }
 
 fn fft_roundtrip_shortcut<T : Num>() {
-    for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49] {
+    for size_ref in &[1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 40, 49, 64, 128] {
         let size = *size_ref;
 
         let setup1: Setup<T> = Setup::new(&Options {
@@ -147,7 +149,7 @@ fn fft_roundtrip_shortcut<T : Num>() {
                 *e = *e * factor;
             }
 
-            assert_num_slice_approx_eq(result.as_slice(), pat.as_slice(), T::from(1.0e-4).unwrap());
+            assert_num_slice_approx_eq(result.as_slice(), pat.as_slice(), T::from(1.0e-3).unwrap());
         }
     }
 }

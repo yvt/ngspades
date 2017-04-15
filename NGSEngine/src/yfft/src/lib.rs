@@ -1,8 +1,20 @@
 //! yFFT
 //! ====
 //!
-//! Simple FFT library written purely in Rust. Requires a Nightly Rust compiler
-//! for x86 intrinsics.
+//! Simple FFT library written purely in Rust. Requires a Nightly Rust compiler for x86 intrinsics.
+//!
+//! Notes Regarding Compilation
+//! ---------------------------
+//!
+//! As of the version 0.19.0 cargo doesn't support passing codegen flags to rustc. Because of this,
+//! you need to pass the following flags via the `RUSTFLAGS` environemnt variable to enable AVX kernel:
+//!
+//! ```sh
+//! export RUSTFLAGS='-Ctarget-feature=+avx,+sse3'
+//! ```
+//!
+//! Note: this causes codegen to generate VEX prefixes to all SSE instructions and makes the binary
+//! incompatibile with processors without AVX support.
 //!
 //! License
 //! -------
@@ -15,7 +27,7 @@
 // This source code is a part of Nightingales.
 //
 
-#![feature(test, slice_get_slice, platform_intrinsics)]
+#![feature(test, slice_get_slice, platform_intrinsics, cfg_target_feature)]
 
 extern crate num_complex;
 extern crate num_iter;

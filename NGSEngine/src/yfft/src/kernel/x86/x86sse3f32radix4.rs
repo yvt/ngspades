@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 
-//! Defines Radix-2 single precision FFT kernels optimized by using SSE3 instruction set.
+//! Defines Radix-4 single precision FFT kernels optimized by using SSE3 instruction set.
 //!
 //! SSE3 adds some instructions that are helpful in single precision complex arithmetics:
 //!
