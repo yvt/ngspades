@@ -45,6 +45,14 @@ impl<'a, T, I> ops::Index<I> for SliceAccessor<&'a [T]> where I : slice::SliceIn
 }
 
 #[cfg(not(debug_assertions))]
+impl<'a, T, I> ops::Index<I> for SliceAccessor<&'a Vec<T>> where I : slice::SliceIndex<[T]> {
+    type Output = I::Output;
+    fn index(&self, index: I) -> &Self::Output {
+        unsafe { self.slice.get_unchecked(index) }
+    }
+}
+
+#[cfg(not(debug_assertions))]
 impl<'a, T, I> ops::Index<I> for SliceAccessor<&'a mut [T]> where I : slice::SliceIndex<[T]> {
     type Output = I::Output;
     fn index(&self, index: I) -> &Self::Output {
@@ -54,6 +62,21 @@ impl<'a, T, I> ops::Index<I> for SliceAccessor<&'a mut [T]> where I : slice::Sli
 
 #[cfg(not(debug_assertions))]
 impl<'a, T, I> ops::IndexMut<I> for SliceAccessor<&'a mut [T]> where I : slice::SliceIndex<[T]> {
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        unsafe { self.slice.get_unchecked_mut(index) }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+impl<'a, T, I> ops::Index<I> for SliceAccessor<&'a mut Vec<T>> where I : slice::SliceIndex<[T]> {
+    type Output = I::Output;
+    fn index(&self, index: I) -> &Self::Output {
+        unsafe { self.slice.get_unchecked(index) }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+impl<'a, T, I> ops::IndexMut<I> for SliceAccessor<&'a mut Vec<T>> where I : slice::SliceIndex<[T]> {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         unsafe { self.slice.get_unchecked_mut(index) }
     }

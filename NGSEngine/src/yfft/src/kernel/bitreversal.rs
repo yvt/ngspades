@@ -42,14 +42,21 @@ pub fn new_bit_reversal_kernel<T>(radixes: &[usize]) -> Box<Kernel<T>>
         }
     }
 
-    Box::new(BitReversalKernel {
-        indices: indices
-    })
+    super::x86::new_x86_bit_reversal_kernel(&indices)
+        .unwrap_or_else(|| BitReversalKernel::new(indices))
 }
 
 #[derive(Debug)]
 struct BitReversalKernel {
     indices: Vec<usize>
+}
+
+impl BitReversalKernel {
+    fn new<T: Num>(indices: Vec<usize>) -> Box<Kernel<T>> {
+        Box::new(Self {
+            indices: indices
+        })
+    }
 }
 
 impl<T> Kernel<T> for BitReversalKernel where T : Num {

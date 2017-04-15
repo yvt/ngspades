@@ -10,6 +10,7 @@ use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccesso
 use super::super::Num;
 use super::utils;
 
+mod bitreversal;
 mod x86sse1radix2;
 mod x86sse1radix4;
 mod x86sse2;
@@ -22,3 +23,5 @@ pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>
         .or_else(|| x86sse1radix2::new_x86_sse_radix2_kernel(cparams))
         .or_else(|| x86sse1radix4::new_x86_sse_radix4_kernel(cparams))
 }
+
+pub use self::bitreversal::new_x86_bit_reversal_kernel;
