@@ -20,6 +20,8 @@ mod x86sse1radix4;
 mod x86sse2;
 #[cfg(target_feature = "sse3")]
 mod x86sse3f32radix4;
+#[cfg(target_feature = "avx")]
+mod x86avxbitreversal;
 
 #[cfg(not(target_feature = "avx"))]
 mod x86avxf32radix2 {
@@ -36,6 +38,11 @@ mod x86sse3f32radix4 {
     pub fn new_x86_sse3_f32_radix4_kernel<T>(cparams: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
 }
 
+#[cfg(not(target_feature = "avx"))]
+mod x86avxbitreversal {
+    pub fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<super::Kernel<T>>> { None }
+}
+
 pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
     where T : Num {
     None
@@ -47,4 +54,10 @@ pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>
         .or_else(|| x86sse1radix4::new_x86_sse_radix4_kernel(cparams))
 }
 
-pub use self::bitreversal::new_x86_bit_reversal_kernel;
+
+pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
+    where T : Num {
+    None
+        .or_else(|| x86avxbitreversal::new_x86_avx_bit_reversal_kernel(indices))
+        .or_else(|| bitreversal::new_x86_bit_reversal_kernel(indices))
+}

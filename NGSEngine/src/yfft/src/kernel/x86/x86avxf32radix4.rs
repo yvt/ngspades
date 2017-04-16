@@ -55,7 +55,123 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
         match cparams.unit {
             unit if unit % 8 == 0 => Some(Box::new(AvxRadix4Kernel4::new(cparams, sparams))),
             unit if unit % 4 == 0 => Some(Box::new(AvxRadix4Kernel3::new(cparams, sparams))),
+            2                     => Some(Box::new(AvxRadix4Kernel2::new(cparams, sparams))),
             _ => None
+        }
+    }
+}
+
+/// This Radix-4 kernel computes two small FFTs in a single iteration. Specialized for `unit == 2`.
+#[derive(Debug)]
+struct AvxRadix4Kernel2<T> {
+    cparams: KernelCreationParams,
+    twiddles1: f32x8,
+    twiddles2: f32x8,
+    sparams: T
+}
+
+impl<T: StaticParams> AvxRadix4Kernel2<T> {
+    fn new(cparams: &KernelCreationParams, sparams: T) -> Self {
+        sparams.check_param(cparams);
+        assert_eq!(cparams.radix, 4);
+        assert_eq!(cparams.unit, 2);
+
+        let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
+        let c1 = Complex::new(0f32, full_circle * 2 as f32 /
+            (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+        let c2 = Complex::new(0f32, full_circle * 1 as f32 /
+            (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+        let c3 = Complex::new(0f32, full_circle * 3 as f32 /
+            (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+        // riri format, modified for sse3_f32x4_complex_mul_riri_inner
+        let twiddles1 = f32x8::new(1f32, 0f32, c1.re, -c1.im, c2.re, -c2.im, c3.re, -c3.im);
+        let twiddles2 = f32x8::new(0f32, 1f32, c1.im, c1.re, c2.im, c2.re, c3.im, c3.re);
+
+        Self {
+            cparams: *cparams,
+            twiddles1: twiddles1,
+            twiddles2: twiddles2,
+            sparams: sparams,
+        }
+    }
+}
+
+impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel2<T> {
+    fn transform(&self, params: &mut KernelParams<f32>) {
+        let cparams = &self.cparams;
+        let sparams = &self.sparams;
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+
+        // TODO: check alignment?
+
+        let twiddles1 = self.twiddles1;
+        let twiddles2 = self.twiddles2;
+
+        let neg_mask2: f32x8 = unsafe { mem::transmute(
+            if sparams.inverse() {
+                u32x8::new(0, 0, 0, 0, 0x80000000, 0, 0x80000000, 0)
+            } else {
+                u32x8::new(0, 0, 0, 0, 0, 0x80000000, 0, 0x80000000)
+            }) };
+
+        let pre_twiddle = sparams.kernel_type() == KernelType::Dit;
+        let post_twiddle = sparams.kernel_type() == KernelType::Dif;
+
+        for x in range_step(0, cparams.size * 2, 16) {
+            let cur1 = &mut data[x] as *mut f32 as *mut f32x8;
+            let cur2 = &mut data[x + 8] as *mut f32 as *mut f32x8;
+
+            // riri format
+            let xy1 = unsafe { *cur1 };
+            let zw1 = unsafe { *cur2 };
+
+            // apply twiddle factor
+            let (xy2, zw2) = if pre_twiddle {
+                // riririri-riririri -> riririri
+                //   12  34   56  78    12563478
+                let t1 = f32x8_shuffle!(xy1, zw1, [2, 3, 10, 11, 6, 7, 14, 15]);
+                let t2 = avx_f32x8_complex_mul_riri_inner(t1, twiddles1, twiddles2);
+                // t3: --12--34 (vmovddup)
+                let t3 = f32x8_shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
+                // vblendps
+                (f32x8_shuffle!(xy1, t3, [0, 1, 10, 11, 4, 5, 14, 15]),
+                 f32x8_shuffle!(zw1, t2, [0, 1, 10, 11, 4, 5, 14, 15]))
+            } else {
+                (xy1, zw1)
+            };
+
+            // perform size-4 FFT
+            let t12 = xy2 + zw2;
+            let t34 = xy2 - zw2;
+
+            // transpose (vperm2f128)
+            let t13 = f32x8_shuffle!(t12, t34, [0, 1, 2, 3, 8, 9, 10, 11]);
+            let t24t = f32x8_shuffle!(t12, t34, [4, 5, 6, 7, 12, 13, 14, 15]);
+
+            // t4 = t4 * i (backward), t4 = t4 * -i (forward)
+            let t24t2 = f32x8_shuffle!(t24t, t24t, [1, 0, 3, 2, 5, 4, 7, 6]); // vpermilps (t3 * i, t4 * i)
+            let t24t3 = f32x8_shuffle!(t24t, t24t2, [0, 1, 2, 3, 12, 13, 14, 15]); // vblendps or vperm2f128 (t3, t4 * i)
+            let t24 = avx_f32x8_bitxor(t24t3, neg_mask2);
+
+            let (xy3, zw3) = (t13 + t24, t13 - t24);
+
+            // apply twiddle factor
+            let (xy4, zw4) = if post_twiddle {
+                // riririri-riririri -> riririri
+                //   12  34   56  78    12563478
+                let t1 = f32x8_shuffle!(xy3, zw3, [2, 3, 10, 11, 6, 7, 14, 15]);
+                let t2 = avx_f32x8_complex_mul_riri_inner(t1, twiddles1, twiddles2);
+                // t3: --12--34 (vmovddup)
+                let t3 = f32x8_shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
+                // vblendps
+                (f32x8_shuffle!(xy3, t3, [0, 1, 10, 11, 4, 5, 14, 15]),
+                 f32x8_shuffle!(zw3, t2, [0, 1, 10, 11, 4, 5, 14, 15]))
+            } else {
+                (xy3, zw3)
+            };
+
+            unsafe { *cur1 = xy4 };
+            unsafe { *cur2 = zw4 };
         }
     }
 }
