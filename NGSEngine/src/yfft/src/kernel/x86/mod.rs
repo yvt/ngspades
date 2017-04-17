@@ -25,22 +25,22 @@ mod x86avxbitreversal;
 
 #[cfg(not(target_feature = "avx"))]
 mod x86avxf32radix2 {
-    pub fn new_x86_avx_f32_radix2_kernel<T>(cparams: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_avx_f32_radix2_kernel<T>(_: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
 }
 
 #[cfg(not(target_feature = "avx"))]
 mod x86avxf32radix4 {
-    pub fn new_x86_avx_f32_radix4_kernel<T>(cparams: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_avx_f32_radix4_kernel<T>(_: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
 }
 
 #[cfg(not(target_feature = "sse3"))]
 mod x86sse3f32radix4 {
-    pub fn new_x86_sse3_f32_radix4_kernel<T>(cparams: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_sse3_f32_radix4_kernel<T>(_: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
 }
 
 #[cfg(not(target_feature = "avx"))]
 mod x86avxbitreversal {
-    pub fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_avx_bit_reversal_kernel<T>(_: &Vec<usize>) -> Option<Box<super::Kernel<T>>> { None }
 }
 
 pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>

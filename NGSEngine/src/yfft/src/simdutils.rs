@@ -7,7 +7,7 @@
 pub use simd::{Simd, f32x4, i32x4, u32x4};
 #[cfg(target_feature = "sse3")]
 use simd::x86::sse3::Sse3F32x4;
-#[cfg(target_feature = "sse3")]
+#[cfg(target_feature = "avx")]
 pub use simd::x86::avx::{i32x8, f32x8, u32x8, AvxF32x8};
 use std::mem;
 
