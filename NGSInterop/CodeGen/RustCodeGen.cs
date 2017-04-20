@@ -361,6 +361,8 @@ namespace Ngs.Interop.CodeGen
 
         void GenerateStruct(Type type)
         {
+            stringBuilder.AppendLine("#[repr(C)]");
+            stringBuilder.AppendLine("#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]");
             stringBuilder.AppendLine($"pub struct {type.Name} {{");
             foreach (var field in type.GetRuntimeFields())
             {
@@ -376,6 +378,7 @@ namespace Ngs.Interop.CodeGen
         {
             var ut = structUnderlyingTypeMap[Enum.GetUnderlyingType(type)];
             stringBuilder.AppendLine($"#[repr({ut})]");
+            stringBuilder.AppendLine("#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]");
             stringBuilder.AppendLine($"pub enum {type.Name} {{");
             foreach (object field in Enum.GetValues(type))
             {

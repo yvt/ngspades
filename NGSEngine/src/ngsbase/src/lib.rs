@@ -11,6 +11,11 @@
 
 #[macro_use] extern crate ngscom;
 extern crate cgmath;
+extern crate num_traits;
 
 mod interop;
+mod geom;
+
 pub use interop::*;
+pub use geom::*;
+

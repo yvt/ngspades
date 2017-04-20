@@ -73,6 +73,7 @@ version = "0.1.0"
 dependencies = [
  "cgmath 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngscom 0.1.0",
+ "num-traits 0.1.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

@@ -189,11 +189,11 @@ namespace Ngs.Utils
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct Box2D
+    public struct Box2
     {
         private Vector2 min, max;
 
-        public Box2D(Vector2 min, Vector2 max)
+        public Box2(Vector2 min, Vector2 max)
         {
             this.min = min;
             this.max = max;
@@ -206,6 +206,30 @@ namespace Ngs.Utils
         }
 
         public Vector2 Max
+        {
+            get { return this.max; }
+            set { this.max = value; }
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Box3
+    {
+        private Vector3 min, max;
+
+        public Box3(Vector3 min, Vector3 max)
+        {
+            this.min = min;
+            this.max = max;
+        }
+
+        public Vector3 Min
+        {
+            get { return this.min; }
+            set { this.min = value; }
+        }
+
+        public Vector3 Max
         {
             get { return this.max; }
             set { this.max = value; }

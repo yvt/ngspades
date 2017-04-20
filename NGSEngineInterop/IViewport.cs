@@ -16,7 +16,7 @@ namespace Ngs.Engine {
 		void SetVideoMode(int videoWidth, int videoHeight, Ngs.Engine.FullScreenMode fullScreenMode, bool useNativePixelRatio);
 
 		bool EnableTextInput { get; set; }
-		Ngs.Utils.Box2D TextInputRectangle { get; set; }
+		Ngs.Utils.Box2 TextInputRectangle { get; set; }
 	}
 
 }
