@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [lib]
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 enet = { path = "src/enet" }
