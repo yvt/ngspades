@@ -9,8 +9,8 @@
 // This source code is a part of Nightingales.
 //
 
-#[macro_use]
-extern crate ngscom;
+#[macro_use] extern crate ngscom;
+extern crate cgmath;
 
 mod interop;
 pub use interop::*;

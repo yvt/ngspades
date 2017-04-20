@@ -41,4 +41,7 @@ fn main() {
     for entry in WalkDir::new(interop_path) {
         println!("cargo:rerun-if-changed={}", entry.unwrap().path().display());
     }
+    for entry in WalkDir::new(interopgen_path) {
+        println!("cargo:rerun-if-changed={}", entry.unwrap().path().display());
+    }
 }
