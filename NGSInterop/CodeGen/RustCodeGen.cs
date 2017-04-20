@@ -131,7 +131,8 @@ namespace Ngs.Interop.CodeGen
                 ComMethodParameterInfo = cmpi;
 
                 gen.EnqueueTypeGeneration(cmpi.Type);
-                NativeName = ComMethodParameterInfo.IsReturnValue ? "retval" : ComMethodParameterInfo.ParameterInfo.Name;
+                NativeName = ComMethodParameterInfo.IsReturnValue ? "retval" : 
+                    SnakeCaseConverter.Join(DotNetCamelCaseConverter.Split(ComMethodParameterInfo.ParameterInfo.Name)).ToLowerInvariant();
             }
 
             public bool NeedsLifeTimeParameter => RustCodeGen.NativeTypeNeedsLifeTimeParameter(ComMethodParameterInfo.NativeType,
@@ -365,7 +366,7 @@ namespace Ngs.Interop.CodeGen
             {
                 var nativeName = SnakeCaseConverter.Join(DotNetCamelCaseConverter.Split(field.Name));
                 var nativeType = TranslateNativeType(field.FieldType, false, null, false);
-                stringBuilder.AppendLine($"\t{nativeName}: {nativeType},");
+                stringBuilder.AppendLine($"\tpub {nativeName}: {nativeType},");
             }
             stringBuilder.AppendLine("}");
             stringBuilder.AppendLine();
