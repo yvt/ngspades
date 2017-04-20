@@ -5,3 +5,6 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 ngscom = { path = "../ngscom", version = "0.1" }
+
+[build-dependencies]
+walkdir = "1"
