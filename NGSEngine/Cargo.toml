@@ -13,3 +13,4 @@ ngsbase = { path = "src/ngsbase" }
 ngscom = { path = "src/ngscom" }
 ngsgfxbase = { path = "src/ngsgfxbase" }
 yfft = { path = "src/yfft" }
+xdispatch = { path = "src/xdispatch" }

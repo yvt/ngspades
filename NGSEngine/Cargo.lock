@@ -7,6 +7,7 @@ dependencies = [
  "ngsbase 0.1.0",
  "ngscom 0.1.0",
  "ngsgfxbase 0.1.0",
+ "xdispatch 0.1.0",
  "yfft 0.1.0",
 ]
 
@@ -105,6 +106,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "unsafe_unions"
 version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "xdispatch"
+version = "0.1.0"
+dependencies = [
+ "gcc 0.3.45 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "yfft"
