@@ -434,7 +434,11 @@ namespace Ngs.Interop.CodeGen
             }
             else if (type.GetTypeInfo().IsInterface)
             {
-                return "Option<&mut " + lt + " " + GetOutputIdentifier(type) + ">";
+                if (lt.Length == 0) {
+                    return $"{options.NgscomCratePath}::UnownedComPtr<" + GetOutputIdentifier(type) + ">";
+                } else {
+                    return $"{options.NgscomCratePath}::UnownedComPtr<" + lt + ", " + GetOutputIdentifier(type) + ">";
+                }
             }
             else
             {

@@ -92,6 +92,7 @@ null.
 */
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct ComPtr<T: ComInterface> {
     ptr: *mut T
 }
@@ -111,9 +112,16 @@ pub unsafe trait ComInterface: AsComPtr<IUnknown> {
 /// returned by `as_ptr`/`as_mut_ptr`.
 pub unsafe trait AsComPtr<T> { }
 
+unsafe impl<T: ComInterface> ::std::marker::Send for ComPtr<T> {}
+
 impl<T: ComInterface> ComPtr<T> {
-    /// Constructs a new `ComPtr<T>`.
+    /// Deprecated. Use `null()`.
     pub fn new() -> ComPtr<T> {
+        Self::null()
+    }
+
+    /// Constructs a new `ComPtr<T>` and initializes it with a null pointer.
+    pub fn null() -> ComPtr<T> {
         ComPtr { ptr: ptr::null_mut() }
     }
 

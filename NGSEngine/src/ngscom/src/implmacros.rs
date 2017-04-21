@@ -69,9 +69,10 @@ macro_rules! com_impl {
                 }
             }
         }
-        // It's safe to implement Sync because the contents of vtable
+        // It's safe to implement Sync/Send because the contents of vtable
         // doesn't actually change
         unsafe impl ::std::marker::Sync for $private_type {}
+        unsafe impl ::std::marker::Send for $private_type {}
         impl ::std::default::Default for $private_type {
             fn default() -> Self {
                 $obj_type::new_private()

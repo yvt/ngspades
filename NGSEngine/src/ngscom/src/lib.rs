@@ -84,6 +84,7 @@ This crate is composed of three main components:
 use std::fmt;
 
 pub use comptr::{AsComPtr, ComInterface, ComPtr};
+pub use unownedcomptr::UnownedComPtr;
 pub use iunknown::{IUnknown, IUnknownTrait};
 
 /// Interface identifier.
@@ -133,6 +134,7 @@ pub use hresult::*;
 #[macro_use] mod ifacemacros;
 mod comptr;
 mod iunknown;
+mod unownedcomptr;
 
 // Utility functions for macros
 #[doc(hidden)]
