@@ -52,6 +52,7 @@ assert!(nums[0] == "2");
 ```
 */
 
+#![feature(test)]
 #![warn(missing_docs)]
 
 use std::cell::UnsafeCell;
@@ -66,6 +67,9 @@ use ffi::*;
 
 /// Raw foreign function interface for libdispatch.
 pub mod ffi;
+
+#[cfg(test)]
+mod benchmark;
 
 /// The type of a dispatch queue.
 pub enum QueueAttribute {
@@ -821,3 +825,4 @@ mod tests {
         assert_eq!(*num.lock().unwrap(), 10);
     }
 }
+
