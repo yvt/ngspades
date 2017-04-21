@@ -132,10 +132,12 @@ macro_rules! com_interface {
                 unsafe { ((*self.vtable).$func)(self as *const Self as *mut Self $(,$i)*) }
             })*
 
+            #[doc(hidden)]
             pub fn from_vtable(vtable: *const $vtable) -> Self {
                 Self { vtable: vtable }
             }
 
+            #[doc(hidden)]
             pub fn fill_vtable<T, S>() -> $vtable
                 where T: $trait_ident, S: $crate::StaticOffset {
                 $vtable {
@@ -144,6 +146,7 @@ macro_rules! com_interface {
                 }
             }
 
+            #[doc(hidden)]
             pub fn scan_iid(iid: &$crate::IID) -> bool {
                 if $iid == *iid {
                     true
