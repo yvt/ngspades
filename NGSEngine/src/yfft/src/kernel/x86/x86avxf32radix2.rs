@@ -25,35 +25,37 @@ use std::any::TypeId;
 use std::{mem, f32};
 
 pub fn new_x86_avx_f32_radix2_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T : Num {
+    where T: Num
+{
 
     // Rust doesn't have partial specialization of generics yet...
     if TypeId::of::<T>() != TypeId::of::<f32>() {
-        return None
+        return None;
     }
 
     if cparams.radix != 2 {
-        return None
+        return None;
     }
 
     // TODO: check processor capability
 
-    match branch_on_static_params(cparams, Factory{}) {
+    match branch_on_static_params(cparams, Factory {}) {
         // This is perfectly safe because we can reach here only when T == f32
         // TODO: move this dirty unsafety somewhere outside
-        Some(k) => Some(unsafe{mem::transmute(k)}),
-        None => None
+        Some(k) => Some(unsafe { mem::transmute(k) }),
+        None => None,
     }
 }
 
-struct Factory{}
+struct Factory {}
 impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     fn consume<T>(self, cparams: &KernelCreationParams, _: T) -> Option<Box<Kernel<f32>>>
-        where T : StaticParams {
+        where T: StaticParams
+    {
 
         match cparams.unit {
             1 if cparams.size % 4 == 0 => Some(Box::new(AvxRadix2Kernel1 { cparams: *cparams })),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -67,7 +69,7 @@ struct AvxRadix2Kernel1 {
 impl Kernel<f32> for AvxRadix2Kernel1 {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         assert_eq!(cparams.radix, 2);
         assert_eq!(cparams.unit, 1);
@@ -75,7 +77,9 @@ impl Kernel<f32> for AvxRadix2Kernel1 {
 
         // TODO: check alignment?
 
-        let neg_mask: f32x8 = unsafe { mem::transmute(u32x8::new(0, 0, 0x80000000, 0x80000000, 0, 0, 0x80000000, 0x80000000)) };
+        let neg_mask: f32x8 = unsafe {
+            mem::transmute(u32x8::new(0, 0, 0x80000000, 0x80000000, 0, 0, 0x80000000, 0x80000000))
+        };
 
         for x in range_step(0, cparams.size * 2, 8) {
             let cur = &mut data[x] as *mut f32 as *mut f32x8;

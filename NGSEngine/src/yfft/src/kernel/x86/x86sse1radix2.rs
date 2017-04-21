@@ -26,35 +26,37 @@ use std::any::TypeId;
 use std::{mem, f32};
 
 pub fn new_x86_sse_radix2_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T : Num {
+    where T: Num
+{
 
     // Rust doesn't have partial specialization of generics yet...
     if TypeId::of::<T>() != TypeId::of::<f32>() {
-        return None
+        return None;
     }
 
     if cparams.radix != 2 {
-        return None
+        return None;
     }
 
-    match branch_on_static_params(cparams, Factory{}) {
+    match branch_on_static_params(cparams, Factory {}) {
         // This is perfectly safe because we can reach here only when T == f32
         // TODO: move this dirty unsafety somewhere outside
-        Some(k) => Some(unsafe{mem::transmute(k)}),
-        None => None
+        Some(k) => Some(unsafe { mem::transmute(k) }),
+        None => None,
     }
 }
 
-struct Factory{}
+struct Factory {}
 impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     fn consume<T>(self, cparams: &KernelCreationParams, sparams: T) -> Option<Box<Kernel<f32>>>
-        where T : StaticParams {
+        where T: StaticParams
+    {
 
         match cparams.unit {
             unit if unit % 4 == 0 => Some(Box::new(SseRadix2Kernel3::new(cparams, sparams))),
             unit if unit % 2 == 0 => Some(Box::new(SseRadix2Kernel2::new(cparams, sparams))),
-            1                     => Some(Box::new(SseRadix2Kernel1 { cparams: *cparams })),
-            _ => None
+            1 => Some(Box::new(SseRadix2Kernel1 { cparams: *cparams })),
+            _ => None,
         }
     }
 }
@@ -68,7 +70,7 @@ struct SseRadix2Kernel1 {
 impl Kernel<f32> for SseRadix2Kernel1 {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         assert_eq!(cparams.radix, 2);
         assert_eq!(cparams.unit, 1);
@@ -99,7 +101,7 @@ impl Kernel<f32> for SseRadix2Kernel1 {
 struct SseRadix2Kernel2<T> {
     cparams: KernelCreationParams,
     twiddles: Vec<f32x4>,
-    sparams: T
+    sparams: T,
 }
 
 impl<T: StaticParams> SseRadix2Kernel2<T> {
@@ -132,7 +134,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel2<T> {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         // TODO: check alignment?
 
@@ -145,7 +147,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel2<T> {
         let post_twiddle = sparams.kernel_type() == KernelType::Dif;
 
         for x in range_step(0, cparams.size * 2, cparams.unit * 4) {
-            for y in 0 .. cparams.unit / 2 {
+            for y in 0..cparams.unit / 2 {
                 let cur1 = &mut data[x + y * 4] as *mut f32 as *mut f32x4;
                 let cur2 = &mut data[x + y * 4 + cparams.unit * 2] as *mut f32 as *mut f32x4;
                 let twiddle_1 = twiddles[y];
@@ -164,7 +166,9 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel2<T> {
                     let t1 = f32x4_shuffle!(y1, y1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { y1 };
+                } else {
+                    y1
+                };
 
                 // perform size-2 FFT
                 // (y3a.r, y3a.i, y3b.r, y3b.i)
@@ -178,7 +182,9 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel2<T> {
                     let t1 = f32x4_shuffle!(y3, y3, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { y3 };
+                } else {
+                    y3
+                };
 
                 unsafe { *cur1 = x4 };
                 unsafe { *cur2 = y4 };
@@ -235,7 +241,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel3<T> {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         // TODO: check alignment?
 
@@ -245,7 +251,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel3<T> {
         let post_twiddle = sparams.kernel_type() == KernelType::Dif;
 
         for x in range_step(0, cparams.size * 2, cparams.unit * 4) {
-            for y in 0 .. cparams.unit / 4 {
+            for y in 0..cparams.unit / 4 {
                 let cur1a = &mut data[x + y * 8] as *mut f32 as *mut f32x4;
                 let cur1b = &mut data[x + y * 8 + 4] as *mut f32 as *mut f32x4;
                 let cur2a = &mut data[x + y * 8 + cparams.unit * 2] as *mut f32 as *mut f32x4;

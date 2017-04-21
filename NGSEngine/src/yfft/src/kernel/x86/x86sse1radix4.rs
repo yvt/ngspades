@@ -26,35 +26,37 @@ use std::any::TypeId;
 use std::{mem, f32};
 
 pub fn new_x86_sse_radix4_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T : Num {
+    where T: Num
+{
 
     // Rust doesn't have partial specialization of generics yet...
     if TypeId::of::<T>() != TypeId::of::<f32>() {
-        return None
+        return None;
     }
 
     if cparams.radix != 4 {
-        return None
+        return None;
     }
 
-    match branch_on_static_params(cparams, Factory{}) {
+    match branch_on_static_params(cparams, Factory {}) {
         // This is perfectly safe because we can reach here only when T == f32
         // TODO: move this dirty unsafety somewhere outside
-        Some(k) => Some(unsafe{mem::transmute(k)}),
-        None => None
+        Some(k) => Some(unsafe { mem::transmute(k) }),
+        None => None,
     }
 }
 
-struct Factory{}
+struct Factory {}
 impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     fn consume<T>(self, cparams: &KernelCreationParams, sparams: T) -> Option<Box<Kernel<f32>>>
-        where T : StaticParams {
+        where T: StaticParams
+    {
 
         match cparams.unit {
             unit if unit % 4 == 0 => Some(Box::new(SseRadix4Kernel3::new(cparams, sparams))),
             unit if unit % 2 == 0 => Some(Box::new(SseRadix4Kernel2::new(cparams, sparams))),
-            1                     => Some(Box::new(SseRadix4Kernel1::new(cparams, sparams))),
-            _ => None
+            1 => Some(Box::new(SseRadix4Kernel1::new(cparams, sparams))),
+            _ => None,
         }
     }
 }
@@ -82,12 +84,15 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel1<T> {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         // TODO: check alignment?
 
-        let neg_mask_raw: [u32; 4] =
-            if sparams.inverse() { [0, 0, 0x80000000, 0] } else { [0, 0, 0, 0x80000000] };
+        let neg_mask_raw: [u32; 4] = if sparams.inverse() {
+            [0, 0, 0x80000000, 0]
+        } else {
+            [0, 0, 0, 0x80000000]
+        };
         let neg_mask = unsafe { *(&neg_mask_raw as *const u32 as *const f32x4) };
 
         for x in range_step(0, cparams.size * 2, 8) {
@@ -120,7 +125,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel1<T> {
 struct SseRadix4Kernel2<T> {
     cparams: KernelCreationParams,
     twiddles: Vec<f32x4>,
-    sparams: T
+    sparams: T,
 }
 
 impl<T: StaticParams> SseRadix4Kernel2<T> {
@@ -160,7 +165,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         // TODO: check alignment?
 
@@ -176,7 +181,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
         let post_twiddle = sparams.kernel_type() == KernelType::Dif;
 
         for x in range_step(0, cparams.size * 2, cparams.unit * 8) {
-            for y in 0 .. cparams.unit / 2 {
+            for y in 0..cparams.unit / 2 {
                 let cur1 = &mut data[x + y * 4] as *mut f32 as *mut f32x4;
                 let cur2 = &mut data[x + y * 4 + cparams.unit * 2] as *mut f32 as *mut f32x4;
                 let cur3 = &mut data[x + y * 4 + cparams.unit * 4] as *mut f32 as *mut f32x4;
@@ -199,21 +204,29 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
                     let t1 = f32x4_shuffle!(y1, y1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { y1 };
+                } else {
+                    y1
+                };
                 let z2 = if pre_twiddle {
                     let t1 = f32x4_shuffle!(z1, z1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_2, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { z1 };
+                } else {
+                    z1
+                };
                 let w2 = if pre_twiddle {
                     let t1 = f32x4_shuffle!(w1, w1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_3, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { w1 };
+                } else {
+                    w1
+                };
 
                 // perform size-4 FFT
-                let x3 = x2 + z2; let y3 = y2 + w2;
-                let z3 = x2 - z2; let w3t = y2 - w2;
+                let x3 = x2 + z2;
+                let y3 = y2 + w2;
+                let z3 = x2 - z2;
+                let w3t = y2 - w2;
 
                 // w3 = w3t * i
                 let w3 = f32x4_bitxor(f32x4_shuffle!(w3t, w3t, [1, 0, 7, 6]), neg_mask2);
@@ -230,17 +243,23 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
                     let t1 = f32x4_shuffle!(y4, y4, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { y4 };
+                } else {
+                    y4
+                };
                 let z5 = if post_twiddle {
                     let t1 = f32x4_shuffle!(z4, z4, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_2, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { z4 };
+                } else {
+                    z4
+                };
                 let w5 = if post_twiddle {
                     let t1 = f32x4_shuffle!(w4, w4, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_3, neg_mask);
                     f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
-                } else { w4 };
+                } else {
+                    w4
+                };
 
                 unsafe { *cur1 = x5 };
                 unsafe { *cur2 = y5 };
@@ -256,7 +275,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
 struct SseRadix4Kernel3<T: StaticParams> {
     cparams: KernelCreationParams,
     twiddles: Vec<f32x4>,
-    sparams: T
+    sparams: T,
 }
 
 impl<T: StaticParams> SseRadix4Kernel3<T> {
@@ -307,7 +326,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         // TODO: check alignment?
 
@@ -316,7 +335,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
         let post_twiddle = sparams.kernel_type() == KernelType::Dif;
 
         for x in range_step(0, cparams.size * 2, cparams.unit * 8) {
-            for y in 0 .. cparams.unit / 4 {
+            for y in 0..cparams.unit / 4 {
                 let cur1a = &mut data[x + y * 8] as *mut f32 as *mut f32x4;
                 let cur1b = &mut data[x + y * 8 + 4] as *mut f32 as *mut f32x4;
                 let cur2a = &mut data[x + y * 8 + cparams.unit * 2] as *mut f32 as *mut f32x4;

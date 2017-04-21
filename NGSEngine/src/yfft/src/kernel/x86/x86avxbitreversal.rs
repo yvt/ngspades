@@ -12,14 +12,16 @@ use std::any::TypeId;
 use std::mem;
 
 pub fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
-    where T : Num {
+    where T: Num
+{
 
     if TypeId::of::<T>() == TypeId::of::<f32>() {
         if indices.len() < 8 {
-            return None
+            return None;
         }
 
-        let kern: Option<Box<Kernel<f32>>> = Some(Box::new(AvxDWordBitReversalKernel{indices: indices.clone()}));
+        let kern: Option<Box<Kernel<f32>>> =
+            Some(Box::new(AvxDWordBitReversalKernel { indices: indices.clone() }));
 
         unsafe { mem::transmute(kern) }
     } else {
@@ -29,7 +31,7 @@ pub fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Ke
 
 #[derive(Debug)]
 struct AvxDWordBitReversalKernel {
-    indices: Vec<usize>
+    indices: Vec<usize>,
 }
 
 impl<T: Num> Kernel<T> for AvxDWordBitReversalKernel {
@@ -40,8 +42,8 @@ impl<T: Num> Kernel<T> for AvxDWordBitReversalKernel {
 
         let indices = unsafe { SliceAccessor::new(&self.indices) };
         let size = self.indices.len();
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. size * 2]) };
-        let mut wa = unsafe { SliceAccessor::new(&mut params.work_area[0 .. size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..size * 2]) };
+        let mut wa = unsafe { SliceAccessor::new(&mut params.work_area[0..size * 2]) };
         wa.copy_from_slice(*data);
         let mut i = 0;
         while i + 7 < size {
@@ -63,8 +65,10 @@ impl<T: Num> Kernel<T> for AvxDWordBitReversalKernel {
             let src7: *const u64 = &wa[index7 * 2] as *const T as *const u64;
             let src8: *const u64 = &wa[index8 * 2] as *const T as *const u64;
             let dest: *mut u64x4 = &mut data[i * 2] as *mut T as *mut u64x4;
-            unsafe { *dest = u64x4::new(*src1, *src2, *src3, *src4); }
-            unsafe { *dest.offset(1) = u64x4::new(*src5, *src6, *src7, *src8); }
+            unsafe {
+                *dest = u64x4::new(*src1, *src2, *src3, *src4);
+                *dest.offset(1) = u64x4::new(*src5, *src6, *src7, *src8);
+            }
 
             i += 8;
         }
@@ -73,7 +77,9 @@ impl<T: Num> Kernel<T> for AvxDWordBitReversalKernel {
 
             let src: *const u64 = &wa[index * 2] as *const T as *const u64;
             let dest: *mut u64 = &mut data[i * 2] as *mut T as *mut u64;
-            unsafe { *dest = *src; }
+            unsafe {
+                *dest = *src;
+            }
 
             i += 1;
         }

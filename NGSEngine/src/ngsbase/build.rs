@@ -28,9 +28,11 @@ fn main() {
 
     Command::new("dotnet")
         .args(&["run",
-            "-p", interopgen_csproj_path.to_str().unwrap(),
-            "--",
-            "-o", dest_path.to_str().unwrap()])
+                "-p",
+                interopgen_csproj_path.to_str().unwrap(),
+                "--",
+                "-o",
+                dest_path.to_str().unwrap()])
         .status()
         .unwrap();
 

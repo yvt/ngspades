@@ -25,28 +25,39 @@ mod x86avxbitreversal;
 
 #[cfg(not(target_feature = "avx"))]
 mod x86avxf32radix2 {
-    pub fn new_x86_avx_f32_radix2_kernel<T>(_: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_avx_f32_radix2_kernel<T>(_: &super::KernelCreationParams)
+                                            -> Option<Box<super::Kernel<T>>> {
+        None
+    }
 }
 
 #[cfg(not(target_feature = "avx"))]
 mod x86avxf32radix4 {
-    pub fn new_x86_avx_f32_radix4_kernel<T>(_: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_avx_f32_radix4_kernel<T>(_: &super::KernelCreationParams)
+                                            -> Option<Box<super::Kernel<T>>> {
+        None
+    }
 }
 
 #[cfg(not(target_feature = "sse3"))]
 mod x86sse3f32radix4 {
-    pub fn new_x86_sse3_f32_radix4_kernel<T>(_: &super::KernelCreationParams) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_sse3_f32_radix4_kernel<T>(_: &super::KernelCreationParams)
+                                             -> Option<Box<super::Kernel<T>>> {
+        None
+    }
 }
 
 #[cfg(not(target_feature = "avx"))]
 mod x86avxbitreversal {
-    pub fn new_x86_avx_bit_reversal_kernel<T>(_: &Vec<usize>) -> Option<Box<super::Kernel<T>>> { None }
+    pub fn new_x86_avx_bit_reversal_kernel<T>(_: &Vec<usize>) -> Option<Box<super::Kernel<T>>> {
+        None
+    }
 }
 
 pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T : Num {
-    None
-        .or_else(|| x86avxf32radix2::new_x86_avx_f32_radix2_kernel(cparams))
+    where T: Num
+{
+    None.or_else(|| x86avxf32radix2::new_x86_avx_f32_radix2_kernel(cparams))
         .or_else(|| x86avxf32radix4::new_x86_avx_f32_radix4_kernel(cparams))
         .or_else(|| x86sse3f32radix4::new_x86_sse3_f32_radix4_kernel(cparams))
         .or_else(|| x86sse2::new_x86_sse2_kernel(cparams))
@@ -56,8 +67,8 @@ pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>
 
 
 pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
-    where T : Num {
-    None
-        .or_else(|| x86avxbitreversal::new_x86_avx_bit_reversal_kernel(indices))
+    where T: Num
+{
+    None.or_else(|| x86avxbitreversal::new_x86_avx_bit_reversal_kernel(indices))
         .or_else(|| bitreversal::new_x86_bit_reversal_kernel(indices))
 }

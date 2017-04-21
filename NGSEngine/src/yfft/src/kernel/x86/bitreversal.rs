@@ -12,10 +12,12 @@ use std::any::TypeId;
 use std::mem;
 
 pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
-    where T : Num {
+    where T: Num
+{
 
     if TypeId::of::<T>() == TypeId::of::<f32>() {
-        let kern: Option<Box<Kernel<f32>>> = Some(Box::new(SseDWordBitReversalKernel{indices: indices.clone()}));
+        let kern: Option<Box<Kernel<f32>>> =
+            Some(Box::new(SseDWordBitReversalKernel { indices: indices.clone() }));
 
         unsafe { mem::transmute(kern) }
     } else {
@@ -25,7 +27,7 @@ pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel
 
 #[derive(Debug)]
 struct SseDWordBitReversalKernel {
-    indices: Vec<usize>
+    indices: Vec<usize>,
 }
 
 impl<T: Num> Kernel<T> for SseDWordBitReversalKernel {
@@ -36,8 +38,8 @@ impl<T: Num> Kernel<T> for SseDWordBitReversalKernel {
 
         let indices = unsafe { SliceAccessor::new(&self.indices) };
         let size = self.indices.len();
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. size * 2]) };
-        let mut wa = unsafe { SliceAccessor::new(&mut params.work_area[0 .. size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..size * 2]) };
+        let mut wa = unsafe { SliceAccessor::new(&mut params.work_area[0..size * 2]) };
         wa.copy_from_slice(*data);
         let mut i = 0;
         while i + 3 < size {
@@ -51,8 +53,11 @@ impl<T: Num> Kernel<T> for SseDWordBitReversalKernel {
             let src3: *const u64 = &wa[index3 * 2] as *const T as *const u64;
             let src4: *const u64 = &wa[index4 * 2] as *const T as *const u64;
             let dest: *mut u64x2 = &mut data[i * 2] as *mut T as *mut u64x2;
-            unsafe { *dest = u64x2::new(*src1, *src2); }
-            unsafe { *dest.offset(1) = u64x2::new(*src3, *src4); }
+
+            unsafe {
+                *dest = u64x2::new(*src1, *src2);
+                *dest.offset(1) = u64x2::new(*src3, *src4);
+            }
 
             i += 4;
         }
@@ -61,7 +66,9 @@ impl<T: Num> Kernel<T> for SseDWordBitReversalKernel {
 
             let src: *const u64 = &wa[index * 2] as *const T as *const u64;
             let dest: *mut u64 = &mut data[i * 2] as *mut T as *mut u64;
-            unsafe { *dest = *src; }
+            unsafe {
+                *dest = *src;
+            }
 
             i += 1;
         }
