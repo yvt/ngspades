@@ -87,10 +87,10 @@ macro_rules! com_impl {
                                 as *const $interface_type as *mut $interface_type
                                 as *mut ::std::os::raw::c_void;
                         }
-                        $crate::E_OK
+                        $crate::hresults::E_OK
                     } else
                 )* {
-                    $crate::E_NOINTERFACE
+                    $crate::hresults::E_NOINTERFACE
                 }
             }
             fn add_ref(&self) -> u32 {

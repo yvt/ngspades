@@ -154,7 +154,8 @@ impl<'a, T, U> From<&'a ComPtr<T>> for ComPtr<U>
         let mut new: ComPtr<U> = ComPtr::new();
         if !other.is_null() {
             unsafe {
-                (*other.as_ptr()).query_interface(&U::iid(), new.as_mut_ptr());
+                // result doesn't matter
+                mem::drop((*other.as_ptr()).query_interface(&U::iid(), new.as_mut_ptr()));
             }
         }
         new

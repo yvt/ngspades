@@ -10,7 +10,7 @@ extern crate ngscom;
 #[macro_use]
 extern crate lazy_static;
 
-use ngscom::{IUnknown, IUnknownTrait, ComPtr};
+use ngscom::{IUnknown, IUnknownTrait, ComPtr, HResult, hresults};
 use std::sync::Mutex;
 use std::default::Default;
 
@@ -23,8 +23,8 @@ com_interface! {
         vtable: ITestInterfaceVTable,
         thunk: ITestInterfaceThunk,
 
-        fn get_hoge_attr(retval: &mut i32) -> ();
-        fn set_hoge_attr(value: i32) -> ();
+        fn get_hoge_attr(retval: &mut i32) -> HResult;
+        fn set_hoge_attr(value: i32) -> HResult;
     }
 }
 
@@ -38,13 +38,15 @@ com_impl! {
 }
 
 impl ITestInterfaceTrait for TestClass {
-    fn get_hoge_attr<'a>(&self, retval: &'a mut i32) -> () {
+    fn get_hoge_attr<'a>(&self, retval: &'a mut i32) -> HResult {
         let field = self.test_field.lock().unwrap();
         *retval = *field;
+        hresults::E_OK
     }
-    fn set_hoge_attr(&self, value: i32) {
+    fn set_hoge_attr(&self, value: i32) -> HResult {
         let mut field = self.test_field.lock().unwrap();
         *field = value;
+        hresults::E_OK
     }
 }
 
@@ -66,8 +68,8 @@ fn create_instance() {
 fn access_field() {
     let inst = TestClass::new(114514);
     assert!(!inst.is_null());
-    inst.set_hoge_attr(42);
+    inst.set_hoge_attr(42).unwrap();
     let mut value = 4 as i32;
-    inst.get_hoge_attr(&mut value);
+    inst.get_hoge_attr(&mut value).unwrap();
     assert_eq!(value, 42);
 }

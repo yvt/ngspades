@@ -11,7 +11,7 @@ extern crate lazy_static;
 extern crate ngsbase;
 
 use std::mem;
-use ngscom::{BString, BStringRef, HResult, ComPtr, E_OK};
+use ngscom::{BString, BStringRef, HResult, ComPtr, hresults};
 use ngsbase::{ITestInterface, ITestInterfaceTrait, ITestInterfaceVtbl};
 
 com_impl! {
@@ -25,11 +25,11 @@ com_impl! {
 impl ITestInterfaceTrait for TestClass {
     fn get_hoge_attr(&self, retval: &mut BStringRef) -> HResult {
         *retval = BStringRef::new("You successfully GetHogeAttr'd!");
-        E_OK
+        hresults::E_OK
     }
     fn set_hoge_attr(&self, value: Option<&BString>) -> HResult {
         println!("SetHogeAttr: I'm getting this: {:?}", value.unwrap());
-        E_OK
+        hresults::E_OK
     }
     fn hello(&self, value: Option<&BString>, retval: &mut BStringRef) -> HResult {
         println!("Hello! (got {:?})", value.unwrap());
@@ -40,10 +40,10 @@ impl ITestInterfaceTrait for TestClass {
         }
         *retval = BStringRef::new("hOI! \0(null character here)");
         println!("Returning {:?}", retval);
-        E_OK
+        hresults::E_OK
     }
     fn simple_method(&self) -> HResult {
-        E_OK
+        hresults::E_OK
     }
 }
 
@@ -56,7 +56,7 @@ impl TestClass {
 #[no_mangle]
 pub unsafe extern "C" fn create_test_instance(retval: &mut ComPtr<ITestInterface>) -> HResult {
     *retval = TestClass::new();
-    E_OK
+    hresults::E_OK
 }
 
 #[cfg(test)]

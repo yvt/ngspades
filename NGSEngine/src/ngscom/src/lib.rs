@@ -128,7 +128,7 @@ fn iid_display() {
                "{00000000-0000-0000-C000-000000000046}");
 }
 
-mod hresult;
+#[macro_use] mod hresult;
 pub use hresult::*;
 #[macro_use] mod ifacemacros;
 mod comptr;
