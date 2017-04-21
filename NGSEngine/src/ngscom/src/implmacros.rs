@@ -59,6 +59,7 @@ macro_rules! com_impl {
                 ( comptr, ptr )
             }
 
+            #[doc(hidden)]
             fn new_private() -> $private_type {
                 $private_type {
                     $(
@@ -68,28 +69,44 @@ macro_rules! com_impl {
                 }
             }
         }
+        // It's safe to implement Sync because the contents of vtable
+        // doesn't actually change
+        unsafe impl ::std::marker::Sync for $private_type {}
+        impl ::std::default::Default for $private_type {
+            fn default() -> Self {
+                $obj_type::new_private()
+            }
+        }
         impl $crate::IUnknownTrait for $obj_type {
-            unsafe fn query_interface(this: *mut Self, iid: &$crate::IID, object: *mut *mut ::std::os::raw::c_void) -> $crate::HResult {
+            fn query_interface(&self, iid: &$crate::IID, object: *mut *mut ::std::os::raw::c_void) -> $crate::HResult {
                 $(
                     if <$interface_type>::scan_iid(iid) {
-                        $crate::IUnknownTrait::add_ref(this);
-                        *object = &mut (*this).com_private.$interface_ident as *mut $interface_type as *mut ::std::os::raw::c_void;
+                        unsafe {
+                            $crate::IUnknownTrait::add_ref(self);
+                            *object = &self.com_private.$interface_ident
+                                as *const $interface_type as *mut $interface_type
+                                as *mut ::std::os::raw::c_void;
+                        }
                         $crate::E_OK
                     } else
                 )* {
                     $crate::E_NOINTERFACE
                 }
             }
-            unsafe fn add_ref(this: *mut Self) -> u32 {
-                let orig_ref_count = (*this).com_private.ref_count.fetch_add(1, $crate::detail::Ordering::Relaxed);
+            fn add_ref(&self) -> u32 {
+                let orig_ref_count = self.com_private.ref_count.fetch_add(1, $crate::detail::Ordering::Relaxed);
+                if orig_ref_count == ::std::isize::MAX {
+                    // FIXME: poison the object?
+                    panic!("ref count overflowed");
+                }
                 (orig_ref_count + 1) as u32
             }
-            unsafe fn release(this: *mut Self) -> u32 {
-                let orig_ref_count = (*this).com_private.ref_count.fetch_sub(1, $crate::detail::Ordering::Release);
+            unsafe fn release(&self) -> u32 {
+                let orig_ref_count = self.com_private.ref_count.fetch_sub(1, $crate::detail::Ordering::Release);
                 assert!(orig_ref_count > 0);
                 if orig_ref_count == 1 {
                     $crate::detail::fence($crate::detail::Ordering::Acquire);
-                    $crate::detail::delete_obj_raw(this);
+                    $crate::detail::delete_obj_raw(self);
                 }
                 (orig_ref_count - 1) as u32
             }

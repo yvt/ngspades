@@ -128,8 +128,8 @@ macro_rules! com_interface {
 
         impl $iface {
             $($(#[$fn_attr])*
-            pub unsafe fn $func(&self $(, $i: $t)*) -> $rt {
-                ((*self.vtable).$func)(self as *const Self as *mut Self $(,$i)*)
+            pub fn $func(&self $(, $i: $t)*) -> $rt {
+                unsafe { ((*self.vtable).$func)(self as *const Self as *mut Self $(,$i)*) }
             })*
 
             pub fn from_vtable(vtable: *const $vtable) -> Self {
@@ -154,7 +154,7 @@ macro_rules! com_interface {
         }
 
         pub trait $trait_ident: $base_trait {
-            $(unsafe fn $func(this: *mut Self, $($i: $t),*) -> $rt where Self: Sized;)*
+            $(fn $func(&self, $($i: $t),*) -> $rt where Self: Sized;)*
         }
 
         impl ::std::ops::Deref for $iface {

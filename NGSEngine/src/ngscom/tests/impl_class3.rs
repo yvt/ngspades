@@ -11,6 +11,8 @@ extern crate ngscom;
 extern crate lazy_static;
 
 use ngscom::{IUnknown, IUnknownTrait, ComPtr};
+use std::sync::Mutex;
+use std::default::Default;
 
 iid!(IID_ITESTINTERFACE =
     0x35edff15, 0x0b38, 0x47d8, 0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d);
@@ -31,24 +33,26 @@ com_impl! {
     class TestClass {
         com_private: TestClassPrivate;
         itestinterface: (ITestInterface, ITestInterfaceVTable, TESTCLASS_VTABLE);
-        test_field: i32
+        test_field: Mutex<i32>
     }
 }
 
 impl ITestInterfaceTrait for TestClass {
-    unsafe fn get_hoge_attr<'a>(this: *mut Self, retval: &'a mut i32) -> () {
-        *retval = (*this).test_field;
+    fn get_hoge_attr<'a>(&self, retval: &'a mut i32) -> () {
+        let field = self.test_field.lock().unwrap();
+        *retval = *field;
     }
-    unsafe fn set_hoge_attr(this: *mut Self, value: i32) {
-        (*this).test_field = value;
+    fn set_hoge_attr(&self, value: i32) {
+        let mut field = self.test_field.lock().unwrap();
+        *field = value;
     }
 }
 
 impl TestClass {
     fn new(num: i32) -> ComPtr<ITestInterface> {
         ComPtr::from(&TestClass::alloc(TestClass{
-            com_private: Self::new_private(),
-            test_field: num,
+            com_private: Default::default(),
+            test_field: Mutex::new(num),
         }).0)
     }
 }
@@ -62,10 +66,8 @@ fn create_instance() {
 fn access_field() {
     let inst = TestClass::new(114514);
     assert!(!inst.is_null());
-    unsafe {
-        inst.set_hoge_attr(42);
-        let mut value = 4 as i32;
-        inst.get_hoge_attr(&mut value);
-        assert_eq!(value, 42);
-    }
+    inst.set_hoge_attr(42);
+    let mut value = 4 as i32;
+    inst.get_hoge_attr(&mut value);
+    assert_eq!(value, 42);
 }

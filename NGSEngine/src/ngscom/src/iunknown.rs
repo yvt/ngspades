@@ -46,15 +46,15 @@ iid!(IID_IUNKNOWN = 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x
 impl IUnknown {
     /// Retrieves pointers to the supported interfaces on an object.
     /// Use [`ComPtr::from`](struct.ComPtr.html#method.from) instead.
-    pub unsafe fn query_interface(&self, iid: &IID, object: *mut *mut c_void)
+    pub fn query_interface(&self, iid: &IID, object: *mut *mut c_void)
                                   -> HResult {
-        ((*self.vtable).query_interface)(self as *const Self as *mut Self, iid, object)
+        unsafe { ((*self.vtable).query_interface)(self as *const Self as *mut Self, iid, object) }
     }
 
     /// Increments the reference count for an interface on an object.
     /// Should never need to call this directly.
-    pub unsafe fn add_ref(&self) -> u32 {
-        ((*self.vtable).add_ref)(self as *const Self as *mut Self)
+    pub fn add_ref(&self) -> u32 {
+        unsafe { ((*self.vtable).add_ref)(self as *const Self as *mut Self) }
     }
 
     /// Decrements the reference count for an interface on an object.
@@ -95,11 +95,11 @@ impl IUnknownThunk {
     }
 }
 
-pub trait IUnknownTrait {
-    unsafe fn query_interface(this: *mut Self, iid: &IID, object: *mut *mut c_void)
+pub trait IUnknownTrait : ::std::marker::Sync {
+    fn query_interface(&self, iid: &IID, object: *mut *mut c_void)
                                   -> HResult where Self: Sized;
-    unsafe fn add_ref(this: *mut Self) -> u32 where Self: Sized;
-    unsafe fn release(this: *mut Self) -> u32 where Self: Sized;
+    fn add_ref(&self) -> u32 where Self: Sized;
+    unsafe fn release(&self) -> u32 where Self: Sized;
 }
 
 unsafe impl AsComPtr<IUnknown> for IUnknown { }

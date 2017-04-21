@@ -11,6 +11,8 @@ extern crate ngscom;
 extern crate lazy_static;
 
 use ngscom::{IUnknown, IUnknownTrait, ComPtr};
+use std::sync::Mutex;
+use std::default::Default;
 
 iid!(IID_ITESTINTERFACE1 =
     0x35edff15, 0x0b38, 0x47d8, 0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d);
@@ -45,35 +47,39 @@ com_impl! {
     class TestClass {
         com_private: TestClassPrivate;
         itestinterface2: (ITestInterface2, ITestInterface2VTable, TESTCLASS_VTABLE);
-        test_field1: i32,
-        test_field2: i32,
+        test_field1: Mutex<i32>,
+        test_field2: Mutex<i32>,
     }
 }
 
 impl ITestInterface1Trait for TestClass {
-    unsafe fn get_hoge_attr1(this: *mut Self) -> i32 {
-        (*this).test_field1
+    fn get_hoge_attr1(&self) -> i32 {
+        let field = self.test_field1.lock().unwrap();
+        *field
     }
-    unsafe fn set_hoge_attr1(this: *mut Self, value: i32) {
-        (*this).test_field1 = value;
+    fn set_hoge_attr1(&self, value: i32) {
+        let mut field = self.test_field1.lock().unwrap();
+        *field = value;
     }
 }
 
 impl ITestInterface2Trait for TestClass {
-    unsafe fn get_hoge_attr2(this: *mut Self) -> i32 {
-        (*this).test_field2
+    fn get_hoge_attr2(&self) -> i32 {
+        let field = self.test_field2.lock().unwrap();
+        *field
     }
-    unsafe fn set_hoge_attr2(this: *mut Self, value: i32) {
-        (*this).test_field2 = value;
+    fn set_hoge_attr2(&self, value: i32) {
+        let mut field = self.test_field2.lock().unwrap();
+        *field = value;
     }
 }
 
 impl TestClass {
     fn new(num: i32) -> ComPtr<ITestInterface2> {
         ComPtr::from(&TestClass::alloc(TestClass{
-            com_private: Self::new_private(),
-            test_field1: num,
-            test_field2: num,
+            com_private: Default::default(),
+            test_field1: Mutex::new(num),
+            test_field2: Mutex::new(num),
         }).0)
     }
 }
@@ -87,12 +93,10 @@ fn create_instance() {
 fn access_field() {
     let inst = TestClass::new(114514);
     assert!(!inst.is_null());
-    unsafe {
-        inst.set_hoge_attr1(114);
-        inst.set_hoge_attr2(514);
-        assert_eq!(inst.get_hoge_attr1(), 114);
-        assert_eq!(inst.get_hoge_attr2(), 514);
-    }
+    inst.set_hoge_attr1(114);
+    inst.set_hoge_attr2(514);
+    assert_eq!(inst.get_hoge_attr1(), 114);
+    assert_eq!(inst.get_hoge_attr2(), 514);
 }
 
 #[test]

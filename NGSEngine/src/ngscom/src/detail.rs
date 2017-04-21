@@ -17,13 +17,18 @@ pub fn new_obj_raw<T>(x: T) -> *mut T {
 }
 
 #[doc(hidden)]
-pub unsafe fn delete_obj_raw<T>(x: *mut T) {
-    Box::from_raw(x);
+pub unsafe fn delete_obj_raw<T>(x: &T) {
+    // at this point there's only one reference to `x` so it's safe to
+    // transmute it to a mutable reference
+    let ptr: *mut T = mem::transmute(x);
+    Box::from_raw(ptr);
 }
 
 #[doc(hidden)]
-pub unsafe fn resolve_parent_object<'a, TOffset, TInterface, TClass>(this: *mut TInterface) -> *mut TClass
-  where TOffset : StaticOffset {
+pub unsafe fn resolve_parent_object<'a, TOffset, TInterface, TClass>(this: *mut TInterface)
+                                                                     -> &'a TClass
+    where TOffset: StaticOffset
+{
     let addr: isize = mem::transmute(this);
     mem::transmute(addr + TOffset::offset())
 }
