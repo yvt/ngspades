@@ -14,7 +14,7 @@ use ngscom::{IUnknown, IUnknownTrait, ComPtr};
 use std::sync::Mutex;
 use std::default::Default;
 
-iid!(IID_ITESTINTERFACE =
+com_iid!(IID_ITESTINTERFACE =
     0x35edff15, 0x0b38, 0x47d8, 0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d);
 
 com_interface! {

@@ -41,7 +41,7 @@ pub struct IUnknownVtbl {
     release: extern "C" fn(*mut IUnknown) -> u32
 }
 
-iid!(IID_IUNKNOWN = 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
+com_iid!(IID_IUNKNOWN = 0x00000000, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
 impl IUnknown {
     /// Retrieves pointers to the supported interfaces on an object.
@@ -110,17 +110,4 @@ unsafe impl ::ComInterface for IUnknown {
     #[doc(hidden)]
     type Trait = IUnknownTrait;
     fn iid() -> ::IID { IID_IUNKNOWN }
-}
-
-#[macro_export]
-macro_rules! impl_iunknown {
-    ($vtable:ident, $obj:path => $path:tt) => (
-        com_impl! {
-            vtable<IUnknown> $vtable ($obj => $path) {
-                fn query_interface(iid: &IID, object: *mut *mut c_void) -> HResult;
-                fn add_ref() -> u32;
-                fn release() -> u32;
-            }
-        }
-    )
 }

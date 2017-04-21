@@ -24,7 +24,7 @@ Macro for generating COM interface definitions.
 extern crate ngscom;
 use ngscom::{IUnknown, IUnknownTrait};
 
-iid!(IID_IFOO =
+com_iid!(IID_IFOO =
     0x12345678, 0x90AB, 0xCDEF, 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF);
 
 com_interface! {
@@ -57,7 +57,7 @@ to the type definitions. e.g:
 # #[macro_use]
 # extern crate ngscom;
 # use ngscom::{IUnknown, IUnknownTrait};
-# iid!(IID_IFOO = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+# com_iid!(IID_IFOO = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 # com_interface! {
 #    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
 #        iid: IID_IFOO,
@@ -67,7 +67,7 @@ to the type definitions. e.g:
 #        fn foo() -> bool;
 #    }
 # }
-iid!(IID_IBAR =
+com_iid!(IID_IBAR =
     0x12345678, 0x90AB, 0xCDEF, 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF);
 com_interface! {
     interface (IBar, IBarTrait): (IFoo, IFooTrait), IUnknown {
@@ -210,7 +210,7 @@ Helper macro for defining [`IID`](struct.IID.html) constants.
 ```
 # #[macro_use]
 # extern crate ngscom;
-iid!(IID_IFOO = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+com_iid!(IID_IFOO = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 # fn main() {}
 ```
 
@@ -221,13 +221,13 @@ keyword before the identifier.
 ```
 # #[macro_use]
 # extern crate ngscom;
-iid!(pub IID_IBAR = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+com_iid!(pub IID_IBAR = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 # fn main() {}
 ```
 
 */
 #[macro_export]
-macro_rules! iid {
+macro_rules! com_iid {
     ($(#[$iid_attr:meta])*
     $name:ident = $d1:expr, $d2:expr, $d3:expr, $($d4:expr),*) => (
         $(#[$iid_attr])*

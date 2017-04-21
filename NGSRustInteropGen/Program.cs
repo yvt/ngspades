@@ -16,15 +16,15 @@ namespace Ngs.Interop.Shell
                 CommandOptionType.SingleValue);
             commandLineApplication.HelpOption("-? | -h | --help");
             commandLineApplication.OnExecute(() =>
-            {   
+            {
                 // var asm = System.Runtime.Loader.AssemblyLoadContext.Default.LoadFromAssemblyPath(args[0]);
                 var asm = typeof(Ngs.Engine.IEngine).GetTypeInfo().Assembly;
-                var ifTypes = asm.GetTypes().Where((type) => 
+                var ifTypes = asm.GetTypes().Where((type) =>
                     type.GetTypeInfo().IsPublic &&
                     type.GetTypeInfo().IsInterface &&
                     typeof(Ngs.Interop.IUnknown).IsAssignableFrom(type));
                 var options = new Ngs.Interop.CodeGen.RustCodeGenOptions();
-                
+
                 // Register geometry types.
                 // Vector types in `Ngs.Utils` can represent both of displacements (`VectorX`) and
                 // locations (`PointX`). We just pick the former as they can be converted
@@ -47,7 +47,7 @@ namespace Ngs.Interop.Shell
                 } else {
                     Console.Out.Write(code);
                 }
-                
+
                 return 0;
             });
             commandLineApplication.Execute(args);
