@@ -10,7 +10,7 @@ namespace Ngs.Interop.Marshaller
 {
 	// TODO: the signature of CCWFactory needs to be changed
 	[SecuritySafeCriticalAttribute]
-	public delegate Delegate[] CcwFactory();
+	public delegate IntPtr[] CcwFactory();
 
 	public struct CcwFactoryInfo
 	{
@@ -87,48 +87,31 @@ namespace Ngs.Interop.Marshaller
 			var methodBuilder = typeBuilder.DefineMethod("Create",
 			                                             MethodAttributes.Static | MethodAttributes.Public | MethodAttributes.HideBySig,
 														 CallingConventions.Standard,
-														 typeof(Delegate[]), new Type[] { });
+														 typeof(IntPtr[]), new Type[] { });
 
 			methodBuilder.SetCustomAttribute(securityCriticalAttributeCab);
 
 			var gen = methodBuilder.GetILGenerator();
 			gen.Emit(OpCodes.Ldc_I4, vtable.Length);
-			gen.Emit(OpCodes.Newarr, typeof(Delegate));
+			gen.Emit(OpCodes.Newarr, typeof(IntPtr));
 			for (int i = 0; i < vtable.Length; ++i)
 			{
 				var ccwMethodInfo = vtable[i];
-				// create delegate type
-				var delegateType = typeBuilder.DefineNestedType(
-					uniqifier.Uniquify("<Delegate>" + ccwMethodInfo.methodBuilder.Name),
-					TypeAttributes.Sealed | TypeAttributes.NestedPublic,
-					typeof(MulticastDelegate));
-						
-				var ctor = delegateType.DefineConstructor(
-					MethodAttributes.RTSpecialName | MethodAttributes.HideBySig | MethodAttributes.Public,
-					CallingConventions.Standard, new[] { typeof(object), typeof(IntPtr) });
-				ctor.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
-
-				var invokeMethod = delegateType.DefineMethod(
-					"Invoke", MethodAttributes.HideBySig | MethodAttributes.Virtual | MethodAttributes.Public,
-					ccwMethodInfo.methodBuilder.ReturnType, ccwMethodInfo.parameterTypes);
-				invokeMethod.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
-		
+				
 				gen.Emit(OpCodes.Dup);
 				gen.Emit(OpCodes.Ldc_I4, i);
-				gen.Emit(OpCodes.Ldnull);
 				gen.Emit(OpCodes.Ldftn, ccwMethodInfo.methodBuilder);
-				gen.Emit(OpCodes.Newobj, ctor);
-				gen.Emit(OpCodes.Stelem_Ref);
+				gen.Emit(OpCodes.Stelem, typeof(IntPtr));
 
 				// add MonoPInvokeCallbackAttribute so this method is included in
 				// full AOT
-				var mpca = new CustomAttributeBuilder(typeof(MonoPInvokeCallbackAttribute)
+				/*var mpca = new CustomAttributeBuilder(typeof(MonoPInvokeCallbackAttribute)
 					.GetTypeInfo()
 					.DeclaredConstructors.First((ctor2) => ctor2.GetParameters().Length == 1),
 						new object[] { delegateType });
 				ccwMethodInfo.methodBuilder.SetCustomAttribute(mpca);
 
-				delegateType.CreateTypeInfo();
+				delegateType.CreateTypeInfo();*/
 			}
 
 			gen.Emit(OpCodes.Ret);
@@ -274,13 +257,21 @@ namespace Ngs.Interop.Marshaller
 					throw new InvalidOperationException();
 				}
 
-				// marshal return value
+				// marshal real return value
 				var runtimeLocal = gen.DeclareLocal(comMethodInfo.MethodInfo.ReturnType);
 				gen.Emit(OpCodes.Stloc, runtimeLocal);
 
 				comMethodInfo.ReturnValueMarshaller.CreateToNativeGenerator(gen)
 							 .EmitToNative(new LocalStorage(gen, runtimeLocal),
 										   new LocalStorage(gen, returnValueNativeLocal));
+			}
+			foreach (var paramInfo in paramInfos)
+			{
+				// save [out, retval]
+				if (paramInfo.ParameterInfo.IsReturnValue)
+				{
+					paramInfo.RuntimeStorage.EmitStore();
+				}
 			}
 
 			foreach (var paramInfo in paramInfos)
@@ -299,24 +290,22 @@ namespace Ngs.Interop.Marshaller
 			// handle exceptions
 			if (comMethodInfo.ReturnsHresult)
 			{
+				gen.Emit(OpCodes.Ldc_I4_0);
+				gen.Emit(OpCodes.Stloc, returnValueNativeLocal);
+
 				gen.BeginCatchBlock(typeof(Exception));
 
 				// get hresult
 				gen.Emit(OpCodes.Callvirt, hresultGetter);
 
-				// return HRESULT
-				gen.Emit(OpCodes.Ret);
+				// store HRESULT
+				gen.Emit(OpCodes.Stloc, returnValueNativeLocal);
 
 				gen.EndExceptionBlock();
 			}
 
 			// return
-			if (comMethodInfo.ReturnsHresult)
-			{
-				// note: returnValueNativeLocal can be non-null even in this case
-				gen.Emit(OpCodes.Ldc_I4_0);
-			}
-			else if (returnValueNativeLocal != null)
+			if (returnValueNativeLocal != null)
 			{
 				gen.Emit(OpCodes.Ldloc, returnValueNativeLocal);
 			}

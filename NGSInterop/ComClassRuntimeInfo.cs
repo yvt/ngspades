@@ -8,14 +8,14 @@ namespace Ngs.Interop
 {
     class CcwVtableCache
     {
-		public Tuple<Delegate[], IntPtr[]> VtableWithDelegates { get; }
+		public IntPtr[] Vtable { get; }
 
         public CcwVtableCache(Type baseInterface)
         {
             var factory = DynamicModuleInfo.Instance.CcwGenerator.CreateCcwFactory(baseInterface).FactoryDelegate;
 
             // debug
-            if (false) {
+            if (true) {
                 var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
                 var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] {typeof(string)});
                 if (saveMethod != null) {
@@ -24,11 +24,7 @@ namespace Ngs.Interop
                 }
             }
 
-            var delegates = factory();
-
-            var fptrs = delegates.Select((fn) => Marshal.GetFunctionPointerForDelegate<Delegate>(fn)).ToArray();
-
-            VtableWithDelegates = Tuple.Create(delegates, fptrs);
+            Vtable = factory();
         }
     }
 
@@ -51,10 +47,7 @@ namespace Ngs.Interop
             var cacheType = typeof(CcwVtableCache<>).MakeGenericType(new [] {baseInterface});
             var instanceField = cacheType.GetRuntimeField("Instance");
             var cache = (CcwVtableCache) instanceField.GetValue(null);
-            var vtableWithDelegates = cache.VtableWithDelegates;
-            
-            vtableDelegates = vtableWithDelegates.Item1;
-            IntPtr[] vtable = vtableWithDelegates.Item2;
+            IntPtr[] vtable = cache.Vtable;
             vtableHandle = GCHandle.Alloc(vtable, GCHandleType.Pinned);
 
             Guids = new Marshaller.InterfaceInfo(baseInterface).AllImplementedInterfaces

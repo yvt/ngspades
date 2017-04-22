@@ -1,12 +1,14 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Reflection;
+using System.Reflection.Emit;
 namespace Ngs.Interop
 {
 	public static partial class NgscomMarshal
 	{
 
         /*
-         * BString in NgsCOM is a completely different thing from XPCOM/MSCOM's BSTR and
+         * BString in NgsCOM is completely different from XPCOM/MSCOM's BSTR and
          * is defined like this:
          *
          *  class BString {
@@ -38,9 +40,7 @@ namespace Ngs.Interop
 			static readonly object sync = new object();
 			static GCHandle gcHandle;
 			static int refCount = 0;
-			static BStringDestruct destructorDelegate = BStringDestructor;
 
-			[MonoPInvokeCallbackAttribute(typeof(BStringDestruct))]
 			public static void BStringDestructor(IntPtr ptr)
 			{
 				Marshal.FreeHGlobal(ptr);
@@ -49,7 +49,15 @@ namespace Ngs.Interop
 
 			static BStringVTable()
 			{
-				vtable[0] = Marshal.GetFunctionPointerForDelegate(destructorDelegate);
+				// FIXME: ahead-of-time generation of this for Mono's Full AOT
+				var dynamicMethod = new DynamicMethod("GetBStringDestructorFPtr",
+					typeof(IntPtr), new Type[] {});
+				var gen = dynamicMethod.GetILGenerator();
+				gen.Emit(OpCodes.Ldftn, typeof(BStringVTable)
+					.GetRuntimeMethod("BStringDestructor", new [] {typeof(IntPtr)}));
+				gen.Emit(OpCodes.Ret);
+				var dlg = (Func<IntPtr>)dynamicMethod.CreateDelegate(typeof(Func<IntPtr>));
+				vtable[0] = dlg();
 			}
 
 			static IntPtr GetVTable()
