@@ -8,7 +8,6 @@ using System.Security;
 
 namespace Ngs.Interop.Marshaller
 {
-	// TODO: the signature of CCWFactory needs to be changed
 	[SecuritySafeCriticalAttribute]
 	public delegate IntPtr[] CcwFactory();
 

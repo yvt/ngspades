@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Linq;
+#if false
 using System.Reflection;
+#endif
 using System.Collections.Generic;
 namespace Ngs.Interop
 {
@@ -36,13 +37,13 @@ namespace Ngs.Interop
 					rcwFactory = DynamicModuleInfo.Instance.RcwGenerator.CreateRcwFactory<T>().FactoryDelegate;
 
 					// debug
-					if (false) {
+#if false
 						var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
 						var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] {typeof(string)});
 						if (saveMethod != null) {
 							saveMethod.Invoke(asm, new object[] {"DebugOutput.dll"});
 						}
-					}
+#endif
 				}
 
 				WeakReference<INativeObject<T>> rcwref;

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
@@ -237,7 +236,7 @@ namespace Ngs.Interop.Marshaller
 
 		Type NativeTypeWithoutRef => ValueMarshaller.NativeParameterType;
 
-		// FIXME: this is, precisely, not a native type (oh what have I done...)
+		// FIXME: this is, in a exact sense, not a native type (oh what have I done...)
 		public Type NativeType => (IsReturnValue || ParameterInfo.IsOut) ? Type.MakePointerType() : Type;
 	}
 }
