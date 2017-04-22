@@ -38,7 +38,7 @@ namespace Ngs.Interop.Marshaller
 				this.generator = generator;
 			}
 
-			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage)
+			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
 			{
 				inputStorage.EmitLoad();
 				outputStorage.EmitStore();

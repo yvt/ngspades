@@ -62,6 +62,35 @@ namespace Ngs.Shell
         }
     }
 
+    sealed class TestClass : ComClass, Engine.ITestInterface
+    {
+		public string HogeAttr
+        {
+            get
+            {
+                return "Hello goodbye";
+            }
+            set
+            {
+                Console.WriteLine($"managed: HogeAttr <- \"{value}\"");
+            }
+        }
+		public string Hello(string str)
+        {
+            Console.WriteLine($"managed: Hello(\"{str}\")");
+            return "Reply from managed code";
+        }
+		public void SimpleMethod()
+        {
+            Console.WriteLine("SimpleMethod was called");
+        }
+		public void DoCallback(Engine.ITestInterface target)
+        {
+            target.Hello("Called from DoCallback");
+            target.SimpleMethod();
+        }
+    }
+
     class MainClass
     {
         interface IHoge
@@ -122,6 +151,9 @@ namespace Ngs.Shell
                     theObject.SimpleMethod();
                 }
             });
+
+            Console.WriteLine("-- Testing CCW");
+            rcw.DoCallback(new TestClass());
 
             Console.WriteLine("-- Testing custom RCW");
             var rcw2 = new TestInterfaceRcw(obj);

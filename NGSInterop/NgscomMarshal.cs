@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 namespace Ngs.Interop
 {
 	public static partial class NgscomMarshal
@@ -13,8 +12,28 @@ namespace Ngs.Interop
 			return InterfaceRuntimeInfo<T>.CreateRcw(ptr, addRef);
 		}
 
+		[System.Security.SecurityCritical]
+		public static IntPtr GetCcwForInterface<T>(T obj) where T : class, IUnknown
+		{
+			if (obj == null)
+			{
+				return IntPtr.Zero;
+			}
+
+			var nativeObj = obj as INativeObject<T>;
+			if (nativeObj != null)
+			{
+				nativeObj.AddRef();
+				return nativeObj.NativeInterfacePtr;
+			}
+
+			var guid = InterfaceRuntimeInfo<T>.ComGuid;
+			return obj.QueryNativeInterface(ref guid);
+		}
+
 		public static T QueryInterfaceOrNull<T>(IUnknown obj) where T : class, IUnknown
 		{
+			// FIXME: rewrite this
 			var nativeObj = obj as INativeObject<T>;
 			if (nativeObj != null)
 			{
@@ -42,6 +61,7 @@ namespace Ngs.Interop
 
 		public static T QueryInterface<T>(IUnknown obj) where T : class, IUnknown
 		{
+			// FIXME: rewrite this
 			var nativeObj = obj as INativeObject<T>;
 			if (nativeObj != null)
 			{

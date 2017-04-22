@@ -26,7 +26,7 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("interop.rs");
 
-    Command::new("dotnet")
+    let st = Command::new("dotnet")
         .args(&["run",
                 "-p",
                 interopgen_csproj_path.to_str().unwrap(),
@@ -35,6 +35,11 @@ fn main() {
                 dest_path.to_str().unwrap()])
         .status()
         .unwrap();
+
+    if !st.success() {
+        panic!("Command dotnet run -p \"{}\" -- -o \"{}\" failed with exit code {}",
+            interopgen_csproj_path.to_str().unwrap(), dest_path.to_str().unwrap(), st);
+    }
 
     // emit cargo:rerun-if-changed
     for entry in WalkDir::new("src") {

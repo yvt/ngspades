@@ -27,7 +27,6 @@ namespace Ngs.Interop.Marshaller
 				this.generator = generator;
 			}
 
-
 			public override void EmitToNative(Storage inputStorage, Storage outputStorage)
 			{
 				inputStorage.EmitLoad();
@@ -51,14 +50,16 @@ namespace Ngs.Interop.Marshaller
 				this.generator = generator;
 			}
 
-			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage)
+			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
 			{
 				inputStorage.EmitLoad();
 				generator.Emit(OpCodes.Call, bStringToStringMethod);
 				outputStorage.EmitStore();
 
-				inputStorage.EmitLoad();
-				generator.Emit(OpCodes.Call, freeBStringMethod);
+				if (move) {
+					inputStorage.EmitLoad();
+					generator.Emit(OpCodes.Call, freeBStringMethod);
+				}
 			}
 
         	public override void EmitDestructNativeValue(Storage nativeStorage)

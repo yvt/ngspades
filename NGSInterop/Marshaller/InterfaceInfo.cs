@@ -235,6 +235,9 @@ namespace Ngs.Interop.Marshaller
 														 IsByRef ? ParameterInfo.ParameterType.GetElementType() :
 														 ParameterInfo.ParameterType;
 
+		Type NativeTypeWithoutRef => ValueMarshaller.NativeParameterType;
+
+		// FIXME: this is, precisely, not a native type (oh what have I done...)
 		public Type NativeType => (IsReturnValue || ParameterInfo.IsOut) ? Type.MakePointerType() : Type;
 	}
 }

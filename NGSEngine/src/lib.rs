@@ -11,7 +11,7 @@ extern crate lazy_static;
 extern crate ngsbase;
 
 use std::mem;
-use ngscom::{BString, BStringRef, HResult, ComPtr, hresults};
+use ngscom::{BString, BStringRef, HResult, ComPtr, hresults, UnownedComPtr};
 use ngsbase::{ITestInterface, ITestInterfaceTrait, ITestInterfaceVtbl};
 
 com_impl! {
@@ -43,6 +43,15 @@ impl ITestInterfaceTrait for TestClass {
         hresults::E_OK
     }
     fn simple_method(&self) -> HResult {
+        hresults::E_OK
+    }
+    fn do_callback(&self, target: UnownedComPtr<ITestInterface>) -> HResult {
+        if target.is_null() {
+            return hresults::E_POINTER;
+        }
+        let mut hello_ret = BStringRef::null();
+        target.hello(Some(&BStringRef::new("hello from do_callback")), &mut hello_ret).unwrap();
+        println!("do_callback -> {:?}", target.do_callback(UnownedComPtr::null()));
         hresults::E_OK
     }
 }

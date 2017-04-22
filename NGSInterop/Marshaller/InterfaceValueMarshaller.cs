@@ -47,17 +47,27 @@ namespace Ngs.Interop.Marshaller
 
 		private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
 		{
+			InterfaceValueMarshaller parent;
 			ILGenerator generator;
 
-			public ToNativeGenerator(ILGenerator generator)
+			public ToNativeGenerator(ILGenerator generator, InterfaceValueMarshaller parent)
 			{
 				this.generator = generator;
+				this.parent = parent;
 			}
+
+			static MethodInfo getCcwForInterfaceMethodGeneric = typeof(NgscomMarshal)
+				.GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetCcwForInterface));
 
 			public override void EmitToNative(Storage inputStorage, Storage outputStorage)
 			{
-				// requires CCW
-				throw new NotImplementedException();
+				var getCcwForInterfacePtrMethod = getCcwForInterfaceMethodGeneric.MakeGenericMethod(parent.type);
+
+				inputStorage.EmitLoad();
+
+				generator.EmitCall(OpCodes.Call, getCcwForInterfacePtrMethod, null);
+
+				outputStorage.EmitStore();
 			}
 
         	public override void EmitDestructNativeValue(Storage nativeStorage)
@@ -80,12 +90,16 @@ namespace Ngs.Interop.Marshaller
 			static MethodInfo getRcwForInterfacePtrMethodGeneric = typeof(NgscomMarshal)
 				.GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetRcwForInterfacePtr));
 
-			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage)
+			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
 			{
 				var getRcwForInterfacePtrMethod = getRcwForInterfacePtrMethodGeneric.MakeGenericMethod(parent.type);
 
 				inputStorage.EmitLoad();
-				generator.Emit(OpCodes.Ldc_I4_0); // addRef = false; interface pointer's ownership is transferred to RCW
+				if (move) {
+					generator.Emit(OpCodes.Ldc_I4_0); // addRef = false; interface pointer's ownership is transferred to RCW
+				} else {
+					generator.Emit(OpCodes.Ldc_I4_1); // addRef = true; interface pointer's cloned
+				}
 
 				generator.EmitCall(OpCodes.Call, getRcwForInterfacePtrMethod, null);
 
@@ -111,7 +125,7 @@ namespace Ngs.Interop.Marshaller
 
 		public override ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator)
 		{
-			return new ToNativeGenerator(generator);
+			return new ToNativeGenerator(generator, this);
 		}
 
 		public override ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator)

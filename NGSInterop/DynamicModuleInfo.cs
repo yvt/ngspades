@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 namespace Ngs.Interop
 {
 	class DynamicModuleInfo
 	{
-		static DynamicModuleInfo instance;
+		internal static DynamicModuleInfo instance;
 
 		public static DynamicModuleInfo Instance
 		{
@@ -28,7 +29,9 @@ namespace Ngs.Interop
 		private DynamicModuleInfo()
 		{
 			var asmName = new AssemblyName("NGSInteropDynamicAssembly");
-			AssemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndCollect);
+			var asmBuilderAccess = IsGetFunctionPtrForDelegateSupportedOnRunAndCollectAssembly() ?
+				AssemblyBuilderAccess.RunAndCollect : AssemblyBuilderAccess.Run;
+			AssemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, asmBuilderAccess);
 
 			// Use one of the overloads of GetRuntimeMethod with a dll name argument to ease
 			// the debug if possible
@@ -42,6 +45,52 @@ namespace Ngs.Interop
 
 			RcwGenerator = new Marshaller.RcwGenerator(ModuleBuilder);
 			CcwGenerator = new Marshaller.CcwGenerator(ModuleBuilder);
+		}
+
+		// .NET core is strict about this
+		static bool IsGetFunctionPtrForDelegateSupportedOnRunAndCollectAssembly()
+		{
+			try {
+				var asmName = new AssemblyName("CheckIsGetFunctionPtrFromDelegateSupportedOnRunAndCollectAssemblyAssembly");
+				var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndCollect);
+				var modBuilder = asmBuilder.DefineDynamicModule("SomeModule");
+
+				var delegateType = modBuilder.DefineType(
+					"Lorenzs",
+					TypeAttributes.Sealed | TypeAttributes.Public,
+					typeof(MulticastDelegate));
+						
+				var ctor = delegateType.DefineConstructor(
+					MethodAttributes.RTSpecialName | MethodAttributes.HideBySig | MethodAttributes.Public,
+					CallingConventions.Standard, new[] { typeof(object), typeof(IntPtr) });
+				ctor.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
+
+				var invokeMethod = delegateType.DefineMethod(
+					"Invoke", MethodAttributes.HideBySig | MethodAttributes.Virtual | MethodAttributes.Public,
+					delegateType.AsType(), new Type[] {});
+				invokeMethod.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
+
+				var testMethod = delegateType.DefineMethod(
+					"Test", MethodAttributes.Public | MethodAttributes.Static,
+					delegateType.AsType(), new Type[] {});
+				
+				var gen = testMethod.GetILGenerator();
+				gen.Emit(OpCodes.Ldnull);
+				gen.Emit(OpCodes.Ldftn, testMethod);
+				gen.Emit(OpCodes.Newobj, ctor);
+				gen.Emit(OpCodes.Ret);
+
+				var typeInfo = delegateType.CreateTypeInfo();
+
+				var factory = typeInfo.GetDeclaredMethod("Test");
+
+				System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate<Delegate>
+				((Delegate)factory.Invoke(null, new object[] {}));
+		
+				return true;
+			} catch (NotSupportedException) {
+				return false;
+			}
 		}
 	}
 }

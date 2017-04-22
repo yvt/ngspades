@@ -99,9 +99,11 @@ impl Into<HResult> for ComError {
 pub mod hresults {
     use super::HResult;
 
-    pub const E_OK: HResult = HResult(0);
-    pub const E_NOTIMPL: HResult = HResult(0x80004001u32 as i32);
-    pub const E_NOINTERFACE: HResult = HResult(0x80004002u32 as i32);
+    pub const E_OK: HResult             = HResult(0);
+    pub const E_NOTIMPL: HResult        = HResult(0x80004001u32 as i32);
+    pub const E_NOINTERFACE: HResult    = HResult(0x80004002u32 as i32);
+    pub const E_POINTER: HResult        = HResult(0x80004003u32 as i32);
+    pub const E_INVALIDARG: HResult     = HResult(0x80070057u32 as i32);
 }
 
 /**

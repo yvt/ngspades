@@ -1,8 +1,6 @@
 using System;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Collections.Generic;
 
 namespace Ngs.Interop.Marshaller
@@ -38,7 +36,8 @@ namespace Ngs.Interop.Marshaller
                     marshaller = new SimpleValueMarshaller(type);
                 }
 
-				if (typeInfo.IsInterface && typeInfo.IsSubclassOf(typeof(IUnknown)))
+				if (typeInfo.IsInterface &&
+                    typeof(IUnknown).GetTypeInfo().IsAssignableFrom(typeInfo))
 				{
 					marshaller = new InterfaceValueMarshaller(type);
 				}
@@ -75,9 +74,9 @@ namespace Ngs.Interop.Marshaller
     {
         /**
          * Emits a code that converts a native value into a managed one.
-         * The original native value can possibly be destroyed.
+         * The original native value can possibly be destroyed if `move` is true.
          */
-        public abstract void EmitToRuntime(Storage inputStorage, Storage outputStorage);
+        public abstract void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move);
         public abstract void EmitDestructNativeValue(Storage nativeStorage);
     }
 }

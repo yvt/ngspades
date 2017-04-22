@@ -30,6 +30,26 @@ namespace Ngs.Interop.Marshaller
 			}
         }
 
+		private sealed class ToRuntimeGenerator : ValueToRuntimeMarshallerGenerator
+		{
+			ILGenerator generator;
+
+			public ToRuntimeGenerator(ILGenerator generator)
+			{
+				this.generator = generator;
+			}
+
+			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
+			{
+				inputStorage.EmitLoad();
+				outputStorage.EmitStore();
+			}
+
+        	public override void EmitDestructNativeValue(Storage nativeStorage)
+			{
+			}
+		}
+
         Type type;
 
         public SimplePointerValueMarshaller(Type type)
@@ -44,7 +64,7 @@ namespace Ngs.Interop.Marshaller
 
 		public override ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator)
 		{
-			throw new NotImplementedException();
+			return new ToRuntimeGenerator(generator);
 		}
 
         public override Type NativeParameterType

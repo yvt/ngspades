@@ -9,6 +9,7 @@ namespace Ngs.Engine {
 		string HogeAttr { get; set; }
 		string Hello(string str);
 		void SimpleMethod();
+		void DoCallback(ITestInterface target);
 	}
 
 }

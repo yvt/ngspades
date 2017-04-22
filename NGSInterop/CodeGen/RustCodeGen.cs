@@ -194,10 +194,6 @@ namespace Ngs.Interop.CodeGen
             public string GetSignature(bool isInterfaceDeclaration)
             {
                 var sb = new System.Text.StringBuilder();
-                if (!isInterfaceDeclaration)
-                {
-                    sb.Append("unsafe ");
-                }
                 sb.Append($"fn {NativeName}");
                 if (LifeTimeParameterNames.Length > 0 && !isInterfaceDeclaration)
                 {
@@ -212,7 +208,7 @@ namespace Ngs.Interop.CodeGen
                 }).ToList();
                 if (!isInterfaceDeclaration)
                 {
-                    paramDecl.Insert(0, "this: *mut Self");
+                    paramDecl.Insert(0, "&self");
                 }
 
                 sb.Append(string.Join(", ", paramDecl));
@@ -333,7 +329,7 @@ namespace Ngs.Interop.CodeGen
                 stringBuilder.AppendLine($"\t{rimi.GetSignature(false)} {{");
                 if (rimi.ComMethodInfo.ReturnsHresult)
                 {
-                    stringBuilder.AppendLine("\t\tE_NOTIMPL");
+                    stringBuilder.AppendLine("\t\thresults::E_NOTIMPL");
                 }
                 else
                 {

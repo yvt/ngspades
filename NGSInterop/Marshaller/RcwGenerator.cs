@@ -537,7 +537,7 @@ namespace Ngs.Interop.Marshaller
 
 				comMethodInfo.ReturnValueMarshaller.CreateToRuntimeGenerator(gen)
 							 .EmitToRuntime(new LocalStorage(gen, nativeLocal),
-											new LocalStorage(gen, returnValueLocal));
+											new LocalStorage(gen, returnValueLocal), move: true);
 			}
 
 			// unpin by-ref parameters
@@ -556,7 +556,7 @@ namespace Ngs.Interop.Marshaller
 				// marshal "out" parameters and optionally return value parameter
 				if (paramInfo.ToRuntimeGenerator != null)
 				{
-					paramInfo.ToRuntimeGenerator.EmitToRuntime(paramInfo.NativeStorage, paramInfo.Storage);
+					paramInfo.ToRuntimeGenerator.EmitToRuntime(paramInfo.NativeStorage, paramInfo.Storage, move: true);
 				}
 
 				// destruct native values for "in" parameters
