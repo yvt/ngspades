@@ -15,7 +15,7 @@ namespace Ngs.Interop
             var factory = DynamicModuleInfo.Instance.CcwGenerator.CreateCcwFactory(baseInterface).FactoryDelegate;
 
             // debug
-            if (true) {
+            if (false) {
                 var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
                 var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] {typeof(string)});
                 if (saveMethod != null) {
