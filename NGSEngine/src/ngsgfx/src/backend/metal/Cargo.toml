@@ -1,0 +1,8 @@
+[package]
+name = "ngsgfx_metal"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+ngsgfx_core = { path = "../../core" }
+metal-rs = "0.3.0"

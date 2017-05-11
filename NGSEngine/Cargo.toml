@@ -11,6 +11,6 @@ enet = { path = "src/enet" }
 lazy_static = { version = "0.2" }
 ngsbase = { path = "src/ngsbase" }
 ngscom = { path = "src/ngscom" }
-ngsgfxbase = { path = "src/ngsgfxbase" }
+ngsgfx = { path = "src/ngsgfx" }
 yfft = { path = "src/yfft" }
 xdispatch = { path = "src/xdispatch" }
