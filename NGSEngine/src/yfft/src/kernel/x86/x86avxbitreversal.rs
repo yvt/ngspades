@@ -4,29 +4,22 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
+use super::utils::if_compatible;
 use super::super::Num;
 
 use simd::x86::avx::u64x4;
 
-use std::any::TypeId;
 use std::mem;
 
 pub fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
     where T: Num
 {
-
-    if TypeId::of::<T>() == TypeId::of::<f32>() {
-        if indices.len() < 8 {
-            return None;
-        }
-
-        let kern: Option<Box<Kernel<f32>>> =
-            Some(Box::new(AvxDWordBitReversalKernel { indices: indices.clone() }));
-
-        unsafe { mem::transmute(kern) }
-    } else {
-        None
+    if indices.len() < 8 {
+        // doesn't benefit much
+        return None;
     }
+
+    if_compatible(|| Some(Box::new(AvxDWordBitReversalKernel { indices: indices.clone() })))
 }
 
 #[derive(Debug)]

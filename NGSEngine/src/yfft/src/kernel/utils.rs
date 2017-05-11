@@ -5,6 +5,7 @@
 //
 use super::{KernelType, KernelCreationParams};
 use std::fmt;
+use std::any::Any;
 
 pub trait StaticParams : fmt::Debug + 'static {
     fn inverse(&self) -> bool;
@@ -45,7 +46,8 @@ pub trait StaticParamsConsumer<TRet> {
 }
 
 pub fn branch_on_static_params<F, T>(cparams: &KernelCreationParams, f: F) -> T
-    where F : StaticParamsConsumer<T> {
+    where F : StaticParamsConsumer<T>
+{
 
     match (cparams.kernel_type, cparams.inverse) {
         (KernelType::Dit, false) => f.consume(cparams, StaticParamsDitForward{}),
@@ -53,4 +55,16 @@ pub fn branch_on_static_params<F, T>(cparams: &KernelCreationParams, f: F) -> T
         (KernelType::Dit, true) =>  f.consume(cparams, StaticParamsDitBackward{}),
         (KernelType::Dif, true) =>  f.consume(cparams, StaticParamsDifBackward{})
     }
+}
+
+pub fn if_compatible<TExpect, TRequired, F>(f: F) -> Option<TRequired>
+    where Option<TRequired> : Any,
+          Option<TExpect> : Any,
+          F : FnOnce () -> Option<TExpect>
+{
+    let mut ret_cell = None;
+    if let Some(ret) = (&mut ret_cell as &mut Any).downcast_mut() {
+        *ret = f();
+    }
+    ret_cell
 }

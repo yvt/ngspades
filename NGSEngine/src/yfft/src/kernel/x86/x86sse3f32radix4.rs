@@ -18,7 +18,7 @@
 //! For small transforms ties with a commercial-level FFT library, but tends to be much slower for large transforms.
 
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params};
+use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible};
 use super::super::super::simdutils::{f32x4_bitxor, sse3_f32x4_complex_mul_riri_inner};
 
 use num_complex::Complex;
@@ -26,30 +26,16 @@ use num_iter::range_step;
 
 use simd::f32x4;
 
-use std::any::TypeId;
-use std::{mem, f32};
+use std::f32;
 
 pub fn new_x86_sse3_f32_radix4_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
     where T: Num
 {
-
-    // Rust doesn't have partial specialization of generics yet...
-    if TypeId::of::<T>() != TypeId::of::<f32>() {
-        return None;
-    }
-
     if cparams.radix != 4 {
         return None;
     }
 
-    // TODO: check processor capability
-
-    match branch_on_static_params(cparams, Factory {}) {
-        // This is perfectly safe because we can reach here only when T == f32
-        // TODO: move this dirty unsafety somewhere outside
-        Some(k) => Some(unsafe { mem::transmute(k) }),
-        None => None,
-    }
+    if_compatible(|| branch_on_static_params(cparams, Factory {}))
 }
 
 struct Factory {}

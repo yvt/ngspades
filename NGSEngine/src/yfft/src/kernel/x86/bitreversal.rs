@@ -4,25 +4,17 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
+use super::utils::if_compatible;
 use super::super::Num;
 
 use simd::x86::sse2::u64x2;
 
-use std::any::TypeId;
 use std::mem;
 
 pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
     where T: Num
 {
-
-    if TypeId::of::<T>() == TypeId::of::<f32>() {
-        let kern: Option<Box<Kernel<f32>>> =
-            Some(Box::new(SseDWordBitReversalKernel { indices: indices.clone() }));
-
-        unsafe { mem::transmute(kern) }
-    } else {
-        None
-    }
+    if_compatible(|| Some(Box::new(SseDWordBitReversalKernel { indices: indices.clone() })))
 }
 
 #[derive(Debug)]
