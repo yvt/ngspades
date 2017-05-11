@@ -17,10 +17,20 @@ pub trait PipelineLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + 
 pub trait DescriptorSetLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 pub trait DescriptorPool: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+
+/// Handle of a descriptor set containing a set of descriptors.
+///
+/// Modification of a descriptor set must be synchronized or it might result in a panic.
+/// A descriptor set should not be modified once it was bound to a graphics command encoder
+/// until the command encoder finished the execution.
 pub trait DescriptorSet<R: Resources>
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
-    fn update(&mut self, writes: &[WriteDescriptorSet<R>]);
-    fn copy_from(&mut self, copies: &[CopyDescriptorSet<Self>]);
+
+    /// Updates one or more descriptors in this descriptor set.
+    fn update(&self, writes: &[WriteDescriptorSet<R>]);
+
+    /// Copies one or more descriptors to this descriptor set.
+    fn copy_from(&self, copies: &[CopyDescriptorSet<Self>]);
 }
 
 #[derive(Debug, Clone, Copy)]
