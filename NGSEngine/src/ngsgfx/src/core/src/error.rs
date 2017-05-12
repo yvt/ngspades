@@ -17,6 +17,7 @@
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum GenericError {
     OutOfDeviceMemory,
+    DeviceLost,
 }
 
 pub type Result<T> = ::std::result::Result<T, GenericError>;

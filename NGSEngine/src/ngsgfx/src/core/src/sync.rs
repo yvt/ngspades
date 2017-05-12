@@ -64,3 +64,12 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any {
 
 /// The handle to an inter-command buffer synchronization primitive.
 pub trait Semaphore: Hash + Debug + Eq + PartialEq + Send + Sync + Any {}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FenceDescription {
+    pub signaled: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SemaphoreDescription {}
+

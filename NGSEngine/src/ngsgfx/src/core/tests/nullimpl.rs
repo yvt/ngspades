@@ -44,6 +44,9 @@ impl core::CommandBuffer<Resources> for CommandBuffer {
 
     fn reset(&mut self) { unimplemented!() }
 
+    fn state(&self) -> core::CommandBufferState { unimplemented!() }
+    fn wait_completion(&self, timeout: Duration) -> core::Result<bool> { unimplemented!() }
+
     fn graphics_command_encoder(&mut self,
                                 description: &core::GraphicsCommandEncoderDescription<RenderPass,
                                                                                       Framebuffer>)
@@ -63,6 +66,7 @@ impl core::CommandEncoder<Resources> for GraphicsCommandEncoder {
     fn end_encoding(&mut self) { unimplemented!() }
 }
 impl core::GraphicsCommandEncoder<Resources> for GraphicsCommandEncoder {
+    fn next_subpass(&mut self) { unimplemented!() }
     fn bind_graphics_pipeline(&mut self, pipeline: &GraphicsPipeline) { unimplemented!() }
     fn set_blend_constants(&mut self, value: &[f32; 4]) { unimplemented!() }
     fn set_depth_bias(&mut self, value: &Option<core::DepthBias>) { unimplemented!() }
@@ -192,10 +196,10 @@ impl core::DescriptorPool for DescriptorPool {
 pub struct DescriptorSet {}
 
 impl core::DescriptorSet<Resources> for DescriptorSet {
-    fn update(&mut self, writes: &[core::WriteDescriptorSet<Resources>]) {
+    fn update(&self, writes: &[core::WriteDescriptorSet<Resources>]) {
         unimplemented!()
     }
-    fn copy_from(&mut self, copies: &[core::CopyDescriptorSet<Self>]) {
+    fn copy_from(&self, copies: &[core::CopyDescriptorSet<Self>]) {
         unimplemented!()
     }
 }
@@ -267,16 +271,20 @@ pub struct CommandQueue {}
 impl core::CommandQueue<Resources, CommandBuffer> for CommandQueue {
     fn make_command_buffer(&self) -> core::Result<CommandBuffer> { unimplemented!() }
 
+    fn wait_idle(&self) { unimplemented!() }
+
     fn submit_commands(&self,
                        buffers: &[&CommandBuffer],
                        fence: Option<&Fence>)
-                       -> ::std::result::Result<(), core::QueueSubmissionError> { unimplemented!() }
+                       -> core::Result<()> { unimplemented!() }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Factory {}
 
 impl core::Factory<Resources> for Factory {
+    fn make_fence(&self, descriptor: &core::FenceDescription) -> core::Result<Fence> { unimplemented!() }
+    fn make_semaphore(&self, descriptor: &core::SemaphoreDescription) -> core::Result<Semaphore> { unimplemented!() }
     fn make_render_pass(&self, description: &core::RenderPassDescription) -> core::Result<RenderPass> { unimplemented!() }
     fn make_framebuffer(&self,
                         description: &core::FramebufferDescription<RenderPass, ImageView>)

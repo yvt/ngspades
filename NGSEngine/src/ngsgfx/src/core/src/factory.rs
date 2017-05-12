@@ -13,9 +13,13 @@ use super::{RenderPassDescription, FramebufferDescription, HeapDescription, Imag
             BufferDescription, ImageViewDescription, GraphicsPipelineDescription,
             DescriptorPoolDescription, DescriptorSetDescription, DescriptorSetLayoutDescription,
             SamplerDescription, PipelineLayoutDescription, BufferViewDescription,
-            ShaderModuleDescription, ComputePipelineDescription, StencilStateDescription};
+            ShaderModuleDescription, ComputePipelineDescription, StencilStateDescription,
+            SemaphoreDescription, FenceDescription};
 
 pub trait Factory<R: Resources>: Hash + Debug + Eq + PartialEq + Any {
+    fn make_fence(&self, descriptor: &FenceDescription) -> Result<R::Fence>;
+    fn make_semaphore(&self, descriptor: &SemaphoreDescription) -> Result<R::Semaphore>;
+
     fn make_render_pass(&self, description: &RenderPassDescription) -> Result<R::RenderPass>;
     fn make_framebuffer(&self,
                         description: &FramebufferDescription<R::RenderPass, R::ImageView>)

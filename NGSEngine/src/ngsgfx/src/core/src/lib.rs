@@ -22,6 +22,8 @@
 //! on some descriptor types to validate their usage, but this is usually not enough because some information
 //! which are only available to backends are not available to the backend-agnostic validators.
 //!
+//! TODO: exception safety?
+//!
 //! [`Validate`]: trait.Validate.html
 //!
 //! Handles
