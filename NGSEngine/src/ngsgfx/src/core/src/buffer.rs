@@ -11,7 +11,7 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use super::{StorageMode, BufferViewFormat, Validate, DeviceCapabilities};
+use super::{BufferViewFormat, Validate, DeviceCapabilities};
 
 /// Handle for buffer objects each of which represents a continuous region on a host/device memory.
 ///
@@ -27,7 +27,6 @@ pub trait BufferView: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any 
 pub struct BufferDescription {
     pub usage: BitFlags<BufferUsageFlags>,
     pub size: usize,
-    pub storage_mode: StorageMode,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -14,7 +14,7 @@ use enumflags::BitFlags;
 use cgmath::prelude::*;
 use cgmath::Vector3;
 
-use super::{ImageFormat, StorageMode, Signedness, Normalizedness, Validate, DeviceCapabilities};
+use super::{ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities};
 
 /// Image handle.
 pub trait Image: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
@@ -37,7 +37,6 @@ pub struct ImageDescription {
     pub num_mip_levels: u32,
     pub num_array_layers: u32,
     pub initial_layout: ImageLayout,
-    pub storage_mode: StorageMode,
     pub tiling: ImageTiling,
 }
 
@@ -52,7 +51,6 @@ impl ::std::default::Default for ImageDescription {
             num_mip_levels: 1,
             num_array_layers: 1,
             initial_layout: ImageLayout::Undefined,
-            storage_mode: StorageMode::Private,
             tiling: ImageTiling::Optimal,
         }
     }
