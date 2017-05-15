@@ -49,16 +49,15 @@ pub trait CommandBuffer<R: Resources>
     fn wait_completion(&self, timeout: Duration) -> Result<bool>;
 
     fn graphics_command_encoder(&mut self,
-                                description: &GraphicsCommandEncoderDescription<R::RenderPass,
-                                                                                R::Framebuffer>)
+                                description: &GraphicsCommandEncoderDescription<R::Framebuffer>)
                                 -> &mut Self::GraphicsCommandEncoder;
     fn compute_command_encoder(&mut self) -> &mut Self::ComputeCommandEncoder;
     fn blit_command_encoder(&mut self) -> &mut Self::BlitCommandEncoder;
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct GraphicsCommandEncoderDescription<'a, TRenderPass: RenderPass, TFramebuffer: Framebuffer> {
-    render_pass: &'a TRenderPass,
+pub struct GraphicsCommandEncoderDescription<'a, TFramebuffer: Framebuffer> {
+    /// Specifies the framebuffer to render onto.
     framebuffer: &'a TFramebuffer,
 }
 
