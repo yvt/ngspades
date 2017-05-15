@@ -20,6 +20,7 @@ pub trait RenderPass: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any 
 pub struct RenderPassDescription<'a> {
     pub attachments: &'a [RenderPassAttachmentDescription],
     pub subpasses: &'a [RenderSubpassDescription<'a>],
+    pub dependencies: &'a [RenderSubpassDependency],
 }
 
 #[derive(Debug, Clone, Copy)]
