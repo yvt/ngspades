@@ -23,7 +23,10 @@ pub struct FramebufferDescription<'a, TRenderPass: RenderPass, TImageView: Image
 
 #[derive(Debug, Clone, Copy)]
 pub struct FramebufferAttachmentDescription<'a, TImageView: ImageView> {
-    pub attachment: &'a TImageView,
+    /// Specified the image view to use as the corresponding attachment.
+    ///
+    /// Must only specify a single mipmap level.
+    pub image_view: &'a TImageView,
     pub clear_values: ClearValues,
 }
 

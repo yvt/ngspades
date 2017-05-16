@@ -73,7 +73,23 @@ pub enum ImageTiling {
 pub struct ImageViewDescription<'a, TImage: Image> {
     pub view_type: ImageViewType,
     pub image: &'a TImage,
-    // TODO: mip layer, etc.
+    pub format: ImageFormat,
+    pub range: ImageSubresourceRange,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ImageSubresourceRange {
+    /// The first mipmap level accessible to the view.
+    pub base_mip_level: u32,
+
+    /// The number of mipmap levels. Use `None` to specify all remaining levels.
+    pub num_mip_levels: Option<u32>,
+
+    /// The first array layer accessible to the view.
+    pub base_array_layer: u32,
+
+    /// The number of array layers. Use `None` to specify all remaining layers.
+    pub num_array_layers: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -120,6 +136,8 @@ mod flags {
     #[repr(u32)]
     pub enum ImageFlags {
         CubeCompatible = 0b1,
+        // TODO: 2D array compatible 3D texture (VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
+        //       note: not supported by Metal
     }
 }
 
@@ -156,7 +174,7 @@ pub enum ImageDescriptionValidationError {
     /// Some elements in `extent` irrevelant for the image type are not set to `1`.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     InvalidExtentForImageType,
-    /// `num_mip_levels` is not  less than or equal to `log2(extent.max()) + 1`.
+    /// `num_mip_levels` is not less than or equal to `log2(extent.max()) + 1`.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     TooManyMipLevels,
     /// `num_array_layers` is greater than `DeviceLimits.max_image_num_array_layers`.
@@ -243,7 +261,8 @@ impl Validate for ImageDescription {
         }
 
         match self.initial_layout {
-            ImageLayout::Undefined | ImageLayout::Preinitialized => {}
+            ImageLayout::Undefined |
+            ImageLayout::Preinitialized => {}
             _ => {
                 callback(ImageDescriptionValidationError::InvalidInitialLayout);
             }
@@ -280,19 +299,193 @@ impl Validate for ImageDescription {
 }
 
 /// Validation errors for [`ImageViewDescription`](struct.ImageViewDescription.html).
+///
+/// Compatibility with the speciied image is not checked by the core validator because
+/// the image's original `ImageDescription` is not accessible to the core (backends are
+/// not required to keep `ImageDescription` in image handles). If `ImageDescription` is
+/// available, [`compatible_with_image`] can be used to check the compatibility.
+///
+/// [`compatible_with_image`]: struct.ImageViewDescription.html#method.compatible_with_image
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ImageViewDescriptionValidationError {
-    // TODO
+    /// `num_mip_levels` is `0`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    ZeroMipLevels,
+    /// `num_array_layers` is `0`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    ZeroArrayLayers,
+    /// `num_mip_levels.unwrap_or(1) + base_mip_level` is greater than `log2(max_extent) + 1`.
+    /// where `max_extent` is the maximum value of `DeviceLimits.max_image_extent_1d`,
+    /// `DeviceLimits.max_image_extent_2d`, and `DeviceLimits.max_image_extent_3d`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    ///
+    /// **To backend implementors**: Backends must also check whether the mipmap level
+    /// is valid for the specified image. `compatible_with_image` does this check.
+    TooManyMipLevels,
+    /// `num_array_layers.unwrap_or(1) + base_array_layer` is greater than
+    /// `DeviceLimits.max_image_num_array_layers`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    ///
+    /// **To backend implementors**: Backends must also check whether the array layer
+    /// is valid for the specified image. `compatible_with_image` does this check.
+    TooManyArrayLayers,
+    /// `view_type` is `CubeArray` and `DeviceLimits.supports_cube_array` is `false`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    CubeArrayNotSupported,
 }
 
 impl<'a, TImage: Image> Validate for ImageViewDescription<'a, TImage> {
     type Error = ImageViewDescriptionValidationError;
 
-    #[allow(unused_variables)]
-    #[allow(unused_mut)]
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
         where T: FnMut(Self::Error) -> ()
     {
-        // TODO
+        if self.range.num_mip_levels == Some(0) {
+            callback(ImageViewDescriptionValidationError::ZeroMipLevels);
+        }
+        if self.range.num_array_layers == Some(0) {
+            callback(ImageViewDescriptionValidationError::ZeroArrayLayers);
+        }
+        if self.range
+               .num_mip_levels
+               .unwrap_or(1)
+               .checked_add(self.range.base_mip_level) == None {
+            callback(ImageViewDescriptionValidationError::TooManyMipLevels);
+        }
+        if self.range
+               .num_array_layers
+               .unwrap_or(1)
+               .checked_add(self.range.base_array_layer) == None {
+            callback(ImageViewDescriptionValidationError::TooManyArrayLayers);
+        }
+
+        if let Some(cap) = cap {
+            let limits: &::DeviceLimits = cap.limits();
+
+            let max_extent = *[limits.max_image_extent_1d,
+                               limits.max_image_extent_2d,
+                               limits.max_image_extent_3d]
+                                      .iter()
+                                      .max()
+                                      .unwrap();
+            let log2floor = 31 - max_extent.leading_zeros();
+            if self.range
+                   .num_mip_levels
+                   .unwrap_or(1)
+                   .saturating_add(self.range.base_mip_level) > log2floor + 1 {
+                callback(ImageViewDescriptionValidationError::TooManyMipLevels);
+            }
+
+            if self.range
+                   .num_array_layers
+                   .unwrap_or(1)
+                   .saturating_add(self.range.base_array_layer) >
+               limits.max_image_num_array_layers {
+                callback(ImageViewDescriptionValidationError::TooManyArrayLayers);
+            }
+
+            if !limits.supports_cube_array && self.view_type == ImageViewType::CubeArray {
+                callback(ImageViewDescriptionValidationError::CubeArrayNotSupported);
+            }
+        }
+    }
+}
+
+/// Compatibility validation errors for [`ImageViewDescription`](struct.ImageViewDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ImageViewDescriptionCompatibilityValidationError {
+    /// An unsupported combination of `ImageType` and `ImageViewType` was found.
+    TypeIncompatible,
+    /// `num_mip_levels.unwrap_or(1) + base_mip_level` is greater than `image_desc.num_mip_levels`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    TooManyMipLevels,
+    /// `num_array_layers.unwrap_or(1) + base_array_layer` is greater than `image_desc.num_array_layers`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    TooManyArrayLayers,
+    /// `num_array_layers` is not `1` (`6` for cube images) and `view_type` is not `TwoDArray` nor `CubeArray`.
+    /// (Vulkan 1.0, "11.5. Image Views" Table 8)
+    InvalidArrayLayersForNonLayeredView,
+    /// `num_array_layers` is not a multiple of `6` and `view_type` is `CubeArray`.
+    /// (Vulkan 1.0, "11.5. Image Views" Table 8)
+    InvalidArrayLayersForCubeArray,
+    /// `view_type` is `CubeArray` or `Cube` and `image_desc.flags` does not include
+    /// `ImageFlags::CubeCompatible`.
+    NotCubeCompatible,
+
+    // TODO: image format compatibility
+}
+
+impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
+    pub fn validate_compatibility_with_image<T>(&self,
+                                                image_desc: &ImageDescription,
+                                                mut callback: T)
+        where T: FnMut(ImageViewDescriptionCompatibilityValidationError) -> ()
+    {
+        if self.range
+               .num_mip_levels
+               .unwrap_or(1)
+               .saturating_add(self.range.base_mip_level) > image_desc.num_mip_levels {
+            callback(ImageViewDescriptionCompatibilityValidationError::TooManyMipLevels);
+        }
+
+        if self.range
+               .num_array_layers
+               .unwrap_or(1)
+               .saturating_add(self.range.base_array_layer) >
+           image_desc.num_array_layers {
+            callback(ImageViewDescriptionCompatibilityValidationError::TooManyArrayLayers);
+        }
+
+        let num_array_layers = self.range
+            .num_array_layers
+            .unwrap_or(image_desc
+                           .num_array_layers
+                           .saturating_sub(self.range.base_array_layer));
+
+        match (self.view_type, image_desc.image_type) {
+            (ImageViewType::OneD, ImageType::OneD) => {
+                if num_array_layers != 1 {
+                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
+                }
+            }
+            (ImageViewType::TwoD, ImageType::TwoD) => {
+                if num_array_layers != 1 {
+                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
+                }
+            }
+            (ImageViewType::TwoDArray, ImageType::TwoD) => {}
+            (ImageViewType::Cube, ImageType::TwoD) => {
+                if num_array_layers != 6 {
+                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
+                }
+                if (image_desc.flags & ImageFlags::CubeCompatible).is_empty() {
+                    callback(ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible);
+                }
+            }
+            (ImageViewType::CubeArray, ImageType::TwoD) => {
+                if num_array_layers % 6 == 0 {
+                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForCubeArray);
+                }
+                if (image_desc.flags & ImageFlags::CubeCompatible).is_empty() {
+                    callback(ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible);
+                }
+            }
+            (ImageViewType::ThreeD, ImageType::ThreeD) => {
+                if num_array_layers != 1 {
+                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
+                }
+            }
+            // TODO: (ImageViewType::TwoD, ImageType::ThreeD)
+            // TODO: (ImageViewType::TwoDArray, ImageType::ThreeD)
+            _ => {
+                callback(ImageViewDescriptionCompatibilityValidationError::TypeIncompatible);
+            }
+        }
+    }
+
+    pub fn compatible_with_image(&self, image_desc: &ImageDescription) -> bool {
+        let mut valid = true;
+        self.validate_compatibility_with_image(image_desc, |_| { valid = false; });
+        valid
     }
 }

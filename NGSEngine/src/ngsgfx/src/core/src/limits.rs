@@ -24,6 +24,8 @@ pub struct DeviceLimits {
 
     pub supports_depth_bounds: bool,
 
+    pub supports_cube_array: bool,
+
     pub max_image_extent_1d: u32,
     pub max_image_extent_2d: u32,
     pub max_image_extent_3d: u32,

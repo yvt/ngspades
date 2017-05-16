@@ -10,7 +10,7 @@ use std::any::Any;
 use std::time::Duration;
 
 use super::{Resources, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D,
-            Result, RenderPass, Framebuffer};
+            Result, Framebuffer};
 
 use enumflags::BitFlags;
 use cgmath::Vector3;

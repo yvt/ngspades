@@ -120,6 +120,31 @@ pub enum ImageFormat {
     DepthFloat32Stencil8,
 }
 
+impl ImageFormat {
+    pub fn has_color(&self) -> bool {
+        !self.has_depth()
+    }
+
+    pub fn has_depth(&self) -> bool {
+        match *self {
+            ImageFormat::Depth16 |
+            ImageFormat::Depth24 |
+            ImageFormat::DepthFloat32 |
+            ImageFormat::Depth24Stencil8 |
+            ImageFormat::DepthFloat32Stencil8 => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_stencil(&self) -> bool {
+        match *self {
+            ImageFormat::Depth24Stencil8 |
+            ImageFormat::DepthFloat32Stencil8 => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ChannelSet {
     Red,

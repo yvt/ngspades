@@ -48,24 +48,44 @@ pub enum AttachmentStoreOp {
     DontCare,
 }
 
+/// Describes a render subpass.
+///
+/// See Vulkan 1.0 Specification "7.1. Render Pass Creation" for details.
+/// Following items are not supported:
+///
+///  - Feedback loops.
+///
 #[derive(Debug, Clone, Copy)]
 pub struct RenderSubpassDescription<'a> {
     pub input_attachments: &'a [RenderPassAttachmentReference],
     pub color_attachments: &'a [RenderPassAttachmentReference],
-    pub depth_stencil_attachment: &'a RenderPassAttachmentReference,
+    pub depth_stencil_attachment: &'a Option<RenderPassAttachmentReference>,
     pub preserve_attachment_indices: &'a [usize],
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct RenderPassAttachmentReference {
-    pub attachment_index: usize,
+    pub attachment_index: Option<usize>,
     pub layout: ImageLayout,
 }
 
+/// Describes a dependency between subpasses.
+///
+/// See Vulkan 1.0 Specification "7.1. Render Pass Creation" for details.
 #[derive(Debug, Clone, Copy)]
 pub struct RenderSubpassDependency {
+    /// The first subpass in the dependency.
+    ///
+    /// If `source` and `destination` are both not equal to `External`, the inequality
+    /// `source` < `destination` must be satifsied (self-dependency is prohibited).
     pub source: RenderSubpassDependencyTarget,
+
+    /// The second subpass in the dependency.
+    ///
+    /// If `source` and `destination` are both not equal to `External`, the inequality
+    /// `source` < `destination` must be satifsied (self-dependency is prohibited).
     pub destination: RenderSubpassDependencyTarget,
+
     pub source_stage_mask: BitFlags<PipelineStageFlags>,
     pub destination_stage_mask: BitFlags<PipelineStageFlags>,
     pub source_access_mask: BitFlags<AccessFlags>,
@@ -75,6 +95,11 @@ pub struct RenderSubpassDependency {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RenderSubpassDependencyTarget {
+    /// Specifies a subpass in the same render pass.
+    ///
+    /// `index` must be less than the number of subpasses (`RenderPassDescription::subpasses.len()`).
     Subpass { index: usize },
+
+    /// Specfiies all commands submitted to the queue before/after the render pass.
     External,
 }
