@@ -19,21 +19,35 @@ pub struct SamplerDescription {
     pub min_filter: Filter,
     pub mipmap_mode: MipmapMode,
     pub address_mode: [SamplerAddressMode; 3],
-    // TODO: mip lod bias? can't find in Metal...
+    // mip lod bias is intentionally excluded because it's a private API in Metal
     pub lod_min_clamp: f32,
     pub lod_max_clamp: f32,
-    pub max_anisotropy: i32,
+    pub max_anisotropy: u32,
+
+    /// Specifies the comparison function used when sampling from a depth texture.
+    ///
+    /// `Some(Never)` will be treated as `None`.
     pub compare_function: Option<CompareFunction>,
     pub border_color: SamplerBorderColor,
+
+    /// Specifies whether texture coordinates are normalized to the range `[0.0, 1.0]`.
+    ///
+    /// When set to `true`, the following conditions must met or the results of sampling are undefined:
+    ///  - `min_filter` and `mag_filter` must be equal.
+    ///  - `lod_min_clamp` and `lod_max_clamp` must be zero.
+    ///  - `max_anisotropy` must be one.
+    ///  - Image views the sampler is used to sample must be 1D or 2D image views and
+    ///    must have only a single layer and a single mipmap level.
+    ///  - When sampling an image using the sampler, projection and constant offsets cannot be used.
     pub unnormalized_coordinates: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SamplerBorderColor {
-    FloatTransparentBlock,
+    FloatTransparentBlack,
     FloatOpaqueBlack,
     FloatOpaqueWhite,
-    IntTransparentBlock,
+    IntTransparentBlack,
     IntOpaqueBlack,
     IntOpaqueWhite,
 }

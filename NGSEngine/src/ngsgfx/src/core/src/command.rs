@@ -70,6 +70,8 @@ pub enum CommandBufferState {
     Invalid,
 }
 
+// TODO: merge all command encoders into one so it looks like Vulkan
+
 pub trait CommandEncoder<R: Resources>
     : Hash + Debug + Eq + PartialEq + Send + Any {
     /// Pushes a command that instructs a device to wait on the specified semaphore.

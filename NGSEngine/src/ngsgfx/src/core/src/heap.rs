@@ -48,11 +48,28 @@ pub trait MappableHeap: Hash + Debug + Eq + PartialEq + Send + Any {
 
     /// Maps a region to a host virtual memory.
     /// Application developers should use `map_memory` instead of using this directly.
+    ///
+    /// Implementations must ensure the returned pointer is valid at least until
+    /// `self` is dropped or `raw_unmap_memory` is called with the `MappingInfo` returned
+    /// from this function.
+    ///
+    /// There always will be a corresponding call to `raw_unmap_memory` for every invocation of
+    /// `raw_map_memory`.
     unsafe fn raw_map_memory(&mut self, allocation: &mut Self::Allocation) -> (*mut u8, usize, Self::MappingInfo);
+
+    /// Flush a region from the host cache.
+    fn flush_memory(&mut self, allocation: &mut Self::Allocation,
+        offset: usize, size: Option<usize>);
+
+    /// Invalidate a region from the host cache.
+    fn invalidate_memory(&mut self, allocation: &mut Self::Allocation,
+        offset: usize, size: Option<usize>);
 
     /// Maps a region to a host virtual memory.
     ///
-    /// The heap must have been created with `StorageMode::Shared`.
+    /// - The heap must have been created with `StorageMode::Shared`.
+    /// - If the allocation was done for an image, the image must have been
+    ///   created with `ImageTiling::Linear`. This is due to the Metal backend's restriction.
     fn map_memory(&mut self, allocation: &mut Self::Allocation) -> HeapMapGuard<Self> where Self: Sized {
         let (mem, size, info) = unsafe { self.raw_map_memory(allocation) };
         HeapMapGuard {

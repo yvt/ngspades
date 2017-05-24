@@ -4,8 +4,6 @@
 // This source code is a part of Nightingales.
 //
 use std::fmt::Debug;
-use std::hash::Hash;
-use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
 use super::{Resources, Result, MemoryRequirements};
@@ -16,7 +14,7 @@ use super::{RenderPassDescription, FramebufferDescription, HeapDescription, Imag
             ShaderModuleDescription, ComputePipelineDescription, StencilStateDescription,
             SemaphoreDescription, FenceDescription};
 
-pub trait Factory<R: Resources>: Hash + Debug + Eq + PartialEq + Any {
+pub trait Factory<R: Resources>: Debug + Any {
     fn make_fence(&self, descriptor: &FenceDescription) -> Result<R::Fence>;
     fn make_semaphore(&self, descriptor: &SemaphoreDescription) -> Result<R::Semaphore>;
 
