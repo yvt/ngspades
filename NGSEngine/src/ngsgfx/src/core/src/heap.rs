@@ -9,14 +9,14 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 use std::marker::Send;
 
-use super::{Result, Resources, BufferDescription, ImageDescription};
+use {Result, Resources, BufferDescription, ImageDescription, Validate, DeviceCapabilities};
 
 /// Represents a heap that images and buffers are allocated from.
 ///
 /// No objects allocated from a heap shall never outlive the heap.
 ///
 /// See the helper trait [`MappableHeap`](trait.MappableHeap.html) for functions that deal with `Allocation`s.
-pub trait Heap<R: Resources>: Hash + Debug + Eq + PartialEq + Send + Any + MappableHeap {
+pub trait Heap<R: Resources>: Debug + Send + Any + MappableHeap {
     /// Creates a buffer and allocates a region for it.
     fn make_buffer(&mut self, description: &BufferDescription) -> Result<Option<(Self::Allocation, R::Buffer)>>;
 
@@ -25,7 +25,7 @@ pub trait Heap<R: Resources>: Hash + Debug + Eq + PartialEq + Send + Any + Mappa
 }
 
 /// Helper trait for the trait `Heap`.
-pub trait MappableHeap: Hash + Debug + Eq + PartialEq + Send + Any {
+pub trait MappableHeap: Debug + Send + Any {
     /// Represents an allocated region. Can outlive the parent `MappableHeap`.
     /// Dropping this will leak memory (useful for permanent allocations).
     type Allocation: Hash + Debug + Eq + PartialEq + Send + Any;
@@ -129,3 +129,22 @@ pub enum StorageMode {
     /// Only accessible by the device.
     Memoryless,
 }
+
+/// Validation errors for [`HeapDescription`](struct.HeapDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum HeapDescriptionValidationError {
+    // TODO
+}
+
+impl Validate for HeapDescription {
+    type Error = HeapDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+        where T: FnMut(Self::Error) -> ()
+    {
+        // TODO
+    }
+}
+

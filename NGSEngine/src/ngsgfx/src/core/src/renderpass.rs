@@ -11,7 +11,7 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use super::{ImageLayout, ImageFormat, PipelineStageFlags, AccessFlags};
+use {ImageLayout, ImageFormat, PipelineStageFlags, AccessFlags, Validate, DeviceCapabilities};
 
 /// Handle for render passes.
 pub trait RenderPass: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
@@ -103,3 +103,22 @@ pub enum RenderSubpassDependencyTarget {
     /// Specfiies all commands submitted to the queue before/after the render pass.
     External,
 }
+
+/// Validation errors for [`RenderPassDescription`](struct.RenderPassDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum RenderPassDescriptionValidationError {
+    // TODO
+}
+
+impl<'a> Validate for RenderPassDescription<'a> {
+    type Error = RenderPassDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+        where T: FnMut(Self::Error) -> ()
+    {
+        // TODO
+    }
+}
+

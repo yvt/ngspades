@@ -10,7 +10,7 @@ use std::any::Any;
 use std::time::{Duration, Instant};
 use std::marker::Sized;
 
-use super::Result;
+use {Result, Validate, DeviceCapabilities};
 
 /// The handle to a synchronization primitive used to synchronize between the host and device.
 pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any {
@@ -72,4 +72,42 @@ pub struct FenceDescription {
 
 #[derive(Debug, Clone, Copy)]
 pub struct SemaphoreDescription {}
+
+/// Validation errors for [`FenceDescription`](struct.FenceDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum FenceDescriptionValidationError {
+    // None so far
+}
+
+impl Validate for FenceDescription {
+    type Error = FenceDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+        where T: FnMut(Self::Error) -> ()
+    {
+        // None so far
+    }
+}
+
+/// Validation errors for [`SemaphoreDescription`](struct.SemaphoreDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum SemaphoreDescriptionValidationError {
+    // None so far
+}
+
+impl Validate for SemaphoreDescription {
+    type Error = SemaphoreDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+        where T: FnMut(Self::Error) -> ()
+    {
+        // None so far
+    }
+}
+
+
 

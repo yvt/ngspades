@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use super::CompareFunction;
+use {CompareFunction, Validate, DeviceCapabilities};
 
 pub trait Sampler: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
@@ -71,6 +71,24 @@ pub enum SamplerAddressMode {
     ClampToEdge,
     ClampToBorderColor,
     MirroredClampToEdge,
+}
+
+/// Validation errors for [`SamplerDescription`](struct.SamplerDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum SamplerDescriptionValidationError {
+    // TODO
+}
+
+impl Validate for SamplerDescription {
+    type Error = SamplerDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+        where T: FnMut(Self::Error) -> ()
+    {
+        // TODO
+    }
 }
 
 

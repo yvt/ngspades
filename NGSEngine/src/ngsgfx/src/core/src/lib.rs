@@ -57,8 +57,6 @@ extern crate enumflags;
 extern crate enumflags_derive;
 
 use std::fmt::Debug;
-use std::hash::Hash;
-use std::cmp::{Eq, PartialEq};
 use std::marker::Sized;
 
 mod buffer;
@@ -130,7 +128,7 @@ pub use shader::*;
 pub use sync::*;
 pub use validation::*;
 
-pub trait Device: Hash + Debug + Eq + PartialEq + Sized {
+pub trait Device: Debug + Sized {
     type Resources: Resources;
     type CommandBuffer: CommandBuffer<Self::Resources>;
     type CommandQueue: CommandQueue<Self::Resources, Self::CommandBuffer>;

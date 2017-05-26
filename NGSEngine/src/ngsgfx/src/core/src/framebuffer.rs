@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use super::{RenderPass, ImageView};
+use {RenderPass, ImageView, Validate, DeviceCapabilities};
 
 pub trait Framebuffer: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
@@ -53,5 +53,23 @@ impl ::std::default::Default for ClearValues {
             clear_depth: 1f32,
             clear_stencil: 0,
         }
+    }
+}
+
+/// Validation errors for [`FramebufferDescription`](struct.FramebufferDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum FramebufferDescriptionValidationError {
+    // TODO
+}
+
+impl<'a, TRenderPass: RenderPass, TImageView: ImageView> Validate for FramebufferDescription<'a, TRenderPass, TImageView> {
+    type Error = FramebufferDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+        where T: FnMut(Self::Error) -> ()
+    {
+        // TODO
     }
 }
