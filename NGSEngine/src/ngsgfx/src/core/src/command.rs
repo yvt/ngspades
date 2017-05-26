@@ -25,11 +25,18 @@ pub trait CommandQueue<R: Resources, TCommandBuffer: CommandBuffer<R>>
     /// the execution. It must not be associated with any other
     /// commands that has not yet completed execution.
     fn submit_commands(&self,
-                       buffers: &[&TCommandBuffer],
+                       submissions: &[&SubmissionInfo<R, TCommandBuffer>],
                        fence: Option<&R::Fence>)
                        -> Result<()>;
 
     fn wait_idle(&self);
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct SubmissionInfo<'a, R: Resources, TCommandBuffer: CommandBuffer<R>> {
+    pub buffers: &'a[&'a TCommandBuffer],
+    pub wait_semaphores: &'a[&'a R::Semaphore],
+    pub signal_semaphores: &'a[&'a R::Semaphore],
 }
 
 /// Command buffer.
@@ -37,29 +44,12 @@ pub trait CommandQueue<R: Resources, TCommandBuffer: CommandBuffer<R>>
 /// When dropping a `CommandBuffer`, it must not be in the `Pending` state.
 /// Also, it must not outlive the originating `CommandQueue`.
 pub trait CommandBuffer<R: Resources>
-    : Hash + Debug + Eq + PartialEq + Send + Any {
-    type GraphicsCommandEncoder: GraphicsCommandEncoder<R>;
-    type ComputeCommandEncoder: ComputeCommandEncoder<R>;
-    type BlitCommandEncoder: BlitCommandEncoder<R>;
-
-    /// Clear the contents of the command buffer.
-    fn reset(&mut self);
+    : Hash + Debug + Eq + PartialEq + Send + Any + CommandEncoder<R> {
 
     fn state(&self) -> CommandBufferState;
     fn wait_completion(&self, timeout: Duration) -> Result<bool>;
-
-    fn graphics_command_encoder(&mut self,
-                                description: &GraphicsCommandEncoderDescription<R::Framebuffer>)
-                                -> &mut Self::GraphicsCommandEncoder;
-    fn compute_command_encoder(&mut self) -> &mut Self::ComputeCommandEncoder;
-    fn blit_command_encoder(&mut self) -> &mut Self::BlitCommandEncoder;
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct GraphicsCommandEncoderDescription<'a, TFramebuffer: Framebuffer> {
-    /// Specifies the framebuffer to render onto.
-    framebuffer: &'a TFramebuffer,
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum CommandBufferState {
@@ -67,38 +57,49 @@ pub enum CommandBufferState {
     Recording,
     Executable,
     Pending,
-    Invalid,
+    Error,
 }
 
-// TODO: merge all command encoders into one so it looks like Vulkan
-
+/// Encodes commands into a command buffer.
 pub trait CommandEncoder<R: Resources>
-    : Hash + Debug + Eq + PartialEq + Send + Any {
-    /// Pushes a command that instructs a device to wait on the specified semaphore.
+    : Hash + Debug + Eq + PartialEq + Send + Any
+{
+    /// Start recording a command buffer.
+    /// The existing contents will be cleared (if any).
     ///
-    /// You cannot wait and signal on the same semaphore in a single command encoder because
-    /// some backends and drivers might wait for semaphores at the beginning of the
-    /// command encoder.
-    fn wait_semaphore(&mut self,
-                      semaphore: &R::Semaphore,
-                      stage_mask: BitFlags<PipelineStageFlags>);
+    /// The command buffer must be in the `Initial`, `Executable`, or `Error` state.
+    fn begin_encoding(&mut self);
 
-    /// Pushes a command that instructs a device to signal the specified semaphore.
+    /// End recording a command buffer.
     ///
-    /// You cannot wait and signal on the same semaphore in a single command encoder because
-    /// some backends and drivers might signal semaphores at the end of the command encoder.
-    fn signal_semaphore(&mut self, semaphore: &R::Semaphore);
-
+    /// The command buffer must be in the `Recording` state.
     fn end_encoding(&mut self);
-}
 
-pub trait GraphicsCommandEncoder<R: Resources>
-    : Hash + Debug + Eq + PartialEq + Send + Any + CommandEncoder<R> {
+    /// Begin a render pass.
+    ///
+    /// If a compute pipeline is currently bound, it will be unbound.
+    fn begin_render_pass(&mut self, framebuffer: &R::Framebuffer);
+
+    /// End a render pass.
+    ///
+    /// `next_subpass` must have been called enough times between
+    /// calls to this and the matching `begin_render_pass`.
+    ///
+    /// If a graphics pipeline is currently bound, it will be unbound.
+    fn end_render_pass(&mut self);
+
     /// Make a transition to the next subpass.
-    /// Must be called for each subpass before `end_encoding` is called.
+    /// Must be called for each subpass before `end_render_pass` is called.
+    ///
+    /// If a graphics pipeline is currently bound, it will be unbound.
     fn next_subpass(&mut self);
 
     /// Sets the current `GraphicsPipeline` object.
+    ///
+    /// A render pass must be active and compatible with the specified pipeline.
+    ///
+    /// All dynamic states will be reseted and all descriptors will be unbound.
+    /// They all have to be specified before issuing the first draw call.
     fn bind_graphics_pipeline(&mut self, pipeline: &R::GraphicsPipeline);
 
     /// Specifies the dynamic blend constant values. The current `GraphicsPipeline`'s
@@ -136,24 +137,23 @@ pub trait GraphicsCommandEncoder<R: Resources>
             num_instances: u32,
             start_vertex_index: u32,
             start_instance_index: u32);
+
     fn draw_indexed(&mut self,
                     num_vertices: u32,
                     num_instances: u32,
                     start_vertex_index: u32,
                     index_offset: u32,
                     start_instance_index: u32);
-}
 
-pub trait ComputeCommandEncoder<R: Resources>
-    : Hash + Debug + Eq + PartialEq + Send + Any + CommandEncoder<R> {
-    /// Sets the current `ComputePipeline` object.
+    /// Set the current `ComputePipeline` object.
+    ///
+    /// Must not be called inside a render pass.
     fn bind_compute_pipeline(&mut self, pipeline: &R::ComputePipeline);
 
+    /// Provoke work in a compute pipeline.
+    ///
+    /// There must be a bound `ComputePipeline`.
     fn dispatch(&mut self, workgroup_count: Vector3<u32>);
-}
 
-pub trait BlitCommandEncoder<R: Resources>
-    : Hash + Debug + Eq + PartialEq + Send + Any + CommandEncoder<R> {
-    // TODO
+    // TODO: blit/copy/clear commands
 }
-
