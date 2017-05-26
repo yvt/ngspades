@@ -16,9 +16,13 @@ use cgmath::Vector2;
 use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
             CompareFunction, PipelineLayout, ShaderStageFlags, ShaderModule};
 
+/// Handle for compute pipeline objects.
 pub trait ComputePipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+
+/// Handle for graphics pipeline objects.
 pub trait GraphicsPipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
+/// Handle for stencil state objects.
 pub trait StencilState: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]

@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-/// Handle for shader modules.
+/// Handle for shader module object.
 pub trait ShaderModule: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]

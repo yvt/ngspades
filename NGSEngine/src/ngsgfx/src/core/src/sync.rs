@@ -12,7 +12,7 @@ use std::marker::Sized;
 
 use {Result, Validate, DeviceCapabilities};
 
-/// The handle to a synchronization primitive used to synchronize between the host and device.
+/// Handle for the synchronization primitive used to synchronize between the host and device.
 pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any {
     fn reset(&self) -> Result<()>;
     fn wait(&self, timeout: Duration) -> Result<bool>;
@@ -62,7 +62,7 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any {
     }
 }
 
-/// The handle to an inter-queue synchronization primitive.
+/// Handle for the inter-queue synchronization primitive.
 pub trait Semaphore: Hash + Debug + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]

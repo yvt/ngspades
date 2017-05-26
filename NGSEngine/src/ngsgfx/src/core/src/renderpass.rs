@@ -13,7 +13,7 @@ use enumflags::BitFlags;
 
 use {ImageLayout, ImageFormat, PipelineStageFlags, AccessFlags, Validate, DeviceCapabilities};
 
-/// Handle for render passes.
+/// Handle for render pass objects.
 pub trait RenderPass: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]

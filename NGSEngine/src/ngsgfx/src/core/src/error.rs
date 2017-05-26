@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 
-/// Defines generic error codes.
+/// Generic error codes.
 /// Some common errors are not included for the following reasons:
 ///
 /// - **Invalid usage**: the backend assumes valid usage, and in case where an invalid

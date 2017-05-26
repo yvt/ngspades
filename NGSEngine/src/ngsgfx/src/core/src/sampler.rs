@@ -11,6 +11,7 @@ use std::any::Any;
 
 use {CompareFunction, Validate, DeviceCapabilities};
 
+/// Handle for sampler objects.
 pub trait Sampler: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]

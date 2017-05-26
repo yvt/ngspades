@@ -18,7 +18,7 @@ pub trait DescriptorSetLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sy
 
 pub trait DescriptorPool: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
-/// Handle of a descriptor set containing a set of descriptors.
+/// Handle for descriptor sets containing a set of descriptors.
 ///
 /// Modification of a descriptor set must be synchronized or it might result in a panic.
 /// A descriptor set should not be modified once it was bound to a graphics command encoder

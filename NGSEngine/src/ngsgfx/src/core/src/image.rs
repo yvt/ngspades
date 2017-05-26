@@ -16,12 +16,12 @@ use cgmath::Vector3;
 
 use super::{ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities};
 
-/// Image handle.
+/// Handle for image objects.
 pub trait Image: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
     // TODO: get image subresource layout
 }
 
-/// Image view handle.
+/// Handle for image view objects.
 pub trait ImageView: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 /// Image description.

@@ -3,18 +3,19 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Defines various format types.
+//!
+//! Supported formats differ depending on the backend and the hardware.
+//!
+//! - **Supported** means the backend exposes the hardware's capability to use the format in some way.
+//! - **Mandatory** means the format is always available if it's supported by the backend.
+//! - **Undefined** means some operations cannot be defined on the format in a meaningful way.
+//!     - Filtering, blending, and MSAA resolve operation are undefined on all unnormalized formats.
+//!     - Depth/stencil operations are undefined on all non-depth/stencil formats.
+//!     - Color attachment operations are undeifned on all depth/stencil formats.
+//!
 
 /// Image format.
-///
-/// Supported formats differ depending on the backend and the hardware.
-///
-/// - **Supported** means the backend exposes the hardware's capability to use the format in some way.
-/// - **Mandatory** means the format is always available if it's supported by the backend.
-/// - **Undefined** means some operations cannot be defined on the format in a meaningful way.
-///     - Filtering, blending, and MSAA resolve operation are undefined on all unnormalized formats.
-///     - Depth/stencil operations are undefined on all non-depth/stencil formats.
-///     - Color attachment operations are undeifned on all depth/stencil formats.
-///
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ImageFormat {
     /// Represents a pixel format with a 8-bit red channel.

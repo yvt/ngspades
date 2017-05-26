@@ -11,6 +11,7 @@ use std::any::Any;
 
 use {RenderPass, ImageView, Validate, DeviceCapabilities};
 
+/// Handle for framebuffer objects.
 pub trait Framebuffer: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]
