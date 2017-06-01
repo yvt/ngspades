@@ -362,16 +362,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ngsgfx_example_simple"
-version = "0.1.0"
-dependencies = [
- "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "enumflags 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "ngsgfx 0.1.0",
- "ngsgfx_metal 0.1.0",
-]
-
-[[package]]
 name = "ngsgfx_metal"
 version = "0.1.0"
 dependencies = [
