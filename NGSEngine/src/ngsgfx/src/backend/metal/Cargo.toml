@@ -5,4 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 ngsgfx_core = { path = "../../core" }
-metal-rs = "0.3.0"
+ngsgfx_metal-rs = { path = "src/metal-rs"}
+enumflags = "*"
+cgmath = "*"
+atomic_refcell = "0.1.0"

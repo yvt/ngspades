@@ -3,6 +3,18 @@ name = "ngsengine"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
+[workspace]
+members = [
+    "src/enet",
+    "src/ngsbase",
+    "src/ngscom",
+    "src/ngsgfx",
+    "src/ngsgfx/src/backend/metal",
+    "src/ngsgfx/examples/simple",
+    "src/yfft",
+    "src/xdispatch",
+]
+
 [lib]
 crate-type = ["cdylib"]
 

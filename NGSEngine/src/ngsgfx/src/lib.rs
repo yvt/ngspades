@@ -7,6 +7,13 @@
 //!
 //! [core]: ../ngsgfx_core/index.html
 
-extern crate ngsgfx_core as core;
+extern crate ngsgfx_core;
+extern crate ngsgfx_metal;
 
-pub use self::core::*;
+pub use ::ngsgfx_core::*;
+
+pub mod backends {
+    pub mod metal {
+        pub use ::ngsgfx_metal::*;
+    }
+}
