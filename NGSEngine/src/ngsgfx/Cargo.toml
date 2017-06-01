@@ -3,6 +3,11 @@ name = "ngsgfx"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
+[features]
+default = []
+
 [dependencies]
 ngsgfx_core = { path = "src/core" }
+
+[target.'cfg(target_os="macos")'.dependencies]
 ngsgfx_metal = { path = "src/backend/metal" }

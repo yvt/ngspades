@@ -8,14 +8,12 @@
 //! [core]: ../ngsgfx_core/index.html
 
 extern crate ngsgfx_core;
-extern crate ngsgfx_metal;
 
 pub use ::ngsgfx_core::*;
 
 pub mod backends {
-    pub mod metal {
-        pub use ::ngsgfx_metal::*;
-    }
+    #[cfg(target_os="macos")]
+    pub extern crate ngsgfx_metal as metal;
 }
 
 /// Contains frequently used traits for convenience.
