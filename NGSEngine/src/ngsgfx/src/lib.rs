@@ -20,6 +20,8 @@ pub mod backends {
 
 /// Contains frequently used traits for convenience.
 pub mod prelude {
+    pub use ::Backend;
+
     pub use ::Buffer;
     pub use ::BufferView;
     pub use ::{CommandBuffer, CommandEncoder};
