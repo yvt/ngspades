@@ -89,7 +89,7 @@ pub trait Resources: Sized {
     type Buffer: Buffer;
     type BufferView: BufferView;
     type ComputePipeline: ComputePipeline;
-    type DescriptorPool: DescriptorPool;
+    type DescriptorPool: DescriptorPool<Self>;
     type DescriptorSet: DescriptorSet<Self>;
     type DescriptorSetLayout: DescriptorSetLayout;
     type Fence: Fence;

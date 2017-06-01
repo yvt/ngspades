@@ -13,7 +13,7 @@ use {Result, Resources, BufferDescription, ImageDescription, Validate, DeviceCap
 
 /// Represents a heap that images and buffers are allocated from.
 ///
-/// No objects allocated from a heap shall never outlive the heap.
+/// Objects allocated from a heap hold a reference to the underlying storage of the heap.
 ///
 /// See the helper trait [`MappableHeap`](trait.MappableHeap.html) for functions that deal with `Allocation`s.
 pub trait Heap<R: Resources>: Debug + Send + Any + MappableHeap {

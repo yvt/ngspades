@@ -64,8 +64,4 @@ pub trait Factory<R: Resources>: Debug + Any {
     fn make_descriptor_pool(&self,
                             description: &DescriptorPoolDescription)
                             -> Result<R::DescriptorPool>;
-    fn make_descriptor_sets(&self,
-                            description: &DescriptorSetDescription<R::DescriptorSetLayout>,
-                            pool: &R::DescriptorPool)
-                            -> Result<R::DescriptorSet>;
 }
