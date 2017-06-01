@@ -1,0 +1,39 @@
+[package]
+name = "ngsgfx_metal-rs"
+version = "0.3.0"
+description = "Rust bindings for Metal"
+authors = ["metal-rs authors", "yvt"]
+readme = "README.md"
+keywords = ["metal", "graphics", "bindings"]
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+cocoa = "0.5.0"
+bitflags = "0.7"
+libc = "0.2"
+objc-foundation = "0.1"
+block = "0.1.5"
+
+[dependencies.objc]
+version = "0.2.1"
+features = ["objc_exception"]
+
+[dev-dependencies]
+winit = "0.4.9"
+sema = "0.1.4"
+
+[[example]]
+name = "window"
+path = "examples/window/main.rs"
+
+[[example]]
+name = "library"
+path = "examples/library/main.rs"
+
+[[example]]
+name = "reflection"
+path = "examples/reflection/main.rs"
+
+[[example]]
+name = "caps"
+path = "examples/caps/main.rs"
