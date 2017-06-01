@@ -43,8 +43,8 @@ pub struct GraphicsPipelineDescription<'a,
     pub shader_stages: &'a [ShaderStageDescription<'a, TShaderModule>],
 
     // input assembler
-    pub vertex_buffers: &'a [VertexBufferLayoutDescriptor],
-    pub vertex_attributes: &'a [VertexAttributeDescriptor],
+    pub vertex_buffers: &'a [VertexBufferLayoutDescription],
+    pub vertex_attributes: &'a [VertexAttributeDescription],
 
     // vertex input
     pub topology: PrimitiveTopology,
@@ -252,7 +252,7 @@ pub enum StaticOrDynamic<T> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct VertexBufferLayoutDescriptor {
+pub struct VertexBufferLayoutDescription {
     pub binding: VertexBindingLocation,
     pub stride: usize,
     pub input_rate: VertexInputRate,
@@ -265,7 +265,7 @@ pub enum VertexInputRate {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct VertexAttributeDescriptor {
+pub struct VertexAttributeDescription {
     pub location: VertexAttributeLocation,
     pub binding: VertexBindingLocation,
     pub format: VertexFormat,
