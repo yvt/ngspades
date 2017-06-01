@@ -22,20 +22,14 @@ pub(crate) struct DeviceData {
     cap: imp::DeviceCapabilities,
 }
 
-impl core::Device for Device {
-    type Resources = imp::Resources;
-    type CommandBuffer = imp::CommandBuffer;
-    type CommandQueue  = imp::CommandQueue;
-    type Factory = imp::Factory;
-    type DeviceCapabilities = imp::DeviceCapabilities;
-
-    fn main_queue(&self) -> &Self::CommandQueue {
+impl core::Device<imp::Backend> for Device {
+    fn main_queue(&self) -> &imp::CommandQueue {
         unimplemented!()
     }
-    fn factory(&self) -> &Self::Factory {
+    fn factory(&self) -> &imp::Factory {
         &self.factory
     }
-    fn capabilities(&self) -> &Self::DeviceCapabilities {
+    fn capabilities(&self) -> &imp::DeviceCapabilities {
         &self.data.capabilities()
     }
 }

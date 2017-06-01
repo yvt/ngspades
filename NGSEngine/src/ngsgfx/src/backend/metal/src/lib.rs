@@ -77,14 +77,19 @@ pub mod imp {
     pub use super::shader::*;
     pub use super::sync::*;
 
-    pub struct Resources {}
-    impl core::Resources for Resources {
+    pub struct Backend {}
+    impl core::Backend for Backend {
         type Buffer = Buffer;
         type BufferView = BufferView;
+        type CommandBuffer = CommandBuffer;
+        type CommandQueue  = CommandQueue;
         type ComputePipeline = ComputePipeline;
         type DescriptorPool = DescriptorPool;
         type DescriptorSet = DescriptorSet;
         type DescriptorSetLayout = DescriptorSetLayout;
+        type Device = Device;
+        type DeviceCapabilities = DeviceCapabilities;
+        type Factory = Factory;
         type Fence = Fence;
         type Framebuffer = Framebuffer;
         type GraphicsPipeline = GraphicsPipeline;
@@ -101,6 +106,6 @@ pub mod imp {
 
 }
 
-pub use self::imp::Resources;
+pub use self::imp::Backend;
 pub use self::imp::Device;
 

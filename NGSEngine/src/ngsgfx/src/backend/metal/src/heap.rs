@@ -8,7 +8,7 @@ use metal;
 use std::sync::Arc;
 
 use {OCPtr, RefEqBox};
-use imp::{Resources, Buffer, Image, DeviceData};
+use imp::{Backend, Buffer, Image, DeviceData};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Heap {
@@ -50,7 +50,7 @@ impl Heap {
     }
 }
 
-impl core::Heap<Resources> for Heap {
+impl core::Heap<Backend> for Heap {
     fn make_buffer(&mut self,
                    description: &core::BufferDescription)
                    -> core::Result<Option<(Self::Allocation, Buffer)>> {

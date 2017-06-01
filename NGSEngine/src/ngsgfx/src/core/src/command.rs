@@ -9,15 +9,15 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 use std::time::Duration;
 
-use super::{Resources, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D,
+use super::{Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D,
             Result, Framebuffer};
 
 use enumflags::BitFlags;
 use cgmath::Vector3;
 
-pub trait CommandQueue<R: Resources, TCommandBuffer: CommandBuffer<R>>
+pub trait CommandQueue<B: Backend>
     : Hash + Debug + Eq + PartialEq + Send + Any {
-    fn make_command_buffer(&self) -> Result<TCommandBuffer>;
+    fn make_command_buffer(&self) -> Result<B::CommandBuffer>;
 
     /// Submit command buffers to a queue.
     ///
@@ -25,26 +25,26 @@ pub trait CommandQueue<R: Resources, TCommandBuffer: CommandBuffer<R>>
     /// the execution. It must not be associated with any other
     /// commands that has not yet completed execution.
     fn submit_commands(&self,
-                       submissions: &[&SubmissionInfo<R, TCommandBuffer>],
-                       fence: Option<&R::Fence>)
+                       submissions: &[&SubmissionInfo<B>],
+                       fence: Option<&B::Fence>)
                        -> Result<()>;
 
     fn wait_idle(&self);
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct SubmissionInfo<'a, R: Resources, TCommandBuffer: CommandBuffer<R>> {
-    pub buffers: &'a[&'a TCommandBuffer],
-    pub wait_semaphores: &'a[&'a R::Semaphore],
-    pub signal_semaphores: &'a[&'a R::Semaphore],
+pub struct SubmissionInfo<'a, B: Backend> {
+    pub buffers: &'a[&'a B::CommandBuffer],
+    pub wait_semaphores: &'a[&'a B::Semaphore],
+    pub signal_semaphores: &'a[&'a B::Semaphore],
 }
 
 /// Command buffer.
 ///
 /// When dropping a `CommandBuffer`, it must not be in the `Pending` state.
 /// Also, it must not outlive the originating `CommandQueue`.
-pub trait CommandBuffer<R: Resources>
-    : Hash + Debug + Eq + PartialEq + Send + Any + CommandEncoder<R> {
+pub trait CommandBuffer<B: Backend>
+    : Hash + Debug + Eq + PartialEq + Send + Any + CommandEncoder<B> {
 
     fn state(&self) -> CommandBufferState;
     fn wait_completion(&self, timeout: Duration) -> Result<bool>;
@@ -61,7 +61,7 @@ pub enum CommandBufferState {
 }
 
 /// Encodes commands into a command buffer.
-pub trait CommandEncoder<R: Resources>
+pub trait CommandEncoder<B: Backend>
     : Hash + Debug + Eq + PartialEq + Send + Any
 {
     /// Start recording a command buffer.
@@ -78,7 +78,7 @@ pub trait CommandEncoder<R: Resources>
     /// Begin a render pass.
     ///
     /// If a compute pipeline is currently bound, it will be unbound.
-    fn begin_render_pass(&mut self, framebuffer: &R::Framebuffer);
+    fn begin_render_pass(&mut self, framebuffer: &B::Framebuffer);
 
     /// End a render pass.
     ///
@@ -100,7 +100,7 @@ pub trait CommandEncoder<R: Resources>
     ///
     /// All dynamic states will be reseted and all descriptors will be unbound.
     /// They all have to be specified before issuing the first draw call.
-    fn bind_graphics_pipeline(&mut self, pipeline: &R::GraphicsPipeline);
+    fn bind_graphics_pipeline(&mut self, pipeline: &B::GraphicsPipeline);
 
     /// Specifies the dynamic blend constant values. The current `GraphicsPipeline`'s
     /// `blend_constants` must be `StaticOrDynamic::Dynamic`.
@@ -116,7 +116,7 @@ pub trait CommandEncoder<R: Resources>
 
     /// Sets the current `StencilState` object. The current `GraphicsPipeline`'s
     /// `stencil_state` must be `StaticOrDynamic::Dynamic`.
-    fn set_stencil_state(&mut self, value: &R::StencilState);
+    fn set_stencil_state(&mut self, value: &B::StencilState);
 
     /// Specifies the dynamic viewport values. The current `GraphicsPipeline`'s
     /// `viewport` must be `StaticOrDynamic::Dynamic`.
@@ -127,9 +127,9 @@ pub trait CommandEncoder<R: Resources>
     fn set_scissor_rect(&mut self, value: &Rect2D<i32>);
 
     fn bind_descriptor_sets(&mut self,
-                            pipeline_layout: &R::PipelineLayout,
+                            pipeline_layout: &B::PipelineLayout,
                             start_index: usize,
-                            descriptor_sets: &[R::DescriptorSet],
+                            descriptor_sets: &[B::DescriptorSet],
                             dynamic_offsets: &[u32]);
 
     fn draw(&mut self,
@@ -148,7 +148,7 @@ pub trait CommandEncoder<R: Resources>
     /// Set the current `ComputePipeline` object.
     ///
     /// Must not be called inside a render pass.
-    fn bind_compute_pipeline(&mut self, pipeline: &R::ComputePipeline);
+    fn bind_compute_pipeline(&mut self, pipeline: &B::ComputePipeline);
 
     /// Provoke work in a compute pipeline.
     ///

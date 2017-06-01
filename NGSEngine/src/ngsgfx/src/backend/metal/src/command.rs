@@ -11,7 +11,7 @@ use cgmath::Vector3;
 use std::time::Duration;
 
 use {ref_hash, OCPtr};
-use imp::{Resources, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
+use imp::{Backend, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
           DescriptorSetLayout, Fence, Framebuffer, GraphicsPipeline, Heap, Image, ImageView,
           PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState};
 
@@ -28,7 +28,7 @@ impl CommandQueue {
     }
 }
 
-impl core::CommandQueue<Resources, CommandBuffer> for CommandQueue {
+impl core::CommandQueue<Backend> for CommandQueue {
     fn make_command_buffer(&self) -> core::Result<CommandBuffer> {
         unimplemented!()
     }
@@ -38,7 +38,7 @@ impl core::CommandQueue<Resources, CommandBuffer> for CommandQueue {
     }
 
     fn submit_commands(&self,
-                       submissions: &[&core::SubmissionInfo<Resources, CommandBuffer>],
+                       submissions: &[&core::SubmissionInfo<Backend>],
                        fence: Option<&Fence>)
                        -> core::Result<()> {
         unimplemented!()
@@ -48,7 +48,7 @@ impl core::CommandQueue<Resources, CommandBuffer> for CommandQueue {
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CommandBuffer {}
 
-impl core::CommandBuffer<Resources> for CommandBuffer {
+impl core::CommandBuffer<Backend> for CommandBuffer {
     fn state(&self) -> core::CommandBufferState {
         unimplemented!()
     }
@@ -57,7 +57,7 @@ impl core::CommandBuffer<Resources> for CommandBuffer {
     }
 }
 
-impl core::CommandEncoder<Resources> for CommandBuffer {
+impl core::CommandEncoder<Backend> for CommandBuffer {
     fn begin_encoding(&mut self) {
         unimplemented!()
     }

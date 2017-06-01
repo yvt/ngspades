@@ -11,7 +11,7 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Resources, Result};
+use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result};
 
 pub trait PipelineLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 pub trait DescriptorSetLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
@@ -23,7 +23,7 @@ pub trait DescriptorSetLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sy
 /// Deallocating the `Allocation` associated to a set puts the set into the Invalid state
 /// where the set no longer holds a reference to a heap. Attempt to putting a set that
 /// is potentially being used by the device into the Invalid state will result in a panic.
-pub trait DescriptorPool<R: Resources>: Debug + Send + Any {
+pub trait DescriptorPool<B: Backend>: Debug + Send + Any {
     /// Represents an allocated region. Can outlive the parent `MappableHeap`.
     /// Dropping this will leak memory (useful for permanent allocations).
     type Allocation: Hash + Debug + Eq + PartialEq + Send + Any;
@@ -34,8 +34,8 @@ pub trait DescriptorPool<R: Resources>: Debug + Send + Any {
     fn deallocate(&mut self, allocation: &mut Self::Allocation);
 
     fn make_descriptor_set(&mut self,
-                            description: &DescriptorSetDescription<R::DescriptorSetLayout>)
-                            -> Result<(R::DescriptorSet, Self::Allocation)>;
+                            description: &DescriptorSetDescription<B::DescriptorSetLayout>)
+                            -> Result<(B::DescriptorSet, Self::Allocation)>;
 
     fn reset(&mut self);
 }
@@ -45,11 +45,11 @@ pub trait DescriptorPool<R: Resources>: Debug + Send + Any {
 /// Modification of a descriptor set must be synchronized or it might result in a panic.
 /// A descriptor set should not be modified once it was bound to a graphics command encoder
 /// until the command encoder finished the execution.
-pub trait DescriptorSet<R: Resources>
+pub trait DescriptorSet<B: Backend>
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
 
     /// Updates one or more descriptors in this descriptor set.
-    fn update(&self, writes: &[WriteDescriptorSet<R>]);
+    fn update(&self, writes: &[WriteDescriptorSet<B>]);
 
     /// Copies one or more descriptors to this descriptor set.
     fn copy_from(&self, copies: &[CopyDescriptorSet<Self>]);
@@ -153,26 +153,26 @@ impl DescriptorType {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct WriteDescriptorSet<'a, R: Resources + 'a> {
+pub struct WriteDescriptorSet<'a, B: Backend> {
     pub start_binding: DescriptorBindingLocation,
     pub start_index: usize,
-    pub elements: WriteDescriptors<'a, R>,
+    pub elements: WriteDescriptors<'a, B>,
 }
 
 #[derive(Debug)]
-pub enum WriteDescriptors<'a, R: Resources + 'a> {
-    StorageImage(&'a[DescriptorImage<'a, R>]),
-    SampledImage(&'a[DescriptorImage<'a, R>]),
-    Sampler(&'a[&'a R::Sampler]),
-    CombinedImageSampler(&'a[(DescriptorImage<'a, R>, &'a R::Sampler)]),
-    ConstantBuffer(&'a[DescriptorBuffer<'a, R>]),
-    StorageBuffer(&'a[DescriptorBuffer<'a, R>]),
-    DynamicConstantBuffer(&'a[DescriptorBuffer<'a, R>]),
-    DynamicStorageBuffer(&'a[DescriptorBuffer<'a, R>]),
-    InputAttachment(&'a[DescriptorImage<'a, R>]),
+pub enum WriteDescriptors<'a, B: Backend> {
+    StorageImage(&'a[DescriptorImage<'a, B>]),
+    SampledImage(&'a[DescriptorImage<'a, B>]),
+    Sampler(&'a[&'a B::Sampler]),
+    CombinedImageSampler(&'a[(DescriptorImage<'a, B>, &'a B::Sampler)]),
+    ConstantBuffer(&'a[DescriptorBuffer<'a, B>]),
+    StorageBuffer(&'a[DescriptorBuffer<'a, B>]),
+    DynamicConstantBuffer(&'a[DescriptorBuffer<'a, B>]),
+    DynamicStorageBuffer(&'a[DescriptorBuffer<'a, B>]),
+    InputAttachment(&'a[DescriptorImage<'a, B>]),
 }
 
-impl<'a, R: Resources + 'a> WriteDescriptors<'a, R> {
+impl<'a, B: Backend> WriteDescriptors<'a, B> {
     pub fn descriptor_type(&self) -> DescriptorType {
         match *self {
             WriteDescriptors::StorageImage(e) =>
@@ -199,7 +199,7 @@ impl<'a, R: Resources + 'a> WriteDescriptors<'a, R> {
 
 // #[derive(Clone, Copy)] does not work as intended on WriteDescriptors currently
 // due to: https://github.com/rust-lang/rust/issues/26925
-impl<'a, R: Resources + 'a> Clone for WriteDescriptors<'a, R> {
+impl<'a, B: Backend> Clone for WriteDescriptors<'a, B> {
     fn clone(&self) -> Self {
         match *self {
             WriteDescriptors::StorageImage(e) =>
@@ -224,17 +224,17 @@ impl<'a, R: Resources + 'a> Clone for WriteDescriptors<'a, R> {
     }
 }
 
-impl<'a, R: Resources + 'a> Copy for WriteDescriptors<'a, R> {}
+impl<'a, B: Backend> Copy for WriteDescriptors<'a, B> {}
 
 #[derive(Debug, Clone, Copy)]
-pub struct DescriptorImage<'a, R: Resources + 'a> {
-    pub image_view: &'a R::ImageView,
+pub struct DescriptorImage<'a, B: Backend> {
+    pub image_view: &'a B::ImageView,
     pub image_layout: ImageLayout,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct DescriptorBuffer<'a, R: Resources + 'a> {
-    pub buffer: &'a R::Buffer,
+pub struct DescriptorBuffer<'a, B: Backend> {
+    pub buffer: &'a B::Buffer,
     pub offset: usize,
     pub range: usize,
 }

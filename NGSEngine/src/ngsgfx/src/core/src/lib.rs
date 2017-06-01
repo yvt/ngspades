@@ -85,13 +85,18 @@ pub type VertexAttributeLocation = usize;
 pub type DescriptorSetBindingLocation = usize;
 pub type DescriptorBindingLocation = usize;
 
-pub trait Resources: Sized {
+pub trait Backend: Sized + 'static {
     type Buffer: Buffer;
     type BufferView: BufferView;
+    type CommandBuffer: CommandBuffer<Self>;
+    type CommandQueue: CommandQueue<Self>;
     type ComputePipeline: ComputePipeline;
     type DescriptorPool: DescriptorPool<Self>;
     type DescriptorSet: DescriptorSet<Self>;
     type DescriptorSetLayout: DescriptorSetLayout;
+    type Device: Device<Self>;
+    type DeviceCapabilities: DeviceCapabilities;
+    type Factory: Factory<Self>;
     type Fence: Fence;
     type Framebuffer: Framebuffer;
     type GraphicsPipeline: GraphicsPipeline;
@@ -128,16 +133,10 @@ pub use shader::*;
 pub use sync::*;
 pub use validation::*;
 
-pub trait Device: Debug + Sized {
-    type Resources: Resources;
-    type CommandBuffer: CommandBuffer<Self::Resources>;
-    type CommandQueue: CommandQueue<Self::Resources, Self::CommandBuffer>;
-    type Factory: Factory<Self::Resources>;
-    type DeviceCapabilities: DeviceCapabilities;
-
-    fn main_queue(&self) -> &Self::CommandQueue;
-    fn factory(&self) -> &Self::Factory;
-    fn capabilities(&self) -> &Self::DeviceCapabilities;
+pub trait Device<B: Backend>: Debug + Sized {
+    fn main_queue(&self) -> &B::CommandQueue;
+    fn factory(&self) -> &B::Factory;
+    fn capabilities(&self) -> &B::DeviceCapabilities;
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

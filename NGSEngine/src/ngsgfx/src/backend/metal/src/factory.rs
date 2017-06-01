@@ -8,7 +8,7 @@ use metal;
 use std::sync::Arc;
 
 use ref_hash;
-use imp::{Resources, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
+use imp::{Backend, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
           DescriptorSetLayout, Fence, Framebuffer, GraphicsPipeline, Heap, Image, ImageView,
           PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState, DeviceData};
 
@@ -27,7 +27,7 @@ impl Factory {
     }
 }
 
-impl core::Factory<Resources> for Factory {
+impl core::Factory<Backend> for Factory {
     fn make_fence(&self, description: &core::FenceDescription) -> core::Result<Fence> {
         description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         Ok(Fence::new(description))

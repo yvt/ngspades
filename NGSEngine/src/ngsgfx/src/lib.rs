@@ -17,3 +17,30 @@ pub mod backends {
         pub use ::ngsgfx_metal::*;
     }
 }
+
+/// Contains frequently used traits for convenience.
+pub mod prelude {
+    pub use ::Buffer;
+    pub use ::BufferView;
+    pub use ::{CommandBuffer, CommandEncoder};
+    pub use ::CommandQueue;
+    pub use ::ComputePipeline;
+    pub use ::DescriptorPool;
+    pub use ::DescriptorSet;
+    pub use ::DescriptorSetLayout;
+    pub use ::Device;
+    pub use ::DeviceCapabilities;
+    pub use ::Factory;
+    pub use ::Fence;
+    pub use ::Framebuffer;
+    pub use ::GraphicsPipeline;
+    pub use ::{Heap, MappableHeap};
+    pub use ::Image;
+    pub use ::ImageView;
+    pub use ::PipelineLayout;
+    pub use ::RenderPass;
+    pub use ::Sampler;
+    pub use ::Semaphore;
+    pub use ::StencilState;
+    pub use ::ShaderModule;
+}

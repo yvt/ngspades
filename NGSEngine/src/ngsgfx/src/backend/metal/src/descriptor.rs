@@ -8,7 +8,7 @@ use metal;
 use atomic_refcell::{AtomicRefCell, AtomicRef};
 
 use {OCPtr, RefEqArc};
-use imp::{Resources, Buffer, ImageView, Sampler};
+use imp::{Backend, Buffer, ImageView, Sampler};
 
 const NUM_STAGES: usize = 4;
 const VERTEX_STAGE_INDEX: usize = 0;
@@ -24,7 +24,7 @@ pub struct DescriptorPool {
 #[derive(Debug)]
 struct DescriptorPoolData {}
 
-impl core::DescriptorPool<Resources> for DescriptorPool {
+impl core::DescriptorPool<Backend> for DescriptorPool {
     type Allocation = ();
 
     fn deallocate(&mut self, allocation: &mut Self::Allocation) {
@@ -73,12 +73,12 @@ struct DescriptorSetTableStage {
     samplers: Vec<Option<Sampler>>,
 }
 
-type DescriptorTuple<'a> = (Option<&'a core::DescriptorImage<'a, Resources>>,
-                            Option<&'a core::DescriptorBuffer<'a, Resources>>,
+type DescriptorTuple<'a> = (Option<&'a core::DescriptorImage<'a, Backend>>,
+                            Option<&'a core::DescriptorBuffer<'a, Backend>>,
                             Option<&'a Sampler>);
 
-impl core::DescriptorSet<Resources> for DescriptorSet {
-    fn update(&self, writes: &[core::WriteDescriptorSet<Resources>]) {
+impl core::DescriptorSet<Backend> for DescriptorSet {
+    fn update(&self, writes: &[core::WriteDescriptorSet<Backend>]) {
         let mut table = self.data.table.borrow_mut();
 
         for write in writes {
@@ -275,7 +275,7 @@ impl DescriptorSet {
 
     fn update_inner<'a, T>(&self,
                            table: &mut DescriptorSetTable,
-                           wds: &core::WriteDescriptorSet<Resources>,
+                           wds: &core::WriteDescriptorSet<Backend>,
                            descs: T)
         where T: Iterator<Item = DescriptorTuple<'a>> + ExactSizeIterator
     {
