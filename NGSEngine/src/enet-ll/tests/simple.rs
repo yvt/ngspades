@@ -1,6 +1,6 @@
-extern crate enet;
+extern crate enet_ll;
 
 #[test]
 fn initialize() {
-    unsafe { enet::enet_initialize() };
+    unsafe { enet_ll::enet_initialize() };
 }

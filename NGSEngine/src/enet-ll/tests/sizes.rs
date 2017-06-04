@@ -1,15 +1,15 @@
 use std::mem::size_of;
 
-extern crate enet;
+extern crate enet_ll;
 
-use enet::*;
-use enet::address::*;
-use enet::host::*;
-use enet::list::*;
-use enet::packet::*;
-use enet::peer::*;
-use enet::protocol::*;
-use enet::socket::*;
+use enet_ll::*;
+use address::*;
+use host::*;
+use list::*;
+use packet::*;
+use peer::*;
+use protocol::*;
+use socket::*;
 
 #[test]
 fn test () {
