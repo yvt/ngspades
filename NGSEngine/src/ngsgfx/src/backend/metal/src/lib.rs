@@ -11,7 +11,7 @@
 //!
 //!  - **`Heap`** - A manually managed heap is available (`MTLHeap`), but is not supported
 //!    on macOS (yet?). Since we are targetting desktop platforms, no implementations that make
-//!    use of `MTLHeap` are provided.
+//!    use of `MTLHeap` are provided. TODO: Metal 2 supports `MTLHeap` on both of macOS and iOS
 //!
 //!    `MTLBuffer` provides a method that allows users to sub-allocate its portion to create
 //!    texture views, but this is inappropriate for a general use since it is not designed for
@@ -26,6 +26,8 @@
 //!  - **`RenderPass`** - Each subpass is mapped to a Metal render pass. We could leverage the tile
 //!    local storage by merging multiple subpasses into one, but no known macOS version supports
 //!    this, so we stick to the naïve approach.
+//!  - **`DescriptorSet`** - Flattened to argument tables. TODO: make use of Metal 2's
+//!    indirect argument tables for more efficiency
 //!
 //! ### Unimplemented Features
 //!
@@ -55,6 +57,7 @@ mod utils;
 
 use utils::*;
 
+/// Reexports items from `metal-rs`.
 pub mod ll {
     pub use super::metal::*;
 }
