@@ -15,7 +15,11 @@ impl core::GraphicsPipeline for GraphicsPipeline {}
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ComputePipeline {}
 
-impl core::ComputePipeline for ComputePipeline {}
+impl core::ComputePipeline for ComputePipeline {
+    fn max_num_workgroup_invocations(&self) -> u32 {
+        unimplemented!()
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct StencilState {}

@@ -7,6 +7,8 @@ use core;
 use metal;
 use cgmath::Vector3;
 
+use std::u32;
+
 #[derive(Debug)]
 pub struct DeviceCapabilities {
     limits: core::DeviceLimits,
@@ -31,8 +33,8 @@ impl DeviceCapabilities {
             max_image_num_array_layers: 2048,
             max_framebuffer_extent: 16384,
             max_compute_workgroup_size: Vector3::new(mtptg.width as u32, mtptg.height as u32, mtptg.depth as u32),
-            max_compute_workgroup_invocations: unimplemented!(),
-            max_compute_workgroup_count: unimplemented!(), // needs MTLComputePipelineState::maxTotalThreadsPerThreadgroup
+            max_num_compute_workgroup_invocations: None,
+            max_compute_workgroup_count: Vector3::new(u32::max_value(), u32::max_value(), u32::max_value()),
         };
 
         Self { limits }

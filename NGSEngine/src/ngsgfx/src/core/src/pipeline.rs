@@ -17,7 +17,9 @@ use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, Render
             CompareFunction, PipelineLayout, ShaderStageFlags, ShaderModule};
 
 /// Handle for compute pipeline objects.
-pub trait ComputePipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait ComputePipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
+    fn max_num_workgroup_invocations(&self) -> u32;
+}
 
 /// Handle for graphics pipeline objects.
 pub trait GraphicsPipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
