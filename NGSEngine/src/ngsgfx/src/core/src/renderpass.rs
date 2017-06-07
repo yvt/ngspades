@@ -59,7 +59,7 @@ pub enum AttachmentStoreOp {
 pub struct RenderSubpassDescription<'a> {
     pub input_attachments: &'a [RenderPassAttachmentReference],
     pub color_attachments: &'a [RenderPassAttachmentReference],
-    pub depth_stencil_attachment: &'a Option<RenderPassAttachmentReference>,
+    pub depth_stencil_attachment: Option<RenderPassAttachmentReference>,
     pub preserve_attachment_indices: &'a [usize],
 }
 

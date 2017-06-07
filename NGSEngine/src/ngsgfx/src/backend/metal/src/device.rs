@@ -35,6 +35,21 @@ impl core::Device<imp::Backend> for Device {
 }
 
 impl Device {
+    /// Constructs a new `Device` with a supplied `MTLDevice`.
+    ///
+    /// `metal_device` must not be null or it will panic.
+    pub fn new(metal_device: metal::MTLDevice) -> Self {
+        let data = Arc::new(DeviceData{
+            metal_device: OCPtr::new(metal_device).unwrap(),
+            cap: imp::DeviceCapabilities::new(metal_device),
+        });
+        // who cares about the extra clone
+        Self {
+            data: data.clone(),
+            factory: imp::Factory::new(data.clone()),
+        }
+    }
+
     pub(crate) fn data(&self) -> &Arc<DeviceData> {
         &self.data
     }

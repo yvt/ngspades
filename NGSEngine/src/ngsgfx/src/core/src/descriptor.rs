@@ -35,7 +35,7 @@ pub trait DescriptorPool<B: Backend>: Debug + Send + Any {
 
     fn make_descriptor_set(&mut self,
                             description: &DescriptorSetDescription<B::DescriptorSetLayout>)
-                            -> Result<(B::DescriptorSet, Self::Allocation)>;
+                            -> Result<Option<(B::DescriptorSet, Self::Allocation)>>;
 
     fn reset(&mut self);
 }

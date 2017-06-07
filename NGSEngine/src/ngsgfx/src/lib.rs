@@ -7,40 +7,44 @@
 //!
 //! [core]: ../ngsgfx_core/index.html
 
-extern crate ngsgfx_core;
-
-pub use ::ngsgfx_core::*;
+pub extern crate ngsgfx_core as core;
+pub extern crate winit;
 
 pub mod backends {
     #[cfg(target_os="macos")]
     pub extern crate ngsgfx_metal as metal;
 }
 
-/// Contains frequently used traits for convenience.
-pub mod prelude {
-    pub use ::Backend;
+pub mod wsi {
+    #[cfg(target_os="macos")]
+    pub extern crate ngsgfx_wsi_metal as metal;
+}
 
-    pub use ::Buffer;
-    pub use ::BufferView;
-    pub use ::{CommandBuffer, CommandEncoder};
-    pub use ::CommandQueue;
-    pub use ::ComputePipeline;
-    pub use ::DescriptorPool;
-    pub use ::DescriptorSet;
-    pub use ::DescriptorSetLayout;
-    pub use ::Device;
-    pub use ::DeviceCapabilities;
-    pub use ::Factory;
-    pub use ::Fence;
-    pub use ::Framebuffer;
-    pub use ::GraphicsPipeline;
-    pub use ::{Heap, MappableHeap};
-    pub use ::Image;
-    pub use ::ImageView;
-    pub use ::PipelineLayout;
-    pub use ::RenderPass;
-    pub use ::Sampler;
-    pub use ::Semaphore;
-    pub use ::StencilState;
-    pub use ::ShaderModule;
+/// Contains frequently used traits (from `ngsgfx_core`) for convenience.
+pub mod prelude {
+    pub use core::Backend;
+
+    pub use core::Buffer;
+    pub use core::BufferView;
+    pub use core::{CommandBuffer, CommandEncoder};
+    pub use core::CommandQueue;
+    pub use core::ComputePipeline;
+    pub use core::DescriptorPool;
+    pub use core::DescriptorSet;
+    pub use core::DescriptorSetLayout;
+    pub use core::Device;
+    pub use core::DeviceCapabilities;
+    pub use core::Factory;
+    pub use core::Fence;
+    pub use core::Framebuffer;
+    pub use core::GraphicsPipeline;
+    pub use core::{Heap, MappableHeap};
+    pub use core::Image;
+    pub use core::ImageView;
+    pub use core::PipelineLayout;
+    pub use core::RenderPass;
+    pub use core::Sampler;
+    pub use core::Semaphore;
+    pub use core::StencilState;
+    pub use core::ShaderModule;
 }

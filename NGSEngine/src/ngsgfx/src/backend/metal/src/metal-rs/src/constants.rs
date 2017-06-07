@@ -70,8 +70,10 @@ pub enum MTLPixelFormat {
    BC7_RGBAUnorm_sRGB     = 153,
    GBGR422                = 240,
    BGRG422                = 241,
+   Depth16Unorm           = 250,
    Depth32Float           = 252,
    Stencil8               = 253,
    Depth24Unorm_Stencil8  = 255,
    Depth32Float_Stencil8  = 260,
+   X24_Stencil8           = 262,
 }

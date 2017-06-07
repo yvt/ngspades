@@ -1,0 +1,11 @@
+[package]
+name = "ngsgfx_wsi_metal"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+cocoa = "0.8"
+objc = "0.2"
+winit = "0.6"
+ngsgfx_core = { path = "../../core" }
+ngsgfx_metal = { path = "../../backend/metal"}

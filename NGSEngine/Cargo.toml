@@ -9,6 +9,10 @@ members = [
     "src/ngsbase",
     "src/ngscom",
     "src/ngsgfx",
+    "src/ngsgfx/src/backend/metal",
+    "src/ngsgfx/src/backend/metal/src/metal-rs",
+    "src/ngsgfx/src/core",
+    "src/ngsgfx/src/wsi/metal",
     "src/yfft",
     "src/xdispatch",
 ]

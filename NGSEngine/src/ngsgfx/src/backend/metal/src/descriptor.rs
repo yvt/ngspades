@@ -16,6 +16,9 @@ const FRAGMENT_STAGE_INDEX: usize = 1;
 const COMPUTE_STAGE_INDEX: usize = 2;
 const COPY_STAGE_INDEX: usize = 3; // for descriptor copy
 
+/// Fake descriptor pool implementation.
+///
+/// Always allocates from a global heap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DescriptorPool {
     data: RefEqArc<DescriptorPoolData>,
@@ -28,17 +31,15 @@ impl core::DescriptorPool<Backend> for DescriptorPool {
     type Allocation = ();
 
     fn deallocate(&mut self, allocation: &mut Self::Allocation) {
-        unimplemented!()
     }
 
     fn make_descriptor_set(&mut self,
                            description: &core::DescriptorSetDescription<DescriptorSetLayout>)
-                           -> core::Result<(DescriptorSet, Self::Allocation)> {
-        unimplemented!()
+                           -> core::Result<Option<(DescriptorSet, Self::Allocation)>> {
+        Ok(Some((DescriptorSet::new(description.layout)?, ())))
     }
 
     fn reset(&mut self) {
-        unimplemented!()
     }
 }
 

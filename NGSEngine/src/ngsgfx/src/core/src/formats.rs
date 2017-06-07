@@ -58,10 +58,20 @@ pub enum ImageFormat {
     /// Mandatory.
     R16(Signedness, Normalizedness),
 
+    /// Represents a pixel format with a 16-bit floating point red channel.
+    ///
+    /// TODO: make this mandatory if required by Vulkan.
+    RFloat16,
+
     /// Represents a pixel format with a 16-bit red/green channels.
     ///
     /// Not mandatory.
     Rg16(Signedness, Normalizedness),
+
+    /// Represents a pixel format with a 16-bit floating point red/green channels.
+    ///
+    /// TODO: make this mandatory if required by Vulkan.
+    RgFloat16,
 
     /// Represents a pixel format with a 16-bit red/green/blue/alpha channels.
     ///
@@ -78,10 +88,20 @@ pub enum ImageFormat {
     /// Mandatory.
     R32(Signedness, Normalizedness),
 
+    /// Represents a pixel format with a 32-bit floating point red channel.
+    ///
+    /// TODO: make this mandatory if required by Vulkan.
+    RFloat32,
+
     /// Represents a pixel format with a 32-bit red/green channels.
     ///
     /// Not mandatory.
     Rg32(Signedness, Normalizedness),
+
+    /// Represents a pixel format with a 32-bit floating point red/green channels.
+    ///
+    /// TODO: make this mandatory if required by Vulkan.
+    RgFloat32,
 
     /// Represents a pixel format with a 32-bit red/green/blue/alpha channels.
     ///
@@ -92,6 +112,13 @@ pub enum ImageFormat {
     ///
     /// Mandatory.
     RgbaFloat32,
+
+    /// Represents a pixel format with a 32-bit red/green/blue/alpha channels in BGRA order.
+    Bgra8(Signedness, Normalizedness),
+
+    /// Represents a pixel format with a 8-bit red/green/blue/alpha channels in the sRGB encoding and
+    /// in BGRA order.
+    SrgbBgra8,
 
     /// Represents a pixel format with a 16-bit depth.
     ///

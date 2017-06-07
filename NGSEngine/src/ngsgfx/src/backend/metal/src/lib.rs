@@ -45,6 +45,7 @@ mod command;
 mod descriptor;
 mod device;
 mod factory;
+mod formats;
 mod heap;
 mod image;
 mod limits;
@@ -71,6 +72,7 @@ pub mod imp {
     pub use super::descriptor::*;
     pub use super::device::*;
     pub use super::factory::*;
+    pub use super::formats::*;
     pub use super::heap::*;
     pub use super::image::*;
     pub use super::limits::*;
