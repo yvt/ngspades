@@ -13,17 +13,23 @@
 extern crate objc;
 extern crate cocoa;
 extern crate winit;
+extern crate cgmath;
 
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_metal as backend_metal;
 use backend_metal::ll as metal;
 
-use std::cell::Cell;
+use std::sync::Arc;
+use std::cell::{Cell, RefCell, Ref};
 use std::{mem, fmt};
+
+use cgmath::Vector2;
 
 use objc::runtime::YES;
 
 use metal::NSObjectProtocol;
+
+use backend_metal::imp::ImageView;
 
 use cocoa::base::id as cocoa_id;
 use cocoa::foundation::NSSize;
@@ -35,8 +41,9 @@ pub struct MetalWindow {
     window: winit::Window,
     layer: metal::CAMetalLayer,
     drawable: Cell<metal::CAMetalDrawable>,
+    image_view: RefCell<ImageView>,
     pool: Cell<metal::NSAutoreleasePool>,
-    device: backend_metal::Device,
+    device: Arc<backend_metal::Device>,
 }
 
 impl fmt::Debug for MetalWindow {
@@ -55,6 +62,19 @@ impl MetalWindow {
         &self.window
     }
 
+    pub fn device(&self) -> &Arc<backend_metal::Device> {
+        &self.device
+    }
+
+    pub fn image_view(&self) -> Ref<ImageView> {
+        self.image_view.borrow()
+    }
+
+    pub fn size(&self) -> Vector2<u32> {
+        let texture = self.drawable.get().texture();
+        Vector2::new(texture.width() as u32, texture.height() as u32)
+    }
+
     pub fn swap_buffers(&self) {
         unsafe {
             self.pool.get().release();
@@ -63,6 +83,7 @@ impl MetalWindow {
             // FIXME: what if this fails?
             self.drawable.set(self.layer.next_drawable()
                 .expect("I just don't know what went wrong! *hopping on a cloud*"));
+            *self.image_view.borrow_mut() = ImageView::new(self.drawable.get().texture());
         }
     }
 }
@@ -110,12 +131,15 @@ pub fn make_window(wb: winit::WindowBuilder, events_loop: &winit::EventsLoop, fo
 
         let device = backend_metal::Device::new(metal_device);
 
+        let drawable = layer.next_drawable().unwrap();
+
         Ok(MetalWindow{
             window: winit_window,
             layer: layer,
-            drawable: Cell::new(layer.next_drawable().unwrap()),
+            drawable: Cell::new(drawable),
+            image_view: RefCell::new(ImageView::new(drawable.texture())),
             pool: Cell::new(metal::NSAutoreleasePool::alloc().init()),
-            device: device,
+            device: Arc::new(device),
         })
     }
 }
