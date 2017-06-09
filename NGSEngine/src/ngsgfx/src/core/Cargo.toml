@@ -6,4 +6,4 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 enumflags = "*"
 enumflags_derive = "*"
-cgmath = "*"
+cgmath = "0.14.1"

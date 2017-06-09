@@ -16,10 +16,12 @@ use enumflags::BitFlags;
 use cgmath::Vector3;
 
 pub trait CommandQueue<B: Backend>
-    : Hash + Debug + Eq + PartialEq + Send + Any {
+    : Debug + Send + Any {
     fn make_command_buffer(&self) -> Result<B::CommandBuffer>;
 
     /// Submit command buffers to a queue.
+    ///
+    /// The specified command buffers must be in the `Executable` state.
     ///
     /// If `fence` is specified, it will be signaled upon cmpletion of
     /// the execution. It must not be associated with any other
@@ -44,9 +46,14 @@ pub struct SubmissionInfo<'a, B: Backend> {
 /// When dropping a `CommandBuffer`, it must not be in the `Pending` state.
 /// Also, it must not outlive the originating `CommandQueue`.
 pub trait CommandBuffer<B: Backend>
-    : Hash + Debug + Eq + PartialEq + Send + Any + CommandEncoder<B> {
+    : Debug + Send + Any + CommandEncoder<B> {
 
     fn state(&self) -> CommandBufferState;
+
+    /// Stall the current threa until the execution of the command buffer
+    /// completes.
+    ///
+    /// The current state must be one of `Pending` and `Completed`.
     fn wait_completion(&self, timeout: Duration) -> Result<bool>;
 }
 
@@ -57,17 +64,18 @@ pub enum CommandBufferState {
     Recording,
     Executable,
     Pending,
+    Completed,
     Error,
 }
 
 /// Encodes commands into a command buffer.
 pub trait CommandEncoder<B: Backend>
-    : Hash + Debug + Eq + PartialEq + Send + Any
+    : Debug + Send + Any
 {
     /// Start recording a command buffer.
     /// The existing contents will be cleared (if any).
     ///
-    /// The command buffer must be in the `Initial`, `Executable`, or `Error` state.
+    /// The command buffer must be in the `Initial`, `Executable`, `Completed`, or `Error` state.
     fn begin_encoding(&mut self);
 
     /// End recording a command buffer.
@@ -108,11 +116,11 @@ pub trait CommandEncoder<B: Backend>
 
     /// Specifies the dynamic depth bias values. The current `GraphicsPipeline`'s
     /// `depth_bias` must be `StaticOrDynamic::Dynamic`.
-    fn set_depth_bias(&mut self, value: &Option<DepthBias>);
+    fn set_depth_bias(&mut self, value: Option<DepthBias>);
 
     /// Specifies the dynamic depth bound values. The current `GraphicsPipeline`'s
     /// `depth_bounds` must be `StaticOrDynamic::Dynamic`.
-    fn set_depth_bounds(&mut self, value: &Option<DepthBounds>);
+    fn set_depth_bounds(&mut self, value: Option<DepthBounds>);
 
     /// Sets the current `StencilState` object. The current `GraphicsPipeline`'s
     /// `stencil_state` must be `StaticOrDynamic::Dynamic`.
