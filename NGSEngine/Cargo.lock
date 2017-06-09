@@ -338,6 +338,7 @@ dependencies = [
 name = "ngsgfx"
 version = "0.1.0"
 dependencies = [
+ "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsgfx_core 0.1.0",
  "ngsgfx_metal 0.1.0",
  "ngsgfx_wsi_metal 0.1.0",
@@ -358,6 +359,7 @@ name = "ngsgfx_metal"
 version = "0.1.0"
 dependencies = [
  "atomic_refcell 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "enumflags 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsgfx_core 0.1.0",
@@ -380,6 +382,7 @@ dependencies = [
 name = "ngsgfx_wsi_metal"
 version = "0.1.0"
 dependencies = [
+ "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cocoa 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsgfx_core 0.1.0",
  "ngsgfx_metal 0.1.0",

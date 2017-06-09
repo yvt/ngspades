@@ -27,6 +27,13 @@ unsafe impl Send for ImageViewData {}
 unsafe impl Sync for ImageViewData {} // no interior mutability
 
 impl ImageView {
+    pub fn new(raw: metal::MTLTexture) -> Self {
+        Self {
+            data: RefEqArc::new(ImageViewData{
+                metal_texture: OCPtr::new(raw).unwrap(),
+            }),
+        }
+    }
     pub(crate) fn metal_texture(&self) -> &metal::MTLTexture {
         self.data.metal_texture.deref()
     }

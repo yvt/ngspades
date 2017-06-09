@@ -217,7 +217,7 @@ impl core::RenderPass for RenderPass {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Framebuffer {
-    pub(crate) data: RefEqArc<FramebufferData>,
+    data: RefEqArc<FramebufferData>,
 }
 
 #[derive(Debug)]
@@ -275,6 +275,14 @@ impl Framebuffer {
         let data = FramebufferData { metal_descriptors };
 
         Self { data: RefEqArc::new(data) }
+    }
+
+    pub(crate) fn num_subpasses(&self) -> usize {
+        self.data.metal_descriptors.len()
+    }
+
+    pub(crate) fn subpass(&self, index: usize) -> metal::MTLRenderPassDescriptor {
+        *self.data.metal_descriptors[index]
     }
 }
 

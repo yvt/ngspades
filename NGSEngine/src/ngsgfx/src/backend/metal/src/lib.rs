@@ -19,6 +19,8 @@
 //!  - **`Semaphore`** - `MTLFence` might seem to be the counterpart, but this is not true because
 //!    `MTLFence` does not support inter-queue synchronization, which has to be maintained by
 //!    the software.
+//!
+//!    TODO: change the definition of `Semaphore` so it matches `MTLFence`?
 //!  - **`Fence`** - Mapped to callbacks from `MTLCommandBuffer`.
 //!  - **`BufferView`** - No direct Metal counterparts are available. TODO: emulate by 2D texture?
 //!  - **`CommandBuffer`** - Maps naturally to Metal except that one `CommandBuffer` can have multiple
@@ -39,6 +41,7 @@ extern crate ngsgfx_metal_rs as metal;
 extern crate enumflags;
 extern crate cgmath;
 extern crate atomic_refcell;
+extern crate block;
 
 mod buffer;
 mod command;

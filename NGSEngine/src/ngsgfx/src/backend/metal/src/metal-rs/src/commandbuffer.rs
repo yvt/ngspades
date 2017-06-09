@@ -38,7 +38,7 @@ pub enum MTLCommandBufferError {
     InvalidResource = 9,
 }
 
-type MTLCommandBufferHandler = Block<(MTLCommandBuffer), ()>;
+type MTLCommandBufferHandler = Block<(MTLCommandBuffer,), ()>;
 
 pub enum MTLCommandBufferPrototype {}
 pub type MTLCommandBuffer = id<(MTLCommandBufferPrototype, (NSObjectPrototype, ()))>;
@@ -118,13 +118,13 @@ impl<'a> MTLCommandBuffer {
         }
     }
 
-    pub fn add_completed_handler(&self, block: MTLCommandBufferHandler) {
+    pub fn add_completed_handler(&self, block: &MTLCommandBufferHandler) {
         unsafe {
             msg_send![self.0, addCompletedHandler:block]
         }
     }
 
-    pub fn add_scheduled_handler(&self, block: MTLCommandBufferHandler) {
+    pub fn add_scheduled_handler(&self, block: &MTLCommandBufferHandler) {
         unsafe {
             msg_send![self.0, addScheduledHandler:block]
         }

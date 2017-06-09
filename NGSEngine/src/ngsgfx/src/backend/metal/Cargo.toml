@@ -7,5 +7,6 @@ authors = ["yvt <i@yvt.jp>"]
 ngsgfx_core = { path = "../../core" }
 ngsgfx_metal-rs = { path = "src/metal-rs"}
 enumflags = "*"
-cgmath = "*"
+cgmath = "0.14.1"
 atomic_refcell = "0.1.0"
+block = "0.1.5"

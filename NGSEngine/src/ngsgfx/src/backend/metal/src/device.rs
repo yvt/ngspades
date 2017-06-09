@@ -20,11 +20,12 @@ pub struct Device {
 pub(crate) struct DeviceData {
     metal_device: OCPtr<metal::MTLDevice>,
     cap: imp::DeviceCapabilities,
+    main_queue: imp::CommandQueue,
 }
 
 impl core::Device<imp::Backend> for Device {
     fn main_queue(&self) -> &imp::CommandQueue {
-        unimplemented!()
+        &self.data.main_queue
     }
     fn factory(&self) -> &imp::Factory {
         &self.factory
@@ -42,6 +43,7 @@ impl Device {
         let data = Arc::new(DeviceData{
             metal_device: OCPtr::new(metal_device).unwrap(),
             cap: imp::DeviceCapabilities::new(metal_device),
+            main_queue: unsafe { imp::CommandQueue::new(metal_device.new_command_queue()) },
         });
         // who cares about the extra clone
         Self {
