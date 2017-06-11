@@ -52,7 +52,7 @@ pub trait Factory<B: Backend>: Debug + Any {
                                                                         B::ShaderModule>)
                               -> Result<B::GraphicsPipeline>;
 
-    fn make_stencil_state(&self, description: &StencilStateDescription) -> Result<B::StencilState>;
+    fn make_stencil_state(&self, description: &StencilStateDescription<B::GraphicsPipeline>) -> Result<B::StencilState>;
 
     fn make_descriptor_set_layout(&self,
                                   description: &DescriptorSetLayoutDescription<B::Sampler>)

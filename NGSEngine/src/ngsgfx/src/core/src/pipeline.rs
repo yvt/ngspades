@@ -90,7 +90,7 @@ pub struct GraphicsPipelineRasterizerDescription<'a> {
     // depth stencil state
     pub depth_write: bool,
     pub depth_test: CompareFunction,
-    pub stencil_state: StaticOrDynamic<StencilStateDescription>,
+    pub stencil: StaticOrDynamic<StencilDescriptionSet>,
     pub depth_bounds: StaticOrDynamic<Option<DepthBounds>>,
 
     // color blend state
@@ -115,7 +115,7 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
             sample_count: 1,
             depth_write: true,
             depth_test: CompareFunction::LessEqual,
-            stencil_state: StaticOrDynamic::Static(Default::default()),
+            stencil: StaticOrDynamic::Static(Default::default()),
             depth_bounds: StaticOrDynamic::Static(None),
             blend_constants: StaticOrDynamic::Static([0f32; 4]),
             color_attachments: &[],
@@ -124,18 +124,15 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct StencilStateDescription {
-    pub front: StencilDescription,
-    pub back: StencilDescription,
+pub struct StencilStateDescription<'a, TGraphicsPipeline: GraphicsPipeline> {
+    pub pipeline: &'a TGraphicsPipeline,
+    pub set: StencilDescriptionSet,
 }
 
-impl ::std::default::Default for StencilStateDescription {
-    fn default() -> Self {
-        Self {
-            front: Default::default(),
-            back: Default::default(),
-        }
-    }
+#[derive(Debug, Clone, Copy, Default)]
+pub struct StencilDescriptionSet {
+    pub front: StencilDescription,
+    pub back: StencilDescription,
 }
 
 #[derive(Debug, Clone, Copy)]

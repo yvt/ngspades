@@ -103,7 +103,7 @@ impl core::Factory<Backend> for Factory {
         unimplemented!()
     }
 
-    fn make_stencil_state(&self, description: &core::StencilStateDescription) -> core::Result<StencilState> {
+    fn make_stencil_state(&self, description: &core::StencilStateDescription<GraphicsPipeline>) -> core::Result<StencilState> {
         unimplemented!()
     }
 
