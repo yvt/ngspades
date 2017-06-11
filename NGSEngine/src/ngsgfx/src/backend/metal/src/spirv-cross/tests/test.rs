@@ -15,7 +15,7 @@ static TEST_FRAG: include_data::DataView = include_data!(concat!(env!("OUT_DIR")
 fn transpile() {
     let result = SpirV2Msl::new(TEST_FRAG.as_u32_slice())
         .bind_resource(&ResourceBinding {
-                            stage: ExecutionModel::Vertex,
+                            stage: ExecutionModel::Fragment,
                             desc_set: 0,
                             binding: 0,
                             msl_buffer: None,
@@ -23,10 +23,18 @@ fn transpile() {
                             msl_texture: Some(0),
                         })
         .bind_resource(&ResourceBinding {
-                            stage: ExecutionModel::Vertex,
+                            stage: ExecutionModel::Fragment,
                             desc_set: 0,
-                            binding: 0,
+                            binding: 1,
                             msl_buffer: Some(1),
+                            msl_sampler: None,
+                            msl_texture: None,
+                        })
+        .bind_resource(&ResourceBinding {
+                            stage: ExecutionModel::Fragment,
+                            desc_set: 1,
+                            binding: 0,
+                            msl_buffer: Some(0),
                             msl_sampler: None,
                             msl_texture: None,
                         })
@@ -35,6 +43,8 @@ fn transpile() {
     println!("// Beginning of Generated Code");
     println!("{}", result.msl_code);
     println!("// End of Generated Code");
+    assert!(result.msl_code.contains("UBO1& unif_buffer [[buffer(1)]]"));
+    assert!(result.msl_code.contains("SSBO1& stor_buffer [[buffer(0)]]"));
 }
 
 // TODO: see if entry point name other than `main` works

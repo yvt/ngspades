@@ -91,6 +91,7 @@ public:
                 default:
                     throw std::logic_error("invalid stage");
             }
+            bindings.push_back(rb);
         } catch (const std::exception &ex) {
             last_error = ex.what();
             compiler.reset();
@@ -103,7 +104,7 @@ public:
             return SpirVCrossBoolFalse;
         }
         try {
-            output_msl = compiler->compile();
+            output_msl = compiler->compile(&vertex_attrs, &bindings);
             return SpirVCrossBoolTrue;
         } catch (const std::exception &ex) {
             last_error = ex.what();
