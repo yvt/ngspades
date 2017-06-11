@@ -364,6 +364,7 @@ dependencies = [
  "enumflags 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsgfx_core 0.1.0",
  "ngsgfx_metal-rs 0.3.0",
+ "spirv-cross 0.1.0",
 ]
 
 [[package]]
@@ -583,6 +584,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "siphasher"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "spirv-cross"
+version = "0.1.0"
+dependencies = [
+ "gcc 0.3.46 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.23 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unsafe_unions 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "syn"
