@@ -1,4 +1,10 @@
+//
+// Copyright 2017 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
 extern crate gcc;
+extern crate prebuild_glslang;
 
 fn main() {
     gcc::Config::new()
@@ -10,4 +16,9 @@ fn main() {
         .file("libspirvcross/spirv_msl.cpp")
         .file("binding/spirv2msl.cpp")
         .compile("libspirvcross.a");
+
+    prebuild_glslang::Config::new()
+        .file("tests/test.frag")
+        .flag("-V")
+        .compile("test.frag.spv");
 }

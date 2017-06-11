@@ -240,6 +240,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "include_data"
+version = "0.1.0"
+
+[[package]]
 name = "itoa"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -497,6 +501,10 @@ version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "prebuild-glslang"
+version = "0.1.0"
+
+[[package]]
 name = "quote"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -590,7 +598,9 @@ name = "spirv-cross"
 version = "0.1.0"
 dependencies = [
  "gcc 0.3.46 (registry+https://github.com/rust-lang/crates.io-index)",
+ "include_data 0.1.0",
  "libc 0.2.23 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prebuild-glslang 0.1.0",
  "unsafe_unions 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

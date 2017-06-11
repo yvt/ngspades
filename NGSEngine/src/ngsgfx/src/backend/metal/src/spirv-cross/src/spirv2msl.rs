@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 use ll;
-use std::ptr::null_mut;
 use std::ffi::CStr;
 use {VertexInputRate, ExecutionModel, Result};
 

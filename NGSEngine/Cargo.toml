@@ -9,6 +9,8 @@ members = [
     "src/ngsbase",
     "src/ngscom",
     "src/ngsgfx",
+    "src/ngsgfx/tools/include_data",
+    "src/ngsgfx/tools/prebuild-glslang",
     "src/ngsgfx/src/backend/metal",
     "src/ngsgfx/src/backend/metal/src/spirv-cross",
     "src/ngsgfx/src/backend/metal/src/metal-rs",
