@@ -7,12 +7,13 @@ extern crate spirv_cross;
 #[macro_use]
 extern crate include_data;
 
-use spirv_cross::{SpirV2Msl, ResourceBinding, ExecutionModel};
+use spirv_cross::{SpirV2Msl, ResourceBinding, ExecutionModel, VertexAttribute, VertexInputRate};
 
 static TEST_FRAG: include_data::DataView = include_data!(concat!(env!("OUT_DIR"), "/test.frag.spv"));
+static TEST_VERT: include_data::DataView = include_data!(concat!(env!("OUT_DIR"), "/test.vert.spv"));
 
 #[test]
-fn transpile() {
+fn transpile_frag() {
     let result = SpirV2Msl::new(TEST_FRAG.as_u32_slice())
         .bind_resource(&ResourceBinding {
                             stage: ExecutionModel::Fragment,
@@ -43,8 +44,27 @@ fn transpile() {
     println!("// Beginning of Generated Code");
     println!("{}", result.msl_code);
     println!("// End of Generated Code");
-    assert!(result.msl_code.contains("UBO1& unif_buffer [[buffer(1)]]"));
-    assert!(result.msl_code.contains("SSBO1& stor_buffer [[buffer(0)]]"));
+    assert!(result.msl_code.contains("unif_buffer [[buffer(1)]]"));
+    assert!(result.msl_code.contains("stor_buffer [[buffer(0)]]"));
+}
+
+#[test]
+fn transpile_vert() {
+    let result = SpirV2Msl::new(TEST_VERT.as_u32_slice())
+        .add_vertex_attribute(&VertexAttribute{
+            location: 2,
+            msl_buffer: 4,
+            msl_offset: 12,
+            msl_stride: 128,
+            input_rate: VertexInputRate::Instance,
+        })
+        .compile()
+        .unwrap();
+    println!("// Beginning of Generated Code");
+    println!("{}", result.msl_code);
+    println!("// End of Generated Code");
+    assert!(result.msl_code.contains("hoge [[attribute(2)]]"));
+    assert!(result.msl_code.contains("piyo [[user(locn3)]]"));
 }
 
 // TODO: see if entry point name other than `main` works

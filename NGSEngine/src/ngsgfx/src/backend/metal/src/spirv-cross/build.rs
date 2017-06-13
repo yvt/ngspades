@@ -21,4 +21,9 @@ fn main() {
         .file("tests/test.frag")
         .flag("-V")
         .compile("test.frag.spv");
+
+    prebuild_glslang::Config::new()
+        .file("tests/test.vert")
+        .flag("-V")
+        .compile("test.vert.spv");
 }
