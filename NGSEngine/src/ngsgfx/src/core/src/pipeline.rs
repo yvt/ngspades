@@ -42,6 +42,12 @@ pub struct GraphicsPipelineDescription<'a,
                                        TPipelineLayout: PipelineLayout,
                                        TShaderModule: ShaderModule>
 {
+    /// Shader stages.
+    ///
+    /// The same type of shader stage shall never appear twice.
+    /// Must contain a vertex shader stage.
+    /// May contain a fragment shader stage if and only if
+    /// `rasterizer` is not `None`.
     pub shader_stages: &'a [ShaderStageDescription<'a, TShaderModule>],
 
     // input assembler
@@ -74,7 +80,7 @@ pub struct ShaderStageDescription<'a, TShaderModule: ShaderModule> {
 pub struct GraphicsPipelineRasterizerDescription<'a> {
     // viewport/scissor
     pub viewport: StaticOrDynamic<Viewport>,
-    pub scissor_rect: StaticOrDynamic<Rect2D<i32>>,
+    pub scissor_rect: StaticOrDynamic<Rect2D<u32>>,
 
     // rasterization state
     pub cull_mode: CullMode,
@@ -102,10 +108,10 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
     fn default() -> Self {
         Self {
             viewport: StaticOrDynamic::Dynamic,
-            scissor_rect: StaticOrDynamic::Static(Rect2D::new(Vector2::new(i32::min_value(),
-                                                                           i32::min_value()),
-                                                              Vector2::new(i32::max_value(),
-                                                                           i32::max_value()))),
+            scissor_rect: StaticOrDynamic::Static(Rect2D::new(Vector2::new(0,
+                                                                           0),
+                                                              Vector2::new(u32::max_value(),
+                                                                           u32::max_value()))),
             cull_mode: CullMode::Back,
             front_face: Winding::CounterClockwise,
             depth_clip_mode: DepthClipMode::Clip,
@@ -253,6 +259,9 @@ pub enum StaticOrDynamic<T> {
 #[derive(Debug, Clone, Copy)]
 pub struct VertexBufferLayoutDescription {
     pub binding: VertexBindingLocation,
+    /// Vertex stride in bytes.
+    ///
+    /// Must be a multiple of 4 bytes.
     pub stride: usize,
     pub input_rate: VertexInputRate,
 }
@@ -268,6 +277,9 @@ pub struct VertexAttributeDescription {
     pub location: VertexAttributeLocation,
     pub binding: VertexBindingLocation,
     pub format: VertexFormat,
+    /// The location of the vertex data in bytes.
+    ///
+    /// Must be a multiple of 4 bytes.
     pub offset: usize,
 }
 
@@ -357,3 +369,5 @@ mod flags {
 }
 
 pub use self::flags::ColorWriteMask;
+
+// TODO: validation of pipeline descriptions

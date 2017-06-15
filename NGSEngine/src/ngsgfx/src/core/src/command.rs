@@ -132,7 +132,7 @@ pub trait CommandEncoder<B: Backend>
 
     /// Specifies the dynamic scissor rectangle. The current `GraphicsPipeline`'s
     /// `scissor_rect` must be `StaticOrDynamic::Dynamic`.
-    fn set_scissor_rect(&mut self, value: &Rect2D<i32>);
+    fn set_scissor_rect(&mut self, value: &Rect2D<u32>);
 
     fn bind_descriptor_sets(&mut self,
                             pipeline_layout: &B::PipelineLayout,
