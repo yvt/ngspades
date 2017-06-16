@@ -211,6 +211,29 @@ impl RenderPass {
 
         Self { data: RefEqArc::new(data) }
     }
+
+    pub(crate) fn num_subpass_color_attachments(&self, subpass: usize) -> usize {
+        self.data.subpasses[subpass].color_attachments.len()
+    }
+
+    pub(crate) fn subpass_color_attachment_format(&self, subpass: usize, index: usize) -> Option<core::ImageFormat> {
+        self.data.subpasses[subpass].color_attachments[index]
+            .as_ref()
+            .map(|att| self.data.attachments[att.index].format)
+    }
+
+    pub(crate) fn subpass_depth_attachment_format(&self, subpass: usize) -> Option<core::ImageFormat> {
+        self.data.subpasses[subpass].depth_attachment
+            .as_ref()
+            .map(|a| self.data.attachments[a.index].format)
+    }
+
+    pub(crate) fn subpass_stencil_attachment_format(&self, subpass: usize) -> Option<core::ImageFormat> {
+        self.data.subpasses[subpass].stencil_attachment
+            .as_ref()
+            .map(|a| self.data.attachments[a.index].format)
+    }
+
 }
 
 impl core::RenderPass for RenderPass {}
@@ -232,8 +255,6 @@ impl Framebuffer {
     pub(crate) fn new(description: &core::FramebufferDescription<RenderPass, ImageView>) -> Self {
         let ref render_pass: RenderPassData = *description.render_pass.data;
         assert_eq!(render_pass.attachments.len(), description.attachments.len());
-
-        // TODO: validate size
 
         let populate_attachment_descriptor =
             |descriptor: metal::MTLRenderPassAttachmentDescriptor,

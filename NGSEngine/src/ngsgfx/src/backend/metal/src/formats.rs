@@ -3,10 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-use core::{ImageFormat, Signedness, Normalizedness};
+use core::{ImageFormat, Signedness, Normalizedness, VertexFormat, VectorWidth, ScalarFormat};
 use self::Signedness::{Signed, Unsigned};
 use self::Normalizedness::{Normalized, Unnormalized};
-use metal::MTLPixelFormat;
+use self::VectorWidth::{Scalar, Vector2, Vector3, Vector4};
+use self::ScalarFormat::{I8, I16, I32, F32};
+use metal::{MTLPixelFormat, MTLVertexFormat};
 
 pub fn translate_image_format(format: ImageFormat) -> Option<MTLPixelFormat> {
     match format {
@@ -72,5 +74,62 @@ pub fn translate_image_format(format: ImageFormat) -> Option<MTLPixelFormat> {
         ImageFormat::Depth24Stencil8 => Some(MTLPixelFormat::Depth24Unorm_Stencil8),
         ImageFormat::DepthFloat32 => Some(MTLPixelFormat::Depth32Float),
         ImageFormat::DepthFloat32Stencil8 => Some(MTLPixelFormat::Depth32Float_Stencil8),
+    }
+}
+
+pub fn translate_vertex_format(format: VertexFormat) -> Option<MTLVertexFormat> {
+    match format {
+        VertexFormat(_, I32(_, Normalized)) => None,
+        VertexFormat(Scalar, I8(_, _)) => None,
+        VertexFormat(Scalar, I16(_, _)) => None,
+
+        VertexFormat(Scalar, I32(Signed, Unnormalized)) => Some(MTLVertexFormat::Int),
+        VertexFormat(Scalar, I32(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UInt),
+        VertexFormat(Scalar, F32) => Some(MTLVertexFormat::Float),
+
+        VertexFormat(Vector2, I8(Signed, Normalized)) => Some(MTLVertexFormat::Char2Normalized),
+        VertexFormat(Vector2, I8(Unsigned, Normalized)) => Some(MTLVertexFormat::UChar2Normalized),
+        VertexFormat(Vector2, I8(Signed, Unnormalized)) => Some(MTLVertexFormat::Char2),
+        VertexFormat(Vector2, I8(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UChar2),
+
+        VertexFormat(Vector2, I16(Signed, Normalized)) => Some(MTLVertexFormat::Short2Normalized),
+        VertexFormat(Vector2, I16(Unsigned, Normalized)) => Some(MTLVertexFormat::UShort2Normalized),
+        VertexFormat(Vector2, I16(Signed, Unnormalized)) => Some(MTLVertexFormat::Short2),
+        VertexFormat(Vector2, I16(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UShort2),
+
+        VertexFormat(Vector2, I32(Signed, Unnormalized)) => Some(MTLVertexFormat::Int2),
+        VertexFormat(Vector2, I32(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UInt2),
+
+        VertexFormat(Vector2, F32) => Some(MTLVertexFormat::Float2),
+
+        VertexFormat(Vector3, I8(Signed, Normalized)) => Some(MTLVertexFormat::Char3Normalized),
+        VertexFormat(Vector3, I8(Unsigned, Normalized)) => Some(MTLVertexFormat::UChar3Normalized),
+        VertexFormat(Vector3, I8(Signed, Unnormalized)) => Some(MTLVertexFormat::Char3),
+        VertexFormat(Vector3, I8(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UChar3),
+
+        VertexFormat(Vector3, I16(Signed, Normalized)) => Some(MTLVertexFormat::Short3Normalized),
+        VertexFormat(Vector3, I16(Unsigned, Normalized)) => Some(MTLVertexFormat::UShort3Normalized),
+        VertexFormat(Vector3, I16(Signed, Unnormalized)) => Some(MTLVertexFormat::Short3),
+        VertexFormat(Vector3, I16(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UShort3),
+
+        VertexFormat(Vector3, I32(Signed, Unnormalized)) => Some(MTLVertexFormat::Int3),
+        VertexFormat(Vector3, I32(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UInt3),
+
+        VertexFormat(Vector3, F32) => Some(MTLVertexFormat::Float3),
+
+        VertexFormat(Vector4, I8(Signed, Normalized)) => Some(MTLVertexFormat::Char4Normalized),
+        VertexFormat(Vector4, I8(Unsigned, Normalized)) => Some(MTLVertexFormat::UChar4Normalized),
+        VertexFormat(Vector4, I8(Signed, Unnormalized)) => Some(MTLVertexFormat::Char4),
+        VertexFormat(Vector4, I8(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UChar4),
+
+        VertexFormat(Vector4, I16(Signed, Normalized)) => Some(MTLVertexFormat::Short4Normalized),
+        VertexFormat(Vector4, I16(Unsigned, Normalized)) => Some(MTLVertexFormat::UShort4Normalized),
+        VertexFormat(Vector4, I16(Signed, Unnormalized)) => Some(MTLVertexFormat::Short4),
+        VertexFormat(Vector4, I16(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UShort4),
+
+        VertexFormat(Vector4, I32(Signed, Unnormalized)) => Some(MTLVertexFormat::Int4),
+        VertexFormat(Vector4, I32(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UInt4),
+
+        VertexFormat(Vector4, F32) => Some(MTLVertexFormat::Float4),
     }
 }

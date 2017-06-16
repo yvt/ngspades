@@ -17,6 +17,7 @@ fn main() {
         .file("binding/spirv2msl.cpp")
         .compile("libspirvcross.a");
 
+    // TODO: call these only for tests
     prebuild_glslang::Config::new()
         .file("tests/test.frag")
         .flag("-V")

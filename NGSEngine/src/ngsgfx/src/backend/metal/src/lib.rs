@@ -42,6 +42,7 @@ extern crate enumflags;
 extern crate cgmath;
 extern crate atomic_refcell;
 extern crate block;
+extern crate spirv_cross;
 
 mod buffer;
 mod command;
@@ -84,6 +85,12 @@ pub mod imp {
     pub use super::sampler::*;
     pub use super::shader::*;
     pub use super::sync::*;
+
+    pub type GraphicsPipelineDescription<'a> =
+        core::GraphicsPipelineDescription<'a, RenderPass, PipelineLayout, ShaderModule>;
+
+    pub type StencilStateDescription<'a> =
+        core::StencilStateDescription<'a, GraphicsPipeline>;
 
     pub struct Backend {}
     impl core::Backend for Backend {

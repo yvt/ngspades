@@ -10,7 +10,8 @@ use std::sync::Arc;
 use ref_hash;
 use imp::{Backend, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
           DescriptorSetLayout, Fence, Framebuffer, GraphicsPipeline, Heap, Image, ImageView,
-          PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState, DeviceData};
+          PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState, DeviceData,
+          self};
 
 #[derive(Debug)]
 pub struct Factory {
@@ -85,7 +86,7 @@ impl core::Factory<Backend> for Factory {
     }
 
     fn make_shader_module(&self, description: &core::ShaderModuleDescription) -> core::Result<ShaderModule> {
-        unimplemented!()
+        Ok(ShaderModule::new(description))
     }
 
     fn make_compute_pipeline(&self,
@@ -96,11 +97,9 @@ impl core::Factory<Backend> for Factory {
     }
 
     fn make_graphics_pipeline(&self,
-                              description: &core::GraphicsPipelineDescription<RenderPass,
-                                                                        PipelineLayout,
-                                                                        ShaderModule>)
+                              description: &imp::GraphicsPipelineDescription)
                               -> core::Result<GraphicsPipeline> {
-        unimplemented!()
+        GraphicsPipeline::new(self.metal_device(), description)
     }
 
     fn make_stencil_state(&self, description: &core::StencilStateDescription<GraphicsPipeline>) -> core::Result<StencilState> {

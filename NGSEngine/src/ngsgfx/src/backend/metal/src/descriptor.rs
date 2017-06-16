@@ -6,6 +6,7 @@
 use core;
 use metal;
 use atomic_refcell::{AtomicRefCell, AtomicRef};
+use spirv_cross::{SpirV2Msl, ExecutionModel, ResourceBinding};
 
 use {OCPtr, RefEqArc};
 use imp::{Backend, Buffer, ImageView, Sampler};
@@ -14,7 +15,10 @@ const NUM_STAGES: usize = 4;
 const VERTEX_STAGE_INDEX: usize = 0;
 const FRAGMENT_STAGE_INDEX: usize = 1;
 const COMPUTE_STAGE_INDEX: usize = 2;
-const COPY_STAGE_INDEX: usize = 3; // for descriptor copy
+/// The stage index for an imaginary argument table, used during copies between
+/// descriptor sets. (This is required because descriptors are not required to
+/// be required by any shader stages)
+const COPY_STAGE_INDEX: usize = 3;
 
 /// Fake descriptor pool implementation.
 ///
@@ -334,6 +338,7 @@ struct DescriptorSetLayoutData {
     /// Used to preinitialize a descriptor set with static samplers.
     samplers: [Vec<Option<Sampler>>; NUM_STAGES],
     bindings: Vec<Option<DescriptorSetLayoutBinding>>,
+    // TODO: dynamic offset layout info
 }
 
 #[derive(Debug, Clone)]
@@ -433,6 +438,18 @@ impl DescriptorSetLayout {
     }
 }
 
+/// Graphics pipeline layout.
+///
+/// On Metal, each resource type (texture, buffer, and sampler) has its own argument
+/// table. Each Vulkan-style descriptor set is mapped to zero or more consecutive
+/// elements of argument tables. `PipelineLayoutDescriptorSet` contains the first
+/// indices of such elements.
+///
+/// Additionally, zero or more vertex buffers (defined by `VertexBufferLayoutDescription`)
+/// are appended to the end of the vertex shader's buffer argument table.
+/// See `GraphicsPipeline` for more about this.
+///
+/// This is going to change in Metal 2.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PipelineLayout {
     data: RefEqArc<PipelineLayoutData>,
@@ -441,16 +458,25 @@ pub struct PipelineLayout {
 #[derive(Debug)]
 struct PipelineLayoutData {
     descriptor_sets: Vec<PipelineLayoutDescriptorSet>,
+    /// The number of textures in the texture argument table for each stage.
     num_image_views: [usize; NUM_STAGES],
+    /// The number of textures in the buffer argument table for each stage.
+    ///
+    /// Note that vertex shader's buffer argument table is extended by
+    /// dedicated vertex buffers (defined by `VertexBufferLayoutDescription`).
     num_buffers: [usize; NUM_STAGES],
+    /// The number of textures in the sampler argument table for each stage.
     num_samplers: [usize; NUM_STAGES],
 }
 
 #[derive(Debug)]
 struct PipelineLayoutDescriptorSet {
     layout: DescriptorSetLayout,
+    /// The first index in the texture argument table for each stage.
     image_view_index: [usize; NUM_STAGES],
+    /// The first index in the buffer argument table for each stage.
     buffer_index: [usize; NUM_STAGES],
+    /// The first index in the sampler argument table for each stage.
     sampler_index: [usize; NUM_STAGES],
 }
 
@@ -491,5 +517,50 @@ impl PipelineLayout {
             num_samplers,
         };
         Ok(PipelineLayout { data: RefEqArc::new(data) })
+    }
+
+    pub(crate) fn setup_spirv2msl(&self, s2m: &mut SpirV2Msl, model: ExecutionModel) {
+        for (i, set) in self.data.descriptor_sets.iter().enumerate() {
+            set.setup_spirv2msl(s2m, model, i as u32);
+        }
+    }
+
+    pub(crate) fn num_vertex_shader_buffers(&self) -> usize {
+        self.data.num_buffers[VERTEX_STAGE_INDEX]
+    }
+}
+
+impl PipelineLayoutDescriptorSet {
+    fn setup_spirv2msl(&self, s2m: &mut SpirV2Msl, model: ExecutionModel,
+            desc_set_index: u32)
+    {
+        let stage_index = match model {
+            ExecutionModel::Fragment => FRAGMENT_STAGE_INDEX,
+            ExecutionModel::Vertex => VERTEX_STAGE_INDEX,
+            ExecutionModel::GLCompute => COMPUTE_STAGE_INDEX,
+            _ => unreachable!()
+        };
+        let start_image_view_index = self.image_view_index[stage_index];
+        let start_buffer_index = self.buffer_index[stage_index];
+        let start_sampler_index = self.sampler_index[stage_index];
+
+        for (binding_index, binding /* :&DescriptorSetLayoutBinding */) in
+            self.layout.data.bindings.iter().enumerate()
+        {
+            if let Some(binding) = binding.as_ref() {
+                let descriptor_type: core::DescriptorType = binding.descriptor_type;
+                s2m.bind_resource(&ResourceBinding{
+                    desc_set: desc_set_index,
+                    binding: binding_index as u32,
+                    msl_buffer: binding.buffer_index[stage_index]
+                        .map(|x|(x + start_buffer_index) as u32),
+                    msl_texture: binding.image_view_index[stage_index]
+                        .map(|x|(x + start_image_view_index) as u32),
+                    msl_sampler: binding.sampler_index[stage_index]
+                        .map(|x|(x + start_sampler_index) as u32),
+                    stage: model,
+                });
+            }
+        }
     }
 }

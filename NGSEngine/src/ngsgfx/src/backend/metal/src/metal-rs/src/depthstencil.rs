@@ -10,6 +10,7 @@ use objc::runtime::{Class, YES, NO};
 use super::{id, NSObjectPrototype, NSObjectProtocol};
 
 #[repr(u64)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum MTLCompareFunction {
     Never = 0,
     Less = 1,
@@ -22,6 +23,7 @@ pub enum MTLCompareFunction {
 }
 
 #[repr(u64)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum MTLStencilOperation {
     Keep = 0,
     Zero = 1,

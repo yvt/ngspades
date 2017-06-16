@@ -332,7 +332,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
     fn set_viewport(&mut self, value: &core::Viewport) {
         unimplemented!()
     }
-    fn set_scissor_rect(&mut self, value: &core::Rect2D<i32>) {
+    fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
         unimplemented!()
     }
     fn bind_descriptor_sets(&mut self,

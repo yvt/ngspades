@@ -161,3 +161,23 @@ pub fn translate_compare_function(value: core::CompareFunction) -> metal::MTLCom
         core::CompareFunction::Always => metal::MTLCompareFunction::Always,
     }
 }
+
+pub fn translate_viewport(value: &core::Viewport) -> metal::MTLViewport {
+    metal::MTLViewport {
+        originX: value.x as f64,
+        originY: value.y as f64,
+        width: value.width as f64,
+        height: value.height as f64,
+        znear: value.min_depth as f64,
+        zfar: value.max_depth as f64,
+    }
+}
+
+pub fn translate_scissor_rect(value: &core::Rect2D<u32>) -> metal::MTLScissorRect {
+    metal::MTLScissorRect {
+        x: value.min.x as u64,
+        y: value.min.y as u64,
+        width: (value.max.x - value.min.x) as u64,
+        height: (value.max.y - value.min.y) as u64,
+    }
+}
