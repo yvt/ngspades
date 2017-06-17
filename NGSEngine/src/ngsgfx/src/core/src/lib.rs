@@ -61,6 +61,7 @@ use std::marker::Sized;
 
 pub mod buffer;
 pub mod command;
+pub mod debug;
 pub mod descriptor;
 mod error;
 pub mod factory;
@@ -106,6 +107,7 @@ pub trait Backend: Sized + 'static {
     type PipelineLayout: PipelineLayout;
     type RenderPass: RenderPass;
     type Sampler: Sampler;
+    type SecondaryCommandBuffer: SecondaryCommandBuffer;
     type Semaphore: Semaphore;
     type StencilState: StencilState;
     type ShaderModule: ShaderModule;
@@ -115,6 +117,7 @@ pub trait Backend: Sized + 'static {
 // enumration type and we do not want it exported
 pub use buffer::*;
 pub use command::*;
+pub use debug::*;
 pub use descriptor::*;
 pub use error::*;
 pub use factory::*;

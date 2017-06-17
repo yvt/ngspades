@@ -11,10 +11,10 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use {ImageLayout, ImageFormat, PipelineStageFlags, AccessFlags, Validate, DeviceCapabilities};
+use {ImageLayout, ImageFormat, PipelineStageFlags, AccessFlags, Validate, DeviceCapabilities, Marker};
 
 /// Handle for render pass objects.
-pub trait RenderPass: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait RenderPass: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct RenderPassDescription<'a> {

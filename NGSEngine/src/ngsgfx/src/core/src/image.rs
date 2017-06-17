@@ -14,15 +14,15 @@ use enumflags::BitFlags;
 use cgmath::prelude::*;
 use cgmath::Vector3;
 
-use super::{ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities};
+use super::{ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities, Marker};
 
 /// Handle for image objects.
-pub trait Image: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
+pub trait Image: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
     // TODO: get image subresource layout
 }
 
 /// Handle for image view objects.
-pub trait ImageView: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait ImageView: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 /// Image description.
 ///

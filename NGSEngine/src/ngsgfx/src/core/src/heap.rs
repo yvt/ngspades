@@ -9,14 +9,14 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 use std::marker::Send;
 
-use {Result, Backend, BufferDescription, ImageDescription, Validate, DeviceCapabilities};
+use {Result, Backend, BufferDescription, ImageDescription, Validate, DeviceCapabilities, Marker};
 
 /// Represents a heap that images and buffers are allocated from.
 ///
 /// Objects allocated from a heap hold a reference to the underlying storage of the heap.
 ///
 /// See the helper trait [`MappableHeap`](trait.MappableHeap.html) for functions that deal with `Allocation`s.
-pub trait Heap<B: Backend>: Debug + Send + Any + MappableHeap {
+pub trait Heap<B: Backend>: Debug + Send + Any + MappableHeap + Marker {
     /// Creates a buffer and allocates a region for it.
     fn make_buffer(&mut self, description: &BufferDescription) -> Result<Option<(Self::Allocation, B::Buffer)>>;
 

@@ -14,18 +14,18 @@ use enumflags::BitFlags;
 use cgmath::Vector2;
 
 use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
-            CompareFunction, PipelineLayout, ShaderStageFlags, ShaderModule};
+            CompareFunction, PipelineLayout, ShaderStageFlags, ShaderModule, Marker};
 
 /// Handle for compute pipeline objects.
-pub trait ComputePipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
+pub trait ComputePipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
     fn max_num_workgroup_invocations(&self) -> u32;
 }
 
 /// Handle for graphics pipeline objects.
-pub trait GraphicsPipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait GraphicsPipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 /// Handle for stencil state objects.
-pub trait StencilState: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait StencilState: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct ComputePipelineDescription<'a,

@@ -9,10 +9,10 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use {CompareFunction, Validate, DeviceCapabilities};
+use {CompareFunction, Validate, DeviceCapabilities, Marker};
 
 /// Handle for sampler objects.
-pub trait Sampler: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait Sampler: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct SamplerDescription {

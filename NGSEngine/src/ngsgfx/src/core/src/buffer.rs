@@ -11,16 +11,18 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use super::{BufferViewFormat, Validate, DeviceCapabilities};
+use super::{BufferViewFormat, Validate, DeviceCapabilities, Marker};
 
 /// Handle for buffer objects each of which represents a continuous region on a host/device memory.
 ///
 /// Buffers are allocated from `Heap` and must not outlive the `Heap` they were created from.
-pub trait Buffer: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait Buffer: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 /// Handle for buffer view objects.
 ///
 /// Holds an implicit reference to the originating `Buffer`.
+///
+/// TODO: remove
 pub trait BufferView: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]

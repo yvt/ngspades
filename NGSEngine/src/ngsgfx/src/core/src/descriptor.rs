@@ -11,10 +11,10 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result};
+use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result, Marker};
 
-pub trait PipelineLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
-pub trait DescriptorSetLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
+pub trait PipelineLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait DescriptorSetLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 // TODO: make this like `Heap`
 /// Represents a descriptor pool that descriptor sets are allocated from.

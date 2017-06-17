@@ -10,10 +10,10 @@ use std::any::Any;
 use std::time::{Duration, Instant};
 use std::marker::Sized;
 
-use {Result, Validate, DeviceCapabilities};
+use {Result, Validate, DeviceCapabilities, Marker};
 
 /// Handle for the synchronization primitive used to synchronize between the host and device.
-pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any {
+pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
     fn reset(&self) -> Result<()>;
     fn wait(&self, timeout: Duration) -> Result<bool>;
     fn is_signaled(&self) -> Result<bool> {
@@ -62,8 +62,8 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any {
     }
 }
 
-/// Handle for the inter-queue synchronization primitive.
-pub trait Semaphore: Hash + Debug + Eq + PartialEq + Send + Sync + Any {}
+/// Handle for the intra-queue synchronization primitive.
+pub trait Semaphore: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct FenceDescription {

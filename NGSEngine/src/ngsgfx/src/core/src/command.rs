@@ -10,13 +10,13 @@ use std::any::Any;
 use std::time::Duration;
 
 use super::{Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D,
-            Result, Framebuffer};
+            Result, Framebuffer, Marker};
 
 use enumflags::BitFlags;
 use cgmath::Vector3;
 
 pub trait CommandQueue<B: Backend>
-    : Debug + Send + Any {
+    : Debug + Send + Any + Marker {
     fn make_command_buffer(&self) -> Result<B::CommandBuffer>;
 
     /// Submit command buffers to a queue.
@@ -46,7 +46,7 @@ pub struct SubmissionInfo<'a, B: Backend> {
 /// When dropping a `CommandBuffer`, it must not be in the `Pending` state.
 /// Also, it must not outlive the originating `CommandQueue`.
 pub trait CommandBuffer<B: Backend>
-    : Debug + Send + Any + CommandEncoder<B> {
+    : Debug + Send + Any + CommandEncoder<B> + Marker {
 
     fn state(&self) -> CommandBufferState;
 
