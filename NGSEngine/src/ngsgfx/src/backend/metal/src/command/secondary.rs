@@ -19,8 +19,8 @@ impl SecondaryCommandBuffer {
         Self { encoder }
     }
 
-    pub(crate) fn render_command_encoder(&self) -> &RenderCommandEncoder {
-        &self.encoder
+    pub(crate) fn render_command_encoder(&mut self) -> &mut RenderCommandEncoder {
+        &mut self.encoder
     }
 }
 

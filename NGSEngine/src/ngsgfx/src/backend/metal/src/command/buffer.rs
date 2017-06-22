@@ -5,7 +5,7 @@
 //
 use {core, metal, OCPtr};
 use std::cell::RefCell;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use std::mem::replace;
 use enumflags::BitFlags;
@@ -55,7 +55,7 @@ impl CommandBuffer {
         }
     }
 
-    pub fn metal_buffer(&self) -> Option<metal::MTLCommandBuffer> {
+    pub fn metal_command_buffer(&self) -> Option<metal::MTLCommandBuffer> {
         self.buffer.as_ref().map(|x| **x)
     }
 
@@ -68,9 +68,9 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn expect_graphics_pipeline(&self) -> &RenderCommandEncoder {
+    pub(crate) fn expect_graphics_pipeline(&mut self) -> &mut RenderCommandEncoder {
         if let EncoderState::Graphics {
-            encoder: GraphicsEncoderState::Inline(ref encoder), ..
+            encoder: GraphicsEncoderState::Inline(ref mut encoder), ..
         } = self.encoder
         {
             encoder
@@ -144,9 +144,12 @@ impl core::CommandBuffer<Backend> for CommandBuffer {
 
 impl core::CommandEncoder<Backend> for CommandBuffer {
     fn begin_encoding(&mut self) {
+        // FIXME: check current state?
+
         let raw_buffer = self.queue.new_command_buffer();
         self.buffer = Some(OCPtr::new(raw_buffer).unwrap());
         self.encoder = EncoderState::NoPass;
+        self.submitted.store(false, Ordering::Relaxed);
 
         self.update_label();
     }
@@ -197,11 +200,14 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
 
     fn end_pass(&mut self) {
         match self.encoder {
-            EncoderState::GraphicsIntermission { next_subpass, ref framebuffer } => {
+            EncoderState::GraphicsIntermission {
+                next_subpass,
+                ref framebuffer,
+            } => {
                 if next_subpass < framebuffer.num_subpasses() {
                     panic!("insufficient number of calls of next_subpass");
                 }
-            },
+            }
             EncoderState::Graphics { .. } => {
                 panic!("render subpass must be ended first");
             }
@@ -222,15 +228,13 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
     fn end_render_subpass(&mut self) {
         match replace(&mut self.encoder, EncoderState::NoPass) {
             EncoderState::Graphics {
-                encoder,
+                mut encoder,
                 framebuffer,
                 subpass,
             } => {
                 match encoder {
-                    GraphicsEncoderState::Inline(ref encoder) => {
-                        encoder.end_encoding()
-                    }
-                    GraphicsEncoderState::SecondaryCommandBuffers(ref encoder) => {
+                    GraphicsEncoderState::Inline(ref mut encoder) => encoder.end_encoding(),
+                    GraphicsEncoderState::SecondaryCommandBuffers(ref mut encoder) => {
                         encoder.end_encoding()
                     }
                 }

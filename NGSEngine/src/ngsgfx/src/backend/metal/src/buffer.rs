@@ -6,8 +6,6 @@
 use core;
 use metal;
 
-use std::ops::Deref;
-
 use {OCPtr, RefEqArc};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -60,8 +58,7 @@ impl Buffer {
         self.data.size
     }
 
-    pub(crate) fn metal_buffer(&self) -> &metal::MTLBuffer {
-        self.data.metal_buffer.deref()
+    pub fn metal_buffer(&self) -> metal::MTLBuffer {
+        *self.data.metal_buffer
     }
 }
-

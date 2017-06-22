@@ -6,8 +6,6 @@
 use core;
 use metal;
 
-use std::ops::Deref;
-
 use {OCPtr, RefEqArc};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -35,8 +33,8 @@ impl ImageView {
     pub fn new(raw: metal::MTLTexture) -> Self {
         Self { data: RefEqArc::new(ImageViewData { metal_texture: OCPtr::new(raw).unwrap() }) }
     }
-    pub(crate) fn metal_texture(&self) -> &metal::MTLTexture {
-        self.data.metal_texture.deref()
+    pub fn metal_texture(&self) -> metal::MTLTexture {
+        *self.data.metal_texture
     }
 }
 
@@ -62,7 +60,7 @@ unsafe impl Send for ImageData {}
 unsafe impl Sync for ImageData {} // no interior mutability
 
 impl Image {
-    pub(crate) fn metal_texture(&self) -> &metal::MTLTexture {
-        self.data.metal_texture.deref()
+    pub fn metal_texture(&self) -> metal::MTLTexture {
+        *self.data.metal_texture
     }
 }

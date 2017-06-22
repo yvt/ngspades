@@ -386,6 +386,47 @@ impl GraphicsPipeline {
 
         Ok(GraphicsPipeline { data: RefEqArc::new(data) })
     }
+
+    pub(crate) fn bind_pipeline_state(&self, encoder: metal::MTLRenderCommandEncoder) {
+        encoder.set_render_pipeline_state(*self.data.metal_pipeline);
+
+        if let Some(GraphicsPipelineRasterizerData {
+                        metal_ds_state: Some((ref state, ref s_ref)), ..
+                    }) = self.data.raster_data
+        {
+            encoder.set_depth_stencil_state(**state);
+            encoder.set_stencil_front_back_reference_value(s_ref.front, s_ref.back);
+        }
+
+        // TODO: set static states
+    }
+
+    pub(crate) fn primitive_type(&self) -> metal::MTLPrimitiveType {
+        self.data.primitive_type
+    }
+
+    pub(crate) fn bind_vertex_buffers(
+        &self,
+        encoder: metal::MTLRenderCommandEncoder,
+        start_index: usize,
+        buffers: &[(&imp::Buffer, usize)],
+    ) {
+        let ref mappings = self.data.vertex_buffer_map;
+        for (i, &(buffer, offset)) in buffers.iter().enumerate() {
+            let map_index = i + start_index;
+            if map_index >= mappings.len() {
+                break;
+            }
+
+            if let Some(mtl_buffer_idx) = mappings[map_index] {
+                encoder.set_vertex_buffer(
+                    mtl_buffer_idx as u64,
+                    offset as u64,
+                    buffer.metal_buffer(),
+                );
+            }
+        }
+    }
 }
 
 fn translate_blend_factor(value: core::BlendFactor) -> metal::MTLBlendFactor {
@@ -559,5 +600,12 @@ impl StencilState {
         };
 
         Ok(StencilState { data: RefEqArc::new(data) })
+    }
+
+    pub(crate) fn bind_depth_stencil_state(&self, encoder: metal::MTLRenderCommandEncoder) {
+        encoder.set_depth_stencil_state(*self.data.metal_ds_state);
+
+        let ref s_ref = self.data.stencil_ref;
+        encoder.set_stencil_front_back_reference_value(s_ref.front, s_ref.back);
     }
 }

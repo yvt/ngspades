@@ -290,7 +290,7 @@ impl Framebuffer {
                 let ref fb_att_desc = description.attachments[attachment_info.index];
                 let image = fb_att_desc.image_view;
 
-                descriptor.set_texture(*image.metal_texture());
+                descriptor.set_texture(image.metal_texture());
             };
 
         let metal_descriptors: Vec<OCPtr<metal::MTLRenderPassDescriptor>> = render_pass
