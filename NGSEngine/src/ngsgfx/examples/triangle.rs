@@ -184,15 +184,15 @@ impl<B: Backend> Renderer<B> {
     fn make_vertex_buffer(device: &B::Device) -> B::Buffer {
         let vertices = [
             Vertex {
-                position: [0f32, 0f32, 0f32],
+                position: [-0.5f32, 0.5f32, 0f32],
                 color: [1f32, 0f32, 0f32],
             },
             Vertex {
-                position: [1f32, 0f32, 0f32],
+                position: [0.5f32, 0.5f32, 0f32],
                 color: [0f32, 1f32, 0f32],
             },
             Vertex {
-                position: [0f32, 1f32, 0f32],
+                position: [0f32, -0.5f32, 0f32],
                 color: [0f32, 0f32, 1f32],
             },
         ];
@@ -202,7 +202,8 @@ impl<B: Backend> Renderer<B> {
             size
         };
         let buffer_desc = core::BufferDescription{
-            usage: core::BufferUsageFlags::VertexBuffer.into(),
+            usage: core::BufferUsageFlags::VertexBuffer |
+                   core::BufferUsageFlags::TransferDestination,
             size
         };
 
@@ -240,7 +241,22 @@ impl<B: Backend> Renderer<B> {
         let queue = device.main_queue();
         let mut cb = queue.make_command_buffer().unwrap();
         cb.begin_encoding();
-        // TODO: emit copy command
+        cb.begin_blit_pass();
+        cb.copy_buffer(&staging_buffer, 0, &buffer, 0, size);
+        cb.end_pass();
+        cb.barrier(
+            core::PipelineStageFlags::Transfer.into(),
+            core::PipelineStageFlags::VertexInput.into(),
+            &[
+                core::Barrier::BufferMemoryBarrier{
+                    buffer: &buffer,
+                    source_access_mask: core::AccessFlags::TransferWrite.into(),
+                    destination_access_mask: core::AccessFlags::VertexAttributeRead.into(),
+                    offset: 0,
+                    len: size,
+                },
+            ],
+        );
         cb.end_encoding();
         queue.submit_commands(&[
             &core::SubmissionInfo{
@@ -274,7 +290,7 @@ impl<B: Backend> RendererView<B> {
             attachments: &[
                 core::FramebufferAttachmentDescription{
                     image_view: image_view,
-                    clear_values: core::ClearValues::ColorFloat([0f32, 0f32, 1f32, 1f32]),
+                    clear_values: core::ClearValues::ColorFloat([0f32, 0f32, 0f32, 1f32]),
                 }
             ],
             width: self.size.x,

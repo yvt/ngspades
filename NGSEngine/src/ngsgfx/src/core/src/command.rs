@@ -303,5 +303,15 @@ pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any {
 
 /// Encodes blit commands into a command buffer.
 pub trait BlitCommandEncoder<B: Backend>: Debug + Send + Any {
-    // TODO
+    /// Copy data from a buffer to another buffer.
+    fn copy_buffer(
+        &mut self,
+        source: &B::Buffer,
+        source_offset: usize,
+        destination: &B::Buffer,
+        destination_offset: usize,
+        size: usize,
+    );
+
+    // TODO: more commands
 }

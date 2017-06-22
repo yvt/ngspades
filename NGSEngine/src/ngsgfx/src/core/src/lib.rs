@@ -49,6 +49,11 @@
 //!
 //!  - [`Buffer`](trait.Buffer.html)
 //!  - (todo)
+//!
+//! Todos
+//! -----
+//!
+//!  - Use `u64` for device space size/offset
 
 extern crate cgmath;
 extern crate enumflags;

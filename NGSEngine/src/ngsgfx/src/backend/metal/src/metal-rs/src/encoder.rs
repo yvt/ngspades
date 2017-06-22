@@ -384,7 +384,7 @@ impl MTLRenderCommandEncoder {
     // fn setVertexTextures_withRange(self, textures: *const id, range: NSRange);
     // fn setVertexSamplerStates_withRange(self, samplers: *const id, range: NSRange);
     // fn setVertexSamplerStates_lodMinClamps_lodMaxClamps_withRange(self, samplers: *const id, lodMinClamps: *const f32, lodMaxClamps: *const f32, range: NSRange);
- 
+
 }
 
 impl NSObjectProtocol for MTLRenderCommandEncoder {
@@ -404,6 +404,16 @@ impl MTLBlitCommandEncoder {
     pub fn synchronize_resource(&self, resource: MTLResource) {
         unsafe {
             msg_send![self.0, synchronizeResource:resource]
+        }
+    }
+
+    pub fn copy_from_buffer_to_buffer(&self, source_buffer: MTLBuffer, source_offset: u64, destination_buffer: MTLBuffer, destination_offset: u64, size: u64) {
+        unsafe {
+            msg_send![self.0, copyFromBuffer:source_buffer
+                                sourceOffset:source_offset
+                                    toBuffer:destination_buffer
+                           destinationOffset:destination_offset
+                                        size:size]
         }
     }
 

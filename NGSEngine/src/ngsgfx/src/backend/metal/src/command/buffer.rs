@@ -165,7 +165,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         destination_stage: BitFlags<core::PipelineStageFlags>,
         barriers: &[core::Barrier<Backend>],
     ) {
-        unimplemented!()
+        // TODO: barrier
     }
 
     fn begin_render_pass(&mut self, framebuffer: &Framebuffer) {
@@ -181,7 +181,10 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
     }
 
     fn begin_blit_pass(&mut self) {
-        unimplemented!()
+        self.expect_no_pass();
+
+        let encoder = OCPtr::new(self.buffer.as_ref().unwrap().new_blit_command_encoder());
+        self.encoder = EncoderState::Blit(encoder.unwrap());
     }
 
     fn make_secondary_command_buffer(&mut self) -> SecondaryCommandBuffer {
