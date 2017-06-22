@@ -81,7 +81,7 @@ impl<B: Backend> Renderer<B> {
             attachments: &[
                 core::RenderPassAttachmentDescription{
                     may_alias: false,
-                    format: core::ImageFormat::SrgbRgba8,
+                    format: core::ImageFormat::SrgbBgra8,
                     load_op: core::AttachmentLoadOp::Clear,
                     store_op: core::AttachmentStoreOp::Store,
                     stencil_load_op: core::AttachmentLoadOp::DontCare,
@@ -315,7 +315,6 @@ impl<B: Backend> RendererView<B> {
         cb.set_viewport(&viewport);
         cb.bind_vertex_buffers(0, &[(&renderer.vertex_buffer, 0)]);
         cb.draw(3, 1, 0, 0);
-
         cb.end_render_subpass();
         cb.end_pass();
 
