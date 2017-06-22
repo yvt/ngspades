@@ -1,0 +1,433 @@
+//
+// Copyright 2017 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
+
+// Based on Sascha Williems' "triangle.c" Vulkan example (which is licensed under MIT).
+// https://github.com/SaschaWillems/Vulkan/blob/master/triangle/triangle.cpp
+
+#![cfg(target_os="macos")]
+
+// TODO: make this cross-platform
+
+extern crate ngsgfx as gfx;
+extern crate cgmath;
+#[macro_use]
+extern crate include_data;
+
+static SPIRV_FRAG: include_data::DataView = include_data!(concat!(env!("OUT_DIR"), "/triangle.frag.spv"));
+static SPIRV_VERT: include_data::DataView = include_data!(concat!(env!("OUT_DIR"), "/triangle.vert.spv"));
+
+use cgmath::Vector2;
+
+use gfx::core;
+use gfx::backends::metal as gfxmetal;
+use gfx::wsi::metal as wsimetal;
+use gfxmetal::ll as metal;
+use gfx::core::{VertexFormat, VectorWidth, ScalarFormat};
+use gfx::prelude::*;
+
+use gfx::winit;
+
+use std::sync::Arc;
+use std::{mem, ptr, time};
+use std::cell::RefCell;
+
+#[repr(C)]
+struct Vertex {
+    position: [f32; 3],
+    color: [f32; 3],
+}
+
+const VERTEX_ATTRIBUTE_POSITION: core::VertexAttributeLocation = 0;
+const VERTEX_ATTRIBUTE_COLOR: core::VertexAttributeLocation = 1;
+
+struct Renderer<B: Backend> {
+    device: Arc<B::Device>,
+    vertex_buffer: B::Buffer,
+    pipeline: B::GraphicsPipeline,
+    render_pass: B::RenderPass,
+    command_buffer: RefCell<B::CommandBuffer>,
+}
+
+struct RendererView<B: Backend> {
+    renderer: Arc<Renderer<B>>,
+    size: Vector2<u32>,
+}
+
+impl<B: Backend> Renderer<B> {
+    fn new(device: Arc<B::Device>) -> Self {
+        let vertex_buffer = Self::make_vertex_buffer(&device);
+        let render_pass = Self::make_render_pass(&device);
+        let pipeline = Self::make_pipeline(&device, &render_pass);
+        let command_buffer = device.main_queue().make_command_buffer()
+            .map(RefCell::new)
+            .unwrap();
+
+        Self {
+            device,
+            vertex_buffer,
+            pipeline,
+            render_pass,
+            command_buffer,
+        }
+    }
+
+    fn make_render_pass(device: &B::Device) -> B::RenderPass {
+        let factory = device.factory();
+
+        let desc = core::RenderPassDescription{
+            attachments: &[
+                core::RenderPassAttachmentDescription{
+                    may_alias: false,
+                    format: core::ImageFormat::SrgbRgba8,
+                    load_op: core::AttachmentLoadOp::Clear,
+                    store_op: core::AttachmentStoreOp::Store,
+                    stencil_load_op: core::AttachmentLoadOp::DontCare,
+                    stencil_store_op: core::AttachmentStoreOp::DontCare,
+                    initial_layout: core::ImageLayout::Undefined,
+                    final_layout: core::ImageLayout::Present,
+                },
+            ],
+            subpasses: &[
+                core::RenderSubpassDescription{
+                    input_attachments: &[],
+                    color_attachments: &[
+                        core::RenderPassAttachmentReference{
+                            attachment_index: Some(0),
+                            layout: core::ImageLayout::ColorAttachment,
+                        },
+                    ],
+                    depth_stencil_attachment: None,
+                    preserve_attachment_indices: &[],
+                }
+            ],
+            dependencies: &[],
+        };
+
+        factory.make_render_pass(&desc).unwrap()
+    }
+
+    fn make_pipeline(device: &B::Device, render_pass: &B::RenderPass) -> B::GraphicsPipeline {
+        let factory = device.factory();
+
+        let vertex_shader_desc = core::ShaderModuleDescription{
+            spirv_code: SPIRV_VERT.as_u32_slice(),
+        };
+        let vertex_shader = factory.make_shader_module(&vertex_shader_desc).unwrap();
+
+        let fragment_shader_desc = core::ShaderModuleDescription{
+            spirv_code: SPIRV_FRAG.as_u32_slice(),
+        };
+        let fragment_shader = factory.make_shader_module(&fragment_shader_desc).unwrap();
+
+        let layout_desc = core::PipelineLayoutDescription{
+            descriptor_set_layouts: &[]
+        };
+        let layout = factory.make_pipeline_layout(&layout_desc).unwrap();
+
+        let color_attachments = &[
+            Default::default(),
+        ];
+        let desc = core::GraphicsPipelineDescription{
+            shader_stages: &[
+                core::ShaderStageDescription{
+                    stage: core::ShaderStageFlags::Fragment,
+                    module: &fragment_shader,
+                    entry_point_name: "main",
+                },
+                core::ShaderStageDescription{
+                    stage: core::ShaderStageFlags::Vertex,
+                    module: &vertex_shader,
+                    entry_point_name: "main",
+                },
+            ],
+            vertex_buffers: &[
+                core::VertexBufferLayoutDescription{
+                    binding: 0,
+                    stride: mem::size_of::<Vertex>(),
+                    input_rate: core::VertexInputRate::Vertex,
+                },
+            ],
+            vertex_attributes: &[
+                core::VertexAttributeDescription{
+                    location: VERTEX_ATTRIBUTE_POSITION,
+                    binding: 0,
+                    format: VertexFormat(VectorWidth::Vector3, ScalarFormat::F32),
+                    offset: 0,
+                },
+                core::VertexAttributeDescription{
+                    location: VERTEX_ATTRIBUTE_COLOR,
+                    binding: 0,
+                    format: VertexFormat(VectorWidth::Vector3, ScalarFormat::F32),
+                    offset: 12,
+                },
+            ],
+            topology: core::PrimitiveTopology::Triangles,
+            rasterizer: Some(core::GraphicsPipelineRasterizerDescription{
+                viewport: core::StaticOrDynamic::Dynamic,
+                cull_mode: core::CullMode::None,
+                depth_write: false,
+                depth_test: core::CompareFunction::Always,
+                color_attachments,
+                .. Default::default()
+            }),
+            pipeline_layout: &layout,
+            render_pass,
+            subpass_index: 0,
+        };
+
+        factory.make_graphics_pipeline(&desc).unwrap()
+    }
+
+    fn make_vertex_buffer(device: &B::Device) -> B::Buffer {
+        let vertices = [
+            Vertex {
+                position: [0f32, 0f32, 0f32],
+                color: [1f32, 0f32, 0f32],
+            },
+            Vertex {
+                position: [1f32, 0f32, 0f32],
+                color: [0f32, 1f32, 0f32],
+            },
+            Vertex {
+                position: [0f32, 1f32, 0f32],
+                color: [0f32, 0f32, 1f32],
+            },
+        ];
+        let size = mem::size_of_val(&vertices);
+        let staging_buffer_desc = core::BufferDescription{
+            usage: core::BufferUsageFlags::TransferSource.into(),
+            size
+        };
+        let buffer_desc = core::BufferDescription{
+            usage: core::BufferUsageFlags::VertexBuffer.into(),
+            size
+        };
+
+        let factory = device.factory();
+
+        // Create a staging heap/buffer
+        let staging_req: core::MemoryRequirements =
+            factory.get_buffer_memory_requirements(&staging_buffer_desc);
+        let mut staging_heap = factory.make_heap(&core::HeapDescription{
+            size: staging_req.size,
+            storage_mode: core::StorageMode::Shared,
+        }).unwrap();
+
+        let (mut staging_alloc, staging_buffer) = staging_heap.make_buffer(&staging_buffer_desc)
+            .unwrap().unwrap();
+        {
+            let mut map = staging_heap.map_memory(&mut staging_alloc);
+            unsafe {
+                ptr::copy(vertices.as_ptr(), map.as_mut_ptr() as *mut Vertex,
+                    vertices.len());
+            }
+        }
+
+        // Create a device heap/buffer
+        let req: core::MemoryRequirements =
+            factory.get_buffer_memory_requirements(&buffer_desc);
+        let mut heap = factory.make_heap(&core::HeapDescription{
+            size: req.size,
+            storage_mode: core::StorageMode::Private,
+        }).unwrap();
+
+        let buffer = heap.make_buffer(&buffer_desc).unwrap().unwrap().1;
+
+        // Fill the buffer
+        let queue = device.main_queue();
+        let mut cb = queue.make_command_buffer().unwrap();
+        cb.begin_encoding();
+        // TODO: emit copy command
+        cb.end_encoding();
+        queue.submit_commands(&[
+            &core::SubmissionInfo{
+                buffers: &[&cb],
+                wait_semaphores: &[],
+                signal_semaphores: &[],
+            },
+        ], None).unwrap();
+        assert_eq!(cb.wait_completion(time::Duration::from_secs(1)).unwrap(), true);
+
+        // Phew! Done!
+        buffer
+    }
+}
+
+impl<B: Backend> RendererView<B> {
+    fn new(renderer: &Arc<Renderer<B>>, size: Vector2<u32>) -> Self {
+        Self {
+            renderer: renderer.clone(),
+            size,
+        }
+    }
+
+    fn render_to<F>(&self, image_view: &B::ImageView, finalizer: F)
+        where F : FnOnce (&mut B::CommandBuffer)
+    {
+        let renderer: &Renderer<B> = &*self.renderer;
+        let device: &B::Device = &*renderer.device;
+        let framebuffer = device.factory().make_framebuffer(&core::FramebufferDescription{
+            render_pass: &renderer.render_pass,
+            attachments: &[
+                core::FramebufferAttachmentDescription{
+                    image_view: image_view,
+                    clear_values: core::ClearValues::ColorFloat([0f32, 0f32, 1f32, 1f32]),
+                }
+            ],
+            width: self.size.x,
+            height: self.size.y,
+        }).unwrap();
+        let viewport = core::Viewport {
+            x: 0f32, y: 0f32, width: self.size.x as f32, height: self.size.y as f32,
+            min_depth: 0f32, max_depth: 1f32,
+        };
+
+        let mut cb = renderer.command_buffer.borrow_mut();
+
+        // TODO: use multiple buffers
+        assert_eq!(cb.wait_completion(time::Duration::from_secs(1)).unwrap(), true);
+
+        cb.begin_encoding();
+
+        cb.begin_render_pass(&framebuffer);
+        cb.begin_render_subpass(core::RenderPassContents::Inline);
+
+        cb.bind_graphics_pipeline(&renderer.pipeline);
+        cb.set_viewport(&viewport);
+        cb.bind_vertex_buffers(0, &[(&renderer.vertex_buffer, 0)]);
+        cb.draw(3, 1, 0, 0);
+
+        cb.end_render_subpass();
+        cb.end_pass();
+
+        finalizer(&mut cb);
+        cb.end_encoding();
+
+        device.main_queue().submit_commands(&[
+            &core::SubmissionInfo {
+                buffers: &[
+                    &*cb
+                ],
+                wait_semaphores: &[],
+                signal_semaphores: &[],
+            },
+        ], None).unwrap();
+    }
+}
+
+
+struct App<W: Window> {
+    window: W,
+    renderer: Arc<Renderer<W::Backend>>,
+    renderer_view: RefCell<RendererView<W::Backend>>,
+}
+
+fn create_renderer_view<W: Window>(renderer: &Arc<Renderer<W::Backend>>, window: &W) -> RendererView<W::Backend> {
+    RendererView::new(&renderer, window.size())
+}
+
+impl<W: Window> App<W> {
+    fn new(window: W) -> Self {
+        let device = window.device().clone();
+        let renderer = Arc::new(Renderer::new(device));
+        Self {
+            renderer_view: RefCell::new(create_renderer_view(&renderer, &window)),
+            renderer,
+            window,
+        }
+    }
+
+    fn run(&self) {
+        let mut running = true;
+        while running {
+            self.window.events_loop().poll_events(|event| {
+                match event {
+                    winit::Event::WindowEvent { event: winit::WindowEvent::Closed, .. } => {
+                        self.window.events_loop().interrupt();
+                        running = false;
+                    },
+                    winit::Event::WindowEvent { event: winit::WindowEvent::Resized(_, _), .. } => {
+                        *self.renderer_view.borrow_mut() =
+                            create_renderer_view(&self.renderer, &self.window);
+                    },
+                    _ => ()
+                }
+            });
+            self.update();
+        }
+    }
+
+    fn update(&self) {
+        let fb = self.window.acquire_framebuffer();
+
+        self.renderer_view.borrow_mut()
+            .render_to(&fb, |cb| self.window.finalize_commands(cb));
+
+        self.window.swap_buffers();
+    }
+}
+
+trait Window {
+    type Backend: Backend;
+
+    fn events_loop(&self) -> &winit::EventsLoop;
+    fn window_id(&self) -> winit::WindowId;
+    fn device(&self) -> &Arc<<Self::Backend as Backend>::Device>;
+    fn acquire_framebuffer(&self) -> <Self::Backend as Backend>::ImageView;
+    fn finalize_commands(&self, buffer: &mut <Self::Backend as Backend>::CommandBuffer);
+    fn swap_buffers(&self);
+    fn size(&self) -> Vector2<u32>;
+}
+
+struct MetalWindow<'a> {
+    events_loop: &'a winit::EventsLoop,
+    metal_window: wsimetal::MetalWindow,
+}
+
+impl<'a> MetalWindow<'a> {
+    fn new(events_loop: &'a winit::EventsLoop) -> Self {
+        let builder = winit::WindowBuilder::new();
+        let metal_window = wsimetal::make_window(builder, &events_loop,
+            core::ImageFormat::SrgbBgra8).unwrap();
+        Self {
+            events_loop, metal_window,
+        }
+    }
+}
+
+impl<'a> Window for MetalWindow<'a> {
+    type Backend = gfxmetal::Backend;
+
+    fn events_loop(&self) -> &winit::EventsLoop { &self.events_loop }
+    fn window_id(&self) -> winit::WindowId {
+        self.metal_window.winit_window().id()
+    }
+    fn device(&self) -> &Arc<<Self::Backend as Backend>::Device> {
+        self.metal_window.device()
+    }
+    fn finalize_commands(&self, buffer: &mut <Self::Backend as Backend>::CommandBuffer) {
+        buffer.metal_command_buffer()
+            .unwrap()
+            .present_drawable(self.metal_window.drawable());
+    }
+    fn acquire_framebuffer(&self) -> <Self::Backend as Backend>::ImageView {
+        self.metal_window.image_view().clone()
+    }
+    fn swap_buffers(&self) {
+        self.metal_window.swap_buffers();
+    }
+    fn size(&self) -> Vector2<u32> {
+        self.metal_window.size()
+    }
+}
+
+fn main() {
+    let events_loop = winit::EventsLoop::new();
+    let window = MetalWindow::new(&events_loop);
+    let app = App::new(window);
+    app.run();
+    println!("Exiting...");
+}

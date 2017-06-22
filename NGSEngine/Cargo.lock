@@ -343,9 +343,11 @@ name = "ngsgfx"
 version = "0.1.0"
 dependencies = [
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "include_data 0.1.0",
  "ngsgfx_core 0.1.0",
  "ngsgfx_metal 0.1.0",
  "ngsgfx_wsi_metal 0.1.0",
+ "prebuild-glslang 0.1.0",
  "winit 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

@@ -14,3 +14,12 @@ cgmath = "0.14.1"
 [target.'cfg(target_os="macos")'.dependencies]
 ngsgfx_metal = { path = "src/backend/metal" }
 ngsgfx_wsi_metal = { path = "src/wsi/metal" }
+
+[[example]]
+name = "triangle"
+
+[build-dependencies]
+prebuild-glslang = { path = "tools/prebuild-glslang" } # required for examples
+
+[dev-dependencies]
+include_data = { path = "tools/include_data" } # required for examples
