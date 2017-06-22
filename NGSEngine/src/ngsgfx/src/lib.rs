@@ -25,7 +25,6 @@ pub mod prelude {
     pub use core::Backend;
 
     pub use core::Buffer;
-    pub use core::BufferView;
     pub use core::{CommandBuffer, CommandEncoder};
     pub use core::CommandQueue;
     pub use core::ComputePipeline;

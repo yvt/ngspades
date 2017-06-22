@@ -98,7 +98,6 @@ pub mod imp {
     pub struct Backend {}
     impl core::Backend for Backend {
         type Buffer = Buffer;
-        type BufferView = BufferView;
         type CommandBuffer = CommandBuffer;
         type CommandQueue = CommandQueue;
         type ComputePipeline = ComputePipeline;

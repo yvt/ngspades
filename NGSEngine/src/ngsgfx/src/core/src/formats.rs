@@ -195,27 +195,6 @@ pub enum Normalizedness {
     Normalized,
 }
 
-/// Buffer view format.
-///
-/// TODO: describe the restrictions on Metal. Buffer views are mapped to `device`/`constant` pointers on Metal.
-///
-/// Following variants are not mandatory:
-///
-///  - `(_, I32(_, Normalized))`
-///
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct BufferViewFormat(pub VectorWidth, pub ScalarFormat);
-
-impl BufferViewFormat {
-    pub fn width(&self) -> usize {
-        self.0.width()
-    }
-
-    pub fn size(&self) -> usize {
-        self.width() * self.1.size()
-    }
-}
-
 /// Vertex format.
 ///
 /// Following variants are not supported by Metal:

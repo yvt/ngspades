@@ -48,7 +48,6 @@
 //! Following traits represent handles:
 //!
 //!  - [`Buffer`](trait.Buffer.html)
-//!  - [`BufferView`](trait.BufferView.html)
 //!  - (todo)
 
 extern crate cgmath;
@@ -88,7 +87,6 @@ pub type DescriptorBindingLocation = usize;
 
 pub trait Backend: Sized + 'static {
     type Buffer: Buffer;
-    type BufferView: BufferView;
     type CommandBuffer: CommandBuffer<Self>;
     type CommandQueue: CommandQueue<Self>;
     type ComputePipeline: ComputePipeline;

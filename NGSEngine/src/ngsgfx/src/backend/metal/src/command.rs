@@ -13,7 +13,7 @@ use std::mem::{replace, drop, forget};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use OCPtr;
-use imp::{Backend, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
+use imp::{Backend, Buffer, ComputePipeline, DescriptorPool, DescriptorSet,
           DescriptorSetLayout, Fence, Framebuffer, GraphicsPipeline, Heap, Image, ImageView,
           PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState};
 

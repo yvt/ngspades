@@ -11,19 +11,12 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use super::{BufferViewFormat, Validate, DeviceCapabilities, Marker};
+use super::{Validate, DeviceCapabilities, Marker};
 
 /// Handle for buffer objects each of which represents a continuous region on a host/device memory.
 ///
 /// Buffers are allocated from `Heap` and must not outlive the `Heap` they were created from.
 pub trait Buffer: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
-
-/// Handle for buffer view objects.
-///
-/// Holds an implicit reference to the originating `Buffer`.
-///
-/// TODO: remove
-pub trait BufferView: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct BufferDescription {
@@ -31,29 +24,18 @@ pub struct BufferDescription {
     pub size: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct BufferViewDescription<'a, TBuffer: Buffer> {
-    // TODO: how do we support this in Metal?
-    pub buffer: &'a TBuffer,
-    pub format: BufferViewFormat,
-    pub offset: usize,
-    pub range: usize,
-}
-
 // prevent `InnerXXX` from being exported
 mod flags {
     #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
     #[repr(u32)]
     pub enum BufferUsageFlags {
-        TransferSource = 0b000000001,
-        TransferDestination = 0b000000010,
-        UniformTexelBuffer = 0b000000100,
-        StorageTexelBuffer = 0b000001000,
-        UniformBuffer = 0b000010000,
-        StorageBuffer = 0b000100000,
-        IndexBuffer = 0b001000000,
-        VertexBuffer = 0b010000000,
-        IndirectBuffer = 0b100000000,
+        TransferSource = 0b0000001,
+        TransferDestination = 0b0000010,
+        UniformBuffer = 0b0000100,
+        StorageBuffer = 0b0001000,
+        IndexBuffer = 0b0010000,
+        VertexBuffer = 0b0100000,
+        IndirectBuffer = 0b1000000,
     }
 }
 
@@ -77,20 +59,3 @@ impl Validate for BufferDescription {
     }
 }
 
-/// Validation errors for [`BufferViewDescription`](struct.BufferViewDescription.html).
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum BufferViewDescriptionValidationError {
-    // TODO
-}
-
-impl<'a, TBuffer: Buffer> Validate for BufferViewDescription<'a, TBuffer> {
-    type Error = BufferViewDescriptionValidationError;
-
-    #[allow(unused_variables)]
-    #[allow(unused_mut)]
-    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
-    {
-        // TODO
-    }
-}

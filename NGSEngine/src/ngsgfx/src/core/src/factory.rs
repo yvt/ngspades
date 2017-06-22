@@ -10,7 +10,7 @@ use super::{Backend, Result, MemoryRequirements};
 use super::{RenderPassDescription, FramebufferDescription, HeapDescription, ImageDescription,
             BufferDescription, ImageViewDescription, GraphicsPipelineDescription,
             DescriptorPoolDescription, DescriptorSetDescription, DescriptorSetLayoutDescription,
-            SamplerDescription, PipelineLayoutDescription, BufferViewDescription,
+            SamplerDescription, PipelineLayoutDescription,
             ShaderModuleDescription, ComputePipelineDescription, StencilStateDescription,
             SemaphoreDescription, FenceDescription};
 
@@ -24,11 +24,6 @@ pub trait Factory<B: Backend>: Debug + Any {
                         -> Result<B::Framebuffer>;
 
     fn make_heap(&self, description: &HeapDescription) -> Result<B::Heap>;
-
-    /// Creates a buffer view.
-    fn make_buffer_view(&self,
-                        description: &BufferViewDescription<B::Buffer>)
-                        -> Result<B::BufferView>;
     fn make_image_view(&self,
                        description: &ImageViewDescription<B::Image>)
                        -> Result<B::ImageView>;

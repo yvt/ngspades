@@ -38,22 +38,6 @@ impl Buffer {
         storage: metal::MTLStorageMode,
         desc: &core::BufferDescription,
     ) -> core::Result<Self> {
-        let needs_texel_buffer = !(desc.usage &
-                                       (core::BufferUsageFlags::UniformTexelBuffer |
-                                            core::BufferUsageFlags::StorageTexelBuffer))
-            .is_empty();
-        if needs_texel_buffer {
-            unimplemented!();
-        }
-        /*
-        let texel_buffer_mode =
-            if !needs_texel_buffer {
-                TexelBufferMode::Unsupported
-            } else if desc.size <= BUFFER_VIEW_TEXTURE_MAX_PITCH {
-                TexelBufferMode::SingleRow
-            } else {
-                TexelBufferMode::MultiRow
-            }; */
         let options: metal::MTLResourceOptions = match storage {
             metal::MTLStorageMode::Private => metal::MTLResourceStorageModePrivate,
             metal::MTLStorageMode::Shared => metal::MTLResourceStorageModeShared,
@@ -81,32 +65,3 @@ impl Buffer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BufferView {
-    data: RefEqArc<BufferViewData>,
-}
-
-impl core::BufferView for BufferView {}
-
-#[derive(Debug)]
-struct BufferViewData {
-    metal_texture: OCPtr<metal::MTLTexture>,
-}
-
-unsafe impl Send for BufferViewData {}
-unsafe impl Sync for BufferViewData {} // no interior mutability
-
-pub const BUFFER_VIEW_TEXTURE_WIDTH: u32 = 8192;
-pub const BUFFER_VIEW_TEXTURE_MAX_PITCH: u32 = 8192 * 16; // 16 = the largest pixel format's size
-
-pub enum TexelBufferMode {
-    Unsupported,
-    SingleRow,
-    MultiRow,
-}
-
-impl BufferView {
-    pub(crate) fn metal_texture(&self) -> &metal::MTLTexture {
-        self.data.metal_texture.deref()
-    }
-}

@@ -7,7 +7,7 @@ use core::{self, Validate};
 use metal;
 use std::sync::Arc;
 
-use imp::{self, Backend, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
+use imp::{self, Backend, Buffer, ComputePipeline, DescriptorPool, DescriptorSet,
           DescriptorSetLayout, Fence, Framebuffer, GraphicsPipeline, Heap, Image, ImageView,
           PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState, DeviceData};
 
@@ -55,13 +55,6 @@ impl core::Factory<Backend> for Factory {
         Ok(Heap::new(&self.device_data, description))
     }
 
-    /// Creates a buffer view.
-    fn make_buffer_view(
-        &self,
-        description: &core::BufferViewDescription<Buffer>,
-    ) -> core::Result<BufferView> {
-        unimplemented!()
-    }
     fn make_image_view(
         &self,
         description: &core::ImageViewDescription<Image>,
