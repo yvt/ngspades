@@ -50,6 +50,6 @@ pub struct DeviceLimits {
     // TODO: expose more limits
 }
 
-pub trait DeviceCapabilities : Debug + Send + Sync {
+pub trait DeviceCapabilities: Debug + Send + Sync {
     fn limits(&self) -> &DeviceLimits;
 }

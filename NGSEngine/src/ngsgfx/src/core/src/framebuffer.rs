@@ -12,7 +12,9 @@ use std::any::Any;
 use {RenderPass, ImageView, Validate, DeviceCapabilities, Marker};
 
 /// Handle for framebuffer objects.
-pub trait Framebuffer: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait Framebuffer
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct FramebufferDescription<'a, TRenderPass: RenderPass, TImageView: ImageView> {
@@ -52,13 +54,15 @@ pub enum FramebufferDescriptionValidationError {
     // TODO
 }
 
-impl<'a, TRenderPass: RenderPass, TImageView: ImageView> Validate for FramebufferDescription<'a, TRenderPass, TImageView> {
+impl<'a, TRenderPass: RenderPass, TImageView: ImageView> Validate
+    for FramebufferDescription<'a, TRenderPass, TImageView> {
     type Error = FramebufferDescriptionValidationError;
 
     #[allow(unused_variables)]
     #[allow(unused_mut)]
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         // TODO
     }

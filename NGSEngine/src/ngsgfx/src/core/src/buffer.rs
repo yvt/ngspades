@@ -16,7 +16,9 @@ use super::{Validate, DeviceCapabilities, Marker};
 /// Handle for buffer objects each of which represents a continuous region on a host/device memory.
 ///
 /// Buffers are allocated from `Heap` and must not outlive the `Heap` they were created from.
-pub trait Buffer: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait Buffer
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct BufferDescription {
@@ -53,9 +55,9 @@ impl Validate for BufferDescription {
     #[allow(unused_variables)]
     #[allow(unused_mut)]
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         // TODO
     }
 }
-

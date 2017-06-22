@@ -17,31 +17,29 @@ use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, Render
             CompareFunction, PipelineLayout, ShaderStageFlags, ShaderModule, Marker};
 
 /// Handle for compute pipeline objects.
-pub trait ComputePipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+pub trait ComputePipeline
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
     fn max_num_workgroup_invocations(&self) -> u32;
 }
 
 /// Handle for graphics pipeline objects.
-pub trait GraphicsPipeline: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait GraphicsPipeline
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 /// Handle for stencil state objects.
-pub trait StencilState: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait StencilState
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 #[derive(Debug, Clone, Copy)]
-pub struct ComputePipelineDescription<'a,
-                                      TPipelineLayout: PipelineLayout,
-                                      TShaderModule: ShaderModule>
-{
+pub struct ComputePipelineDescription<'a, TPipelineLayout: PipelineLayout, TShaderModule: ShaderModule> {
     pub shader_stage: ShaderStageDescription<'a, TShaderModule>,
     pub pipeline_layout: &'a TPipelineLayout,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct GraphicsPipelineDescription<'a,
-                                       TRenderPass: RenderPass,
-                                       TPipelineLayout: PipelineLayout,
-                                       TShaderModule: ShaderModule>
-{
+pub struct GraphicsPipelineDescription<'a, TRenderPass: RenderPass, TPipelineLayout: PipelineLayout, TShaderModule: ShaderModule> {
     /// Shader stages.
     ///
     /// The same type of shader stage shall never appear twice.
@@ -108,10 +106,10 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
     fn default() -> Self {
         Self {
             viewport: StaticOrDynamic::Dynamic,
-            scissor_rect: StaticOrDynamic::Static(Rect2D::new(Vector2::new(0,
-                                                                           0),
-                                                              Vector2::new(u32::max_value(),
-                                                                           u32::max_value()))),
+            scissor_rect: StaticOrDynamic::Static(Rect2D::new(
+                Vector2::new(0, 0),
+                Vector2::new(u32::max_value(), u32::max_value()),
+            )),
             cull_mode: CullMode::Back,
             front_face: Winding::CounterClockwise,
             depth_clip_mode: DepthClipMode::Clip,
@@ -363,7 +361,7 @@ mod flags {
     impl ColorWriteMask {
         pub fn all() -> super::BitFlags<ColorWriteMask> {
             ColorWriteMask::Red | ColorWriteMask::Green | ColorWriteMask::Blue |
-            ColorWriteMask::Alpha
+                ColorWriteMask::Alpha
         }
     }
 }

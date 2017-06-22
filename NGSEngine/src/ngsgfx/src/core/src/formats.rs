@@ -298,17 +298,19 @@ impl ScalarFormat {
 
     pub fn integer_signedness(&self) -> Option<Signedness> {
         match *self {
-            ScalarFormat::I8(s, _) | ScalarFormat::I16(s, _) |
+            ScalarFormat::I8(s, _) |
+            ScalarFormat::I16(s, _) |
             ScalarFormat::I32(s, _) => Some(s),
-            ScalarFormat::F32 => None
+            ScalarFormat::F32 => None,
         }
     }
 
     pub fn integer_normalizedness(&self) -> Option<Normalizedness> {
         match *self {
-            ScalarFormat::I8(_, n) | ScalarFormat::I16(_, n) |
+            ScalarFormat::I8(_, n) |
+            ScalarFormat::I16(_, n) |
             ScalarFormat::I32(_, n) => Some(n),
-            ScalarFormat::F32 => None
+            ScalarFormat::F32 => None,
         }
     }
 }

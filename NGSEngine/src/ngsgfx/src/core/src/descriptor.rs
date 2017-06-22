@@ -13,8 +13,12 @@ use enumflags::BitFlags;
 
 use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result, Marker};
 
-pub trait PipelineLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
-pub trait DescriptorSetLayout: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait PipelineLayout
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
+pub trait DescriptorSetLayout
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 // TODO: make this like `Heap`
 /// Represents a descriptor pool that descriptor sets are allocated from.
@@ -33,9 +37,10 @@ pub trait DescriptorPool<B: Backend>: Debug + Send + Any {
     /// Does nothing if `allocation` is already deallocated.
     fn deallocate(&mut self, allocation: &mut Self::Allocation);
 
-    fn make_descriptor_set(&mut self,
-                            description: &DescriptorSetDescription<B::DescriptorSetLayout>)
-                            -> Result<Option<(B::DescriptorSet, Self::Allocation)>>;
+    fn make_descriptor_set(
+        &mut self,
+        description: &DescriptorSetDescription<B::DescriptorSetLayout>,
+    ) -> Result<Option<(B::DescriptorSet, Self::Allocation)>>;
 
     fn reset(&mut self);
 }
@@ -47,7 +52,6 @@ pub trait DescriptorPool<B: Backend>: Debug + Send + Any {
 /// until the command encoder finished the execution.
 pub trait DescriptorSet<B: Backend>
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
-
     /// Updates one or more descriptors in this descriptor set.
     fn update(&self, writes: &[WriteDescriptorSet<B>]);
 
@@ -161,38 +165,29 @@ pub struct WriteDescriptorSet<'a, B: Backend> {
 
 #[derive(Debug)]
 pub enum WriteDescriptors<'a, B: Backend> {
-    StorageImage(&'a[DescriptorImage<'a, B>]),
-    SampledImage(&'a[DescriptorImage<'a, B>]),
-    Sampler(&'a[&'a B::Sampler]),
-    CombinedImageSampler(&'a[(DescriptorImage<'a, B>, &'a B::Sampler)]),
-    ConstantBuffer(&'a[DescriptorBuffer<'a, B>]),
-    StorageBuffer(&'a[DescriptorBuffer<'a, B>]),
-    DynamicConstantBuffer(&'a[DescriptorBuffer<'a, B>]),
-    DynamicStorageBuffer(&'a[DescriptorBuffer<'a, B>]),
-    InputAttachment(&'a[DescriptorImage<'a, B>]),
+    StorageImage(&'a [DescriptorImage<'a, B>]),
+    SampledImage(&'a [DescriptorImage<'a, B>]),
+    Sampler(&'a [&'a B::Sampler]),
+    CombinedImageSampler(&'a [(DescriptorImage<'a, B>, &'a B::Sampler)]),
+    ConstantBuffer(&'a [DescriptorBuffer<'a, B>]),
+    StorageBuffer(&'a [DescriptorBuffer<'a, B>]),
+    DynamicConstantBuffer(&'a [DescriptorBuffer<'a, B>]),
+    DynamicStorageBuffer(&'a [DescriptorBuffer<'a, B>]),
+    InputAttachment(&'a [DescriptorImage<'a, B>]),
 }
 
 impl<'a, B: Backend> WriteDescriptors<'a, B> {
     pub fn descriptor_type(&self) -> DescriptorType {
         match *self {
-            WriteDescriptors::StorageImage(e) =>
-                DescriptorType::StorageImage,
-            WriteDescriptors::SampledImage(e) =>
-                DescriptorType::SampledImage,
-            WriteDescriptors::Sampler(e) =>
-                DescriptorType::Sampler,
-            WriteDescriptors::CombinedImageSampler(e) =>
-                DescriptorType::CombinedImageSampler,
-            WriteDescriptors::ConstantBuffer(e) =>
-                DescriptorType::ConstantBuffer,
-            WriteDescriptors::StorageBuffer(e) =>
-                DescriptorType::StorageBuffer,
-            WriteDescriptors::DynamicConstantBuffer(e) =>
-                DescriptorType::DynamicConstantBuffer,
-            WriteDescriptors::DynamicStorageBuffer(e) =>
-                DescriptorType::DynamicStorageBuffer,
-            WriteDescriptors::InputAttachment(e) =>
-                DescriptorType::InputAttachment,
+            WriteDescriptors::StorageImage(e) => DescriptorType::StorageImage,
+            WriteDescriptors::SampledImage(e) => DescriptorType::SampledImage,
+            WriteDescriptors::Sampler(e) => DescriptorType::Sampler,
+            WriteDescriptors::CombinedImageSampler(e) => DescriptorType::CombinedImageSampler,
+            WriteDescriptors::ConstantBuffer(e) => DescriptorType::ConstantBuffer,
+            WriteDescriptors::StorageBuffer(e) => DescriptorType::StorageBuffer,
+            WriteDescriptors::DynamicConstantBuffer(e) => DescriptorType::DynamicConstantBuffer,
+            WriteDescriptors::DynamicStorageBuffer(e) => DescriptorType::DynamicStorageBuffer,
+            WriteDescriptors::InputAttachment(e) => DescriptorType::InputAttachment,
         }
     }
 }
@@ -202,24 +197,17 @@ impl<'a, B: Backend> WriteDescriptors<'a, B> {
 impl<'a, B: Backend> Clone for WriteDescriptors<'a, B> {
     fn clone(&self) -> Self {
         match *self {
-            WriteDescriptors::StorageImage(e) =>
-                WriteDescriptors::StorageImage(e),
-            WriteDescriptors::SampledImage(e) =>
-                WriteDescriptors::SampledImage(e),
-            WriteDescriptors::Sampler(e) =>
-                WriteDescriptors::Sampler(e),
-            WriteDescriptors::CombinedImageSampler(e) =>
-                WriteDescriptors::CombinedImageSampler(e),
-            WriteDescriptors::ConstantBuffer(e) =>
-                WriteDescriptors::ConstantBuffer(e),
-            WriteDescriptors::StorageBuffer(e) =>
-                WriteDescriptors::StorageBuffer(e),
-            WriteDescriptors::DynamicConstantBuffer(e) =>
-                WriteDescriptors::DynamicConstantBuffer(e),
-            WriteDescriptors::DynamicStorageBuffer(e) =>
-                WriteDescriptors::DynamicStorageBuffer(e),
-            WriteDescriptors::InputAttachment(e) =>
-                WriteDescriptors::InputAttachment(e),
+            WriteDescriptors::StorageImage(e) => WriteDescriptors::StorageImage(e),
+            WriteDescriptors::SampledImage(e) => WriteDescriptors::SampledImage(e),
+            WriteDescriptors::Sampler(e) => WriteDescriptors::Sampler(e),
+            WriteDescriptors::CombinedImageSampler(e) => WriteDescriptors::CombinedImageSampler(e),
+            WriteDescriptors::ConstantBuffer(e) => WriteDescriptors::ConstantBuffer(e),
+            WriteDescriptors::StorageBuffer(e) => WriteDescriptors::StorageBuffer(e),
+            WriteDescriptors::DynamicConstantBuffer(e) => WriteDescriptors::DynamicConstantBuffer(
+                e,
+            ),
+            WriteDescriptors::DynamicStorageBuffer(e) => WriteDescriptors::DynamicStorageBuffer(e),
+            WriteDescriptors::InputAttachment(e) => WriteDescriptors::InputAttachment(e),
         }
     }
 }

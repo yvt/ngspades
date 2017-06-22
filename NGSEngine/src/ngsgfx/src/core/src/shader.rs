@@ -12,7 +12,9 @@ use std::any::Any;
 use Marker;
 
 /// Handle for shader module object.
-pub trait ShaderModule: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait ShaderModule
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct ShaderModuleDescription<'a> {

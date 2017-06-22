@@ -24,7 +24,8 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
     ///
     /// The specified fences must originate from the same device.
     fn reset_all(fences: &[Self]) -> Result<()>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         for fence in fences {
             try!(fence.reset());
@@ -36,7 +37,8 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
     ///
     /// The specified fences must originate from the same device.
     fn wait_all(fences: &[Self], timeout: Duration) -> Result<bool>
-        where Self: Sized
+    where
+        Self: Sized,
     {
         if timeout == Duration::new(0, 0) {
             for fence in fences {
@@ -85,7 +87,8 @@ impl Validate for FenceDescription {
     #[allow(unused_variables)]
     #[allow(unused_mut)]
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         // None so far
     }
@@ -103,11 +106,9 @@ impl Validate for SemaphoreDescription {
     #[allow(unused_variables)]
     #[allow(unused_mut)]
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         // None so far
     }
 }
-
-
-

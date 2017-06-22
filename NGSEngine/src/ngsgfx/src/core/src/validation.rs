@@ -19,7 +19,8 @@ pub trait Validate: Debug {
     ///
     /// `callback` is called for every errors reported.
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, callback: T)
-        where T: FnMut(Self::Error) -> ();
+    where
+        T: FnMut(Self::Error) -> ();
 
     /// Return whether values in `self` are valid.
     fn is_valid(&self, cap: Option<&DeviceCapabilities>) -> bool {
@@ -74,22 +75,23 @@ pub trait Validate: Debug {
 
 fn expect_valid_inner(this: &Debug, msg: &str, err_str: String) -> ! {
     if msg.len() == 0 {
-        panic!("Validation of the value {:#?} has failed. Reason: {}",
-               this,
-               err_str);
+        panic!(
+            "Validation of the value {:#?} has failed. Reason: {}",
+            this,
+            err_str
+        );
     } else {
-        panic!("{}: Validation of the value {:#?} has failed. Reason: {}",
-               msg,
-               this,
-               err_str);
+        panic!(
+            "{}: Validation of the value {:#?} has failed. Reason: {}",
+            msg,
+            this,
+            err_str
+        );
     }
 }
 
 fn errors_to_str<T: Debug>(errors: Vec<T>) -> String {
     assert!(errors.len() > 0);
-    let parts: Vec<String> = errors
-        .iter()
-        .map(|error| format!("{:?}", error))
-        .collect();
+    let parts: Vec<String> = errors.iter().map(|error| format!("{:?}", error)).collect();
     parts.join(", ")
 }

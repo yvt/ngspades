@@ -18,10 +18,16 @@ use {Result, Backend, BufferDescription, ImageDescription, Validate, DeviceCapab
 /// See the helper trait [`MappableHeap`](trait.MappableHeap.html) for functions that deal with `Allocation`s.
 pub trait Heap<B: Backend>: Debug + Send + Any + MappableHeap + Marker {
     /// Creates a buffer and allocates a region for it.
-    fn make_buffer(&mut self, description: &BufferDescription) -> Result<Option<(Self::Allocation, B::Buffer)>>;
+    fn make_buffer(
+        &mut self,
+        description: &BufferDescription,
+    ) -> Result<Option<(Self::Allocation, B::Buffer)>>;
 
     /// Creates an image and allocates a region for it.
-    fn make_image(&mut self, description: &ImageDescription) -> Result<Option<(Self::Allocation, B::Image)>>;
+    fn make_image(
+        &mut self,
+        description: &ImageDescription,
+    ) -> Result<Option<(Self::Allocation, B::Image)>>;
 }
 
 /// Helper trait for the trait `Heap`.
@@ -55,22 +61,36 @@ pub trait MappableHeap: Debug + Send + Any {
     ///
     /// There always will be a corresponding call to `raw_unmap_memory` for every invocation of
     /// `raw_map_memory`.
-    unsafe fn raw_map_memory(&mut self, allocation: &mut Self::Allocation) -> (*mut u8, usize, Self::MappingInfo);
+    unsafe fn raw_map_memory(
+        &mut self,
+        allocation: &mut Self::Allocation,
+    ) -> (*mut u8, usize, Self::MappingInfo);
 
     /// Flush a region from the host cache.
-    fn flush_memory(&mut self, allocation: &mut Self::Allocation,
-        offset: usize, size: Option<usize>);
+    fn flush_memory(
+        &mut self,
+        allocation: &mut Self::Allocation,
+        offset: usize,
+        size: Option<usize>,
+    );
 
     /// Invalidate a region from the host cache.
-    fn invalidate_memory(&mut self, allocation: &mut Self::Allocation,
-        offset: usize, size: Option<usize>);
+    fn invalidate_memory(
+        &mut self,
+        allocation: &mut Self::Allocation,
+        offset: usize,
+        size: Option<usize>,
+    );
 
     /// Maps a region to a host virtual memory.
     ///
     /// - The heap must have been created with `StorageMode::Shared`.
     /// - If the allocation was done for an image, the image must have been
     ///   created with `ImageTiling::Linear`. This is due to the Metal backend's restriction.
-    fn map_memory(&mut self, allocation: &mut Self::Allocation) -> HeapMapGuard<Self> where Self: Sized {
+    fn map_memory(&mut self, allocation: &mut Self::Allocation) -> HeapMapGuard<Self>
+    where
+        Self: Sized,
+    {
         let (mem, size, info) = unsafe { self.raw_map_memory(allocation) };
         HeapMapGuard {
             heap: self,
@@ -90,16 +110,22 @@ pub struct HeapMapGuard<'a, T: MappableHeap> {
 
 impl<'a, T: MappableHeap> ::std::ops::Deref for HeapMapGuard<'a, T> {
     type Target = [u8];
-    fn deref(&self) -> &[u8] { self.slice }
+    fn deref(&self) -> &[u8] {
+        self.slice
+    }
 }
 
 impl<'a, T: MappableHeap> ::std::ops::DerefMut for HeapMapGuard<'a, T> {
-    fn deref_mut(&mut self) -> &mut [u8] { self.slice }
+    fn deref_mut(&mut self) -> &mut [u8] {
+        self.slice
+    }
 }
 
 impl<'a, T: MappableHeap> ::std::ops::Drop for HeapMapGuard<'a, T> {
     fn drop(&mut self) {
-        unsafe { self.heap.raw_unmap_memory(self.info.take().unwrap()); }
+        unsafe {
+            self.heap.raw_unmap_memory(self.info.take().unwrap());
+        }
     }
 }
 
@@ -142,9 +168,9 @@ impl Validate for HeapDescription {
     #[allow(unused_variables)]
     #[allow(unused_mut)]
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         // TODO
     }
 }
-

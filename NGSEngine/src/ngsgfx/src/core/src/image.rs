@@ -17,12 +17,15 @@ use cgmath::Vector3;
 use super::{ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities, Marker};
 
 /// Handle for image objects.
-pub trait Image: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+pub trait Image
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
     // TODO: get image subresource layout
 }
 
 /// Handle for image view objects.
-pub trait ImageView: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait ImageView
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 /// Image description.
 ///
@@ -202,7 +205,8 @@ impl Validate for ImageDescription {
     type Error = ImageDescriptionValidationError;
 
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         if self.extent.x == 0 || self.extent.y == 0 || self.extent.z == 0 {
             callback(ImageDescriptionValidationError::ZeroExtent);
@@ -223,7 +227,9 @@ impl Validate for ImageDescription {
                 callback(ImageDescriptionValidationError::CubeCompatibleButNotSquare);
             }
             if self.num_array_layers < 6 {
-                callback(ImageDescriptionValidationError::CubeCompatibleButNotEnoughLayers);
+                callback(
+                    ImageDescriptionValidationError::CubeCompatibleButNotEnoughLayers,
+                );
             }
         }
 
@@ -235,10 +241,11 @@ impl Validate for ImageDescription {
         }
 
         if match self.image_type {
-               ImageType::OneD => self.extent.y != 1 || self.extent.z != 1,
-               ImageType::TwoD => self.extent.z != 1,
-               ImageType::ThreeD => false,
-           } {
+            ImageType::OneD => self.extent.y != 1 || self.extent.z != 1,
+            ImageType::TwoD => self.extent.z != 1,
+            ImageType::ThreeD => false,
+        }
+        {
             callback(ImageDescriptionValidationError::InvalidExtentForImageType);
         }
 
@@ -252,12 +259,15 @@ impl Validate for ImageDescription {
         }
 
         if !(self.usage & ImageUsageFlags::TransientAttachment).is_empty() &&
-           !(self.usage &
-             (ImageUsageFlags::ColorAttachment | ImageUsageFlags::DepthStencilAttachment |
-              ImageUsageFlags::InputAttachment)
-                     .not())
-                    .is_empty() {
-            callback(ImageDescriptionValidationError::TransientButHasNonAttachmentUsage);
+            !(self.usage &
+                  (ImageUsageFlags::ColorAttachment | ImageUsageFlags::DepthStencilAttachment |
+                       ImageUsageFlags::InputAttachment)
+                      .not())
+                .is_empty()
+        {
+            callback(
+                ImageDescriptionValidationError::TransientButHasNonAttachmentUsage,
+            );
         }
 
         match self.initial_layout {
@@ -272,21 +282,26 @@ impl Validate for ImageDescription {
             Some(cap) => {
                 let limits = cap.limits();
                 if self.extent.max() >
-                   match self.image_type {
-                       ImageType::OneD => limits.max_image_extent_1d,
-                       ImageType::TwoD => limits.max_image_extent_2d,
-                       ImageType::ThreeD => limits.max_image_extent_3d,
-                   } {
+                    match self.image_type {
+                        ImageType::OneD => limits.max_image_extent_1d,
+                        ImageType::TwoD => limits.max_image_extent_2d,
+                        ImageType::ThreeD => limits.max_image_extent_3d,
+                    }
+                {
                     callback(ImageDescriptionValidationError::ExtentTooLarge);
                 }
 
                 if !(self.usage &
-                     (ImageUsageFlags::ColorAttachment | ImageUsageFlags::DepthStencilAttachment |
-                      ImageUsageFlags::InputAttachment |
-                      ImageUsageFlags::TransientAttachment))
-                            .is_empty() &&
-                   self.extent.max() > limits.max_framebuffer_extent {
-                    callback(ImageDescriptionValidationError::ExtentTooLargeForFramebuffer);
+                         (ImageUsageFlags::ColorAttachment |
+                              ImageUsageFlags::DepthStencilAttachment |
+                              ImageUsageFlags::InputAttachment |
+                              ImageUsageFlags::TransientAttachment))
+                    .is_empty() &&
+                    self.extent.max() > limits.max_framebuffer_extent
+                {
+                    callback(
+                        ImageDescriptionValidationError::ExtentTooLargeForFramebuffer,
+                    );
                 }
 
                 if self.num_array_layers > limits.max_image_num_array_layers {
@@ -338,7 +353,8 @@ impl<'a, TImage: Image> Validate for ImageViewDescription<'a, TImage> {
     type Error = ImageViewDescriptionValidationError;
 
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         if self.range.num_mip_levels == Some(0) {
             callback(ImageViewDescriptionValidationError::ZeroMipLevels);
@@ -346,41 +362,43 @@ impl<'a, TImage: Image> Validate for ImageViewDescription<'a, TImage> {
         if self.range.num_array_layers == Some(0) {
             callback(ImageViewDescriptionValidationError::ZeroArrayLayers);
         }
-        if self.range
-               .num_mip_levels
-               .unwrap_or(1)
-               .checked_add(self.range.base_mip_level) == None {
+        if self.range.num_mip_levels.unwrap_or(1).checked_add(
+            self.range
+                .base_mip_level,
+        ) == None
+        {
             callback(ImageViewDescriptionValidationError::TooManyMipLevels);
         }
-        if self.range
-               .num_array_layers
-               .unwrap_or(1)
-               .checked_add(self.range.base_array_layer) == None {
+        if self.range.num_array_layers.unwrap_or(1).checked_add(
+            self.range.base_array_layer,
+        ) == None
+        {
             callback(ImageViewDescriptionValidationError::TooManyArrayLayers);
         }
 
         if let Some(cap) = cap {
             let limits: &::DeviceLimits = cap.limits();
 
-            let max_extent = *[limits.max_image_extent_1d,
-                               limits.max_image_extent_2d,
-                               limits.max_image_extent_3d]
-                                      .iter()
-                                      .max()
-                                      .unwrap();
+            let max_extent = *[
+                limits.max_image_extent_1d,
+                limits.max_image_extent_2d,
+                limits.max_image_extent_3d,
+            ].iter()
+                .max()
+                .unwrap();
             let log2floor = 31 - max_extent.leading_zeros();
-            if self.range
-                   .num_mip_levels
-                   .unwrap_or(1)
-                   .saturating_add(self.range.base_mip_level) > log2floor + 1 {
+            if self.range.num_mip_levels.unwrap_or(1).saturating_add(
+                self.range
+                    .base_mip_level,
+            ) > log2floor + 1
+            {
                 callback(ImageViewDescriptionValidationError::TooManyMipLevels);
             }
 
-            if self.range
-                   .num_array_layers
-                   .unwrap_or(1)
-                   .saturating_add(self.range.base_array_layer) >
-               limits.max_image_num_array_layers {
+            if self.range.num_array_layers.unwrap_or(1).saturating_add(
+                self.range.base_array_layer,
+            ) > limits.max_image_num_array_layers
+            {
                 callback(ImageViewDescriptionValidationError::TooManyArrayLayers);
             }
 
@@ -416,31 +434,37 @@ pub enum ImageViewDescriptionCompatibilityValidationError {
 }
 
 impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
-    pub fn validate_compatibility_with_image<T>(&self,
-                                                image_desc: &ImageDescription,
-                                                mut callback: T)
-        where T: FnMut(ImageViewDescriptionCompatibilityValidationError) -> ()
+    pub fn validate_compatibility_with_image<T>(
+        &self,
+        image_desc: &ImageDescription,
+        mut callback: T,
+    ) where
+        T: FnMut(ImageViewDescriptionCompatibilityValidationError) -> (),
     {
-        if self.range
-               .num_mip_levels
-               .unwrap_or(1)
-               .saturating_add(self.range.base_mip_level) > image_desc.num_mip_levels {
-            callback(ImageViewDescriptionCompatibilityValidationError::TooManyMipLevels);
+        if self.range.num_mip_levels.unwrap_or(1).saturating_add(
+            self.range
+                .base_mip_level,
+        ) > image_desc.num_mip_levels
+        {
+            callback(
+                ImageViewDescriptionCompatibilityValidationError::TooManyMipLevels,
+            );
         }
 
-        if self.range
-               .num_array_layers
-               .unwrap_or(1)
-               .saturating_add(self.range.base_array_layer) >
-           image_desc.num_array_layers {
-            callback(ImageViewDescriptionCompatibilityValidationError::TooManyArrayLayers);
+        if self.range.num_array_layers.unwrap_or(1).saturating_add(
+            self.range.base_array_layer,
+        ) > image_desc.num_array_layers
+        {
+            callback(
+                ImageViewDescriptionCompatibilityValidationError::TooManyArrayLayers,
+            );
         }
 
-        let num_array_layers = self.range
-            .num_array_layers
-            .unwrap_or(image_desc
-                           .num_array_layers
-                           .saturating_sub(self.range.base_array_layer));
+        let num_array_layers = self.range.num_array_layers.unwrap_or(
+            image_desc.num_array_layers.saturating_sub(
+                self.range.base_array_layer,
+            ),
+        );
 
         match (self.view_type, image_desc.image_type) {
             (ImageViewType::OneD, ImageType::OneD) => {
@@ -459,7 +483,9 @@ impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
                     callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
                 }
                 if (image_desc.flags & ImageFlags::CubeCompatible).is_empty() {
-                    callback(ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible);
+                    callback(
+                        ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible,
+                    );
                 }
             }
             (ImageViewType::CubeArray, ImageType::TwoD) => {
@@ -467,7 +493,9 @@ impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
                     callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForCubeArray);
                 }
                 if (image_desc.flags & ImageFlags::CubeCompatible).is_empty() {
-                    callback(ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible);
+                    callback(
+                        ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible,
+                    );
                 }
             }
             (ImageViewType::ThreeD, ImageType::ThreeD) => {
@@ -478,7 +506,9 @@ impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
             // TODO: (ImageViewType::TwoD, ImageType::ThreeD)
             // TODO: (ImageViewType::TwoDArray, ImageType::ThreeD)
             _ => {
-                callback(ImageViewDescriptionCompatibilityValidationError::TypeIncompatible);
+                callback(
+                    ImageViewDescriptionCompatibilityValidationError::TypeIncompatible,
+                );
             }
         }
     }

@@ -25,10 +25,11 @@ pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     /// If `fence` is specified, it will be signaled upon cmpletion of
     /// the execution. It must not be associated with any other
     /// commands that has not yet completed execution.
-    fn submit_commands(&self,
-                       submissions: &[&SubmissionInfo<B>],
-                       fence: Option<&B::Fence>)
-                       -> Result<()>;
+    fn submit_commands(
+        &self,
+        submissions: &[&SubmissionInfo<B>],
+        fence: Option<&B::Fence>,
+    ) -> Result<()>;
 
     fn wait_idle(&self);
 }
@@ -132,9 +133,12 @@ pub enum Barrier<'a, B: Backend> {
 
 /// Encodes commands into a command buffer.
 pub trait CommandEncoder<B: Backend>
-    : Debug + Send + Any + RenderSubpassCommandEncoder<B> + ComputeCommandEncoder<B>
-      + BlitCommandEncoder<B>
-{
+    : Debug
+    + Send
+    + Any
+    + RenderSubpassCommandEncoder<B>
+    + ComputeCommandEncoder<B>
+    + BlitCommandEncoder<B> {
     /// Start recording a command buffer.
     /// The existing contents will be cleared (if any).
     ///
@@ -152,10 +156,12 @@ pub trait CommandEncoder<B: Backend>
     /// after it.
     ///
     /// There must not be an active render/compute/blit pass.
-    fn barrier(&mut self,
+    fn barrier(
+        &mut self,
         source_stage: BitFlags<PipelineStageFlags>,
         destination_stage: BitFlags<PipelineStageFlags>,
-        barriers: &[Barrier<B>]);
+        barriers: &[Barrier<B>],
+    );
 
     /// Begin a render pass.
     ///
@@ -250,28 +256,34 @@ pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any {
     /// `scissor_rect` must be `StaticOrDynamic::Dynamic`.
     fn set_scissor_rect(&mut self, value: &Rect2D<u32>);
 
-    fn bind_descriptor_sets(&mut self,
-                            pipeline_layout: &B::PipelineLayout,
-                            start_index: usize,
-                            descriptor_sets: &[B::DescriptorSet],
-                            dynamic_offsets: &[u32]);
+    fn bind_descriptor_sets(
+        &mut self,
+        pipeline_layout: &B::PipelineLayout,
+        start_index: usize,
+        descriptor_sets: &[B::DescriptorSet],
+        dynamic_offsets: &[u32],
+    );
 
     fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&B::Buffer, usize)]);
 
     fn bind_index_buffer(&mut self, buffer: &B::Buffer, offset: usize, format: IndexFormat);
 
-    fn draw(&mut self,
-            num_vertices: u32,
-            num_instances: u32,
-            start_vertex_index: u32,
-            start_instance_index: u32);
+    fn draw(
+        &mut self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        start_instance_index: u32,
+    );
 
-    fn draw_indexed(&mut self,
-                    num_vertices: u32,
-                    num_instances: u32,
-                    start_vertex_index: u32,
-                    index_offset: u32,
-                    start_instance_index: u32);
+    fn draw_indexed(
+        &mut self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        index_offset: u32,
+        start_instance_index: u32,
+    );
 
     // TODO: indirect draw
 }

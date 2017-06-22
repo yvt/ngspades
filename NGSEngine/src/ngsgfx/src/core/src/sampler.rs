@@ -12,7 +12,9 @@ use std::any::Any;
 use {CompareFunction, Validate, DeviceCapabilities, Marker};
 
 /// Handle for sampler objects.
-pub trait Sampler: Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {}
+pub trait Sampler
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct SamplerDescription {
@@ -86,10 +88,9 @@ impl Validate for SamplerDescription {
     #[allow(unused_variables)]
     #[allow(unused_mut)]
     fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-        where T: FnMut(Self::Error) -> ()
+    where
+        T: FnMut(Self::Error) -> (),
     {
         // TODO
     }
 }
-
-
