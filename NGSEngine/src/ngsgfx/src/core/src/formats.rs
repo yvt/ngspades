@@ -153,6 +153,45 @@ impl ImageFormat {
         !self.has_depth()
     }
 
+    pub fn is_color_float(&self) -> bool {
+        match *self {
+            ImageFormat::RFloat16 |
+            ImageFormat::RFloat32 |
+            ImageFormat::RgFloat16 |
+            ImageFormat::RgFloat32 |
+            ImageFormat::RgbaFloat16 |
+            ImageFormat::RgbaFloat32 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_color_srgb(&self) -> bool {
+        match *self {
+            ImageFormat::SrgbR8 |
+            ImageFormat::SrgbRg8 |
+            ImageFormat::SrgbRgba8 |
+            ImageFormat::SrgbBgra8 => true,
+            _ => false,
+        }
+    }
+
+    pub fn color_int_type(&self) -> Option<(Signedness, Normalizedness)> {
+        match *self {
+            ImageFormat::R8(signedness, normalizedness) |
+            ImageFormat::Rg8(signedness, normalizedness) |
+            ImageFormat::Rgba8(signedness, normalizedness) |
+            ImageFormat::Rgb10A2(signedness, normalizedness) |
+            ImageFormat::R16(signedness, normalizedness) |
+            ImageFormat::Rg16(signedness, normalizedness) |
+            ImageFormat::Rgba16(signedness, normalizedness) |
+            ImageFormat::R32(signedness, normalizedness) |
+            ImageFormat::Rg32(signedness, normalizedness) |
+            ImageFormat::Rgba32(signedness, normalizedness) |
+            ImageFormat::Bgra8(signedness, normalizedness) => Some((signedness, normalizedness)),
+            _ => None,
+        }
+    }
+
     pub fn has_depth(&self) -> bool {
         match *self {
             ImageFormat::Depth16 |

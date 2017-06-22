@@ -32,29 +32,18 @@ pub struct FramebufferAttachmentDescription<'a, TImageView: ImageView> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct ClearValues {
-    /// Clear color values for normalized and floating point color images.
-    pub clear_color_float: [f32; 4],
+pub enum ClearValues {
+    /// Clear values for a color attachment with a format other than unnormalized integer ones.
+    ColorFloat([f32; 4]),
 
-    /// Clear color values for unnormalized color images.
-    pub clear_color_int: [u32; 4],
+    /// Clear values for a color attachment with an unnormalized unsigned integer format.
+    ColorUnsignedInteger([u32; 4]),
 
-    /// Clear color values for depth images.
-    pub clear_depth: f32,
+    /// Clear values for a color attachment with an unnormalized signed integer format.
+    ColorSignedInteger([i32; 4]),
 
-    /// Clear color values for stencil images.
-    pub clear_stencil: u32,
-}
-
-impl ::std::default::Default for ClearValues {
-    fn default() -> Self {
-        Self {
-            clear_color_float: [0f32; 4],
-            clear_color_int: [0u32; 4],
-            clear_depth: 1f32,
-            clear_stencil: 0,
-        }
-    }
+    /// Clear values for depth and stencil attachments.
+    DepthStencil(f32, u32),
 }
 
 /// Validation errors for [`FramebufferDescription`](struct.FramebufferDescription.html).

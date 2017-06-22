@@ -303,15 +303,67 @@ impl Framebuffer {
                     if let Some(att) = att_or_none.as_ref() {
                         let att_descriptor = metal_descriptor.color_attachments().object_at(i);
                         populate_attachment_descriptor(*att_descriptor, att);
+
+                        let clear_value = match description.attachments[att.index].clear_values {
+                            core::ClearValues::ColorFloat(values) => {
+                                [
+                                    values[0] as f64,
+                                    values[1] as f64,
+                                    values[2] as f64,
+                                    values[3] as f64,
+                                ]
+                            }
+                            core::ClearValues::ColorUnsignedInteger(values) => {
+                                [
+                                    values[0] as f64,
+                                    values[1] as f64,
+                                    values[2] as f64,
+                                    values[3] as f64,
+                                ]
+                            }
+                            core::ClearValues::ColorSignedInteger(values) => {
+                                [
+                                    values[0] as f64,
+                                    values[1] as f64,
+                                    values[2] as f64,
+                                    values[3] as f64,
+                                ]
+                            }
+                            core::ClearValues::DepthStencil(_, _) => {
+                                panic!("invalid clear value for color attachment")
+                            }
+                        };
+                        att_descriptor.set_clear_color(metal::MTLClearColor::new(
+                            clear_value[0],
+                            clear_value[1],
+                            clear_value[2],
+                            clear_value[3],
+                        ));
                     }
                 }
 
                 if let Some(att) = subpass.depth_attachment.as_ref() {
                     populate_attachment_descriptor(*metal_descriptor.depth_attachment(), att);
+
+                    let clear_value = match description.attachments[att.index].clear_values {
+                        core::ClearValues::DepthStencil(depth, _) => depth,
+                        _ => panic!("invalid clear value for color attachment"),
+                    };
+                    metal_descriptor.depth_attachment().set_clear_depth(
+                        clear_value as f64,
+                    );
                 }
 
                 if let Some(att) = subpass.stencil_attachment.as_ref() {
                     populate_attachment_descriptor(*metal_descriptor.stencil_attachment(), att);
+
+                    let clear_value = match description.attachments[att.index].clear_values {
+                        core::ClearValues::DepthStencil(_, stencil) => stencil,
+                        _ => panic!("invalid clear value for color attachment"),
+                    };
+                    metal_descriptor.stencil_attachment().set_clear_stencil(
+                        clear_value,
+                    );
                 }
 
                 metal_descriptor
