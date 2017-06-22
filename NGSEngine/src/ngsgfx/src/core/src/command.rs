@@ -159,25 +159,18 @@ pub trait CommandEncoder<B: Backend>
 
     /// Begin a render pass.
     ///
-    /// `contents` specifies the method how the contents of the render pass is
-    /// encoded.
-    ///
-    /// - If `Inline` is specified, the contents are encoded by calling
-    ///   functions from `RenderSubpassCommandEncoder` on `self`.
-    /// - If `SecondaryCommandBuffers` is specified, the contents are encoded
-    ///   via secondary command buffers, which are created by calling
-    ///   `make_secondary_command_buffer` on `self`. Before proceeding to the
-    ///   next subpass, all secondary command buffers have their encoding completed
-    ///   via `end_encoding`.
-    fn begin_render_pass(&mut self, framebuffer: &B::Framebuffer, contents: RenderPassContents);
+    /// During a render pass, calls to `begin_render_subpass` and `end_render_subpass`
+    /// must occur as many times as the number of subpasses in the render pass associated
+    /// with the specified framebuffer.
+    fn begin_render_pass(&mut self, framebuffer: &B::Framebuffer);
 
     /// Begin a compute pass.
-//
+    ///
     /// Only during a compute pass, functions from `ComputeCommandEncoder` can be called.
     fn begin_compute_pass(&mut self);
 
     /// Begin a blit pass.
-//
+    ///
     /// Only during a compute pass, functions from `BlitCommandEncoder` can be called.
     fn begin_blit_pass(&mut self);
 
@@ -192,15 +185,34 @@ pub trait CommandEncoder<B: Backend>
     /// End the current render, compute, or blit pass.
     ///
     /// If the current pass is a render pass,
-    /// `next_render_subpass` must have been called enough times since the last time
+    /// `begin_render_subpass` must have been called enough times since the last time
     /// `begin_render_pass` was called on this command encoder.
     fn end_pass(&mut self);
 
-    /// Make a transition to the next subpass.
+    /// Begin the next subpass.
     /// Must be called for each subpass before `end_pass` is called.
     ///
-    /// A render pass must be active.
-    fn next_render_subpass(&mut self, contents: RenderPassContents);
+    /// `end_render_subpass` must be called after all commands for the current subpass
+    /// were encoded.
+    ///
+    /// `contents` specifies the method how the contents of the render pass is
+    /// encoded.
+    ///
+    /// - If `Inline` is specified, the contents are encoded by calling
+    ///   functions from `RenderSubpassCommandEncoder` on `self`.
+    /// - If `SecondaryCommandBuffers` is specified, the contents are encoded
+    ///   via secondary command buffers, which are created by calling
+    ///   `make_secondary_command_buffer` on `self`. Before proceeding to the
+    ///   next subpass, all secondary command buffers have their encoding completed
+    ///   via `end_encoding`.
+    ///
+    /// Only during a render subpass, functions from `RenderSubpassCommandEncoder` can be called.
+    fn begin_render_subpass(&mut self, contents: RenderPassContents);
+
+    /// End the current subpass.
+    ///
+    /// A render subpass must be active.
+    fn end_render_subpass(&mut self);
 }
 
 /// Encodes render commands into a command buffer.

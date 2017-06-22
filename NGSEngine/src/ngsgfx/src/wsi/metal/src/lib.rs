@@ -70,6 +70,10 @@ impl MetalWindow {
         self.image_view.borrow()
     }
 
+    pub fn drawable(&self) -> metal::CAMetalDrawable {
+        self.drawable.get()
+    }
+
     pub fn size(&self) -> Vector2<u32> {
         let texture = self.drawable.get().texture();
         Vector2::new(texture.width() as u32, texture.height() as u32)

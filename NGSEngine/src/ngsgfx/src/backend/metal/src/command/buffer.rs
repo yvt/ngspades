@@ -29,12 +29,15 @@ pub(crate) enum EncoderState {
     NotRecording,
     /// Recording has started, but not sure which encoder we should use.
     NoPass,
+    GraphicsIntermission {
+        framebuffer: Framebuffer,
+        next_subpass: usize,
+    },
     Graphics {
         encoder: GraphicsEncoderState,
         framebuffer: Framebuffer,
         subpass: usize,
     },
-    GraphicsLast,
     Compute(OCPtr<metal::MTLComputeCommandEncoder>),
     Blit(OCPtr<metal::MTLBlitCommandEncoder>),
 }
@@ -50,6 +53,10 @@ impl CommandBuffer {
             submitted: AtomicBool::new(false),
             label: RefCell::new(None),
         }
+    }
+
+    pub fn metal_buffer(&self) -> Option<metal::MTLCommandBuffer> {
+        self.buffer.as_ref().map(|x| **x)
     }
 
     pub(crate) fn expect_no_pass(&self) {
@@ -127,7 +134,9 @@ impl core::CommandBuffer<Backend> for CommandBuffer {
     }
     fn wait_completion(&self, _: Duration) -> core::Result<bool> {
         // TODO: timeout
-        self.buffer.as_ref().unwrap().wait_until_completed();
+        if let Some(ref buffer) = self.buffer {
+            buffer.wait_until_completed();
+        }
         Ok(true)
     }
 }
@@ -156,36 +165,11 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         unimplemented!()
     }
 
-    fn begin_render_pass(&mut self, framebuffer: &Framebuffer, contents: core::RenderPassContents) {
+    fn begin_render_pass(&mut self, framebuffer: &Framebuffer) {
         self.expect_no_pass();
-
-        let first_subpass = framebuffer.subpass(0);
-        let g_encoder = match contents {
-            core::RenderPassContents::Inline => GraphicsEncoderState::Inline(
-                RenderCommandEncoder::new(
-                    OCPtr::new(
-                        self.buffer
-                            .as_ref()
-                            .unwrap()
-                            .new_render_command_encoder(first_subpass),
-                    ).unwrap(),
-                ),
-            ),
-            core::RenderPassContents::SecondaryCommandBuffers => {
-                GraphicsEncoderState::SecondaryCommandBuffers(
-                    OCPtr::new(
-                        self.buffer
-                            .as_ref()
-                            .unwrap()
-                            .new_parallel_render_command_encoder(first_subpass),
-                    ).unwrap(),
-                )
-            }
-        };
-        self.encoder = EncoderState::Graphics {
-            encoder: g_encoder,
+        self.encoder = EncoderState::GraphicsIntermission {
             framebuffer: framebuffer.clone(),
-            subpass: 0,
+            next_subpass: 0,
         };
     }
 
@@ -213,11 +197,13 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
 
     fn end_pass(&mut self) {
         match self.encoder {
-            EncoderState::GraphicsLast => {
-                self.encoder = EncoderState::NoPass;
-            }
+            EncoderState::GraphicsIntermission { next_subpass, ref framebuffer } => {
+                if next_subpass < framebuffer.num_subpasses() {
+                    panic!("insufficient number of calls of next_subpass");
+                }
+            },
             EncoderState::Graphics { .. } => {
-                panic!("insufficient number of calls of next_subpass");
+                panic!("render subpass must be ended first");
             }
             EncoderState::Compute(ref encoder) => {
                 encoder.end_encoding();
@@ -230,9 +216,10 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
                 panic!("render pass is not active");
             }
         }
+        self.encoder = EncoderState::NoPass;
     }
 
-    fn next_render_subpass(&mut self, contents: core::RenderPassContents) {
+    fn end_render_subpass(&mut self) {
         match replace(&mut self.encoder, EncoderState::NoPass) {
             EncoderState::Graphics {
                 encoder,
@@ -249,42 +236,54 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
                 }
                 drop(encoder);
 
-                let next_subpass_index = subpass + 1;
-                if next_subpass_index != framebuffer.num_subpasses() {
-                    let next_subpass = framebuffer.subpass(next_subpass_index);
-                    let g_encoder = match contents {
-                        core::RenderPassContents::Inline => GraphicsEncoderState::Inline(
-                            RenderCommandEncoder::new(
-                                OCPtr::new(
-                                    self.buffer.as_ref().unwrap().new_render_command_encoder(
-                                        next_subpass,
-                                    ),
-                                ).unwrap(),
-                            ),
-                        ),
-                        core::RenderPassContents::SecondaryCommandBuffers => {
-                            GraphicsEncoderState::SecondaryCommandBuffers(
-                                OCPtr::new(
-                                    self.buffer
-                                        .as_ref()
-                                        .unwrap()
-                                        .new_parallel_render_command_encoder(next_subpass),
-                                ).unwrap(),
-                            )
-                        }
-                    };
-                    self.encoder = EncoderState::Graphics {
-                        encoder: g_encoder,
-                        framebuffer: framebuffer,
-                        subpass: next_subpass_index,
-                    };
-                } else {
-                    self.encoder = EncoderState::GraphicsLast;
-                }
+                self.encoder = EncoderState::GraphicsIntermission {
+                    framebuffer: framebuffer,
+                    next_subpass: subpass + 1,
+                };
             }
-            EncoderState::GraphicsLast => {
-                self.encoder = EncoderState::GraphicsLast;
-                panic!("no more subpasses");
+            x => {
+                self.encoder = x;
+                panic!("render subpass is not active");
+            }
+        }
+    }
+
+    fn begin_render_subpass(&mut self, contents: core::RenderPassContents) {
+        match replace(&mut self.encoder, EncoderState::NoPass) {
+            EncoderState::GraphicsIntermission {
+                framebuffer,
+                next_subpass: next_subpass_index,
+            } => {
+                if next_subpass_index == framebuffer.num_subpasses() {
+                    panic!("no more subpasses");
+                }
+                let next_subpass = framebuffer.subpass(next_subpass_index);
+                let g_encoder = match contents {
+                    core::RenderPassContents::Inline => GraphicsEncoderState::Inline(
+                        RenderCommandEncoder::new(
+                            OCPtr::new(
+                                self.buffer.as_ref().unwrap().new_render_command_encoder(
+                                    next_subpass,
+                                ),
+                            ).unwrap(),
+                        ),
+                    ),
+                    core::RenderPassContents::SecondaryCommandBuffers => {
+                        GraphicsEncoderState::SecondaryCommandBuffers(
+                            OCPtr::new(
+                                self.buffer
+                                    .as_ref()
+                                    .unwrap()
+                                    .new_parallel_render_command_encoder(next_subpass),
+                            ).unwrap(),
+                        )
+                    }
+                };
+                self.encoder = EncoderState::Graphics {
+                    encoder: g_encoder,
+                    framebuffer: framebuffer,
+                    subpass: next_subpass_index,
+                };
             }
             x => {
                 self.encoder = x;
