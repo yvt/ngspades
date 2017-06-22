@@ -107,7 +107,7 @@ pub trait Backend: Sized + 'static {
     type PipelineLayout: PipelineLayout;
     type RenderPass: RenderPass;
     type Sampler: Sampler;
-    type SecondaryCommandBuffer: SecondaryCommandBuffer;
+    type SecondaryCommandBuffer: SecondaryCommandBuffer<Self>;
     type Semaphore: Semaphore;
     type StencilState: StencilState;
     type ShaderModule: ShaderModule;

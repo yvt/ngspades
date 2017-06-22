@@ -9,14 +9,13 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 use std::time::Duration;
 
-use super::{Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D,
-            Result, Framebuffer, Marker};
+use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Framebuffer,
+     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessFlags};
 
 use enumflags::BitFlags;
 use cgmath::Vector3;
 
-pub trait CommandQueue<B: Backend>
-    : Debug + Send + Any + Marker {
+pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     fn make_command_buffer(&self) -> Result<B::CommandBuffer>;
 
     /// Submit command buffers to a queue.
@@ -36,9 +35,9 @@ pub trait CommandQueue<B: Backend>
 
 #[derive(Debug, Copy, Clone)]
 pub struct SubmissionInfo<'a, B: Backend> {
-    pub buffers: &'a[&'a B::CommandBuffer],
-    pub wait_semaphores: &'a[&'a B::Semaphore],
-    pub signal_semaphores: &'a[&'a B::Semaphore],
+    pub buffers: &'a [&'a B::CommandBuffer],
+    pub wait_semaphores: &'a [&'a B::Semaphore],
+    pub signal_semaphores: &'a [&'a B::Semaphore],
 }
 
 /// Command buffer.
@@ -47,7 +46,6 @@ pub struct SubmissionInfo<'a, B: Backend> {
 /// Also, it must not outlive the originating `CommandQueue`.
 pub trait CommandBuffer<B: Backend>
     : Debug + Send + Any + CommandEncoder<B> + Marker {
-
     fn state(&self) -> CommandBufferState;
 
     /// Stall the current threa until the execution of the command buffer
@@ -57,6 +55,12 @@ pub trait CommandBuffer<B: Backend>
     fn wait_completion(&self, timeout: Duration) -> Result<bool>;
 }
 
+
+pub trait SecondaryCommandBuffer<B: Backend>
+    : Debug + Send + Any + RenderSubpassCommandEncoder<B> {
+    /// End recording a second command buffer.
+    fn end_encoding(&mut self);
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum CommandBufferState {
@@ -68,9 +72,68 @@ pub enum CommandBufferState {
     Error,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum RenderPassContents {
+    Inline,
+    SecondaryCommandBuffers,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum SubresourceWithLayout<'a, B: Backend> {
+    Image {
+        image: &'a B::Image,
+        range: ImageSubresourceRange,
+        layout: ImageLayout,
+    },
+    Buffer {
+        buffer: &'a B::Buffer,
+        offset: usize,
+        len: usize,
+    },
+}
+
+/// Describes a memory barrier.
+///
+/// Please see Vulkan 1.0 Specification "6.7. Memory Barriers".
+///
+/// TODO: add `#[derive(Hash)]` after `enumflags` was updated to
+///       implement that on `BitFlags`
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Barrier<'a, B: Backend> {
+    AcquireQueueOwnership {
+        resource: SubresourceWithLayout<'a, B>,
+        // TODO: make this point to a queue family, not `CommandQueue` (which is not `Sync`)
+        source: &'a B::CommandQueue,
+    },
+    ReleaseQueueOwnership {
+        resource: SubresourceWithLayout<'a, B>,
+        // TODO: make this point to a queue family, not `CommandQueue` (which is not `Sync`)
+        destination: &'a B::CommandQueue,
+    },
+    GlobalMemoryBarrier {
+        source_access_mask: BitFlags<AccessFlags>,
+        destination_access_mask: BitFlags<AccessFlags>,
+    },
+    ImageMemoryBarrier {
+        image: &'a B::Image,
+        source_access_mask: BitFlags<AccessFlags>,
+        destination_access_mask: BitFlags<AccessFlags>,
+        source_layout: ImageLayout,
+        destination_layout: ImageLayout,
+    },
+    BufferMemoryBarrier {
+        buffer: &'a B::Buffer,
+        source_access_mask: BitFlags<AccessFlags>,
+        destination_access_mask: BitFlags<AccessFlags>,
+        offset: usize,
+        len: usize,
+    },
+}
+
 /// Encodes commands into a command buffer.
 pub trait CommandEncoder<B: Backend>
-    : Debug + Send + Any
+    : Debug + Send + Any + RenderSubpassCommandEncoder<B> + ComputeCommandEncoder<B>
+      + BlitCommandEncoder<B>
 {
     /// Start recording a command buffer.
     /// The existing contents will be cleared (if any).
@@ -81,33 +144,74 @@ pub trait CommandEncoder<B: Backend>
     /// End recording a command buffer.
     ///
     /// The command buffer must be in the `Recording` state.
+    /// No kind of passes can be active at the point of call.
     fn end_encoding(&mut self);
+
+    /// Inserts a memory dependency (which also implies an execution dependency)
+    /// between commands that were submitted before this and those submitted
+    /// after it.
+    ///
+    /// There must not be an active render/compute/blit pass.
+    fn barrier(&mut self,
+        source_stage: BitFlags<PipelineStageFlags>,
+        destination_stage: BitFlags<PipelineStageFlags>,
+        barriers: &[Barrier<B>]);
 
     /// Begin a render pass.
     ///
-    /// If a compute pipeline is currently bound, it will be unbound.
-    fn begin_render_pass(&mut self, framebuffer: &B::Framebuffer);
+    /// `contents` specifies the method how the contents of the render pass is
+    /// encoded.
+    ///
+    /// - If `Inline` is specified, the contents are encoded by calling
+    ///   functions from `RenderSubpassCommandEncoder` on `self`.
+    /// - If `SecondaryCommandBuffers` is specified, the contents are encoded
+    ///   via secondary command buffers, which are created by calling
+    ///   `make_secondary_command_buffer` on `self`. Before proceeding to the
+    ///   next subpass, all secondary command buffers have their encoding completed
+    ///   via `end_encoding`.
+    fn begin_render_pass(&mut self, framebuffer: &B::Framebuffer, contents: RenderPassContents);
 
-    /// End a render pass.
+    /// Begin a compute pass.
+//
+    /// Only during a compute pass, functions from `ComputeCommandEncoder` can be called.
+    fn begin_compute_pass(&mut self);
+
+    /// Begin a blit pass.
+//
+    /// Only during a compute pass, functions from `BlitCommandEncoder` can be called.
+    fn begin_blit_pass(&mut self);
+
+    /// Creates a secondary command buffer to encode commands from multiple threads.
     ///
-    /// `next_subpass` must have been called enough times between
-    /// calls to this and the matching `begin_render_pass`.
+    /// A render pass must be active with `RenderPassContents::SecondaryCommandBuffers`.
+    /// `end_encoding` of the returned secondary buffer must be called before the
+    /// current render subpass is completed by `next_subpass`.
+    /// The application must perform adequate inter-thread synchronizations.
+    fn make_secondary_command_buffer(&mut self) -> B::SecondaryCommandBuffer;
+
+    /// End the current render, compute, or blit pass.
     ///
-    /// If a graphics pipeline is currently bound, it will be unbound.
-    fn end_render_pass(&mut self);
+    /// If the current pass is a render pass,
+    /// `next_subpass` must have been called enough times since the last time
+    /// `begin_render_pass` was called on this command encoder.
+    fn end_pass(&mut self);
 
     /// Make a transition to the next subpass.
-    /// Must be called for each subpass before `end_render_pass` is called.
+    /// Must be called for each subpass before `end_pass` is called.
     ///
-    /// If a graphics pipeline is currently bound, it will be unbound.
+    /// A render pass must be active.
     fn next_subpass(&mut self);
+}
 
+/// Encodes render commands into a command buffer.
+pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any {
     /// Sets the current `GraphicsPipeline` object.
     ///
     /// A render pass must be active and compatible with the specified pipeline.
     ///
-    /// All dynamic states will be reseted and all descriptors will be unbound.
-    /// They all have to be specified before issuing the first draw call.
+    /// All dynamic states will be reseted. Descriptor sets with incompatible
+    /// layouts (see Vulkan 1.0 Specification "13.2.2. Pipeline Layouts") will be
+    /// unbound.
     fn bind_graphics_pipeline(&mut self, pipeline: &B::GraphicsPipeline);
 
     /// Specifies the dynamic blend constant values. The current `GraphicsPipeline`'s
@@ -140,6 +244,10 @@ pub trait CommandEncoder<B: Backend>
                             descriptor_sets: &[B::DescriptorSet],
                             dynamic_offsets: &[u32]);
 
+    fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&B::Buffer, usize)]);
+
+    fn bind_index_buffer(&mut self, buffer: &B::Buffer, offset: usize, format: IndexFormat);
+
     fn draw(&mut self,
             num_vertices: u32,
             num_instances: u32,
@@ -153,15 +261,23 @@ pub trait CommandEncoder<B: Backend>
                     index_offset: u32,
                     start_instance_index: u32);
 
+    // TODO: indirect draw
+}
+
+/// Encodes compute commands into a command buffer.
+pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any {
     /// Set the current `ComputePipeline` object.
     ///
-    /// Must not be called inside a render pass.
+    /// A compute pass must be active.
     fn bind_compute_pipeline(&mut self, pipeline: &B::ComputePipeline);
 
     /// Provoke work in a compute pipeline.
     ///
-    /// There must be a bound `ComputePipeline`.
+    /// A compute pass must be active and a compute pipeline must be bound.
     fn dispatch(&mut self, workgroup_count: Vector3<u32>);
+}
 
-    // TODO: blit/copy/clear commands
+/// Encodes blit commands into a command buffer.
+pub trait BlitCommandEncoder<B: Backend>: Debug + Send + Any {
+    // TODO
 }

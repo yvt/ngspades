@@ -77,7 +77,7 @@ pub struct ImageViewDescription<'a, TImage: Image> {
     pub range: ImageSubresourceRange,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImageSubresourceRange {
     /// The first mipmap level accessible to the view.
     pub base_mip_level: u32,

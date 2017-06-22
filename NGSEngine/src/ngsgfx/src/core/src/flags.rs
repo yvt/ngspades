@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 
-#[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+#[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PipelineStageFlags {
     TopOfPipe = 0b00000000000001,
@@ -23,7 +23,7 @@ pub enum PipelineStageFlags {
     AllCommands = 0b10000000000000,
 }
 
-#[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+#[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum AccessFlags {
     IndirectCommandRead = 0b00000000000000001,

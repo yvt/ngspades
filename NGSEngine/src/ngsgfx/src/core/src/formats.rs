@@ -294,3 +294,9 @@ impl ScalarFormat {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum IndexFormat {
+    U16,
+    U32,
+}
