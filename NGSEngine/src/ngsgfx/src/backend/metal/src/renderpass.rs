@@ -7,7 +7,7 @@ use core;
 use metal;
 use metal::NSObjectProtocol;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use {OCPtr, RefEqArc};
 use imp::ImageView;
@@ -21,6 +21,7 @@ pub struct RenderPass {
 struct RenderPassData {
     attachments: Vec<core::RenderPassAttachmentDescription>,
     subpasses: Vec<RenderSubpassData>,
+    label: Mutex<Option<String>>,
 }
 
 #[derive(Debug)]
@@ -83,6 +84,7 @@ impl RenderPass {
         let mut data = RenderPassData {
             attachments: attachments.to_vec(),
             subpasses: Vec::with_capacity(subpasses.len()),
+            label: Mutex::new(None),
         };
 
         let mut attachment_last_use = vec![None; attachments.len()];
@@ -236,6 +238,12 @@ impl RenderPass {
 
 }
 
+impl core::Marker for RenderPass {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
+    }
+}
+
 impl core::RenderPass for RenderPass {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -246,6 +254,7 @@ pub struct Framebuffer {
 #[derive(Debug)]
 pub(crate) struct FramebufferData {
     metal_descriptors: Vec<OCPtr<metal::MTLRenderPassDescriptor>>,
+    label: Mutex<Option<String>>,
 }
 
 unsafe impl Send for FramebufferData {}
@@ -293,7 +302,7 @@ impl Framebuffer {
             })
             .collect();
 
-        let data = FramebufferData { metal_descriptors };
+        let data = FramebufferData { metal_descriptors, label: Mutex::new(None) };
 
         Self { data: RefEqArc::new(data) }
     }
@@ -304,6 +313,12 @@ impl Framebuffer {
 
     pub(crate) fn subpass(&self, index: usize) -> metal::MTLRenderPassDescriptor {
         *self.data.metal_descriptors[index]
+    }
+}
+
+impl core::Marker for Framebuffer {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
     }
 }
 

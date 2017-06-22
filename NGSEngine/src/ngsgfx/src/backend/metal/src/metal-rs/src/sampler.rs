@@ -7,6 +7,7 @@
 
 use objc::runtime::Class;
 use objc::runtime::{YES, NO};
+use objc_foundation::{NSString, INSString};
 
 use super::{id, NSObjectPrototype, NSObjectProtocol};
 
@@ -165,5 +166,14 @@ pub type MTLSamplerState = id<(MTLSamplerStatePrototype, (NSObjectPrototype, ())
 impl NSObjectProtocol for MTLSamplerState {
     unsafe fn class() -> &'static Class {
         Class::get("MTLSamplerState").unwrap()
+    }
+}
+
+impl MTLSamplerState {
+    pub fn set_label(&self, label: &str) {
+        unsafe {
+            let nslabel = NSString::from_str(label);
+            msg_send![self.0, setLabel:nslabel]
+        }
     }
 }

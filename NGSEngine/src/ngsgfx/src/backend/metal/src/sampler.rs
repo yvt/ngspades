@@ -21,6 +21,12 @@ struct SamplerData {
 unsafe impl Send for SamplerData {}
 unsafe impl Sync for SamplerData {} // no interior mutability
 
+impl core::Marker for Sampler {
+    fn set_label(&self, label: Option<&str>) {
+        self.data.metal_sampler.set_label(label.unwrap_or(""));
+    }
+}
+
 impl core::Sampler for Sampler {}
 
 impl Sampler {

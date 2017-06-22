@@ -17,12 +17,25 @@ use {RefEqArc};
 /// and is not available on macOS 10.12.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Semaphore {
-    data: RefEqArc<()>,
+    data: RefEqArc<SemaphoreData>,
+}
+
+#[derive(Debug)]
+struct SemaphoreData {
+    label: Mutex<Option<String>>,
 }
 
 impl Semaphore {
     pub(crate) fn new(_: &core::SemaphoreDescription) -> Self {
-        Self { data: RefEqArc::new(()) }
+        Self { data: RefEqArc::new(SemaphoreData{
+            label: Mutex::new(None),
+        }) }
+    }
+}
+
+impl core::Marker for Semaphore {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
     }
 }
 
@@ -56,6 +69,8 @@ struct FenceData {
     /// `num_pending_buffers` is managed by atomic operations in hopes of
     /// saving cpu cycles by eliding mutex ops.
     num_pending_buffers: AtomicUsize,
+
+    label: Mutex<Option<String>>,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -79,6 +94,7 @@ impl Fence {
                                cvar: Condvar::new(),
                                state: Mutex::new(initial_state),
                                num_pending_buffers: AtomicUsize::new(initial_num_pending_buffers),
+                               label: Mutex::new(None),
                            }),
         }
     }
@@ -110,6 +126,12 @@ impl Fence {
             *state = FenceState::Signaled;
             data.cvar.notify_all();
         }
+    }
+}
+
+impl core::Marker for Fence {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
     }
 }
 

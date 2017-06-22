@@ -6,6 +6,7 @@
 use core::{self, Validate};
 use metal;
 use std::sync::Arc;
+use std::cell::RefCell;
 
 use {OCPtr, RefEqBox};
 use imp::{Backend, Buffer, Image, DeviceData};
@@ -19,6 +20,7 @@ pub struct Heap {
 struct HeapData {
     device: Arc<DeviceData>,
     storage_mode: metal::MTLStorageMode,
+    label: RefCell<Option<String>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -45,8 +47,16 @@ impl Heap {
         };
         Self { data: RefEqBox::new(HeapData {
             device: device.clone(),
-            storage_mode
+            storage_mode,
+            label: RefCell::new(None),
         }) }
+    }
+}
+
+impl core::Marker for Heap {
+    fn set_label(&self, label: Option<&str>) {
+        let mut b = self.data.label.borrow_mut();
+        *b = label.map(String::from);
     }
 }
 

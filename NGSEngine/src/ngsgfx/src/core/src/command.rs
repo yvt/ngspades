@@ -57,7 +57,7 @@ pub trait CommandBuffer<B: Backend>
 
 
 pub trait SecondaryCommandBuffer<B: Backend>
-    : Debug + Send + Any + RenderSubpassCommandEncoder<B> {
+    : Debug + Send + Any + RenderSubpassCommandEncoder<B> + Marker {
     /// End recording a second command buffer.
     fn end_encoding(&mut self);
 }
@@ -185,14 +185,14 @@ pub trait CommandEncoder<B: Backend>
     ///
     /// A render pass must be active with `RenderPassContents::SecondaryCommandBuffers`.
     /// `end_encoding` of the returned secondary buffer must be called before the
-    /// current render subpass is completed by `next_subpass`.
+    /// current render subpass is completed by `next_render_subpass`.
     /// The application must perform adequate inter-thread synchronizations.
     fn make_secondary_command_buffer(&mut self) -> B::SecondaryCommandBuffer;
 
     /// End the current render, compute, or blit pass.
     ///
     /// If the current pass is a render pass,
-    /// `next_subpass` must have been called enough times since the last time
+    /// `next_render_subpass` must have been called enough times since the last time
     /// `begin_render_pass` was called on this command encoder.
     fn end_pass(&mut self);
 
@@ -200,7 +200,7 @@ pub trait CommandEncoder<B: Backend>
     /// Must be called for each subpass before `end_pass` is called.
     ///
     /// A render pass must be active.
-    fn next_subpass(&mut self);
+    fn next_render_subpass(&mut self, contents: RenderPassContents);
 }
 
 /// Encodes render commands into a command buffer.

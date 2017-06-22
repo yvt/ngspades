@@ -72,6 +72,15 @@ struct StencilReference {
 unsafe impl Send for GraphicsPipelineData {}
 unsafe impl Sync for GraphicsPipelineData {} // no interior mutability
 
+impl core::Marker for GraphicsPipeline {
+    fn set_label(&self, label: Option<&str>) {
+        self.data.metal_pipeline.set_label(label.unwrap_or(""));
+        if let Some(GraphicsPipelineRasterizerData{ metal_ds_state: Some((ref state, _)), .. }) = self.data.raster_data {
+            state.set_label(label.unwrap_or(""));
+        }
+    }
+}
+
 impl core::GraphicsPipeline for GraphicsPipeline {}
 
 impl GraphicsPipeline {
@@ -472,6 +481,13 @@ struct ComputePipelineData {
 unsafe impl Send for ComputePipelineData {}
 unsafe impl Sync for ComputePipelineData {} // no interior mutability
 
+impl core::Marker for ComputePipeline {
+    fn set_label(&self, label: Option<&str>) {
+        unimplemented!()
+        // self.data.metal_pipeline.set_label(label.unwrap_or(""));
+    }
+}
+
 impl core::ComputePipeline for ComputePipeline {
     fn max_num_workgroup_invocations(&self) -> u32 {
         unimplemented!()
@@ -491,6 +507,12 @@ struct StencilStateData {
 
 unsafe impl Send for StencilStateData {}
 unsafe impl Sync for StencilStateData {} // no interior mutability
+
+impl core::Marker for StencilState {
+    fn set_label(&self, label: Option<&str>) {
+        self.data.metal_ds_state.set_label(label.unwrap_or(""));
+    }
+}
 
 impl core::StencilState for StencilState {}
 

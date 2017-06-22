@@ -18,6 +18,12 @@ pub struct Buffer {
 
 impl core::Buffer for Buffer {}
 
+impl core::Marker for Buffer {
+    fn set_label(&self, label: Option<&str>) {
+        self.data.metal_buffer.set_label(label.unwrap_or(""));
+    }
+}
+
 #[derive(Debug)]
 struct BufferData {
     metal_buffer: OCPtr<metal::MTLBuffer>,

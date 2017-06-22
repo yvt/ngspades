@@ -6,6 +6,7 @@
 // copied, modified, or distributed except according to those terms.
 
 use objc::runtime::{Class, YES, NO};
+use objc_foundation::{NSString, INSString};
 
 use super::{id, NSObjectPrototype, NSObjectProtocol};
 
@@ -211,6 +212,15 @@ pub type MTLDepthStencilState = id<(MTLDepthStencilStatePrototype, (NSObjectProt
 impl NSObjectProtocol for MTLDepthStencilState {
     unsafe fn class() -> &'static Class {
         Class::get("MTLDepthStencilState").unwrap()
+    }
+}
+
+impl MTLDepthStencilState {
+    pub fn set_label(&self, label: &str) {
+        unsafe {
+            let nslabel = NSString::from_str(label);
+            msg_send![self.0, setLabel:nslabel]
+        }
     }
 }
 

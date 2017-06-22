@@ -21,6 +21,12 @@ struct ImageViewData {
     metal_texture: OCPtr<metal::MTLTexture>,
 }
 
+impl core::Marker for ImageView {
+    fn set_label(&self, label: Option<&str>) {
+        self.data.metal_texture.set_label(label.unwrap_or(""));
+    }
+}
+
 impl core::ImageView for ImageView {}
 
 unsafe impl Send for ImageViewData {}
@@ -50,6 +56,12 @@ struct ImageData {
 }
 
 impl core::Image for Image {}
+
+impl core::Marker for Image {
+    fn set_label(&self, label: Option<&str>) {
+        self.data.metal_texture.set_label(label.unwrap_or(""));
+    }
+}
 
 unsafe impl Send for ImageData {}
 unsafe impl Sync for ImageData {} // no interior mutability

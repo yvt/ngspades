@@ -7,6 +7,8 @@ use core;
 use metal;
 use spirv_cross::{SpirV2Msl, ExecutionModel, VertexAttribute, VertexInputRate};
 
+use std::sync::Mutex;
+
 use {RefEqArc, imp, OCPtr};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -17,6 +19,13 @@ pub struct ShaderModule {
 #[derive(Debug)]
 struct ShaderModuleData {
     spirv_code: Vec<u32>,
+    label: Mutex<Option<String>>,
+}
+
+impl core::Marker for ShaderModule {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
+    }
 }
 
 impl core::ShaderModule for ShaderModule {}
@@ -32,7 +41,10 @@ pub(crate) struct ShaderVertexAttributeInfo {
 
 impl ShaderModule {
     pub(crate) fn new(description: &core::ShaderModuleDescription) -> Self {
-        let data = ShaderModuleData { spirv_code: Vec::from(description.spirv_code) };
+        let data = ShaderModuleData {
+            spirv_code: Vec::from(description.spirv_code),
+            label: Mutex::new(None),
+        };
         Self { data: RefEqArc::new(data) }
     }
 

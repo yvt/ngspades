@@ -8,6 +8,8 @@ use metal;
 use atomic_refcell::{AtomicRefCell, AtomicRef};
 use spirv_cross::{SpirV2Msl, ExecutionModel, ResourceBinding};
 
+use std::sync::Mutex;
+
 use {OCPtr, RefEqArc};
 use imp::{Backend, Buffer, ImageView, Sampler};
 
@@ -55,14 +57,23 @@ pub struct DescriptorSet {
 struct DescriptorSetData {
     layout: DescriptorSetLayout,
     table: AtomicRefCell<DescriptorSetTable>,
+    label: Mutex<Option<String>>,
 }
 
 // why do people keep forgetting to implement Debug
 impl ::std::fmt::Debug for DescriptorSetData {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         fmt.debug_struct("DescriptorSetData")
+            .field("layout", &self.layout)
             .field("table", &*self.table.borrow())
+            .field("label", &self.label)
             .finish()
+    }
+}
+
+impl core::Marker for DescriptorSet {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
     }
 }
 
@@ -264,6 +275,7 @@ impl DescriptorSet {
         let data = DescriptorSetData {
             layout: layout.clone(),
             table: AtomicRefCell::default(),
+            label: Mutex::new(None),
         };
 
         {
@@ -339,6 +351,8 @@ struct DescriptorSetLayoutData {
     samplers: [Vec<Option<Sampler>>; NUM_STAGES],
     bindings: Vec<Option<DescriptorSetLayoutBinding>>,
     // TODO: dynamic offset layout info
+
+    label: Mutex<Option<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -433,8 +447,15 @@ impl DescriptorSetLayout {
             num_buffers,
             samplers,
             bindings,
+            label: Mutex::new(None),
         };
         Ok(DescriptorSetLayout { data: RefEqArc::new(data) })
+    }
+}
+
+impl core::Marker for DescriptorSetLayout {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
     }
 }
 
@@ -467,6 +488,8 @@ struct PipelineLayoutData {
     num_buffers: [usize; NUM_STAGES],
     /// The number of textures in the sampler argument table for each stage.
     num_samplers: [usize; NUM_STAGES],
+
+    label: Mutex<Option<String>>,
 }
 
 #[derive(Debug)]
@@ -478,6 +501,12 @@ struct PipelineLayoutDescriptorSet {
     buffer_index: [usize; NUM_STAGES],
     /// The first index in the sampler argument table for each stage.
     sampler_index: [usize; NUM_STAGES],
+}
+
+impl core::Marker for PipelineLayout {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
+    }
 }
 
 impl core::PipelineLayout for PipelineLayout {}
@@ -515,6 +544,7 @@ impl PipelineLayout {
             num_image_views,
             num_buffers,
             num_samplers,
+            label: Mutex::new(None),
         };
         Ok(PipelineLayout { data: RefEqArc::new(data) })
     }

@@ -114,6 +114,7 @@ pub mod imp {
         type PipelineLayout = PipelineLayout;
         type RenderPass = RenderPass;
         type Sampler = Sampler;
+        type SecondaryCommandBuffer = SecondaryCommandBuffer;
         type Semaphore = Semaphore;
         type ShaderModule = ShaderModule;
         type StencilState = StencilState;
