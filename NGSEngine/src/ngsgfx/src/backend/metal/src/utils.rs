@@ -12,6 +12,7 @@ use core;
 /// Checks the referential equality on references.
 ///
 /// This would break if Rust had a moving garbage collector.
+#[allow(dead_code)]
 pub fn ref_eq<T: ?Sized>(a: &T, b: &T) -> bool {
     a as *const T == b as *const T
 }
@@ -29,13 +30,18 @@ pub struct OCPtr<T: NSObjectProtocol> {
     data: T,
 }
 
-impl<T> OCPtr<id<T>> where id<T> : NSObjectProtocol {
+impl<T> OCPtr<id<T>>
+where
+    id<T>: NSObjectProtocol,
+{
     pub fn new(ptr: id<T>) -> Option<Self> {
         if ptr.is_null() {
             None
         } else {
-            unsafe { ptr.retain(); }
-            Some(Self{ data: ptr })
+            unsafe {
+                ptr.retain();
+            }
+            Some(Self { data: ptr })
         }
     }
 
@@ -44,7 +50,7 @@ impl<T> OCPtr<id<T>> where id<T> : NSObjectProtocol {
         if ptr.is_null() {
             None
         } else {
-            Some(Self{ data: ptr })
+            Some(Self { data: ptr })
         }
     }
 }
@@ -109,11 +115,15 @@ impl<T: Clone> Clone for RefEqBox<T> {
 
 impl<T: ?Sized> Deref for RefEqBox<T> {
     type Target = T;
-    fn deref(&self) -> &Self::Target { &*self.0 }
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
 }
 
 impl<T: ?Sized> ::std::ops::DerefMut for RefEqBox<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut*self.0 }
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.0
+    }
 }
 
 /// `Arc` wrapper that provides a referential equality.
@@ -146,7 +156,9 @@ impl<T: ?Sized> Clone for RefEqArc<T> {
 
 impl<T: ?Sized> Deref for RefEqArc<T> {
     type Target = T;
-    fn deref(&self) -> &Self::Target { &*self.0 }
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
 }
 
 pub fn translate_compare_function(value: core::CompareFunction) -> metal::MTLCompareFunction {

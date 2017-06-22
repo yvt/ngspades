@@ -4,17 +4,15 @@
 // This source code is a part of Nightingales.
 //
 use {core, metal, block};
-use metal::NSObjectProtocol;
 use enumflags::BitFlags;
 use cgmath::Vector3;
 
 use std::time::Duration;
 use std::cell::RefCell;
 use std::mem::{replace, drop, forget};
-use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use {ref_hash, OCPtr};
+use OCPtr;
 use imp::{Backend, Buffer, BufferView, ComputePipeline, DescriptorPool, DescriptorSet,
           DescriptorSetLayout, Fence, Framebuffer, GraphicsPipeline, Heap, Image, ImageView,
           PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState};
@@ -33,14 +31,15 @@ impl CommandQueue {
 }
 
 struct SubmissionTransaction<'a> {
-    submissions: &'a[&'a core::SubmissionInfo<'a, Backend>],
+    submissions: &'a [&'a core::SubmissionInfo<'a, Backend>],
     num_successful_transitions: usize,
     fence_associated: Option<&'a Fence>,
 }
 
-fn submit_commands(submissions: &[&core::SubmissionInfo<Backend>],
-                   fence: Option<&Fence>)
-                   -> core::Result<()> {
+fn submit_commands(
+    submissions: &[&core::SubmissionInfo<Backend>],
+    fence: Option<&Fence>,
+) -> core::Result<()> {
     let mut transaction = SubmissionTransaction {
         submissions: submissions,
         num_successful_transitions: 0,
@@ -51,7 +50,9 @@ fn submit_commands(submissions: &[&core::SubmissionInfo<Backend>],
     // (this eases error handling)
     for submission in submissions.iter() {
         for buffer in submission.buffers.iter() {
-            buffer.buffer.as_ref().expect("invalid command buffer state");
+            buffer.buffer.as_ref().expect(
+                "invalid command buffer state",
+            );
             if buffer.encoder != EncoderState::NotRecording {
                 panic!("invalid command buffer state");
             }
@@ -60,9 +61,7 @@ fn submit_commands(submissions: &[&core::SubmissionInfo<Backend>],
         }
     }
 
-    let num_buffers = submissions.iter()
-        .map(|s| s.buffers.len())
-        .sum();
+    let num_buffers = submissions.iter().map(|s| s.buffers.len()).sum();
 
     // Make a state transition from `Executable` to `Pending`
     'check_state: for submission in submissions.iter() {
@@ -87,9 +86,7 @@ fn submit_commands(submissions: &[&core::SubmissionInfo<Backend>],
         assert!(result, "fence must be in the unsignalled state");
 
         let fence_ref: Fence = fence.clone();
-        let block = block::ConcreteBlock::new(move |cb| {
-            fence_ref.remove_pending_buffers(1);
-        });
+        let block = block::ConcreteBlock::new(move |_| { fence_ref.remove_pending_buffers(1); });
         completion_handler = Some(block.copy());
     }
 
@@ -146,10 +143,11 @@ impl core::CommandQueue<Backend> for CommandQueue {
         unimplemented!()
     }
 
-    fn submit_commands(&self,
-                       submissions: &[&core::SubmissionInfo<Backend>],
-                       fence: Option<&Fence>)
-                       -> core::Result<()> {
+    fn submit_commands(
+        &self,
+        submissions: &[&core::SubmissionInfo<Backend>],
+        fence: Option<&Fence>,
+    ) -> core::Result<()> {
         submit_commands(submissions, fence)
     }
 }
@@ -179,7 +177,7 @@ enum EncoderState {
     NotRecording,
     /// Recording has started, but not sure which encoder we should use.
     NoPass,
-    Graphics{
+    Graphics {
         encoder: GraphicsEncoderState,
         framebuffer: Framebuffer,
         subpass: usize,
@@ -210,15 +208,18 @@ impl CommandBuffer {
 
     fn expect_no_pass(&self) {
         match self.encoder {
-            EncoderState::NoPass => {},
+            EncoderState::NoPass => {}
             _ => {
                 panic!("a pass is still active");
-            },
+            }
         }
     }
 
     fn expect_graphics_pipeline(&self) -> &RenderCommandEncoder {
-        if let EncoderState::Graphics { encoder: GraphicsEncoderState::Inline(ref encoder), .. } = self.encoder {
+        if let EncoderState::Graphics {
+            encoder: GraphicsEncoderState::Inline(ref encoder), ..
+        } = self.encoder
+        {
             encoder
         } else {
             panic!("inline render subpass is not active");
@@ -250,9 +251,7 @@ impl CommandBuffer {
 
 impl core::Marker for CommandBuffer {
     fn set_label(&self, label: Option<&str>) {
-        *self.label.borrow_mut() = Some(label
-            .map(String::from)
-            .unwrap_or_else(String::new));
+        *self.label.borrow_mut() = Some(label.map(String::from).unwrap_or_else(String::new));
 
         self.update_label();
     }
@@ -261,24 +260,26 @@ impl core::Marker for CommandBuffer {
 impl core::CommandBuffer<Backend> for CommandBuffer {
     fn state(&self) -> core::CommandBufferState {
         match self.buffer {
-            Some(ref buffer) =>
+            Some(ref buffer) => {
                 match buffer.status() {
-                    metal::MTLCommandBufferStatus::NotEnqueued =>
+                    metal::MTLCommandBufferStatus::NotEnqueued => {
                         if let EncoderState::NotRecording = self.encoder {
                             core::CommandBufferState::Executable
                         } else {
                             core::CommandBufferState::Recording
-                        },
+                        }
+                    }
                     metal::MTLCommandBufferStatus::Enqueued |
                     metal::MTLCommandBufferStatus::Committed |
                     metal::MTLCommandBufferStatus::Scheduled => core::CommandBufferState::Pending,
                     metal::MTLCommandBufferStatus::Completed => core::CommandBufferState::Completed,
                     metal::MTLCommandBufferStatus::Error => core::CommandBufferState::Error,
-                },
-            None => core::CommandBufferState::Initial
+                }
+            }
+            None => core::CommandBufferState::Initial,
         }
     }
-    fn wait_completion(&self, timeout: Duration) -> core::Result<bool> {
+    fn wait_completion(&self, _: Duration) -> core::Result<bool> {
         // TODO: timeout
         self.buffer.as_ref().unwrap().wait_until_completed();
         Ok(true)
@@ -299,11 +300,12 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         self.encoder = EncoderState::NotRecording;
     }
 
-    fn barrier(&mut self,
+    fn barrier(
+        &mut self,
         source_stage: BitFlags<core::PipelineStageFlags>,
         destination_stage: BitFlags<core::PipelineStageFlags>,
-        barriers: &[core::Barrier<Backend>])
-    {
+        barriers: &[core::Barrier<Backend>],
+    ) {
         unimplemented!()
     }
 
@@ -312,14 +314,28 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
 
         let first_subpass = framebuffer.subpass(0);
         let g_encoder = match contents {
-            core::RenderPassContents::Inline =>
-                GraphicsEncoderState::Inline(
-                    RenderCommandEncoder::new(OCPtr::new(self.buffer.as_ref().unwrap().new_render_command_encoder(first_subpass)).unwrap())),
-            core::RenderPassContents::SecondaryCommandBuffers =>
+            core::RenderPassContents::Inline => GraphicsEncoderState::Inline(
+                RenderCommandEncoder::new(
+                    OCPtr::new(
+                        self.buffer
+                            .as_ref()
+                            .unwrap()
+                            .new_render_command_encoder(first_subpass),
+                    ).unwrap(),
+                ),
+            ),
+            core::RenderPassContents::SecondaryCommandBuffers => {
                 GraphicsEncoderState::SecondaryCommandBuffers(
-                    OCPtr::new(self.buffer.as_ref().unwrap().new_parallel_render_command_encoder(first_subpass)).unwrap()),
+                    OCPtr::new(
+                        self.buffer
+                            .as_ref()
+                            .unwrap()
+                            .new_parallel_render_command_encoder(first_subpass),
+                    ).unwrap(),
+                )
+            }
         };
-        self.encoder = EncoderState::Graphics{
+        self.encoder = EncoderState::Graphics {
             encoder: g_encoder,
             framebuffer: framebuffer.clone(),
             subpass: 0,
@@ -335,7 +351,10 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
     }
 
     fn make_secondary_command_buffer(&mut self) -> SecondaryCommandBuffer {
-        if let EncoderState::Graphics{ encoder: GraphicsEncoderState::SecondaryCommandBuffers(ref prce), .. } = self.encoder {
+        if let EncoderState::Graphics {
+            encoder: GraphicsEncoderState::SecondaryCommandBuffers(ref prce), ..
+        } = self.encoder
+        {
             OCPtr::new(prce.render_command_encoder())
                 .map(RenderCommandEncoder::new)
                 .map(SecondaryCommandBuffer::new)
@@ -349,31 +368,37 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         match self.encoder {
             EncoderState::GraphicsLast => {
                 self.encoder = EncoderState::NoPass;
-            },
-            EncoderState::Graphics {..} => {
+            }
+            EncoderState::Graphics { .. } => {
                 panic!("insufficient number of calls of next_subpass");
-            },
+            }
             EncoderState::Compute(ref encoder) => {
                 encoder.end_encoding();
-            },
+            }
             EncoderState::Blit(ref encoder) => {
                 encoder.end_encoding();
-            },
+            }
             EncoderState::NoPass |
             EncoderState::NotRecording => {
                 panic!("render pass is not active");
-            },
+            }
         }
     }
 
     fn next_render_subpass(&mut self, contents: core::RenderPassContents) {
         match replace(&mut self.encoder, EncoderState::NoPass) {
-            EncoderState::Graphics { encoder, framebuffer, subpass } => {
+            EncoderState::Graphics {
+                encoder,
+                framebuffer,
+                subpass,
+            } => {
                 match encoder {
-                    GraphicsEncoderState::Inline(ref encoder) =>
-                        encoder.metal_encoder.end_encoding(),
-                    GraphicsEncoderState::SecondaryCommandBuffers(ref encoder) =>
-                        encoder.end_encoding(),
+                    GraphicsEncoderState::Inline(ref encoder) => {
+                        encoder.metal_encoder.end_encoding()
+                    }
+                    GraphicsEncoderState::SecondaryCommandBuffers(ref encoder) => {
+                        encoder.end_encoding()
+                    }
                 }
                 drop(encoder);
 
@@ -381,14 +406,27 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
                 if next_subpass_index != framebuffer.num_subpasses() {
                     let next_subpass = framebuffer.subpass(next_subpass_index);
                     let g_encoder = match contents {
-                        core::RenderPassContents::Inline =>
-                            GraphicsEncoderState::Inline(
-                                RenderCommandEncoder::new(OCPtr::new(self.buffer.as_ref().unwrap().new_render_command_encoder(next_subpass)).unwrap())),
-                        core::RenderPassContents::SecondaryCommandBuffers =>
+                        core::RenderPassContents::Inline => GraphicsEncoderState::Inline(
+                            RenderCommandEncoder::new(
+                                OCPtr::new(
+                                    self.buffer.as_ref().unwrap().new_render_command_encoder(
+                                        next_subpass,
+                                    ),
+                                ).unwrap(),
+                            ),
+                        ),
+                        core::RenderPassContents::SecondaryCommandBuffers => {
                             GraphicsEncoderState::SecondaryCommandBuffers(
-                                OCPtr::new(self.buffer.as_ref().unwrap().new_parallel_render_command_encoder(next_subpass)).unwrap()),
+                                OCPtr::new(
+                                    self.buffer
+                                        .as_ref()
+                                        .unwrap()
+                                        .new_parallel_render_command_encoder(next_subpass),
+                                ).unwrap(),
+                            )
+                        }
                     };
-                    self.encoder = EncoderState::Graphics{
+                    self.encoder = EncoderState::Graphics {
                         encoder: g_encoder,
                         framebuffer: framebuffer,
                         subpass: next_subpass_index,
@@ -396,37 +434,46 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
                 } else {
                     self.encoder = EncoderState::GraphicsLast;
                 }
-            },
+            }
             EncoderState::GraphicsLast => {
                 self.encoder = EncoderState::GraphicsLast;
                 panic!("no more subpasses");
-            },
+            }
             x => {
                 self.encoder = x;
                 panic!("render pass is not active");
-            },
+            }
         }
     }
 }
 
 impl RenderCommandEncoder {
     fn new(metal_encoder: OCPtr<metal::MTLRenderCommandEncoder>) -> Self {
-        Self {
-            metal_encoder,
-        }
+        Self { metal_encoder }
     }
 
     fn bind_graphics_pipeline(&self, pipeline: &GraphicsPipeline) {
-        self.metal_encoder.set_render_pipeline_state(unimplemented!());
+        self.metal_encoder.set_render_pipeline_state(
+            unimplemented!(),
+        );
 
         // TODO: don't forget to set static states!
     }
     fn set_blend_constants(&self, value: &[f32; 4]) {
-        self.metal_encoder.set_blend_color(value[0], value[1], value[2], value[3]);
+        self.metal_encoder.set_blend_color(
+            value[0],
+            value[1],
+            value[2],
+            value[3],
+        );
     }
     fn set_depth_bias(&self, value: Option<core::DepthBias>) {
         if let Some(value) = value {
-            self.metal_encoder.set_depth_bias(value.constant_factor, value.slope_factor, value.clamp);
+            self.metal_encoder.set_depth_bias(
+                value.constant_factor,
+                value.slope_factor,
+                value.clamp,
+            );
         } else {
             self.metal_encoder.set_depth_bias(0f32, 0f32, 0f32);
         }
@@ -443,11 +490,13 @@ impl RenderCommandEncoder {
     fn set_scissor_rect(&self, value: &core::Rect2D<u32>) {
         unimplemented!()
     }
-    fn bind_descriptor_sets(&self,
-                            pipeline_layout: &PipelineLayout,
-                            start_index: usize,
-                            descriptor_sets: &[DescriptorSet],
-                            dynamic_offsets: &[u32]) {
+    fn bind_descriptor_sets(
+        &self,
+        pipeline_layout: &PipelineLayout,
+        start_index: usize,
+        descriptor_sets: &[DescriptorSet],
+        dynamic_offsets: &[u32],
+    ) {
         unimplemented!()
     }
 
@@ -459,26 +508,32 @@ impl RenderCommandEncoder {
         unimplemented!()
     }
 
-    fn draw(&self,
-            num_vertices: u32,
-            num_instances: u32,
-            start_vertex_index: u32,
-            start_instance_index: u32) {
+    fn draw(
+        &self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        start_instance_index: u32,
+    ) {
         unimplemented!()
     }
-    fn draw_indexed(&self,
-                    num_vertices: u32,
-                    num_instances: u32,
-                    start_vertex_index: u32,
-                    index_offset: u32,
-                    start_instance_index: u32) {
+    fn draw_indexed(
+        &self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        index_offset: u32,
+        start_instance_index: u32,
+    ) {
         unimplemented!()
     }
 }
 
 impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
     fn bind_graphics_pipeline(&mut self, pipeline: &GraphicsPipeline) {
-        self.expect_graphics_pipeline().bind_graphics_pipeline(pipeline)
+        self.expect_graphics_pipeline().bind_graphics_pipeline(
+            pipeline,
+        )
     }
     fn set_blend_constants(&mut self, value: &[f32; 4]) {
         self.expect_graphics_pipeline().set_blend_constants(value)
@@ -498,36 +553,65 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
     fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
         self.expect_graphics_pipeline().set_scissor_rect(value)
     }
-    fn bind_descriptor_sets(&mut self,
-                            pipeline_layout: &PipelineLayout,
-                            start_index: usize,
-                            descriptor_sets: &[DescriptorSet],
-                            dynamic_offsets: &[u32]) {
-        self.expect_graphics_pipeline().bind_descriptor_sets(pipeline_layout, start_index, descriptor_sets, dynamic_offsets)
+    fn bind_descriptor_sets(
+        &mut self,
+        pipeline_layout: &PipelineLayout,
+        start_index: usize,
+        descriptor_sets: &[DescriptorSet],
+        dynamic_offsets: &[u32],
+    ) {
+        self.expect_graphics_pipeline().bind_descriptor_sets(
+            pipeline_layout,
+            start_index,
+            descriptor_sets,
+            dynamic_offsets,
+        )
     }
 
     fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&Buffer, usize)]) {
-        self.expect_graphics_pipeline().bind_vertex_buffers(start_index, buffers)
+        self.expect_graphics_pipeline().bind_vertex_buffers(
+            start_index,
+            buffers,
+        )
     }
 
     fn bind_index_buffer(&mut self, buffer: &Buffer, offset: usize, format: core::IndexFormat) {
-        self.expect_graphics_pipeline().bind_index_buffer(buffer, offset, format)
+        self.expect_graphics_pipeline().bind_index_buffer(
+            buffer,
+            offset,
+            format,
+        )
     }
 
-    fn draw(&mut self,
-            num_vertices: u32,
-            num_instances: u32,
-            start_vertex_index: u32,
-            start_instance_index: u32) {
-        self.expect_graphics_pipeline().draw(num_vertices, num_instances, start_vertex_index, start_instance_index)
+    fn draw(
+        &mut self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        start_instance_index: u32,
+    ) {
+        self.expect_graphics_pipeline().draw(
+            num_vertices,
+            num_instances,
+            start_vertex_index,
+            start_instance_index,
+        )
     }
-    fn draw_indexed(&mut self,
-                    num_vertices: u32,
-                    num_instances: u32,
-                    start_vertex_index: u32,
-                    index_offset: u32,
-                    start_instance_index: u32) {
-        self.expect_graphics_pipeline().draw_indexed(num_vertices, num_instances, start_vertex_index, index_offset, start_instance_index)
+    fn draw_indexed(
+        &mut self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        index_offset: u32,
+        start_instance_index: u32,
+    ) {
+        self.expect_graphics_pipeline().draw_indexed(
+            num_vertices,
+            num_instances,
+            start_vertex_index,
+            index_offset,
+            start_instance_index,
+        )
     }
 }
 
@@ -540,14 +624,11 @@ impl core::ComputeCommandEncoder<Backend> for CommandBuffer {
     }
 }
 
-impl core::BlitCommandEncoder<Backend> for CommandBuffer {
-}
+impl core::BlitCommandEncoder<Backend> for CommandBuffer {}
 
 impl SecondaryCommandBuffer {
     fn new(encoder: RenderCommandEncoder) -> Self {
-        Self {
-            encoder,
-        }
+        Self { encoder }
     }
 }
 
@@ -587,12 +668,19 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
     fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
         self.encoder.set_scissor_rect(value)
     }
-    fn bind_descriptor_sets(&mut self,
-                            pipeline_layout: &PipelineLayout,
-                            start_index: usize,
-                            descriptor_sets: &[DescriptorSet],
-                            dynamic_offsets: &[u32]) {
-        self.encoder.bind_descriptor_sets(pipeline_layout, start_index, descriptor_sets, dynamic_offsets)
+    fn bind_descriptor_sets(
+        &mut self,
+        pipeline_layout: &PipelineLayout,
+        start_index: usize,
+        descriptor_sets: &[DescriptorSet],
+        dynamic_offsets: &[u32],
+    ) {
+        self.encoder.bind_descriptor_sets(
+            pipeline_layout,
+            start_index,
+            descriptor_sets,
+            dynamic_offsets,
+        )
     }
 
     fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&Buffer, usize)]) {
@@ -603,19 +691,34 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
         self.encoder.bind_index_buffer(buffer, offset, format)
     }
 
-    fn draw(&mut self,
-            num_vertices: u32,
-            num_instances: u32,
-            start_vertex_index: u32,
-            start_instance_index: u32) {
-        self.encoder.draw(num_vertices, num_instances, start_vertex_index, start_instance_index)
+    fn draw(
+        &mut self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        start_instance_index: u32,
+    ) {
+        self.encoder.draw(
+            num_vertices,
+            num_instances,
+            start_vertex_index,
+            start_instance_index,
+        )
     }
-    fn draw_indexed(&mut self,
-                    num_vertices: u32,
-                    num_instances: u32,
-                    start_vertex_index: u32,
-                    index_offset: u32,
-                    start_instance_index: u32) {
-        self.encoder.draw_indexed(num_vertices, num_instances, start_vertex_index, index_offset, start_instance_index)
+    fn draw_indexed(
+        &mut self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        index_offset: u32,
+        start_instance_index: u32,
+    ) {
+        self.encoder.draw_indexed(
+            num_vertices,
+            num_instances,
+            start_vertex_index,
+            index_offset,
+            start_instance_index,
+        )
     }
 }

@@ -30,19 +30,28 @@ impl core::Marker for Sampler {
 impl core::Sampler for Sampler {}
 
 impl Sampler {
-    pub(crate) fn new(metal_device: metal::MTLDevice, desc: &core::SamplerDescription) -> core::Result<Sampler> {
-        let metal_desc = unsafe { OCPtr::from_raw(metal::MTLSamplerDescriptor::alloc().init()).unwrap() };
+    pub(crate) fn new(
+        metal_device: metal::MTLDevice,
+        desc: &core::SamplerDescription,
+    ) -> core::Result<Sampler> {
+        let metal_desc =
+            unsafe { OCPtr::from_raw(metal::MTLSamplerDescriptor::alloc().init()).unwrap() };
         metal_desc.set_min_filter(translate_filter(desc.min_filter));
         metal_desc.set_mag_filter(translate_filter(desc.mag_filter));
         metal_desc.set_mip_filter(if desc.unnormalized_coordinates {
             metal::MTLSamplerMipFilter::NotMipmapped
-        } else { translate_mipmap_mode(desc.mipmap_mode) });
+        } else {
+            translate_mipmap_mode(desc.mipmap_mode)
+        });
         metal_desc.set_address_mode_s(translate_address_mode(desc.address_mode[0]));
         metal_desc.set_address_mode_t(translate_address_mode(desc.address_mode[1]));
         metal_desc.set_address_mode_r(translate_address_mode(desc.address_mode[2]));
         metal_desc.set_max_anisotropy(desc.max_anisotropy as u64);
-        metal_desc.set_compare_function(translate_compare_function(desc.compare_function
-            .unwrap_or(core::CompareFunction::Never)));
+        metal_desc.set_compare_function(
+            translate_compare_function(desc.compare_function.unwrap_or(
+                core::CompareFunction::Never,
+            )),
+        );
         metal_desc.set_lod_min_clamp(desc.lod_min_clamp);
         metal_desc.set_lod_max_clamp(desc.lod_max_clamp);
         // TODO: set_border_color requires macOS 10.12+. Add OS version check?
@@ -51,9 +60,7 @@ impl Sampler {
 
         let metal_sampler = unsafe { OCPtr::from_raw(metal_device.new_sampler(*metal_desc)) }
             .ok_or(core::GenericError::OutOfDeviceMemory)?;
-        let data = SamplerData {
-            metal_sampler
-        };
+        let data = SamplerData { metal_sampler };
 
         Ok(Self { data: RefEqArc::new(data) })
     }
@@ -80,9 +87,13 @@ fn translate_address_mode(value: core::SamplerAddressMode) -> metal::MTLSamplerA
         core::SamplerAddressMode::Repeat => metal::MTLSamplerAddressMode::Repeat,
         core::SamplerAddressMode::ClampToEdge => metal::MTLSamplerAddressMode::ClampToEdge,
         // TODO: ClampToBorderColor requires macOS 10.12+. Add OS version check?
-        core::SamplerAddressMode::ClampToBorderColor => metal::MTLSamplerAddressMode::ClampToBorderColor,
+        core::SamplerAddressMode::ClampToBorderColor => {
+            metal::MTLSamplerAddressMode::ClampToBorderColor
+        }
         core::SamplerAddressMode::MirroredRepeat => metal::MTLSamplerAddressMode::MirrorRepeat,
-        core::SamplerAddressMode::MirroredClampToEdge => metal::MTLSamplerAddressMode::MirrorClampToEdge,
+        core::SamplerAddressMode::MirroredClampToEdge => {
+            metal::MTLSamplerAddressMode::MirrorClampToEdge
+        }
     }
 }
 
@@ -93,8 +104,8 @@ fn translate_border_color(value: core::SamplerBorderColor) -> metal::MTLSamplerB
         core::SamplerBorderColor::FloatOpaqueBlack |
         core::SamplerBorderColor::IntOpaqueBlack => metal::MTLSamplerBorderColor::OpaqueBlack,
         core::SamplerBorderColor::FloatTransparentBlack |
-        core::SamplerBorderColor::IntTransparentBlack => metal::MTLSamplerBorderColor::TransparentBlack,
+        core::SamplerBorderColor::IntTransparentBlack => {
+            metal::MTLSamplerBorderColor::TransparentBlack
+        }
     }
 }
-
-

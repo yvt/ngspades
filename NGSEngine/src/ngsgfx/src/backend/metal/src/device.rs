@@ -7,7 +7,7 @@ use core;
 use metal;
 use std::sync::Arc;
 
-use {ref_hash, ref_eq, OCPtr, imp};
+use {OCPtr, imp};
 
 /// `Device` implementation for Metal.
 #[derive(Debug)]
@@ -40,10 +40,10 @@ impl Device {
     ///
     /// `metal_device` must not be null or it will panic.
     pub fn new(metal_device: metal::MTLDevice) -> Self {
-        let data = Arc::new(DeviceData{
+        let data = Arc::new(DeviceData {
             metal_device: OCPtr::new(metal_device).unwrap(),
             cap: imp::DeviceCapabilities::new(metal_device),
-            main_queue: unsafe { imp::CommandQueue::new(metal_device.new_command_queue()) },
+            main_queue: imp::CommandQueue::new(metal_device.new_command_queue()),
         });
         // who cares about the extra clone
         Self {

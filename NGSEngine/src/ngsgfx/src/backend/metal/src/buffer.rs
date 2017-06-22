@@ -5,7 +5,6 @@
 //
 use core;
 use metal;
-use metal::NSObjectProtocol;
 
 use std::ops::Deref;
 
@@ -34,14 +33,15 @@ unsafe impl Send for BufferData {}
 unsafe impl Sync for BufferData {} // no interior mutability
 
 impl Buffer {
-    pub(crate) fn new(device: metal::MTLDevice,
-                      storage: metal::MTLStorageMode,
-                      desc: &core::BufferDescription)
-                      -> core::Result<Self> {
+    pub(crate) fn new(
+        device: metal::MTLDevice,
+        storage: metal::MTLStorageMode,
+        desc: &core::BufferDescription,
+    ) -> core::Result<Self> {
         let needs_texel_buffer = !(desc.usage &
-                                   (core::BufferUsageFlags::UniformTexelBuffer |
-                                    core::BufferUsageFlags::StorageTexelBuffer))
-                                          .is_empty();
+                                       (core::BufferUsageFlags::UniformTexelBuffer |
+                                            core::BufferUsageFlags::StorageTexelBuffer))
+            .is_empty();
         if needs_texel_buffer {
             unimplemented!();
         }

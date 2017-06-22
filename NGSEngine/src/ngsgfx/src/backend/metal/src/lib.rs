@@ -86,18 +86,21 @@ pub mod imp {
     pub use super::shader::*;
     pub use super::sync::*;
 
-    pub type GraphicsPipelineDescription<'a> =
-        core::GraphicsPipelineDescription<'a, RenderPass, PipelineLayout, ShaderModule>;
+    pub type GraphicsPipelineDescription<'a> = core::GraphicsPipelineDescription<
+        'a,
+        RenderPass,
+        PipelineLayout,
+        ShaderModule,
+    >;
 
-    pub type StencilStateDescription<'a> =
-        core::StencilStateDescription<'a, GraphicsPipeline>;
+    pub type StencilStateDescription<'a> = core::StencilStateDescription<'a, GraphicsPipeline>;
 
     pub struct Backend {}
     impl core::Backend for Backend {
         type Buffer = Buffer;
         type BufferView = BufferView;
         type CommandBuffer = CommandBuffer;
-        type CommandQueue  = CommandQueue;
+        type CommandQueue = CommandQueue;
         type ComputePipeline = ComputePipeline;
         type DescriptorPool = DescriptorPool;
         type DescriptorSet = DescriptorSet;
@@ -124,4 +127,3 @@ pub mod imp {
 
 pub use self::imp::Backend;
 pub use self::imp::Device;
-

@@ -5,9 +5,8 @@
 //
 use core;
 use metal;
-use metal::NSObjectProtocol;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use {OCPtr, RefEqArc};
 use imp::ImageView;
@@ -90,7 +89,6 @@ impl RenderPass {
         let mut attachment_last_use = vec![None; attachments.len()];
 
         for (i, sp) in subpasses.iter().enumerate() {
-            let sp: &core::RenderSubpassDescription = &subpasses[i];
             let mut handle_attachment =
                 |att_index_or_none, binding, data_subpasses: &mut [RenderSubpassData]| {
                     if let Some(att_index) = att_index_or_none {
@@ -113,9 +111,11 @@ impl RenderPass {
                         match *last_use {
                             Some((last_subpass_index, last_binding)) if last_subpass_index == i => {
                                 if input_binding != last_binding {
-                                    panic!("The attachment {} is used for more than once in the subpass {}",
-                                           att_index,
-                                           i);
+                                    panic!(
+                                        "The attachment {} is used for more than once in the subpass {}",
+                                        att_index,
+                                        i
+                                    );
                                 }
                             }
                             Some((last_subpass_index,
@@ -153,10 +153,10 @@ impl RenderPass {
                         *last_use = Some((i, input_binding));
 
                         Some(RenderSubpassAttachment {
-                                 index: att_index,
-                                 load_action,
-                                 store_action: metal::MTLStoreAction::Store, // set later
-                             })
+                            index: att_index,
+                            load_action,
+                            store_action: metal::MTLStoreAction::Store, // set later
+                        })
                     } else {
                         None
                     }
@@ -167,23 +167,27 @@ impl RenderPass {
                     .iter()
                     .enumerate()
                     .map(|e| {
-                             handle_attachment(e.1.attachment_index,
-                                               AttachmentBinding::Color(e.0),
-                                               &mut data.subpasses)
-                         })
+                        handle_attachment(
+                            e.1.attachment_index,
+                            AttachmentBinding::Color(e.0),
+                            &mut data.subpasses,
+                        )
+                    })
                     .collect(),
-                depth_attachment: sp.depth_stencil_attachment
-                    .and_then(|att| {
-                                  handle_attachment(att.attachment_index,
-                                                    AttachmentBinding::Depth,
-                                                    &mut data.subpasses)
-                              }),
-                stencil_attachment: sp.depth_stencil_attachment
-                    .and_then(|att| {
-                                  handle_attachment(att.attachment_index,
-                                                    AttachmentBinding::Stencil,
-                                                    &mut data.subpasses)
-                              }),
+                depth_attachment: sp.depth_stencil_attachment.and_then(|att| {
+                    handle_attachment(
+                        att.attachment_index,
+                        AttachmentBinding::Depth,
+                        &mut data.subpasses,
+                    )
+                }),
+                stencil_attachment: sp.depth_stencil_attachment.and_then(|att| {
+                    handle_attachment(
+                        att.attachment_index,
+                        AttachmentBinding::Stencil,
+                        &mut data.subpasses,
+                    )
+                }),
             };
             data.subpasses.push(new_subpass);
         }
@@ -218,24 +222,36 @@ impl RenderPass {
         self.data.subpasses[subpass].color_attachments.len()
     }
 
-    pub(crate) fn subpass_color_attachment_format(&self, subpass: usize, index: usize) -> Option<core::ImageFormat> {
+    pub(crate) fn subpass_color_attachment_format(
+        &self,
+        subpass: usize,
+        index: usize,
+    ) -> Option<core::ImageFormat> {
         self.data.subpasses[subpass].color_attachments[index]
             .as_ref()
             .map(|att| self.data.attachments[att.index].format)
     }
 
-    pub(crate) fn subpass_depth_attachment_format(&self, subpass: usize) -> Option<core::ImageFormat> {
-        self.data.subpasses[subpass].depth_attachment
+    pub(crate) fn subpass_depth_attachment_format(
+        &self,
+        subpass: usize,
+    ) -> Option<core::ImageFormat> {
+        self.data.subpasses[subpass].depth_attachment.as_ref().map(
+            |a| {
+                self.data.attachments[a.index].format
+            },
+        )
+    }
+
+    pub(crate) fn subpass_stencil_attachment_format(
+        &self,
+        subpass: usize,
+    ) -> Option<core::ImageFormat> {
+        self.data.subpasses[subpass]
+            .stencil_attachment
             .as_ref()
             .map(|a| self.data.attachments[a.index].format)
     }
-
-    pub(crate) fn subpass_stencil_attachment_format(&self, subpass: usize) -> Option<core::ImageFormat> {
-        self.data.subpasses[subpass].stencil_attachment
-            .as_ref()
-            .map(|a| self.data.attachments[a.index].format)
-    }
-
 }
 
 impl core::Marker for RenderPass {
@@ -302,7 +318,10 @@ impl Framebuffer {
             })
             .collect();
 
-        let data = FramebufferData { metal_descriptors, label: Mutex::new(None) };
+        let data = FramebufferData {
+            metal_descriptors,
+            label: Mutex::new(None),
+        };
 
         Self { data: RefEqArc::new(data) }
     }

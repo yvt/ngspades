@@ -10,7 +10,7 @@ use spirv_cross::{SpirV2Msl, ExecutionModel, ResourceBinding};
 
 use std::sync::Mutex;
 
-use {OCPtr, RefEqArc};
+use RefEqArc;
 use imp::{Backend, Buffer, ImageView, Sampler};
 
 const NUM_STAGES: usize = 4;
@@ -36,17 +36,16 @@ struct DescriptorPoolData {}
 impl core::DescriptorPool<Backend> for DescriptorPool {
     type Allocation = ();
 
-    fn deallocate(&mut self, allocation: &mut Self::Allocation) {
-    }
+    fn deallocate(&mut self, _: &mut Self::Allocation) {}
 
-    fn make_descriptor_set(&mut self,
-                           description: &core::DescriptorSetDescription<DescriptorSetLayout>)
-                           -> core::Result<Option<(DescriptorSet, Self::Allocation)>> {
+    fn make_descriptor_set(
+        &mut self,
+        description: &core::DescriptorSetDescription<DescriptorSetLayout>,
+    ) -> core::Result<Option<(DescriptorSet, Self::Allocation)>> {
         Ok(Some((DescriptorSet::new(description.layout)?, ())))
     }
 
-    fn reset(&mut self) {
-    }
+    fn reset(&mut self) {}
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -109,9 +108,11 @@ impl core::DescriptorSet<Backend> for DescriptorSet {
                     self.update_inner(&mut *table, write, e.iter().map(|x| (None, None, Some(*x))));
                 }
                 core::WriteDescriptors::CombinedImageSampler(e) => {
-                    self.update_inner(&mut *table,
-                                      write,
-                                      e.iter().map(|x| (Some(&x.0), None, Some(x.1))));
+                    self.update_inner(
+                        &mut *table,
+                        write,
+                        e.iter().map(|x| (Some(&x.0), None, Some(x.1))),
+                    );
                 }
                 core::WriteDescriptors::ConstantBuffer(e) => {
                     self.update_inner(&mut *table, write, e.iter().map(|x| (None, Some(x), None)));
@@ -153,30 +154,39 @@ impl core::DescriptorSet<Backend> for DescriptorSet {
             let mut num_elements = copy.num_elements;
 
             while num_elements > 0 {
-                assert!(dest_binding_loc < dest_layout.bindings.len(),
-                        "out of range: descriptor count or destination start binding location");
+                assert!(
+                    dest_binding_loc < dest_layout.bindings.len(),
+                    "out of range: descriptor count or destination start binding location"
+                );
                 let dest_binding: &DescriptorSetLayoutBinding =
-                    dest_layout.bindings[src_binding_loc]
-                        .as_ref()
-                        .expect("no binding at the destination location");
-                assert!(dest_index < dest_binding.num_elements,
-                        "out of range: destination start index");
+                    dest_layout.bindings[src_binding_loc].as_ref().expect(
+                        "no binding at the destination location",
+                    );
+                assert!(
+                    dest_index < dest_binding.num_elements,
+                    "out of range: destination start index"
+                );
 
-                assert!(src_binding_loc < src_layout.bindings.len(),
-                        "out of range: descriptor count or source start binding location");
+                assert!(
+                    src_binding_loc < src_layout.bindings.len(),
+                    "out of range: descriptor count or source start binding location"
+                );
                 let src_binding: &DescriptorSetLayoutBinding =
-                    src_layout.bindings[src_binding_loc]
-                        .as_ref()
-                        .expect("no binding at the source location");
-                assert!(src_index < src_binding.num_elements,
-                        "out of range: source start index");
+                    src_layout.bindings[src_binding_loc].as_ref().expect(
+                        "no binding at the source location",
+                    );
+                assert!(
+                    src_index < src_binding.num_elements,
+                    "out of range: source start index"
+                );
 
-                let copy_count = *[num_elements,
-                                   src_binding.num_elements - src_index,
-                                   dest_binding.num_elements - dest_index]
-                                          .iter()
-                                          .min()
-                                          .unwrap();
+                let copy_count = *[
+                    num_elements,
+                    src_binding.num_elements - src_index,
+                    dest_binding.num_elements - dest_index,
+                ].iter()
+                    .min()
+                    .unwrap();
 
                 assert!(copy_count > 0);
                 assert_eq!(dest_binding.descriptor_type, src_binding.descriptor_type);
@@ -188,16 +198,22 @@ impl core::DescriptorSet<Backend> for DescriptorSet {
                             if let Some(ref src_table) = src_table {
                                 let ref mut dest_stage_table = dest_table.stages[i];
                                 let ref src_copy_table = src_table.stages[COPY_STAGE_INDEX];
-                                dest_stage_table.image_views[dest_table_index + dest_index ..
-                                    dest_table_index + dest_index + copy_count]
+                                dest_stage_table.image_views[dest_table_index + dest_index..
+                                                                 dest_table_index + dest_index +
+                                                                     copy_count]
                                     .clone_from_slice(
-                                        &src_copy_table.image_views[src_table_index + src_index ..
-                                            src_table_index + src_index + copy_count]
+                                        &src_copy_table.image_views[src_table_index + src_index..
+                                                                        src_table_index +
+                                                                            src_index +
+                                                                            copy_count],
                                     );
                             } else {
                                 for k in 0..copy_count {
-                                    dest_table.stages[i].image_views[dest_table_index + dest_index + k]
-                                        = dest_table.stages[COPY_STAGE_INDEX].image_views[src_table_index + src_index + k].clone();
+                                    dest_table.stages[i].image_views[dest_table_index + dest_index +
+                                                                         k] =
+                                        dest_table.stages[COPY_STAGE_INDEX].image_views
+                                            [src_table_index + src_index + k]
+                                            .clone();
                                 }
                             }
                         }
@@ -208,16 +224,21 @@ impl core::DescriptorSet<Backend> for DescriptorSet {
                             if let Some(ref src_table) = src_table {
                                 let ref mut dest_stage_table = dest_table.stages[i];
                                 let ref src_copy_table = src_table.stages[COPY_STAGE_INDEX];
-                                dest_stage_table.buffers[dest_table_index + dest_index ..
-                                    dest_table_index + dest_index + copy_count]
+                                dest_stage_table.buffers[dest_table_index + dest_index..
+                                                             dest_table_index + dest_index +
+                                                                 copy_count]
                                     .clone_from_slice(
-                                        &src_copy_table.buffers[src_table_index + src_index ..
-                                            src_table_index + src_index + copy_count]
+                                        &src_copy_table.buffers[src_table_index + src_index..
+                                                                    src_table_index + src_index +
+                                                                        copy_count],
                                     );
                             } else {
                                 for k in 0..copy_count {
-                                    dest_table.stages[i].buffers[dest_table_index + dest_index + k]
-                                        = dest_table.stages[COPY_STAGE_INDEX].buffers[src_table_index + src_index + k].clone();
+                                    dest_table.stages[i].buffers[dest_table_index + dest_index +
+                                                                     k] =
+                                        dest_table.stages[COPY_STAGE_INDEX].buffers
+                                            [src_table_index + src_index + k]
+                                            .clone();
                                 }
                             }
                         }
@@ -228,16 +249,21 @@ impl core::DescriptorSet<Backend> for DescriptorSet {
                             if let Some(ref src_table) = src_table {
                                 let ref mut dest_stage_table = dest_table.stages[i];
                                 let ref src_copy_table = src_table.stages[COPY_STAGE_INDEX];
-                                dest_stage_table.samplers[dest_table_index + dest_index ..
-                                    dest_table_index + dest_index + copy_count]
+                                dest_stage_table.samplers[dest_table_index + dest_index..
+                                                              dest_table_index + dest_index +
+                                                                  copy_count]
                                     .clone_from_slice(
-                                        &src_copy_table.samplers[src_table_index + src_index ..
-                                            src_table_index + src_index + copy_count]
+                                        &src_copy_table.samplers[src_table_index + src_index..
+                                                                     src_table_index + src_index +
+                                                                         copy_count],
                                     );
                             } else {
                                 for k in 0..copy_count {
-                                    dest_table.stages[i].samplers[dest_table_index + dest_index + k]
-                                        = dest_table.stages[COPY_STAGE_INDEX].samplers[src_table_index + src_index + k].clone();
+                                    dest_table.stages[i].samplers[dest_table_index + dest_index +
+                                                                      k] =
+                                        dest_table.stages[COPY_STAGE_INDEX].samplers
+                                            [src_table_index + src_index + k]
+                                            .clone();
                                 }
                             }
                         }
@@ -250,7 +276,8 @@ impl core::DescriptorSet<Backend> for DescriptorSet {
                     src_binding_loc += 1;
                 }
                 while src_binding_loc < src_layout.bindings.len() &&
-                      src_layout.bindings[src_binding_loc].is_none() {
+                    src_layout.bindings[src_binding_loc].is_none()
+                {
                     src_binding_loc += 1;
                 }
 
@@ -260,7 +287,8 @@ impl core::DescriptorSet<Backend> for DescriptorSet {
                     dest_binding_loc += 1;
                 }
                 while dest_binding_loc < dest_layout.bindings.len() &&
-                      dest_layout.bindings[dest_binding_loc].is_none() {
+                    dest_layout.bindings[dest_binding_loc].is_none()
+                {
                     dest_binding_loc += 1;
                 }
 
@@ -290,11 +318,13 @@ impl DescriptorSet {
         Ok(DescriptorSet { data: RefEqArc::new(data) })
     }
 
-    fn update_inner<'a, T>(&self,
-                           table: &mut DescriptorSetTable,
-                           wds: &core::WriteDescriptorSet<Backend>,
-                           descs: T)
-        where T: Iterator<Item = DescriptorTuple<'a>> + ExactSizeIterator
+    fn update_inner<'a, T>(
+        &self,
+        table: &mut DescriptorSetTable,
+        wds: &core::WriteDescriptorSet<Backend>,
+        descs: T,
+    ) where
+        T: Iterator<Item = DescriptorTuple<'a>> + ExactSizeIterator,
     {
         let mut binding_loc = wds.start_binding;
         let mut index = wds.start_index;
@@ -303,8 +333,10 @@ impl DescriptorSet {
         // TODO: make use of ExactSizeIterator to accelerate consecutive updates?
 
         for (image, buffer, sampler) in descs {
-            assert!(binding_loc < layout.bindings.len(),
-                    "out of range: descriptor count or start binding location");
+            assert!(
+                binding_loc < layout.bindings.len(),
+                "out of range: descriptor count or start binding location"
+            );
             let binding: &DescriptorSetLayoutBinding = layout.bindings[binding_loc]
                 .as_ref()
                 .expect("no binding at the location");
@@ -318,8 +350,8 @@ impl DescriptorSet {
                         Some(image.image_view.clone());
                 }
                 if let (Some(buffer), Some(buffer_index)) = (buffer, binding.buffer_index[i]) {
-                    table.stages[i].buffers[buffer_index + index] = Some((buffer.buffer.clone(),
-                                                                          buffer.offset));
+                    table.stages[i].buffers[buffer_index + index] =
+                        Some((buffer.buffer.clone(), buffer.offset));
                 }
                 if let (Some(sampler), Some(sampler_index)) = (sampler, binding.sampler_index[i]) {
                     table.stages[i].samplers[sampler_index + index] = Some(sampler.clone());
@@ -351,7 +383,6 @@ struct DescriptorSetLayoutData {
     samplers: [Vec<Option<Sampler>>; NUM_STAGES],
     bindings: Vec<Option<DescriptorSetLayoutBinding>>,
     // TODO: dynamic offset layout info
-
     label: Mutex<Option<String>>,
 }
 
@@ -382,16 +413,21 @@ impl DescriptorSetLayout {
             let stage_flags = binding_desc.stage_flags;
             let descriptor_type: core::DescriptorType = binding_desc.descriptor_type;
             let has_stage: [bool; NUM_STAGES] =
-                [!(stage_flags & core::ShaderStageFlags::Vertex).is_empty(),
-                 !(stage_flags & core::ShaderStageFlags::Fragment).is_empty(),
-                 !(stage_flags & core::ShaderStageFlags::Compute).is_empty(),
-                 true];
+                [
+                    !(stage_flags & core::ShaderStageFlags::Vertex).is_empty(),
+                    !(stage_flags & core::ShaderStageFlags::Fragment).is_empty(),
+                    !(stage_flags & core::ShaderStageFlags::Compute).is_empty(),
+                    true,
+                ];
 
             let mut image_view_index = [None; NUM_STAGES];
             let mut buffer_index = [None; NUM_STAGES];
             let mut sampler_index = [None; NUM_STAGES];
 
             for i in 0..NUM_STAGES {
+                if !has_stage[i] {
+                    continue;
+                }
                 if descriptor_type.has_image_view() {
                     image_view_index[i] = Some(num_image_views[i]);
                     num_image_views[i] += binding_desc.num_elements;
@@ -414,9 +450,11 @@ impl DescriptorSetLayout {
                 sampler_index,
             };
 
-            assert!(bindings[loc].is_none(),
-                    "duplicate binding location: {}",
-                    loc);
+            assert!(
+                bindings[loc].is_none(),
+                "duplicate binding location: {}",
+                loc
+            );
             bindings[loc] = Some(binding);
         }
 
@@ -512,8 +550,9 @@ impl core::Marker for PipelineLayout {
 impl core::PipelineLayout for PipelineLayout {}
 
 impl PipelineLayout {
-    pub(crate) fn new(desc: &core::PipelineLayoutDescription<DescriptorSetLayout>)
-                      -> core::Result<Self> {
+    pub(crate) fn new(
+        desc: &core::PipelineLayoutDescription<DescriptorSetLayout>,
+    ) -> core::Result<Self> {
         let descriptor_set_layouts: &[&DescriptorSetLayout] = desc.descriptor_set_layouts;
         let mut num_image_views = [0; NUM_STAGES];
         let mut num_buffers = [0; NUM_STAGES];
@@ -561,14 +600,12 @@ impl PipelineLayout {
 }
 
 impl PipelineLayoutDescriptorSet {
-    fn setup_spirv2msl(&self, s2m: &mut SpirV2Msl, model: ExecutionModel,
-            desc_set_index: u32)
-    {
+    fn setup_spirv2msl(&self, s2m: &mut SpirV2Msl, model: ExecutionModel, desc_set_index: u32) {
         let stage_index = match model {
             ExecutionModel::Fragment => FRAGMENT_STAGE_INDEX,
             ExecutionModel::Vertex => VERTEX_STAGE_INDEX,
             ExecutionModel::GLCompute => COMPUTE_STAGE_INDEX,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
         let start_image_view_index = self.image_view_index[stage_index];
         let start_buffer_index = self.buffer_index[stage_index];
@@ -579,15 +616,18 @@ impl PipelineLayoutDescriptorSet {
         {
             if let Some(binding) = binding.as_ref() {
                 let descriptor_type: core::DescriptorType = binding.descriptor_type;
-                s2m.bind_resource(&ResourceBinding{
+                s2m.bind_resource(&ResourceBinding {
                     desc_set: desc_set_index,
                     binding: binding_index as u32,
-                    msl_buffer: binding.buffer_index[stage_index]
-                        .map(|x|(x + start_buffer_index) as u32),
-                    msl_texture: binding.image_view_index[stage_index]
-                        .map(|x|(x + start_image_view_index) as u32),
-                    msl_sampler: binding.sampler_index[stage_index]
-                        .map(|x|(x + start_sampler_index) as u32),
+                    msl_buffer: binding.buffer_index[stage_index].map(|x| {
+                        (x + start_buffer_index) as u32
+                    }),
+                    msl_texture: binding.image_view_index[stage_index].map(|x| {
+                        (x + start_image_view_index) as u32
+                    }),
+                    msl_sampler: binding.sampler_index[stage_index].map(|x| {
+                        (x + start_sampler_index) as u32
+                    }),
                     stage: model,
                 });
             }

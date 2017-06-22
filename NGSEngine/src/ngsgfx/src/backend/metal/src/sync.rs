@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use core;
 
-use {RefEqArc};
+use RefEqArc;
 
 /// `Semaphore` implementation for Metal.
 ///
@@ -27,9 +27,7 @@ struct SemaphoreData {
 
 impl Semaphore {
     pub(crate) fn new(_: &core::SemaphoreDescription) -> Self {
-        Self { data: RefEqArc::new(SemaphoreData{
-            label: Mutex::new(None),
-        }) }
+        Self { data: RefEqArc::new(SemaphoreData { label: Mutex::new(None) }) }
     }
 }
 
@@ -91,11 +89,11 @@ impl Fence {
         let initial_num_pending_buffers = if signaled { 0 } else { 1 };
         Self {
             data: RefEqArc::new(FenceData {
-                               cvar: Condvar::new(),
-                               state: Mutex::new(initial_state),
-                               num_pending_buffers: AtomicUsize::new(initial_num_pending_buffers),
-                               label: Mutex::new(None),
-                           }),
+                cvar: Condvar::new(),
+                state: Mutex::new(initial_state),
+                num_pending_buffers: AtomicUsize::new(initial_num_pending_buffers),
+                label: Mutex::new(None),
+            }),
         }
     }
 
@@ -104,8 +102,10 @@ impl Fence {
         let mut state = data.state.lock().unwrap();
         match *state {
             FenceState::Initial | FenceState::Signaled => {
-                data.num_pending_buffers
-                    .store(num_buffers, Ordering::Relaxed);
+                data.num_pending_buffers.store(
+                    num_buffers,
+                    Ordering::Relaxed,
+                );
                 *state = FenceState::Associated;
                 true
             }
@@ -117,9 +117,10 @@ impl Fence {
         let ref data = self.data;
         debug_assert_eq!(*data.state.lock().unwrap(), FenceState::Associated);
 
-        let new_num_pending_buffers = data.num_pending_buffers
-            .fetch_sub(num_buffers, Ordering::Relaxed) -
-                                      num_buffers;
+        let new_num_pending_buffers = data.num_pending_buffers.fetch_sub(
+            num_buffers,
+            Ordering::Relaxed,
+        ) - num_buffers;
         if new_num_pending_buffers == 0 {
             // the current batch is done!
             let mut state = data.state.lock().unwrap();
