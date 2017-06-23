@@ -23,7 +23,7 @@ pub struct ShaderModuleDescription<'a> {
 
 // prevent `InnerXXX` from being exported
 mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u8)]
     pub enum ShaderStageFlags {
         Vertex = 0b001,

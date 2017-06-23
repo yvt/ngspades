@@ -39,10 +39,7 @@ pub struct DeviceLimits {
 
     /// Indicates the maximum total number of compute shader invocations in a
     /// single local compute workgroup.
-    ///
-    /// This value is not available on the Metal backend. In this case, you need to
-    /// retrieve it by `ComputePipeline::max_num_workgroup_invocations()`.
-    pub max_num_compute_workgroup_invocations: Option<u32>,
+    pub max_num_compute_workgroup_invocations: u32,
 
     /// Indicates the maximum number of compute local workgroups.
     pub max_compute_workgroup_count: Vector3<u32>,
