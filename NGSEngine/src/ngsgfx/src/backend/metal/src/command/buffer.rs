@@ -13,6 +13,7 @@ use enumflags::BitFlags;
 use imp::{Backend, Framebuffer, SecondaryCommandBuffer};
 
 use super::graphics::{GraphicsEncoderState, RenderCommandEncoder};
+use super::compute::ComputeCommandEncoder;
 
 #[derive(Debug)]
 pub struct CommandBuffer {
@@ -38,7 +39,7 @@ pub(crate) enum EncoderState {
         framebuffer: Framebuffer,
         subpass: usize,
     },
-    Compute(OCPtr<metal::MTLComputeCommandEncoder>),
+    Compute(ComputeCommandEncoder),
     Blit(OCPtr<metal::MTLBlitCommandEncoder>),
 }
 
@@ -80,15 +81,9 @@ impl CommandBuffer {
             }
             EncoderState::Graphics {
                 encoder: GraphicsEncoderState::Inline(ref encoder), ..
-            } => {
-                encoder.metal_command_encoder()
-            }
-            EncoderState::Compute(ref encoder) => {
-                ***encoder
-            }
-            EncoderState::Blit(ref encoder) => {
-                ***encoder
-            }
+            } => encoder.metal_command_encoder(),
+            EncoderState::Compute(ref encoder) => encoder.metal_command_encoder(),
+            EncoderState::Blit(ref encoder) => ***encoder,
             EncoderState::NoPass |
             EncoderState::NotRecording => {
                 panic!("pass is not active");
@@ -110,8 +105,8 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn expect_compute_pipeline(&self) -> &OCPtr<metal::MTLComputeCommandEncoder> {
-        if let EncoderState::Compute(ref encoder) = self.encoder {
+    pub(crate) fn expect_compute_pipeline(&mut self) -> &mut ComputeCommandEncoder {
+        if let EncoderState::Compute(ref mut encoder) = self.encoder {
             encoder
         } else {
             panic!("compute pass is not active");
@@ -208,7 +203,10 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
     }
 
     fn begin_compute_pass(&mut self) {
-        unimplemented!()
+        self.expect_no_pass();
+
+        let encoder = OCPtr::new(self.buffer.as_ref().unwrap().new_compute_command_encoder());
+        self.encoder = EncoderState::Compute(ComputeCommandEncoder::new(encoder.unwrap()));
     }
 
     fn begin_blit_pass(&mut self) {
@@ -245,7 +243,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
             EncoderState::Graphics { .. } => {
                 panic!("render subpass must be ended first");
             }
-            EncoderState::Compute(ref encoder) => {
+            EncoderState::Compute(ref mut encoder) => {
                 encoder.end_encoding();
             }
             EncoderState::Blit(ref encoder) => {

@@ -88,7 +88,7 @@ impl RenderCommandEncoder {
     fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
         unimplemented!()
     }
-    fn bind_descriptor_sets(
+    fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
@@ -171,14 +171,14 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
     fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
         self.expect_graphics_pipeline().set_scissor_rect(value)
     }
-    fn bind_descriptor_sets(
+    fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
         descriptor_sets: &[DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
-        self.expect_graphics_pipeline().bind_descriptor_sets(
+        self.expect_graphics_pipeline().bind_graphics_descriptor_sets(
             pipeline_layout,
             start_index,
             descriptor_sets,
@@ -257,14 +257,14 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
     fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
         self.render_command_encoder().set_scissor_rect(value)
     }
-    fn bind_descriptor_sets(
+    fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
         descriptor_sets: &[DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
-        self.render_command_encoder().bind_descriptor_sets(
+        self.render_command_encoder().bind_graphics_descriptor_sets(
             pipeline_layout,
             start_index,
             descriptor_sets,

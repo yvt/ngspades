@@ -14,7 +14,8 @@ use super::{id, nil, NSObjectPrototype, NSObjectProtocol};
 use resource::MTLResourceOptions;
 use commandqueue::MTLCommandQueue;
 use pipeline::{MTLRenderPipelineState, MTLRenderPipelineDescriptor,
-               MTLRenderPipelineReflection};
+               MTLRenderPipelineReflection, MTLComputePipelineState,
+               MTLComputePipelineDescriptor};
 use library::{MTLLibrary, MTLCompileOptions};
 use types::{MTLSize};
 use buffer::MTLBuffer;
@@ -231,6 +232,18 @@ impl<'a> MTLDevice {
         unsafe {
             let pipeline_state: MTLRenderPipelineState = msg_send![self.0, newRenderPipelineStateWithDescriptor:descriptor.0
                                                                                                           error:nil];
+
+            match pipeline_state.is_null() {
+                true => Err(()),
+                false => Ok(pipeline_state)
+            }
+        }
+    }
+
+    pub fn new_compute_pipeline_state(&self, descriptor: MTLComputePipelineDescriptor) -> Result<MTLComputePipelineState, ()> {
+        unsafe {
+            let pipeline_state: MTLComputePipelineState = msg_send![self.0, newComputePipelineStateWithDescriptor:descriptor.0
+                                                                                                            error:nil];
 
             match pipeline_state.is_null() {
                 true => Err(()),

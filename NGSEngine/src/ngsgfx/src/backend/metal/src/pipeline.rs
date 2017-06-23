@@ -71,20 +71,6 @@ struct StencilReference {
 unsafe impl Send for GraphicsPipelineData {}
 unsafe impl Sync for GraphicsPipelineData {} // no interior mutability
 
-impl core::Marker for GraphicsPipeline {
-    fn set_label(&self, label: Option<&str>) {
-        // TODO: [MTLRenderPipelineState setLabel:] fails with the following error:
-        //       `[MTLIGRenderPipelineState setLabel:]: unrecognized selector sent to instance ...`
-        /* self.data.metal_pipeline.set_label(label.unwrap_or(""));
-        if let Some(GraphicsPipelineRasterizerData {
-                        metal_ds_state: Some((ref state, _)), ..
-                    }) = self.data.raster_data
-        {
-            state.set_label(label.unwrap_or(""));
-        } */
-    }
-}
-
 impl core::GraphicsPipeline for GraphicsPipeline {}
 
 impl GraphicsPipeline {
@@ -551,22 +537,106 @@ pub struct ComputePipeline {
 
 #[derive(Debug)]
 struct ComputePipelineData {
-    // TODO: metal_pipeline: OCPtr<metal::MTLComputePipelineState>,
+    metal_pipeline: OCPtr<metal::MTLComputePipelineState>,
+    threads_per_threadgroup: metal::MTLSize,
+    threadgroup_memory_length: u64,
 }
 
 unsafe impl Send for ComputePipelineData {}
 unsafe impl Sync for ComputePipelineData {} // no interior mutability
 
-impl core::Marker for ComputePipeline {
-    fn set_label(&self, _: Option<&str>) {
-        unimplemented!()
-        // self.data.metal_pipeline.set_label(label.unwrap_or(""));
-    }
-}
+impl core::ComputePipeline for ComputePipeline {}
 
-impl core::ComputePipeline for ComputePipeline {
-    fn max_num_workgroup_invocations(&self) -> u32 {
-        unimplemented!()
+impl ComputePipeline {
+    pub(crate) fn new(
+        metal_device: metal::MTLDevice,
+        desc: &imp::ComputePipelineDescription,
+    ) -> core::Result<ComputePipeline> {
+        assert!(!metal_device.is_null());
+        let metal_desc = unsafe {
+            OCPtr::from_raw(metal::MTLComputePipelineDescriptor::alloc().init()).unwrap()
+        };
+
+        let stage = &desc.shader_stage;
+        assert_eq!(
+            stage.stage,
+            core::ShaderStageFlags::Compute,
+            "must have a compute shader stage"
+        );
+
+        let compute_fn = stage.module.get_function(
+            stage.entry_point_name,
+            core::ShaderStageFlags::Compute,
+            desc.pipeline_layout,
+            metal_device,
+            empty(),
+        );
+        metal_desc.set_compute_function(*compute_fn);
+
+        // TODO: read work group size from SPIR-V
+        println!("STUB!: using 16x16x1 as threads_per_threadgroup");
+        let threads_per_threadgroup = metal::MTLSize {
+            width: 16,
+            height: 16,
+            depth: 1,
+        };
+
+        // TODO: compute threadgroup shared memory requirement from SPIR-V
+        println!("STUB!: using 64 as threadgroup_memory_length");
+        let threadgroup_memory_length = 64;
+
+        // set debug label on `MTLRenderPipelineDescriptor`
+        if let Some(label) = desc.label {
+            metal_desc.set_label(label);
+        }
+
+        let metal_pipeline = metal_device
+            .new_compute_pipeline_state(*metal_desc)
+            .map(|p| OCPtr::new(p).unwrap())
+            .expect("compute pipeline state creation failed");
+
+        // we cannot know this beforehand without actually creating a compute pipeline state
+        // but at least it seems to be around 256 (tested on Iris Graphics 550).
+        //
+        // If the number of invocations specified by the shader exceeds the limitation
+        // reported by the pipeline state, there is no way other than panicking to report
+        // this state. I expect this will not happen in practice.
+        let actual_max_total_invocations = metal_pipeline.max_total_threads_per_threadgroup();
+        let total_invocations = threads_per_threadgroup
+            .width
+            .checked_mul(threads_per_threadgroup.height)
+            .and_then(|x| x.checked_mul(threads_per_threadgroup.depth));
+        if let Some(total_invocations) = total_invocations {
+            if total_invocations > actual_max_total_invocations {
+                panic!(
+                    "too many compute shader invocations per work group ({} > {})",
+                    total_invocations,
+                    actual_max_total_invocations
+                );
+            }
+        } else {
+            panic!(
+                "too many compute shader invocations per work group ((overflow) > {})",
+                actual_max_total_invocations
+            );
+        }
+
+        let data = ComputePipelineData {
+            metal_pipeline,
+            threads_per_threadgroup,
+            threadgroup_memory_length,
+        };
+
+        Ok(ComputePipeline { data: RefEqArc::new(data) })
+    }
+
+    pub(crate) fn bind_pipeline_state(&self, encoder: metal::MTLComputeCommandEncoder) {
+        encoder.set_compute_pipeline_state(*self.data.metal_pipeline);
+        encoder.set_threadgroup_memory_length(0, self.data.threadgroup_memory_length);
+    }
+
+    pub(crate) fn threads_per_threadgroup(&self) -> metal::MTLSize {
+        self.data.threads_per_threadgroup
     }
 }
 

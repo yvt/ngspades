@@ -93,6 +93,12 @@ pub mod imp {
         ShaderModule,
     >;
 
+    pub type ComputePipelineDescription<'a> = core::ComputePipelineDescription<
+        'a,
+        PipelineLayout,
+        ShaderModule,
+    >;
+
     pub type StencilStateDescription<'a> = core::StencilStateDescription<'a, GraphicsPipeline>;
 
     pub struct Backend {}

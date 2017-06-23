@@ -428,6 +428,71 @@ impl NSObjectProtocol for MTLRenderPipelineDescriptor {
     }
 }
 
+pub enum MTLComputePipelineDescriptorPrototype {}
+pub type MTLComputePipelineDescriptor = id<(MTLComputePipelineDescriptorPrototype, (NSObjectPrototype, ()))>;
+
+impl<'a> MTLComputePipelineDescriptor {
+    pub fn alloc() -> Self {
+        unsafe {
+            msg_send![Self::class(), alloc]
+        }
+    }
+
+    pub fn init(&self) -> Self {
+        unsafe {
+            msg_send![self.0, init]
+        }
+    }
+
+    pub fn label(&'a self) -> &'a str {
+        unsafe {
+            let label: &'a NSString = msg_send![self.0, label];
+            label.as_str()
+        }
+    }
+
+    pub fn set_label(&self, label: &str) {
+        unsafe {
+            let nslabel = NSString::from_str(label);
+            msg_send![self.0, setLabel:nslabel]
+        }
+    }
+
+    pub fn compute_function(&self) -> MTLFunction {
+        unsafe {
+            msg_send![self.0, computeFunction]
+        }
+    }
+
+    pub fn set_compute_function(&self, function: MTLFunction) {
+        unsafe {
+            msg_send![self.0, setComputeFunction:function.0]
+        }
+    }
+
+    pub fn is_thread_group_size_is_multiple_of_thread_execution_width(&self) -> bool {
+        unsafe {
+            match msg_send![self.0, isThreadGroupSizeIsMultipleOfThreadExecutionWidth] {
+                YES => true,
+                NO => false,
+                _ => unreachable!()
+            }
+        }
+    }
+
+    pub fn set_thread_group_size_is_multiple_of_thread_execution_width(&self, enabled: bool) {
+        unsafe {
+            msg_send![self.0, setThreadGroupSizeIsMultipleOfThreadExecutionWidth:enabled]
+        }
+    }
+}
+
+impl NSObjectProtocol for MTLComputePipelineDescriptor {
+    unsafe fn class() -> &'static Class {
+        Class::get("MTLComputePipelineDescriptorInternal").unwrap()
+    }
+}
+
 pub enum MTLRenderPipelineStatePrototype {}
 pub type MTLRenderPipelineState = id<(MTLRenderPipelineStatePrototype, (NSObjectPrototype, ()))>;
 
@@ -443,6 +508,36 @@ impl<'a> MTLRenderPipelineState {
 impl NSObjectProtocol for MTLRenderPipelineState {
     unsafe fn class() -> &'static Class {
         Class::get("MTLRenderPipelineState").unwrap()
+    }
+}
+
+pub enum MTLComputePipelineStatePrototype {}
+pub type MTLComputePipelineState = id<(MTLComputePipelineStatePrototype, (NSObjectPrototype, ()))>;
+
+impl<'a> MTLComputePipelineState {
+    pub fn label(&'a self) -> &'a str {
+        unsafe {
+            let label: &'a NSString = msg_send![self.0, label];
+            label.as_str()
+        }
+    }
+
+    pub fn max_total_threads_per_threadgroup(&self) -> u64 {
+        unsafe {
+            msg_send![self.0, maxTotalThreadsPerThreadgroup]
+        }
+    }
+
+    pub fn thread_execution_width(&self) -> u64 {
+        unsafe {
+            msg_send![self.0, threadExecutionWidth]
+        }
+    }
+}
+
+impl NSObjectProtocol for MTLComputePipelineState {
+    unsafe fn class() -> &'static Class {
+        Class::get("MTLComputePipelineState").unwrap()
     }
 }
 

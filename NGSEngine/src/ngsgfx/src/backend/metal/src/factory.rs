@@ -97,7 +97,7 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &core::ComputePipelineDescription<PipelineLayout, ShaderModule>,
     ) -> core::Result<ComputePipeline> {
-        unimplemented!()
+        ComputePipeline::new(self.metal_device(), description)
     }
 
     fn make_graphics_pipeline(
@@ -111,7 +111,7 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &core::StencilStateDescription<GraphicsPipeline>,
     ) -> core::Result<StencilState> {
-        unimplemented!()
+        StencilState::new(self.metal_device(), description)
     }
 
     fn make_descriptor_set_layout(

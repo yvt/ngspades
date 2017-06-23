@@ -9,9 +9,10 @@ use libc;
 use resource::MTLResource;
 use texture::MTLTexture;
 use buffer::MTLBuffer;
-use pipeline::MTLRenderPipelineState;
+use pipeline::{MTLRenderPipelineState, MTLComputePipelineState};
 use sampler::MTLSamplerState;
 use depthstencil::MTLDepthStencilState;
+use types::MTLSize;
 
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -454,9 +455,72 @@ pub type MTLComputeCommandEncoder = id<
 
 impl MTLComputeCommandEncoder {
 
-    pub fn set_render_pipeline_state(&self) {
+    pub fn set_compute_pipeline_state(&self, pipeline_state: MTLComputePipelineState) {
+        unsafe {
+            msg_send![self.0, setComputePipelineState:pipeline_state.0]
+        }
     }
 
+    pub fn set_bytes(&self, index: u64, length: u64, bytes: *const libc::c_void) {
+        unsafe {
+            msg_send![self.0, setBytes:bytes
+                                length:length
+                                     atIndex:index]
+        }
+    }
+
+    pub fn set_buffer(&self, index: u64, offset: u64, buffer: MTLBuffer) {
+        unsafe {
+            msg_send![self.0, setBuffer:buffer.0
+                                 offset:offset
+                                      atIndex:index]
+        }
+    }
+
+    pub fn set_texture(&self, index: u64, texture: MTLTexture) {
+        unsafe {
+            msg_send![self.0, setTexture:texture.0
+                                 atIndex:index]
+        }
+    }
+
+    pub fn set_sampler_state(&self, index: u64, sampler: MTLSamplerState) {
+        unsafe {
+            msg_send![self.0, setSamplerState:sampler.0
+                                      atIndex:index]
+        }
+    }
+
+    pub fn set_sampler_state_with_lod(&self, index: u64, lod_min_clamp: f32, lod_max_clamp: f32, sampler: MTLSamplerState) {
+        unsafe {
+            msg_send![self.0, setSamplerState:sampler.0
+                                  lodMinClamp:lod_min_clamp
+                                  lodMaxClamp:lod_max_clamp
+                                      atIndex:index]
+        }
+    }
+
+    pub fn set_threadgroup_memory_length(&self, index: u64, length: u64) {
+        unsafe {
+            msg_send![self.0, setThreadgroupMemoryLength:length
+                                                 atIndex:index]
+        }
+    }
+
+    pub fn dispatch_threadgroups(&self, threadgroups_per_grid: MTLSize, threads_per_threadgroup: MTLSize) {
+        unsafe {
+            msg_send![self.0, dispatchThreadgroups:threadgroups_per_grid
+                             threadsPerThreadgroup:threads_per_threadgroup]
+        }
+    }
+
+    pub fn dispatch_threadgroups_with_indirect_buffer(&self, indirect_buffer: MTLBuffer, indirect_buffer_offset: u64, threads_per_threadgroup: MTLSize) {
+        unsafe {
+            msg_send![self.0, dispatchThreadgroupsWithIndirectBuffer:indirect_buffer.0
+                                                indirectBufferOffset:indirect_buffer_offset
+                                               threadsPerThreadgroup:threads_per_threadgroup]
+        }
+    }
 }
 
 

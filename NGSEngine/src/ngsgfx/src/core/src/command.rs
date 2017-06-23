@@ -256,7 +256,7 @@ pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any + DebugCom
     /// `scissor_rect` must be `StaticOrDynamic::Dynamic`.
     fn set_scissor_rect(&mut self, value: &Rect2D<u32>);
 
-    fn bind_descriptor_sets(
+    fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &B::PipelineLayout,
         start_index: usize,
@@ -294,6 +294,14 @@ pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEn
     ///
     /// A compute pass must be active.
     fn bind_compute_pipeline(&mut self, pipeline: &B::ComputePipeline);
+
+    fn bind_compute_descriptor_sets(
+        &mut self,
+        pipeline_layout: &B::PipelineLayout,
+        start_index: usize,
+        descriptor_sets: &[B::DescriptorSet],
+        dynamic_offsets: &[u32],
+    );
 
     /// Provoke work in a compute pipeline.
     ///

@@ -37,7 +37,7 @@ impl DeviceCapabilities {
                 mtptg.height as u32,
                 mtptg.depth as u32,
             ),
-            max_num_compute_workgroup_invocations: None,
+            max_num_compute_workgroup_invocations: 256,
             max_compute_workgroup_count: Vector3::new(
                 u32::max_value(),
                 u32::max_value(),

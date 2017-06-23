@@ -12,7 +12,7 @@ use block::Block;
 use super::{id, NSObjectPrototype, NSObjectProtocol};
 
 use renderpass::MTLRenderPassDescriptor;
-use encoder::{MTLParallelRenderCommandEncoder, MTLRenderCommandEncoder, MTLBlitCommandEncoder};
+use encoder::{MTLParallelRenderCommandEncoder, MTLRenderCommandEncoder, MTLBlitCommandEncoder, MTLComputeCommandEncoder};
 
 #[repr(u32)]
 #[allow(non_camel_case_types)]
@@ -100,11 +100,11 @@ impl<'a> MTLCommandBuffer {
         }
     }
 
-    /*pub fn new_compute_command_encoder(&self) -> id {
+    pub fn new_compute_command_encoder(&self) -> MTLComputeCommandEncoder {
         unsafe {
-            msg_send![self.0, blitCommandEncoder]
+            msg_send![self.0, computeCommandEncoder]
         }
-    }*/
+    }
 
     pub fn new_render_command_encoder(&self, descriptor: MTLRenderPassDescriptor) -> MTLRenderCommandEncoder {
         unsafe {
