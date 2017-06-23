@@ -379,7 +379,7 @@ fn create_renderer_view<W: Window>(
     renderer: &Arc<Renderer<W::Backend>>,
     window: &W,
 ) -> RendererView<W::Backend> {
-    RendererView::new(&renderer, window.size())
+    RendererView::new(&renderer, window.framebuffer_size())
 }
 
 impl<W: Window> App<W> {
@@ -401,7 +401,8 @@ impl<W: Window> App<W> {
                     self.window.events_loop().interrupt();
                     running = false;
                 }
-                winit::Event::WindowEvent { event: winit::WindowEvent::Resized(_, _), .. } => {
+                winit::Event::WindowEvent { event: winit::WindowEvent::Resized(width, height), .. } => {
+                    self.window.set_framebuffer_size(Vector2::new(width, height));
                     *self.renderer_view.borrow_mut() =
                         create_renderer_view(&self.renderer, &self.window);
                 }

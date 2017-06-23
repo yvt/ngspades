@@ -21,7 +21,7 @@ use backend_metal::ll as metal;
 use wsi_core::winit;
 
 use std::sync::Arc;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::{mem, fmt};
 use std::ops::Deref;
 
@@ -39,13 +39,15 @@ use cocoa::appkit::{NSWindow, NSView};
 
 use winit::os::macos::WindowExt;
 
+mod utils;
+use utils::OCPtr;
+
 pub struct MetalWindow<T> {
     events_loop: T,
     window: winit::Window,
-    layer: metal::CAMetalLayer,
-    drawable: Cell<metal::CAMetalDrawable>,
-    image_view: RefCell<ImageView>,
-    pool: Cell<metal::NSAutoreleasePool>,
+    layer: OCPtr<metal::CAMetalLayer>,
+    drawable: RefCell<Option<OCPtr<metal::CAMetalDrawable>>>,
+    pool: RefCell<Option<OCPtr<metal::NSAutoreleasePool>>>,
     device: Arc<backend_metal::Device>,
 }
 
@@ -70,9 +72,28 @@ where
     /// Retrieve the current drawable.
     ///
     /// The returned `CAMetalDrawable` is valid until this object is dropped or
-    /// `swap_buffers` is called.
+    /// `swap_buffers` or `set_framebuffer_size` is called.
     pub fn drawable(&self) -> metal::CAMetalDrawable {
-        self.drawable.get()
+        self.ensure_have_drawable();
+        **self.drawable.borrow().as_ref().unwrap()
+    }
+
+    fn update_drawable(&self) {
+        // FIXME: what if this fails?
+        let nd = self.layer.next_drawable().expect(
+            "I just don't know what went wrong! *hopping on a cloud*",
+        );
+        *self.drawable.borrow_mut() = Some(OCPtr::new(nd).unwrap());
+    }
+
+    fn ensure_have_drawable(&self) {
+        if self.drawable.borrow().is_none() {
+            self.update_drawable();
+        }
+    }
+
+    fn forget_drawable(&self) {
+        *self.drawable.borrow_mut() = None;
     }
 }
 
@@ -116,15 +137,12 @@ where
 
             let device = backend_metal::Device::new(metal_device);
 
-            let drawable = layer.next_drawable().unwrap();
-
             Ok(MetalWindow {
                 events_loop,
                 window: winit_window,
-                layer: layer,
-                drawable: Cell::new(drawable),
-                image_view: RefCell::new(ImageView::new(drawable.texture())),
-                pool: Cell::new(metal::NSAutoreleasePool::alloc().init()),
+                layer: OCPtr::new(layer).unwrap(),
+                drawable: RefCell::new(None),
+                pool: RefCell::new(Some(OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap())),
                 device: Arc::new(device),
             })
         }
@@ -151,10 +169,14 @@ where
     }
 
     fn acquire_framebuffer(&self) -> backend_metal::imp::ImageView {
-        self.image_view.borrow().clone()
+        self.ensure_have_drawable();
+
+        ImageView::new(self.drawable.borrow().as_ref().unwrap().texture())
     }
 
     fn finalize_commands(&self, buffer: &mut backend_metal::imp::CommandBuffer) {
+        self.ensure_have_drawable();
+
         buffer.metal_command_buffer().unwrap().present_drawable(
             self.drawable(),
         );
@@ -162,20 +184,23 @@ where
 
     fn swap_buffers(&self) {
         unsafe {
-            self.pool.get().release();
-            self.pool.set(metal::NSAutoreleasePool::alloc().init());
+            self.forget_drawable();
 
-            // FIXME: what if this fails?
-            self.drawable.set(self.layer.next_drawable().expect(
-                "I just don't know what went wrong! *hopping on a cloud*",
-            ));
-            *self.image_view.borrow_mut() = ImageView::new(self.drawable.get().texture());
+            self.pool.borrow_mut().take();
+            *self.pool.borrow_mut() = Some(OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap());
         }
     }
 
-    fn size(&self) -> Vector2<u32> {
-        let texture = self.drawable.get().texture();
+    fn framebuffer_size(&self) -> Vector2<u32> {
+        self.ensure_have_drawable();
+
+        let texture = self.drawable.borrow().as_ref().unwrap().texture();
         Vector2::new(texture.width() as u32, texture.height() as u32)
+    }
+
+    fn set_framebuffer_size(&self, size: Vector2<u32>) {
+        self.layer.set_drawable_size(NSSize::new(size.x as f64, size.y as f64));
+        self.forget_drawable();
     }
 }
 

@@ -33,7 +33,8 @@ pub trait Window: Debug {
     /// Inserts commands into the command buffer to present the rendered image.
     fn finalize_commands(&self, buffer: &mut <Self::Backend as Backend>::CommandBuffer);
     fn swap_buffers(&self);
-    fn size(&self) -> Vector2<u32>;
+    fn framebuffer_size(&self) -> Vector2<u32>;
+    fn set_framebuffer_size(&self, size: Vector2<u32>);
 }
 
 /// Window with a constructor function.
