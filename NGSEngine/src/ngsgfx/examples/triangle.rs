@@ -12,8 +12,10 @@ extern crate cgmath;
 #[macro_use]
 extern crate include_data;
 
-static SPIRV_FRAG: include_data::DataView = include_data!(concat!(env!("OUT_DIR"), "/triangle.frag.spv"));
-static SPIRV_VERT: include_data::DataView = include_data!(concat!(env!("OUT_DIR"), "/triangle.vert.spv"));
+static SPIRV_FRAG: include_data::DataView =
+    include_data!(concat!(env!("OUT_DIR"), "/triangle.frag.spv"));
+static SPIRV_VERT: include_data::DataView =
+    include_data!(concat!(env!("OUT_DIR"), "/triangle.vert.spv"));
 
 use cgmath::Vector2;
 
@@ -53,7 +55,9 @@ impl<B: Backend> Renderer<B> {
         let vertex_buffer = Self::make_vertex_buffer(&device);
         let render_pass = Self::make_render_pass(&device);
         let pipeline = Self::make_pipeline(&device, &render_pass);
-        let command_buffer = device.main_queue().make_command_buffer()
+        let command_buffer = device
+            .main_queue()
+            .make_command_buffer()
             .map(RefCell::new)
             .unwrap();
 
@@ -69,9 +73,9 @@ impl<B: Backend> Renderer<B> {
     fn make_render_pass(device: &B::Device) -> B::RenderPass {
         let factory = device.factory();
 
-        let desc = core::RenderPassDescription{
+        let desc = core::RenderPassDescription {
             attachments: &[
-                core::RenderPassAttachmentDescription{
+                core::RenderPassAttachmentDescription {
                     may_alias: false,
                     format: core::ImageFormat::SrgbBgra8,
                     load_op: core::AttachmentLoadOp::Clear,
@@ -83,17 +87,17 @@ impl<B: Backend> Renderer<B> {
                 },
             ],
             subpasses: &[
-                core::RenderSubpassDescription{
+                core::RenderSubpassDescription {
                     input_attachments: &[],
                     color_attachments: &[
-                        core::RenderPassAttachmentReference{
+                        core::RenderPassAttachmentReference {
                             attachment_index: Some(0),
                             layout: core::ImageLayout::ColorAttachment,
                         },
                     ],
                     depth_stencil_attachment: None,
                     preserve_attachment_indices: &[],
-                }
+                },
             ],
             dependencies: &[],
         };
@@ -104,52 +108,46 @@ impl<B: Backend> Renderer<B> {
     fn make_pipeline(device: &B::Device, render_pass: &B::RenderPass) -> B::GraphicsPipeline {
         let factory = device.factory();
 
-        let vertex_shader_desc = core::ShaderModuleDescription{
-            spirv_code: SPIRV_VERT.as_u32_slice(),
-        };
+        let vertex_shader_desc =
+            core::ShaderModuleDescription { spirv_code: SPIRV_VERT.as_u32_slice() };
         let vertex_shader = factory.make_shader_module(&vertex_shader_desc).unwrap();
 
-        let fragment_shader_desc = core::ShaderModuleDescription{
-            spirv_code: SPIRV_FRAG.as_u32_slice(),
-        };
+        let fragment_shader_desc =
+            core::ShaderModuleDescription { spirv_code: SPIRV_FRAG.as_u32_slice() };
         let fragment_shader = factory.make_shader_module(&fragment_shader_desc).unwrap();
 
-        let layout_desc = core::PipelineLayoutDescription{
-            descriptor_set_layouts: &[]
-        };
+        let layout_desc = core::PipelineLayoutDescription { descriptor_set_layouts: &[] };
         let layout = factory.make_pipeline_layout(&layout_desc).unwrap();
 
-        let color_attachments = &[
-            Default::default(),
-        ];
-        let desc = core::GraphicsPipelineDescription{
+        let color_attachments = &[Default::default()];
+        let desc = core::GraphicsPipelineDescription {
             shader_stages: &[
-                core::ShaderStageDescription{
+                core::ShaderStageDescription {
                     stage: core::ShaderStageFlags::Fragment,
                     module: &fragment_shader,
                     entry_point_name: "main",
                 },
-                core::ShaderStageDescription{
+                core::ShaderStageDescription {
                     stage: core::ShaderStageFlags::Vertex,
                     module: &vertex_shader,
                     entry_point_name: "main",
                 },
             ],
             vertex_buffers: &[
-                core::VertexBufferLayoutDescription{
+                core::VertexBufferLayoutDescription {
                     binding: 0,
                     stride: mem::size_of::<Vertex>(),
                     input_rate: core::VertexInputRate::Vertex,
                 },
             ],
             vertex_attributes: &[
-                core::VertexAttributeDescription{
+                core::VertexAttributeDescription {
                     location: VERTEX_ATTRIBUTE_POSITION,
                     binding: 0,
                     format: VertexFormat(VectorWidth::Vector3, ScalarFormat::F32),
                     offset: 0,
                 },
-                core::VertexAttributeDescription{
+                core::VertexAttributeDescription {
                     location: VERTEX_ATTRIBUTE_COLOR,
                     binding: 0,
                     format: VertexFormat(VectorWidth::Vector3, ScalarFormat::F32),
@@ -157,13 +155,13 @@ impl<B: Backend> Renderer<B> {
                 },
             ],
             topology: core::PrimitiveTopology::Triangles,
-            rasterizer: Some(core::GraphicsPipelineRasterizerDescription{
+            rasterizer: Some(core::GraphicsPipelineRasterizerDescription {
                 viewport: core::StaticOrDynamic::Dynamic,
                 cull_mode: core::CullMode::None,
                 depth_write: false,
                 depth_test: core::CompareFunction::Always,
                 color_attachments,
-                .. Default::default()
+                ..Default::default()
             }),
             pipeline_layout: &layout,
             render_pass,
@@ -189,14 +187,14 @@ impl<B: Backend> Renderer<B> {
             },
         ];
         let size = mem::size_of_val(&vertices);
-        let staging_buffer_desc = core::BufferDescription{
+        let staging_buffer_desc = core::BufferDescription {
             usage: core::BufferUsageFlags::TransferSource.into(),
-            size
+            size,
         };
-        let buffer_desc = core::BufferDescription{
+        let buffer_desc = core::BufferDescription {
             usage: core::BufferUsageFlags::VertexBuffer |
-                   core::BufferUsageFlags::TransferDestination,
-            size
+                core::BufferUsageFlags::TransferDestination,
+            size,
         };
 
         let factory = device.factory();
@@ -204,28 +202,36 @@ impl<B: Backend> Renderer<B> {
         // Create a staging heap/buffer
         let staging_req: core::MemoryRequirements =
             factory.get_buffer_memory_requirements(&staging_buffer_desc);
-        let mut staging_heap = factory.make_heap(&core::HeapDescription{
-            size: staging_req.size,
-            storage_mode: core::StorageMode::Shared,
-        }).unwrap();
+        let mut staging_heap = factory
+            .make_heap(&core::HeapDescription {
+                size: staging_req.size,
+                storage_mode: core::StorageMode::Shared,
+            })
+            .unwrap();
 
-        let (mut staging_alloc, staging_buffer) = staging_heap.make_buffer(&staging_buffer_desc)
-            .unwrap().unwrap();
+        let (mut staging_alloc, staging_buffer) = staging_heap
+            .make_buffer(&staging_buffer_desc)
+            .unwrap()
+            .unwrap();
         {
             let mut map = staging_heap.map_memory(&mut staging_alloc);
             unsafe {
-                ptr::copy(vertices.as_ptr(), map.as_mut_ptr() as *mut Vertex,
-                    vertices.len());
+                ptr::copy(
+                    vertices.as_ptr(),
+                    map.as_mut_ptr() as *mut Vertex,
+                    vertices.len(),
+                );
             }
         }
 
         // Create a device heap/buffer
-        let req: core::MemoryRequirements =
-            factory.get_buffer_memory_requirements(&buffer_desc);
-        let mut heap = factory.make_heap(&core::HeapDescription{
-            size: req.size,
-            storage_mode: core::StorageMode::Private,
-        }).unwrap();
+        let req: core::MemoryRequirements = factory.get_buffer_memory_requirements(&buffer_desc);
+        let mut heap = factory
+            .make_heap(&core::HeapDescription {
+                size: req.size,
+                storage_mode: core::StorageMode::Private,
+            })
+            .unwrap();
 
         let buffer = heap.make_buffer(&buffer_desc).unwrap().unwrap().1;
 
@@ -240,7 +246,7 @@ impl<B: Backend> Renderer<B> {
             core::PipelineStageFlags::Transfer.into(),
             core::PipelineStageFlags::VertexInput.into(),
             &[
-                core::Barrier::BufferMemoryBarrier{
+                core::Barrier::BufferMemoryBarrier {
                     buffer: &buffer,
                     source_access_mask: core::AccessFlags::TransferWrite.into(),
                     destination_access_mask: core::AccessFlags::VertexAttributeRead.into(),
@@ -250,14 +256,22 @@ impl<B: Backend> Renderer<B> {
             ],
         );
         cb.end_encoding();
-        queue.submit_commands(&[
-            &core::SubmissionInfo{
-                buffers: &[&cb],
-                wait_semaphores: &[],
-                signal_semaphores: &[],
-            },
-        ], None).unwrap();
-        assert_eq!(cb.wait_completion(time::Duration::from_secs(1)).unwrap(), true);
+        queue
+            .submit_commands(
+                &[
+                    &core::SubmissionInfo {
+                        buffers: &[&cb],
+                        wait_semaphores: &[],
+                        signal_semaphores: &[],
+                    },
+                ],
+                None,
+            )
+            .unwrap();
+        assert_eq!(
+            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
+            true
+        );
 
         // Phew! Done!
         buffer
@@ -273,30 +287,41 @@ impl<B: Backend> RendererView<B> {
     }
 
     fn render_to<F>(&self, image_view: &B::ImageView, finalizer: F)
-        where F : FnOnce (&mut B::CommandBuffer)
+    where
+        F: FnOnce(&mut B::CommandBuffer),
     {
         let renderer: &Renderer<B> = &*self.renderer;
         let device: &B::Device = &*renderer.device;
-        let framebuffer = device.factory().make_framebuffer(&core::FramebufferDescription{
-            render_pass: &renderer.render_pass,
-            attachments: &[
-                core::FramebufferAttachmentDescription{
-                    image_view: image_view,
-                    clear_values: core::ClearValues::ColorFloat([0f32, 0f32, 0f32, 1f32]),
-                }
-            ],
-            width: self.size.x,
-            height: self.size.y,
-        }).unwrap();
+        let framebuffer = device
+            .factory()
+            .make_framebuffer(&core::FramebufferDescription {
+                render_pass: &renderer.render_pass,
+                attachments: &[
+                    core::FramebufferAttachmentDescription {
+                        image_view: image_view,
+                        clear_values: core::ClearValues::ColorFloat([0f32, 0f32, 0f32, 1f32]),
+                    },
+                ],
+                width: self.size.x,
+                height: self.size.y,
+            })
+            .unwrap();
         let viewport = core::Viewport {
-            x: 0f32, y: 0f32, width: self.size.x as f32, height: self.size.y as f32,
-            min_depth: 0f32, max_depth: 1f32,
+            x: 0f32,
+            y: 0f32,
+            width: self.size.x as f32,
+            height: self.size.y as f32,
+            min_depth: 0f32,
+            max_depth: 1f32,
         };
 
         let mut cb = renderer.command_buffer.borrow_mut();
 
         // TODO: use multiple buffers
-        assert_eq!(cb.wait_completion(time::Duration::from_secs(1)).unwrap(), true);
+        assert_eq!(
+            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
+            true
+        );
 
         cb.begin_encoding();
 
@@ -314,15 +339,19 @@ impl<B: Backend> RendererView<B> {
         finalizer(&mut cb);
         cb.end_encoding();
 
-        device.main_queue().submit_commands(&[
-            &core::SubmissionInfo {
-                buffers: &[
-                    &*cb
+        device
+            .main_queue()
+            .submit_commands(
+                &[
+                    &core::SubmissionInfo {
+                        buffers: &[&*cb],
+                        wait_semaphores: &[],
+                        signal_semaphores: &[],
+                    },
                 ],
-                wait_semaphores: &[],
-                signal_semaphores: &[],
-            },
-        ], None).unwrap();
+                None,
+            )
+            .unwrap();
     }
 }
 
@@ -333,7 +362,10 @@ struct App<W: Window> {
     renderer_view: RefCell<RendererView<W::Backend>>,
 }
 
-fn create_renderer_view<W: Window>(renderer: &Arc<Renderer<W::Backend>>, window: &W) -> RendererView<W::Backend> {
+fn create_renderer_view<W: Window>(
+    renderer: &Arc<Renderer<W::Backend>>,
+    window: &W,
+) -> RendererView<W::Backend> {
     RendererView::new(&renderer, window.size())
 }
 
@@ -351,18 +383,16 @@ impl<W: Window> App<W> {
     fn run(&self) {
         let mut running = true;
         while running {
-            self.window.events_loop().poll_events(|event| {
-                match event {
-                    winit::Event::WindowEvent { event: winit::WindowEvent::Closed, .. } => {
-                        self.window.events_loop().interrupt();
-                        running = false;
-                    },
-                    winit::Event::WindowEvent { event: winit::WindowEvent::Resized(_, _), .. } => {
-                        *self.renderer_view.borrow_mut() =
-                            create_renderer_view(&self.renderer, &self.window);
-                    },
-                    _ => ()
+            self.window.events_loop().poll_events(|event| match event {
+                winit::Event::WindowEvent { event: winit::WindowEvent::Closed, .. } => {
+                    self.window.events_loop().interrupt();
+                    running = false;
                 }
+                winit::Event::WindowEvent { event: winit::WindowEvent::Resized(_, _), .. } => {
+                    *self.renderer_view.borrow_mut() =
+                        create_renderer_view(&self.renderer, &self.window);
+                }
+                _ => (),
             });
             self.update();
         }
@@ -371,8 +401,9 @@ impl<W: Window> App<W> {
     fn update(&self) {
         let fb = self.window.acquire_framebuffer();
 
-        self.renderer_view.borrow_mut()
-            .render_to(&fb, |cb| self.window.finalize_commands(cb));
+        self.renderer_view.borrow_mut().render_to(&fb, |cb| {
+            self.window.finalize_commands(cb)
+        });
 
         self.window.swap_buffers();
     }
@@ -381,8 +412,7 @@ impl<W: Window> App<W> {
 fn main() {
     let events_loop = winit::EventsLoop::new();
     let builder = winit::WindowBuilder::new();
-    let window = DefaultWindow::new(builder, &events_loop,
-        core::ImageFormat::SrgbBgra8).unwrap();
+    let window = DefaultWindow::new(builder, &events_loop, core::ImageFormat::SrgbBgra8).unwrap();
     let app = App::new(window);
     app.run();
     println!("Exiting...");
