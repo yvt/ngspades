@@ -20,7 +20,7 @@ static SPIRV_VERT: include_data::DataView =
 use cgmath::Vector2;
 
 use gfx::core;
-use gfx::core::{VertexFormat, VectorWidth, ScalarFormat};
+use gfx::core::{VertexFormat, VectorWidth, ScalarFormat, DebugMarker};
 use gfx::prelude::*;
 use gfx::wsi::{DefaultWindow, NewWindow, Window, winit};
 
@@ -60,6 +60,9 @@ impl<B: Backend> Renderer<B> {
             .make_command_buffer()
             .map(RefCell::new)
             .unwrap();
+
+        render_pass.set_label(Some("main render pass"));
+        command_buffer.borrow().set_label(Some("main primary command buffer"));
 
         Self {
             device,
@@ -121,6 +124,7 @@ impl<B: Backend> Renderer<B> {
 
         let color_attachments = &[Default::default()];
         let desc = core::GraphicsPipelineDescription {
+            label: Some("main graphics pipeline"),
             shader_stages: &[
                 core::ShaderStageDescription {
                     stage: core::ShaderStageFlags::Fragment,
@@ -182,7 +186,7 @@ impl<B: Backend> Renderer<B> {
                 color: [0f32, 1f32, 0f32],
             },
             Vertex {
-                position: [0f32, 0.45f32, 0f32],
+                position: [0f32, -0.5f32, 0f32],
                 color: [0f32, 0f32, 1f32],
             },
         ];
@@ -235,12 +239,19 @@ impl<B: Backend> Renderer<B> {
 
         let buffer = heap.make_buffer(&buffer_desc).unwrap().unwrap().1;
 
+        // Add debug labels
+        buffer.set_label(Some("main vertex buffer"));
+        staging_buffer.set_label(Some("staging buffer for main vertex buffer"));
+
         // Fill the buffer
         let queue = device.main_queue();
         let mut cb = queue.make_command_buffer().unwrap();
+        cb.set_label(Some("staging CB to main vertex buffer"));
         cb.begin_encoding();
         cb.begin_blit_pass();
+        cb.begin_debug_group(&DebugMarker::new("staging to main vertex buffer"));
         cb.copy_buffer(&staging_buffer, 0, &buffer, 0, size);
+        cb.end_debug_group();
         cb.end_pass();
         cb.barrier(
             core::PipelineStageFlags::Transfer.into(),
@@ -328,10 +339,12 @@ impl<B: Backend> RendererView<B> {
         cb.begin_render_pass(&framebuffer);
         cb.begin_render_subpass(core::RenderPassContents::Inline);
 
+        cb.begin_debug_group(&DebugMarker::new("render a triangle"));
         cb.bind_graphics_pipeline(&renderer.pipeline);
         cb.set_viewport(&viewport);
         cb.bind_vertex_buffers(0, &[(&renderer.vertex_buffer, 0)]);
         cb.draw(3, 1, 0, 0);
+        cb.end_debug_group();
 
         cb.end_render_subpass();
         cb.end_pass();

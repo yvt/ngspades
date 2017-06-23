@@ -126,6 +126,26 @@ impl<'a> MTLCommandEncoder {
         }
     }
 
+    pub fn insert_debug_signpost(&self, string: &str) {
+        unsafe {
+            let nsstring = NSString::from_str(string);
+            msg_send![self.0, insertDebugSignpost:nsstring]
+        }
+    }
+
+    pub fn push_debug_group(&self, string: &str) {
+        unsafe {
+            let nsstring = NSString::from_str(string);
+            msg_send![self.0, pushDebugGroup:nsstring]
+        }
+    }
+
+    pub fn pop_debug_group(&self) {
+        unsafe {
+            msg_send![self.0, popDebugGroup]
+        }
+    }
+
     pub fn end_encoding(&self) {
         unsafe {
             msg_send![self.0, endEncoding]

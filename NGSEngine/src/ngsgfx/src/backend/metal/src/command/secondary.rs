@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use core;
+use {core, metal};
 
 use super::graphics::RenderCommandEncoder;
 
@@ -21,6 +21,10 @@ impl SecondaryCommandBuffer {
 
     pub(crate) fn render_command_encoder(&mut self) -> &mut RenderCommandEncoder {
         &mut self.encoder
+    }
+
+    pub(crate) fn metal_command_encoder(&mut self) -> metal::MTLCommandEncoder {
+        self.encoder.metal_command_encoder()
     }
 }
 

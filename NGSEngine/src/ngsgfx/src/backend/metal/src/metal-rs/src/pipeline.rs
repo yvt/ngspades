@@ -438,13 +438,6 @@ impl<'a> MTLRenderPipelineState {
             label.as_str()
         }
     }
-
-    pub fn set_label(&self, label: &str) {
-        unsafe {
-            let nslabel = NSString::from_str(label);
-            msg_send![self.0, setLabel:nslabel]
-        }
-    }
 }
 
 impl NSObjectProtocol for MTLRenderPipelineState {

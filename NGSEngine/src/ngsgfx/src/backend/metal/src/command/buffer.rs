@@ -68,6 +68,37 @@ impl CommandBuffer {
         }
     }
 
+    /// Be careful about the returned object; it is guaranteed to be valid only
+    /// as long as `self` (functions of `metal-rs` are not marked as `unsafe`
+    /// in spite of that!)
+    pub(crate) fn expect_command_encoder(&self) -> metal::MTLCommandEncoder {
+        match self.encoder {
+            EncoderState::Graphics {
+                encoder: GraphicsEncoderState::SecondaryCommandBuffers(..), ..
+            } => {
+                panic!("cannot encode a debug command into SCB render subpass");
+            }
+            EncoderState::Graphics {
+                encoder: GraphicsEncoderState::Inline(ref encoder), ..
+            } => {
+                encoder.metal_command_encoder()
+            }
+            EncoderState::Compute(ref encoder) => {
+                ***encoder
+            }
+            EncoderState::Blit(ref encoder) => {
+                ***encoder
+            }
+            EncoderState::NoPass |
+            EncoderState::NotRecording => {
+                panic!("pass is not active");
+            }
+            EncoderState::GraphicsIntermission { .. } => {
+                panic!("render subpass is not active");
+            }
+        }
+    }
+
     pub(crate) fn expect_graphics_pipeline(&mut self) -> &mut RenderCommandEncoder {
         if let EncoderState::Graphics {
             encoder: GraphicsEncoderState::Inline(ref mut encoder), ..

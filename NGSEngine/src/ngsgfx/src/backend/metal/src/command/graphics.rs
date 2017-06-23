@@ -33,6 +33,10 @@ impl RenderCommandEncoder {
         self.pipeline = None;
     }
 
+    pub fn metal_command_encoder(&self) -> metal::MTLCommandEncoder {
+        **self.metal_encoder
+    }
+
     pub fn set_label(&self, label: &str) {
         self.metal_encoder.set_label(label);
     }

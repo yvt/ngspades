@@ -18,24 +18,26 @@ use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, Render
 
 /// Handle for compute pipeline objects.
 pub trait ComputePipeline
-    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
     fn max_num_workgroup_invocations(&self) -> u32;
 }
 
 /// Handle for graphics pipeline objects.
 pub trait GraphicsPipeline
-    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
 }
 
 /// Handle for stencil state objects.
 pub trait StencilState
-    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
+    : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any {
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct ComputePipelineDescription<'a, TPipelineLayout: PipelineLayout, TShaderModule: ShaderModule> {
     pub shader_stage: ShaderStageDescription<'a, TShaderModule>,
     pub pipeline_layout: &'a TPipelineLayout,
+
+    pub label: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -62,6 +64,8 @@ pub struct GraphicsPipelineDescription<'a, TRenderPass: RenderPass, TPipelineLay
     pub pipeline_layout: &'a TPipelineLayout,
     pub render_pass: &'a TRenderPass,
     pub subpass_index: usize,
+
+    pub label: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -131,6 +135,8 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
 pub struct StencilStateDescription<'a, TGraphicsPipeline: GraphicsPipeline> {
     pub pipeline: &'a TGraphicsPipeline,
     pub set: StencilDescriptionSet,
+
+    pub label: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy, Default)]

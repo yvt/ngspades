@@ -35,7 +35,8 @@ pub mod prelude {
 
     pub use core::Buffer;
     pub use core::{CommandBuffer, CommandEncoder};
-    pub use core::{RenderSubpassCommandEncoder, ComputeCommandEncoder, BlitCommandEncoder};
+    pub use core::{RenderSubpassCommandEncoder, ComputeCommandEncoder, BlitCommandEncoder,
+        DebugCommandEncoder};
     pub use core::SecondaryCommandBuffer;
     pub use core::CommandQueue;
     pub use core::ComputePipeline;
@@ -51,6 +52,7 @@ pub mod prelude {
     pub use core::{Heap, MappableHeap};
     pub use core::Image;
     pub use core::ImageView;
+    pub use core::Marker;
     pub use core::PipelineLayout;
     pub use core::RenderPass;
     pub use core::Sampler;

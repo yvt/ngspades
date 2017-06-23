@@ -73,13 +73,15 @@ unsafe impl Sync for GraphicsPipelineData {} // no interior mutability
 
 impl core::Marker for GraphicsPipeline {
     fn set_label(&self, label: Option<&str>) {
-        self.data.metal_pipeline.set_label(label.unwrap_or(""));
+        // TODO: [MTLRenderPipelineState setLabel:] fails with the following error:
+        //       `[MTLIGRenderPipelineState setLabel:]: unrecognized selector sent to instance ...`
+        /* self.data.metal_pipeline.set_label(label.unwrap_or(""));
         if let Some(GraphicsPipelineRasterizerData {
                         metal_ds_state: Some((ref state, _)), ..
                     }) = self.data.raster_data
         {
             state.set_label(label.unwrap_or(""));
-        }
+        } */
     }
 }
 
@@ -263,6 +265,7 @@ impl GraphicsPipeline {
                     depth_write,
                     depth_test,
                     value,
+                    desc.label,
                 ));
             }
 
@@ -370,7 +373,12 @@ impl GraphicsPipeline {
             metal_desc.set_rasterization_enabled(false);
         }
 
-        // setup `alphaToOneEnabled` is not supported for now
+        // `alphaToOneEnabled` is not supported for now
+
+        // set debug label on `MTLRenderPipelineDescriptor`
+        if let Some(label) = desc.label {
+            metal_desc.set_label(label);
+        }
 
         let metal_pipeline = metal_device
             .new_render_pipeline_state(*metal_desc)
@@ -485,6 +493,7 @@ fn make_depth_stencil_state(
     depth_write: bool,
     depth_test: metal::MTLCompareFunction,
     stencil_state: &core::StencilDescriptionSet,
+    label: Option<&str>,
 ) -> (OCPtr<metal::MTLDepthStencilState>, StencilReference) {
     let metal_desc =
         unsafe { OCPtr::from_raw(metal::MTLDepthStencilDescriptor::alloc().init()).unwrap() };
@@ -524,6 +533,10 @@ fn make_depth_stencil_state(
         front: stencil_state.front.reference,
         back: stencil_state.back.reference,
     };
+
+    if let Some(label) = label {
+        metal_desc.set_label(label);
+    }
 
     (
         OCPtr::new(metal_device.new_depth_stencil_state(*metal_desc)).unwrap(),
@@ -592,6 +605,7 @@ impl StencilState {
             raster_data.depth_write,
             raster_data.depth_test,
             &desc.set,
+            desc.label,
         );
 
         let data = StencilStateData {

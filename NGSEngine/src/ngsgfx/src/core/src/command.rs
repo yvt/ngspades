@@ -10,7 +10,7 @@ use std::any::Any;
 use std::time::Duration;
 
 use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Framebuffer,
-     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessFlags};
+     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessFlags, DebugMarker};
 
 use enumflags::BitFlags;
 use cgmath::Vector3;
@@ -222,7 +222,7 @@ pub trait CommandEncoder<B: Backend>
 }
 
 /// Encodes render commands into a command buffer.
-pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any {
+pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEncoder {
     /// Sets the current `GraphicsPipeline` object.
     ///
     /// A render pass must be active and compatible with the specified pipeline.
@@ -289,7 +289,7 @@ pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any {
 }
 
 /// Encodes compute commands into a command buffer.
-pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any {
+pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEncoder {
     /// Set the current `ComputePipeline` object.
     ///
     /// A compute pass must be active.
@@ -302,7 +302,7 @@ pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any {
 }
 
 /// Encodes blit commands into a command buffer.
-pub trait BlitCommandEncoder<B: Backend>: Debug + Send + Any {
+pub trait BlitCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEncoder {
     /// Copy data from a buffer to another buffer.
     fn copy_buffer(
         &mut self,
@@ -315,3 +315,27 @@ pub trait BlitCommandEncoder<B: Backend>: Debug + Send + Any {
 
     // TODO: more commands
 }
+
+/// Encodes debug markers into a command buffer.
+///
+/// FIXME: can we allow these functions to be called inside a render pass with
+/// `contents == SecondaryCommandBuffer`?
+pub trait DebugCommandEncoder: Debug + Send + Any {
+    /// Begin a debug group.
+    ///
+    /// A graphics subpass or a blit/compute pass must be active.
+    fn begin_debug_group(&mut self, marker: &DebugMarker);
+
+    /// End a debug group.
+    ///
+    /// There must be an outstanding call to `begin_debug_group` prior to this one
+    /// in the same blit/compute pass or graphics subpass.
+    fn end_debug_group(&mut self);
+
+    /// Insert a debug marker.
+    ///
+    /// A graphics subpass or a blit/compute pass must be active.
+    fn insert_debug_marker(&mut self, marker: &DebugMarker);
+}
+
+
