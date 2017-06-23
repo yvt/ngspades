@@ -7,10 +7,6 @@
 // Based on Sascha Williems' "triangle.c" Vulkan example (which is licensed under MIT).
 // https://github.com/SaschaWillems/Vulkan/blob/master/triangle/triangle.cpp
 
-#![cfg(target_os="macos")]
-
-// TODO: make this cross-platform
-
 extern crate ngsgfx as gfx;
 extern crate cgmath;
 #[macro_use]
@@ -22,13 +18,9 @@ static SPIRV_VERT: include_data::DataView = include_data!(concat!(env!("OUT_DIR"
 use cgmath::Vector2;
 
 use gfx::core;
-use gfx::backends::metal as gfxmetal;
-use gfx::wsi::metal as wsimetal;
-use gfxmetal::ll as metal;
 use gfx::core::{VertexFormat, VectorWidth, ScalarFormat};
 use gfx::prelude::*;
-
-use gfx::winit;
+use gfx::wsi::{DefaultWindow, NewWindow, Window, winit};
 
 use std::sync::Arc;
 use std::{mem, ptr, time};
@@ -192,7 +184,7 @@ impl<B: Backend> Renderer<B> {
                 color: [0f32, 1f32, 0f32],
             },
             Vertex {
-                position: [0f32, -0.5f32, 0f32],
+                position: [0f32, 0.45f32, 0f32],
                 color: [0f32, 0f32, 1f32],
             },
         ];
@@ -315,6 +307,7 @@ impl<B: Backend> RendererView<B> {
         cb.set_viewport(&viewport);
         cb.bind_vertex_buffers(0, &[(&renderer.vertex_buffer, 0)]);
         cb.draw(3, 1, 0, 0);
+
         cb.end_render_subpass();
         cb.end_pass();
 
@@ -385,63 +378,11 @@ impl<W: Window> App<W> {
     }
 }
 
-trait Window {
-    type Backend: Backend;
-
-    fn events_loop(&self) -> &winit::EventsLoop;
-    fn window_id(&self) -> winit::WindowId;
-    fn device(&self) -> &Arc<<Self::Backend as Backend>::Device>;
-    fn acquire_framebuffer(&self) -> <Self::Backend as Backend>::ImageView;
-    fn finalize_commands(&self, buffer: &mut <Self::Backend as Backend>::CommandBuffer);
-    fn swap_buffers(&self);
-    fn size(&self) -> Vector2<u32>;
-}
-
-struct MetalWindow<'a> {
-    events_loop: &'a winit::EventsLoop,
-    metal_window: wsimetal::MetalWindow,
-}
-
-impl<'a> MetalWindow<'a> {
-    fn new(events_loop: &'a winit::EventsLoop) -> Self {
-        let builder = winit::WindowBuilder::new();
-        let metal_window = wsimetal::make_window(builder, &events_loop,
-            core::ImageFormat::SrgbBgra8).unwrap();
-        Self {
-            events_loop, metal_window,
-        }
-    }
-}
-
-impl<'a> Window for MetalWindow<'a> {
-    type Backend = gfxmetal::Backend;
-
-    fn events_loop(&self) -> &winit::EventsLoop { &self.events_loop }
-    fn window_id(&self) -> winit::WindowId {
-        self.metal_window.winit_window().id()
-    }
-    fn device(&self) -> &Arc<<Self::Backend as Backend>::Device> {
-        self.metal_window.device()
-    }
-    fn finalize_commands(&self, buffer: &mut <Self::Backend as Backend>::CommandBuffer) {
-        buffer.metal_command_buffer()
-            .unwrap()
-            .present_drawable(self.metal_window.drawable());
-    }
-    fn acquire_framebuffer(&self) -> <Self::Backend as Backend>::ImageView {
-        self.metal_window.image_view().clone()
-    }
-    fn swap_buffers(&self) {
-        self.metal_window.swap_buffers();
-    }
-    fn size(&self) -> Vector2<u32> {
-        self.metal_window.size()
-    }
-}
-
 fn main() {
     let events_loop = winit::EventsLoop::new();
-    let window = MetalWindow::new(&events_loop);
+    let builder = winit::WindowBuilder::new();
+    let window = DefaultWindow::new(builder, &events_loop,
+        core::ImageFormat::SrgbBgra8).unwrap();
     let app = App::new(window);
     app.run();
     println!("Exiting...");

@@ -8,16 +8,25 @@
 //! [core]: ../ngsgfx_core/index.html
 
 pub extern crate ngsgfx_core as core;
-pub extern crate winit;
+extern crate ngsgfx_wsi_core;
 
 pub mod backends {
     #[cfg(target_os="macos")]
     pub extern crate ngsgfx_metal as metal;
 }
 
+/// Provides the window system integration functionality.
+///
+/// Provides an alias to a type implementing `NewWindow`, named `DefaultWindow`
+/// that represents the default implementation on the target platform;
 pub mod wsi {
+    pub use ngsgfx_wsi_core::*;
+
     #[cfg(target_os="macos")]
     pub extern crate ngsgfx_wsi_metal as metal;
+
+    #[cfg(target_os="macos")]
+    pub use self::metal::MetalWindow as DefaultWindow;
 }
 
 /// Contains frequently used traits (from `ngsgfx_core`) for convenience.

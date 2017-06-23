@@ -1,0 +1,9 @@
+[package]
+name = "ngsgfx_wsi_core"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+winit = "0.6"
+cgmath = "0.14.1"
+ngsgfx_core = { path = "../core" }
