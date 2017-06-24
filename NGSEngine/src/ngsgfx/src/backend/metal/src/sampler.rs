@@ -64,6 +64,10 @@ impl Sampler {
 
         Ok(Self { data: RefEqArc::new(data) })
     }
+
+    pub fn metal_sampler_state(&self) -> metal::MTLSamplerState {
+        *self.data.metal_sampler
+    }
 }
 
 fn translate_filter(value: core::Filter) -> metal::MTLSamplerMinMagFilter {

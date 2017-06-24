@@ -7,12 +7,16 @@ use {core, metal, OCPtr};
 
 use cgmath::Vector3;
 
-use imp::{Backend, CommandBuffer, ComputePipeline, PipelineLayout, DescriptorSet};
+use imp::{Backend, CommandBuffer, ComputePipeline, PipelineLayout, DescriptorSet,
+          ComputeResourceBinder};
 
-#[derive(Debug, PartialEq, Eq)]
+use super::descriptors::DescriptorSetBindingState;
+
+#[derive(Debug)]
 pub(crate) struct ComputeCommandEncoder {
     metal_encoder: OCPtr<metal::MTLComputeCommandEncoder>,
     pipeline: Option<ComputePipeline>,
+    descriptor_set_binding: DescriptorSetBindingState,
 }
 
 impl ComputeCommandEncoder {
@@ -20,6 +24,7 @@ impl ComputeCommandEncoder {
         Self {
             metal_encoder,
             pipeline: None,
+            descriptor_set_binding: DescriptorSetBindingState::new(),
         }
     }
 
@@ -45,10 +50,16 @@ impl ComputeCommandEncoder {
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
-        descriptor_sets: &[DescriptorSet],
+        descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
-        unimplemented!()
+        self.descriptor_set_binding.bind_descriptor_sets(
+            &ComputeResourceBinder(*self.metal_encoder),
+            pipeline_layout,
+            start_index,
+            descriptor_sets,
+            dynamic_offsets,
+        );
     }
 
     fn dispatch(&mut self, workgroup_count: Vector3<u32>) {
@@ -74,7 +85,7 @@ impl core::ComputeCommandEncoder<Backend> for CommandBuffer {
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
-        descriptor_sets: &[DescriptorSet],
+        descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
         self.expect_compute_pipeline().bind_compute_descriptor_sets(

@@ -9,7 +9,7 @@ use super::graphics::RenderCommandEncoder;
 
 use imp::Backend;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct SecondaryCommandBuffer {
     encoder: RenderCommandEncoder,
 }

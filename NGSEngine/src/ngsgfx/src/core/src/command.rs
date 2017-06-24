@@ -260,7 +260,7 @@ pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any + DebugCom
         &mut self,
         pipeline_layout: &B::PipelineLayout,
         start_index: usize,
-        descriptor_sets: &[B::DescriptorSet],
+        descriptor_sets: &[&B::DescriptorSet],
         dynamic_offsets: &[u32],
     );
 
@@ -299,7 +299,7 @@ pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEn
         &mut self,
         pipeline_layout: &B::PipelineLayout,
         start_index: usize,
-        descriptor_sets: &[B::DescriptorSet],
+        descriptor_sets: &[&B::DescriptorSet],
         dynamic_offsets: &[u32],
     );
 

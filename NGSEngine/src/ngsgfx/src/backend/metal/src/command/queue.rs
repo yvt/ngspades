@@ -47,7 +47,7 @@ fn submit_commands(
             buffer.buffer.as_ref().expect(
                 "invalid command buffer state",
             );
-            if buffer.encoder != EncoderState::NotRecording {
+            if buffer.encoder.is_recording() {
                 panic!("invalid command buffer state");
             }
             // now we are sure this buffer is in the

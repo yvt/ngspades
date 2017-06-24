@@ -7,6 +7,7 @@ mod blit;
 mod buffer;
 mod compute;
 mod debug;
+mod descriptors;
 mod graphics;
 mod queue;
 mod secondary;

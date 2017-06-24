@@ -6,15 +6,18 @@
 use {core, metal, OCPtr};
 
 use imp::{Backend, CommandBuffer, StencilState, GraphicsPipeline, PipelineLayout, Buffer,
-          DescriptorSet, SecondaryCommandBuffer};
+          DescriptorSet, SecondaryCommandBuffer, GraphicsResourceBinder};
 
-#[derive(Debug, PartialEq, Eq)]
+use super::descriptors::DescriptorSetBindingState;
+
+#[derive(Debug)]
 pub(crate) struct RenderCommandEncoder {
     metal_encoder: OCPtr<metal::MTLRenderCommandEncoder>,
     pipeline: Option<GraphicsPipeline>,
+    descriptor_set_binding: DescriptorSetBindingState,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub(crate) enum GraphicsEncoderState {
     Inline(RenderCommandEncoder),
     SecondaryCommandBuffers(OCPtr<metal::MTLParallelRenderCommandEncoder>),
@@ -25,6 +28,7 @@ impl RenderCommandEncoder {
         Self {
             metal_encoder,
             pipeline: None,
+            descriptor_set_binding: DescriptorSetBindingState::new(),
         }
     }
 
@@ -92,10 +96,16 @@ impl RenderCommandEncoder {
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
-        descriptor_sets: &[DescriptorSet],
+        descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
-        unimplemented!()
+        self.descriptor_set_binding.bind_descriptor_sets(
+            &GraphicsResourceBinder(*self.metal_encoder),
+            pipeline_layout,
+            start_index,
+            descriptor_sets,
+            dynamic_offsets,
+        );
     }
 
     fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&Buffer, usize)]) {
@@ -175,15 +185,16 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
-        descriptor_sets: &[DescriptorSet],
+        descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
-        self.expect_graphics_pipeline().bind_graphics_descriptor_sets(
-            pipeline_layout,
-            start_index,
-            descriptor_sets,
-            dynamic_offsets,
-        )
+        self.expect_graphics_pipeline()
+            .bind_graphics_descriptor_sets(
+                pipeline_layout,
+                start_index,
+                descriptor_sets,
+                dynamic_offsets,
+            )
     }
 
     fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&Buffer, usize)]) {
@@ -261,7 +272,7 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
         &mut self,
         pipeline_layout: &PipelineLayout,
         start_index: usize,
-        descriptor_sets: &[DescriptorSet],
+        descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
         self.render_command_encoder().bind_graphics_descriptor_sets(

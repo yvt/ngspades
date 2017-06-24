@@ -14,6 +14,7 @@ use RefEqArc;
 use imp::{Backend, Buffer, ImageView, Sampler};
 
 const NUM_STAGES: usize = 4;
+const NUM_REAL_STAGES: usize = 3;
 const VERTEX_STAGE_INDEX: usize = 0;
 const FRAGMENT_STAGE_INDEX: usize = 1;
 const COMPUTE_STAGE_INDEX: usize = 2;
@@ -310,7 +311,7 @@ impl DescriptorSet {
             let mut table = data.table.borrow_mut();
             for i in 0..NUM_STAGES {
                 table.stages[i].image_views = vec![None; layout.data.num_image_views[i]];
-                table.stages[i].buffers = vec![None; layout.data.num_buffers[i]];
+                table.stages[i].buffers = vec![None; layout.data.buffers[i].len()];
                 table.stages[i].samplers = layout.data.samplers[i].clone(); // immutable samplers
             }
         }
@@ -368,6 +369,10 @@ impl DescriptorSet {
             }
         }
     }
+
+    pub(crate) fn layout(&self) -> &DescriptorSetLayout {
+        &self.data.layout
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -379,13 +384,28 @@ pub struct DescriptorSetLayout {
 struct DescriptorSetLayoutData {
     num_image_views: [usize; NUM_STAGES],
     num_buffers: [usize; NUM_STAGES],
+    buffers: [Vec<DescriptorSetBufferLayout>; NUM_REAL_STAGES],
     /// Used to preinitialize a descriptor set with static samplers.
     samplers: [Vec<Option<Sampler>>; NUM_STAGES],
     bindings: Vec<Option<DescriptorSetLayoutBinding>>,
-    // TODO: dynamic offset layout info
+
+    /// The binding index for each descriptor with dynamic offsets.
+    ///
+    /// `sum(bindings[x].num_elements for x in dynamic_binding_indexes) == num_dynamic_offsets`
+    dynamic_binding_indexes: Vec<usize>,
+    num_dynamic_offsets: usize,
+
     label: Mutex<Option<String>>,
 }
 
+/// Describes how each Metal buffer argument table entry is mapped from the NgsGFX representation.
+#[derive(Debug, Clone)]
+struct DescriptorSetBufferLayout {
+    /// Starting dynamic offset index if any.
+    dynamic_offset_index: Option<usize>,
+}
+
+/// Describes how each descriptor is mapped to Metal argument table entries.
 #[derive(Debug, Clone)]
 struct DescriptorSetLayoutBinding {
     descriptor_type: core::DescriptorType,
@@ -393,6 +413,7 @@ struct DescriptorSetLayoutBinding {
     image_view_index: [Option<usize>; NUM_STAGES],
     buffer_index: [Option<usize>; NUM_STAGES],
     sampler_index: [Option<usize>; NUM_STAGES],
+    dynamic_offset_index: Option<usize>,
 }
 
 impl core::DescriptorSetLayout for DescriptorSetLayout {}
@@ -402,7 +423,10 @@ impl DescriptorSetLayout {
         let mut bindings = Vec::new();
         let mut num_image_views = [0; NUM_STAGES];
         let mut num_buffers = [0; NUM_STAGES];
+        let mut buffers: [Vec<DescriptorSetBufferLayout>; NUM_REAL_STAGES] = Default::default();
         let mut num_samplers = [0; NUM_STAGES];
+
+        let mut next_dynamic_binding_index = 0;
 
         for binding_desc in desc.bindings.iter() {
             let loc = binding_desc.location;
@@ -420,6 +444,14 @@ impl DescriptorSetLayout {
                     true,
                 ];
 
+            let dynamic_offset_index;
+            if descriptor_type.needs_dynamic_offsets() {
+                dynamic_offset_index = Some(next_dynamic_binding_index);
+                next_dynamic_binding_index += binding_desc.num_elements;
+            } else {
+                dynamic_offset_index = None;
+            }
+
             let mut image_view_index = [None; NUM_STAGES];
             let mut buffer_index = [None; NUM_STAGES];
             let mut sampler_index = [None; NUM_STAGES];
@@ -434,6 +466,14 @@ impl DescriptorSetLayout {
                 }
                 if descriptor_type.has_buffer() {
                     buffer_index[i] = Some(num_buffers[i]);
+                    if i < NUM_REAL_STAGES {
+                        for k in 0..binding_desc.num_elements {
+                            let dyn_off_idx = dynamic_offset_index.map(|x| x + k);
+                            buffers[i].push(DescriptorSetBufferLayout {
+                                dynamic_offset_index: dyn_off_idx,
+                            });
+                        }
+                    }
                     num_buffers[i] += binding_desc.num_elements;
                 }
                 if descriptor_type.has_sampler() {
@@ -448,6 +488,7 @@ impl DescriptorSetLayout {
                 image_view_index,
                 buffer_index,
                 sampler_index,
+                dynamic_offset_index,
             };
 
             assert!(
@@ -456,6 +497,17 @@ impl DescriptorSetLayout {
                 loc
             );
             bindings[loc] = Some(binding);
+        }
+
+
+        // Create a list of bindings with dynamic offsets
+        let mut dynamic_binding_indexes = Vec::new();
+        for (i, binding) in bindings.iter().enumerate() {
+            if let &Some(ref binding) = binding {
+                if binding.dynamic_offset_index.is_some() {
+                    dynamic_binding_indexes.push(i);
+                }
+            }
         }
 
         // Preinitialize immutable samplers
@@ -483,11 +535,18 @@ impl DescriptorSetLayout {
         let data = DescriptorSetLayoutData {
             num_image_views,
             num_buffers,
+            buffers,
             samplers,
             bindings,
+            dynamic_binding_indexes,
+            num_dynamic_offsets: next_dynamic_binding_index,
             label: Mutex::new(None),
         };
         Ok(DescriptorSetLayout { data: RefEqArc::new(data) })
+    }
+
+    pub(crate) fn num_dynamic_offsets(&self) -> usize {
+        self.data.num_dynamic_offsets
     }
 }
 
@@ -596,6 +655,192 @@ impl PipelineLayout {
 
     pub(crate) fn num_vertex_shader_buffers(&self) -> usize {
         self.data.num_buffers[VERTEX_STAGE_INDEX]
+    }
+
+    pub(crate) fn bind_descriptor_set<T>(
+        &self,
+        binder: &T,
+        set_index: usize,
+        set: &DescriptorSet,
+        dyn_offs: &[u32],
+    ) where
+        T: ResourceBinder,
+    {
+        let ref plds = self.data.descriptor_sets[set_index];
+        let set_layout: &DescriptorSetLayout = set.layout();
+        let table = set.data.table.borrow(); // DescriptorSetTable
+
+        assert_eq!(
+            dyn_offs.len(),
+            set_layout.data.num_dynamic_offsets,
+            "invalid number of dynamic offsets"
+        );
+
+        binder.for_each_stage(|stage| {
+            let start_mtl_texture_index = plds.image_view_index[stage];
+            let start_mtl_buffer_index = plds.buffer_index[stage];
+            let start_mtl_sampler_index = plds.sampler_index[stage];
+            let ref table_stage: DescriptorSetTableStage = table.stages[stage];
+            let ref buffer_layouts: Vec<DescriptorSetBufferLayout> = set_layout.data.buffers[stage];
+
+            for (i, iv) in table_stage.image_views.iter().enumerate() {
+                let texture = iv.as_ref()
+                    .expect("found an uninitialized image view descriptor slot")
+                    .metal_texture();
+                binder.set_texture(stage, start_mtl_texture_index + i, texture);
+            }
+            for (i, b_off_or_none) in table_stage.buffers.iter().enumerate() {
+                let &(ref b, offset) = b_off_or_none.as_ref().expect(
+                    "found an uninitialized buffer descriptor slot",
+                );
+                let buffer = b.metal_buffer();
+                let dyn_off_index = buffer_layouts[i].dynamic_offset_index;
+                let offset = offset as u32 + dyn_off_index.map(|j| dyn_offs[j]).unwrap_or(0);
+                binder.set_buffer(stage, start_mtl_buffer_index + i, buffer, offset);
+            }
+            for (i, s) in table_stage.samplers.iter().enumerate() {
+                let sampler = s.as_ref()
+                    .expect("found an uninitialized sampler descriptor slot")
+                    .metal_sampler_state();
+                binder.set_sampler(stage, start_mtl_sampler_index + i, sampler);
+            }
+        });
+    }
+
+    pub(crate) fn update_dynamic_offset<T>(
+        &self,
+        binder: &T,
+        set_index: usize,
+        set: &DescriptorSet,
+        dyn_offs: &[u32],
+    ) where
+        T: ResourceBinder,
+    {
+        let ref plds = self.data.descriptor_sets[set_index];
+        let set_layout: &DescriptorSetLayout = set.layout();
+        let table = set.data.table.borrow(); // DescriptorSetTable
+        let ref binding_indexes = set_layout.data.dynamic_binding_indexes;
+        assert_eq!(
+            dyn_offs.len(),
+            set_layout.data.num_dynamic_offsets,
+            "invalid number of dynamic offsets"
+        );
+        let mut dyn_off_idx = 0;
+
+        for &binding_index in binding_indexes.iter() {
+            let layout_binding = set_layout.data.bindings[binding_index].as_ref().unwrap();
+
+            binder.for_each_stage(|stage| if let Some(buffer_index) =
+                layout_binding.buffer_index[stage]
+            {
+                let start_mtl_buffer_index = plds.buffer_index[stage];
+                let ref table_stage: DescriptorSetTableStage = table.stages[stage];
+                for k in 0..layout_binding.num_elements {
+                    let offset = dyn_offs[dyn_off_idx + k] +
+                        table_stage.buffers[buffer_index + k]
+                            .as_ref()
+                            .expect("found an uninitialized buffer descriptor slot")
+                            .1 as u32;
+                    let mtl_buffer_index = start_mtl_buffer_index + buffer_index + k;
+                    binder.set_buffer_offset(stage, mtl_buffer_index, offset);
+                }
+            });
+
+            dyn_off_idx += layout_binding.num_elements;
+        }
+    }
+}
+
+pub(crate) trait ResourceBinder {
+    fn for_each_stage<T: FnMut(usize)>(&self, cb: T);
+    fn set_texture(&self, stage: usize, index: usize, texture: metal::MTLTexture);
+    fn set_buffer(&self, stage: usize, index: usize, buffer: metal::MTLBuffer, offset: u32);
+    fn set_buffer_offset(&self, stage: usize, index: usize, offset: u32);
+    fn set_sampler(&self, stage: usize, index: usize, sampler: metal::MTLSamplerState);
+}
+
+pub(crate) struct GraphicsResourceBinder(pub metal::MTLRenderCommandEncoder);
+pub(crate) struct ComputeResourceBinder(pub metal::MTLComputeCommandEncoder);
+
+impl ResourceBinder for GraphicsResourceBinder {
+    fn for_each_stage<T: FnMut(usize)>(&self, mut cb: T) {
+        cb(VERTEX_STAGE_INDEX);
+        cb(FRAGMENT_STAGE_INDEX);
+    }
+    fn set_texture(&self, stage: usize, index: usize, texture: metal::MTLTexture) {
+        match stage {
+            VERTEX_STAGE_INDEX => self.0.set_vertex_texture(index as u64, texture),
+            FRAGMENT_STAGE_INDEX => self.0.set_fragment_texture(index as u64, texture),
+            _ => unreachable!(),
+        }
+    }
+    fn set_buffer(&self, stage: usize, index: usize, buffer: metal::MTLBuffer, offset: u32) {
+        match stage {
+            VERTEX_STAGE_INDEX => {
+                self.0.set_vertex_buffer(
+                    index as u64,
+                    offset as u64,
+                    buffer,
+                )
+            }
+            FRAGMENT_STAGE_INDEX => {
+                self.0.set_fragment_buffer(
+                    index as u64,
+                    offset as u64,
+                    buffer,
+                )
+            }
+            _ => unreachable!(),
+        }
+    }
+    fn set_buffer_offset(&self, stage: usize, index: usize, offset: u32) {
+        match stage {
+            VERTEX_STAGE_INDEX => self.0.set_vertex_buffer_offset(index as u64, offset as u64),
+            FRAGMENT_STAGE_INDEX => {
+                self.0.set_fragment_buffer_offset(
+                    index as u64,
+                    offset as u64,
+                )
+            }
+            _ => unreachable!(),
+        }
+    }
+    fn set_sampler(&self, stage: usize, index: usize, sampler: metal::MTLSamplerState) {
+        match stage {
+            VERTEX_STAGE_INDEX => self.0.set_vertex_sampler_state(index as u64, sampler),
+            FRAGMENT_STAGE_INDEX => self.0.set_fragment_sampler_state(index as u64, sampler),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ResourceBinder for ComputeResourceBinder {
+    fn for_each_stage<T: FnMut(usize)>(&self, mut cb: T) {
+        cb(COMPUTE_STAGE_INDEX);
+    }
+    fn set_texture(&self, stage: usize, index: usize, texture: metal::MTLTexture) {
+        match stage {
+            COMPUTE_STAGE_INDEX => self.0.set_texture(index as u64, texture),
+            _ => unreachable!(),
+        }
+    }
+    fn set_buffer(&self, stage: usize, index: usize, buffer: metal::MTLBuffer, offset: u32) {
+        match stage {
+            COMPUTE_STAGE_INDEX => self.0.set_buffer(index as u64, offset as u64, buffer),
+            _ => unreachable!(),
+        }
+    }
+    fn set_buffer_offset(&self, stage: usize, index: usize, offset: u32) {
+        match stage {
+            COMPUTE_STAGE_INDEX => self.0.set_buffer_offset(index as u64, offset as u64),
+            _ => unreachable!(),
+        }
+    }
+    fn set_sampler(&self, stage: usize, index: usize, sampler: metal::MTLSamplerState) {
+        match stage {
+            COMPUTE_STAGE_INDEX => self.0.set_sampler_state(index as u64, sampler),
+            _ => unreachable!(),
+        }
     }
 }
 

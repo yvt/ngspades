@@ -24,7 +24,7 @@ pub struct CommandBuffer {
     label: RefCell<Option<String>>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub(crate) enum EncoderState {
     /// Completed recording.
     NotRecording,
@@ -41,6 +41,15 @@ pub(crate) enum EncoderState {
     },
     Compute(ComputeCommandEncoder),
     Blit(OCPtr<metal::MTLBlitCommandEncoder>),
+}
+
+impl EncoderState {
+    pub fn is_recording(&self) -> bool {
+        match self {
+            &EncoderState::NotRecording => false,
+            _ => true,
+        }
+    }
 }
 
 unsafe impl Send for CommandBuffer {}

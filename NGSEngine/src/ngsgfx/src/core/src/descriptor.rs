@@ -154,6 +154,20 @@ impl DescriptorType {
             DescriptorType::InputAttachment => false,
         }
     }
+
+    pub fn needs_dynamic_offsets(&self) -> bool {
+        match *self {
+            DescriptorType::StorageImage => false,
+            DescriptorType::SampledImage => false,
+            DescriptorType::Sampler => false,
+            DescriptorType::CombinedImageSampler => false,
+            DescriptorType::ConstantBuffer => false,
+            DescriptorType::StorageBuffer => false,
+            DescriptorType::DynamicConstantBuffer => true,
+            DescriptorType::DynamicStorageBuffer => true,
+            DescriptorType::InputAttachment => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

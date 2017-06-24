@@ -292,6 +292,13 @@ impl MTLRenderCommandEncoder {
         }
     }
 
+    pub fn set_vertex_buffer_offset(&self, index: u64, offset: u64) {
+        unsafe {
+            msg_send![self.0, setVertexBufferOffset:offset
+                                            atIndex:index]
+        }
+    }
+
     pub fn set_vertex_texture(&self, index: u64, texture: MTLTexture) {
         unsafe {
             msg_send![self.0, setVertexTexture:texture.0
@@ -330,6 +337,13 @@ impl MTLRenderCommandEncoder {
             msg_send![self.0, setFragmentBuffer:buffer.0
                                          offset:offset
                                         atIndex:index]
+        }
+    }
+
+    pub fn set_fragment_buffer_offset(&self, index: u64, offset: u64) {
+        unsafe {
+            msg_send![self.0, setFragmentBufferOffset:offset
+                                              atIndex:index]
         }
     }
 
@@ -473,6 +487,13 @@ impl MTLComputeCommandEncoder {
         unsafe {
             msg_send![self.0, setBuffer:buffer.0
                                  offset:offset
+                                      atIndex:index]
+        }
+    }
+
+    pub fn set_buffer_offset(&self, index: u64, offset: u64) {
+        unsafe {
+            msg_send![self.0, setBufferOffset:offset
                                       atIndex:index]
         }
     }
