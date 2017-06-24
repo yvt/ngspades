@@ -9,7 +9,6 @@ use std::sync::atomic::Ordering;
 use std::mem::forget;
 
 use imp::{Backend, Fence, CommandBuffer};
-use super::buffer::EncoderState;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CommandQueue {

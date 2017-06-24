@@ -7,9 +7,9 @@ use core::{self, Validate};
 use metal;
 use std::sync::Arc;
 
-use imp::{self, Backend, Buffer, ComputePipeline, DescriptorPool, DescriptorSet,
-          DescriptorSetLayout, Fence, Framebuffer, GraphicsPipeline, Heap, Image, ImageView,
-          PipelineLayout, RenderPass, Sampler, Semaphore, ShaderModule, StencilState, DeviceData};
+use imp::{self, Backend, ComputePipeline, DescriptorPool, DescriptorSetLayout, Fence, Framebuffer,
+          GraphicsPipeline, Heap, Image, ImageView, PipelineLayout, RenderPass, Sampler,
+          Semaphore, ShaderModule, StencilState, DeviceData};
 
 #[derive(Debug)]
 pub struct Factory {
@@ -55,10 +55,7 @@ impl core::Factory<Backend> for Factory {
         Ok(Heap::new(&self.device_data, description))
     }
 
-    fn make_image_view(
-        &self,
-        description: &core::ImageViewDescription<Image>,
-    ) -> core::Result<ImageView> {
+    fn make_image_view(&self, _: &core::ImageViewDescription<Image>) -> core::Result<ImageView> {
         unimplemented!()
     }
     fn get_buffer_memory_requirements(
@@ -75,7 +72,7 @@ impl core::Factory<Backend> for Factory {
     }
     fn get_image_memory_requirements(
         &self,
-        description: &core::ImageDescription,
+        _: &core::ImageDescription,
     ) -> core::MemoryRequirements {
         // Return a dummy value since we do not have a real
         // heap implementation
@@ -129,7 +126,7 @@ impl core::Factory<Backend> for Factory {
 
     fn make_descriptor_pool(
         &self,
-        description: &core::DescriptorPoolDescription,
+        _: &core::DescriptorPoolDescription,
     ) -> core::Result<DescriptorPool> {
         unimplemented!()
     }

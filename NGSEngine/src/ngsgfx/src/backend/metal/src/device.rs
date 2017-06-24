@@ -51,10 +51,6 @@ impl Device {
             factory: imp::Factory::new(data.clone()),
         }
     }
-
-    pub(crate) fn data(&self) -> &Arc<DeviceData> {
-        &self.data
-    }
 }
 
 impl DeviceData {

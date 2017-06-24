@@ -29,8 +29,6 @@ use cgmath::Vector2;
 
 use objc::runtime::YES;
 
-use metal::NSObjectProtocol;
-
 use backend_metal::imp::ImageView;
 
 use cocoa::base::id as cocoa_id;

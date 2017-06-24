@@ -5,7 +5,7 @@
 //
 use core;
 use metal;
-use atomic_refcell::{AtomicRefCell, AtomicRef};
+use atomic_refcell::AtomicRefCell;
 use spirv_cross::{SpirV2Msl, ExecutionModel, ResourceBinding};
 
 use std::sync::Mutex;
@@ -860,7 +860,6 @@ impl PipelineLayoutDescriptorSet {
             self.layout.data.bindings.iter().enumerate()
         {
             if let Some(binding) = binding.as_ref() {
-                let descriptor_type: core::DescriptorType = binding.descriptor_type;
                 s2m.bind_resource(&ResourceBinding {
                     desc_set: desc_set_index,
                     binding: binding_index as u32,
