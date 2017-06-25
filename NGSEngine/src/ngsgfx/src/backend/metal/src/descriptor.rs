@@ -8,10 +8,10 @@ use metal;
 use atomic_refcell::AtomicRefCell;
 use spirv_cross::{SpirV2Msl, ExecutionModel, ResourceBinding};
 
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 
-use RefEqArc;
-use imp::{Backend, Buffer, ImageView, Sampler};
+use {RefEqBox, RefEqArc};
+use imp::{Backend, Buffer, ImageView, Sampler, DeviceData};
 
 const NUM_STAGES: usize = 4;
 const NUM_REAL_STAGES: usize = 3;
@@ -26,9 +26,9 @@ const COPY_STAGE_INDEX: usize = 3;
 /// Fake descriptor pool implementation.
 ///
 /// Always allocates from a global heap.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct DescriptorPool {
-    data: RefEqArc<DescriptorPoolData>,
+    data: RefEqBox<DescriptorPoolData>,
 }
 
 #[derive(Debug)]
@@ -47,6 +47,14 @@ impl core::DescriptorPool<Backend> for DescriptorPool {
     }
 
     fn reset(&mut self) {}
+}
+
+impl DescriptorPool {
+    pub(crate) fn new(_: &Arc<DeviceData>, _: &core::DescriptorPoolDescription) -> Self {
+        Self {
+            data: RefEqBox::new(DescriptorPoolData {}),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -311,7 +319,7 @@ impl DescriptorSet {
             let mut table = data.table.borrow_mut();
             for i in 0..NUM_STAGES {
                 table.stages[i].image_views = vec![None; layout.data.num_image_views[i]];
-                table.stages[i].buffers = vec![None; layout.data.buffers[i].len()];
+                table.stages[i].buffers = vec![None; layout.data.num_buffers[i]];
                 table.stages[i].samplers = layout.data.samplers[i].clone(); // immutable samplers
             }
         }

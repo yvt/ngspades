@@ -126,8 +126,8 @@ impl core::Factory<Backend> for Factory {
 
     fn make_descriptor_pool(
         &self,
-        _: &core::DescriptorPoolDescription,
+        description: &core::DescriptorPoolDescription,
     ) -> core::Result<DescriptorPool> {
-        unimplemented!()
+        Ok(DescriptorPool::new(&self.device_data, description))
     }
 }
