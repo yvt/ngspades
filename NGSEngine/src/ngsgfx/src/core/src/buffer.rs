@@ -22,7 +22,7 @@ pub trait Buffer
 
 #[derive(Debug, Clone, Copy)]
 pub struct BufferDescription {
-    pub usage: BitFlags<BufferUsageFlags>,
+    pub usage: BufferUsageFlags,
     pub size: usize,
 }
 
@@ -30,7 +30,7 @@ pub struct BufferDescription {
 mod flags {
     #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
     #[repr(u32)]
-    pub enum BufferUsageFlags {
+    pub enum BufferUsage {
         TransferSource = 0b0000001,
         TransferDestination = 0b0000010,
         UniformBuffer = 0b0000100,
@@ -41,7 +41,9 @@ mod flags {
     }
 }
 
-pub use self::flags::BufferUsageFlags;
+pub use self::flags::BufferUsage;
+
+pub type BufferUsageFlags = BitFlags<BufferUsage>;
 
 /// Validation errors for [`BufferDescription`](struct.BufferDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

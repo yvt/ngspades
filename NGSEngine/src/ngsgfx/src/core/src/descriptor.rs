@@ -9,8 +9,6 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use enumflags::BitFlags;
-
 use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result, Marker};
 
 pub trait PipelineLayout
@@ -69,7 +67,7 @@ pub struct DescriptorSetLayoutBinding<'a, TSampler: Sampler> {
     pub location: DescriptorBindingLocation,
     pub descriptor_type: DescriptorType,
     pub num_elements: usize,
-    pub stage_flags: BitFlags<ShaderStageFlags>,
+    pub stage_flags: ShaderStageFlags,
     pub immutable_samplers: Option<&'a [&'a TSampler]>,
 }
 

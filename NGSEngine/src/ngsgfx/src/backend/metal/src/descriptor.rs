@@ -438,9 +438,9 @@ impl DescriptorSetLayout {
             let descriptor_type: core::DescriptorType = binding_desc.descriptor_type;
             let has_stage: [bool; NUM_STAGES] =
                 [
-                    !(stage_flags & core::ShaderStageFlags::Vertex).is_empty(),
-                    !(stage_flags & core::ShaderStageFlags::Fragment).is_empty(),
-                    !(stage_flags & core::ShaderStageFlags::Compute).is_empty(),
+                    !(stage_flags & core::ShaderStage::Vertex).is_empty(),
+                    !(stage_flags & core::ShaderStage::Fragment).is_empty(),
+                    !(stage_flags & core::ShaderStage::Compute).is_empty(),
                     true,
                 ];
 

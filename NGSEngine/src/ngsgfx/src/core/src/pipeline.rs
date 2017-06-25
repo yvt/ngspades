@@ -14,7 +14,7 @@ use enumflags::BitFlags;
 use cgmath::Vector2;
 
 use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
-            CompareFunction, PipelineLayout, ShaderStageFlags, ShaderModule, Marker};
+            CompareFunction, PipelineLayout, ShaderStage, ShaderModule, Marker};
 
 /// Handle for compute pipeline objects.
 pub trait ComputePipeline
@@ -70,7 +70,7 @@ pub struct GraphicsPipelineDescription<'a, TRenderPass: RenderPass, TPipelineLay
 #[derive(Debug, Clone, Copy)]
 pub struct ShaderStageDescription<'a, TShaderModule: ShaderModule> {
     /// Names a single pipeline stage.
-    pub stage: ShaderStageFlags,
+    pub stage: ShaderStage,
     /// Specifies the shader module containing the shader for this stage.
     pub module: &'a TShaderModule,
     /// Specifies the entry point name of the shader.

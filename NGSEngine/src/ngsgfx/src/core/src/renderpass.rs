@@ -11,7 +11,7 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use {ImageLayout, ImageFormat, PipelineStageFlags, AccessFlags, Validate, DeviceCapabilities,
+use {ImageLayout, ImageFormat, PipelineStageFlags, AccessTypeFlags, Validate, DeviceCapabilities,
      Marker};
 
 /// Handle for render pass objects.
@@ -89,10 +89,10 @@ pub struct RenderSubpassDependency {
     /// `source` < `destination` must be satifsied (self-dependency is prohibited).
     pub destination: RenderSubpassDependencyTarget,
 
-    pub source_stage_mask: BitFlags<PipelineStageFlags>,
-    pub destination_stage_mask: BitFlags<PipelineStageFlags>,
-    pub source_access_mask: BitFlags<AccessFlags>,
-    pub destination_access_mask: BitFlags<AccessFlags>,
+    pub source_stage_mask: PipelineStageFlags,
+    pub destination_stage_mask: PipelineStageFlags,
+    pub source_access_mask: AccessTypeFlags,
+    pub destination_access_mask: AccessTypeFlags,
     pub by_region: bool,
 }
 

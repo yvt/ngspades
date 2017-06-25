@@ -127,12 +127,12 @@ impl<B: Backend> Renderer<B> {
             label: Some("main graphics pipeline"),
             shader_stages: &[
                 core::ShaderStageDescription {
-                    stage: core::ShaderStageFlags::Fragment,
+                    stage: core::ShaderStage::Fragment,
                     module: &fragment_shader,
                     entry_point_name: "main",
                 },
                 core::ShaderStageDescription {
-                    stage: core::ShaderStageFlags::Vertex,
+                    stage: core::ShaderStage::Vertex,
                     module: &vertex_shader,
                     entry_point_name: "main",
                 },
@@ -192,12 +192,12 @@ impl<B: Backend> Renderer<B> {
         ];
         let size = mem::size_of_val(&vertices);
         let staging_buffer_desc = core::BufferDescription {
-            usage: core::BufferUsageFlags::TransferSource.into(),
+            usage: core::BufferUsage::TransferSource.into(),
             size,
         };
         let buffer_desc = core::BufferDescription {
-            usage: core::BufferUsageFlags::VertexBuffer |
-                core::BufferUsageFlags::TransferDestination,
+            usage: core::BufferUsage::VertexBuffer |
+                core::BufferUsage::TransferDestination,
             size,
         };
 
@@ -254,13 +254,13 @@ impl<B: Backend> Renderer<B> {
         cb.end_debug_group();
         cb.end_pass();
         cb.barrier(
-            core::PipelineStageFlags::Transfer.into(),
-            core::PipelineStageFlags::VertexInput.into(),
+            core::PipelineStage::Transfer.into(),
+            core::PipelineStage::VertexInput.into(),
             &[
                 core::Barrier::BufferMemoryBarrier {
                     buffer: &buffer,
-                    source_access_mask: core::AccessFlags::TransferWrite.into(),
-                    destination_access_mask: core::AccessFlags::VertexAttributeRead.into(),
+                    source_access_mask: core::AccessType::TransferWrite.into(),
+                    destination_access_mask: core::AccessType::VertexAttributeRead.into(),
                     offset: 0,
                     len: size,
                 },

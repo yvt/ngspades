@@ -65,7 +65,7 @@ impl BackendDispatch for SimpleTest {
         let pipeline_desc = core::ComputePipelineDescription {
             label: Some("test compute pipeline: null"),
             shader_stage: core::ShaderStageDescription {
-                stage: core::ShaderStageFlags::Compute,
+                stage: core::ShaderStage::Compute,
                 module: &shader,
                 entry_point_name: "main",
             },

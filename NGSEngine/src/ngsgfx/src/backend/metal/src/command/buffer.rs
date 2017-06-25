@@ -196,8 +196,8 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
 
     fn barrier(
         &mut self,
-        source_stage: BitFlags<core::PipelineStageFlags>,
-        destination_stage: BitFlags<core::PipelineStageFlags>,
+        source_stage: core::PipelineStageFlags,
+        destination_stage: core::PipelineStageFlags,
         barriers: &[core::Barrier<Backend>],
     ) {
         // TODO: barrier

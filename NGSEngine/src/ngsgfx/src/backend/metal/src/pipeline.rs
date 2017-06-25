@@ -89,15 +89,15 @@ impl GraphicsPipeline {
         let mut fragment_stage: Option<&core::ShaderStageDescription<imp::ShaderModule>> = None;
         for stage in desc.shader_stages.iter() {
             match stage.stage {
-                core::ShaderStageFlags::Fragment => {
+                core::ShaderStage::Fragment => {
                     assert!(fragment_stage.is_none(), "duplicate fragment shader stages");
                     fragment_stage = Some(stage);
                 }
-                core::ShaderStageFlags::Vertex => {
+                core::ShaderStage::Vertex => {
                     assert!(vertex_stage.is_none(), "duplicate vertex shader stages");
                     vertex_stage = Some(stage);
                 }
-                core::ShaderStageFlags::Compute => {
+                core::ShaderStage::Compute => {
                     panic!("compute shader stage cannot be specified in a graphics pipeline");
                 }
             }
@@ -172,7 +172,7 @@ impl GraphicsPipeline {
         });
         let vertex_fn = vertex_stage.module.get_function(
             vertex_stage.entry_point_name,
-            core::ShaderStageFlags::Vertex,
+            core::ShaderStage::Vertex,
             desc.pipeline_layout,
             metal_device,
             shader_vertex_infos,
@@ -182,7 +182,7 @@ impl GraphicsPipeline {
         if let Some(fragment_stage) = fragment_stage {
             let fragment_fn = fragment_stage.module.get_function(
                 fragment_stage.entry_point_name,
-                core::ShaderStageFlags::Fragment,
+                core::ShaderStage::Fragment,
                 desc.pipeline_layout,
                 metal_device,
                 empty(),
@@ -560,13 +560,13 @@ impl ComputePipeline {
         let stage = &desc.shader_stage;
         assert_eq!(
             stage.stage,
-            core::ShaderStageFlags::Compute,
+            core::ShaderStage::Compute,
             "must have a compute shader stage"
         );
 
         let compute_fn = stage.module.get_function(
             stage.entry_point_name,
-            core::ShaderStageFlags::Compute,
+            core::ShaderStage::Compute,
             desc.pipeline_layout,
             metal_device,
             empty(),

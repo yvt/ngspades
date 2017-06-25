@@ -51,7 +51,7 @@ impl ShaderModule {
     pub(crate) fn get_function<T>(
         &self,
         entry_point: &str,
-        stage: core::ShaderStageFlags,
+        stage: core::ShaderStage,
         layout: &imp::PipelineLayout,
         device: metal::MTLDevice,
         vertex_attrs: T,
@@ -65,9 +65,9 @@ impl ShaderModule {
         let mut s2m = SpirV2Msl::new(self.data.spirv_code.as_slice());
 
         let model = match stage {
-            core::ShaderStageFlags::Fragment => ExecutionModel::Fragment,
-            core::ShaderStageFlags::Vertex => ExecutionModel::Vertex,
-            core::ShaderStageFlags::Compute => ExecutionModel::GLCompute,
+            core::ShaderStage::Fragment => ExecutionModel::Fragment,
+            core::ShaderStage::Vertex => ExecutionModel::Vertex,
+            core::ShaderStage::Compute => ExecutionModel::GLCompute,
         };
 
         layout.setup_spirv2msl(&mut s2m, model);

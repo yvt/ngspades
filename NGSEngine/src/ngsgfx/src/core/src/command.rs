@@ -10,9 +10,8 @@ use std::any::Any;
 use std::time::Duration;
 
 use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Framebuffer,
-     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessFlags, DebugMarker};
+     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker};
 
-use enumflags::BitFlags;
 use cgmath::Vector3;
 
 pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
@@ -112,20 +111,20 @@ pub enum Barrier<'a, B: Backend> {
         destination: &'a B::CommandQueue,
     },
     GlobalMemoryBarrier {
-        source_access_mask: BitFlags<AccessFlags>,
-        destination_access_mask: BitFlags<AccessFlags>,
+        source_access_mask: AccessTypeFlags,
+        destination_access_mask: AccessTypeFlags,
     },
     ImageMemoryBarrier {
         image: &'a B::Image,
-        source_access_mask: BitFlags<AccessFlags>,
-        destination_access_mask: BitFlags<AccessFlags>,
+        source_access_mask: AccessTypeFlags,
+        destination_access_mask: AccessTypeFlags,
         source_layout: ImageLayout,
         destination_layout: ImageLayout,
     },
     BufferMemoryBarrier {
         buffer: &'a B::Buffer,
-        source_access_mask: BitFlags<AccessFlags>,
-        destination_access_mask: BitFlags<AccessFlags>,
+        source_access_mask: AccessTypeFlags,
+        destination_access_mask: AccessTypeFlags,
         offset: usize,
         len: usize,
     },
@@ -158,8 +157,8 @@ pub trait CommandEncoder<B: Backend>
     /// There must not be an active render/compute/blit pass.
     fn barrier(
         &mut self,
-        source_stage: BitFlags<PipelineStageFlags>,
-        destination_stage: BitFlags<PipelineStageFlags>,
+        source_stage: PipelineStageFlags,
+        destination_stage: PipelineStageFlags,
         barriers: &[Barrier<B>],
     );
 

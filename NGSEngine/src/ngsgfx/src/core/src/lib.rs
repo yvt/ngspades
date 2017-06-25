@@ -50,6 +50,30 @@
 //!  - [`Buffer`](trait.Buffer.html)
 //!  - (todo)
 //!
+//! Flags
+//! -----
+//!
+//! Parameters that accept multiple flags are defined as `BitFlags<T>` (provided by
+//! the `enumflags` crate) where `T` is an enumerated type (e.g., `AccessType`).
+//! For every enumerated type for which such parameters exist, a type alias to
+//! `BitFlags<T>` is defined with its name suffixed with `Flags` (e.g., `AccessTypeFlags`).
+//!
+//! The following example shows how to provide a `BitFlags<T>` value with an arbitrary
+//! number of `T` values:
+//!
+//! ```
+//! use ngsgfx_core::{AccessType, AccessTypeFlags};
+//!
+//! let no_access1: AccessTypeFlags = AccessTypeFlags::empty();
+//! let no_access2: AccessTypeFlags = AccessType::empty_bitflag();
+//!
+//! let oneway_access: AccessTypeFlags = AccessType::TransferRead.into();
+//!
+//! let twoway_access: AccessTypeFlags =
+//!     AccessType::TransferRead |
+//!     AccessType::TransferWrite;
+//! ```
+//!
 //! Todos
 //! -----
 //!
@@ -124,7 +148,7 @@ pub use debug::*;
 pub use descriptor::*;
 pub use error::*;
 pub use factory::*;
-pub use flags::{AccessFlags, PipelineStageFlags};
+pub use flags::{AccessTypeFlags, PipelineStageFlags, AccessType, PipelineStage};
 pub use formats::*;
 pub use framebuffer::*;
 pub use geom::*;

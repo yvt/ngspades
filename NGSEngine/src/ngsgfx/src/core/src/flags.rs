@@ -3,10 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
+use enumflags::BitFlags;
 
 #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
-pub enum PipelineStageFlags {
+pub enum PipelineStage {
     TopOfPipe = 0b00000000000001,
     DrawIndirect = 0b00000000000010,
     VertexInput = 0b00000000000100,
@@ -23,9 +24,11 @@ pub enum PipelineStageFlags {
     AllCommands = 0b10000000000000,
 }
 
+pub type PipelineStageFlags = BitFlags<PipelineStage>;
+
 #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
-pub enum AccessFlags {
+pub enum AccessType {
     IndirectCommandRead = 0b00000000000000001,
     IndexRead = 0b00000000000000010,
     VertexAttributeRead = 0b00000000000000100,
@@ -44,3 +47,5 @@ pub enum AccessFlags {
     MemoryRead = 0b01000000000000000,
     MemoryWrite = 0b10000000000000000,
 }
+
+pub type AccessTypeFlags = BitFlags<AccessType>;

@@ -9,6 +9,8 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
+use enumflags::BitFlags;
+
 use Marker;
 
 /// Handle for shader module object.
@@ -25,11 +27,12 @@ pub struct ShaderModuleDescription<'a> {
 mod flags {
     #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u8)]
-    pub enum ShaderStageFlags {
+    pub enum ShaderStage {
         Vertex = 0b001,
         Fragment = 0b010,
         Compute = 0b100,
     }
 }
 
-pub use self::flags::ShaderStageFlags;
+pub use self::flags::ShaderStage;
+pub type ShaderStageFlags = BitFlags<ShaderStage>;
