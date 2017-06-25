@@ -22,4 +22,8 @@ fn main() {
         .file("tests/compute_null.comp")
         .flag("-V")
         .compile("compute_null.comp.spv");
+    prebuild_glslang::Config::new()
+        .file("tests/compute_conv1.comp")
+        .flag("-V")
+        .compile("compute_conv1.comp.spv");
 }
