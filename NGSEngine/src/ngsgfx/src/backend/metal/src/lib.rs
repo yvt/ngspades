@@ -16,7 +16,7 @@
 //!    `MTLBuffer` provides a method that allows users to sub-allocate its portion to create
 //!    texture views, but this is inappropriate for a general use since it is not designed for
 //!    performance but rather a way to create linearly layouted textures.
-//!  - **`Fence`** - Mapped to callbacks from `MTLCommandBuffer`.
+//!  - **`Event`** - Mapped to callbacks from `MTLCommandBuffer`.
 //!  - **`BufferView`** - No direct Metal counterparts are available. TODO: emulate by 2D texture?
 //!  - **`CommandBuffer`** - Maps naturally to Metal except that one `CommandBuffer` can have multiple
 //!    subpasses, each of which is mapped to a `MTLRenderPassDescriptor`.
@@ -108,7 +108,7 @@ pub mod imp {
         type Device = Device;
         type DeviceCapabilities = DeviceCapabilities;
         type Factory = Factory;
-        type Fence = Fence;
+        type Event = Event;
         type Framebuffer = Framebuffer;
         type GraphicsPipeline = GraphicsPipeline;
         type Heap = Heap;

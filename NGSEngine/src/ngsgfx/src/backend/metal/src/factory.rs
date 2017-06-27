@@ -7,7 +7,7 @@ use core::{self, Validate};
 use metal;
 use std::sync::Arc;
 
-use imp::{self, Backend, ComputePipeline, DescriptorPool, DescriptorSetLayout, Fence, Framebuffer,
+use imp::{self, Backend, ComputePipeline, DescriptorPool, DescriptorSetLayout, Event, Framebuffer,
           GraphicsPipeline, Heap, Image, ImageView, PipelineLayout, RenderPass, Sampler,
           ShaderModule, StencilState, DeviceData};
 
@@ -27,9 +27,9 @@ impl Factory {
 }
 
 impl core::Factory<Backend> for Factory {
-    fn make_fence(&self, description: &core::FenceDescription) -> core::Result<Fence> {
+    fn make_event(&self, description: &core::EventDescription) -> core::Result<Event> {
         description.debug_expect_valid(Some(self.device_data.capabilities()), "");
-        Ok(Fence::new(description))
+        Ok(Event::new(description))
     }
     fn make_render_pass(
         &self,

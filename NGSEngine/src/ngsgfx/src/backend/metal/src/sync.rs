@@ -11,13 +11,13 @@ use core;
 
 use RefEqArc;
 
-/// `Fence` implementation for Metal.
+/// `Event` implementation for Metal.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Fence {
-    data: RefEqArc<FenceData>,
+pub struct Event {
+    data: RefEqArc<EventData>,
 }
 
-/// Internal implementation of `Fence`.
+/// Internal implementation of `Event`.
 ///
 /// Takes one of the following states:
 ///  - **Inital** - not signaled nor associated with any command submission
@@ -32,9 +32,9 @@ pub struct Fence {
 ///     - Transitions to **Associated** once passed to a submission function
 ///     - `num_pending_buffers == 0`
 #[derive(Debug)]
-struct FenceData {
+struct EventData {
     cvar: Condvar,
-    state: Mutex<FenceState>,
+    state: Mutex<EventState>,
 
     /// `num_pending_buffers` is managed by atomic operations in hopes of
     /// saving cpu cycles by eliding mutex ops.
@@ -44,23 +44,23 @@ struct FenceData {
 }
 
 #[derive(Debug, Hash, PartialEq, Eq)]
-enum FenceState {
+enum EventState {
     Initial,
     Associated,
     Signaled,
 }
 
-impl Fence {
-    pub(crate) fn new(descriptor: &core::FenceDescription) -> Self {
+impl Event {
+    pub(crate) fn new(descriptor: &core::EventDescription) -> Self {
         let signaled = descriptor.signaled;
         let initial_state = if signaled {
-            FenceState::Signaled
+            EventState::Signaled
         } else {
-            FenceState::Initial
+            EventState::Initial
         };
         let initial_num_pending_buffers = if signaled { 0 } else { 1 };
         Self {
-            data: RefEqArc::new(FenceData {
+            data: RefEqArc::new(EventData {
                 cvar: Condvar::new(),
                 state: Mutex::new(initial_state),
                 num_pending_buffers: AtomicUsize::new(initial_num_pending_buffers),
@@ -73,21 +73,21 @@ impl Fence {
         let ref data = self.data;
         let mut state = data.state.lock().unwrap();
         match *state {
-            FenceState::Initial | FenceState::Signaled => {
+            EventState::Initial | EventState::Signaled => {
                 data.num_pending_buffers.store(
                     num_buffers,
                     Ordering::Relaxed,
                 );
-                *state = FenceState::Associated;
+                *state = EventState::Associated;
                 true
             }
-            FenceState::Associated => false,
+            EventState::Associated => false,
         }
     }
 
     pub(crate) fn remove_pending_buffers(&self, num_buffers: usize) {
         let ref data = self.data;
-        debug_assert_eq!(*data.state.lock().unwrap(), FenceState::Associated);
+        debug_assert_eq!(*data.state.lock().unwrap(), EventState::Associated);
 
         let new_num_pending_buffers = data.num_pending_buffers.fetch_sub(
             num_buffers,
@@ -96,37 +96,37 @@ impl Fence {
         if new_num_pending_buffers == 0 {
             // the current batch is done!
             let mut state = data.state.lock().unwrap();
-            *state = FenceState::Signaled;
+            *state = EventState::Signaled;
             data.cvar.notify_all();
         }
     }
 }
 
-impl core::Marker for Fence {
+impl core::Marker for Event {
     fn set_label(&self, label: Option<&str>) {
         *self.data.label.lock().unwrap() = label.map(String::from);
     }
 }
 
-impl core::Fence for Fence {
+impl core::Event for Event {
     fn reset(&self) -> core::Result<()> {
         let ref data = self.data;
         let mut state = data.state.lock().unwrap();
         match *state {
-            FenceState::Initial => {
+            EventState::Initial => {
                 debug_assert_ne!(data.num_pending_buffers.load(Ordering::Relaxed), 0);
                 Ok(())
             }
-            FenceState::Signaled => {
+            EventState::Signaled => {
                 debug_assert_eq!(data.num_pending_buffers.load(Ordering::Relaxed), 0);
 
                 data.num_pending_buffers.store(1, Ordering::Relaxed);
-                *state = FenceState::Initial;
+                *state = EventState::Initial;
                 Ok(())
             }
-            FenceState::Associated => {
+            EventState::Associated => {
                 ::std::mem::drop(state);
-                panic!("resetting a fence in the Associated state");
+                panic!("resetting an event in the Associated state");
             }
         }
     }
@@ -134,12 +134,12 @@ impl core::Fence for Fence {
         let ref data = self.data;
         let mut state = data.state.lock().unwrap();
 
-        if *state == FenceState::Signaled {
+        if *state == EventState::Signaled {
             return Ok(true);
         }
 
         let deadline = Instant::now() + timeout;
-        while *state != FenceState::Signaled {
+        while *state != EventState::Signaled {
             let now = Instant::now();
             if now >= deadline {
                 return Ok(false);

@@ -13,49 +13,49 @@ use std::marker::Sized;
 use {Result, Validate, DeviceCapabilities, Marker};
 
 /// Handle for the synchronization primitive used to synchronize between the host and device.
-pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
+pub trait Event: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
     fn reset(&self) -> Result<()>;
     fn wait(&self, timeout: Duration) -> Result<bool>;
     fn is_signaled(&self) -> Result<bool> {
         self.wait(Duration::new(0, 0))
     }
 
-    /// Resets all specified fences.
+    /// Resets all specified events.
     ///
-    /// The specified fences must originate from the same device.
-    fn reset_all(fences: &[Self]) -> Result<()>
+    /// The specified events must originate from the same device.
+    fn reset_all(events: &[Self]) -> Result<()>
     where
         Self: Sized,
     {
-        for fence in fences {
-            try!(fence.reset());
+        for event in events {
+            try!(event.reset());
         }
         Ok(())
     }
 
-    /// Waits for all specified fences to be signalled.
+    /// Waits for all specified events to be signalled.
     ///
-    /// The specified fences must originate from the same device.
-    fn wait_all(fences: &[Self], timeout: Duration) -> Result<bool>
+    /// The specified events must originate from the same device.
+    fn wait_all(events: &[Self], timeout: Duration) -> Result<bool>
     where
         Self: Sized,
     {
         if timeout == Duration::new(0, 0) {
-            for fence in fences {
-                if !try!(fence.wait(timeout)) {
+            for event in events {
+                if !try!(event.wait(timeout)) {
                     return Ok(false);
                 }
             }
         } else {
             let deadline = Instant::now() + timeout;
-            for fence in fences {
+            for event in events {
                 let now = Instant::now();
                 let sub_timeout = if now >= deadline {
                     Duration::new(0, 0)
                 } else {
                     deadline.duration_since(now)
                 };
-                if !try!(fence.wait(sub_timeout)) {
+                if !try!(event.wait(sub_timeout)) {
                     return Ok(false);
                 }
             }
@@ -65,18 +65,18 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct FenceDescription {
+pub struct EventDescription {
     pub signaled: bool,
 }
 
-/// Validation errors for [`FenceDescription`](struct.FenceDescription.html).
+/// Validation errors for [`EventDescription`](struct.EventDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum FenceDescriptionValidationError {
+pub enum EventDescriptionValidationError {
     // None so far
 }
 
-impl Validate for FenceDescription {
-    type Error = FenceDescriptionValidationError;
+impl Validate for EventDescription {
+    type Error = EventDescriptionValidationError;
 
     #[allow(unused_variables)]
     #[allow(unused_mut)]

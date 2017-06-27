@@ -46,7 +46,7 @@ pub mod prelude {
     pub use core::Device;
     pub use core::DeviceCapabilities;
     pub use core::Factory;
-    pub use core::Fence;
+    pub use core::Event;
     pub use core::Framebuffer;
     pub use core::GraphicsPipeline;
     pub use core::{Heap, MappableHeap};

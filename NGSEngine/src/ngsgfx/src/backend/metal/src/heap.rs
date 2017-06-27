@@ -106,12 +106,10 @@ impl core::MappableHeap for Heap {
 
     fn flush_memory(&mut self, _: &mut Self::Allocation, _: usize, _: Option<usize>) {
         // No-op.
-        // (maybe do fence operation?)
     }
 
     fn invalidate_memory(&mut self, _: &mut Self::Allocation, _: usize, _: Option<usize>) {
         // No-op.
-        // (maybe do fence operation?)
     }
 
     /// No-op.

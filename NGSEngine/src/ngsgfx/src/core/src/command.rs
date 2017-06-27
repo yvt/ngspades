@@ -21,13 +21,13 @@ pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     ///
     /// The specified command buffers must be in the `Executable` state.
     ///
-    /// If `fence` is specified, it will be signaled upon cmpletion of
+    /// If `event` is specified, it will be signaled upon cmpletion of
     /// the execution. It must not be associated with any other
     /// commands that has not yet completed execution.
     fn submit_commands(
         &self,
         buffers: &[&B::CommandBuffer],
-        fence: Option<&B::Fence>,
+        event: Option<&B::Event>,
     ) -> Result<()>;
 
     fn wait_idle(&self);

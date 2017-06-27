@@ -8,7 +8,7 @@ use {core, metal, block, OCPtr};
 use std::sync::atomic::Ordering;
 use std::mem::forget;
 
-use imp::{Backend, Fence, CommandBuffer};
+use imp::{Backend, Event, CommandBuffer};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CommandQueue {
@@ -26,14 +26,14 @@ impl CommandQueue {
 struct SubmissionTransaction<'a> {
     buffers: &'a [&'a CommandBuffer],
     num_successful_transitions: usize,
-    fence_associated: Option<&'a Fence>,
+    event_associated: Option<&'a Event>,
 }
 
-fn submit_commands(buffers: &[&CommandBuffer], fence: Option<&Fence>) -> core::Result<()> {
+fn submit_commands(buffers: &[&CommandBuffer], event: Option<&Event>) -> core::Result<()> {
     let mut transaction = SubmissionTransaction {
         buffers: buffers,
         num_successful_transitions: 0,
-        fence_associated: None,
+        event_associated: None,
     };
 
     // Check some preconditions beforehand
@@ -63,16 +63,16 @@ fn submit_commands(buffers: &[&CommandBuffer], fence: Option<&Fence>) -> core::R
 
     let mut completion_handler = None;
 
-    // Prepare fence
-    if let Some(fence) = fence {
-        let result = fence.associate_pending_buffers(num_buffers);
-        transaction.fence_associated = Some(fence);
+    // Prepare event
+    if let Some(event) = event {
+        let result = event.associate_pending_buffers(num_buffers);
+        transaction.event_associated = Some(event);
 
-        // The fence must be unsignalled
-        assert!(result, "fence must be in the unsignalled state");
+        // The event must be unsignalled
+        assert!(result, "event must be in the unsignalled state");
 
-        let fence_ref: Fence = fence.clone();
-        let block = block::ConcreteBlock::new(move |_| { fence_ref.remove_pending_buffers(1); });
+        let event_ref: Event = event.clone();
+        let block = block::ConcreteBlock::new(move |_| { event_ref.remove_pending_buffers(1); });
         completion_handler = Some(block.copy());
     }
 
@@ -102,8 +102,8 @@ impl<'a> Drop for SubmissionTransaction<'a> {
             buffer.submitted.store(false, Ordering::Release);
         }
 
-        if let Some(fence) = self.fence_associated {
-            fence.remove_pending_buffers(self.num_successful_transitions);
+        if let Some(event) = self.event_associated {
+            event.remove_pending_buffers(self.num_successful_transitions);
         }
     }
 }
@@ -126,8 +126,8 @@ impl core::CommandQueue<Backend> for CommandQueue {
     fn submit_commands(
         &self,
         buffers: &[&CommandBuffer],
-        fence: Option<&Fence>,
+        event: Option<&Event>,
     ) -> core::Result<()> {
-        submit_commands(buffers, fence)
+        submit_commands(buffers, event)
     }
 }

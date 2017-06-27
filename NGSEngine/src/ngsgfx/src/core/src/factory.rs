@@ -11,10 +11,10 @@ use super::{RenderPassDescription, FramebufferDescription, HeapDescription, Imag
             BufferDescription, ImageViewDescription, GraphicsPipelineDescription,
             DescriptorPoolDescription, DescriptorSetDescription, DescriptorSetLayoutDescription,
             SamplerDescription, PipelineLayoutDescription, ShaderModuleDescription,
-            ComputePipelineDescription, StencilStateDescription, FenceDescription};
+            ComputePipelineDescription, StencilStateDescription, EventDescription};
 
 pub trait Factory<B: Backend>: Debug + Any {
-    fn make_fence(&self, descriptor: &FenceDescription) -> Result<B::Fence>;
+    fn make_event(&self, descriptor: &EventDescription) -> Result<B::Event>;
 
     fn make_render_pass(&self, description: &RenderPassDescription) -> Result<B::RenderPass>;
     fn make_framebuffer(
