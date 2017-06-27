@@ -32,7 +32,9 @@ fn try_device_metal<T: BackendDispatch>(d: T) -> Option<T> {
     let metal_device = gfx::backends::metal::ll::create_system_default_device();
     let device = gfx::backends::metal::imp::Device::new(metal_device);
     d.use_device::<gfx::backends::metal::Backend>(device);
-    unsafe { arp.release(); }
+    unsafe {
+        arp.release();
+    }
     None
 }
 
@@ -58,7 +60,8 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
     fn buffer(&self) -> &B::Buffer {
         &self.1
     }
-    fn take(self,
+    fn take(
+        self,
         last_pipeline_stage: core::PipelineStageFlags,
         last_access_mask: core::AccessTypeFlags,
     ) -> &'a mut [T] {
@@ -128,12 +131,7 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
         );
         cb.end_encoding();
 
-        queue
-            .submit_commands(
-                &[&cb],
-                None,
-            )
-            .unwrap();
+        queue.submit_commands(&[&cb], None).unwrap();
 
         assert_eq!(
             cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
@@ -143,11 +141,7 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
         {
             let map = staging_heap.map_memory(&mut staging_alloc);
             unsafe {
-                ptr::copy(
-                    map.as_ptr() as *mut T,
-                    self.2.as_mut_ptr(),
-                    self.2.len(),
-                );
+                ptr::copy(map.as_ptr() as *mut T, self.2.as_mut_ptr(), self.2.len());
             }
         }
 
@@ -156,17 +150,15 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
 }
 
 impl<'a, B: core::Backend> DeviceUtils<'a, B> {
-    fn make_result_buffer<T: 'static>(&self,
+    fn make_result_buffer<T: 'static>(
+        &self,
         data: &'a mut [T],
         usage: core::BufferUsageFlags,
     ) -> ResultBuffer<'a, B, T> {
         let device = self.0;
 
         let size = mem::size_of_val(data);
-        let buffer_desc = core::BufferDescription {
-            usage,
-            size,
-        };
+        let buffer_desc = core::BufferDescription { usage, size };
 
         let factory = device.factory();
 
@@ -183,7 +175,9 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         ResultBuffer(self.0, buffer, data)
     }
 
-    fn make_preinitialized_buffer<T>(&self, data: &[T],
+    fn make_preinitialized_buffer<T>(
+        &self,
+        data: &[T],
         usage: core::BufferUsageFlags,
         first_pipeline_stage: core::PipelineStageFlags,
         first_access_mask: core::AccessTypeFlags,
@@ -195,10 +189,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
             usage: core::BufferUsage::TransferSource.into(),
             size,
         };
-        let buffer_desc = core::BufferDescription {
-            usage,
-            size,
-        };
+        let buffer_desc = core::BufferDescription { usage, size };
 
         let factory = device.factory();
 
@@ -219,11 +210,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         {
             let mut map = staging_heap.map_memory(&mut staging_alloc);
             unsafe {
-                ptr::copy(
-                    data.as_ptr(),
-                    map.as_mut_ptr() as *mut T,
-                    data.len(),
-                );
+                ptr::copy(data.as_ptr(), map.as_mut_ptr() as *mut T, data.len());
             }
         }
 
@@ -280,12 +267,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         );
         cb.end_encoding();
 
-        queue
-            .submit_commands(
-                &[&cb],
-                None,
-            )
-            .unwrap();
+        queue.submit_commands(&[&cb], None).unwrap();
 
         assert_eq!(
             cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
@@ -335,12 +317,7 @@ impl BackendDispatch for SimpleTest {
         cb.end_pass();
         cb.end_encoding();
 
-        queue
-            .submit_commands(
-                &[&cb],
-                None,
-            )
-            .unwrap();
+        queue.submit_commands(&[&cb], None).unwrap();
         assert_eq!(
             cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
             true
@@ -397,49 +374,56 @@ impl BackendDispatch for Conv1Test {
         let shader_desc = core::ShaderModuleDescription { spirv_code: SPIRV_CONV1.as_u32_slice() };
         let shader = factory.make_shader_module(&shader_desc).unwrap();
 
-        let set_layout_desc = core::DescriptorSetLayoutDescription { bindings: &[
-            core::DescriptorSetLayoutBinding {
-                location: binding_param,
-                descriptor_type: core::DescriptorType::StorageBuffer,
-                num_elements: 1,
-                stage_flags: core::ShaderStage::Compute.into(),
-                immutable_samplers: None,
-            },
-            core::DescriptorSetLayoutBinding {
-                location: binding_input,
-                descriptor_type: core::DescriptorType::StorageBuffer,
-                num_elements: 1,
-                stage_flags: core::ShaderStage::Compute.into(),
-                immutable_samplers: None,
-            },
-            core::DescriptorSetLayoutBinding {
-                location: binding_output,
-                descriptor_type: core::DescriptorType::StorageBuffer,
-                num_elements: 1,
-                stage_flags: core::ShaderStage::Compute.into(),
-                immutable_samplers: None,
-            },
-        ] };
-        let set_layout = factory.make_descriptor_set_layout(&set_layout_desc).unwrap();
-
-        let layout_desc = core::PipelineLayoutDescription { descriptor_set_layouts: &[
-            &set_layout,
-        ] };
-        let layout = factory.make_pipeline_layout(&layout_desc).unwrap();
-
-        let mut desc_pool = factory.make_descriptor_pool(&core::DescriptorPoolDescription{
-            max_num_sets: 1,
-            pool_sizes: &[
-                core::DescriptorPoolSize{
+        let set_layout_desc = core::DescriptorSetLayoutDescription {
+            bindings: &[
+                core::DescriptorSetLayoutBinding {
+                    location: binding_param,
                     descriptor_type: core::DescriptorType::StorageBuffer,
-                    num_descriptors: 3,
+                    num_elements: 1,
+                    stage_flags: core::ShaderStage::Compute.into(),
+                    immutable_samplers: None,
+                },
+                core::DescriptorSetLayoutBinding {
+                    location: binding_input,
+                    descriptor_type: core::DescriptorType::StorageBuffer,
+                    num_elements: 1,
+                    stage_flags: core::ShaderStage::Compute.into(),
+                    immutable_samplers: None,
+                },
+                core::DescriptorSetLayoutBinding {
+                    location: binding_output,
+                    descriptor_type: core::DescriptorType::StorageBuffer,
+                    num_elements: 1,
+                    stage_flags: core::ShaderStage::Compute.into(),
+                    immutable_samplers: None,
                 },
             ],
-            supports_deallocation: false,
-        }).unwrap();
-        let desc_set = desc_pool.make_descriptor_set(&core::DescriptorSetDescription{
-            layout: &set_layout,
-        }).unwrap().unwrap().0;
+        };
+        let set_layout = factory
+            .make_descriptor_set_layout(&set_layout_desc)
+            .unwrap();
+
+        let layout_desc =
+            core::PipelineLayoutDescription { descriptor_set_layouts: &[&set_layout] };
+        let layout = factory.make_pipeline_layout(&layout_desc).unwrap();
+
+        let mut desc_pool = factory
+            .make_descriptor_pool(&core::DescriptorPoolDescription {
+                max_num_sets: 1,
+                pool_sizes: &[
+                    core::DescriptorPoolSize {
+                        descriptor_type: core::DescriptorType::StorageBuffer,
+                        num_descriptors: 3,
+                    },
+                ],
+                supports_deallocation: false,
+            })
+            .unwrap();
+        let desc_set = desc_pool
+            .make_descriptor_set(&core::DescriptorSetDescription { layout: &set_layout })
+            .unwrap()
+            .unwrap()
+            .0;
 
         let pipeline_desc = core::ComputePipelineDescription {
             label: Some("test compute pipeline: null"),
@@ -451,41 +435,49 @@ impl BackendDispatch for Conv1Test {
             pipeline_layout: &layout,
         };
 
-        desc_set.update(&[
-            core::WriteDescriptorSet{
-                start_binding: binding_param,
-                start_index: 0,
-                elements: core::WriteDescriptors::StorageBuffer(&[
-                    core::DescriptorBuffer{
-                        buffer: &kernel_buffer,
-                        offset: 0,
-                        range: mem::size_of_val(&kernel_data),
-                    }
-                ]),
-            },
-            core::WriteDescriptorSet{
-                start_binding: binding_input,
-                start_index: 0,
-                elements: core::WriteDescriptors::StorageBuffer(&[
-                    core::DescriptorBuffer{
-                        buffer: &input_buffer,
-                        offset: 0,
-                        range: mem::size_of_val(input_data.as_slice()),
-                    }
-                ]),
-            },
-            core::WriteDescriptorSet{
-                start_binding: binding_output,
-                start_index: 0,
-                elements: core::WriteDescriptors::StorageBuffer(&[
-                    core::DescriptorBuffer{
-                        buffer: output_buffer.buffer(),
-                        offset: 0,
-                        range: output_buffer.size(),
-                    }
-                ]),
-            },
-        ]);
+        desc_set.update(
+            &[
+                core::WriteDescriptorSet {
+                    start_binding: binding_param,
+                    start_index: 0,
+                    elements: core::WriteDescriptors::StorageBuffer(
+                        &[
+                            core::DescriptorBuffer {
+                                buffer: &kernel_buffer,
+                                offset: 0,
+                                range: mem::size_of_val(&kernel_data),
+                            },
+                        ],
+                    ),
+                },
+                core::WriteDescriptorSet {
+                    start_binding: binding_input,
+                    start_index: 0,
+                    elements: core::WriteDescriptors::StorageBuffer(
+                        &[
+                            core::DescriptorBuffer {
+                                buffer: &input_buffer,
+                                offset: 0,
+                                range: mem::size_of_val(input_data.as_slice()),
+                            },
+                        ],
+                    ),
+                },
+                core::WriteDescriptorSet {
+                    start_binding: binding_output,
+                    start_index: 0,
+                    elements: core::WriteDescriptors::StorageBuffer(
+                        &[
+                            core::DescriptorBuffer {
+                                buffer: output_buffer.buffer(),
+                                offset: 0,
+                                range: output_buffer.size(),
+                            },
+                        ],
+                    ),
+                },
+            ],
+        );
 
         let pipeline = factory.make_compute_pipeline(&pipeline_desc).unwrap();
 
@@ -499,12 +491,7 @@ impl BackendDispatch for Conv1Test {
         cb.end_pass();
         cb.end_encoding();
 
-        queue
-            .submit_commands(
-                &[&cb],
-                None,
-            )
-            .unwrap();
+        queue.submit_commands(&[&cb], None).unwrap();
         assert_eq!(
             cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
             true

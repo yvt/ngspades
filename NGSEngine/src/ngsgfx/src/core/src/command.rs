@@ -214,7 +214,8 @@ pub trait CommandEncoder<B: Backend>
 }
 
 /// Encodes render commands into a command buffer.
-pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEncoder {
+pub trait RenderSubpassCommandEncoder<B: Backend>
+    : Debug + Send + Any + DebugCommandEncoder {
     /// Sets the current `GraphicsPipeline` object.
     ///
     /// A render pass must be active and compatible with the specified pipeline.
@@ -281,7 +282,8 @@ pub trait RenderSubpassCommandEncoder<B: Backend>: Debug + Send + Any + DebugCom
 }
 
 /// Encodes compute commands into a command buffer.
-pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEncoder {
+pub trait ComputeCommandEncoder<B: Backend>
+    : Debug + Send + Any + DebugCommandEncoder {
     /// Set the current `ComputePipeline` object.
     ///
     /// A compute pass must be active.
@@ -302,7 +304,8 @@ pub trait ComputeCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEn
 }
 
 /// Encodes blit commands into a command buffer.
-pub trait BlitCommandEncoder<B: Backend>: Debug + Send + Any + DebugCommandEncoder {
+pub trait BlitCommandEncoder<B: Backend>
+    : Debug + Send + Any + DebugCommandEncoder {
     /// Copy data from a buffer to another buffer.
     fn copy_buffer(
         &mut self,
@@ -337,5 +340,3 @@ pub trait DebugCommandEncoder: Debug + Send + Any {
     /// A graphics subpass or a blit/compute pass must be active.
     fn insert_debug_marker(&mut self, marker: &DebugMarker);
 }
-
-

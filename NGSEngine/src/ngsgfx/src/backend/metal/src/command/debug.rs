@@ -27,9 +27,7 @@ impl core::DebugCommandEncoder for CommandBuffer {
 
 impl core::DebugCommandEncoder for SecondaryCommandBuffer {
     fn begin_debug_group(&mut self, marker: &core::DebugMarker) {
-        self.metal_command_encoder().push_debug_group(
-            marker.name()
-        );
+        self.metal_command_encoder().push_debug_group(marker.name());
     }
 
     fn end_debug_group(&mut self) {

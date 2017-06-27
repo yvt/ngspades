@@ -11,8 +11,7 @@ use super::{RenderPassDescription, FramebufferDescription, HeapDescription, Imag
             BufferDescription, ImageViewDescription, GraphicsPipelineDescription,
             DescriptorPoolDescription, DescriptorSetDescription, DescriptorSetLayoutDescription,
             SamplerDescription, PipelineLayoutDescription, ShaderModuleDescription,
-            ComputePipelineDescription, StencilStateDescription,
-            FenceDescription};
+            ComputePipelineDescription, StencilStateDescription, FenceDescription};
 
 pub trait Factory<B: Backend>: Debug + Any {
     fn make_fence(&self, descriptor: &FenceDescription) -> Result<B::Fence>;

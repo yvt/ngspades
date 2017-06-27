@@ -19,17 +19,14 @@ pub struct DebugMarker<'a> {
 impl<'a> DebugMarker<'a> {
     #[inline]
     pub fn new(name: &'a str) -> Self {
-        Self {
-            name,
-            color: None,
-        }
+        Self { name, color: None }
     }
 
     #[inline]
     pub fn with_color(&self, red: f32, green: f32, blue: f32) -> Self {
         Self {
             color: Some(Vector3::new(red, green, blue)),
-            .. *self
+            ..*self
         }
     }
 

@@ -62,7 +62,9 @@ impl<B: Backend> Renderer<B> {
             .unwrap();
 
         render_pass.set_label(Some("main render pass"));
-        command_buffer.borrow().set_label(Some("main primary command buffer"));
+        command_buffer.borrow().set_label(
+            Some("main primary command buffer"),
+        );
 
         Self {
             device,
@@ -196,8 +198,7 @@ impl<B: Backend> Renderer<B> {
             size,
         };
         let buffer_desc = core::BufferDescription {
-            usage: core::BufferUsage::VertexBuffer |
-                core::BufferUsage::TransferDestination,
+            usage: core::BufferUsage::VertexBuffer | core::BufferUsage::TransferDestination,
             size,
         };
 
@@ -267,12 +268,7 @@ impl<B: Backend> Renderer<B> {
             ],
         );
         cb.end_encoding();
-        queue
-            .submit_commands(
-                &[&cb],
-                None,
-            )
-            .unwrap();
+        queue.submit_commands(&[&cb], None).unwrap();
         assert_eq!(
             cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
             true
@@ -346,13 +342,7 @@ impl<B: Backend> RendererView<B> {
         finalizer(&mut cb);
         cb.end_encoding();
 
-        device
-            .main_queue()
-            .submit_commands(
-                &[&*cb],
-                None,
-            )
-            .unwrap();
+        device.main_queue().submit_commands(&[&*cb], None).unwrap();
     }
 }
 
@@ -389,8 +379,12 @@ impl<W: Window> App<W> {
                     self.window.events_loop().interrupt();
                     running = false;
                 }
-                winit::Event::WindowEvent { event: winit::WindowEvent::Resized(width, height), .. } => {
-                    self.window.set_framebuffer_size(Vector2::new(width, height));
+                winit::Event::WindowEvent {
+                    event: winit::WindowEvent::Resized(width, height), ..
+                } => {
+                    self.window.set_framebuffer_size(
+                        Vector2::new(width, height),
+                    );
                     *self.renderer_view.borrow_mut() =
                         create_renderer_view(&self.renderer, &self.window);
                 }

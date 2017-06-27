@@ -51,9 +51,7 @@ impl core::DescriptorPool<Backend> for DescriptorPool {
 
 impl DescriptorPool {
     pub(crate) fn new(_: &Arc<DeviceData>, _: &core::DescriptorPoolDescription) -> Self {
-        Self {
-            data: RefEqBox::new(DescriptorPoolData {}),
-        }
+        Self { data: RefEqBox::new(DescriptorPoolData {}) }
     }
 }
 
