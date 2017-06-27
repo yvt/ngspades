@@ -167,12 +167,11 @@ impl core::CommandBuffer<Backend> for CommandBuffer {
             None => core::CommandBufferState::Initial,
         }
     }
-    fn wait_completion(&self, _: Duration) -> core::Result<bool> {
-        // TODO: timeout
+    fn wait_completion(&self) -> core::Result<()> {
         if let Some(ref buffer) = self.buffer {
             buffer.wait_until_completed();
         }
-        Ok(true)
+        Ok(())
     }
 }
 

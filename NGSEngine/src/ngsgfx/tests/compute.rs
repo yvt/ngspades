@@ -14,7 +14,7 @@ use gfx::prelude::*;
 
 use cgmath::Vector3;
 
-use std::{time, mem, ptr};
+use std::{mem, ptr};
 
 static SPIRV_NULL: include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
@@ -133,10 +133,7 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
 
         queue.submit_commands(&[&cb], None).unwrap();
 
-        assert_eq!(
-            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
-            true
-        );
+        cb.wait_completion().unwrap();
 
         {
             let map = staging_heap.map_memory(&mut staging_alloc);
@@ -269,10 +266,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
 
         queue.submit_commands(&[&cb], None).unwrap();
 
-        assert_eq!(
-            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
-            true
-        );
+        cb.wait_completion().unwrap();
 
         // Phew! Done!
         buffer
@@ -318,10 +312,7 @@ impl BackendDispatch for SimpleTest {
         cb.end_encoding();
 
         queue.submit_commands(&[&cb], None).unwrap();
-        assert_eq!(
-            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
-            true
-        );
+        cb.wait_completion().unwrap();
     }
 }
 
@@ -492,10 +483,7 @@ impl BackendDispatch for Conv1Test {
         cb.end_encoding();
 
         queue.submit_commands(&[&cb], None).unwrap();
-        assert_eq!(
-            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
-            true
-        );
+        cb.wait_completion().unwrap();
 
         let result = output_buffer.take(
             core::PipelineStage::ComputeShader.into(),

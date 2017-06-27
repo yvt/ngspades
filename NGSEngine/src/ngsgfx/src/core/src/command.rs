@@ -45,7 +45,7 @@ pub trait CommandBuffer<B: Backend>
     /// completes.
     ///
     /// The current state must be one of `Pending` and `Completed`.
-    fn wait_completion(&self, timeout: Duration) -> Result<bool>;
+    fn wait_completion(&self) -> Result<()>;
 }
 
 

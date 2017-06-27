@@ -25,7 +25,7 @@ use gfx::prelude::*;
 use gfx::wsi::{DefaultWindow, NewWindow, Window, winit};
 
 use std::sync::Arc;
-use std::{mem, ptr, time};
+use std::{mem, ptr};
 use std::cell::RefCell;
 
 #[repr(C)]
@@ -269,10 +269,7 @@ impl<B: Backend> Renderer<B> {
         );
         cb.end_encoding();
         queue.submit_commands(&[&cb], None).unwrap();
-        assert_eq!(
-            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
-            true
-        );
+        cb.wait_completion().unwrap();
 
         // Phew! Done!
         buffer
@@ -319,10 +316,7 @@ impl<B: Backend> RendererView<B> {
         let mut cb = renderer.command_buffer.borrow_mut();
 
         // TODO: use multiple buffers
-        assert_eq!(
-            cb.wait_completion(time::Duration::from_secs(1)).unwrap(),
-            true
-        );
+        cb.wait_completion().unwrap();
 
         cb.begin_encoding();
 
