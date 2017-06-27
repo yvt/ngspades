@@ -16,11 +16,6 @@
 //!    `MTLBuffer` provides a method that allows users to sub-allocate its portion to create
 //!    texture views, but this is inappropriate for a general use since it is not designed for
 //!    performance but rather a way to create linearly layouted textures.
-//!  - **`Semaphore`** - `MTLFence` might seem to be the counterpart, but this is not true because
-//!    `MTLFence` does not support inter-queue synchronization, which has to be maintained by
-//!    the software.
-//!
-//!    TODO: change the definition of `Semaphore` so it matches `MTLFence`?
 //!  - **`Fence`** - Mapped to callbacks from `MTLCommandBuffer`.
 //!  - **`BufferView`** - No direct Metal counterparts are available. TODO: emulate by 2D texture?
 //!  - **`CommandBuffer`** - Maps naturally to Metal except that one `CommandBuffer` can have multiple
@@ -123,7 +118,6 @@ pub mod imp {
         type RenderPass = RenderPass;
         type Sampler = Sampler;
         type SecondaryCommandBuffer = SecondaryCommandBuffer;
-        type Semaphore = Semaphore;
         type ShaderModule = ShaderModule;
         type StencilState = StencilState;
     }

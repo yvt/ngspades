@@ -24,48 +24,44 @@ impl CommandQueue {
 }
 
 struct SubmissionTransaction<'a> {
-    submissions: &'a [&'a core::SubmissionInfo<'a, Backend>],
+    buffers: &'a[&'a CommandBuffer],
     num_successful_transitions: usize,
     fence_associated: Option<&'a Fence>,
 }
 
 fn submit_commands(
-    submissions: &[&core::SubmissionInfo<Backend>],
+    buffers: &[&CommandBuffer],
     fence: Option<&Fence>,
 ) -> core::Result<()> {
     let mut transaction = SubmissionTransaction {
-        submissions: submissions,
+        buffers: buffers,
         num_successful_transitions: 0,
         fence_associated: None,
     };
 
     // Check some preconditions beforehand
     // (this eases error handling)
-    for submission in submissions.iter() {
-        for buffer in submission.buffers.iter() {
-            buffer.buffer.as_ref().expect(
-                "invalid command buffer state",
-            );
-            if buffer.encoder.is_recording() {
-                panic!("invalid command buffer state");
-            }
-            // now we are sure this buffer is in the
-            // `Executable`, `Pending`, or `Completed`
+    for buffer in buffers.iter() {
+        buffer.buffer.as_ref().expect(
+            "invalid command buffer state",
+        );
+        if buffer.encoder.is_recording() {
+            panic!("invalid command buffer state");
         }
+        // now we are sure this buffer is in the
+        // `Executable`, `Pending`, or `Completed`
     }
 
-    let num_buffers = submissions.iter().map(|s| s.buffers.len()).sum();
+    let num_buffers = buffers.len();
 
     // Make a state transition from `Executable` to `Pending`
-    'check_state: for submission in submissions.iter() {
-        for buffer in submission.buffers.iter() {
-            let ov = buffer.submitted.swap(true, Ordering::Acquire);
-            if ov {
-                // Some buffers were not in `Executable`;
-                panic!("invalid command buffer state");
-            }
-            transaction.num_successful_transitions += 1;
+    'check_state: for buffer in buffers.iter() {
+        let ov = buffer.submitted.swap(true, Ordering::Acquire);
+        if ov {
+            // Some buffers were not in `Executable`;
+            panic!("invalid command buffer state");
         }
+        transaction.num_successful_transitions += 1;
     }
 
     let mut completion_handler = None;
@@ -83,17 +79,13 @@ fn submit_commands(
         completion_handler = Some(block.copy());
     }
 
-    for submission in submissions.iter() {
-        for buffer in submission.buffers.iter() {
-            let metal_buffer = buffer.buffer.as_ref().unwrap();
-            if let Some(ref completion_handler) = completion_handler {
-                metal_buffer.add_completed_handler(&**completion_handler);
-            }
-
-            metal_buffer.commit();
-
-            // TODO: semaphores
+    for buffer in buffers.iter() {
+        let metal_buffer = buffer.buffer.as_ref().unwrap();
+        if let Some(ref completion_handler) = completion_handler {
+            metal_buffer.add_completed_handler(&**completion_handler);
         }
+
+        metal_buffer.commit();
     }
 
     // The operation was successful; now commit the transaction
@@ -105,14 +97,12 @@ fn submit_commands(
 impl<'a> Drop for SubmissionTransaction<'a> {
     fn drop(&mut self) {
         // Perform rollback
-        'rb_transitions: for submission in self.submissions.iter() {
-            for buffer in submission.buffers.iter() {
-                if self.num_successful_transitions == 0 {
-                    break 'rb_transitions;
-                }
-                self.num_successful_transitions -= 1;
-                buffer.submitted.store(false, Ordering::Release);
+        for buffer in self.buffers.iter() {
+            if self.num_successful_transitions == 0 {
+                break;
             }
+            self.num_successful_transitions -= 1;
+            buffer.submitted.store(false, Ordering::Release);
         }
 
         if let Some(fence) = self.fence_associated {
@@ -138,9 +128,9 @@ impl core::CommandQueue<Backend> for CommandQueue {
 
     fn submit_commands(
         &self,
-        submissions: &[&core::SubmissionInfo<Backend>],
+        buffers: &[&CommandBuffer],
         fence: Option<&Fence>,
     ) -> core::Result<()> {
-        submit_commands(submissions, fence)
+        submit_commands(buffers, fence)
     }
 }

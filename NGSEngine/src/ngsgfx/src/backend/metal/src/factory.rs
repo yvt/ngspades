@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use imp::{self, Backend, ComputePipeline, DescriptorPool, DescriptorSetLayout, Fence, Framebuffer,
           GraphicsPipeline, Heap, Image, ImageView, PipelineLayout, RenderPass, Sampler,
-          Semaphore, ShaderModule, StencilState, DeviceData};
+          ShaderModule, StencilState, DeviceData};
 
 #[derive(Debug)]
 pub struct Factory {
@@ -30,10 +30,6 @@ impl core::Factory<Backend> for Factory {
     fn make_fence(&self, description: &core::FenceDescription) -> core::Result<Fence> {
         description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         Ok(Fence::new(description))
-    }
-    fn make_semaphore(&self, description: &core::SemaphoreDescription) -> core::Result<Semaphore> {
-        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
-        Ok(Semaphore::new(description))
     }
     fn make_render_pass(
         &self,

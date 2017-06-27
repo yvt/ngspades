@@ -64,16 +64,10 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
     }
 }
 
-/// Handle for the intra-queue synchronization primitive.
-pub trait Semaphore: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {}
-
 #[derive(Debug, Clone, Copy)]
 pub struct FenceDescription {
     pub signaled: bool,
 }
-
-#[derive(Debug, Clone, Copy)]
-pub struct SemaphoreDescription {}
 
 /// Validation errors for [`FenceDescription`](struct.FenceDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -83,25 +77,6 @@ pub enum FenceDescriptionValidationError {
 
 impl Validate for FenceDescription {
     type Error = FenceDescriptionValidationError;
-
-    #[allow(unused_variables)]
-    #[allow(unused_mut)]
-    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
-    where
-        T: FnMut(Self::Error) -> (),
-    {
-        // None so far
-    }
-}
-
-/// Validation errors for [`SemaphoreDescription`](struct.SemaphoreDescription.html).
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum SemaphoreDescriptionValidationError {
-    // None so far
-}
-
-impl Validate for SemaphoreDescription {
-    type Error = SemaphoreDescriptionValidationError;
 
     #[allow(unused_variables)]
     #[allow(unused_mut)]

@@ -11,34 +11,6 @@ use core;
 
 use RefEqArc;
 
-/// `Semaphore` implementation for Metal.
-///
-/// TODO: implement `Semaphore`. Note that `MTLFence` cannot be used for inter-queue synchronization,
-/// and is not available on macOS 10.12.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Semaphore {
-    data: RefEqArc<SemaphoreData>,
-}
-
-#[derive(Debug)]
-struct SemaphoreData {
-    label: Mutex<Option<String>>,
-}
-
-impl Semaphore {
-    pub(crate) fn new(_: &core::SemaphoreDescription) -> Self {
-        Self { data: RefEqArc::new(SemaphoreData { label: Mutex::new(None) }) }
-    }
-}
-
-impl core::Marker for Semaphore {
-    fn set_label(&self, label: Option<&str>) {
-        *self.data.label.lock().unwrap() = label.map(String::from);
-    }
-}
-
-impl core::Semaphore for Semaphore {}
-
 /// `Fence` implementation for Metal.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Fence {

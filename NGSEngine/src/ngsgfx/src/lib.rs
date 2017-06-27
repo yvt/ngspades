@@ -56,7 +56,6 @@ pub mod prelude {
     pub use core::PipelineLayout;
     pub use core::RenderPass;
     pub use core::Sampler;
-    pub use core::Semaphore;
     pub use core::StencilState;
     pub use core::ShaderModule;
 }

@@ -26,18 +26,11 @@ pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     /// commands that has not yet completed execution.
     fn submit_commands(
         &self,
-        submissions: &[&SubmissionInfo<B>],
+        buffers: &[&B::CommandBuffer],
         fence: Option<&B::Fence>,
     ) -> Result<()>;
 
     fn wait_idle(&self);
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct SubmissionInfo<'a, B: Backend> {
-    pub buffers: &'a [&'a B::CommandBuffer],
-    pub wait_semaphores: &'a [&'a B::Semaphore],
-    pub signal_semaphores: &'a [&'a B::Semaphore],
 }
 
 /// Command buffer.

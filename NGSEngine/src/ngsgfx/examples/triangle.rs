@@ -269,13 +269,7 @@ impl<B: Backend> Renderer<B> {
         cb.end_encoding();
         queue
             .submit_commands(
-                &[
-                    &core::SubmissionInfo {
-                        buffers: &[&cb],
-                        wait_semaphores: &[],
-                        signal_semaphores: &[],
-                    },
-                ],
+                &[&cb],
                 None,
             )
             .unwrap();
@@ -355,13 +349,7 @@ impl<B: Backend> RendererView<B> {
         device
             .main_queue()
             .submit_commands(
-                &[
-                    &core::SubmissionInfo {
-                        buffers: &[&*cb],
-                        wait_semaphores: &[],
-                        signal_semaphores: &[],
-                    },
-                ],
+                &[&*cb],
                 None,
             )
             .unwrap();

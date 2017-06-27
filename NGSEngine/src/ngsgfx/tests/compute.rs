@@ -130,13 +130,7 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
 
         queue
             .submit_commands(
-                &[
-                    &core::SubmissionInfo {
-                        buffers: &[&cb],
-                        wait_semaphores: &[],
-                        signal_semaphores: &[],
-                    },
-                ],
+                &[&cb],
                 None,
             )
             .unwrap();
@@ -288,13 +282,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
 
         queue
             .submit_commands(
-                &[
-                    &core::SubmissionInfo {
-                        buffers: &[&cb],
-                        wait_semaphores: &[],
-                        signal_semaphores: &[],
-                    },
-                ],
+                &[&cb],
                 None,
             )
             .unwrap();
@@ -349,13 +337,7 @@ impl BackendDispatch for SimpleTest {
 
         queue
             .submit_commands(
-                &[
-                    &core::SubmissionInfo {
-                        buffers: &[&cb],
-                        wait_semaphores: &[],
-                        signal_semaphores: &[],
-                    },
-                ],
+                &[&cb],
                 None,
             )
             .unwrap();
@@ -519,13 +501,7 @@ impl BackendDispatch for Conv1Test {
 
         queue
             .submit_commands(
-                &[
-                    &core::SubmissionInfo {
-                        buffers: &[&cb],
-                        wait_semaphores: &[],
-                        signal_semaphores: &[],
-                    },
-                ],
+                &[&cb],
                 None,
             )
             .unwrap();

@@ -135,7 +135,6 @@ pub trait Backend: Sized + 'static {
     type RenderPass: RenderPass;
     type Sampler: Sampler;
     type SecondaryCommandBuffer: SecondaryCommandBuffer<Self>;
-    type Semaphore: Semaphore;
     type StencilState: StencilState;
     type ShaderModule: ShaderModule;
 }
