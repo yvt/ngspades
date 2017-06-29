@@ -89,7 +89,7 @@ impl RenderCommandEncoder {
             zfar: value.max_depth as f64,
         });
     }
-    fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
+    fn set_scissor_rect(&mut self, _: &core::Rect2D<u32>) {
         unimplemented!()
     }
     fn bind_graphics_descriptor_sets(
@@ -116,7 +116,7 @@ impl RenderCommandEncoder {
         );
     }
 
-    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: usize, format: core::IndexFormat) {
+    fn bind_index_buffer(&mut self, _: &Buffer, _: usize, _: core::IndexFormat) {
         unimplemented!()
     }
 
@@ -145,14 +145,7 @@ impl RenderCommandEncoder {
             );
         }
     }
-    fn draw_indexed(
-        &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        index_offset: u32,
-        start_instance_index: u32,
-    ) {
+    fn draw_indexed(&mut self, _: u32, _: u32, _: u32, _: u32, _: u32) {
         unimplemented!()
     }
 }

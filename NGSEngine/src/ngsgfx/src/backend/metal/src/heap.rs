@@ -85,7 +85,7 @@ impl core::Heap<Backend> for Heap {
     }
     fn make_image(
         &mut self,
-        description: &core::ImageDescription,
+        _: &core::ImageDescription,
     ) -> core::Result<Option<(Self::Allocation, Image)>> {
         unimplemented!()
     }

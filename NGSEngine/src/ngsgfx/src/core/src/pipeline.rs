@@ -8,13 +8,12 @@ use std::hash::Hash;
 use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
-use std::i32;
 
 use enumflags::BitFlags;
 use cgmath::Vector2;
 
 use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
-            CompareFunction, PipelineLayout, ShaderStage, ShaderModule, Marker};
+            CompareFunction, PipelineLayout, ShaderStage, ShaderModule};
 
 /// Handle for compute pipeline objects.
 pub trait ComputePipeline

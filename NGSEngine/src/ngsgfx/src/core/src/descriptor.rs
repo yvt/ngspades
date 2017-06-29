@@ -191,15 +191,15 @@ pub enum WriteDescriptors<'a, B: Backend> {
 impl<'a, B: Backend> WriteDescriptors<'a, B> {
     pub fn descriptor_type(&self) -> DescriptorType {
         match *self {
-            WriteDescriptors::StorageImage(e) => DescriptorType::StorageImage,
-            WriteDescriptors::SampledImage(e) => DescriptorType::SampledImage,
-            WriteDescriptors::Sampler(e) => DescriptorType::Sampler,
-            WriteDescriptors::CombinedImageSampler(e) => DescriptorType::CombinedImageSampler,
-            WriteDescriptors::ConstantBuffer(e) => DescriptorType::ConstantBuffer,
-            WriteDescriptors::StorageBuffer(e) => DescriptorType::StorageBuffer,
-            WriteDescriptors::DynamicConstantBuffer(e) => DescriptorType::DynamicConstantBuffer,
-            WriteDescriptors::DynamicStorageBuffer(e) => DescriptorType::DynamicStorageBuffer,
-            WriteDescriptors::InputAttachment(e) => DescriptorType::InputAttachment,
+            WriteDescriptors::StorageImage(_) => DescriptorType::StorageImage,
+            WriteDescriptors::SampledImage(_) => DescriptorType::SampledImage,
+            WriteDescriptors::Sampler(_) => DescriptorType::Sampler,
+            WriteDescriptors::CombinedImageSampler(_) => DescriptorType::CombinedImageSampler,
+            WriteDescriptors::ConstantBuffer(_) => DescriptorType::ConstantBuffer,
+            WriteDescriptors::StorageBuffer(_) => DescriptorType::StorageBuffer,
+            WriteDescriptors::DynamicConstantBuffer(_) => DescriptorType::DynamicConstantBuffer,
+            WriteDescriptors::DynamicStorageBuffer(_) => DescriptorType::DynamicStorageBuffer,
+            WriteDescriptors::InputAttachment(_) => DescriptorType::InputAttachment,
         }
     }
 }

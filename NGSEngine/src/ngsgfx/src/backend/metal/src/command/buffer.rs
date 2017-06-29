@@ -6,11 +6,9 @@
 use {core, metal, OCPtr};
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
 use std::mem::replace;
-use enumflags::BitFlags;
 
-use imp::{Backend, Framebuffer, SecondaryCommandBuffer, Fence};
+use imp::{Backend, Framebuffer, SecondaryCommandBuffer};
 
 use super::graphics::{GraphicsEncoderState, RenderCommandEncoder};
 use super::compute::ComputeCommandEncoder;
@@ -183,7 +181,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         let raw_buffer = self.queue.new_command_buffer();
         self.buffer = Some(OCPtr::new(raw_buffer).unwrap());
         self.encoder = EncoderState::NoPass;
-        self.submitted.store(false, Ordering::Relaxed);
+        self.submitted.store(false, Ordering::Relaxed); // TODO: care about ordering
 
         self.update_label();
     }

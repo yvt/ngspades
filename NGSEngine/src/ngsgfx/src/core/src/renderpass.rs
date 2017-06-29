@@ -9,8 +9,6 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use enumflags::BitFlags;
-
 use {ImageLayout, ImageFormat, PipelineStageFlags, AccessTypeFlags, Validate, DeviceCapabilities,
      Marker};
 

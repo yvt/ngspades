@@ -3,16 +3,13 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::hash::Hash;
 use std::fmt::Debug;
-use std::cmp::{Eq, PartialEq};
 use std::any::Any;
-use std::time::Duration;
 
 use enumflags::BitFlags;
 
-use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Framebuffer,
-     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker,
+use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Marker,
+     ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker,
      FenceDescription};
 
 use cgmath::Vector3;

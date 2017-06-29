@@ -9,9 +9,9 @@ use std::any::Any;
 use super::{Backend, Result, MemoryRequirements};
 use super::{RenderPassDescription, FramebufferDescription, HeapDescription, ImageDescription,
             BufferDescription, ImageViewDescription, GraphicsPipelineDescription,
-            DescriptorPoolDescription, DescriptorSetDescription, DescriptorSetLayoutDescription,
-            SamplerDescription, PipelineLayoutDescription, ShaderModuleDescription,
-            ComputePipelineDescription, StencilStateDescription, EventDescription};
+            DescriptorPoolDescription, DescriptorSetLayoutDescription, SamplerDescription,
+            PipelineLayoutDescription, ShaderModuleDescription, ComputePipelineDescription,
+            StencilStateDescription, EventDescription};
 
 pub trait Factory<B: Backend>: Debug + Any {
     fn make_event(&self, descriptor: &EventDescription) -> Result<B::Event>;

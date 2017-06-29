@@ -6,6 +6,9 @@
 use cgmath::Vector3;
 
 pub trait Marker {
+    /// Specifiy a name to identify this object, or entity if this is a handle
+    /// type.
+    #[allow(unused_variables)]
     fn set_label(&self, label: Option<&str>) {}
 }
 
