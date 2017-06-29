@@ -54,7 +54,8 @@ pub trait CommandBuffer<B: Backend>
 
 
 pub trait SecondaryCommandBuffer<B: Backend>
-    : Debug + Send + Any + RenderSubpassCommandEncoder<B> + Marker {
+    : Debug + Send + Any + RenderSubpassCommandEncoder<B> + Marker + BarrierCommandEncoder<B>
+    {
     /// End recording a second command buffer.
     fn end_encoding(&mut self);
 }
@@ -109,31 +110,6 @@ pub trait CommandEncoder<B: Backend>
     /// The command buffer must be in the `Recording` state.
     /// No kind of passes can be active at the point of call.
     fn end_encoding(&mut self);
-
-    /// Instruct the device to wait until the given fence is reached.
-    /// There must be an active pass of any type.
-    ///
-    /// The backend might move the fence wait operation to the beginning of the
-    /// pass.
-    ///
-    /// `stage` and `access` specify pipeline stages and memory access types,
-    /// respectively, that must wait until the given fence is reached.
-    fn wait_fence(&mut self, stage: PipelineStageFlags, access: AccessTypeFlags, fence: &B::Fence);
-
-    /// Instruct the device to update the given fence.
-    /// There must be an active pass of any type.
-    ///
-    /// The backend might move the fence update operation to the end of the
-    /// pass.
-    ///
-    /// `stage` and `access` specify pipeline stages and memory access types,
-    /// respectively, that must be completed before the fence is updated.
-    fn update_fence(
-        &mut self,
-        stage: PipelineStageFlags,
-        access: AccessTypeFlags,
-        fence: &B::Fence,
-    );
 
     /// Begin a render pass.
     ///
@@ -200,6 +176,34 @@ pub trait CommandEncoder<B: Backend>
 /// Encodes barrier commands into a command buffer.
 pub trait BarrierCommandEncoder<B: Backend>
     : Debug + Send + Any + DebugCommandEncoder {
+    /// Instruct the device to wait until the given fence is reached.
+    /// There must be an active compute/blit pass or render subpass.
+    ///
+    /// The backend might move the fence wait operation to the beginning of the
+    /// pass or subpass (if the current pass is a render pass).
+    ///
+    /// You cannot wait on a fence that was updated in the same render pass as
+    /// one that is currently active. Use subpass dependencies instead.
+    ///
+    /// `stage` and `access` specify pipeline stages and memory access types,
+    /// respectively, that must wait until the given fence is reached.
+    fn wait_fence(&mut self, stage: PipelineStageFlags, access: AccessTypeFlags, fence: &B::Fence);
+
+    /// Instruct the device to update the given fence.
+    /// There must be an active compute/blit pass or render subpass.
+    ///
+    /// The backend might delay the fence update operation until the end of the
+    /// pass or subpass (if the current pass is a render pass).
+    ///
+    /// `stage` and `access` specify pipeline stages and memory access types,
+    /// respectively, that must be completed before the fence is updated.
+    fn update_fence(
+        &mut self,
+        stage: PipelineStageFlags,
+        access: AccessTypeFlags,
+        fence: &B::Fence,
+    );
+
     /// Insert a resource barrier.
     ///
     /// There must be an active pass of any type.

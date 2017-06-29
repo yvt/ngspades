@@ -193,14 +193,6 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         self.encoder = EncoderState::NotRecording;
     }
 
-    fn wait_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
-        // no-op for now
-    }
-
-    fn update_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
-        // no-op for now
-    }
-
     fn begin_render_pass(&mut self, framebuffer: &Framebuffer, _: core::DeviceEngine) {
         self.expect_no_pass();
         self.encoder = EncoderState::GraphicsIntermission {
