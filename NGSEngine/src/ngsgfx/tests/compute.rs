@@ -39,13 +39,17 @@ fn try_device_metal<T: BackendDispatch>(d: T) -> Option<T> {
 }
 
 #[cfg(not(target_os = "macos"))]
-fn try_device_metal<T: BackendDispatch>(d: T) -> Option<T> {
-    Some(d)
-}
+use std::option::Option::Some as try_device_metal;
+
+// TODO: Enable the Vulkan backend when it became available
+use std::option::Option::Some as try_device_vulkan;
 
 fn find_default_device<T: BackendDispatch>(d: T) {
-    let t = Some(d).and_then(try_device_metal);
-    if t.is_some() {
+    if Some(d)
+        .and_then(try_device_metal)
+        .and_then(try_device_vulkan)
+        .is_some()
+    {
         panic!("no backend available -- cannot proceed");
     }
 }
