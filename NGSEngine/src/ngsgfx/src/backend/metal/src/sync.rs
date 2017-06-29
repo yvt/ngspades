@@ -11,6 +11,33 @@ use core;
 
 use RefEqArc;
 
+/// `Fence` implementation for Metal.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Fence {
+    data: RefEqArc<FenceData>,
+}
+
+#[derive(Debug)]
+struct FenceData {
+    label: Mutex<Option<String>>,
+}
+
+impl core::Fence for Fence {}
+
+impl core::Marker for Fence {
+    fn set_label(&self, label: Option<&str>) {
+        *self.data.label.lock().unwrap() = label.map(String::from);
+    }
+}
+
+impl Fence {
+    pub(crate) fn new(_: &core::FenceDescription) -> core::Result<Self> {
+        Ok(Self {
+            data: RefEqArc::new(FenceData { label: Mutex::new(None) }),
+        })
+    }
+}
+
 /// `Event` implementation for Metal.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Event {

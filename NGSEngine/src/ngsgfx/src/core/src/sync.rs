@@ -10,7 +10,20 @@ use std::any::Any;
 use std::time::{Duration, Instant};
 use std::marker::Sized;
 
-use {Result, Validate, DeviceCapabilities, Marker};
+use {Result, Validate, DeviceCapabilities, Marker, DeviceEngineFlags, DeviceEngine};
+
+/// Handle for the synchronization primitive used to synchronize between the
+/// render/compute/blit passes.
+pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FenceDescription {
+    /// Specifies the set of `DeviceEngine`s that can update the fence.
+    pub update_engines: DeviceEngineFlags,
+
+    /// Specifies the set of `DeviceEngine`s that can wait on the fence.
+    pub wait_engines: DeviceEngineFlags,
+}
 
 /// Handle for the synchronization primitive used to synchronize between the host and device.
 pub trait Event: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
@@ -67,6 +80,26 @@ pub trait Event: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
 #[derive(Debug, Clone, Copy)]
 pub struct EventDescription {
     pub signaled: bool,
+}
+
+/// Validation errors for [`FenceDescription`](struct.FenceDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum FenceDescriptionValidationError {
+    /// `DeviceEngine::Host` is specified in one of `update_engines` and `wait_engines`
+    HostEngine,
+}
+
+impl Validate for FenceDescription {
+    type Error = FenceDescriptionValidationError;
+
+    fn validate<T>(&self, _: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        if !((self.update_engines | self.update_engines) & DeviceEngine::Host).is_empty() {
+            callback(FenceDescriptionValidationError::HostEngine);
+        }
+    }
 }
 
 /// Validation errors for [`EventDescription`](struct.EventDescription.html).

@@ -125,6 +125,7 @@ pub trait Backend: Sized + 'static {
     type Device: Device<Self>;
     type DeviceCapabilities: DeviceCapabilities;
     type Factory: Factory<Self>;
+    type Fence: Fence;
     type Event: Event;
     type Framebuffer: Framebuffer;
     type GraphicsPipeline: GraphicsPipeline;

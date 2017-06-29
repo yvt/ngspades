@@ -64,6 +64,7 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
         self,
         last_pipeline_stage: core::PipelineStageFlags,
         last_access_mask: core::AccessTypeFlags,
+        engine: core::DeviceEngine,
     ) -> &'a mut [T] {
         let device = self.0;
 
@@ -98,37 +99,32 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
         let mut cb = queue.make_command_buffer().unwrap();
         cb.set_label(Some("staging CB"));
         cb.begin_encoding();
-        cb.barrier(
+        cb.begin_blit_pass(engine);
+        cb.resource_barrier(
             last_pipeline_stage,
+            last_access_mask,
             core::PipelineStage::Transfer.into(),
-            &[
-                core::Barrier::BufferMemoryBarrier {
-                    buffer: &buffer,
-                    source_access_mask: last_access_mask,
-                    destination_access_mask: core::AccessType::TransferWrite.into(),
-                    offset: 0,
-                    len: size,
-                },
-            ],
+            core::AccessType::TransferRead.into(),
+            &core::SubresourceWithLayout::Buffer {
+                buffer: &staging_buffer,
+                offset: 0,
+                len: size,
+            },
         );
-        cb.begin_blit_pass();
         cb.begin_debug_group(&core::DebugMarker::new("staging to buffer"));
         cb.copy_buffer(&buffer, 0, &staging_buffer, 0, size);
         cb.end_debug_group();
-        cb.end_pass();
-        cb.barrier(
+        cb.release_resource(
             core::PipelineStage::Transfer.into(),
-            core::PipelineStage::Host.into(),
-            &[
-                core::Barrier::BufferMemoryBarrier {
-                    buffer: &staging_buffer,
-                    source_access_mask: core::AccessType::TransferWrite.into(),
-                    destination_access_mask: core::AccessType::HostWrite.into(),
-                    offset: 0,
-                    len: size,
-                },
-            ],
+            core::AccessType::TransferWrite.into(),
+            core::DeviceEngine::Host,
+            &core::SubresourceWithLayout::Buffer {
+                buffer: &staging_buffer,
+                offset: 0,
+                len: size,
+            },
         );
+        cb.end_pass();
         cb.end_encoding();
 
         queue.submit_commands(&[&cb], None).unwrap();
@@ -178,6 +174,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         usage: core::BufferUsageFlags,
         first_pipeline_stage: core::PipelineStageFlags,
         first_access_mask: core::AccessTypeFlags,
+        engine: core::DeviceEngine,
     ) -> B::Buffer {
         let device = self.0;
 
@@ -231,37 +228,32 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         let mut cb = queue.make_command_buffer().unwrap();
         cb.set_label(Some("staging CB to buffer"));
         cb.begin_encoding();
-        cb.barrier(
-            core::PipelineStage::Host.into(),
+        cb.begin_blit_pass(engine);
+        cb.acquire_resource(
             core::PipelineStage::Transfer.into(),
-            &[
-                core::Barrier::BufferMemoryBarrier {
-                    buffer: &staging_buffer,
-                    source_access_mask: core::AccessType::HostWrite.into(),
-                    destination_access_mask: core::AccessType::TransferRead.into(),
-                    offset: 0,
-                    len: size,
-                },
-            ],
+            core::AccessType::TransferRead.into(),
+            core::DeviceEngine::Host,
+            &core::SubresourceWithLayout::Buffer {
+                buffer: &staging_buffer,
+                offset: 0,
+                len: size,
+            },
         );
-        cb.begin_blit_pass();
         cb.begin_debug_group(&core::DebugMarker::new("staging to buffer"));
         cb.copy_buffer(&staging_buffer, 0, &buffer, 0, size);
         cb.end_debug_group();
-        cb.end_pass();
-        cb.barrier(
+        cb.resource_barrier(
             core::PipelineStage::Transfer.into(),
+            core::AccessType::TransferWrite.into(),
             first_pipeline_stage,
-            &[
-                core::Barrier::BufferMemoryBarrier {
-                    buffer: &buffer,
-                    source_access_mask: core::AccessType::TransferWrite.into(),
-                    destination_access_mask: first_access_mask,
-                    offset: 0,
-                    len: size,
-                },
-            ],
+            first_access_mask,
+            &core::SubresourceWithLayout::Buffer {
+                buffer: &staging_buffer,
+                offset: 0,
+                len: size,
+            },
         );
+        cb.end_pass();
         cb.end_encoding();
 
         queue.submit_commands(&[&cb], None).unwrap();
@@ -305,7 +297,7 @@ impl BackendDispatch for SimpleTest {
         let mut cb = queue.make_command_buffer().unwrap();
 
         cb.begin_encoding();
-        cb.begin_compute_pass();
+        cb.begin_compute_pass(core::DeviceEngine::Compute);
         cb.bind_compute_pipeline(&pipeline);
         cb.dispatch(Vector3::new(1, 1, 1));
         cb.end_pass();
@@ -348,6 +340,7 @@ impl BackendDispatch for Conv1Test {
             core::BufferUsage::StorageBuffer.into(),
             core::PipelineStage::ComputeShader.into(),
             core::AccessType::ShaderRead.into(),
+            core::DeviceEngine::Compute,
         );
 
         let kernel_buffer = device_utils.make_preinitialized_buffer(
@@ -355,6 +348,7 @@ impl BackendDispatch for Conv1Test {
             core::BufferUsage::StorageBuffer.into(),
             core::PipelineStage::ComputeShader.into(),
             core::AccessType::ShaderRead.into(),
+            core::DeviceEngine::Compute,
         );
 
         let output_buffer = device_utils.make_result_buffer(
@@ -476,7 +470,7 @@ impl BackendDispatch for Conv1Test {
         let mut cb = queue.make_command_buffer().unwrap();
 
         cb.begin_encoding();
-        cb.begin_compute_pass();
+        cb.begin_compute_pass(core::DeviceEngine::Compute);
         cb.bind_compute_pipeline(&pipeline);
         cb.dispatch(Vector3::new(global_size as u32, 1, 1));
         cb.end_pass();
@@ -488,6 +482,7 @@ impl BackendDispatch for Conv1Test {
         let result = output_buffer.take(
             core::PipelineStage::ComputeShader.into(),
             core::AccessType::ShaderWrite.into(),
+            core::DeviceEngine::Compute,
         );
 
         // TODO: check output value

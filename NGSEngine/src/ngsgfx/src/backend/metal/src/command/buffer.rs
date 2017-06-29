@@ -10,7 +10,7 @@ use std::time::Duration;
 use std::mem::replace;
 use enumflags::BitFlags;
 
-use imp::{Backend, Framebuffer, SecondaryCommandBuffer};
+use imp::{Backend, Framebuffer, SecondaryCommandBuffer, Fence};
 
 use super::graphics::{GraphicsEncoderState, RenderCommandEncoder};
 use super::compute::ComputeCommandEncoder;
@@ -193,16 +193,15 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         self.encoder = EncoderState::NotRecording;
     }
 
-    fn barrier(
-        &mut self,
-        source_stage: core::PipelineStageFlags,
-        destination_stage: core::PipelineStageFlags,
-        barriers: &[core::Barrier<Backend>],
-    ) {
-        // TODO: barrier
+    fn wait_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
+        // no-op for now
     }
 
-    fn begin_render_pass(&mut self, framebuffer: &Framebuffer) {
+    fn update_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
+        // no-op for now
+    }
+
+    fn begin_render_pass(&mut self, framebuffer: &Framebuffer, _: core::DeviceEngine) {
         self.expect_no_pass();
         self.encoder = EncoderState::GraphicsIntermission {
             framebuffer: framebuffer.clone(),
@@ -210,14 +209,14 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         };
     }
 
-    fn begin_compute_pass(&mut self) {
+    fn begin_compute_pass(&mut self, _: core::DeviceEngine) {
         self.expect_no_pass();
 
         let encoder = OCPtr::new(self.buffer.as_ref().unwrap().new_compute_command_encoder());
         self.encoder = EncoderState::Compute(ComputeCommandEncoder::new(encoder.unwrap()));
     }
 
-    fn begin_blit_pass(&mut self) {
+    fn begin_blit_pass(&mut self, _: core::DeviceEngine) {
         self.expect_no_pass();
 
         let encoder = OCPtr::new(self.buffer.as_ref().unwrap().new_blit_command_encoder());

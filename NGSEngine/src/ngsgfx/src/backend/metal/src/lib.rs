@@ -108,6 +108,7 @@ pub mod imp {
         type Device = Device;
         type DeviceCapabilities = DeviceCapabilities;
         type Factory = Factory;
+        type Fence = Fence;
         type Event = Event;
         type Framebuffer = Framebuffer;
         type GraphicsPipeline = GraphicsPipeline;

@@ -8,7 +8,7 @@ use {core, metal, block, OCPtr};
 use std::sync::atomic::Ordering;
 use std::mem::forget;
 
-use imp::{Backend, Event, CommandBuffer};
+use imp::{Backend, Event, CommandBuffer, Fence};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CommandQueue {
@@ -129,5 +129,9 @@ impl core::CommandQueue<Backend> for CommandQueue {
         event: Option<&Event>,
     ) -> core::Result<()> {
         submit_commands(buffers, event)
+    }
+
+    fn make_fence(&self, description: &core::FenceDescription) -> core::Result<Fence> {
+        Fence::new(description)
     }
 }

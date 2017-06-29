@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+mod barrier;
 mod blit;
 mod buffer;
 mod compute;

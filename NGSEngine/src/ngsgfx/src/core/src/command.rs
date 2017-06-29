@@ -9,13 +9,17 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 use std::time::Duration;
 
+use enumflags::BitFlags;
+
 use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Framebuffer,
-     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker};
+     Marker, ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker,
+     FenceDescription};
 
 use cgmath::Vector3;
 
 pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     fn make_command_buffer(&self) -> Result<B::CommandBuffer>;
+    fn make_fence(&self, description: &FenceDescription) -> Result<B::Fence>;
 
     /// Submit command buffers to a queue.
     ///
@@ -85,44 +89,6 @@ pub enum SubresourceWithLayout<'a, B: Backend> {
     },
 }
 
-/// Describes a memory barrier.
-///
-/// Please see Vulkan 1.0 Specification "6.7. Memory Barriers".
-///
-/// TODO: add `#[derive(Hash)]` after `enumflags` was updated to
-///       implement that on `BitFlags`
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum Barrier<'a, B: Backend> {
-    AcquireQueueOwnership {
-        resource: SubresourceWithLayout<'a, B>,
-        // TODO: make this point to a queue family, not `CommandQueue` (which is not `Sync`)
-        source: &'a B::CommandQueue,
-    },
-    ReleaseQueueOwnership {
-        resource: SubresourceWithLayout<'a, B>,
-        // TODO: make this point to a queue family, not `CommandQueue` (which is not `Sync`)
-        destination: &'a B::CommandQueue,
-    },
-    GlobalMemoryBarrier {
-        source_access_mask: AccessTypeFlags,
-        destination_access_mask: AccessTypeFlags,
-    },
-    ImageMemoryBarrier {
-        image: &'a B::Image,
-        source_access_mask: AccessTypeFlags,
-        destination_access_mask: AccessTypeFlags,
-        source_layout: ImageLayout,
-        destination_layout: ImageLayout,
-    },
-    BufferMemoryBarrier {
-        buffer: &'a B::Buffer,
-        source_access_mask: AccessTypeFlags,
-        destination_access_mask: AccessTypeFlags,
-        offset: usize,
-        len: usize,
-    },
-}
-
 /// Encodes commands into a command buffer.
 pub trait CommandEncoder<B: Backend>
     : Debug
@@ -130,7 +96,8 @@ pub trait CommandEncoder<B: Backend>
     + Any
     + RenderSubpassCommandEncoder<B>
     + ComputeCommandEncoder<B>
-    + BlitCommandEncoder<B> {
+    + BlitCommandEncoder<B>
+    + BarrierCommandEncoder<B> {
     /// Start recording a command buffer.
     /// The existing contents will be cleared (if any).
     ///
@@ -143,16 +110,29 @@ pub trait CommandEncoder<B: Backend>
     /// No kind of passes can be active at the point of call.
     fn end_encoding(&mut self);
 
-    /// Inserts a memory dependency (which also implies an execution dependency)
-    /// between commands that were submitted before this and those submitted
-    /// after it.
+    /// Instruct the device to wait until the given fence is reached.
+    /// There must be an active pass of any type.
     ///
-    /// There must not be an active render/compute/blit pass.
-    fn barrier(
+    /// The backend might move the fence wait operation to the beginning of the
+    /// pass.
+    ///
+    /// `stage` and `access` specify pipeline stages and memory access types,
+    /// respectively, that must wait until the given fence is reached.
+    fn wait_fence(&mut self, stage: PipelineStageFlags, access: AccessTypeFlags, fence: &B::Fence);
+
+    /// Instruct the device to update the given fence.
+    /// There must be an active pass of any type.
+    ///
+    /// The backend might move the fence update operation to the end of the
+    /// pass.
+    ///
+    /// `stage` and `access` specify pipeline stages and memory access types,
+    /// respectively, that must be completed before the fence is updated.
+    fn update_fence(
         &mut self,
-        source_stage: PipelineStageFlags,
-        destination_stage: PipelineStageFlags,
-        barriers: &[Barrier<B>],
+        stage: PipelineStageFlags,
+        access: AccessTypeFlags,
+        fence: &B::Fence,
     );
 
     /// Begin a render pass.
@@ -160,17 +140,21 @@ pub trait CommandEncoder<B: Backend>
     /// During a render pass, calls to `begin_render_subpass` and `end_render_subpass`
     /// must occur as many times as the number of subpasses in the render pass associated
     /// with the specified framebuffer.
-    fn begin_render_pass(&mut self, framebuffer: &B::Framebuffer);
+    ///
+    /// `engine` must be `Universal`.
+    fn begin_render_pass(&mut self, framebuffer: &B::Framebuffer, engine: DeviceEngine);
 
     /// Begin a compute pass.
     ///
     /// Only during a compute pass, functions from `ComputeCommandEncoder` can be called.
-    fn begin_compute_pass(&mut self);
+    /// `engine` must not be `Copy` nor `Host`.
+    fn begin_compute_pass(&mut self, engine: DeviceEngine);
 
     /// Begin a blit pass.
     ///
     /// Only during a compute pass, functions from `BlitCommandEncoder` can be called.
-    fn begin_blit_pass(&mut self);
+    /// `engine` must not be `Host`.
+    fn begin_blit_pass(&mut self, engine: DeviceEngine);
 
     /// Creates a secondary command buffer to encode commands from multiple threads.
     ///
@@ -211,6 +195,60 @@ pub trait CommandEncoder<B: Backend>
     ///
     /// A render subpass must be active.
     fn end_render_subpass(&mut self);
+}
+
+/// Encodes barrier commands into a command buffer.
+pub trait BarrierCommandEncoder<B: Backend>
+    : Debug + Send + Any + DebugCommandEncoder {
+    /// Insert a resource barrier.
+    ///
+    /// There must be an active pass of any type.
+    /// During a render pass, there must be an active subpass.
+    fn resource_barrier(
+        &mut self,
+        source_stage: PipelineStageFlags,
+        source_access: AccessTypeFlags,
+        destination_stage: PipelineStageFlags,
+        destination_access: AccessTypeFlags,
+        resource: &SubresourceWithLayout<B>,
+    );
+
+    /// Acquire an ownership of the specified resource.
+    ///
+    /// There must be an active pass of any type.
+    /// During a render pass, there must be an active subpass.
+    fn acquire_resource(
+        &mut self,
+        stage: PipelineStageFlags,
+        access: AccessTypeFlags,
+        from_engine: DeviceEngine,
+        resource: &SubresourceWithLayout<B>,
+    );
+
+    /// Release an ownership of the specified resource.
+    ///
+    /// There must be an active pass of any type.
+    /// During a render pass, there must be an active subpass.
+    fn release_resource(
+        &mut self,
+        stage: PipelineStageFlags,
+        access: AccessTypeFlags,
+        to_engine: DeviceEngine,
+        resource: &SubresourceWithLayout<B>,
+    );
+
+    /// Instruct the device to convert the image layout of the given image into another one.
+    ///
+    /// There must be an active pass of any type.
+    /// During a render pass, there must be an active subpsas.
+    fn image_layout_transition(
+        &mut self,
+        source_stage: PipelineStageFlags,
+        source_layout: ImageLayout,
+        destination_stage: PipelineStageFlags,
+        destination_layout: ImageLayout,
+        image: &B::Image,
+    );
 }
 
 /// Encodes render commands into a command buffer.
@@ -340,3 +378,26 @@ pub trait DebugCommandEncoder: Debug + Send + Any {
     /// A graphics subpass or a blit/compute pass must be active.
     fn insert_debug_marker(&mut self, marker: &DebugMarker);
 }
+
+// prevent `InnerXXX` from being exported
+mod flags {
+    /// Specifies a type of hardware to execute the commands.
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+    #[repr(u32)]
+    pub enum DeviceEngine {
+        /// Generic engine supporting all kinds of commands.
+        Universal = 0b0001,
+
+        /// Compute engine supporting compute and copy commands.
+        Compute = 0b0010,
+
+        /// Copy engine supporting only copy commands.
+        Copy = 0b0100,
+
+        /// The host.
+        Host = 0b1000,
+    }
+}
+
+pub use self::flags::DeviceEngine;
+pub type DeviceEngineFlags = BitFlags<DeviceEngine>;

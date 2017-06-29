@@ -249,24 +249,32 @@ impl<B: Backend> Renderer<B> {
         let mut cb = queue.make_command_buffer().unwrap();
         cb.set_label(Some("staging CB to main vertex buffer"));
         cb.begin_encoding();
-        cb.begin_blit_pass();
+        cb.begin_blit_pass(core::DeviceEngine::Universal);
+        cb.acquire_resource(
+            core::PipelineStage::Transfer.into(),
+            core::AccessType::TransferRead.into(),
+            core::DeviceEngine::Host,
+            &core::SubresourceWithLayout::Buffer {
+                buffer: &staging_buffer,
+                offset: 0,
+                len: size,
+            },
+        );
         cb.begin_debug_group(&DebugMarker::new("staging to main vertex buffer"));
         cb.copy_buffer(&staging_buffer, 0, &buffer, 0, size);
         cb.end_debug_group();
-        cb.end_pass();
-        cb.barrier(
+        cb.resource_barrier(
             core::PipelineStage::Transfer.into(),
+            core::AccessType::TransferWrite.into(),
             core::PipelineStage::VertexInput.into(),
-            &[
-                core::Barrier::BufferMemoryBarrier {
-                    buffer: &buffer,
-                    source_access_mask: core::AccessType::TransferWrite.into(),
-                    destination_access_mask: core::AccessType::VertexAttributeRead.into(),
-                    offset: 0,
-                    len: size,
-                },
-            ],
+            core::AccessType::VertexAttributeRead.into(),
+            &core::SubresourceWithLayout::Buffer {
+                buffer: &staging_buffer,
+                offset: 0,
+                len: size,
+            },
         );
+        cb.end_pass();
         cb.end_encoding();
         queue.submit_commands(&[&cb], None).unwrap();
         cb.wait_completion().unwrap();
@@ -320,7 +328,7 @@ impl<B: Backend> RendererView<B> {
 
         cb.begin_encoding();
 
-        cb.begin_render_pass(&framebuffer);
+        cb.begin_render_pass(&framebuffer, core::DeviceEngine::Universal);
         cb.begin_render_subpass(core::RenderPassContents::Inline);
 
         cb.begin_debug_group(&DebugMarker::new("render a triangle"));
