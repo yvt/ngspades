@@ -18,10 +18,14 @@ pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct FenceDescription {
-    /// Specifies the set of `DeviceEngine`s that can update the fence.
+    /// Specifies the set of `DeviceEngine`s that are allowed to update the fence.
+    ///
+    /// The specified value must not include `Host` and must include at least one engine.
     pub update_engines: DeviceEngineFlags,
 
-    /// Specifies the set of `DeviceEngine`s that can wait on the fence.
+    /// Specifies the set of `DeviceEngine`s that are allowed to wait on the fence.
+    ///
+    /// The specified value must not include `Host` and must include at least one engine.
     pub wait_engines: DeviceEngineFlags,
 }
 
@@ -87,6 +91,10 @@ pub struct EventDescription {
 pub enum FenceDescriptionValidationError {
     /// `DeviceEngine::Host` is specified in one of `update_engines` and `wait_engines`
     HostEngine,
+    /// `update_engines` is empty.
+    NoUpdateEngines,
+    /// `wait_engines` is empty.
+    NoWaitEngines,
 }
 
 impl Validate for FenceDescription {
@@ -98,6 +106,12 @@ impl Validate for FenceDescription {
     {
         if !((self.update_engines | self.update_engines) & DeviceEngine::Host).is_empty() {
             callback(FenceDescriptionValidationError::HostEngine);
+        }
+        if self.update_engines.is_empty() {
+            callback(FenceDescriptionValidationError::NoUpdateEngines);
+        }
+        if self.wait_engines.is_empty() {
+            callback(FenceDescriptionValidationError::NoWaitEngines);
         }
     }
 }
