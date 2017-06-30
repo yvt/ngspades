@@ -60,6 +60,12 @@ pub trait DescriptorSet<B: Backend>
 
 #[derive(Debug, Clone, Copy)]
 pub struct DescriptorSetLayoutDescription<'a, TSampler: Sampler> {
+    /// Descriptor bindings.
+    ///
+    /// - If there is at least one binding, then there must not be a free binding
+    ///   location `i <= max_location` where
+    ///   `max_location == bindings.iter().map(|x| x.location).max().unwrap()`.
+    /// - The elements' `location`s must be unique.
     pub bindings: &'a [DescriptorSetLayoutBinding<'a, TSampler>],
 }
 
@@ -310,7 +316,13 @@ impl<'a, TDescriptorSetLayout: DescriptorSetLayout> Validate
 /// Validation errors for [`DescriptorSetLayoutDescription`](struct.DescriptorSetLayoutDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum DescriptorSetLayoutDescriptionValidationError {
-    // TODO
+    /// There is at least one free binding location `i < max_location` where
+    /// `self.bindings.iter().map(|x| x.location).max().unwrap()`.
+    FreeBindingLocation,
+
+    /// One of the binding location is associated with more than one element of
+    /// `self.bindings`.
+    NonUniqueLocation,
 }
 
 impl<'a, TSampler: Sampler> Validate for DescriptorSetLayoutDescription<'a, TSampler> {
@@ -322,6 +334,23 @@ impl<'a, TSampler: Sampler> Validate for DescriptorSetLayoutDescription<'a, TSam
     where
         T: FnMut(Self::Error) -> (),
     {
-        // TODO
+        if let Some(max_loc) = self.bindings.iter().map(|x| x.location).max() {
+            let mut table = vec![false; max_loc + 1];
+            let mut nul_reported = false;
+            for &DescriptorSetLayoutBinding{location, ..} in self.bindings.iter() {
+                if table[location] && !nul_reported {
+                    callback(DescriptorSetLayoutDescriptionValidationError::NonUniqueLocation);
+                    nul_reported = true;
+                }
+                table[location] = true;
+            }
+            for &e in table.iter() {
+                if !e {
+                    callback(DescriptorSetLayoutDescriptionValidationError::FreeBindingLocation);
+                }
+            }
+        }
+
+        // TODO: more checks?
     }
 }
