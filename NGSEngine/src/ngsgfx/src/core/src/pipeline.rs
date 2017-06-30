@@ -12,8 +12,9 @@ use std::any::Any;
 use enumflags::BitFlags;
 use cgmath::Vector2;
 
-use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
-            CompareFunction, PipelineLayout, ShaderStage, ShaderModule, SubpassIndex};
+use {VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
+     CompareFunction, PipelineLayout, ShaderStage, ShaderModule, SubpassIndex, Validate,
+     DeviceCapabilities};
 
 /// Handle for compute pipeline objects.
 pub trait ComputePipeline
@@ -372,4 +373,66 @@ mod flags {
 
 pub use self::flags::ColorWriteMask;
 
-// TODO: validation of pipeline descriptions
+/// Validation errors for [`ComputePipelineDescription`](struct.ComputePipelineDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ComputePipelineDescriptionValidationError {
+    // TODO
+}
+
+impl<'a, TPipelineLayout: PipelineLayout, TShaderModule: ShaderModule> Validate
+    for ComputePipelineDescription<'a, TPipelineLayout, TShaderModule> {
+    type Error = ComputePipelineDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        // TODO
+    }
+}
+
+/// Validation errors for [`GraphicsPipelineDescription`](struct.GraphicsPipelineDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum GraphicsPipelineDescriptionValidationError {
+    // TODO
+}
+
+impl<
+    'a,
+    TRenderPass: RenderPass,
+    TPipelineLayout: PipelineLayout,
+    TShaderModule: ShaderModule,
+> Validate for GraphicsPipelineDescription<'a, TRenderPass, TPipelineLayout, TShaderModule> {
+    type Error = GraphicsPipelineDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        // TODO
+    }
+}
+
+/// Validation errors for [`StencilStateDescription`](struct.StencilStateDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum StencilStateDescriptionValidationError {
+    // TODO
+}
+
+impl<'a, TGraphicsPipeline: GraphicsPipeline> Validate
+    for StencilStateDescription<'a, TGraphicsPipeline> {
+    type Error = StencilStateDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        // TODO
+    }
+}

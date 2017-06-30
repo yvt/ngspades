@@ -101,7 +101,7 @@ impl<B: Backend> Renderer<B> {
                         },
                     ],
                     depth_stencil_attachment: None,
-                    preserve_attachment_indices: &[],
+                    preserve_attachments: &[],
                 },
             ],
             dependencies: &[],
@@ -142,7 +142,7 @@ impl<B: Backend> Renderer<B> {
             vertex_buffers: &[
                 core::VertexBufferLayoutDescription {
                     binding: 0,
-                    stride: mem::size_of::<Vertex>(),
+                    stride: mem::size_of::<Vertex>() as u32,
                     input_rate: core::VertexInputRate::Vertex,
                 },
             ],
@@ -192,7 +192,7 @@ impl<B: Backend> Renderer<B> {
                 color: [0f32, 0f32, 1f32],
             },
         ];
-        let size = mem::size_of_val(&vertices);
+        let size = mem::size_of_val(&vertices) as core::DeviceSize;
         let staging_buffer_desc = core::BufferDescription {
             usage: core::BufferUsage::TransferSource.into(),
             size,

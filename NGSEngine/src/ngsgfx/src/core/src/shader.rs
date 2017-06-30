@@ -11,7 +11,7 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use Marker;
+use {Marker, Validate, DeviceCapabilities};
 
 /// Handle for shader module object.
 pub trait ShaderModule
@@ -20,6 +20,10 @@ pub trait ShaderModule
 
 #[derive(Debug, Clone, Copy)]
 pub struct ShaderModuleDescription<'a> {
+    /// SPIR-V code.
+    ///
+    /// See Vulkan 1.0 Specification Appendix A: "Vulkan Environment for SPIR-V"
+    /// for the requirements.
     pub spirv_code: &'a [u32],
 }
 
@@ -36,3 +40,30 @@ mod flags {
 
 pub use self::flags::ShaderStage;
 pub type ShaderStageFlags = BitFlags<ShaderStage>;
+
+/// Validation errors for [`ShaderModuleDescription`](struct.ShaderModuleDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ShaderModuleDescriptionValidationError {
+    /// An invalid SPIR-V code was detected.
+    ///
+    /// Implementation note: the current implemention only checks the magic number for a
+    /// SPIR-V module.
+    InvalidSpirvCode,
+}
+
+impl<'a> Validate for ShaderModuleDescription<'a> {
+    type Error = ShaderModuleDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        if self.spirv_code.len() == 0 ||
+            (self.spirv_code[0] != 0x07230203 && self.spirv_code[0] != 0x03022307)
+        {
+            callback(ShaderModuleDescriptionValidationError::InvalidSpirvCode);
+        }
+    }
+}

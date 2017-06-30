@@ -58,8 +58,8 @@ struct DeviceUtils<'a, B: core::Backend>(&'a B::Device);
 struct ResultBuffer<'a, B: core::Backend, T: 'static>(&'a B::Device, B::Buffer, &'a mut [T]);
 
 impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
-    fn size(&self) -> usize {
-        mem::size_of_val(self.2)
+    fn size(&self) -> core::DeviceSize {
+        mem::size_of_val(self.2) as core::DeviceSize
     }
     fn buffer(&self) -> &B::Buffer {
         &self.1
@@ -72,7 +72,7 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
     ) -> &'a mut [T] {
         let device = self.0;
 
-        let size = mem::size_of_val(self.2);
+        let size = mem::size_of_val(self.2) as core::DeviceSize;
         let staging_buffer_desc = core::BufferDescription {
             usage: core::BufferUsage::TransferDestination.into(),
             size,
@@ -154,7 +154,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
     ) -> ResultBuffer<'a, B, T> {
         let device = self.0;
 
-        let size = mem::size_of_val(data);
+        let size = mem::size_of_val(data) as core::DeviceSize;
         let buffer_desc = core::BufferDescription { usage, size };
 
         let factory = device.factory();
@@ -182,7 +182,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
     ) -> B::Buffer {
         let device = self.0;
 
-        let size = mem::size_of_val(data);
+        let size = mem::size_of_val(data) as core::DeviceSize;
         let staging_buffer_desc = core::BufferDescription {
             usage: core::BufferUsage::TransferSource.into(),
             size,
@@ -434,7 +434,7 @@ impl BackendDispatch for Conv1Test {
                             core::DescriptorBuffer {
                                 buffer: &kernel_buffer,
                                 offset: 0,
-                                range: mem::size_of_val(&kernel_data),
+                                range: mem::size_of_val(&kernel_data) as core::DeviceSize,
                             },
                         ],
                     ),
@@ -447,7 +447,7 @@ impl BackendDispatch for Conv1Test {
                             core::DescriptorBuffer {
                                 buffer: &input_buffer,
                                 offset: 0,
-                                range: mem::size_of_val(input_data.as_slice()),
+                                range: mem::size_of_val(input_data.as_slice()) as core::DeviceSize,
                             },
                         ],
                     ),

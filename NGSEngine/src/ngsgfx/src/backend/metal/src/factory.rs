@@ -51,7 +51,11 @@ impl core::Factory<Backend> for Factory {
         Ok(Heap::new(&self.device_data, description))
     }
 
-    fn make_image_view(&self, _: &core::ImageViewDescription<Image>) -> core::Result<ImageView> {
+    fn make_image_view(
+        &self,
+        description: &core::ImageViewDescription<Image>,
+    ) -> core::Result<ImageView> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         unimplemented!()
     }
     fn get_buffer_memory_requirements(
@@ -68,14 +72,16 @@ impl core::Factory<Backend> for Factory {
     }
     fn get_image_memory_requirements(
         &self,
-        _: &core::ImageDescription,
+        description: &core::ImageDescription,
     ) -> core::MemoryRequirements {
         // Return a dummy value since we do not have a real
         // heap implementation
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         unimplemented!()
     }
 
     fn make_sampler(&self, description: &core::SamplerDescription) -> core::Result<Sampler> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         Sampler::new(self.metal_device(), description)
     }
 
@@ -83,6 +89,7 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &core::ShaderModuleDescription,
     ) -> core::Result<ShaderModule> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         Ok(ShaderModule::new(description))
     }
 
@@ -90,6 +97,7 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &core::ComputePipelineDescription<PipelineLayout, ShaderModule>,
     ) -> core::Result<ComputePipeline> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         ComputePipeline::new(self.metal_device(), description)
     }
 
@@ -97,6 +105,7 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &imp::GraphicsPipelineDescription,
     ) -> core::Result<GraphicsPipeline> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         GraphicsPipeline::new(self.metal_device(), description)
     }
 
@@ -104,6 +113,7 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &core::StencilStateDescription<GraphicsPipeline>,
     ) -> core::Result<StencilState> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         StencilState::new(self.metal_device(), description)
     }
 
@@ -111,12 +121,14 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &core::DescriptorSetLayoutDescription<Sampler>,
     ) -> core::Result<DescriptorSetLayout> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         DescriptorSetLayout::new(description)
     }
     fn make_pipeline_layout(
         &self,
         description: &core::PipelineLayoutDescription<DescriptorSetLayout>,
     ) -> core::Result<PipelineLayout> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         PipelineLayout::new(description)
     }
 
@@ -124,6 +136,7 @@ impl core::Factory<Backend> for Factory {
         &self,
         description: &core::DescriptorPoolDescription,
     ) -> core::Result<DescriptorPool> {
+        description.debug_expect_valid(Some(self.device_data.capabilities()), "");
         Ok(DescriptorPool::new(&self.device_data, description))
     }
 }

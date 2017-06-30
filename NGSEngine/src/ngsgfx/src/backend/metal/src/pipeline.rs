@@ -82,8 +82,6 @@ impl GraphicsPipeline {
         let metal_desc =
             unsafe { OCPtr::from_raw(metal::MTLRenderPipelineDescriptor::alloc().init()).unwrap() };
 
-        // TODO: GraphicsPipelineDescription validation
-
         // Collect shaders
         let mut vertex_stage: Option<&core::ShaderStageDescription<imp::ShaderModule>> = None;
         let mut fragment_stage: Option<&core::ShaderStageDescription<imp::ShaderModule>> = None;

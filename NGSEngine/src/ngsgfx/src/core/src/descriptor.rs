@@ -10,7 +10,7 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
 use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result, Marker,
-    DescriptorBindingElementIndex, DeviceSize};
+     DescriptorBindingElementIndex, DeviceSize, Validate, DeviceCapabilities};
 
 pub trait PipelineLayout
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
@@ -248,4 +248,80 @@ pub struct CopyDescriptorSet<'a, T: 'a> {
     pub destination_binding: DescriptorBindingLocation,
     pub destination_index: DescriptorBindingElementIndex,
     pub num_elements: usize,
+}
+
+/// Validation errors for [`DescriptorPoolDescription`](struct.DescriptorPoolDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum DescriptorPoolDescriptionValidationError {
+    // TODO
+}
+
+impl<'a> Validate for DescriptorPoolDescription<'a> {
+    type Error = DescriptorPoolDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        // TODO
+    }
+}
+
+/// Validation errors for [`DescriptorSetDescription`](struct.DescriptorSetDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum DescriptorSetDescriptionValidationError {
+}
+
+impl<'a, TDescriptorSetLayout: DescriptorSetLayout> Validate
+    for DescriptorSetDescription<'a, TDescriptorSetLayout> {
+    type Error = DescriptorPoolDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        // There is nothing we can check here
+    }
+}
+
+/// Validation errors for [`PipelineLayoutDescription`](struct.PipelineLayoutDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum PipelineLayoutDescriptionValidationError {
+}
+
+impl<'a, TDescriptorSetLayout: DescriptorSetLayout> Validate
+    for PipelineLayoutDescription<'a, TDescriptorSetLayout> {
+    type Error = PipelineLayoutDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        // There is nothing we can check here
+    }
+}
+
+/// Validation errors for [`DescriptorSetLayoutDescription`](struct.DescriptorSetLayoutDescription.html).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum DescriptorSetLayoutDescriptionValidationError {
+    // TODO
+}
+
+impl<'a, TSampler: Sampler> Validate for DescriptorSetLayoutDescription<'a, TSampler> {
+    type Error = DescriptorSetLayoutDescriptionValidationError;
+
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
+    {
+        // TODO
+    }
 }
