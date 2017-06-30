@@ -103,7 +103,7 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
         let mut cb = queue.make_command_buffer().unwrap();
         cb.set_label(Some("staging CB"));
         cb.begin_encoding();
-        cb.begin_blit_pass(engine);
+        cb.begin_copy_pass(engine);
         cb.resource_barrier(
             last_pipeline_stage,
             last_access_mask,
@@ -232,7 +232,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         let mut cb = queue.make_command_buffer().unwrap();
         cb.set_label(Some("staging CB to buffer"));
         cb.begin_encoding();
-        cb.begin_blit_pass(engine);
+        cb.begin_copy_pass(engine);
         cb.acquire_resource(
             core::PipelineStage::Transfer.into(),
             core::AccessType::TransferRead.into(),

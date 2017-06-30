@@ -120,11 +120,11 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn expect_blit_pipeline(&self) -> &OCPtr<metal::MTLBlitCommandEncoder> {
+    pub(crate) fn expect_copy_pipeline(&self) -> &OCPtr<metal::MTLBlitCommandEncoder> {
         if let EncoderState::Blit(ref encoder) = self.encoder {
             encoder
         } else {
-            panic!("blit pass is not active");
+            panic!("copy pass is not active");
         }
     }
 
@@ -206,7 +206,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         self.encoder = EncoderState::Compute(ComputeCommandEncoder::new(encoder.unwrap()));
     }
 
-    fn begin_blit_pass(&mut self, _: core::DeviceEngine) {
+    fn begin_copy_pass(&mut self, _: core::DeviceEngine) {
         self.expect_no_pass();
 
         let encoder = OCPtr::new(self.buffer.as_ref().unwrap().new_blit_command_encoder());

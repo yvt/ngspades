@@ -249,7 +249,7 @@ impl<B: Backend> Renderer<B> {
         let mut cb = queue.make_command_buffer().unwrap();
         cb.set_label(Some("staging CB to main vertex buffer"));
         cb.begin_encoding();
-        cb.begin_blit_pass(core::DeviceEngine::Universal);
+        cb.begin_copy_pass(core::DeviceEngine::Universal);
         cb.acquire_resource(
             core::PipelineStage::Transfer.into(),
             core::AccessType::TransferRead.into(),

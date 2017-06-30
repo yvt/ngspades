@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 mod barrier;
-mod blit;
 mod buffer;
 mod compute;
+mod copy;
 mod debug;
 mod descriptors;
 mod graphics;

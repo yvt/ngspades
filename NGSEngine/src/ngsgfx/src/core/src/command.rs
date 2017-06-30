@@ -94,7 +94,7 @@ pub trait CommandEncoder<B: Backend>
     + Any
     + RenderSubpassCommandEncoder<B>
     + ComputeCommandEncoder<B>
-    + BlitCommandEncoder<B>
+    + CopyCommandEncoder<B>
     + BarrierCommandEncoder<B> {
     /// Start recording a command buffer.
     /// The existing contents will be cleared (if any).
@@ -123,11 +123,11 @@ pub trait CommandEncoder<B: Backend>
     /// `engine` must not be `Copy` nor `Host`.
     fn begin_compute_pass(&mut self, engine: DeviceEngine);
 
-    /// Begin a blit pass.
+    /// Begin a copy pass.
     ///
-    /// Only during a compute pass, functions from `BlitCommandEncoder` can be called.
+    /// Only during a compute pass, functions from `CopyCommandEncoder` can be called.
     /// `engine` must not be `Host`.
-    fn begin_blit_pass(&mut self, engine: DeviceEngine);
+    fn begin_copy_pass(&mut self, engine: DeviceEngine);
 
     /// Creates a secondary command buffer to encode commands from multiple threads.
     ///
@@ -137,7 +137,7 @@ pub trait CommandEncoder<B: Backend>
     /// The application must perform adequate inter-thread synchronizations.
     fn make_secondary_command_buffer(&mut self) -> B::SecondaryCommandBuffer;
 
-    /// End the current render, compute, or blit pass.
+    /// End the current render, compute, or copy pass.
     ///
     /// If the current pass is a render pass,
     /// `begin_render_subpass` must have been called enough times since the last time
@@ -174,7 +174,7 @@ pub trait CommandEncoder<B: Backend>
 pub trait BarrierCommandEncoder<B: Backend>
     : Debug + Send + Any + DebugCommandEncoder {
     /// Instruct the device to wait until the given fence is reached.
-    /// There must be an active compute/blit pass or render subpass.
+    /// There must be an active compute/copy pass or render subpass.
     ///
     /// The backend might move the fence wait operation to the beginning of the
     /// pass or subpass (if the current pass is a render pass).
@@ -187,7 +187,7 @@ pub trait BarrierCommandEncoder<B: Backend>
     fn wait_fence(&mut self, stage: PipelineStageFlags, access: AccessTypeFlags, fence: &B::Fence);
 
     /// Instruct the device to update the given fence.
-    /// There must be an active compute/blit pass or render subpass.
+    /// There must be an active compute/copy pass or render subpass.
     ///
     /// The backend might delay the fence update operation until the end of the
     /// pass or subpass (if the current pass is a render pass).
@@ -342,8 +342,8 @@ pub trait ComputeCommandEncoder<B: Backend>
     fn dispatch(&mut self, workgroup_count: Vector3<u32>);
 }
 
-/// Encodes blit commands into a command buffer.
-pub trait BlitCommandEncoder<B: Backend>
+/// Encodes copy commands into a command buffer.
+pub trait CopyCommandEncoder<B: Backend>
     : Debug + Send + Any + DebugCommandEncoder {
     /// Copy data from a buffer to another buffer.
     fn copy_buffer(
@@ -365,18 +365,18 @@ pub trait BlitCommandEncoder<B: Backend>
 pub trait DebugCommandEncoder: Debug + Send + Any {
     /// Begin a debug group.
     ///
-    /// A graphics subpass or a blit/compute pass must be active.
+    /// A graphics subpass or a copy/compute pass must be active.
     fn begin_debug_group(&mut self, marker: &DebugMarker);
 
     /// End a debug group.
     ///
     /// There must be an outstanding call to `begin_debug_group` prior to this one
-    /// in the same blit/compute pass or graphics subpass.
+    /// in the same copy/compute pass or graphics subpass.
     fn end_debug_group(&mut self);
 
     /// Insert a debug marker.
     ///
-    /// A graphics subpass or a blit/compute pass must be active.
+    /// A graphics subpass or a copy/compute pass must be active.
     fn insert_debug_marker(&mut self, marker: &DebugMarker);
 }
 

@@ -35,7 +35,7 @@ pub mod prelude {
 
     pub use core::Buffer;
     pub use core::{CommandBuffer, CommandEncoder};
-    pub use core::{RenderSubpassCommandEncoder, ComputeCommandEncoder, BlitCommandEncoder,
+    pub use core::{RenderSubpassCommandEncoder, ComputeCommandEncoder, CopyCommandEncoder,
         DebugCommandEncoder, BarrierCommandEncoder};
     pub use core::SecondaryCommandBuffer;
     pub use core::CommandQueue;

@@ -7,7 +7,7 @@ use core;
 
 use imp::{Backend, CommandBuffer, Buffer};
 
-impl core::BlitCommandEncoder<Backend> for CommandBuffer {
+impl core::CopyCommandEncoder<Backend> for CommandBuffer {
     fn copy_buffer(
         &mut self,
         source: &Buffer,
@@ -16,7 +16,7 @@ impl core::BlitCommandEncoder<Backend> for CommandBuffer {
         destination_offset: usize,
         size: usize,
     ) {
-        self.expect_blit_pipeline().copy_from_buffer_to_buffer(
+        self.expect_copy_pipeline().copy_from_buffer_to_buffer(
             source.metal_buffer(),
             source_offset as u64,
             destination.metal_buffer(),

@@ -13,7 +13,7 @@ use std::marker::Sized;
 use {Result, Validate, DeviceCapabilities, Marker, DeviceEngineFlags, DeviceEngine};
 
 /// Handle for the synchronization primitive used to synchronize between the
-/// render/compute/blit passes.
+/// render/compute/copy passes.
 pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 #[derive(Debug, Clone, Copy)]
