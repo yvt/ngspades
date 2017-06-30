@@ -297,6 +297,8 @@ pub trait BarrierCommandEncoder<B: Backend>
     ///
     /// There must be an active pass of any type.
     /// During a render pass, there must be an active subpass.
+    ///
+    /// FIXME: when is this required in place of `Fence`?
     fn resource_barrier(
         &mut self,
         source_stage: PipelineStageFlags,
@@ -313,9 +315,11 @@ pub trait BarrierCommandEncoder<B: Backend>
     fn image_layout_transition(
         &mut self,
         source_stage: PipelineStageFlags,
+        source_access: AccessTypeFlags,
         source_layout: ImageLayout,
         destination_stage: PipelineStageFlags,
         destination_layout: ImageLayout,
+        destination_access: AccessTypeFlags,
         image: &B::Image,
     );
 }

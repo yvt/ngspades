@@ -30,9 +30,11 @@ impl core::BarrierCommandEncoder<Backend> for CommandBuffer {
     fn image_layout_transition(
         &mut self,
         _: core::PipelineStageFlags,
+        _: core::AccessTypeFlags,
         _: core::ImageLayout,
         _: core::PipelineStageFlags,
         _: core::ImageLayout,
+        _: core::AccessTypeFlags,
         _: &Image,
     ) {
         // no-op
@@ -62,9 +64,11 @@ impl core::BarrierCommandEncoder<Backend> for SecondaryCommandBuffer {
     fn image_layout_transition(
         &mut self,
         _: core::PipelineStageFlags,
+        _: core::AccessTypeFlags,
         _: core::ImageLayout,
         _: core::PipelineStageFlags,
         _: core::ImageLayout,
+        _: core::AccessTypeFlags,
         _: &Image,
     ) {
         // no-op
