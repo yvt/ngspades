@@ -27,26 +27,6 @@ impl core::BarrierCommandEncoder<Backend> for CommandBuffer {
         // no-op
     }
 
-    fn acquire_resource(
-        &mut self,
-        _: core::PipelineStageFlags,
-        _: core::AccessTypeFlags,
-        _: core::DeviceEngine,
-        _: &core::SubresourceWithLayout<Backend>,
-    ) {
-        // no-op
-    }
-
-    fn release_resource(
-        &mut self,
-        _: core::PipelineStageFlags,
-        _: core::AccessTypeFlags,
-        _: core::DeviceEngine,
-        _: &core::SubresourceWithLayout<Backend>,
-    ) {
-        // no-op
-    }
-
     fn image_layout_transition(
         &mut self,
         _: core::PipelineStageFlags,
@@ -74,26 +54,6 @@ impl core::BarrierCommandEncoder<Backend> for SecondaryCommandBuffer {
         _: core::AccessTypeFlags,
         _: core::PipelineStageFlags,
         _: core::AccessTypeFlags,
-        _: &core::SubresourceWithLayout<Backend>,
-    ) {
-        // no-op
-    }
-
-    fn acquire_resource(
-        &mut self,
-        _: core::PipelineStageFlags,
-        _: core::AccessTypeFlags,
-        _: core::DeviceEngine,
-        _: &core::SubresourceWithLayout<Backend>,
-    ) {
-        // no-op
-    }
-
-    fn release_resource(
-        &mut self,
-        _: core::PipelineStageFlags,
-        _: core::AccessTypeFlags,
-        _: core::DeviceEngine,
         _: &core::SubresourceWithLayout<Backend>,
     ) {
         // no-op

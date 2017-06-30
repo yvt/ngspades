@@ -91,6 +91,70 @@ pub enum SubresourceWithLayout<'a, B: Backend> {
 }
 
 /// Encodes commands into a command buffer.
+///
+/// Command Passes
+/// --------------
+///
+/// Most commands only can be submitted during a command pass.
+/// There are three types of command passes:
+///
+///  - Render pass, only during which render commands defined in [`RenderSubpassCommandEncoder`]
+///    can be encoded. A render pass can be started with [`begin_render_pass`].
+///  - Compute pass, only during which compute commands defined in [`ComputeCommandEncoder`]
+///    can be encoded. A compute pass can be started with [`begin_compute_pass`].
+///  - Copy pass, only during which copy commands defined in [`CopyCommandEncoder`]
+///    can be encoded. A copy pass can be started with [`begin_copy_pass`].
+///
+/// After it was started, a command pass is said to be *active* until it is
+/// ended by a call to [`end_pass`]. Only one command pass can be active at
+/// the same time, so you must ensure to call `end_pass` before starting a new
+/// one.
+///
+/// Furthermore, a render pass can contain one or more subpasses. During a
+/// render pass, [`begin_render_subpass`] and [`end_render_subpass`]
+/// must be called for every subpass specified in [`RenderPassDescription`]
+/// used to create the [`RenderPass`] associated with the specified
+/// [`Framebuffer`].
+///
+/// [`RenderSubpassCommandEncoder`]: trait.RenderSubpassCommandEncoder.html
+/// [`ComputeCommandEncoder`]: trait.ComputeCommandEncoder.html
+/// [`CopyCommandEncoder`]: trait.CopyCommandEncoder.html
+/// [`begin_render_pass`]: #tymethod.begin_render_pass
+/// [`begin_compute_pass`]: #tymethod.begin_compute_pass
+/// [`begin_copy_pass`]: #tymethod.begin_copy_pass
+/// [`end_pass`]: #tymethod.end_pass
+/// [`begin_render_subpass`]: #tymethod.begin_render_subpass
+/// [`end_render_subpass`]: #tymethod.end_render_subpass
+/// [`RenderPassDescription`]: ../renderpass/struct.RenderPassDescription.html
+/// [`RenderPass`]: ../renderpass/trait.RenderPass.html
+/// [`Framebuffer`]: ../framebuffer/trait.Framebuffer.html
+///
+/// Engine
+/// ------
+///
+/// Device engines ([`DeviceEngine`]) represent different parts of the hardware
+/// that can process commands concurrently.
+///
+/// Every pass is associated with one of device engine other than `Host`.
+///
+/// Every subresource can be used by only one device engine at the same time.
+/// Also, you need to perform a *engine ownership transfer operation* before
+/// using a subresource in a engine other than the engine which was previously
+/// accessing the subresource. The engine ownership transfer operation can be
+/// performed by a call to [`release_resource`] in the source engine followed by
+/// another call to [`acquire_resource`] in the destination engine.
+/// You must make sure `acquire_resource` happens-after `release_resource` by
+/// using appropriate synchronization primitives (e.g., `Fence` or
+/// `CommandBuffer::wait_completion`).
+/// If the source or destination engine is `Host` then the corresponding call to
+/// `release_resource` or `acquire_resource` (respectively) is not required
+/// (in fact, it is impossible since there is no way to start a command pass with
+/// the `Host` engine).
+///
+/// [`DeviceEngine`]: enum.DeviceEngine.html
+/// [`release_resource`]: #tymethod.release_resource
+/// [`acquire_resource`]: #tymethod.acquire_resource
+///
 pub trait CommandEncoder<B: Backend>
     : Debug
     + Send
@@ -111,6 +175,30 @@ pub trait CommandEncoder<B: Backend>
     /// No kind of passes can be active at the point of call.
     fn end_encoding(&mut self);
 
+    /// Acquire an ownership of the specified resource.
+    ///
+    /// There must be an active pass of any type.
+    /// During a render pass, this must be called before the first subpass is started.
+    fn acquire_resource(
+        &mut self,
+        stage: PipelineStageFlags,
+        access: AccessTypeFlags,
+        from_engine: DeviceEngine,
+        resource: &SubresourceWithLayout<B>,
+    );
+
+    /// Release an ownership of the specified resource.
+    ///
+    /// There must be an active pass of any type.
+    /// During a render pass, this must be called after the last subpass was ended.
+    fn release_resource(
+        &mut self,
+        stage: PipelineStageFlags,
+        access: AccessTypeFlags,
+        to_engine: DeviceEngine,
+        resource: &SubresourceWithLayout<B>,
+    );
+
     /// Begin a render pass.
     ///
     /// During a render pass, calls to `begin_render_subpass` and `end_render_subpass`
@@ -123,6 +211,7 @@ pub trait CommandEncoder<B: Backend>
     /// Begin a compute pass.
     ///
     /// Only during a compute pass, functions from `ComputeCommandEncoder` can be called.
+    ///
     /// `engine` must not be `Copy` nor `Host`.
     fn begin_compute_pass(&mut self, engine: DeviceEngine);
 
@@ -214,30 +303,6 @@ pub trait BarrierCommandEncoder<B: Backend>
         source_access: AccessTypeFlags,
         destination_stage: PipelineStageFlags,
         destination_access: AccessTypeFlags,
-        resource: &SubresourceWithLayout<B>,
-    );
-
-    /// Acquire an ownership of the specified resource.
-    ///
-    /// There must be an active pass of any type.
-    /// During a render pass, there must be an active subpass.
-    fn acquire_resource(
-        &mut self,
-        stage: PipelineStageFlags,
-        access: AccessTypeFlags,
-        from_engine: DeviceEngine,
-        resource: &SubresourceWithLayout<B>,
-    );
-
-    /// Release an ownership of the specified resource.
-    ///
-    /// There must be an active pass of any type.
-    /// During a render pass, there must be an active subpass.
-    fn release_resource(
-        &mut self,
-        stage: PipelineStageFlags,
-        access: AccessTypeFlags,
-        to_engine: DeviceEngine,
         resource: &SubresourceWithLayout<B>,
     );
 

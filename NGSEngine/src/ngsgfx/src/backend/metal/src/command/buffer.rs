@@ -191,6 +191,26 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         self.encoder = EncoderState::NotRecording;
     }
 
+    fn acquire_resource(
+        &mut self,
+        _: core::PipelineStageFlags,
+        _: core::AccessTypeFlags,
+        _: core::DeviceEngine,
+        _: &core::SubresourceWithLayout<Backend>,
+    ) {
+        // no-op
+    }
+
+    fn release_resource(
+        &mut self,
+        _: core::PipelineStageFlags,
+        _: core::AccessTypeFlags,
+        _: core::DeviceEngine,
+        _: &core::SubresourceWithLayout<Backend>,
+    ) {
+        // no-op
+    }
+
     fn begin_render_pass(&mut self, framebuffer: &Framebuffer, _: core::DeviceEngine) {
         self.expect_no_pass();
         self.encoder = EncoderState::GraphicsIntermission {
