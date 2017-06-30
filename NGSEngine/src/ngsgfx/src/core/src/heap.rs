@@ -9,7 +9,8 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 use std::marker::Send;
 
-use {Result, Backend, BufferDescription, ImageDescription, Validate, DeviceCapabilities, Marker};
+use {Result, Backend, BufferDescription, ImageDescription, Validate, DeviceCapabilities, Marker,
+    DeviceSize};
 
 /// Represents a heap that images and buffers are allocated from.
 ///
@@ -70,16 +71,16 @@ pub trait MappableHeap: Debug + Send + Any {
     fn flush_memory(
         &mut self,
         allocation: &mut Self::Allocation,
-        offset: usize,
-        size: Option<usize>,
+        offset: DeviceSize,
+        size: Option<DeviceSize>,
     );
 
     /// Invalidate a region from the host cache.
     fn invalidate_memory(
         &mut self,
         allocation: &mut Self::Allocation,
-        offset: usize,
-        size: Option<usize>,
+        offset: DeviceSize,
+        size: Option<DeviceSize>,
     );
 
     /// Maps a region to a host virtual memory.
@@ -131,16 +132,16 @@ impl<'a, T: MappableHeap> ::std::ops::Drop for HeapMapGuard<'a, T> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct HeapDescription {
-    pub size: usize,
+    pub size: DeviceSize,
     pub storage_mode: StorageMode,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryRequirements {
     /// The number of bytes required for the memory allocation for the resource.
-    pub size: usize,
+    pub size: DeviceSize,
     /// The required alignment of the resource (measured in bytes).
-    pub alignment: usize,
+    pub alignment: DeviceSize,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

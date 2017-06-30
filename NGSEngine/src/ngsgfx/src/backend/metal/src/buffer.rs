@@ -24,7 +24,7 @@ impl core::Marker for Buffer {
 #[derive(Debug)]
 struct BufferData {
     metal_buffer: OCPtr<metal::MTLBuffer>,
-    size: usize,
+    size: u64,
 }
 
 unsafe impl Send for BufferData {}
@@ -41,7 +41,7 @@ impl Buffer {
             metal::MTLStorageMode::Shared => metal::MTLResourceStorageModeShared,
             metal::MTLStorageMode::Managed => metal::MTLResourceStorageModeManaged,
         };
-        let metal_buffer = unsafe { OCPtr::from_raw(device.new_buffer(desc.size as u64, options)) }
+        let metal_buffer = unsafe { OCPtr::from_raw(device.new_buffer(desc.size, options)) }
             .ok_or(core::GenericError::OutOfDeviceMemory)?;
         let data = BufferData {
             metal_buffer: metal_buffer,
@@ -54,7 +54,7 @@ impl Buffer {
         ::std::mem::transmute(self.data.metal_buffer.contents())
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> u64 {
         self.data.size
     }
 

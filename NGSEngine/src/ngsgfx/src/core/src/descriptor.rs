@@ -9,7 +9,8 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result, Marker};
+use {DescriptorBindingLocation, ShaderStageFlags, Sampler, ImageLayout, Backend, Result, Marker,
+    DescriptorBindingElementIndex, DeviceSize};
 
 pub trait PipelineLayout
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
@@ -171,7 +172,7 @@ impl DescriptorType {
 #[derive(Debug, Clone, Copy)]
 pub struct WriteDescriptorSet<'a, B: Backend> {
     pub start_binding: DescriptorBindingLocation,
-    pub start_index: usize,
+    pub start_index: DescriptorBindingElementIndex,
     pub elements: WriteDescriptors<'a, B>,
 }
 
@@ -235,16 +236,16 @@ pub struct DescriptorImage<'a, B: Backend> {
 #[derive(Debug, Clone, Copy)]
 pub struct DescriptorBuffer<'a, B: Backend> {
     pub buffer: &'a B::Buffer,
-    pub offset: usize,
-    pub range: usize,
+    pub offset: DeviceSize,
+    pub range: DeviceSize,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct CopyDescriptorSet<'a, T: 'a> {
     pub source: &'a T,
     pub source_binding: DescriptorBindingLocation,
-    pub source_index: usize,
+    pub source_index: DescriptorBindingElementIndex,
     pub destination_binding: DescriptorBindingLocation,
-    pub destination_index: usize,
+    pub destination_index: DescriptorBindingElementIndex,
     pub num_elements: usize,
 }

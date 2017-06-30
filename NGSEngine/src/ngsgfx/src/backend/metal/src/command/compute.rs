@@ -49,7 +49,7 @@ impl ComputeCommandEncoder {
     fn bind_compute_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
-        start_index: usize,
+        start_index: core::DescriptorSetBindingLocation,
         descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
@@ -84,7 +84,7 @@ impl core::ComputeCommandEncoder<Backend> for CommandBuffer {
     fn bind_compute_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
-        start_index: usize,
+        start_index: core::DescriptorSetBindingLocation,
         descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {

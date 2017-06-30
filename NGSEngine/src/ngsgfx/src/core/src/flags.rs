@@ -5,6 +5,7 @@
 //
 use enumflags::BitFlags;
 
+/// Specifies a pipeline stage.
 #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PipelineStage {
@@ -26,6 +27,7 @@ pub enum PipelineStage {
 
 pub type PipelineStageFlags = BitFlags<PipelineStage>;
 
+/// Specifies a type of memory access.
 #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum AccessType {

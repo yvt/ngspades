@@ -13,7 +13,7 @@ use enumflags::BitFlags;
 use cgmath::Vector2;
 
 use super::{VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
-            CompareFunction, PipelineLayout, ShaderStage, ShaderModule};
+            CompareFunction, PipelineLayout, ShaderStage, ShaderModule, SubpassIndex};
 
 /// Handle for compute pipeline objects.
 pub trait ComputePipeline
@@ -61,7 +61,7 @@ pub struct GraphicsPipelineDescription<'a, TRenderPass: RenderPass, TPipelineLay
 
     pub pipeline_layout: &'a TPipelineLayout,
     pub render_pass: &'a TRenderPass,
-    pub subpass_index: usize,
+    pub subpass_index: SubpassIndex,
 
     pub label: Option<&'a str>,
 }
@@ -264,7 +264,7 @@ pub struct VertexBufferLayoutDescription {
     /// Vertex stride in bytes.
     ///
     /// Must be a multiple of 4 bytes.
-    pub stride: usize,
+    pub stride: u32,
     pub input_rate: VertexInputRate,
 }
 
@@ -282,7 +282,7 @@ pub struct VertexAttributeDescription {
     /// The location of the vertex data in bytes.
     ///
     /// Must be a multiple of 4 bytes.
-    pub offset: usize,
+    pub offset: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

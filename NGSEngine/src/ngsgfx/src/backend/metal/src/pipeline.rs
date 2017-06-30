@@ -402,8 +402,8 @@ impl GraphicsPipeline {
     pub(crate) fn bind_vertex_buffers(
         &self,
         encoder: metal::MTLRenderCommandEncoder,
-        start_index: usize,
-        buffers: &[(&imp::Buffer, usize)],
+        start_index: core::VertexBindingLocation,
+        buffers: &[(&imp::Buffer, core::DeviceSize)],
     ) {
         let ref mappings = self.data.vertex_buffer_map;
         for (i, &(buffer, offset)) in buffers.iter().enumerate() {
@@ -415,7 +415,7 @@ impl GraphicsPipeline {
             if let Some(mtl_buffer_idx) = mappings[map_index] {
                 encoder.set_vertex_buffer(
                     mtl_buffer_idx as u64,
-                    offset as u64,
+                    offset,
                     buffer.metal_buffer(),
                 );
             }

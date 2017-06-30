@@ -95,7 +95,7 @@ impl RenderCommandEncoder {
     fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
-        start_index: usize,
+        start_index: core::DescriptorSetBindingLocation,
         descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
@@ -108,7 +108,7 @@ impl RenderCommandEncoder {
         );
     }
 
-    fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&Buffer, usize)]) {
+    fn bind_vertex_buffers(&mut self, start_index: core::VertexBindingLocation, buffers: &[(&Buffer, core::DeviceSize)]) {
         self.expect_pipeline().bind_vertex_buffers(
             *self.metal_encoder,
             start_index,
@@ -116,7 +116,7 @@ impl RenderCommandEncoder {
         );
     }
 
-    fn bind_index_buffer(&mut self, _: &Buffer, _: usize, _: core::IndexFormat) {
+    fn bind_index_buffer(&mut self, _: &Buffer, _: core::DeviceSize, _: core::IndexFormat) {
         unimplemented!()
     }
 
@@ -177,7 +177,7 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
     fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
-        start_index: usize,
+        start_index: core::DescriptorSetBindingLocation,
         descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
@@ -190,14 +190,14 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
             )
     }
 
-    fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&Buffer, usize)]) {
+    fn bind_vertex_buffers(&mut self, start_index: core::VertexBindingLocation, buffers: &[(&Buffer, core::DeviceSize)]) {
         self.expect_graphics_pipeline().bind_vertex_buffers(
             start_index,
             buffers,
         )
     }
 
-    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: usize, format: core::IndexFormat) {
+    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: core::DeviceSize, format: core::IndexFormat) {
         self.expect_graphics_pipeline().bind_index_buffer(
             buffer,
             offset,
@@ -264,7 +264,7 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
     fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &PipelineLayout,
-        start_index: usize,
+        start_index: core::DescriptorSetBindingLocation,
         descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
@@ -276,14 +276,14 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
         )
     }
 
-    fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&Buffer, usize)]) {
+    fn bind_vertex_buffers(&mut self, start_index: core::VertexBindingLocation, buffers: &[(&Buffer, core::DeviceSize)]) {
         self.render_command_encoder().bind_vertex_buffers(
             start_index,
             buffers,
         )
     }
 
-    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: usize, format: core::IndexFormat) {
+    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: core::DeviceSize, format: core::IndexFormat) {
         self.render_command_encoder().bind_index_buffer(
             buffer,
             offset,

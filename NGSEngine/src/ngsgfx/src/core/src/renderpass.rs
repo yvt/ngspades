@@ -10,7 +10,7 @@ use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
 use {ImageLayout, ImageFormat, PipelineStageFlags, AccessTypeFlags, Validate, DeviceCapabilities,
-     Marker};
+     Marker, SubpassIndex};
 
 /// Handle for render pass objects.
 pub trait RenderPass
@@ -56,19 +56,21 @@ pub enum AttachmentStoreOp {
 ///
 ///  - Feedback loops.
 ///
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct RenderSubpassDescription<'a> {
     pub input_attachments: &'a [RenderPassAttachmentReference],
     pub color_attachments: &'a [RenderPassAttachmentReference],
     pub depth_stencil_attachment: Option<RenderPassAttachmentReference>,
-    pub preserve_attachment_indices: &'a [usize],
+    pub preserve_attachments: &'a [RenderPassAttachmentIndex],
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct RenderPassAttachmentReference {
-    pub attachment_index: Option<usize>,
+    pub attachment_index: Option<RenderPassAttachmentIndex>,
     pub layout: ImageLayout,
 }
+
+pub type RenderPassAttachmentIndex = usize;
 
 /// Describes a dependency between subpasses.
 ///
@@ -99,7 +101,7 @@ pub enum RenderSubpassDependencyTarget {
     /// Specifies a subpass in the same render pass.
     ///
     /// `index` must be less than the number of subpasses (`RenderPassDescription::subpasses.len()`).
-    Subpass { index: usize },
+    Subpass { index: SubpassIndex },
 
     /// Specfiies all commands submitted to the queue before/after the render pass.
     External,

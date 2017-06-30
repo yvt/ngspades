@@ -30,12 +30,12 @@ pub(crate) enum EncoderState {
     NoPass,
     GraphicsIntermission {
         framebuffer: Framebuffer,
-        next_subpass: usize,
+        next_subpass: core::SubpassIndex,
     },
     Graphics {
         encoder: GraphicsEncoderState,
         framebuffer: Framebuffer,
-        subpass: usize,
+        subpass: core::SubpassIndex,
     },
     Compute(ComputeCommandEncoder),
     Blit(OCPtr<metal::MTLBlitCommandEncoder>),

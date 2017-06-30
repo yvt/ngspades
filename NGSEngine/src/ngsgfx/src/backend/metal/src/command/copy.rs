@@ -11,10 +11,10 @@ impl core::CopyCommandEncoder<Backend> for CommandBuffer {
     fn copy_buffer(
         &mut self,
         source: &Buffer,
-        source_offset: usize,
+        source_offset: core::DeviceSize,
         destination: &Buffer,
-        destination_offset: usize,
-        size: usize,
+        destination_offset: core::DeviceSize,
+        size: core::DeviceSize,
     ) {
         self.expect_copy_pipeline().copy_from_buffer_to_buffer(
             source.metal_buffer(),

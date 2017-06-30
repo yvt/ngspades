@@ -34,8 +34,8 @@ impl core::ShaderModule for ShaderModule {}
 pub(crate) struct ShaderVertexAttributeInfo {
     pub binding: usize,
     pub msl_buffer_index: usize,
-    pub offset: usize,
-    pub stride: usize,
+    pub offset: u32,
+    pub stride: u32,
     pub input_rate: core::VertexInputRate,
 }
 
@@ -76,8 +76,8 @@ impl ShaderModule {
             s2m.add_vertex_attribute(&VertexAttribute {
                 location: attr.binding as u32,
                 msl_buffer: attr.msl_buffer_index as u32,
-                msl_offset: attr.offset as u32,
-                msl_stride: attr.stride as u32,
+                msl_offset: attr.offset,
+                msl_stride: attr.stride,
                 input_rate: match attr.input_rate {
                     core::VertexInputRate::Vertex => VertexInputRate::Vertex,
                     core::VertexInputRate::Instance => VertexInputRate::Instance,

@@ -3,6 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Command queues and command buffers.
+//!
+//! TODO: provide a documentation on command passes and device engines
 use std::fmt::Debug;
 use std::any::Any;
 
@@ -10,7 +13,7 @@ use enumflags::BitFlags;
 
 use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Marker,
      ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker,
-     FenceDescription};
+     FenceDescription, DescriptorSetBindingLocation, DeviceSize, VertexBindingLocation};
 
 use cgmath::Vector3;
 
@@ -82,8 +85,8 @@ pub enum SubresourceWithLayout<'a, B: Backend> {
     },
     Buffer {
         buffer: &'a B::Buffer,
-        offset: usize,
-        len: usize,
+        offset: DeviceSize,
+        len: DeviceSize,
     },
 }
 
@@ -291,14 +294,14 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
     fn bind_graphics_descriptor_sets(
         &mut self,
         pipeline_layout: &B::PipelineLayout,
-        start_index: usize,
+        start_index: DescriptorSetBindingLocation,
         descriptor_sets: &[&B::DescriptorSet],
         dynamic_offsets: &[u32],
     );
 
-    fn bind_vertex_buffers(&mut self, start_index: usize, buffers: &[(&B::Buffer, usize)]);
+    fn bind_vertex_buffers(&mut self, start_index: VertexBindingLocation, buffers: &[(&B::Buffer, DeviceSize)]);
 
-    fn bind_index_buffer(&mut self, buffer: &B::Buffer, offset: usize, format: IndexFormat);
+    fn bind_index_buffer(&mut self, buffer: &B::Buffer, offset: DeviceSize, format: IndexFormat);
 
     fn draw(
         &mut self,
@@ -331,7 +334,7 @@ pub trait ComputeCommandEncoder<B: Backend>
     fn bind_compute_descriptor_sets(
         &mut self,
         pipeline_layout: &B::PipelineLayout,
-        start_index: usize,
+        start_index: DescriptorSetBindingLocation,
         descriptor_sets: &[&B::DescriptorSet],
         dynamic_offsets: &[u32],
     );
@@ -349,10 +352,10 @@ pub trait CopyCommandEncoder<B: Backend>
     fn copy_buffer(
         &mut self,
         source: &B::Buffer,
-        source_offset: usize,
+        source_offset: DeviceSize,
         destination: &B::Buffer,
-        destination_offset: usize,
-        size: usize,
+        destination_offset: DeviceSize,
+        size: DeviceSize,
     );
 
     // TODO: more commands

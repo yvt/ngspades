@@ -74,10 +74,14 @@
 //!     AccessType::TransferWrite;
 //! ```
 //!
-//! Todos
-//! -----
+//! Other Important Concepts
+//! ------------------------
 //!
-//!  - Use `u64` for device space size/offset
+//! See module-level or item documentations for other important concepts including:
+//!
+//!  - Command buffers, queues, device engines, and synchronizations -
+//!    see [`::command`](command/index.html)
+//!
 
 extern crate cgmath;
 extern crate enumflags;
@@ -108,11 +112,23 @@ pub mod shader;
 pub mod sync;
 pub mod validation;
 
+/// Represents an index to a subpass in a render pass.
+pub type SubpassIndex = usize;
+
+/// Represents a location in a vertex buffer binding table.
 pub type VertexBindingLocation = usize;
+/// Represents a location of a vertex attribute consumed by a vertex shader.
 pub type VertexAttributeLocation = usize;
 
+/// Represents a location in a descriptor set binding table.
 pub type DescriptorSetBindingLocation = usize;
+/// Represents a location of a descriptor or an array of descriptors in a descriptor set.
 pub type DescriptorBindingLocation = usize;
+/// Represents an element of an array of descriptors.
+pub type DescriptorBindingElementIndex = usize;
+
+/// Represents a device memory size and offset value.
+pub type DeviceSize = u64;
 
 pub trait Backend: Sized + 'static {
     type Buffer: Buffer;
@@ -163,12 +179,15 @@ pub use shader::*;
 pub use sync::*;
 pub use validation::*;
 
+/// Represents a physical device.
 pub trait Device<B: Backend>: Debug + Sized {
     fn main_queue(&self) -> &B::CommandQueue;
     fn factory(&self) -> &B::Factory;
     fn capabilities(&self) -> &B::DeviceCapabilities;
 }
 
+/// Specifies a predicate (boolean-valued function) on two numeric values
+/// used during various kinds of tests (e.g., depth test).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum CompareFunction {
     Never,

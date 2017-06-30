@@ -91,7 +91,7 @@ struct DescriptorSetTable {
 #[derive(Debug, Default)]
 struct DescriptorSetTableStage {
     image_views: Vec<Option<ImageView>>,
-    buffers: Vec<Option<(Buffer, usize)>>,
+    buffers: Vec<Option<(Buffer, core::DeviceSize)>>,
     samplers: Vec<Option<Sampler>>,
 }
 

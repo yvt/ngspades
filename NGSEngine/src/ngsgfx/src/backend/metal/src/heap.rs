@@ -104,11 +104,11 @@ impl core::MappableHeap for Heap {
         *allocation.state = HeapAllocationState::Invalid;
     }
 
-    fn flush_memory(&mut self, _: &mut Self::Allocation, _: usize, _: Option<usize>) {
+    fn flush_memory(&mut self, _: &mut Self::Allocation, _: core::DeviceSize, _: Option<core::DeviceSize>) {
         // No-op.
     }
 
-    fn invalidate_memory(&mut self, _: &mut Self::Allocation, _: usize, _: Option<usize>) {
+    fn invalidate_memory(&mut self, _: &mut Self::Allocation, _: core::DeviceSize, _: Option<core::DeviceSize>) {
         // No-op.
     }
 
@@ -121,7 +121,7 @@ impl core::MappableHeap for Heap {
         allocation: &mut Self::Allocation,
     ) -> (*mut u8, usize, Self::MappingInfo) {
         if let HeapAllocationState::Mappable(ref buffer) = *allocation.state {
-            (buffer.contents() as *mut u8, buffer.len(), ())
+            (buffer.contents() as *mut u8, buffer.len() as usize, ())
         } else {
             panic!("Unmappable or invalid object");
         }

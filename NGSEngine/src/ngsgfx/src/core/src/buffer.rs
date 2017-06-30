@@ -11,7 +11,7 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use super::{Validate, DeviceCapabilities, Marker};
+use {Validate, DeviceCapabilities, Marker, DeviceSize};
 
 /// Handle for buffer objects each of which represents a continuous region on a host/device memory.
 ///
@@ -23,7 +23,7 @@ pub trait Buffer
 #[derive(Debug, Clone, Copy)]
 pub struct BufferDescription {
     pub usage: BufferUsageFlags,
-    pub size: usize,
+    pub size: DeviceSize,
 }
 
 // prevent `InnerXXX` from being exported
