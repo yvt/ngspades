@@ -7,10 +7,21 @@ use std::fmt::Debug;
 
 use super::DeviceCapabilities;
 
-/// Trait for description types whose usage can be validated.
+/// Trait for types that allows the application or backend to validate
+/// their usage.
 ///
-/// Unique restrictions by the backend that cannot represented in `DeviceLimits` and `DeviceCapabilities`
-/// are not validated.
+/// The goal of this trait and its implementations is, by providing some standard
+/// on the supported value domain alleviating the backend implementor's task of
+/// checking the input value, and ensuring some level of cross-platform compatibility,
+/// and at the same time providing a mean to detect invalid values during the
+/// development of an application.
+///
+/// Note that validations that can be done via this trait might not be exhaustive.
+/// For example, unique restrictions imposed the backend that cannot be represented
+/// in `DeviceLimits` and `DeviceCapabilities` are not validated. Furthermore,
+/// restrictions that need informations unavailable to the validator (e.g.,
+/// `ImageDescription` used to create `Image` referenced by `self`) cannot be
+/// validated.
 pub trait Validate: Debug {
     type Error: Debug;
 
@@ -37,6 +48,9 @@ pub trait Validate: Debug {
     }
 
     /// Ensure that values in `self` are valid at runtime. Returns a reference to `self`.
+    ///
+    /// # Panics
+    /// Panics unless `is_valid(cap)`, with a custom panic message provided by `msg`.
     fn expect_valid(&self, cap: Option<&DeviceCapabilities>, msg: &str) -> &Self {
         if !self.is_valid(cap) {
             expect_valid_inner(&self, msg, errors_to_str(self.validation_errors(cap)));
@@ -45,18 +59,21 @@ pub trait Validate: Debug {
     }
 
     /// Ensure that values in `self` are valid at runtime. Returns a mutable reference to `self`.
+    ///
+    /// # Panics
+    /// Panics unless `is_valid(cap)`, with a custom panic message provided by `msg`.
     fn expect_valid_mut(&mut self, cap: Option<&DeviceCapabilities>, msg: &str) -> &mut Self {
         self.expect_valid(cap, msg);
         self
     }
 
-    /// Almost the same as `expect_valid`, but doesn't perform validation on optimized builds.
+    /// Call `expect_valid` only if debug assertions are enabled.
     #[cfg(debug_assertions)]
     fn debug_expect_valid(&self, cap: Option<&DeviceCapabilities>, msg: &str) -> &Self {
         self.expect_valid(cap, msg)
     }
 
-    /// Almost the same as `expect_valid_mut`, but doesn't perform validation on optimized builds.
+    /// Call `expect_valid_mut` only if debug assertions are enabled.
     #[cfg(debug_assertions)]
     fn debug_expect_valid_mut(&mut self, cap: Option<&DeviceCapabilities>, msg: &str) -> &mut Self {
         self.expect_valid_mut(cap, msg)
