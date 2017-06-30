@@ -48,18 +48,19 @@ pub type BufferUsageFlags = BitFlags<BufferUsage>;
 /// Validation errors for [`BufferDescription`](struct.BufferDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum BufferDescriptionValidationError {
-    // TODO
+    /// `size` is zero.
+    ZeroSize,
 }
 
 impl Validate for BufferDescription {
     type Error = BufferDescriptionValidationError;
 
-    #[allow(unused_variables)]
-    #[allow(unused_mut)]
-    fn validate<T>(&self, cap: Option<&DeviceCapabilities>, mut callback: T)
+    fn validate<T>(&self, _: Option<&DeviceCapabilities>, mut callback: T)
     where
         T: FnMut(Self::Error) -> (),
     {
-        // TODO
+        if self.size == 0 {
+            callback(BufferDescriptionValidationError::ZeroSize);
+        }
     }
 }
