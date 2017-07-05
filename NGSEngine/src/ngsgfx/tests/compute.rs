@@ -328,15 +328,15 @@ impl BackendDispatch for Conv1Test {
         let device_utils = DeviceUtils::<B>(&device);
 
         let local_size = 64;
-        let global_size = 1;
+        let global_size = 4;
         let num_elements = local_size * global_size;
 
-        let kernel_data = [1f32, 3f32, 5f32, 7f32];
-        let mut input_data = vec![0f32; num_elements + kernel_data.len() - 1];
-        let mut output_data = vec![0f32; num_elements];
+        let kernel_data = [1u32, 3u32, 5u32, 7u32];
+        let mut input_data = vec![0u32; num_elements + kernel_data.len() - 1];
+        let mut output_data = vec![0u32; num_elements];
 
         for (i, e) in input_data.iter_mut().enumerate() {
-            *e = i as f32;
+            *e = i as u32;
         }
 
         let input_buffer = device_utils.make_preinitialized_buffer(
@@ -476,6 +476,7 @@ impl BackendDispatch for Conv1Test {
         cb.begin_encoding();
         cb.begin_compute_pass(core::DeviceEngine::Compute);
         cb.bind_compute_pipeline(&pipeline);
+        cb.bind_compute_descriptor_sets(&layout, 0, &[&desc_set], &[]);
         cb.dispatch(Vector3::new(global_size as u32, 1, 1));
         cb.end_pass();
         cb.end_encoding();
@@ -489,9 +490,15 @@ impl BackendDispatch for Conv1Test {
             core::DeviceEngine::Compute,
         );
 
-        // TODO: check output value
-        println!("{:?}", input_data);
-        println!("{:?}", kernel_data);
-        println!("{:?}", result);
+        let mut model_data = vec![0u32; num_elements];
+        for (i, model) in model_data.iter_mut().enumerate() {
+            let mut sum = 0;
+            for (k, kern) in kernel_data.iter().enumerate() {
+                sum += input_data[i + k] * kern;
+            }
+            *model = sum;
+        }
+
+        assert_eq!(result, model_data.as_slice());
     }
 }

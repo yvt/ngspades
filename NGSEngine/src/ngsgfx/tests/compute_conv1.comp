@@ -6,19 +6,19 @@ const uint kernel_size = 4u;
 
 layout(local_size_x = 64 /* local_size */) in;
 
-shared float in_values[local_size + kernel_size - 1u];
-shared float kernel_values[kernel_size];
+shared uint in_values[local_size + kernel_size - 1u];
+shared uint kernel_values[kernel_size];
 
 layout(set = 0, binding = 0) readonly buffer ConvolutionParameter {
-    float kernel_values[kernel_size];
+    uint kernel_values[kernel_size];
 } conv_param;
 
 layout(set = 0, binding = 1) readonly buffer ConvolutionInput {
-    float data[];
+    uint data[];
 } conv_in;
 
 layout(set = 0, binding = 2) writeonly buffer ConvolutionOutput {
-    float data[];
+    uint data[];
 } conv_out;
 
 void main()
@@ -26,12 +26,12 @@ void main()
     uint local_id = gl_LocalInvocationID.x;
 
     // load input data into shared memory
-    uint global_id = local_id + local_size * gl_GlobalInvocationID.x;
+    uint global_id = gl_GlobalInvocationID.x;
 
     in_values[local_id] = conv_in.data[global_id];
     if (local_id > local_size - kernel_size) {
-        in_values[local_id - (local_size - kernel_size) - 1u] =
-            conv_in.data[local_id + kernel_size - 1u];
+        in_values[local_id + kernel_size - 1u] =
+            conv_in.data[global_id + kernel_size - 1u];
     }
 
     // load kernel into shared memory
@@ -44,7 +44,7 @@ void main()
     barrier();
 
     // perform convolution
-    float sum = 0.0;
+    uint sum = 0u;
     for (uint i = 0u; i < kernel_size; ++i) {
         sum += in_values[local_id + i] * kernel_values[i];
     }
