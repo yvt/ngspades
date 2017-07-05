@@ -90,17 +90,28 @@ string CompilerMSL::compile()
 	// Preprocess OpCodes to extract the need to output additional header content
 	preprocess_op_codes();
 
-	// Create structs to hold input, output and uniform variables
+	// Create structs to hold input, output, workgroup and uniform variables
 	qual_pos_var_name = "";
 	stage_in_var_id = add_interface_block(StorageClassInput);
 	stage_out_var_id = add_interface_block(StorageClassOutput);
 	stage_uniforms_var_id = add_interface_block(StorageClassUniformConstant);
+	stage_workgroup_var_id = add_interface_block(StorageClassWorkgroup);
+
+	if (stage_workgroup_var_id) {
+		auto &wg_var = get<SPIRVariable>(stage_workgroup_var_id);
+		auto &entry_func = get<SPIRFunction>(entry_point);
+		entry_func.add_local_variable(stage_workgroup_var_id);
+
+		uint32_t next_id = increase_bound_by(1);
+		wg_var.initializer = next_id;
+	}
 
 	// Convert the use of global variables to recursively-passed function parameters
 	localize_global_variables();
 	extract_global_variables_from_functions();
 
 	// Do not deal with GLES-isms like precision, older extensions and such.
+	CompilerGLSL::options.vulkan_semantics = true;
 	CompilerGLSL::options.es = false;
 	CompilerGLSL::options.version = 120;
 	CompilerGLSL::options.vertex.fixup_clipspace = false;
@@ -112,6 +123,7 @@ string CompilerMSL::compile()
 	backend.swizzle_is_function = false;
 	backend.shared_is_implied = false;
 	backend.native_row_major_matrix = false;
+	backend.flexible_member_array_supported = false;
 
 	uint32_t pass_count = 0;
 	do
@@ -127,6 +139,7 @@ string CompilerMSL::compile()
 		buffer = unique_ptr<ostringstream>(new ostringstream());
 
 		emit_header();
+		emit_specialization_constants();
 		emit_resources();
 		emit_custom_functions();
 		emit_function(get<SPIRFunction>(entry_point), 0);
@@ -215,7 +228,8 @@ void CompilerMSL::extract_global_variables_from_functions()
 		{
 			auto &var = id.get<SPIRVariable>();
 			if (var.storage == StorageClassInput || var.storage == StorageClassUniform ||
-			    var.storage == StorageClassUniformConstant || var.storage == StorageClassPushConstant)
+			    var.storage == StorageClassUniformConstant || var.storage == StorageClassPushConstant ||
+			    var.storage == StorageClassWorkgroup)
 			{
 				global_var_ids.insert(var.self);
 			}
@@ -266,6 +280,16 @@ void CompilerMSL::extract_global_variables_from_function(uint32_t func_id, std::
 			case OpAccessChain:
 			{
 				uint32_t base_id = ops[2];
+				if (global_var_ids.find(base_id) != global_var_ids.end())
+					added_arg_ids.insert(base_id);
+
+				break;
+			}
+			case OpStore:
+			{
+				// Direct store to a workgroup shared variable can happen
+
+				uint32_t base_id = ops[0];
 				if (global_var_ids.find(base_id) != global_var_ids.end())
 					added_arg_ids.insert(base_id);
 
@@ -390,6 +414,10 @@ uint32_t CompilerMSL::add_interface_block(StorageClass storage)
 		break;
 	}
 
+	case StorageClassWorkgroup:
+		ib_var_ref = stage_workgroup_var_name;
+		break;
+
 	default:
 		break;
 	}
@@ -401,7 +429,7 @@ uint32_t CompilerMSL::add_interface_block(StorageClass storage)
 	{
 		uint32_t type_id = p_var->basetype;
 		auto &type = get<SPIRType>(type_id);
-		if (type.basetype == SPIRType::Struct)
+		if (type.basetype == SPIRType::Struct && storage != StorageClassWorkgroup)
 		{
 			// Flatten the struct members into the interface struct
 			uint32_t mbr_idx = 0;
@@ -412,8 +440,9 @@ uint32_t CompilerMSL::add_interface_block(StorageClass storage)
 
 				auto &mbr_type = get<SPIRType>(mbr_type_id);
 				if (is_matrix(mbr_type))
+				{
 					exclude_member_from_stage_in(type, mbr_idx);
-
+				}
 				else if (!is_builtin || has_active_builtin(builtin, storage))
 				{
 					// Add a reference to the member to the interface struct.
@@ -435,6 +464,14 @@ uint32_t CompilerMSL::add_interface_block(StorageClass storage)
 						set_member_decoration(ib_type_id, ib_mbr_idx, DecorationLocation, locn);
 						mark_location_as_used_by_shader(locn, storage);
 					}
+					else if (has_decoration(p_var->self, DecorationLocation))
+					{
+						// The block itself might have a location and in this case, all members of the block
+						// receive incrementing locations.
+						uint32_t locn = get_decoration(p_var->self, DecorationLocation) + mbr_idx;
+						set_member_decoration(ib_type_id, ib_mbr_idx, DecorationLocation, locn);
+						mark_location_as_used_by_shader(locn, storage);
+					}
 
 					// Mark the member as builtin if needed
 					if (is_builtin)
@@ -451,12 +488,13 @@ uint32_t CompilerMSL::add_interface_block(StorageClass storage)
 		         type.basetype == SPIRType::Int || type.basetype == SPIRType::UInt ||
 		         type.basetype == SPIRType::Int64 || type.basetype == SPIRType::UInt64 ||
 		         type.basetype == SPIRType::Float || type.basetype == SPIRType::Double ||
-		         type.basetype == SPIRType::Boolean)
+		         type.basetype == SPIRType::Boolean ||
+		         storage == StorageClassWorkgroup)
 		{
 			bool is_builtin = is_builtin_variable(*p_var);
 			BuiltIn builtin = BuiltIn(get_decoration(p_var->self, DecorationBuiltIn));
 
-			if (is_matrix(type))
+			if (is_matrix(type) && storage != StorageClassWorkgroup)
 				exclude_from_stage_in(*p_var);
 
 			else if (!is_builtin || has_active_builtin(builtin, storage))
@@ -985,6 +1023,29 @@ void CompilerMSL::emit_resources()
 
 	emit_interface_block(stage_out_var_id);
 	emit_interface_block(stage_uniforms_var_id);
+	emit_interface_block(stage_workgroup_var_id);
+}
+
+// Emit declarations for the specialization Metal function constants
+void CompilerMSL::emit_specialization_constants()
+{
+	const vector<SpecializationConstant> spec_consts = get_specialization_constants();
+
+	if (spec_consts.empty())
+		return;
+
+	for (auto &sc : spec_consts)
+	{
+		string sc_type_name = type_to_glsl(expression_type(sc.id));
+		string sc_name = to_name(sc.id);
+		string sc_tmp_name = to_name(sc.id) + "_tmp";
+
+		statement("constant ", sc_type_name, " ", sc_tmp_name, " [[function_constant(",
+		          convert_to_string(sc.constant_id), ")]];");
+		statement("constant ", sc_type_name, " ", sc_name, " = is_function_constant_defined(", sc_tmp_name, ") ? ",
+		          sc_tmp_name, " : ", constant_expression(get<SPIRConstant>(sc.id)), ";");
+	}
+	statement("");
 }
 
 // Override for MSL-specific syntax instructions
@@ -1343,6 +1404,72 @@ void CompilerMSL::emit_instruction(const Instruction &instruction)
 		break;
 	}
 
+	// Compute
+	case OpControlBarrier:
+	{
+		uint32_t exec_scope = get<SPIRConstant>(ops[0]).scalar();
+		// uint32_t mem_scope = get<SPIRConstant>(ops[1]).scalar();
+		uint32_t mem_semantics = get<SPIRConstant>(ops[2]).scalar();
+
+		if (exec_scope == ScopeWorkgroup) {
+			// The memory scope parameter for threadgroup_barrier() is unavailable until MSL 2.0.
+			// there are no MTL counterparts for the memory ordering flags in mem_semantics.
+
+			// HACK: At the point of writing, glslang emits wrong memory semantics flags for
+			// the barrier() function. (See: https://github.com/KhronosGroup/glslang/issues/502)
+			// Specifically, it does not include WorkgroupMemory in the memory semantics flags
+			// when its target is set to GLSL 4.50 and it is processing a compute shader.
+			// To be safe, we modify the flags to include WorkgroupMemory.
+			//
+			// There is another reason to do this: OpMemoryBarrier cannot be directly translated
+			// into MSL. Without this hack, the following common idiom will not work and there
+			// is no other way to accomplish the same thing:
+			//
+			//    groupMemoryBarrier(); barrier();
+			//
+			// TODO: handle a code like `memoryBarrierImage(); barrier();`
+			//
+			mem_semantics |= MemorySemanticsWorkgroupMemoryMask;
+
+			std::string mem_flags;
+			if (mem_semantics & MemorySemanticsWorkgroupMemoryMask) {
+				mem_flags = "mem_flags::mem_threadgroup";
+			}
+			if (mem_semantics & MemorySemanticsImageMemoryMask) {
+				if (!mem_flags.empty()) {
+					mem_flags += " | ";
+				}
+				mem_flags += "mem_flags::mem_texture";
+			}
+			if (mem_semantics & MemorySemanticsUniformMemoryMask) {
+				if (!mem_flags.empty()) {
+					mem_flags += " | ";
+				}
+				mem_flags += "mem_flags::mem_device";
+			}
+			if (mem_flags.empty()) {
+				mem_flags = "mem_flags::mem_none";
+			}
+			statement(join("threadgroup_barrier(", mem_flags, ");"));
+		} else {
+			statement("// unsupported control barrier - execution scope is not Workgroup");
+		}
+		break;
+	}
+
+	case OpMemoryBarrier:
+	{
+		// uint32_t mem_scope = get<SPIRConstant>(ops[0]).scalar();
+		// uint32_t mem_semantics = get<SPIRConstant>(ops[1]).scalar();
+
+		// Unfortunately, there is no way to express a memory barrier alone in MSL.
+		// OpMemoryBarrier is not required to be placed within a uniform control flow whereas
+		// threadgroup_barrier requires that.
+
+		statement("// memory barrier is not supported in MSL");
+		break;
+	}
+
 	// OpOuterProduct
 
 	default:
@@ -1549,6 +1676,14 @@ void CompilerMSL::emit_function_prototype(SPIRFunction &func, uint64_t)
 			auto &so_var = get<SPIRVariable>(stage_out_var_id);
 			auto &so_type = get<SPIRType>(so_var.basetype);
 			set<SPIRExpression>(so_var.initializer, "{}", so_type.self, true);
+		}
+
+		// ditto for workgroup variables.
+		if (stage_workgroup_var_id)
+		{
+			auto &wg_var = get<SPIRVariable>(stage_workgroup_var_id);
+			auto &wg_type = get<SPIRType>(wg_var.basetype);
+			set<SPIRExpression>(wg_var.initializer, "{}", wg_type.self, true);
 		}
 	}
 
@@ -2157,6 +2292,10 @@ string CompilerMSL::get_argument_address_space(const SPIRVariable &argument)
 		           "constant";
 	}
 
+	if (type.storage == StorageClassWorkgroup) {
+		return "threadgroup";
+	}
+
 	return "thread";
 }
 
@@ -2329,8 +2468,10 @@ string CompilerMSL::argument_decl(const SPIRFunction::Parameter &arg)
 	bool pointer = type.storage == StorageClassUniformConstant;
 
 	auto &var = get<SPIRVariable>(arg.id);
-	return join(constref ? "const " : "", type_to_glsl(type), pointer ? " " : "& ", to_name(var.self),
-	            type_to_array_glsl(type));
+	bool needs_parenthesis = type.array.size() > 0 && !pointer; // needs to make a reference to an array
+	return join(constref ? "const " : "", type_to_glsl(type), needs_parenthesis ? " (" : "",
+		pointer ? " " : needs_parenthesis ? "&" : "& ", to_name(var.self), needs_parenthesis ? ")" : "",
+	    type_to_array_glsl(type));
 }
 
 // If we're currently in the entry point function, and the object
@@ -2536,9 +2677,25 @@ string CompilerMSL::image_type_glsl(const SPIRType &type, uint32_t id)
 	return img_type_name;
 }
 
-string CompilerMSL::bitcast_glsl_op(const SPIRType &out_type, const SPIRType &)
+string CompilerMSL::bitcast_glsl_op(const SPIRType &out_type, const SPIRType &in_type)
 {
-	return "as_type<" + type_to_glsl(out_type) + ">";
+	if ((out_type.basetype == SPIRType::UInt && in_type.basetype == SPIRType::Int) ||
+	    (out_type.basetype == SPIRType::Int && in_type.basetype == SPIRType::UInt) ||
+	    (out_type.basetype == SPIRType::UInt64 && in_type.basetype == SPIRType::Int64) ||
+	    (out_type.basetype == SPIRType::Int64 && in_type.basetype == SPIRType::UInt64))
+		return type_to_glsl(out_type);
+
+	if ((out_type.basetype == SPIRType::UInt && in_type.basetype == SPIRType::Float) ||
+	    (out_type.basetype == SPIRType::Int && in_type.basetype == SPIRType::Float) ||
+	    (out_type.basetype == SPIRType::Float && in_type.basetype == SPIRType::UInt) ||
+	    (out_type.basetype == SPIRType::Float && in_type.basetype == SPIRType::Int) ||
+	    (out_type.basetype == SPIRType::Int64 && in_type.basetype == SPIRType::Double) ||
+	    (out_type.basetype == SPIRType::UInt64 && in_type.basetype == SPIRType::Double) ||
+	    (out_type.basetype == SPIRType::Double && in_type.basetype == SPIRType::Int64) ||
+	    (out_type.basetype == SPIRType::Double && in_type.basetype == SPIRType::UInt64))
+		return "as_type<" + type_to_glsl(out_type) + ">";
+
+	return "";
 }
 
 // Returns an MSL string identifying the name of a SPIR-V builtin.
@@ -2617,11 +2774,11 @@ string CompilerMSL::builtin_qualifier(BuiltIn builtin)
 	{
 		if (execution.flags & (1ull << ExecutionModeDepthGreater))
 			return "depth(greater)";
-
-		if (execution.flags & (1ull << ExecutionModeDepthLess))
+		else if (execution.flags & (1ull << ExecutionModeDepthLess))
 			return "depth(less)";
-
-		if (execution.flags & (1ull << ExecutionModeDepthUnchanged))
+		else if (execution.flags & (1ull << ExecutionModeDepthUnchanged))
+			return "depth(any)";
+		else
 			return "depth(any)";
 	}
 
@@ -2703,22 +2860,8 @@ string CompilerMSL::built_in_func_arg(BuiltIn builtin, bool prefix_comma)
 // Returns the byte size of a struct member.
 size_t CompilerMSL::get_declared_struct_member_size(const SPIRType &struct_type, uint32_t index) const
 {
-	uint32_t type_id = struct_type.member_types[index];
 	auto dec_mask = get_member_decoration_mask(struct_type.self, index);
-	return get_declared_type_size(type_id, dec_mask);
-}
-
-// Returns the effective size of a variable type.
-size_t CompilerMSL::get_declared_type_size(uint32_t type_id) const
-{
-	return get_declared_type_size(type_id, get_decoration_mask(type_id));
-}
-
-// Returns the effective size in bytes of a variable type
-// or member type, taking into consideration the decorations mask.
-size_t CompilerMSL::get_declared_type_size(uint32_t type_id, uint64_t dec_mask) const
-{
-	auto &type = get<SPIRType>(type_id);
+	auto &type = get<SPIRType>(struct_type.member_types[index]);
 
 	switch (type.basetype)
 	{
@@ -2739,14 +2882,9 @@ size_t CompilerMSL::get_declared_type_size(uint32_t type_id, uint64_t dec_mask) 
 		unsigned vecsize = type.vecsize;
 		unsigned columns = type.columns;
 
+		// For arrays, we can use ArrayStride to get an easy check.
 		if (!type.array.empty())
-		{
-			// For arrays, we can use ArrayStride to get an easy check if it has been populated.
-			// ArrayStride is part of the array type not OpMemberDecorate.
-			auto &dec = meta[type_id].decoration;
-			if (dec.decoration_flags & (1ull << DecorationArrayStride))
-				return dec.array_stride * to_array_size_literal(type, uint32_t(type.array.size()) - 1);
-		}
+			return type_struct_member_array_stride(struct_type, index) * type.array.back();
 
 		if (columns == 1) // An unpacked 3-element vector is the same size as a 4-element vector.
 		{
@@ -2778,16 +2916,7 @@ size_t CompilerMSL::get_declared_type_size(uint32_t type_id, uint64_t dec_mask) 
 // Returns the byte alignment of a struct member.
 size_t CompilerMSL::get_declared_struct_member_alignment(const SPIRType &struct_type, uint32_t index) const
 {
-	uint32_t type_id = struct_type.member_types[index];
-	auto dec_mask = get_member_decoration_mask(struct_type.self, index);
-	return get_declared_type_alignment(type_id, dec_mask);
-}
-
-// Returns the effective alignment in bytes of a variable type
-// or member type, taking into consideration the decorations mask.
-size_t CompilerMSL::get_declared_type_alignment(uint32_t type_id, uint64_t dec_mask) const
-{
-	auto &type = get<SPIRType>(type_id);
+	auto &type = get<SPIRType>(struct_type.member_types[index]);
 
 	switch (type.basetype)
 	{
@@ -2806,10 +2935,11 @@ size_t CompilerMSL::get_declared_type_alignment(uint32_t type_id, uint64_t dec_m
 	{
 		// Alignment of packed type is the same as the underlying component size.
 		// Alignment of unpacked type is the same as the type size (or one matrix column).
+		auto dec_mask = get_member_decoration_mask(struct_type.self, index);
 		if (dec_mask & (1ull << DecorationCPacked))
 			return type.width / 8;
 		else
-			return get_declared_type_size(type_id, dec_mask) / type.columns;
+			return get_declared_struct_member_size(struct_type, index) / type.columns;
 	}
 	}
 }
@@ -2920,6 +3050,18 @@ CompilerMSL::SPVFuncImpl CompilerMSL::get_spv_func_impl(Op opcode, const uint32_
 		break;
 	}
 	return SPVFuncImplNone;
+}
+
+// Add threadgroup qualifier for Workgroup variables
+string CompilerMSL::variable_decl(const SPIRType &type, const string &name, uint32_t id)
+{
+	bool is_workgroup = id && id == stage_workgroup_var_id;
+
+	if (is_workgroup) {
+		return "threadgroup " + CompilerGLSL::variable_decl(type, name, id);
+	} else {
+		return CompilerGLSL::variable_decl(type, name, id);
+	}
 }
 
 // Sort both type and meta member content based on builtin status (put builtins at end),

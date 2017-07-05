@@ -166,9 +166,9 @@ protected:
 	std::string unpack_expression_type(std::string expr_str, const SPIRType &type) override;
 	std::string bitcast_glsl_op(const SPIRType &result_type, const SPIRType &argument_type) override;
 	bool skip_argument(uint32_t id) const override;
+	std::string variable_decl(const SPIRType &type, const std::string &name, uint32_t id = 0) override;
 
 	void preprocess_op_codes();
-	void emit_custom_functions();
 	void localize_global_variables();
 	void extract_global_variables_from_functions();
 
@@ -179,7 +179,9 @@ protected:
 	uint32_t add_interface_block(spv::StorageClass storage);
 	void mark_location_as_used_by_shader(uint32_t location, spv::StorageClass storage);
 
+	void emit_custom_functions();
 	void emit_resources();
+	void emit_specialization_constants();
 	void emit_interface_block(uint32_t ib_var_id);
 	void populate_func_name_overrides();
 	void populate_var_name_overrides();
@@ -199,10 +201,7 @@ protected:
 	std::string round_fp_tex_coords(std::string tex_coords, bool coord_is_fp);
 	uint32_t get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype);
 	uint32_t get_ordered_member_location(uint32_t type_id, uint32_t index);
-	size_t get_declared_type_size(uint32_t type_id) const;
-	size_t get_declared_type_size(uint32_t type_id, uint64_t dec_mask) const;
 	size_t get_declared_struct_member_alignment(const SPIRType &struct_type, uint32_t index) const;
-	size_t get_declared_type_alignment(uint32_t type_id, uint64_t dec_mask) const;
 	std::string to_component_argument(uint32_t id);
 	void exclude_from_stage_in(SPIRVariable &var);
 	void exclude_member_from_stage_in(const SPIRType &type, uint32_t index);
@@ -232,12 +231,14 @@ protected:
 	uint32_t stage_in_var_id = 0;
 	uint32_t stage_out_var_id = 0;
 	uint32_t stage_uniforms_var_id = 0;
+	uint32_t stage_workgroup_var_id = 0;
 	bool needs_vertex_idx_arg = false;
 	bool needs_instance_idx_arg = false;
 	std::string qual_pos_var_name;
 	std::string stage_in_var_name = "in";
 	std::string stage_out_var_name = "out";
 	std::string stage_uniform_var_name = "uniforms";
+	std::string stage_workgroup_var_name = "workgroup";
 	std::string sampler_name_suffix = "Smplr";
 
 	// OpcodeHandler that handles several MSL preprocessing operations.
