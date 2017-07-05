@@ -22,13 +22,19 @@ pub struct FramebufferDescription<'a, TRenderPass: RenderPass, TImageView: Image
     pub attachments: &'a [FramebufferAttachmentDescription<'a, TImageView>],
     pub width: u32,
     pub height: u32,
+
+    /// Must be `1`.
+    pub num_layers: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct FramebufferAttachmentDescription<'a, TImageView: ImageView> {
     /// Specified the image view to use as the corresponding attachment.
     ///
-    /// Must only specify a single mipmap level.
+    /// - Must only specify a single mipmap level.
+    /// - Must have a single array layer.
+    /// - Must be at least as large as the dimensions specified in
+    ///   `FramebufferDescription`.
     pub image_view: &'a TImageView,
     pub clear_values: ClearValues,
 }

@@ -65,7 +65,10 @@ impl ::std::default::Default for ImageDescription {
 pub enum ImageType {
     OneD,
     TwoD,
+    TwoDArray,
     ThreeD,
+    Cube,
+    CubeArray,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -76,13 +79,44 @@ pub enum ImageTiling {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ImageViewDescription<'a, TImage: Image> {
-    pub view_type: ImageViewType,
+    /// Specifies the arrangement of the image view.
+    ///
+    /// If the image was not created with `ImageFlag::MutableType`, this must
+    /// be equal to the one used to create the image.
+    ///
+    /// Only the following combinations of the original image's `ImageType` and
+    /// the image view's one are supported:
+    ///
+    /// |  Original Image Type  |               View Image Type               |
+    /// | --------------------- | ------------------------------------------- |
+    /// | `OneD`                | `OneD`                                      |
+    /// | `TwoD` or `TwoDArray` | `TwoD` or `TwoDArray`                       |
+    /// | `Cube` or `CubeArray` | `TwoD`, `TwoDArray`, `Cube`, or `CubeArray` |
+    /// | `ThreeD`              | `ThreeD`                                    |
+    pub image_type: ImageType,
+
+    /// Specifies the image to create a image view from.
     pub image: &'a TImage,
+
+    /// Specifies the image format.
+    ///
+    /// If the image was not created with `ImageFlag::MutableFormat`, this must
+    /// be equal to the one used to create the image.
     pub format: ImageFormat,
+
+    /// Specifies the ranges of slices and mip levels that are visible via the
+    /// image view.
+    ///
+    /// If the image was not created with `ImageFlag::SubrangeViewCompatible`,
+    /// the following restriction applies if this does not specify entire the
+    /// image:
+    ///
+    ///  - The created image view cannot be used as an element of a descriptor set.
+    ///
     pub range: ImageSubresourceRange,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ImageSubresourceRange {
     /// The first mipmap level accessible to the view.
     pub base_mip_level: u32,
@@ -95,16 +129,6 @@ pub struct ImageSubresourceRange {
 
     /// The number of array layers. Use `None` to specify all remaining layers.
     pub num_array_layers: Option<u32>,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum ImageViewType {
-    OneD,
-    TwoD,
-    TwoDArray,
-    ThreeD,
-    Cube,
-    CubeArray,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -140,9 +164,21 @@ mod flags {
     #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u32)]
     pub enum ImageFlag {
-        CubeCompatible = 0b1,
-        // TODO: 2D array compatible 3D texture (VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
-        //       note: not supported by Metal
+        /// Indicates `ImageView` can created from the image with a `ImageFormat` different
+        /// from the one used to create the image.
+        MutableFormat = 0b001,
+
+        /// Indicates `ImageView` created from the image with a `ImageSubresourceRange` that
+        /// does not specify entire the image (e.g., `base_mip_level` is not zero) can be used
+        /// as an element of a descriptor set.
+        ///
+        /// Even without this flag, such `ImageView`s can be used for other purposes.
+        SubrangeViewCompatible = 0b010,
+
+        /// Indicates `ImageView` created from the image with a `ImageType` different
+        /// from the one used to create the image can be used as an element of
+        /// a descriptor set.
+        MutableType = 0b100,
     }
 }
 
@@ -160,15 +196,11 @@ pub enum ImageDescriptionValidationError {
     ZeroMipLevels,
     /// `num_array_layers` is `0`. (Vulkan 1.0 "11.3. Images" valid usage)
     ZeroArrayLayers,
-    /// `ImageFlag::CubeCompatible` is specified and `image_type` is not `ImageType::TwoD`.
+    /// Either of `ImageType::Cube` and `ImageType::CubeArray` is specified and `extent.x` is not equal to `extent.y`.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
-    CubeCompatibleButNot2D,
-    /// `ImageFlag::CubeCompatible` is specified and `extent.x` is not equal to `extent.y`.
-    /// (Vulkan 1.0, "11.3. Images" valid usage)
-    CubeCompatibleButNotSquare,
-    /// `ImageFlag::CubeCompatible` is specified and `num_array_layers` is less than 6.
-    /// (Vulkan 1.0, "11.3. Images" valid usage)
-    CubeCompatibleButNotEnoughLayers,
+    CubeButNotSquare,
+    /// Either of `ImageType::Cube` and `ImageType::CubeArray` is specified and `num_array_layers` is not a multiple of 6.
+    CubeWithInvalidNumberOfLayers,
     /// `ImageTiling::Linear` is specified and `image_type` is not `ImageType::TwoD`,
     /// (macOS 10.12 Metal, `MTLBuffer.makeTexture`)
     LinearTilingButNot2D,
@@ -204,6 +236,12 @@ pub enum ImageDescriptionValidationError {
     ExtentTooLargeForFramebuffer,
     /// `initial_layout` is not either of `Undefined` or `Preinitialized`.
     InvalidInitialLayout,
+    /// `image_type` is not one of `TwoDArray` and `CubeArray` but `num_array_layers` is
+    /// greater than `1` or `6` for (`Cube`).
+    NonArrayButHasMultipleLayers,
+    /// `image_type` is `CubeArray` and `DeviceLimits.supports_cube_array` is `false`.
+    /// (Vulkan 1.0, "11.5. Image Views" valid usage)
+    CubeArrayNotSupported,
 }
 
 impl Validate for ImageDescription {
@@ -224,16 +262,26 @@ impl Validate for ImageDescription {
             callback(ImageDescriptionValidationError::ZeroArrayLayers);
         }
 
-        if !(self.flags & ImageFlag::CubeCompatible).is_empty() {
-            if self.image_type != ImageType::TwoD {
-                callback(ImageDescriptionValidationError::CubeCompatibleButNot2D);
-            }
+        if self.image_type == ImageType::Cube || self.image_type == ImageType::CubeArray {
             if self.extent.x != self.extent.y {
-                callback(ImageDescriptionValidationError::CubeCompatibleButNotSquare);
+                callback(ImageDescriptionValidationError::CubeButNotSquare);
             }
-            if self.num_array_layers < 6 {
+            if self.num_array_layers % 6 == 0 {
                 callback(
-                    ImageDescriptionValidationError::CubeCompatibleButNotEnoughLayers,
+                    ImageDescriptionValidationError::CubeWithInvalidNumberOfLayers,
+                );
+            }
+        }
+
+        let max_num_layers_by_type = match self.image_type {
+            ImageType::OneD | ImageType::TwoD | ImageType::ThreeD => Some(1),
+            ImageType::Cube => Some(6),
+            _ => None,
+        };
+        if let Some(i) = max_num_layers_by_type {
+            if self.num_array_layers > i {
+                callback(
+                    ImageDescriptionValidationError::NonArrayButHasMultipleLayers,
                 );
             }
         }
@@ -247,7 +295,9 @@ impl Validate for ImageDescription {
 
         if match self.image_type {
             ImageType::OneD => self.extent.y != 1 || self.extent.z != 1,
-            ImageType::TwoD => self.extent.z != 1,
+            ImageType::TwoD | ImageType::Cube | ImageType::TwoDArray | ImageType::CubeArray => {
+                self.extent.z != 1
+            }
             ImageType::ThreeD => false,
         }
         {
@@ -289,7 +339,8 @@ impl Validate for ImageDescription {
                 if self.extent.max() >
                     match self.image_type {
                         ImageType::OneD => limits.max_image_extent_1d,
-                        ImageType::TwoD => limits.max_image_extent_2d,
+                        ImageType::TwoD | ImageType::Cube | ImageType::TwoDArray |
+                        ImageType::CubeArray => limits.max_image_extent_2d,
                         ImageType::ThreeD => limits.max_image_extent_3d,
                     }
                 {
@@ -310,6 +361,10 @@ impl Validate for ImageDescription {
 
                 if self.num_array_layers > limits.max_image_num_array_layers {
                     callback(ImageDescriptionValidationError::TooManyArrayLayers);
+                }
+
+                if !limits.supports_cube_array && self.image_type == ImageType::CubeArray {
+                    callback(ImageDescriptionValidationError::CubeArrayNotSupported);
                 }
             }
             None => {}
@@ -348,7 +403,7 @@ pub enum ImageViewDescriptionValidationError {
     /// **To backend implementors**: Backends must also check whether the array layer
     /// is valid for the specified image. `compatible_with_image` does this check.
     TooManyArrayLayers,
-    /// `view_type` is `CubeArray` and `DeviceLimits.supports_cube_array` is `false`.
+    /// `image_type` is `CubeArray` and `DeviceLimits.supports_cube_array` is `false`.
     /// (Vulkan 1.0, "11.5. Image Views" valid usage)
     CubeArrayNotSupported,
 }
@@ -406,17 +461,25 @@ impl<'a, TImage: Image> Validate for ImageViewDescription<'a, TImage> {
                 callback(ImageViewDescriptionValidationError::TooManyArrayLayers);
             }
 
-            if !limits.supports_cube_array && self.view_type == ImageViewType::CubeArray {
+            if !limits.supports_cube_array && self.image_type == ImageType::CubeArray {
                 callback(ImageViewDescriptionValidationError::CubeArrayNotSupported);
             }
         }
     }
 }
 
-/// Compatibility validation errors for [`ImageViewDescription`](struct.ImageViewDescription.html).
+/// Used with the `Validate` trait to check the compatibility of an image view and
+/// the image it is based on.
+#[derive(Debug, Clone, Copy)]
+pub struct CombinedImageAndImageViewDescription<'a, TImage: Image>(
+    pub &'a ImageDescription,
+    pub &'a ImageViewDescription<'a, TImage>,
+);
+
+/// Validation errors for [`CombinedImageAndImageViewDescription`](struct.CombinedImageAndImageViewDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum ImageViewDescriptionCompatibilityValidationError {
-    /// An unsupported combination of `ImageType` and `ImageViewType` was found.
+pub enum CombinedImageAndImageViewDescriptionValidationError {
+    /// An unsupported combination of `ImageType` and `ImageType` was found.
     TypeIncompatible,
     /// `num_mip_levels.unwrap_or(1) + base_mip_level` is greater than `image_desc.num_mip_levels`.
     /// (Vulkan 1.0, "11.5. Image Views" valid usage)
@@ -424,102 +487,104 @@ pub enum ImageViewDescriptionCompatibilityValidationError {
     /// `num_array_layers.unwrap_or(1) + base_array_layer` is greater than `image_desc.num_array_layers`.
     /// (Vulkan 1.0, "11.5. Image Views" valid usage)
     TooManyArrayLayers,
-    /// `num_array_layers` is not `1` (`6` for cube images) and `view_type` is not `TwoDArray` nor `CubeArray`.
+    /// `num_array_layers` is not `1` (`6` for cube images) and `image_type` is not `TwoDArray` nor `CubeArray`.
     /// (Vulkan 1.0, "11.5. Image Views" Table 8)
     InvalidArrayLayersForNonLayeredView,
-    /// `num_array_layers` is not a multiple of `6` and `view_type` is `CubeArray`.
+    /// `num_array_layers` is not a multiple of `6` and `image_type` is `CubeArray`.
     /// (Vulkan 1.0, "11.5. Image Views" Table 8)
     InvalidArrayLayersForCubeArray,
-    /// `view_type` is `CubeArray` or `Cube` and `image_desc.flags` does not include
-    /// `ImageFlag::CubeCompatible`.
-    NotCubeCompatible,
+    /// `format` is different from the one that was used to create the image, and
+    /// `ImageFlag::MutableFormat` was not specified.
+    DifferentFormat,
 
     // TODO: image format compatibility
 }
 
-impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
-    pub fn validate_compatibility_with_image<T>(
-        &self,
-        image_desc: &ImageDescription,
-        mut callback: T,
-    ) where
-        T: FnMut(ImageViewDescriptionCompatibilityValidationError) -> (),
+impl<'a, TImage: Image> Validate for CombinedImageAndImageViewDescription<'a, TImage> {
+    type Error = CombinedImageAndImageViewDescriptionValidationError;
+
+    fn validate<T>(&self, _: Option<&DeviceCapabilities>, mut callback: T)
+    where
+        T: FnMut(Self::Error) -> (),
     {
-        if self.range.num_mip_levels.unwrap_or(1).saturating_add(
-            self.range
+        let image_desc = self.0;
+        let view_desc = self.1;
+
+        if view_desc.range.num_mip_levels.unwrap_or(1).saturating_add(
+            view_desc.range
                 .base_mip_level,
         ) > image_desc.num_mip_levels
         {
             callback(
-                ImageViewDescriptionCompatibilityValidationError::TooManyMipLevels,
+                CombinedImageAndImageViewDescriptionValidationError::TooManyMipLevels,
             );
         }
 
-        if self.range.num_array_layers.unwrap_or(1).saturating_add(
-            self.range.base_array_layer,
+        if view_desc.range.num_array_layers.unwrap_or(1).saturating_add(
+            view_desc.range.base_array_layer,
         ) > image_desc.num_array_layers
         {
             callback(
-                ImageViewDescriptionCompatibilityValidationError::TooManyArrayLayers,
+                CombinedImageAndImageViewDescriptionValidationError::TooManyArrayLayers,
             );
         }
 
-        let num_array_layers = self.range.num_array_layers.unwrap_or(
+        if view_desc.format != image_desc.format &&
+            (image_desc.flags & ImageFlag::MutableFormat).is_empty()
+        {
+            callback(
+                CombinedImageAndImageViewDescriptionValidationError::DifferentFormat,
+            );
+        }
+
+        let num_array_layers = view_desc.range.num_array_layers.unwrap_or(
             image_desc.num_array_layers.saturating_sub(
-                self.range.base_array_layer,
+                view_desc.range.base_array_layer,
             ),
         );
 
-        match (self.view_type, image_desc.image_type) {
-            (ImageViewType::OneD, ImageType::OneD) => {
+        match (view_desc.image_type, image_desc.image_type) {
+            (ImageType::OneD, ImageType::OneD) => {
                 if num_array_layers != 1 {
-                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
+                    callback(CombinedImageAndImageViewDescriptionValidationError::InvalidArrayLayersForNonLayeredView);
                 }
             }
-            (ImageViewType::TwoD, ImageType::TwoD) => {
+            (ImageType::TwoD, ImageType::TwoD) |
+            (ImageType::TwoD, ImageType::TwoDArray) |
+            (ImageType::TwoD, ImageType::Cube) |
+            (ImageType::TwoD, ImageType::CubeArray) => {
                 if num_array_layers != 1 {
-                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
+                    callback(CombinedImageAndImageViewDescriptionValidationError::InvalidArrayLayersForNonLayeredView);
                 }
             }
-            (ImageViewType::TwoDArray, ImageType::TwoD) => {}
-            (ImageViewType::Cube, ImageType::TwoD) => {
+            (ImageType::TwoDArray, ImageType::TwoD) |
+            (ImageType::TwoDArray, ImageType::TwoDArray) |
+            (ImageType::TwoDArray, ImageType::Cube) |
+            (ImageType::TwoDArray, ImageType::CubeArray) => {}
+            (ImageType::Cube, ImageType::Cube) |
+            (ImageType::Cube, ImageType::CubeArray) => {
                 if num_array_layers != 6 {
-                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
-                }
-                if (image_desc.flags & ImageFlag::CubeCompatible).is_empty() {
-                    callback(
-                        ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible,
-                    );
+                    callback(CombinedImageAndImageViewDescriptionValidationError::InvalidArrayLayersForNonLayeredView);
                 }
             }
-            (ImageViewType::CubeArray, ImageType::TwoD) => {
+            (ImageType::CubeArray, ImageType::Cube) |
+            (ImageType::CubeArray, ImageType::CubeArray) => {
                 if num_array_layers % 6 == 0 {
-                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForCubeArray);
-                }
-                if (image_desc.flags & ImageFlag::CubeCompatible).is_empty() {
-                    callback(
-                        ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible,
-                    );
+                    callback(CombinedImageAndImageViewDescriptionValidationError::InvalidArrayLayersForCubeArray);
                 }
             }
-            (ImageViewType::ThreeD, ImageType::ThreeD) => {
+            (ImageType::ThreeD, ImageType::ThreeD) => {
                 if num_array_layers != 1 {
-                    callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
+                    callback(CombinedImageAndImageViewDescriptionValidationError::InvalidArrayLayersForNonLayeredView);
                 }
             }
-            // TODO: (ImageViewType::TwoD, ImageType::ThreeD)
-            // TODO: (ImageViewType::TwoDArray, ImageType::ThreeD)
+            // TODO: (ImageType::TwoD, ImageType::ThreeD)?
+            // TODO: (ImageType::TwoDArray, ImageType::ThreeD)?
             _ => {
                 callback(
-                    ImageViewDescriptionCompatibilityValidationError::TypeIncompatible,
+                    CombinedImageAndImageViewDescriptionValidationError::TypeIncompatible,
                 );
             }
         }
-    }
-
-    pub fn compatible_with_image(&self, image_desc: &ImageDescription) -> bool {
-        let mut valid = true;
-        self.validate_compatibility_with_image(image_desc, |_| { valid = false; });
-        valid
     }
 }
