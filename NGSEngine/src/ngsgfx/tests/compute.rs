@@ -15,6 +15,7 @@ use gfx::prelude::*;
 use cgmath::Vector3;
 
 use std::{mem, ptr};
+use std::cell::RefCell;
 
 static SPIRV_NULL: include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
@@ -54,10 +55,44 @@ fn find_default_device<T: BackendDispatch>(d: T) {
     }
 }
 
-struct DeviceUtils<'a, B: core::Backend>(&'a B::Device);
-struct ResultBuffer<'a, B: core::Backend, T: 'static>(&'a B::Device, B::Buffer, &'a mut [T]);
+struct DeviceUtils<'a, B: core::Backend> {
+    device: &'a B::Device,
+    heap: RefCell<B::UniversalHeap>,
+}
 
-impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
+struct UniqueResource<'a, 'b: 'a, B: core::Backend, T>(
+    &'a DeviceUtils<'b, B>,
+    T,
+    <B::UniversalHeap as core::MappableHeap>::Allocation
+);
+
+impl<'a, 'b: 'a, B: core::Backend, T> ::std::ops::Deref for UniqueResource<'a, 'b, B, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.1
+    }
+}
+
+impl<'a, 'b: 'a, B: core::Backend, T> ::std::ops::DerefMut for UniqueResource<'a, 'b, B, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.1
+    }
+}
+
+impl<'a, 'b: 'a, B: core::Backend, T> Drop for UniqueResource<'a, 'b, B, T> {
+    fn drop(&mut self) {
+        self.0.deallocate(&mut self.2);
+    }
+}
+
+struct ResultBuffer<'a, 'b: 'a, B: core::Backend, T: 'static>(
+    &'a DeviceUtils<'b, B>,
+    B::Buffer,
+    &'a mut [T],
+    <B::UniversalHeap as core::MappableHeap>::Allocation
+);
+
+impl<'a, 'b: 'a, B: core::Backend, T: 'static> ResultBuffer<'a, 'b, B, T> {
     fn size(&self) -> core::DeviceSize {
         mem::size_of_val(self.2) as core::DeviceSize
     }
@@ -65,36 +100,27 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
         &self.1
     }
     fn take(
-        self,
+        mut self,
         last_pipeline_stage: core::PipelineStageFlags,
         last_access_mask: core::AccessTypeFlags,
         engine: core::DeviceEngine,
     ) -> &'a mut [T] {
-        let device = self.0;
+        let device_utils = self.0;
+        let device = device_utils.device;
+        let mut heap = device_utils.heap.borrow_mut();
 
         let size = mem::size_of_val(self.2) as core::DeviceSize;
         let staging_buffer_desc = core::BufferDescription {
             usage: core::BufferUsage::TransferDestination.into(),
             size,
+            storage_mode: core::StorageMode::Shared,
         };
 
-        let factory = device.factory();
         let buffer = self.1;
 
         // Create a staging heap/buffer
-        let staging_req: core::MemoryRequirements =
-            factory.get_buffer_memory_requirements(&staging_buffer_desc);
-        let mut staging_heap = factory
-            .make_heap(&core::HeapDescription {
-                size: staging_req.size,
-                storage_mode: core::StorageMode::Shared,
-            })
-            .unwrap();
-
-        let (mut staging_alloc, staging_buffer) = staging_heap
-            .make_buffer(&staging_buffer_desc)
-            .unwrap()
-            .unwrap();
+        let (mut staging_alloc, staging_buffer) =
+            heap.make_buffer(&staging_buffer_desc).unwrap().unwrap();
 
         staging_buffer.set_label(Some("staging buffer"));
 
@@ -136,92 +162,87 @@ impl<'a, B: core::Backend, T: 'static> ResultBuffer<'a, B, T> {
         cb.wait_completion().unwrap();
 
         {
-            let map = staging_heap.map_memory(&mut staging_alloc);
+            let map = heap.map_memory(&mut staging_alloc);
             unsafe {
                 ptr::copy(map.as_ptr() as *mut T, self.2.as_mut_ptr(), self.2.len());
             }
         }
+
+        heap.deallocate(&mut staging_alloc);
+        heap.deallocate(&mut self.3);
 
         self.2
     }
 }
 
 impl<'a, B: core::Backend> DeviceUtils<'a, B> {
-    fn make_result_buffer<T: 'static>(
-        &self,
-        data: &'a mut [T],
-        usage: core::BufferUsageFlags,
-    ) -> ResultBuffer<'a, B, T> {
-        let device = self.0;
-
-        let size = mem::size_of_val(data) as core::DeviceSize;
-        let buffer_desc = core::BufferDescription { usage, size };
-
-        let factory = device.factory();
-
-        // Create a device heap/buffer
-        let req: core::MemoryRequirements = factory.get_buffer_memory_requirements(&buffer_desc);
-        let mut heap = factory
-            .make_heap(&core::HeapDescription {
-                size: req.size,
-                storage_mode: core::StorageMode::Private,
-            })
-            .unwrap();
-
-        let buffer = heap.make_buffer(&buffer_desc).unwrap().unwrap().1;
-        ResultBuffer(self.0, buffer, data)
+    fn new(device: &'a B::Device) -> Self {
+        Self {
+            device: device,
+            heap: RefCell::new(device.factory().make_universal_heap().unwrap()),
+        }
     }
 
-    fn make_preinitialized_buffer<T>(
-        &self,
-        data: &[T],
+    fn deallocate(&self, allocation: &mut <B::UniversalHeap as core::MappableHeap>::Allocation) {
+        self.heap.borrow_mut().deallocate(allocation);
+    }
+
+    fn make_result_buffer<'b, T: 'static>(
+        &'b self,
+        data: &'a mut [T],
+        usage: core::BufferUsageFlags,
+    ) -> ResultBuffer<'a, 'b, B, T> {
+        let size = mem::size_of_val(data) as core::DeviceSize;
+        let storage_mode = core::StorageMode::Private;
+        let buffer_desc = core::BufferDescription {
+            usage,
+            size,
+            storage_mode,
+        };
+
+        // Create a device heap/buffer
+        let mut heap = self.heap.borrow_mut();
+        let (allocation, buffer) = heap.make_buffer(&buffer_desc).unwrap().unwrap();
+        ResultBuffer(self, buffer, data, allocation)
+    }
+
+    fn make_preinitialized_buffer<'b, T>(
+        &'b self,
+        data: &'b [T],
         usage: core::BufferUsageFlags,
         first_pipeline_stage: core::PipelineStageFlags,
         first_access_mask: core::AccessTypeFlags,
         engine: core::DeviceEngine,
-    ) -> B::Buffer {
-        let device = self.0;
+    ) -> UniqueResource<'a, 'b, B, B::Buffer> {
+        let device = self.device;
 
         let size = mem::size_of_val(data) as core::DeviceSize;
         let staging_buffer_desc = core::BufferDescription {
             usage: core::BufferUsage::TransferSource.into(),
             size,
+            storage_mode: core::StorageMode::Shared,
         };
-        let buffer_desc = core::BufferDescription { usage, size };
+        let storage_mode = core::StorageMode::Private;
+        let buffer_desc = core::BufferDescription {
+            usage,
+            size,
+            storage_mode,
+        };
 
-        let factory = device.factory();
+        let mut heap = self.heap.borrow_mut();
 
         // Create a staging heap/buffer
-        let staging_req: core::MemoryRequirements =
-            factory.get_buffer_memory_requirements(&staging_buffer_desc);
-        let mut staging_heap = factory
-            .make_heap(&core::HeapDescription {
-                size: staging_req.size,
-                storage_mode: core::StorageMode::Shared,
-            })
-            .unwrap();
-
-        let (mut staging_alloc, staging_buffer) = staging_heap
-            .make_buffer(&staging_buffer_desc)
-            .unwrap()
-            .unwrap();
+        let (mut staging_alloc, staging_buffer) =
+            heap.make_buffer(&staging_buffer_desc).unwrap().unwrap();
         {
-            let mut map = staging_heap.map_memory(&mut staging_alloc);
+            let mut map = heap.map_memory(&mut staging_alloc);
             unsafe {
                 ptr::copy(data.as_ptr(), map.as_mut_ptr() as *mut T, data.len());
             }
         }
 
         // Create a device heap/buffer
-        let req: core::MemoryRequirements = factory.get_buffer_memory_requirements(&buffer_desc);
-        let mut heap = factory
-            .make_heap(&core::HeapDescription {
-                size: req.size,
-                storage_mode: core::StorageMode::Private,
-            })
-            .unwrap();
-
-        let buffer = heap.make_buffer(&buffer_desc).unwrap().unwrap().1;
+        let (allocation, buffer) = heap.make_buffer(&buffer_desc).unwrap().unwrap();
 
         // Add debug labels
         buffer.set_label(Some("preinitialized buffer"));
@@ -264,8 +285,10 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
 
         cb.wait_completion().unwrap();
 
+        heap.deallocate(&mut staging_alloc);
+
         // Phew! Done!
-        buffer
+        UniqueResource(&self, buffer, allocation)
     }
 }
 
@@ -325,7 +348,7 @@ impl BackendDispatch for Conv1Test {
         let binding_output = 2;
 
         let factory = device.factory();
-        let device_utils = DeviceUtils::<B>(&device);
+        let device_utils: DeviceUtils<B> = DeviceUtils::new(&device);
 
         let local_size = 64;
         let global_size = 4;
@@ -432,7 +455,7 @@ impl BackendDispatch for Conv1Test {
                     elements: core::WriteDescriptors::StorageBuffer(
                         &[
                             core::DescriptorBuffer {
-                                buffer: &kernel_buffer,
+                                buffer: &*kernel_buffer,
                                 offset: 0,
                                 range: mem::size_of_val(&kernel_data) as core::DeviceSize,
                             },
@@ -445,7 +468,7 @@ impl BackendDispatch for Conv1Test {
                     elements: core::WriteDescriptors::StorageBuffer(
                         &[
                             core::DescriptorBuffer {
-                                buffer: &input_buffer,
+                                buffer: &*input_buffer,
                                 offset: 0,
                                 range: mem::size_of_val(input_data.as_slice()) as core::DeviceSize,
                             },

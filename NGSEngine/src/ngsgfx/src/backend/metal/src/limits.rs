@@ -23,7 +23,7 @@ impl DeviceCapabilities {
         // https://developer.apple.com/metal/limits/
         // OSX_GPUFamily1_v2
         let limits = core::DeviceLimits {
-            supports_heap: false,
+            supports_specialized_heap: false,
             supports_heap_aliasing: false,
             supports_depth_bounds: false,
             supports_cube_array: true,

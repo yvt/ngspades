@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 use core::{self, Validate};
-use metal;
 use std::sync::Arc;
 use std::cell::RefCell;
 
@@ -19,7 +18,7 @@ pub struct Heap {
 #[derive(Debug)]
 struct HeapData {
     device: Arc<DeviceData>,
-    storage_mode: metal::MTLStorageMode,
+    usage: Option<core::SpecializedHeapUsage>,
     label: RefCell<Option<String>>,
 }
 
@@ -39,16 +38,24 @@ unsafe impl Send for HeapData {}
 unsafe impl Sync for HeapData {} // doesn't use MTLDevice's interior mutability
 
 impl Heap {
-    pub(crate) fn new(device: &Arc<DeviceData>, desc: &core::HeapDescription) -> Self {
-        let storage_mode = match desc.storage_mode {
-            core::StorageMode::Private => metal::MTLStorageMode::Private,
-            core::StorageMode::Shared => metal::MTLStorageMode::Shared,
-            core::StorageMode::Memoryless => metal::MTLStorageMode::Private,
-        };
+    pub(crate) fn new_specialized(
+        device: &Arc<DeviceData>,
+        desc: &core::SpecializedHeapDescription,
+    ) -> Self {
         Self {
             data: RefEqBox::new(HeapData {
                 device: device.clone(),
-                storage_mode,
+                usage: Some(desc.usage),
+                label: RefCell::new(None),
+            }),
+        }
+    }
+
+    pub(crate) fn new_universal(device: &Arc<DeviceData>) -> Self {
+        Self {
+            data: RefEqBox::new(HeapData {
+                device: device.clone(),
+                usage: None,
                 label: RefCell::new(None),
             }),
         }
@@ -69,11 +76,15 @@ impl core::Heap<Backend> for Heap {
     ) -> core::Result<Option<(Self::Allocation, Buffer)>> {
         let ref data = self.data;
 
+        if let Some(ref usage) = self.data.usage {
+            debug_assert!(usage.supports_buffer(description), "wrong usage of heap");
+        }
+
         description.debug_expect_valid(Some(data.device.capabilities()), "");
 
-        let buffer = Buffer::new(data.device.metal_device(), data.storage_mode, description)?;
+        let buffer = Buffer::new(data.device.metal_device(), description)?;
 
-        let heap_allocation_state = if data.storage_mode == metal::MTLStorageMode::Shared {
+        let heap_allocation_state = if description.storage_mode == core::StorageMode::Shared {
             HeapAllocationState::Mappable(buffer.clone())
         } else {
             HeapAllocationState::Unmappable
@@ -85,8 +96,14 @@ impl core::Heap<Backend> for Heap {
     }
     fn make_image(
         &mut self,
-        _: &core::ImageDescription,
+        description: &core::ImageDescription,
     ) -> core::Result<Option<(Self::Allocation, Image)>> {
+        if let Some(ref usage) = self.data.usage {
+            debug_assert!(usage.supports_image(description), "wrong usage of heap");
+        }
+
+        description.debug_expect_valid(Some(self.data.device.capabilities()), "");
+
         unimplemented!()
     }
 }
@@ -104,11 +121,21 @@ impl core::MappableHeap for Heap {
         *allocation.state = HeapAllocationState::Invalid;
     }
 
-    fn flush_memory(&mut self, _: &mut Self::Allocation, _: core::DeviceSize, _: Option<core::DeviceSize>) {
+    fn flush_memory(
+        &mut self,
+        _: &mut Self::Allocation,
+        _: core::DeviceSize,
+        _: Option<core::DeviceSize>,
+    ) {
         // No-op.
     }
 
-    fn invalidate_memory(&mut self, _: &mut Self::Allocation, _: core::DeviceSize, _: Option<core::DeviceSize>) {
+    fn invalidate_memory(
+        &mut self,
+        _: &mut Self::Allocation,
+        _: core::DeviceSize,
+        _: Option<core::DeviceSize>,
+    ) {
         // No-op.
     }
 

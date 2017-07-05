@@ -7,11 +7,12 @@ use std::fmt::Debug;
 use std::any::Any;
 
 use super::{Backend, Result, MemoryRequirements};
-use super::{RenderPassDescription, FramebufferDescription, HeapDescription, ImageDescription,
-            BufferDescription, ImageViewDescription, GraphicsPipelineDescription,
-            DescriptorPoolDescription, DescriptorSetLayoutDescription, SamplerDescription,
-            PipelineLayoutDescription, ShaderModuleDescription, ComputePipelineDescription,
-            StencilStateDescription, EventDescription};
+use super::{RenderPassDescription, FramebufferDescription, SpecializedHeapDescription,
+            ImageDescription, BufferDescription, ImageViewDescription,
+            GraphicsPipelineDescription, DescriptorPoolDescription,
+            DescriptorSetLayoutDescription, SamplerDescription, PipelineLayoutDescription,
+            ShaderModuleDescription, ComputePipelineDescription, StencilStateDescription,
+            EventDescription};
 
 pub trait Factory<B: Backend>: Debug + Any {
     fn make_event(&self, descriptor: &EventDescription) -> Result<B::Event>;
@@ -22,7 +23,11 @@ pub trait Factory<B: Backend>: Debug + Any {
         description: &FramebufferDescription<B::RenderPass, B::ImageView>,
     ) -> Result<B::Framebuffer>;
 
-    fn make_heap(&self, description: &HeapDescription) -> Result<B::Heap>;
+    fn make_specialized_heap(
+        &self,
+        description: &SpecializedHeapDescription,
+    ) -> Result<B::SpecializedHeap>;
+    fn make_universal_heap(&self) -> Result<B::UniversalHeap>;
     fn make_image_view(&self, description: &ImageViewDescription<B::Image>)
         -> Result<B::ImageView>;
     fn get_buffer_memory_requirements(&self, description: &BufferDescription)

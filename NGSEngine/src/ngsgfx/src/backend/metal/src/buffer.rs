@@ -33,13 +33,15 @@ unsafe impl Sync for BufferData {} // no interior mutability
 impl Buffer {
     pub(crate) fn new(
         device: metal::MTLDevice,
-        storage: metal::MTLStorageMode,
         desc: &core::BufferDescription,
     ) -> core::Result<Self> {
-        let options: metal::MTLResourceOptions = match storage {
-            metal::MTLStorageMode::Private => metal::MTLResourceStorageModePrivate,
-            metal::MTLStorageMode::Shared => metal::MTLResourceStorageModeShared,
-            metal::MTLStorageMode::Managed => metal::MTLResourceStorageModeManaged,
+        let options: metal::MTLResourceOptions = match desc.storage_mode {
+            core::StorageMode::Private => metal::MTLResourceStorageModePrivate,
+            core::StorageMode::Shared => metal::MTLResourceStorageModeShared,
+            core::StorageMode::Memoryless => {
+                // should have been filtered out by core::Validate
+                unreachable!()
+            }
         };
         let metal_buffer = unsafe { OCPtr::from_raw(device.new_buffer(desc.size, options)) }
             .ok_or(core::GenericError::OutOfDeviceMemory)?;

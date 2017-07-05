@@ -46,9 +46,16 @@ impl core::Factory<Backend> for Factory {
         Ok(Framebuffer::new(description))
     }
 
-    fn make_heap(&self, description: &core::HeapDescription) -> core::Result<Heap> {
+    fn make_specialized_heap(
+        &self,
+        description: &core::SpecializedHeapDescription,
+    ) -> core::Result<Heap> {
         description.debug_expect_valid(Some(self.device_data.capabilities()), "");
-        Ok(Heap::new(&self.device_data, description))
+        Ok(Heap::new_specialized(&self.device_data, description))
+    }
+
+    fn make_universal_heap(&self) -> core::Result<Heap> {
+        Ok(Heap::new_universal(&self.device_data))
     }
 
     fn make_image_view(

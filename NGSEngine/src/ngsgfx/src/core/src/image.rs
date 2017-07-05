@@ -14,7 +14,8 @@ use enumflags::BitFlags;
 use cgmath::prelude::*;
 use cgmath::Vector3;
 
-use super::{ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities, Marker};
+use {ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities, Marker,
+     StorageMode};
 
 /// Handle for image objects.
 pub trait Image
@@ -32,8 +33,8 @@ pub trait ImageView
 /// See [`ImageDescriptionValidationError`](enum.ImageDescriptionValidationError.html) for the valid usage.
 #[derive(Debug, Clone, Copy)]
 pub struct ImageDescription {
-    pub flags: BitFlags<ImageFlags>,
-    pub usage: BitFlags<ImageUsageFlags>,
+    pub flags: ImageFlags,
+    pub usage: ImageUsageFlags,
     pub image_type: ImageType,
     pub format: ImageFormat,
     pub extent: Vector3<u32>,
@@ -41,6 +42,7 @@ pub struct ImageDescription {
     pub num_array_layers: u32,
     pub initial_layout: ImageLayout,
     pub tiling: ImageTiling,
+    pub storage_mode: StorageMode,
 }
 
 impl ::std::default::Default for ImageDescription {
@@ -55,6 +57,7 @@ impl ::std::default::Default for ImageDescription {
             num_array_layers: 1,
             initial_layout: ImageLayout::Undefined,
             tiling: ImageTiling::Optimal,
+            storage_mode: StorageMode::Private,
         }
     }
 }
@@ -122,9 +125,9 @@ pub enum ImageLayout {
 
 // prevent `InnerXXX` from being exported
 mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u32)]
-    pub enum ImageUsageFlags {
+    pub enum ImageUsage {
         TransferSource = 0b00000001,
         TransferDestination = 0b00000010,
         Sampled = 0b00000100,
@@ -135,16 +138,19 @@ mod flags {
         TransientAttachment = 0b10000000,
     }
 
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u32)]
-    pub enum ImageFlags {
+    pub enum ImageFlag {
         CubeCompatible = 0b1,
         // TODO: 2D array compatible 3D texture (VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
         //       note: not supported by Metal
     }
 }
 
-pub use self::flags::{ImageUsageFlags, ImageFlags};
+pub use self::flags::{ImageUsage, ImageFlag};
+
+pub type ImageFlags = BitFlags<ImageFlag>;
+pub type ImageUsageFlags = BitFlags<ImageUsage>;
 
 /// Validation errors for [`ImageDescription`](struct.ImageDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -155,13 +161,13 @@ pub enum ImageDescriptionValidationError {
     ZeroMipLevels,
     /// `num_array_layers` is `0`. (Vulkan 1.0 "11.3. Images" valid usage)
     ZeroArrayLayers,
-    /// `ImageFlags::CubeCompatible` is specified and `image_type` is not `ImageType::TwoD`.
+    /// `ImageFlag::CubeCompatible` is specified and `image_type` is not `ImageType::TwoD`.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     CubeCompatibleButNot2D,
-    /// `ImageFlags::CubeCompatible` is specified and `extent.x` is not equal to `extent.y`.
+    /// `ImageFlag::CubeCompatible` is specified and `extent.x` is not equal to `extent.y`.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     CubeCompatibleButNotSquare,
-    /// `ImageFlags::CubeCompatible` is specified and `num_array_layers` is less than 6.
+    /// `ImageFlag::CubeCompatible` is specified and `num_array_layers` is less than 6.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     CubeCompatibleButNotEnoughLayers,
     /// `ImageTiling::Linear` is specified and `image_type` is not `ImageType::TwoD`,
@@ -186,15 +192,15 @@ pub enum ImageDescriptionValidationError {
     /// `ImageType::ThreeD` is specified and `num_array_layers` is greater than `1`.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     ArrayBut3D,
-    /// `ImageUsageFlags::TransientAttachment` is specified, and one or more usages except
-    /// `ImageUsageFlags::ColorAttachment`, `ImageUsageFlags::DepthStencilAttachment`, and
-    /// `ImageUsageFlags::InputAttachment` are specified.
+    /// `ImageUsage::TransientAttachment` is specified, and one or more usages except
+    /// `ImageUsage::ColorAttachment`, `ImageUsage::DepthStencilAttachment`, and
+    /// `ImageUsage::InputAttachment` are specified.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     TransientButHasNonAttachmentUsage,
     /// `extent` is greater than appropriate one of `DeviceLimits.max_framebuffer_extent`
-    /// and `usage` contains at least one of `ImageUsageFlags::ColorAttachment`,
-    /// `ImageUsageFlags::DepthStencilAttachment`, `ImageUsageFlags::InputAttachment`, and
-    /// `ImageUsageFlags::TransientAttachment`.
+    /// and `usage` contains at least one of `ImageUsage::ColorAttachment`,
+    /// `ImageUsage::DepthStencilAttachment`, `ImageUsage::InputAttachment`, and
+    /// `ImageUsage::TransientAttachment`.
     /// (Vulkan 1.0, "11.3. Images" valid usage)
     ExtentTooLargeForFramebuffer,
     /// `initial_layout` is not either of `Undefined` or `Preinitialized`.
@@ -219,7 +225,7 @@ impl Validate for ImageDescription {
             callback(ImageDescriptionValidationError::ZeroArrayLayers);
         }
 
-        if !(self.flags & ImageFlags::CubeCompatible).is_empty() {
+        if !(self.flags & ImageFlag::CubeCompatible).is_empty() {
             if self.image_type != ImageType::TwoD {
                 callback(ImageDescriptionValidationError::CubeCompatibleButNot2D);
             }
@@ -258,10 +264,10 @@ impl Validate for ImageDescription {
             callback(ImageDescriptionValidationError::ArrayBut3D);
         }
 
-        if !(self.usage & ImageUsageFlags::TransientAttachment).is_empty() &&
+        if !(self.usage & ImageUsage::TransientAttachment).is_empty() &&
             !(self.usage &
-                  (ImageUsageFlags::ColorAttachment | ImageUsageFlags::DepthStencilAttachment |
-                       ImageUsageFlags::InputAttachment)
+                  (ImageUsage::ColorAttachment | ImageUsage::DepthStencilAttachment |
+                       ImageUsage::InputAttachment)
                       .not())
                 .is_empty()
         {
@@ -292,10 +298,10 @@ impl Validate for ImageDescription {
                 }
 
                 if !(self.usage &
-                         (ImageUsageFlags::ColorAttachment |
-                              ImageUsageFlags::DepthStencilAttachment |
-                              ImageUsageFlags::InputAttachment |
-                              ImageUsageFlags::TransientAttachment))
+                         (ImageUsage::ColorAttachment |
+                              ImageUsage::DepthStencilAttachment |
+                              ImageUsage::InputAttachment |
+                              ImageUsage::TransientAttachment))
                     .is_empty() &&
                     self.extent.max() > limits.max_framebuffer_extent
                 {
@@ -427,7 +433,7 @@ pub enum ImageViewDescriptionCompatibilityValidationError {
     /// (Vulkan 1.0, "11.5. Image Views" Table 8)
     InvalidArrayLayersForCubeArray,
     /// `view_type` is `CubeArray` or `Cube` and `image_desc.flags` does not include
-    /// `ImageFlags::CubeCompatible`.
+    /// `ImageFlag::CubeCompatible`.
     NotCubeCompatible,
 
     // TODO: image format compatibility
@@ -482,7 +488,7 @@ impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
                 if num_array_layers != 6 {
                     callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForNonLayeredView);
                 }
-                if (image_desc.flags & ImageFlags::CubeCompatible).is_empty() {
+                if (image_desc.flags & ImageFlag::CubeCompatible).is_empty() {
                     callback(
                         ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible,
                     );
@@ -492,7 +498,7 @@ impl<'a, TImage: Image> ImageViewDescription<'a, TImage> {
                 if num_array_layers % 6 == 0 {
                     callback(ImageViewDescriptionCompatibilityValidationError::InvalidArrayLayersForCubeArray);
                 }
-                if (image_desc.flags & ImageFlags::CubeCompatible).is_empty() {
+                if (image_desc.flags & ImageFlag::CubeCompatible).is_empty() {
                     callback(
                         ImageViewDescriptionCompatibilityValidationError::NotCubeCompatible,
                     );

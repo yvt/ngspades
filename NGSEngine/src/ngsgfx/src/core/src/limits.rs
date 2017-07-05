@@ -9,7 +9,8 @@ use cgmath::Vector3;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceLimits {
-    /// Indicates whether the backend supports the memory managment using manually-allocated heaps or not.
+    /// Indicates whether the backend supports the memory managment using
+    /// specialized heaps or not.
     ///
     /// If this is `false`,
     /// - textures and buffers are allocated from an API-managed global heap and
@@ -17,7 +18,10 @@ pub struct DeviceLimits {
     /// - The value of `HeapDescription::size` is ignored.
     /// - `Factory::get_buffer_memory_requirements` and `Factory::get_image_memory_requirements` will return
     ///   dummy values.
-    pub supports_heap: bool,
+    /// - `Factory::make_specialized_heap` succeeds, but the returned heap might
+    ///   might behave like, i.e. exhibits similar performance characteristics to
+    ///   those of universal heaps and never runs out of an internal space.
+    pub supports_specialized_heap: bool,
 
     /// Indicates whether `MappableHeap::make_aliasable` is supported or not.
     pub supports_heap_aliasing: bool,

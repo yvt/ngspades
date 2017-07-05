@@ -52,7 +52,8 @@ struct RendererView<B: Backend> {
 
 impl<B: Backend> Renderer<B> {
     fn new(device: Arc<B::Device>) -> Self {
-        let vertex_buffer = Self::make_vertex_buffer(&device);
+        let mut heap = device.factory().make_universal_heap().unwrap();
+        let vertex_buffer = Self::make_vertex_buffer(&device, &mut heap);
         let render_pass = Self::make_render_pass(&device);
         let pipeline = Self::make_pipeline(&device, &render_pass);
         let command_buffer = device
@@ -177,7 +178,7 @@ impl<B: Backend> Renderer<B> {
         factory.make_graphics_pipeline(&desc).unwrap()
     }
 
-    fn make_vertex_buffer(device: &B::Device) -> B::Buffer {
+    fn make_vertex_buffer(device: &B::Device, heap: &mut B::UniversalHeap) -> B::Buffer {
         let vertices = [
             Vertex {
                 position: [-0.5f32, 0.5f32, 0f32],
@@ -196,30 +197,19 @@ impl<B: Backend> Renderer<B> {
         let staging_buffer_desc = core::BufferDescription {
             usage: core::BufferUsage::TransferSource.into(),
             size,
+            storage_mode: core::StorageMode::Shared,
         };
         let buffer_desc = core::BufferDescription {
             usage: core::BufferUsage::VertexBuffer | core::BufferUsage::TransferDestination,
             size,
+            storage_mode: core::StorageMode::Private,
         };
 
-        let factory = device.factory();
-
         // Create a staging heap/buffer
-        let staging_req: core::MemoryRequirements =
-            factory.get_buffer_memory_requirements(&staging_buffer_desc);
-        let mut staging_heap = factory
-            .make_heap(&core::HeapDescription {
-                size: staging_req.size,
-                storage_mode: core::StorageMode::Shared,
-            })
-            .unwrap();
-
-        let (mut staging_alloc, staging_buffer) = staging_heap
-            .make_buffer(&staging_buffer_desc)
-            .unwrap()
-            .unwrap();
+        let (mut staging_alloc, staging_buffer) =
+            heap.make_buffer(&staging_buffer_desc).unwrap().unwrap();
         {
-            let mut map = staging_heap.map_memory(&mut staging_alloc);
+            let mut map = heap.map_memory(&mut staging_alloc);
             unsafe {
                 ptr::copy(
                     vertices.as_ptr(),
@@ -230,14 +220,6 @@ impl<B: Backend> Renderer<B> {
         }
 
         // Create a device heap/buffer
-        let req: core::MemoryRequirements = factory.get_buffer_memory_requirements(&buffer_desc);
-        let mut heap = factory
-            .make_heap(&core::HeapDescription {
-                size: req.size,
-                storage_mode: core::StorageMode::Private,
-            })
-            .unwrap();
-
         let buffer = heap.make_buffer(&buffer_desc).unwrap().unwrap().1;
 
         // Add debug labels

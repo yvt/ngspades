@@ -114,7 +114,8 @@ pub mod imp {
         type Event = Event;
         type Framebuffer = Framebuffer;
         type GraphicsPipeline = GraphicsPipeline;
-        type Heap = Heap;
+        type SpecializedHeap = Heap;
+        type UniversalHeap = Heap;
         type Image = Image;
         type ImageView = ImageView;
         type PipelineLayout = PipelineLayout;

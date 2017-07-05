@@ -145,7 +145,8 @@ pub trait Backend: Sized + 'static {
     type Event: Event;
     type Framebuffer: Framebuffer;
     type GraphicsPipeline: GraphicsPipeline;
-    type Heap: Heap<Self>;
+    type UniversalHeap: Heap<Self>;
+    type SpecializedHeap: Heap<Self>;
     type Image: Image;
     type ImageView: ImageView;
     type PipelineLayout: PipelineLayout;

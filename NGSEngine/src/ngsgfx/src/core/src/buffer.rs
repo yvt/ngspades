@@ -11,7 +11,7 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use {Validate, DeviceCapabilities, Marker, DeviceSize};
+use {Validate, DeviceCapabilities, Marker, DeviceSize, StorageMode};
 
 /// Handle for buffer objects each of which represents a continuous region on a host/device memory.
 ///
@@ -24,11 +24,16 @@ pub trait Buffer
 pub struct BufferDescription {
     pub usage: BufferUsageFlags,
     pub size: DeviceSize,
+
+    /// Specifies the memory location of the buffer.
+    ///
+    /// Only `Shared` or `Private` can be specified.
+    pub storage_mode: StorageMode,
 }
 
 // prevent `InnerXXX` from being exported
 mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u32)]
     pub enum BufferUsage {
         TransferSource = 0b0000001,
@@ -50,6 +55,8 @@ pub type BufferUsageFlags = BitFlags<BufferUsage>;
 pub enum BufferDescriptionValidationError {
     /// `size` is zero.
     ZeroSize,
+    /// `storage_mode` is `Memoryless`.
+    StorageModeMemoryless,
 }
 
 impl Validate for BufferDescription {
@@ -61,6 +68,9 @@ impl Validate for BufferDescription {
     {
         if self.size == 0 {
             callback(BufferDescriptionValidationError::ZeroSize);
+        }
+        if self.storage_mode == StorageMode::Memoryless {
+            callback(BufferDescriptionValidationError::StorageModeMemoryless);
         }
     }
 }
