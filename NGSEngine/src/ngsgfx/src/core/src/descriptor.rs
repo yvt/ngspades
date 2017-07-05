@@ -337,16 +337,20 @@ impl<'a, TSampler: Sampler> Validate for DescriptorSetLayoutDescription<'a, TSam
         if let Some(max_loc) = self.bindings.iter().map(|x| x.location).max() {
             let mut table = vec![false; max_loc + 1];
             let mut nul_reported = false;
-            for &DescriptorSetLayoutBinding{location, ..} in self.bindings.iter() {
+            for &DescriptorSetLayoutBinding { location, .. } in self.bindings.iter() {
                 if table[location] && !nul_reported {
-                    callback(DescriptorSetLayoutDescriptionValidationError::NonUniqueLocation);
+                    callback(
+                        DescriptorSetLayoutDescriptionValidationError::NonUniqueLocation,
+                    );
                     nul_reported = true;
                 }
                 table[location] = true;
             }
             for &e in table.iter() {
                 if !e {
-                    callback(DescriptorSetLayoutDescriptionValidationError::FreeBindingLocation);
+                    callback(
+                        DescriptorSetLayoutDescriptionValidationError::FreeBindingLocation,
+                    );
                 }
             }
         }

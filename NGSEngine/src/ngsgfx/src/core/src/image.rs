@@ -14,8 +14,7 @@ use enumflags::BitFlags;
 use cgmath::prelude::*;
 use cgmath::Vector3;
 
-use {ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities, Marker,
-     StorageMode};
+use {ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities, Marker, StorageMode};
 
 /// Handle for image objects.
 pub trait Image
@@ -298,8 +297,7 @@ impl Validate for ImageDescription {
                 }
 
                 if !(self.usage &
-                         (ImageUsage::ColorAttachment |
-                              ImageUsage::DepthStencilAttachment |
+                         (ImageUsage::ColorAttachment | ImageUsage::DepthStencilAttachment |
                               ImageUsage::InputAttachment |
                               ImageUsage::TransientAttachment))
                     .is_empty() &&

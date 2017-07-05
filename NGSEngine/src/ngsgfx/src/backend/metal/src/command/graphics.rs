@@ -108,7 +108,11 @@ impl RenderCommandEncoder {
         );
     }
 
-    fn bind_vertex_buffers(&mut self, start_index: core::VertexBindingLocation, buffers: &[(&Buffer, core::DeviceSize)]) {
+    fn bind_vertex_buffers(
+        &mut self,
+        start_index: core::VertexBindingLocation,
+        buffers: &[(&Buffer, core::DeviceSize)],
+    ) {
         self.expect_pipeline().bind_vertex_buffers(
             *self.metal_encoder,
             start_index,
@@ -190,14 +194,23 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
             )
     }
 
-    fn bind_vertex_buffers(&mut self, start_index: core::VertexBindingLocation, buffers: &[(&Buffer, core::DeviceSize)]) {
+    fn bind_vertex_buffers(
+        &mut self,
+        start_index: core::VertexBindingLocation,
+        buffers: &[(&Buffer, core::DeviceSize)],
+    ) {
         self.expect_graphics_pipeline().bind_vertex_buffers(
             start_index,
             buffers,
         )
     }
 
-    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: core::DeviceSize, format: core::IndexFormat) {
+    fn bind_index_buffer(
+        &mut self,
+        buffer: &Buffer,
+        offset: core::DeviceSize,
+        format: core::IndexFormat,
+    ) {
         self.expect_graphics_pipeline().bind_index_buffer(
             buffer,
             offset,
@@ -276,14 +289,23 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
         )
     }
 
-    fn bind_vertex_buffers(&mut self, start_index: core::VertexBindingLocation, buffers: &[(&Buffer, core::DeviceSize)]) {
+    fn bind_vertex_buffers(
+        &mut self,
+        start_index: core::VertexBindingLocation,
+        buffers: &[(&Buffer, core::DeviceSize)],
+    ) {
         self.render_command_encoder().bind_vertex_buffers(
             start_index,
             buffers,
         )
     }
 
-    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: core::DeviceSize, format: core::IndexFormat) {
+    fn bind_index_buffer(
+        &mut self,
+        buffer: &Buffer,
+        offset: core::DeviceSize,
+        format: core::IndexFormat,
+    ) {
         self.render_command_encoder().bind_index_buffer(
             buffer,
             offset,

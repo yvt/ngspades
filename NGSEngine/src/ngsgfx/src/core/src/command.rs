@@ -368,7 +368,11 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
         dynamic_offsets: &[u32],
     );
 
-    fn bind_vertex_buffers(&mut self, start_index: VertexBindingLocation, buffers: &[(&B::Buffer, DeviceSize)]);
+    fn bind_vertex_buffers(
+        &mut self,
+        start_index: VertexBindingLocation,
+        buffers: &[(&B::Buffer, DeviceSize)],
+    );
 
     fn bind_index_buffer(&mut self, buffer: &B::Buffer, offset: DeviceSize, format: IndexFormat);
 

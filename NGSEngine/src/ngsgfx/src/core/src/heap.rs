@@ -198,6 +198,8 @@ pub enum SpecializedHeapUsage {
 }
 
 impl SpecializedHeapUsage {
+    // TODO: update to `Validate` style API
+
     pub fn supports_buffer(&self, description: &BufferDescription) -> bool {
         match self {
             &SpecializedHeapUsage::Buffers {
