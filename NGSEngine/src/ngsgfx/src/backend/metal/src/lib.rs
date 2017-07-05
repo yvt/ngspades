@@ -38,6 +38,8 @@ extern crate cgmath;
 extern crate atomic_refcell;
 extern crate block;
 extern crate spirv_cross;
+extern crate rspirv;
+extern crate spirv_headers;
 
 mod buffer;
 mod command;

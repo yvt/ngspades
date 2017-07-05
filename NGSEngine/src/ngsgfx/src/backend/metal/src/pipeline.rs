@@ -537,7 +537,6 @@ pub struct ComputePipeline {
 struct ComputePipelineData {
     metal_pipeline: OCPtr<metal::MTLComputePipelineState>,
     threads_per_threadgroup: metal::MTLSize,
-    threadgroup_memory_length: u64,
 }
 
 unsafe impl Send for ComputePipelineData {}
@@ -571,17 +570,12 @@ impl ComputePipeline {
         );
         metal_desc.set_compute_function(*compute_fn);
 
-        // TODO: read work group size from SPIR-V
-        println!("STUB!: using 16x16x1 as threads_per_threadgroup");
+        let local_size = stage.module.workgroup_size();
         let threads_per_threadgroup = metal::MTLSize {
-            width: 16,
-            height: 16,
-            depth: 1,
+            width: local_size.x as u64,
+            height: local_size.y as u64,
+            depth: local_size.z as u64,
         };
-
-        // TODO: compute threadgroup shared memory requirement from SPIR-V
-        println!("STUB!: using 64 as threadgroup_memory_length");
-        let threadgroup_memory_length = 64;
 
         // set debug label on `MTLRenderPipelineDescriptor`
         if let Some(label) = desc.label {
@@ -622,7 +616,6 @@ impl ComputePipeline {
         let data = ComputePipelineData {
             metal_pipeline,
             threads_per_threadgroup,
-            threadgroup_memory_length,
         };
 
         Ok(ComputePipeline { data: RefEqArc::new(data) })
@@ -630,7 +623,7 @@ impl ComputePipeline {
 
     pub(crate) fn bind_pipeline_state(&self, encoder: metal::MTLComputeCommandEncoder) {
         encoder.set_compute_pipeline_state(*self.data.metal_pipeline);
-        encoder.set_threadgroup_memory_length(0, self.data.threadgroup_memory_length);
+        encoder.set_threadgroup_memory_length(0, 0);
     }
 
     pub(crate) fn threads_per_threadgroup(&self) -> metal::MTLSize {

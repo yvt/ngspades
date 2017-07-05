@@ -6,6 +6,9 @@
 use core;
 use metal;
 use spirv_cross::{SpirV2Msl, ExecutionModel, VertexAttribute, VertexInputRate};
+use cgmath::Vector3;
+use rspirv::mr;
+use spirv_headers;
 
 use std::sync::Mutex;
 
@@ -46,6 +49,44 @@ impl ShaderModule {
             label: Mutex::new(None),
         };
         Self { data: RefEqArc::new(data) }
+    }
+
+    pub(crate) fn workgroup_size(&self) -> Vector3<u32> {
+        let spirv_mod = mr::load_words(&self.data.spirv_code).expect("failed to parse SPIR-V code");
+
+        // Find a variable with the WorkgroupSize built-in decoration
+        for anot in spirv_mod.annotations.iter() {
+            if anot.operands.len() < 2 {
+                continue;
+            }
+            if let (spirv_headers::Op::Decorate,
+                    &mr::Operand::IdRef(_),
+                    &mr::Operand::BuiltIn(spirv_headers::BuiltIn::WorkgroupSize)) =
+                (anot.class.opcode, &anot.operands[0], &anot.operands[1])
+            {
+                unimplemented!();
+            }
+        }
+
+        // Find OpExecutionMode
+        for em in spirv_mod.execution_modes.iter() {
+            if em.operands[1] ==
+                mr::Operand::ExecutionMode(spirv_headers::ExecutionMode::LocalSize)
+            {
+                if let (&mr::Operand::LiteralInt32(x),
+                        &mr::Operand::LiteralInt32(y),
+                        &mr::Operand::LiteralInt32(z)) =
+                    (&em.operands[2], &em.operands[3], &em.operands[4])
+                {
+                    return Vector3::new(x, y, z);
+                } else {
+                    panic!("invalid OpExecutionMode");
+                }
+            }
+        }
+
+        // Use the default value
+        Vector3::new(1, 1, 1)
     }
 
     pub(crate) fn get_function<T>(

@@ -490,6 +490,8 @@ impl BackendDispatch for Conv1Test {
         );
 
         // TODO: check output value
+        println!("{:?}", input_data);
+        println!("{:?}", kernel_data);
         println!("{:?}", result);
     }
 }
