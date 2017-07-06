@@ -9,6 +9,7 @@ default = []
 [dependencies]
 ngsgfx_core = { path = "src/core" }
 ngsgfx_wsi_core = { path = "src/wsi_core" }
+ngsgfx_vulkan = { path = "src/backend/vulkan" }
 cgmath = "0.14.1"
 
 [target.'cfg(target_os="macos")'.dependencies]

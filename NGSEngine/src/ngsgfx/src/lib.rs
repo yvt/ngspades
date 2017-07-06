@@ -10,9 +10,12 @@
 pub extern crate ngsgfx_core as core;
 extern crate ngsgfx_wsi_core;
 
+/// Includes a backend for each target API.
 pub mod backends {
     #[cfg(target_os="macos")]
     pub extern crate ngsgfx_metal as metal;
+
+    pub extern crate ngsgfx_vulkan as vulkan;
 }
 
 /// Provides the window system integration functionality.

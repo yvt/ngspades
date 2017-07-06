@@ -19,6 +19,15 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "ash"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shared_library 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "atomic_refcell"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -346,6 +355,7 @@ dependencies = [
  "include_data 0.1.0",
  "ngsgfx_core 0.1.0",
  "ngsgfx_metal 0.1.0",
+ "ngsgfx_vulkan 0.1.0",
  "ngsgfx_wsi_core 0.1.0",
  "ngsgfx_wsi_metal 0.1.0",
  "prebuild-glslang 0.1.0",
@@ -385,6 +395,15 @@ dependencies = [
  "libc 0.2.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "objc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "objc-foundation 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ngsgfx_vulkan"
+version = "0.1.0"
+dependencies = [
+ "ash 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsgfx_core 0.1.0",
 ]
 
 [[package]]
@@ -876,6 +895,7 @@ dependencies = [
 [metadata]
 "checksum android_glue 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d8289e9637439939cc92b1995b0972117905be88bc28116c86b64d6e589bcd38"
 "checksum approx 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08abcc3b4e9339e33a3d0a5ed15d84a687350c05689d825e0f6655eef9e76a94"
+"checksum ash 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c34d705b8ccd4fa75d3b9e4b69e6e57984f52ac0a63b70a5585772260b56196f"
 "checksum atomic_refcell 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fb2dcb6e6d35f20276943cc04bb98e538b348d525a04ac79c10021561d202f21"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"

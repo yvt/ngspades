@@ -14,6 +14,7 @@ members = [
     "src/ngsgfx/src/backend/metal",
     "src/ngsgfx/src/backend/metal/src/spirv-cross",
     "src/ngsgfx/src/backend/metal/src/metal-rs",
+    "src/ngsgfx/src/backend/vulkan",
     "src/ngsgfx/src/core",
     "src/ngsgfx/src/wsi_core",
     "src/ngsgfx/src/wsi/metal",
