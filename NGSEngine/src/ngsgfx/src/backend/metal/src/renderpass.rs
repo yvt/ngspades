@@ -288,9 +288,14 @@ impl Framebuffer {
                 descriptor.set_store_action(attachment_info.store_action);
 
                 let ref fb_att_desc = description.attachments[attachment_info.index];
-                let image = fb_att_desc.image_view;
+                let iv = fb_att_desc.image_view;
 
-                descriptor.set_texture(image.metal_texture());
+                let (metal_texture, range) = iv.metal_texture_with_range();
+                debug_assert_eq!(range.num_mip_levels, 1);
+                debug_assert_eq!(range.num_array_layers, 1);
+                descriptor.set_texture(metal_texture);
+                descriptor.set_level(range.base_mip_level as u64);
+                descriptor.set_slice(range.base_array_layer as u64);
             };
 
         let metal_descriptors: Vec<OCPtr<metal::MTLRenderPassDescriptor>> = render_pass

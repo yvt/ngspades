@@ -292,6 +292,7 @@ impl<B: Backend> RendererView<B> {
                 ],
                 width: self.size.x,
                 height: self.size.y,
+                num_layers: 1,
             })
             .unwrap();
         let viewport = core::Viewport {

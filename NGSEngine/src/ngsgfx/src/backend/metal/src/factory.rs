@@ -63,7 +63,7 @@ impl core::Factory<Backend> for Factory {
         description: &core::ImageViewDescription<Image>,
     ) -> core::Result<ImageView> {
         description.debug_expect_valid(Some(self.device_data.capabilities()), "");
-        unimplemented!()
+        ImageView::new_from_description(description, self.device_data.capabilities())
     }
     fn get_buffer_memory_requirements(
         &self,

@@ -35,6 +35,7 @@ pub struct FramebufferAttachmentDescription<'a, TImageView: ImageView> {
     /// - Must have a single array layer.
     /// - Must be at least as large as the dimensions specified in
     ///   `FramebufferDescription`.
+    /// - Must have a type of `TwoD` or `TwoDArray`.
     pub image_view: &'a TImageView,
     pub clear_values: ClearValues,
 }

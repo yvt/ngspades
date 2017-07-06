@@ -40,6 +40,7 @@ extern crate block;
 extern crate spirv_cross;
 extern crate rspirv;
 extern crate spirv_headers;
+extern crate cocoa;
 
 mod buffer;
 mod command;

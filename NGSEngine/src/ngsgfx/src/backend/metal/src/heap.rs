@@ -98,13 +98,20 @@ impl core::Heap<Backend> for Heap {
         &mut self,
         description: &core::ImageDescription,
     ) -> core::Result<Option<(Self::Allocation, Image)>> {
+        let ref data = self.data;
+
         if let Some(ref usage) = self.data.usage {
             debug_assert!(usage.supports_image(description), "wrong usage of heap");
         }
 
         description.debug_expect_valid(Some(self.data.device.capabilities()), "");
 
-        unimplemented!()
+        let image = Image::new(description, data.device.metal_device())?;
+
+        // TODO: make some image mappable
+        let heap_allocation = HeapAllocation { state: RefEqBox::new(HeapAllocationState::Unmappable) };
+
+        Ok(Some((heap_allocation, image)))
     }
 }
 
