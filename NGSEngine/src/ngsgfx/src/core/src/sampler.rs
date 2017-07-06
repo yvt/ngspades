@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Defines types related to sampler objects.
 use std::clone::Clone;
 use std::hash::Hash;
 use std::fmt::Debug;
@@ -11,7 +12,7 @@ use std::any::Any;
 
 use {CompareFunction, Validate, DeviceCapabilities, Marker};
 
-/// Handle for sampler objects.
+/// Sampler object handle.
 pub trait Sampler
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
 }

@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Defines synchronization primitives.
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};

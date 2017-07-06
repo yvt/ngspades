@@ -6,7 +6,7 @@
 //! SPIRV-Cross
 //! ===========
 //!
-//! Contains a subset of SPIRV-Cross (commit: 3ab1700) and Rust binding.
+//! Contains a subset of SPIRV-Cross (commit: 5670f1a) and Rust binding.
 
 extern crate libc;
 

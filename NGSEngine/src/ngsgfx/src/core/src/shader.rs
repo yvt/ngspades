@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Defines types related to shader modules.
 use std::clone::Clone;
 use std::hash::Hash;
 use std::fmt::Debug;
@@ -13,7 +14,7 @@ use enumflags::BitFlags;
 
 use {Marker, Validate, DeviceCapabilities};
 
-/// Handle for shader module object.
+/// Shader module handle.
 pub trait ShaderModule
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
 }

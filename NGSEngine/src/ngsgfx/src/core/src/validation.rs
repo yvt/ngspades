@@ -3,6 +3,20 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Provides a common method of validating parameters.
+//!
+//! The goal of this module and its implementations is, by providing some standard
+//! on the supported value domain alleviating the backend implementor's task of
+//! checking the input value, and ensuring some level of cross-platform compatibility,
+//! and at the same time providing a mean to detect invalid values during the
+//! development of an application.
+//!
+//! Note that validations that can be done via this trait might not be exhaustive.
+//! For example, unique restrictions imposed the backend that cannot be represented
+//! in `DeviceLimits` and `DeviceCapabilities` are not validated. Furthermore,
+//! restrictions that need informations unavailable to the validator (e.g.,
+//! `ImageDescription` used to create `Image` referenced by `self`) cannot be
+//! validated.
 use std::fmt::Debug;
 
 use super::DeviceCapabilities;
@@ -10,18 +24,7 @@ use super::DeviceCapabilities;
 /// Trait for types that allows the application or backend to validate
 /// their usage.
 ///
-/// The goal of this trait and its implementations is, by providing some standard
-/// on the supported value domain alleviating the backend implementor's task of
-/// checking the input value, and ensuring some level of cross-platform compatibility,
-/// and at the same time providing a mean to detect invalid values during the
-/// development of an application.
-///
-/// Note that validations that can be done via this trait might not be exhaustive.
-/// For example, unique restrictions imposed the backend that cannot be represented
-/// in `DeviceLimits` and `DeviceCapabilities` are not validated. Furthermore,
-/// restrictions that need informations unavailable to the validator (e.g.,
-/// `ImageDescription` used to create `Image` referenced by `self`) cannot be
-/// validated.
+/// See the [module-level documentation](index.html) for more.
 pub trait Validate: Debug {
     type Error: Debug;
 
