@@ -33,7 +33,6 @@
 //!
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_metal_rs as metal;
-extern crate enumflags;
 extern crate cgmath;
 extern crate atomic_refcell;
 extern crate block;

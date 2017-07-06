@@ -368,7 +368,6 @@ dependencies = [
  "block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cocoa 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "enumflags 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsgfx_core 0.1.0",
  "ngsgfx_metal-rs 0.3.0",
  "rspirv 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
