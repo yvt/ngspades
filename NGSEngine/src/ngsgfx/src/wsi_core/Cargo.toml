@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-winit = "0.6"
+winit = "0.7"
 cgmath = "0.14.1"
 ngsgfx_core = { path = "../core" }

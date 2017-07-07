@@ -8,7 +8,7 @@ keywords = ["metal", "graphics", "bindings"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-cocoa = "0.8"
+cocoa = "0.9"
 bitflags = "0.7"
 libc = "0.2"
 objc-foundation = "0.1"
