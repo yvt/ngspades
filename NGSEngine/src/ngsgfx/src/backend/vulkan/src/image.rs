@@ -197,6 +197,13 @@ impl<T: DeviceRef> core::Marker for ImageView<T> {
     }
 }
 
+impl<T: DeviceRef> Drop for ImageViewData<T> {
+    fn drop(&mut self) {
+        let device_ref = self.image_data.hunk.device_ref();
+        let device: &AshDevice = device_ref.device();
+        unsafe { device.destroy_image_view(self.handle, device_ref.allocation_callbacks()) };
+    }
+}
 
 impl<T: DeviceRef> ImageView<T> {
     pub(crate) fn new(
@@ -258,7 +265,7 @@ impl<T: DeviceRef> ImageView<T> {
         })
     }
 
-    pub fn handle(self) -> vk::ImageView {
+    pub fn handle(&self) -> vk::ImageView {
         self.data.handle
     }
 }
