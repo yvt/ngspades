@@ -80,7 +80,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::ShaderModuleDescription,
     ) -> core::Result<ShaderModule<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // Ok(ShaderModule::new(description))
+        ShaderModule::new(self.device_ref(), description)
     }
 
     fn make_compute_pipeline(
