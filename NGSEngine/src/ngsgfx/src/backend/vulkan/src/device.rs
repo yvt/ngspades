@@ -20,7 +20,7 @@ derive_using_field! {
 
 #[derive(Debug)]
 pub(crate) struct DeviceData<T: DeviceRef> {
-    device: T,
+    device_ref: T,
     cap: DeviceCapabilities,
 }
 
@@ -39,6 +39,9 @@ impl<T: DeviceRef> core::Device<Backend<T>> for Device<T> {
 impl<T: DeviceRef> Device<T> {
     pub(crate) fn data(&self) -> &DeviceData<T> {
         &*self.data
+    }
+    pub(crate) fn device_ref(&self) -> &T {
+        &self.data.device_ref
     }
     pub(crate) fn capabilities(&self) -> &DeviceCapabilities {
         &self.data.cap

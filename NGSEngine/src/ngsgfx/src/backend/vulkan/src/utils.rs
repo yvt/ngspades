@@ -3,6 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
+use ash::vk;
+use core;
+
 use std::hash::Hasher;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -100,49 +103,65 @@ impl<T: ?Sized> Deref for RefEqArc<T> {
     }
 }
 
-/// Work-around for the rust issue [#26925](https://github.com/rust-lang/rust/issues/26925).
-macro_rules! derive_using_field {
-    (($($gp:tt)*); PartialEq for $type:ty => $field:ident) => (
-        impl<$($gp)*> PartialEq for $type {
-            fn eq(&self, other: &Self) -> bool {
-                PartialEq::eq(&self.$field, &other.$field)
-            }
-        }
-    );
-    (($($gp:tt)*); Eq for $type:ty => $field:ident) => (
-        impl<$($gp)*> Eq for $type {}
-    );
-    (($($gp:tt)*); Hash for $type:ty => $field:ident) => (
-        impl<$($gp)*> ::std::hash::Hash for $type {
-            fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
-                ::std::hash::Hash::hash(&self.$field, state)
-            }
-        }
-    );
-    (($($gp:tt)*); Clone for $type:ty => $field:ident) => (
-        impl<$($gp)*> Clone for $type {
-            fn clone(&self) -> Self {
-                Self { $field: Clone::clone(&self.$field) }
-            }
-        }
-    );
-    (($($gp:tt)*); Debug for $type:ty => $field:ident) => (
-        impl<$($gp)*> ::std::fmt::Debug for $type {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                // this is incorrect because $type includes generic parameters,
-                // but shouldn't be a problem for a debug purpose
-                f.debug_struct(stringify!($type))
-                    .field(stringify!($field), &self.$field)
-                    .finish()
-            }
-        }
-    );
+/// Translates a subset of `vk::Result` values into `core::GenericError`.
+///
+/// The following input values are permitted:
+///
+///  - `ErrorOutOfDeviceMemory`
+///  - `ErrorDeviceLost`
+///
+/// `ErrorOutOfHostMemory` is escalated to a panic. (Maybe we should call `alloc::oom::oom()`?)
+///
+/// Unsupported values are returned unmodified.
+pub(crate) fn translate_generic_error(
+    result: vk::Result,
+) -> Result<core::GenericError, vk::Result> {
+    match result {
+        vk::Result::ErrorOutOfDeviceMemory => Ok(core::GenericError::OutOfDeviceMemory),
+        vk::Result::ErrorDeviceLost => Ok(core::GenericError::DeviceLost),
+        vk::Result::ErrorOutOfHostMemory => panic!("out of memory"),
+        result => Err(result),
+    }
+}
 
-    (($($gp:tt)*); ($name:ident) for $type:ty => $field:ident) => (
-        derive_using_field! { ($($gp)*); $name for $type => $field }
-    );
-    (($($gp:tt)*); ($name:ident, $($rest:ident),*) for $type:ty => $field:ident) => (
-        derive_using_field! { ($($gp)*); $name for $type => $field }
-        derive_using_field! { ($($gp)*); ($($rest),*) for $type => $field }
-    )
+/// Equivalent to `translate_generic_error(result).unwrap()`.
+///
+/// That is, following errors are handled with this function:
+///
+///  - `ErrorOutOfDeviceMemory`
+///  - `ErrorDeviceLost`
+///  - `ErrorOutOfHostMemory` (escalated to a panic)
+///
+pub(crate) fn translate_generic_error_unwrap(result: vk::Result) -> core::GenericError {
+    translate_generic_error(result).unwrap()
+}
+
+pub(crate) fn translate_image_layout(value: core::ImageLayout) -> vk::ImageLayout {
+    match value {
+        core::ImageLayout::Undefined => vk::ImageLayout::Undefined,
+        core::ImageLayout::General => vk::ImageLayout::General,
+        core::ImageLayout::ColorAttachment => vk::ImageLayout::ColorAttachmentOptimal,
+        core::ImageLayout::DepthStencilAttachment => vk::ImageLayout::DepthStencilAttachmentOptimal,
+        core::ImageLayout::DepthStencilRead => vk::ImageLayout::DepthStencilReadOnlyOptimal,
+        core::ImageLayout::ShaderRead => vk::ImageLayout::ShaderReadOnlyOptimal,
+        core::ImageLayout::TransferSource => vk::ImageLayout::TransferSrcOptimal,
+        core::ImageLayout::TransferDestination => vk::ImageLayout::TransferDstOptimal,
+        core::ImageLayout::Preinitialized => vk::ImageLayout::Preinitialized,
+        core::ImageLayout::Present => vk::ImageLayout::PresentSrcKhr,
+    }
+}
+
+pub(crate) fn translate_image_subresource_range(
+    value: &core::ImageSubresourceRange,
+    aspect_mask: vk::ImageAspectFlags,
+) -> vk::ImageSubresourceRange {
+    vk::ImageSubresourceRange {
+        aspect_mask,
+        base_mip_level: value.base_mip_level,
+        base_array_layer: value.base_array_layer,
+        level_count: value.num_mip_levels.unwrap_or(vk::VK_REMAINING_MIP_LEVELS),
+        layer_count: value.num_array_layers.unwrap_or(
+            vk::VK_REMAINING_ARRAY_LAYERS,
+        ),
+    }
 }

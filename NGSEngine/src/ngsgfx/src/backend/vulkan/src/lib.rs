@@ -13,7 +13,7 @@ extern crate cgmath;
 pub extern crate ash;
 
 #[macro_use]
-mod utils;
+mod macros;
 
 mod buffer;
 mod command;
@@ -21,6 +21,7 @@ mod descriptor;
 mod device;
 mod extif;
 mod factory;
+mod formats;
 mod heap;
 mod image;
 mod limits;
@@ -29,6 +30,7 @@ mod renderpass;
 mod sampler;
 mod shader;
 mod sync;
+mod utils;
 
 pub use extif::*;
 use utils::*;
@@ -43,6 +45,7 @@ pub mod imp {
     pub use super::descriptor::*;
     pub use super::device::*;
     pub use super::factory::*;
+    pub use super::formats::*;
     pub use super::heap::*;
     pub use super::image::*;
     pub use super::limits::*;

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use {Backend, DeviceRef};
 use imp::{self, ComputePipeline, DescriptorPool, Device, DescriptorSetLayout, Event, Framebuffer,
           GraphicsPipeline, Heap, Image, ImageView, PipelineLayout, RenderPass, Sampler,
-          ShaderModule, StencilState, DeviceData};
+          ShaderModule, StencilState, DeviceData, UnassociatedImage};
 
 impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
     fn make_event(&self, description: &core::EventDescription) -> core::Result<Event<T>> {
@@ -48,19 +48,26 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::ImageViewDescription<Image<T>>,
     ) -> core::Result<ImageView<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // ImageView::new_from_description(description, self.capabilities())
+        ImageView::new(description, self.capabilities())
     }
     fn get_buffer_memory_requirements(
         &self,
         description: &core::BufferDescription,
     ) -> core::MemoryRequirements {
+        // TODO: make `get_buffer_memory_requirements` return `Result<_>`
         unimplemented!()
     }
     fn get_image_memory_requirements(
         &self,
         description: &core::ImageDescription,
     ) -> core::MemoryRequirements {
-        unimplemented!()
+        // TODO: make `get_image_memory_requirements` return `Result<_>`
+        let image_proto = UnassociatedImage::new(self.device_ref(), description).unwrap();
+        let req = image_proto.memory_requirements();
+        core::MemoryRequirements {
+            size: req.size,
+            alignment: req.alignment,
+        }
     }
 
     fn make_sampler(&self, description: &core::SamplerDescription) -> core::Result<Sampler<T>> {

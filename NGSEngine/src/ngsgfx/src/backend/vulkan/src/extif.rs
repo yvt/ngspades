@@ -8,6 +8,7 @@
 use std::ops::Deref;
 use ash::Device;
 use ash::version::{V1_0, DeviceV1_0};
+use ash::vk;
 use std::sync::Arc;
 use std::{fmt, mem};
 
@@ -29,6 +30,13 @@ pub type AshDevice = Device<V1_0>;
 /// [`OwnedDeviceRef`]: struct.OwnedDeviceRef.html
 pub unsafe trait DeviceRef: Clone + Send + Sync + fmt::Debug + 'static {
     fn device(&self) -> &AshDevice;
+
+    /// Retrieve `AllocationCallbacks` used to perform host memory allocations.
+    ///
+    /// Since this trait requires `Sync` and this function's return type is
+    /// a reference to `AllocationCallbacks`, the allocation functions are
+    /// required to be thread-safe. (I wish Rust had higher-kinded types)
+    fn allocation_callbacks(&self) -> Option<&vk::AllocationCallbacks> { None }
 }
 
 /// Destroys the contained `AshDevice` automatically when dropped.

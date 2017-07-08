@@ -5,6 +5,10 @@
 //
 use core;
 
+mod hunk;
+
+pub(crate) use self::hunk::*;
+
 use {RefEqArc, DeviceRef, Backend};
 use imp::{Buffer, Image, DeviceData};
 
