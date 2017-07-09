@@ -11,12 +11,24 @@ use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDev
 
 use std::u32;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub struct EngineQueueMapping {
+    pub queue_index: u32,
+    pub queue_family_index: u32,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub struct EngineQueueMappings {
+    pub universal: EngineQueueMapping,
+    pub compute: EngineQueueMapping,
+    pub copy: EngineQueueMapping,
+}
+
+#[derive(Debug, Clone)]
 pub struct DeviceCapabilities {
     limits: core::DeviceLimits,
     pub(crate) mem_prop: PhysicalDeviceMemoryProperties,
     pub(crate) dev_prop: PhysicalDeviceProperties,
-    pub(crate) qf_props: Vec<QueueFamilyProperties>,
 }
 
 impl DeviceCapabilities {
@@ -29,8 +41,6 @@ impl DeviceCapabilities {
             instance.get_physical_device_memory_properties(phys_device);
         let dev_prop: PhysicalDeviceProperties =
             instance.get_physical_device_properties(phys_device);
-        let qf_props: Vec<QueueFamilyProperties> =
-            instance.get_physical_device_queue_family_properties(phys_device);
         let limits;
 
         {
@@ -69,7 +79,6 @@ impl DeviceCapabilities {
             limits,
             mem_prop,
             dev_prop,
-            qf_props,
         }
     }
 }

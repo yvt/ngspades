@@ -62,7 +62,8 @@ impl fmt::Debug for UniqueDevice {
 
 /// `DeviceRef` with an owned reference to `ash::Device`.
 ///
-/// The device will be destroyed automatically when all references are removed.
+/// The device will be destroyed automatically with *null* allocation callbacks
+/// when all references are removed.
 #[derive(Debug, Clone)]
 pub struct OwnedDeviceRef {
     device: Arc<UniqueDevice>,
@@ -93,6 +94,8 @@ impl OwnedDeviceRef {
     /// if there are no remaining references to it. Only if this function returns `Ok(x)`,
     /// you can destroy `x` as well as the originating `ash::Instance` safely (supposing
     /// all other objects created on it have been already destroyed).
+    ///
+    /// If a panic occurs during the allocation, the given device will be destroyed.
     pub unsafe fn from_raw(device: AshDevice) -> Self {
         Self { device: Arc::new(UniqueDevice(device)) }
     }

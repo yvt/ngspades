@@ -20,6 +20,7 @@ mod buffer;
 mod command;
 mod descriptor;
 mod device;
+mod device_ll;
 mod extif;
 mod factory;
 mod formats;
@@ -35,6 +36,11 @@ mod utils;
 
 pub use extif::*;
 use utils::*;
+
+/// Low-level wrappers.
+pub mod ll {
+    pub use super::device_ll::*;
+}
 
 /// Implementations of NgsGFX primitives.
 pub mod imp {
@@ -98,4 +104,4 @@ pub mod imp {
 }
 
 pub use self::imp::Backend;
-pub use self::imp::Device;
+pub use self::imp::{Device, DeviceBuilder};
