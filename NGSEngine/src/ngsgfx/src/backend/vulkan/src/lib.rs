@@ -10,6 +10,7 @@
 //!
 extern crate ngsgfx_core as core;
 extern crate cgmath;
+extern crate smallvec;
 pub extern crate ash;
 
 #[macro_use]

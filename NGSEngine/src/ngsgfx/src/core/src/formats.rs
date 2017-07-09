@@ -85,12 +85,12 @@ pub enum ImageFormat {
 
     /// Represents a pixel format with a 32-bit red channel.
     ///
-    /// Mandatory.
+    /// Unnormalized variations are mandatory.
     R32(Signedness, Normalizedness),
 
     /// Represents a pixel format with a 32-bit floating point red channel.
     ///
-    /// TODO: make this mandatory if required by Vulkan.
+    /// Mandatory.
     RFloat32,
 
     /// Represents a pixel format with a 32-bit red/green channels.
@@ -100,7 +100,7 @@ pub enum ImageFormat {
 
     /// Represents a pixel format with a 32-bit floating point red/green channels.
     ///
-    /// TODO: make this mandatory if required by Vulkan.
+    /// Mandatory.
     RgFloat32,
 
     /// Represents a pixel format with a 32-bit red/green/blue/alpha channels.
@@ -242,8 +242,14 @@ pub enum Normalizedness {
 ///  - `(Scalar, I16(_, _))`
 ///  - `(_, I32(_, Normalized))`
 ///
+/// Following variants are not supported by Vulkan:
+///
+///  - `(_, I32(_, Normalized))`
+///
 /// Following variants are not mandatory:
 ///
+///  - `(Vector3, I8(_, _))`
+///  - `(Vector3, I16(_, _))`
 ///  - `(_, I32(_, Normalized))`
 ///
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

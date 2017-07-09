@@ -9,7 +9,7 @@ use std::sync::Arc;
 use {Backend, DeviceRef};
 use imp::{self, ComputePipeline, DescriptorPool, Device, DescriptorSetLayout, Event, Framebuffer,
           GraphicsPipeline, Heap, Image, ImageView, PipelineLayout, RenderPass, Sampler,
-          ShaderModule, StencilState, DeviceData, UnassociatedImage};
+          ShaderModule, StencilState, DeviceData, UnassociatedImage, UnassociatedBuffer};
 
 impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
     fn make_event(&self, description: &core::EventDescription) -> core::Result<Event<T>> {
@@ -55,15 +55,20 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::BufferDescription,
     ) -> core::MemoryRequirements {
         // TODO: make `get_buffer_memory_requirements` return `Result<_>`
-        unimplemented!()
+        let proto = UnassociatedBuffer::new(self.device_ref(), description).unwrap();
+        let req = proto.memory_requirements();
+        core::MemoryRequirements {
+            size: req.size,
+            alignment: req.alignment,
+        }
     }
     fn get_image_memory_requirements(
         &self,
         description: &core::ImageDescription,
     ) -> core::MemoryRequirements {
         // TODO: make `get_image_memory_requirements` return `Result<_>`
-        let image_proto = UnassociatedImage::new(self.device_ref(), description).unwrap();
-        let req = image_proto.memory_requirements();
+        let proto = UnassociatedImage::new(self.device_ref(), description).unwrap();
+        let req = proto.memory_requirements();
         core::MemoryRequirements {
             size: req.size,
             alignment: req.alignment,
@@ -72,7 +77,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
 
     fn make_sampler(&self, description: &core::SamplerDescription) -> core::Result<Sampler<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // Sampler::new(self.metal_device(), description)
+        Sampler::new(self.device_ref(), description)
     }
 
     fn make_shader_module(
@@ -88,7 +93,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &imp::ComputePipelineDescription<T>,
     ) -> core::Result<ComputePipeline<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // ComputePipeline::new(self.metal_device(), description)
+        ComputePipeline::new(self.device_ref(), description)
     }
 
     fn make_graphics_pipeline(
@@ -96,7 +101,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &imp::GraphicsPipelineDescription<T>,
     ) -> core::Result<GraphicsPipeline<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // GraphicsPipeline::new(self.metal_device(), description)
+        GraphicsPipeline::new(self.device_ref(), description)
     }
 
     fn make_stencil_state(
@@ -119,7 +124,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::PipelineLayoutDescription<DescriptorSetLayout<T>>,
     ) -> core::Result<PipelineLayout<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // PipelineLayout::new(description)
+        PipelineLayout::new(self.device_ref(), description)
     }
 
     fn make_descriptor_pool(

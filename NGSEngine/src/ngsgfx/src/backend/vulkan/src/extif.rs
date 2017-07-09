@@ -38,7 +38,9 @@ pub unsafe trait DeviceRef: Clone + Send + Sync + fmt::Debug + 'static {
     /// required to be thread-safe. (I wish Rust had higher-kinded types)
     ///
     /// Returns `None` by default.
-    fn allocation_callbacks(&self) -> Option<&vk::AllocationCallbacks> { None }
+    fn allocation_callbacks(&self) -> Option<&vk::AllocationCallbacks> {
+        None
+    }
 }
 
 /// Destroys the contained `AshDevice` automatically when dropped.

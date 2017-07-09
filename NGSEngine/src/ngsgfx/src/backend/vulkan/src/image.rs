@@ -79,7 +79,7 @@ impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
             p_next: ptr::null(),
             flags,
             image_type,
-            format: translate_image_format(desc.format),
+            format: translate_image_format(desc.format).expect("unsupported image format"),
             extent: vk::Extent3D {
                 width: desc.extent.x,
                 height: desc.extent.y,
@@ -242,7 +242,7 @@ impl<T: DeviceRef> ImageView<T> {
             flags,
             image: desc.image.handle(),
             view_type,
-            format: translate_image_format(desc.format),
+            format: translate_image_format(desc.format).expect("unsupported image format"),
             components: vk::ComponentMapping {
                 r: vk::ComponentSwizzle::Identity,
                 g: vk::ComponentSwizzle::Identity,

@@ -165,3 +165,16 @@ pub(crate) fn translate_image_subresource_range(
         ),
     }
 }
+
+pub(crate) fn translate_compare_function(value: core::CompareFunction) -> vk::CompareOp {
+    match value {
+        core::CompareFunction::Never => vk::CompareOp::Never,
+        core::CompareFunction::Less => vk::CompareOp::Less,
+        core::CompareFunction::Equal => vk::CompareOp::Equal,
+        core::CompareFunction::LessEqual => vk::CompareOp::LessOrEqual,
+        core::CompareFunction::Greater => vk::CompareOp::Greater,
+        core::CompareFunction::NotEqual => vk::CompareOp::NotEqual,
+        core::CompareFunction::GreaterEqual => vk::CompareOp::GreaterOrEqual,
+        core::CompareFunction::Always => vk::CompareOp::Always,
+    }
+}
