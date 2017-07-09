@@ -14,7 +14,6 @@ pub extern crate winit;
 extern crate cgmath;
 
 use std::sync::Arc;
-use std::ops::Deref;
 use std::fmt::Debug;
 
 use core::Backend;
@@ -25,7 +24,6 @@ pub trait Window: Debug {
     type Backend: core::Backend;
     type CreationError: Debug;
 
-    fn events_loop(&self) -> &winit::EventsLoop;
     fn winit_window(&self) -> &winit::Window;
     fn device(&self) -> &Arc<<Self::Backend as Backend>::Device>;
     fn acquire_framebuffer(&self) -> <Self::Backend as Backend>::ImageView;
@@ -38,10 +36,10 @@ pub trait Window: Debug {
 }
 
 /// Window with a constructor function.
-pub trait NewWindow<T: Deref<Target = winit::EventsLoop>>: Window {
+pub trait NewWindow: Window {
     fn new(
         wb: winit::WindowBuilder,
-        events_loop: T,
+        events_loop: &winit::EventsLoop,
         format: core::ImageFormat,
     ) -> Result<Self, Self::CreationError>
     where

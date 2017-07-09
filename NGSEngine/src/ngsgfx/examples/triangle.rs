@@ -356,12 +356,11 @@ impl<W: Window> App<W> {
         }
     }
 
-    fn run(&self) {
+    fn run(&self, events_loop: &mut winit::EventsLoop) {
         let mut running = true;
         while running {
-            self.window.events_loop().poll_events(|event| match event {
+            events_loop.poll_events(|event| match event {
                 winit::Event::WindowEvent { event: winit::WindowEvent::Closed, .. } => {
-                    self.window.events_loop().interrupt();
                     running = false;
                 }
                 winit::Event::WindowEvent {
@@ -391,10 +390,10 @@ impl<W: Window> App<W> {
 }
 
 fn main() {
-    let events_loop = winit::EventsLoop::new();
+    let mut events_loop = winit::EventsLoop::new();
     let builder = winit::WindowBuilder::new();
     let window = DefaultWindow::new(builder, &events_loop, core::ImageFormat::SrgbBgra8).unwrap();
     let app = App::new(window);
-    app.run();
+    app.run(&mut events_loop);
     println!("Exiting...");
 }

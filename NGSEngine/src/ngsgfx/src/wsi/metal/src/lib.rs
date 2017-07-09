@@ -23,7 +23,6 @@ use wsi_core::winit;
 use std::sync::Arc;
 use std::cell::RefCell;
 use std::{mem, fmt};
-use std::ops::Deref;
 
 use cgmath::Vector2;
 
@@ -40,8 +39,7 @@ use winit::os::macos::WindowExt;
 mod utils;
 use utils::OCPtr;
 
-pub struct MetalWindow<T> {
-    events_loop: T,
+pub struct MetalWindow {
     window: winit::Window,
     layer: OCPtr<metal::CAMetalLayer>,
     drawable: RefCell<Option<OCPtr<metal::CAMetalDrawable>>>,
@@ -49,10 +47,7 @@ pub struct MetalWindow<T> {
     device: Arc<backend_metal::Device>,
 }
 
-impl<T> fmt::Debug for MetalWindow<T>
-where
-    T: Deref<Target = winit::EventsLoop>,
-{
+impl fmt::Debug for MetalWindow {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("MetalWindow")
             .field("layer", &self.layer)
@@ -63,10 +58,7 @@ where
     }
 }
 
-impl<T> MetalWindow<T>
-where
-    T: Deref<Target = winit::EventsLoop>,
-{
+impl MetalWindow {
     /// Retrieve the current drawable.
     ///
     /// The returned `CAMetalDrawable` is valid until this object is dropped or
@@ -95,22 +87,19 @@ where
     }
 }
 
-impl<T> wsi_core::NewWindow<T> for MetalWindow<T>
-where
-    T: Deref<Target = winit::EventsLoop>,
-{
+impl wsi_core::NewWindow for MetalWindow {
     /// Constructs a new `MetalWindow`.
     ///
     /// `format` must be one of `Bgra8(Unsigned, Normalized)`, `SrgbBgra8`, and
     /// `RgbaFloat16`.
     fn new(
         wb: winit::WindowBuilder,
-        events_loop: T,
+        events_loop: &winit::EventsLoop,
         format: core::ImageFormat,
     ) -> Result<Self, InitializationError> {
         let pixel_format =
             backend_metal::imp::translate_image_format(format).expect("unsupported ImageFormat");
-        let winit_window = wb.build(events_loop.deref()).unwrap();
+        let winit_window = wb.build(events_loop).unwrap();
 
         unsafe {
             let wnd: cocoa_id = mem::transmute(winit_window.get_nswindow());
@@ -136,7 +125,6 @@ where
             let device = backend_metal::Device::new(metal_device);
 
             Ok(MetalWindow {
-                events_loop,
                 window: winit_window,
                 layer: OCPtr::new(layer).unwrap(),
                 drawable: RefCell::new(None),
@@ -147,16 +135,9 @@ where
     }
 }
 
-impl<T> wsi_core::Window for MetalWindow<T>
-where
-    T: Deref<Target = winit::EventsLoop>,
-{
+impl wsi_core::Window for MetalWindow {
     type Backend = backend_metal::Backend;
     type CreationError = InitializationError;
-
-    fn events_loop(&self) -> &winit::EventsLoop {
-        self.events_loop.deref()
-    }
 
     fn winit_window(&self) -> &winit::Window {
         &self.window
