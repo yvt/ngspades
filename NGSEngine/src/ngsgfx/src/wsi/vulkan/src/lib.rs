@@ -72,7 +72,7 @@ impl VulkanSurface for WindowsVulkanSurface {
         };
         let win32_surface_loader =
             Win32Surface::new(entry, instance).expect("Unable to load win32 surface");
-        win32_surface_loader.create_win32_surface_khr(&win32_create_info, None)
+        unsafe { win32_surface_loader.create_win32_surface_khr(&win32_create_info, None) }
     }
 
     fn modify_instance_builder(builder: &mut backend_vulkan::InstanceBuilder) {
@@ -104,7 +104,7 @@ impl VulkanSurface for XlibVulkanSurface {
         };
         let xlib_surface_loader =
             XlibSurface::new(entry, instance).expect("Unable to load xlib surface");
-        xlib_surface_loader.create_xlib_surface_khr(&x11_create_info, None)
+        unsafe { xlib_surface_loader.create_xlib_surface_khr(&x11_create_info, None) }
     }
 
     fn modify_instance_builder(builder: &mut backend_vulkan::InstanceBuilder) {
