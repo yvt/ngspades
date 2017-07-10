@@ -38,8 +38,13 @@ pub mod wsi {
     #[cfg(target_os="macos")]
     pub extern crate ngsgfx_wsi_metal as metal;
 
+    pub extern crate ngsgfx_wsi_vulkan as vulkan;
+
     #[cfg(target_os="macos")]
     pub use self::metal::MetalWindow as DefaultWindow;
+
+    #[cfg(any(windows, all(unix, not(target_os = "macos"), not(target_os = "android"))))]
+    pub use self::vulkan::DefaultVulkanWindow as DefaultWindow;
 }
 
 /// Contains frequently used traits (from `ngsgfx_core`) for convenience.
