@@ -32,30 +32,32 @@ pub struct DeviceCreateInfoRaw<'a> {
     queue_create_infos: Vec<vk::DeviceQueueCreateInfo>,
     enabled_layer_names: Vec<*const vk::c_char>,
     enabled_extension_names: Vec<*const vk::c_char>,
-    phantom: marker::PhantomData<&'a DeviceCreateInfo>
+    phantom: marker::PhantomData<&'a DeviceCreateInfo>,
 }
 
 impl DeviceCreateInfo {
     pub fn as_raw<'a>(&'a self) -> DeviceCreateInfoRaw<'a> {
-        let queue_create_infos: Vec<_> =
-            self.queue_create_infos.iter()
-            .map(|dqci| vk::DeviceQueueCreateInfo {
-                s_type: vk::StructureType::DeviceQueueCreateInfo,
-                p_next: dqci.p_next,
-                flags: dqci.flags,
-                queue_family_index: dqci.queue_family_index,
-                queue_count: dqci.queue_priorities.len() as u32,
-                p_queue_priorities: dqci.queue_priorities.as_ptr(),
+        let queue_create_infos: Vec<_> = self.queue_create_infos
+            .iter()
+            .map(|dqci| {
+                vk::DeviceQueueCreateInfo {
+                    s_type: vk::StructureType::DeviceQueueCreateInfo,
+                    p_next: dqci.p_next,
+                    flags: dqci.flags,
+                    queue_family_index: dqci.queue_family_index,
+                    queue_count: dqci.queue_priorities.len() as u32,
+                    p_queue_priorities: dqci.queue_priorities.as_ptr(),
+                }
             })
             .collect();
 
-        let enabled_layer_names: Vec<_> =
-            self.enabled_layer_names.iter()
+        let enabled_layer_names: Vec<_> = self.enabled_layer_names
+            .iter()
             .map(|x| x.as_ptr())
             .collect();
 
-        let enabled_extension_names: Vec<_> =
-            self.enabled_extension_names.iter()
+        let enabled_extension_names: Vec<_> = self.enabled_extension_names
+            .iter()
             .map(|x| x.as_ptr())
             .collect();
 
@@ -95,4 +97,44 @@ impl<'a> ops::Deref for DeviceCreateInfoRaw<'a> {
     }
 }
 
+/// Memory-safe wrapper for `ApplicationInfo`.
+#[derive(Debug, Clone)]
+pub struct ApplicationInfo {
+    pub application_name: Option<ffi::CString>,
+    pub application_version: u32,
+    pub engine_name: Option<ffi::CString>,
+    pub engine_version: u32,
+    pub api_version: u32,
+}
 
+impl ApplicationInfo {
+    pub fn as_raw(&self) -> vk::ApplicationInfo {
+        vk::ApplicationInfo {
+            s_type: vk::StructureType::ApplicationInfo,
+            p_next: ptr::null(),
+            p_application_name: self.application_name
+                .as_ref()
+                .map(|x| x.as_ptr())
+                .unwrap_or_else(ptr::null),
+            application_version: self.application_version,
+            p_engine_name: self.engine_name
+                .as_ref()
+                .map(|x| x.as_ptr())
+                .unwrap_or_else(ptr::null),
+            engine_version: self.engine_version,
+            api_version: self.api_version,
+        }
+    }
+}
+
+impl Default for ApplicationInfo {
+    fn default() -> Self {
+        Self {
+            application_name: None,
+            application_version: 0,
+            engine_name: None,
+            engine_version: 0,
+            api_version: ((1 << 22) | (0 << 12) | (0)) as u32,
+        }
+    }
+}

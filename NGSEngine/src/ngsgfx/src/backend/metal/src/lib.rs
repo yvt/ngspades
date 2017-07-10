@@ -67,6 +67,7 @@ mod factory;
 mod formats;
 mod heap;
 mod image;
+mod instance;
 mod limits;
 mod pipeline;
 mod renderpass;
@@ -94,6 +95,7 @@ pub mod imp {
     pub use super::formats::*;
     pub use super::heap::*;
     pub use super::image::*;
+    pub use super::instance::*;
     pub use super::limits::*;
     pub use super::pipeline::*;
     pub use super::renderpass::*;
@@ -116,7 +118,16 @@ pub mod imp {
 
     pub type StencilStateDescription<'a> = core::StencilStateDescription<'a, GraphicsPipeline>;
 
-    pub struct Backend {}
+    pub struct Environment;
+    impl core::Environment for Environment {
+        type Backend = Backend;
+
+        type DeviceBuilder = DeviceBuilder;
+        type Instance = Instance;
+        type InstanceBuilder = InstanceBuilder;
+    }
+
+    pub struct Backend;
     impl core::Backend for Backend {
         type Buffer = Buffer;
         type CommandBuffer = CommandBuffer;
@@ -146,5 +157,4 @@ pub mod imp {
 
 }
 
-pub use self::imp::Backend;
-pub use self::imp::Device;
+pub use self::imp::{Backend, Device, Environment, DeviceBuilder, Instance, InstanceBuilder};

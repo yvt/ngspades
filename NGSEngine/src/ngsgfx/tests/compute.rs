@@ -14,7 +14,7 @@ use gfx::prelude::*;
 
 use cgmath::Vector3;
 
-use std::{mem, ptr, ffi};
+use std::{mem, ptr};
 use std::cell::RefCell;
 
 static SPIRV_NULL: include_data::DataView =
@@ -26,91 +26,57 @@ trait BackendDispatch {
     fn use_device<B: core::Backend>(self, device: B::Device);
 }
 
+fn try_environment<T: BackendDispatch, K: core::Environment>(name: &str, d: T) -> Option<T> {
+    use core::{InstanceBuilder, Instance, DeviceBuilder};
+    let inst_builder: K::InstanceBuilder = match K::InstanceBuilder::new() {
+        Ok(i) => i,
+        Err(e) => {
+            println!("{}: InstanceBuilder::new() failed: {:?}", name, e);
+            return Some(d);
+        }
+    };
+    let instance: K::Instance = match inst_builder.build() {
+        Ok(i) => i,
+        Err(e) => {
+            println!("{}: InstanceBuilder::build() failed: {:?}", name, e);
+            return Some(d);
+        }
+    };
+    let default_adapter = match instance.default_adapter() {
+        Some(a) => a,
+        None => {
+            println!("{}: No compatible adapter found, skipping", name);
+            return Some(d);
+        }
+    };
+    let device_builder = instance.new_device_builder(&default_adapter);
+    let device = match device_builder.build() {
+        Ok(i) => i,
+        Err(e) => {
+            println!("{}: DeviceBuilder::build() failed: {:?}", name, e);
+            return Some(d);
+        }
+    };
+    d.use_device::<K::Backend>(device);
+    None
+}
+
 #[cfg(target_os = "macos")]
 fn try_device_metal<T: BackendDispatch>(d: T) -> Option<T> {
     use gfx::backends::metal::ll::NSObjectProtocol;
     let arp = gfx::backends::metal::ll::NSAutoreleasePool::alloc().init();
-    let metal_device = gfx::backends::metal::ll::create_system_default_device();
-    let device = gfx::backends::metal::imp::Device::new(metal_device);
-    d.use_device::<gfx::backends::metal::Backend>(device);
+    let ret = try_environment::<T, gfx::backends::metal::Environment>("try_device_metal", d);
     unsafe {
         arp.release();
     }
-    None
+    ret
 }
 
 #[cfg(not(target_os = "macos"))]
 use std::option::Option::Some as try_device_metal;
 
-use gfx::backends::vulkan::ash;
-use gfx::backends::vulkan::ash::vk;
-use gfx::backends::vulkan::ash::version::{V1_0, InstanceV1_0, EntryV1_0};
-
-struct VulkanInstance(ash::Instance<V1_0>);
-impl Drop for VulkanInstance {
-    fn drop(&mut self) {
-        unsafe { self.0.destroy_instance(None); }
-    }
-}
-
 fn try_device_vulkan<T: BackendDispatch>(d: T) -> Option<T> {
-    use gfx::backends::vulkan;
-    use self::ash::extensions::DebugReport;
-
-    let entry = match ash::Entry::new() {
-        Ok(e) => e,
-        Err(e) => {
-            println!("try_device_vulkan: skipping because Entry creation failed: {:?}",
-                e);
-            return Some(d);
-        }
-    };
-
-    let app_name = ffi::CString::new("NgsGFX test suite").unwrap();
-    let engine_name = ffi::CString::new("NgsGFX").unwrap();
-    let validation_layer_name = ffi::CString::new("VK_LAYER_LUNARG_standard_validation").unwrap();
-    let inst = entry.create_instance(&vk::InstanceCreateInfo{
-            s_type: vk::StructureType::InstanceCreateInfo,
-            p_next: ptr::null(),
-            flags: vk::InstanceCreateFlags::empty(),
-            p_application_info: &vk::ApplicationInfo{
-                s_type: vk::StructureType::ApplicationInfo,
-                p_next: ptr::null(),
-                p_application_name: app_name.as_ptr(),
-                application_version: 0,
-                p_engine_name: engine_name.as_ptr(),
-                engine_version: 0,
-                api_version: 0,
-            } as *const _,
-            enabled_layer_count: 1,
-            pp_enabled_layer_names: &[validation_layer_name.as_ptr()] as *const _,
-            enabled_extension_count: 1,
-            pp_enabled_extension_names: &[DebugReport::name().as_ptr()] as *const _,
-        }, None)
-        .map(VulkanInstance)
-        .expect("failed to create Vulkan instance");
-
-    // TODO: use DebugReport
-
-    let phys_devices = inst.0.enumerate_physical_devices()
-        .expect("failed to enumerate Vulkan physical devices");
-
-    // find the device that NgsGFX can run on
-    for &phys_device in phys_devices.iter() {
-        let builder = unsafe { vulkan::DeviceBuilder::new(&inst.0, phys_device) };
-        match unsafe { builder.build() } {
-            Ok(dev) => {
-                d.use_device::<vulkan::Backend<vulkan::OwnedDeviceRef>>(dev);
-                return None;
-            }
-            Err(e) => {
-                println!("try_device_vulkan: a device because Device could not be built: {:?}",
-                    e);
-            }
-        }
-    }
-
-    Some(d)
+    try_environment::<T, gfx::backends::vulkan::ManagedEnvironment>("try_device_vulkan", d)
 }
 
 fn find_default_device<T: BackendDispatch>(d: T) {

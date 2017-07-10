@@ -24,6 +24,16 @@ pub struct EngineQueueMappings {
     pub copy: EngineQueueMapping,
 }
 
+impl EngineQueueMappings {
+    pub(crate) fn into_array(&self) -> [&EngineQueueMapping; 3] {
+        [
+            &self.universal,
+            &self.compute,
+            &self.copy,
+        ]
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct DeviceCapabilities {
     limits: core::DeviceLimits,

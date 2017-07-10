@@ -105,6 +105,7 @@ pub mod framebuffer;
 mod geom;
 pub mod heap;
 pub mod image;
+pub mod instance;
 mod limits;
 pub mod pipeline;
 pub mod query;
@@ -131,6 +132,14 @@ pub type DescriptorBindingElementIndex = usize;
 
 /// Represents a device memory size and offset value.
 pub type DeviceSize = u64;
+
+pub trait Environment: Sized + 'static {
+    type Backend: Backend;
+
+    type DeviceBuilder: DeviceBuilder<Self>;
+    type Instance: Instance<Self>;
+    type InstanceBuilder: InstanceBuilder<Self>;
+}
 
 pub trait Backend: Sized + 'static {
     type Buffer: Buffer;
@@ -173,6 +182,7 @@ pub use framebuffer::*;
 pub use geom::*;
 pub use heap::*;
 pub use image::*;
+pub use instance::*;
 pub use limits::*;
 pub use pipeline::*;
 pub use query::*;

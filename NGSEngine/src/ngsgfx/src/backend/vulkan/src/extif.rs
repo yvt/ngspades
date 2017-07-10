@@ -6,14 +6,19 @@
 //! Defines an interface to Vulkan ICD.
 
 use std::ops::Deref;
-use ash::Device;
+use ash::{Device, Instance};
 use ash::version::{V1_0, DeviceV1_0};
 use ash::vk;
 use std::sync::Arc;
-use std::{fmt, mem};
+use std::{fmt, mem, ops};
+
+use imp::UniqueInstance;
 
 /// `ash::Device` of the version used by this backend.
 pub type AshDevice = Device<V1_0>;
+
+/// `ash::Instance` of the version used by this backend.
+pub type AshInstance = Instance<V1_0>;
 
 /// Represents a reference to a `ash::Device` object.
 ///
@@ -43,6 +48,10 @@ pub unsafe trait DeviceRef: Clone + Send + Sync + fmt::Debug + 'static {
     }
 }
 
+pub trait DeviceRefFromRaw: DeviceRef + Sized {
+    unsafe fn from_raw(device: AshDevice) -> Self;
+}
+
 /// Destroys the contained `AshDevice` automatically when dropped.
 struct UniqueDevice(AshDevice);
 
@@ -51,7 +60,12 @@ impl Drop for UniqueDevice {
         unsafe { self.0.destroy_device(None) };
     }
 }
-
+impl ops::Deref for UniqueDevice {
+    type Target = AshDevice;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 impl fmt::Debug for UniqueDevice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("UniqueDevice")
@@ -60,22 +74,53 @@ impl fmt::Debug for UniqueDevice {
     }
 }
 
-/// `DeviceRef` with an owned reference to `ash::Device`.
+/// An owned reference to `ash::Instance`.
+#[derive(Debug, Clone)]
+pub struct OwnedInstanceRef {
+    pub(crate) instance: Arc<UniqueInstance>,
+}
+
+impl OwnedInstanceRef {
+    pub fn instance(&self) -> &AshInstance {
+        &self.instance
+    }
+
+    /// Return the contained `ash::Instance` if there is exactly one reference to it
+    /// i.e. there exists no other `OwnedInstanceRef` pointing at the same `ash::Instance`.
+    pub fn try_take(self) -> Result<AshInstance, Self> {
+        match Arc::try_unwrap(self.instance) {
+            Ok(dev) => {
+                let ret = dev.clone();
+                mem::forget(dev); // prevent `drop()`
+                Ok(ret)
+            }
+            Err(arc_inst) => Err(Self { instance: arc_inst }),
+        }
+    }
+}
+
+
+/// `DeviceRef` with an owned reference to `ash::Device` with an optional reference
+/// to another object, for example, `ash::Instance`.
 ///
 /// The device will be destroyed automatically with *null* allocation callbacks
 /// when all references are removed.
-#[derive(Debug, Clone)]
-pub struct OwnedDeviceRef {
-    device: Arc<UniqueDevice>,
+#[derive(Debug)]
+pub struct OwnedDeviceRef<T> {
+    device: Arc<(UniqueDevice, T)>,
 }
 
-unsafe impl DeviceRef for OwnedDeviceRef {
+derive_using_field! {
+    (T); (Clone) for OwnedDeviceRef<T> => device
+}
+
+unsafe impl<T: fmt::Debug + Sync + Send + 'static> DeviceRef for OwnedDeviceRef<T> {
     fn device(&self) -> &AshDevice {
         &self.device.0
     }
 }
 
-impl OwnedDeviceRef {
+impl<T> OwnedDeviceRef<T> {
     /// Construct an `OwnedDeviceRef` with a given device object.
     ///
     /// The ownership of `device` will be transfered into the created `OwnedDeviceRef`.
@@ -96,20 +141,25 @@ impl OwnedDeviceRef {
     /// all other objects created on it have been already destroyed).
     ///
     /// If a panic occurs during the allocation, the given device will be destroyed.
-    pub unsafe fn from_raw(device: AshDevice) -> Self {
-        Self { device: Arc::new(UniqueDevice(device)) }
+    pub unsafe fn from_raw(device: AshDevice, other: T) -> Self {
+        Self {
+            device: Arc::new((UniqueDevice(device), other))
+        }
     }
 
     /// Return the contained `ash::Device` if there is exactly one reference to it
     /// i.e. there exists no other `OwnedDeviceRef` pointing at the same `ash::Device`.
-    pub fn try_take(self) -> Result<AshDevice, Self> {
+    pub fn try_take(self) -> Result<(AshDevice, T), Self> {
         match Arc::try_unwrap(self.device) {
-            Ok(dev) => {
-                let ret = dev.0.clone();
+            Ok((dev, other)) => {
+                let ret = dev.clone();
                 mem::forget(dev); // prevent `drop()`
-                Ok(ret)
+                Ok((ret, other))
             }
             Err(arc_dev) => Err(Self { device: arc_dev }),
         }
     }
 }
+
+/// `OwnedDeviceRef` with an owned reference to the parent instance.
+pub type ManagedDeviceRef = OwnedDeviceRef<OwnedInstanceRef>;

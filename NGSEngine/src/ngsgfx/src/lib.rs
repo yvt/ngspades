@@ -16,6 +16,16 @@ pub mod backends {
     pub extern crate ngsgfx_metal as metal;
 
     pub extern crate ngsgfx_vulkan as vulkan;
+
+    #[cfg(target_os="macos")]
+    pub use self::metal::Environment as DefaultEnvironment;
+    #[cfg(target_os="macos")]
+    pub use self::metal::Backend as DefaultBackend;
+
+    #[cfg(not(target_os="macos"))]
+    pub use self::vulkan::ManagedEnvironment as DefaultEnvironment;
+    #[cfg(not(target_os="macos"))]
+    pub use self::vulkan::ManagedBackend as DefaultBackend;
 }
 
 /// Provides the window system integration functionality.

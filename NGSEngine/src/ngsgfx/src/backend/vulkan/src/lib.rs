@@ -26,6 +26,7 @@ mod factory;
 mod formats;
 mod heap;
 mod image;
+mod instance;
 mod limits;
 mod pipeline;
 mod renderpass;
@@ -55,6 +56,7 @@ pub mod imp {
     pub use super::formats::*;
     pub use super::heap::*;
     pub use super::image::*;
+    pub use super::instance::*;
     pub use super::limits::*;
     pub use super::pipeline::*;
     pub use super::renderpass::*;
@@ -73,8 +75,18 @@ pub mod imp {
         GraphicsPipeline<T>,
     >;
 
+    pub struct ManagedEnvironment;
+    impl core::Environment for ManagedEnvironment {
+        type Backend = ManagedBackend;
+
+        type DeviceBuilder = DeviceBuilder;
+        type Instance = Instance;
+        type InstanceBuilder = InstanceBuilder;
+    }
+
+    pub type ManagedBackend = Backend<super::ManagedDeviceRef>;
     pub struct Backend<T: ::DeviceRef>(PhantomData<T>);
-    impl<T: ::DeviceRef> core::Backend for Backend<T> {
+    impl<T: super::DeviceRef> core::Backend for Backend<T> {
         type Buffer = Buffer<T>;
         type CommandBuffer = CommandBuffer<T>;
         type CommandQueue = CommandQueue<T>;
@@ -103,5 +115,5 @@ pub mod imp {
 
 }
 
-pub use self::imp::Backend;
-pub use self::imp::{Device, DeviceBuilder};
+pub use self::imp::{Backend, ManagedEnvironment};
+pub use self::imp::{Device, DeviceBuilder, Instance, InstanceBuilder};

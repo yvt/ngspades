@@ -9,7 +9,7 @@ use std::sync::Arc;
 use {Backend, DeviceRef};
 use imp::{self, ComputePipeline, DescriptorPool, Device, DescriptorSetLayout, Event, Framebuffer,
           GraphicsPipeline, Heap, Image, ImageView, PipelineLayout, RenderPass, Sampler,
-          ShaderModule, StencilState, DeviceData, UnassociatedImage, UnassociatedBuffer};
+          ShaderModule, StencilState, UnassociatedImage, UnassociatedBuffer};
 
 impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
     fn make_event(&self, description: &core::EventDescription) -> core::Result<Event<T>> {
