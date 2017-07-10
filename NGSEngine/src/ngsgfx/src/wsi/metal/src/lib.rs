@@ -10,6 +10,7 @@
 //!
 //! [`gfx_window_metal`]: https://github.com/gfx-rs/gfx
 
+#[macro_use]
 extern crate objc;
 extern crate cocoa;
 extern crate cgmath;
@@ -23,7 +24,8 @@ use core::{Instance, DeviceBuilder};
 
 use std::sync::Arc;
 use std::cell::RefCell;
-use std::{mem, fmt};
+use std::{mem, fmt, ptr};
+use std::os::raw::c_void;
 
 use cgmath::Vector2;
 
@@ -32,7 +34,7 @@ use objc::runtime::YES;
 use backend_metal::imp::ImageView;
 
 use cocoa::base::id as cocoa_id;
-use cocoa::foundation::NSSize;
+use cocoa::foundation::{NSSize, NSString};
 use cocoa::appkit::{NSWindow, NSView};
 
 use winit::os::macos::WindowExt;
@@ -88,6 +90,12 @@ impl MetalWindow {
     }
 }
 
+#[link(name = "ApplicationServices", kind = "framework")]
+extern {
+    fn CGColorSpaceCreateWithName(name: cocoa_id) -> *const c_void;
+    fn CGColorSpaceRelease(space: *const c_void);
+}
+
 impl wsi_core::NewWindow for MetalWindow {
     type Environment = backend_metal::Environment;
     type CreationError = InitializationError;
@@ -111,9 +119,15 @@ impl wsi_core::NewWindow for MetalWindow {
             let layer: metal::CAMetalLayer = metal::CAMetalLayer::new();
             layer.set_pixel_format(pixel_format);
 
+            let cs_name = NSString::alloc(ptr::null_mut()).init_str("kCGColorSpaceSRGB");
+            let colorspace = CGColorSpaceCreateWithName(mem::transmute(cs_name));
+            msg_send![cs_name, release];
+
             let draw_size = winit_window.get_inner_size().unwrap();
             layer.set_edge_antialiasing_mask(0);
             layer.set_masks_to_bounds(true);
+            layer.set_colorspace(mem::transmute(colorspace));
+            CGColorSpaceRelease(colorspace);
             // layer.set_magnification_filter(kCAFilterNearest);
             // layer.set_minification_filter(kCAFilterNearest);
             layer.set_drawable_size(NSSize::new(draw_size.0 as f64, draw_size.1 as f64));

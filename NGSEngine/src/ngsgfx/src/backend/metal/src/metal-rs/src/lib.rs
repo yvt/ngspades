@@ -230,6 +230,12 @@ impl CAMetalLayer {
         }
     }
 
+    pub fn set_colorspace(&self, colorspace: id<()>) {
+        unsafe {
+            msg_send![self.0, setColorspace:colorspace]
+        }
+    }
+
     pub fn drawable_size(&self) -> NSSize {
         unsafe {
             msg_send![self.0, drawableSize]
