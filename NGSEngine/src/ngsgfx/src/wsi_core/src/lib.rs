@@ -16,7 +16,7 @@ extern crate cgmath;
 use std::sync::Arc;
 use std::fmt::Debug;
 
-use core::Backend;
+use core::{Environment, Backend};
 use cgmath::Vector2;
 
 /// Window.
@@ -35,14 +35,18 @@ pub trait Window: Debug {
 }
 
 /// Window with a constructor function.
-pub trait NewWindow: Window {
+pub trait NewWindow: Window + Sized {
+    type Environment: core::Environment<Backend = Self::Backend>;
     type CreationError: Debug;
 
     fn new(
         wb: winit::WindowBuilder,
         events_loop: &winit::EventsLoop,
+        instance: &<Self::Environment as Environment>::Instance,
         format: core::ImageFormat,
-    ) -> Result<Self, Self::CreationError>
-    where
-        Self: Sized;
+    ) -> Result<Self, Self::CreationError>;
+
+    /// Updates the supplied `InstanceBuilder` to meet the requirements of this WSI backend.
+    #[allow(unused_variables)]
+    fn modify_instance_builder(builder: &mut <Self::Environment as Environment>::InstanceBuilder) {}
 }

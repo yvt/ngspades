@@ -23,6 +23,7 @@ use gfx::core;
 use gfx::core::{VertexFormat, VectorWidth, ScalarFormat, DebugMarker};
 use gfx::prelude::*;
 use gfx::wsi::{DefaultWindow, NewWindow, Window, winit};
+use gfx::backends::DefaultEnvironment;
 
 use std::sync::Arc;
 use std::{mem, ptr};
@@ -390,9 +391,19 @@ impl<W: Window> App<W> {
 }
 
 fn main() {
+    use gfx::core::{Environment, InstanceBuilder};
+
     let mut events_loop = winit::EventsLoop::new();
     let builder = winit::WindowBuilder::new();
-    let window = DefaultWindow::new(builder, &events_loop, core::ImageFormat::SrgbBgra8).unwrap();
+
+    let mut instance_builder = <DefaultEnvironment as Environment>::InstanceBuilder::new()
+        .expect("InstanceBuilder::new() have failed");
+    DefaultWindow::modify_instance_builder(&mut instance_builder);
+
+    let instance = instance_builder.build()
+        .expect("InstanceBuilder::build() have failed");
+
+    let window = DefaultWindow::new(builder, &events_loop, &instance, core::ImageFormat::SrgbBgra8).unwrap();
     let app = App::new(window);
     app.run(&mut events_loop);
     println!("Exiting...");

@@ -19,6 +19,7 @@ extern crate ngsgfx_metal as backend_metal;
 extern crate ngsgfx_wsi_core as wsi_core;
 use backend_metal::ll as metal;
 use wsi_core::winit;
+use core::{Instance, DeviceBuilder};
 
 use std::sync::Arc;
 use std::cell::RefCell;
@@ -88,6 +89,7 @@ impl MetalWindow {
 }
 
 impl wsi_core::NewWindow for MetalWindow {
+    type Environment = backend_metal::Environment;
     type CreationError = InitializationError;
 
     /// Constructs a new `MetalWindow`.
@@ -97,6 +99,7 @@ impl wsi_core::NewWindow for MetalWindow {
     fn new(
         wb: winit::WindowBuilder,
         events_loop: &winit::EventsLoop,
+        instance: &backend_metal::Instance,
         format: core::ImageFormat,
     ) -> Result<Self, InitializationError> {
         let pixel_format =
@@ -121,10 +124,10 @@ impl wsi_core::NewWindow for MetalWindow {
             view.setWantsLayer(YES);
             view.setLayer(mem::transmute(layer.0));
 
-            let metal_device = metal::create_system_default_device();
+            let adapter = instance.default_adapter().unwrap();
+            let device = instance.new_device_builder(&adapter).build().unwrap();
+            let metal_device = device.metal_device();
             layer.set_device(metal_device);
-
-            let device = backend_metal::Device::new(metal_device);
 
             Ok(MetalWindow {
                 window: winit_window,

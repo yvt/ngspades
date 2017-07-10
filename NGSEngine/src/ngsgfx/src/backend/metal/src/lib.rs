@@ -49,6 +49,7 @@
 //!    barrier();               // OpControlBarrier - mapped to workgroup_barrier(...)
 //!    ```
 //!
+#![feature(never_type)]
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_metal_rs as metal;
 extern crate cgmath;

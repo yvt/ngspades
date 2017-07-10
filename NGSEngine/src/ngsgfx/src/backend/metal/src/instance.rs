@@ -12,8 +12,8 @@ use imp::{Environment, Device};
 pub struct InstanceBuilder;
 
 impl core::InstanceBuilder<Environment> for InstanceBuilder {
-    type InitializationError = (); // TODO: replace these with bottom type
-    type BuildError = ();
+    type InitializationError = !;
+    type BuildError = !;
 
     fn new() -> Result<Self, Self::InitializationError> {
         Ok(InstanceBuilder)
@@ -53,7 +53,7 @@ impl core::Instance<Environment> for Instance {
 pub struct DeviceBuilder;
 
 impl core::DeviceBuilder<Environment> for DeviceBuilder {
-    type BuildError = ();
+    type BuildError = !;
     fn build(&self) -> Result<Device, Self::BuildError> {
         let metal_device = metal::create_system_default_device();
         Ok(Device::new(metal_device))

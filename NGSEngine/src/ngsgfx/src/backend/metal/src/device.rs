@@ -51,6 +51,10 @@ impl Device {
             factory: imp::Factory::new(data.clone()),
         }
     }
+
+    pub fn metal_device(&self) -> metal::MTLDevice {
+        *self.data.metal_device
+    }
 }
 
 impl DeviceData {
