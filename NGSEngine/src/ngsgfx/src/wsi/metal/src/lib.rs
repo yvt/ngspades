@@ -88,6 +88,8 @@ impl MetalWindow {
 }
 
 impl wsi_core::NewWindow for MetalWindow {
+    type CreationError = InitializationError;
+
     /// Constructs a new `MetalWindow`.
     ///
     /// `format` must be one of `Bgra8(Unsigned, Normalized)`, `SrgbBgra8`, and
@@ -137,7 +139,6 @@ impl wsi_core::NewWindow for MetalWindow {
 
 impl wsi_core::Window for MetalWindow {
     type Backend = backend_metal::Backend;
-    type CreationError = InitializationError;
 
     fn winit_window(&self) -> &winit::Window {
         &self.window

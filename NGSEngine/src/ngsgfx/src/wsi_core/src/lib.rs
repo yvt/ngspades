@@ -22,7 +22,6 @@ use cgmath::Vector2;
 /// Window.
 pub trait Window: Debug {
     type Backend: core::Backend;
-    type CreationError: Debug;
 
     fn winit_window(&self) -> &winit::Window;
     fn device(&self) -> &Arc<<Self::Backend as Backend>::Device>;
@@ -37,6 +36,8 @@ pub trait Window: Debug {
 
 /// Window with a constructor function.
 pub trait NewWindow: Window {
+    type CreationError: Debug;
+
     fn new(
         wb: winit::WindowBuilder,
         events_loop: &winit::EventsLoop,
