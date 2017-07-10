@@ -55,7 +55,7 @@ impl<T: DeviceRef> Device<T> {
     pub(crate) fn data(&self) -> &DeviceData<T> {
         &*self.data
     }
-    pub(crate) fn device_ref(&self) -> &T {
+    pub fn device_ref(&self) -> &T {
         &self.data.device_ref
     }
     pub(crate) fn capabilities(&self) -> &DeviceCapabilities {

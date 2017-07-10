@@ -1,0 +1,14 @@
+[package]
+name = "ngsgfx_wsi_vulkan"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+cgmath = "0.14.1"
+ngsgfx_core = { path = "../../core" }
+ngsgfx_vulkan = { path = "../../backend/vulkan"}
+ngsgfx_wsi_core = { path = "../../wsi_core" }
+
+[target.'cfg(windows)'.dependencies]
+user32-sys = "0.2.0"
+winapi = "0.2.8"

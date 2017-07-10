@@ -134,7 +134,7 @@ impl core::InstanceBuilder<ManagedEnvironment> for InstanceBuilder {
                     translate_generic_error_unwrap(e),
                 ),
             })?;
-        Ok(Instance::from_raw(inst))
+        Ok(Instance::from_raw(self.entry.clone(), inst))
     }
 }
 
@@ -253,6 +253,7 @@ impl fmt::Debug for UniqueInstance {
 }
 
 pub struct Instance {
+    entry: ash::Entry<V1_0>,
     instance: Arc<UniqueInstance>,
     adapters: Vec<Adapter>,
 }
@@ -273,6 +274,16 @@ struct AdapterData {
     physical_device: vk::PhysicalDevice,
     name: String,
     eqm: EngineQueueMappings,
+}
+
+impl Adapter {
+    pub fn engine_queue_mappings(&self) -> &EngineQueueMappings {
+        &self.0.eqm
+    }
+
+    pub fn physical_device(&self) -> vk::PhysicalDevice {
+        self.0.physical_device
+    }
 }
 
 impl core::Adapter for Adapter {
@@ -414,7 +425,7 @@ impl AdapterData {
 }
 
 impl Instance {
-    pub fn from_raw(instance: AshInstance) -> Self {
+    pub fn from_raw(entry: ash::Entry<V1_0>, instance: AshInstance) -> Self {
         let inst_arc = Arc::new(UniqueInstance(instance));
         let phys_devices = inst_arc.enumerate_physical_devices().unwrap_or_else(
             |_| Vec::new(),
@@ -429,9 +440,13 @@ impl Instance {
             })
             .collect();
         Self {
+            entry,
             instance: inst_arc,
             adapters,
         }
+    }
+    pub fn entry(&self) -> &ash::Entry<V1_0> {
+        &self.entry
     }
     pub fn instance(&self) -> &AshInstance {
         &self.instance
@@ -440,6 +455,7 @@ impl Instance {
         match Arc::try_unwrap(self.instance) {
             Ok(i) => Ok(UniqueInstance::take(i)),
             Err(i) => Err(Self {
+                entry: self.entry,
                 instance: i,
                 adapters: self.adapters,
             }),

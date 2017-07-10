@@ -115,5 +115,5 @@ pub mod imp {
 
 }
 
-pub use self::imp::{Backend, ManagedEnvironment};
+pub use self::imp::{Backend, ManagedEnvironment, ManagedBackend};
 pub use self::imp::{Device, DeviceBuilder, Instance, InstanceBuilder};

@@ -18,6 +18,7 @@ members = [
     "src/ngsgfx/src/core",
     "src/ngsgfx/src/wsi_core",
     "src/ngsgfx/src/wsi/metal",
+    "src/ngsgfx/src/wsi/vulkan",
     "src/yfft",
     "src/xdispatch",
 ]
