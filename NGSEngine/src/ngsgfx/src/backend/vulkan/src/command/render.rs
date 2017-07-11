@@ -27,6 +27,9 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
     fn set_stencil_state(&mut self, value: &StencilState<T>) {
         unimplemented!()
     }
+    fn set_stencil_reference(&mut self, values: [u32; 2]) {
+        unimplemented!()
+    }
     fn set_viewport(&mut self, value: &core::Viewport) {
         unimplemented!()
     }
@@ -91,6 +94,9 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         unimplemented!()
     }
     fn set_stencil_state(&mut self, value: &StencilState<T>) {
+        unimplemented!()
+    }
+    fn set_stencil_reference(&mut self, values: [u32; 2]) {
         unimplemented!()
     }
     fn set_viewport(&mut self, value: &core::Viewport) {

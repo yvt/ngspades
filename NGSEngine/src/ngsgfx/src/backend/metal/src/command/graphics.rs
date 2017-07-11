@@ -83,6 +83,12 @@ impl RenderCommandEncoder {
     fn set_stencil_state(&mut self, value: &StencilState) {
         value.bind_depth_stencil_state(*self.metal_encoder);
     }
+    fn set_stencil_reference(&mut self, values: [u32; 2]) {
+        self.expect_pipeline().set_dynamic_stencil_reference(
+            *self.metal_encoder,
+            values,
+        );
+    }
     fn set_viewport(&mut self, value: &core::Viewport) {
         self.metal_encoder.set_viewport(metal::MTLViewport {
             originX: value.x as f64,
@@ -219,6 +225,11 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
     fn set_stencil_state(&mut self, value: &StencilState) {
         self.expect_graphics_pipeline().set_stencil_state(value)
     }
+    fn set_stencil_reference(&mut self, values: [u32; 2]) {
+        self.expect_graphics_pipeline().set_stencil_reference(
+            values,
+        )
+    }
     fn set_viewport(&mut self, value: &core::Viewport) {
         self.expect_graphics_pipeline().set_viewport(value)
     }
@@ -302,6 +313,9 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
     }
     fn set_stencil_state(&mut self, value: &StencilState) {
         self.render_command_encoder().set_stencil_state(value)
+    }
+    fn set_stencil_reference(&mut self, values: [u32; 2]) {
+        self.render_command_encoder().set_stencil_reference(values)
     }
     fn set_viewport(&mut self, value: &core::Viewport) {
         self.render_command_encoder().set_viewport(value)

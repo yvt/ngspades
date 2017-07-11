@@ -53,19 +53,41 @@ struct GraphicsPipelineRasterizerData {
     front_face: metal::MTLWinding,
     depth_clip_mode: metal::MTLDepthClipMode,
     triangle_fill_mode: metal::MTLTriangleFillMode,
-    metal_ds_state: Option<(OCPtr<metal::MTLDepthStencilState>, StencilReference)>,
+    ds_state: GraphicsPipelineDSState,
     blend_constants: Option<[f32; 4]>,
-
-    /// Used during creating a `MTLDepthStencilDescriptor`
-    depth_write: bool,
-    /// Used during creating a `MTLDepthStencilDescriptor`
-    depth_test: metal::MTLCompareFunction,
+    stencil_refs: Option<[u32; 2]>,
 }
 
 #[derive(Debug, Clone)]
-struct StencilReference {
-    pub front: u32,
-    pub back: u32,
+enum GraphicsPipelineDSState {
+    Static(OCPtr<metal::MTLDepthStencilState>),
+    Dynamic(MetalDSSPartialInfo),
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MetalDSSPartialInfo {
+    stencil_ops: [MetalStencilOperations; 2],
+    depth_write: bool,
+    depth_test: metal::MTLCompareFunction,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MetalStencilOperations {
+    stencil_failure: metal::MTLStencilOperation,
+    depth_failure: metal::MTLStencilOperation,
+    pass: metal::MTLStencilOperation,
+    compare: metal::MTLCompareFunction,
+}
+
+impl<'a> From<&'a core::StencilOperations> for MetalStencilOperations {
+    fn from(value: &'a core::StencilOperations) -> Self {
+        MetalStencilOperations {
+            stencil_failure: translate_stencil_op(value.stencil_fail_operation),
+            depth_failure: translate_stencil_op(value.depth_fail_operation),
+            pass: translate_stencil_op(value.pass_operation),
+            compare: translate_compare_function(value.compare_function),
+        }
+    }
 }
 
 unsafe impl Send for GraphicsPipelineData {}
@@ -241,17 +263,29 @@ impl GraphicsPipeline {
 
             let depth_write = rst.depth_write;
             let depth_test = utils::translate_compare_function(rst.depth_test);
+            let stencil_ops = [
+                MetalStencilOperations::from(&rst.stencil_ops[0]),
+                MetalStencilOperations::from(&rst.stencil_ops[1]),
+            ];
+            let dsspi = MetalDSSPartialInfo {
+                depth_write,
+                depth_test,
+                stencil_ops,
+            };
 
-            let mut metal_ds_state = None;
-            if let core::StaticOrDynamic::Static(ref value) = rst.stencil {
-                metal_ds_state = Some(make_depth_stencil_state(
-                    metal_device,
-                    depth_write,
-                    depth_test,
-                    value,
-                    desc.label,
-                ));
-            }
+            let ds_state = match rst.stencil_masks {
+                core::StaticOrDynamic::Static(ref value) => {
+                    GraphicsPipelineDSState::Static(make_depth_stencil_state(
+                        metal_device,
+                        &dsspi,
+                        value,
+                        desc.label,
+                    ))
+                }
+                core::StaticOrDynamic::Dynamic => GraphicsPipelineDSState::Dynamic(dsspi),
+            };
+
+            let stencil_refs = rst.stencil_references.static_value();
 
             let mut blend_constants = None;
             if let core::StaticOrDynamic::Static(ref value) = rst.blend_constants {
@@ -265,9 +299,8 @@ impl GraphicsPipeline {
                 front_face,
                 depth_clip_mode,
                 triangle_fill_mode,
-                depth_write,
-                depth_test,
-                metal_ds_state,
+                ds_state,
+                stencil_refs,
                 blend_constants,
             });
 
@@ -383,9 +416,11 @@ impl GraphicsPipeline {
         encoder.set_render_pipeline_state(*self.data.metal_pipeline);
 
         if let Some(ref raster_data) = self.data.raster_data {
-            if let Some((ref state, ref s_ref)) = raster_data.metal_ds_state {
+            if let GraphicsPipelineDSState::Static(ref state) = raster_data.ds_state {
                 encoder.set_depth_stencil_state(**state);
-                encoder.set_stencil_front_back_reference_value(s_ref.front, s_ref.back);
+            }
+            if let Some(ref s_ref) = raster_data.stencil_refs {
+                encoder.set_stencil_front_back_reference_value(s_ref[0], s_ref[1]);
             }
             if let Some(ref scissor_rect) = raster_data.scissor_rect {
                 encoder.set_scissor_rect(*scissor_rect);
@@ -421,17 +456,15 @@ impl GraphicsPipeline {
             }
 
             if let Some(mtl_buffer_idx) = mappings[map_index] {
-                encoder.set_vertex_buffer(
-                    mtl_buffer_idx as u64,
-                    offset,
-                    buffer.metal_buffer(),
-                );
+                encoder.set_vertex_buffer(mtl_buffer_idx as u64, offset, buffer.metal_buffer());
             }
         }
     }
 
     fn expect_rasterizer_data(&self) -> &GraphicsPipelineRasterizerData {
-        self.data.raster_data.as_ref().expect("rasterization is not enabled")
+        self.data.raster_data.as_ref().expect(
+            "rasterization is not enabled",
+        )
     }
 
     pub(crate) fn set_dynamic_scissor_rect(
@@ -439,9 +472,27 @@ impl GraphicsPipeline {
         encoder: metal::MTLRenderCommandEncoder,
         rect: &core::Rect2D<u32>,
     ) {
-        debug_assert!(self.expect_rasterizer_data().scissor_rect.is_none(),
-            "scissor rect is not a part of dynamic states");
+        debug_assert!(
+            self.expect_rasterizer_data().scissor_rect.is_none(),
+            "scissor rect is not a part of dynamic states"
+        );
         encoder.set_scissor_rect(utils::translate_scissor_rect(rect));
+    }
+
+    pub(crate) fn set_dynamic_stencil_reference(
+        &self,
+        encoder: metal::MTLRenderCommandEncoder,
+        values: [u32; 2],
+    ) {
+        debug_assert!(
+            self.expect_rasterizer_data().stencil_refs.is_none(),
+            "stencil reference values are not parts of dynamic states"
+        );
+        if values[0] == values[1] {
+            encoder.set_stencil_reference_value(values[0]);
+        } else {
+            encoder.set_stencil_front_back_reference_value(values[0], values[1]);
+        }
     }
 }
 
@@ -498,58 +549,43 @@ fn translate_stencil_op(value: core::StencilOperation) -> metal::MTLStencilOpera
 
 fn make_depth_stencil_state(
     metal_device: metal::MTLDevice,
-    depth_write: bool,
-    depth_test: metal::MTLCompareFunction,
-    stencil_state: &core::StencilDescriptionSet,
+    dsspi: &MetalDSSPartialInfo,
+    stencil_masks: &[core::StencilMasks; 2],
     label: Option<&str>,
-) -> (OCPtr<metal::MTLDepthStencilState>, StencilReference) {
+) -> OCPtr<metal::MTLDepthStencilState> {
     let metal_desc =
         unsafe { OCPtr::from_raw(metal::MTLDepthStencilDescriptor::alloc().init()).unwrap() };
 
-    metal_desc.set_depth_write_enabled(depth_write);
-    metal_desc.set_depth_compare_function(depth_test);
+    metal_desc.set_depth_write_enabled(dsspi.depth_write);
+    metal_desc.set_depth_compare_function(dsspi.depth_test);
 
-    for &(mtl_stencil, gfx_stencil) in
+    for &(mtl_stencil, ops, masks) in
         [
-            (metal_desc.front_face_stencil(), &stencil_state.front),
-            (metal_desc.back_face_stencil(), &stencil_state.back),
+            (
+                metal_desc.front_face_stencil(),
+                &dsspi.stencil_ops[0],
+                &stencil_masks[0],
+            ),
+            (
+                metal_desc.back_face_stencil(),
+                &dsspi.stencil_ops[1],
+                &stencil_masks[1],
+            ),
         ].iter()
     {
-        mtl_stencil.set_stencil_compare_function(
-            translate_compare_function(
-                gfx_stencil.compare_function,
-            ),
-        );
-        mtl_stencil.set_stencil_failure_operation(
-            translate_stencil_op(
-                gfx_stencil.stencil_fail_operation,
-            ),
-        );
-        mtl_stencil.set_depth_failure_operation(
-            translate_stencil_op(
-                gfx_stencil.depth_fail_operation,
-            ),
-        );
-        mtl_stencil.set_depth_stencil_pass_operation(
-            translate_stencil_op(gfx_stencil.pass_operation),
-        );
-        mtl_stencil.set_read_mask(gfx_stencil.read_mask);
-        mtl_stencil.set_write_mask(gfx_stencil.write_mask);
+        mtl_stencil.set_stencil_compare_function(ops.compare);
+        mtl_stencil.set_stencil_failure_operation(ops.stencil_failure);
+        mtl_stencil.set_depth_failure_operation(ops.depth_failure);
+        mtl_stencil.set_depth_stencil_pass_operation(ops.pass);
+        mtl_stencil.set_read_mask(masks.read_mask);
+        mtl_stencil.set_write_mask(masks.write_mask);
     }
-
-    let ref_value = StencilReference {
-        front: stencil_state.front.reference,
-        back: stencil_state.back.reference,
-    };
 
     if let Some(label) = label {
         metal_desc.set_label(label);
     }
 
-    (
-        OCPtr::new(metal_device.new_depth_stencil_state(*metal_desc)).unwrap(),
-        ref_value,
-    )
+    OCPtr::new(metal_device.new_depth_stencil_state(*metal_desc)).unwrap()
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -663,7 +699,6 @@ pub struct StencilState {
 #[derive(Debug)]
 struct StencilStateData {
     metal_ds_state: OCPtr<metal::MTLDepthStencilState>,
-    stencil_ref: StencilReference,
 }
 
 unsafe impl Send for StencilStateData {}
@@ -685,26 +720,20 @@ impl StencilState {
         let raster_data = desc.pipeline.data.raster_data.as_ref().expect(
             "graphics pipeline does not have a rasterizer enabled",
         );
-        let (metal_ds_state, stencil_ref) = make_depth_stencil_state(
-            metal_device,
-            raster_data.depth_write,
-            raster_data.depth_test,
-            &desc.set,
-            desc.label,
-        );
-
-        let data = StencilStateData {
-            metal_ds_state,
-            stencil_ref,
+        let dsspi: &MetalDSSPartialInfo = match raster_data.ds_state {
+            GraphicsPipelineDSState::Static(_) => {
+                panic!("graphics pipeline have been created with static mask values")
+            }
+            GraphicsPipelineDSState::Dynamic(ref x) => x,
         };
+        let metal_ds_state = make_depth_stencil_state(metal_device, dsspi, &desc.masks, desc.label);
+
+        let data = StencilStateData { metal_ds_state };
 
         Ok(StencilState { data: RefEqArc::new(data) })
     }
 
     pub(crate) fn bind_depth_stencil_state(&self, encoder: metal::MTLRenderCommandEncoder) {
         encoder.set_depth_stencil_state(*self.data.metal_ds_state);
-
-        let ref s_ref = self.data.stencil_ref;
-        encoder.set_stencil_front_back_reference_value(s_ref.front, s_ref.back);
     }
 }

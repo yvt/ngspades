@@ -26,7 +26,17 @@ pub struct DeviceLimits {
     /// Indicates whether `MappableHeap::make_aliasable` is supported or not.
     pub supports_heap_aliasing: bool,
 
+    /// Indicates whether `GraphicsPipelineRasterizerDescription::depth_bounds`
+    /// can have values other than `None`.
     pub supports_depth_bounds: bool,
+
+    /// Indicates whether `GraphicsPipelineRasterizerDescription::depth_clip_mode`
+    /// can have a value of `DepthClipMode::Clamp`.
+    pub supports_depth_clamp: bool,
+
+    /// Indicates whether `GraphicsPipelineRasterizerDescription::triangle_fill_mode`
+    /// can have a value of `TriangleFillMode::Line`.
+    pub supports_fill_mode_non_solid: bool,
 
     pub supports_cube_array: bool,
 

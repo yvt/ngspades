@@ -28,6 +28,8 @@ pub enum InstanceBuildError {
 pub enum DeviceFeature {
     DepthBounds,
     CubeArrayImage,
+    DepthClamp,
+    FillModeNonSolid,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -573,6 +575,14 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
                 self.features.image_cube_array = self.supported_features.image_cube_array;
                 self.features.image_cube_array != vk::VK_FALSE
             }
+            DeviceFeature::DepthClamp => {
+                self.features.depth_clamp = self.supported_features.depth_clamp;
+                self.features.depth_clamp != vk::VK_FALSE
+            }
+            DeviceFeature::FillModeNonSolid => {
+                self.features.fill_mode_non_solid = self.supported_features.fill_mode_non_solid;
+                self.features.fill_mode_non_solid != vk::VK_FALSE
+            }
         }
     }
 
@@ -580,6 +590,8 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
     pub fn enable_all_features(&mut self) -> &mut Self {
         self.enable_feature(DeviceFeature::DepthBounds);
         self.enable_feature(DeviceFeature::CubeArrayImage);
+        self.enable_feature(DeviceFeature::DepthClamp);
+        self.enable_feature(DeviceFeature::FillModeNonSolid);
         self
     }
 

@@ -86,6 +86,9 @@ pub struct GraphicsPipelineRasterizerDescription<'a> {
     // rasterization state
     pub cull_mode: CullMode,
     pub front_face: Winding,
+
+    /// Controls whether fragments with depth values outside the clip volume
+    /// is clipped or clamped.
     pub depth_clip_mode: DepthClipMode,
     pub triangle_fill_mode: TriangleFillMode,
     pub depth_bias: StaticOrDynamic<Option<DepthBias>>,
@@ -97,8 +100,15 @@ pub struct GraphicsPipelineRasterizerDescription<'a> {
     // depth stencil state
     pub depth_write: bool,
     pub depth_test: CompareFunction,
-    pub stencil: StaticOrDynamic<StencilDescriptionSet>,
-    pub depth_bounds: StaticOrDynamic<Option<DepthBounds>>,
+    pub stencil_ops: [StencilOperations; 2],
+    pub stencil_masks: StaticOrDynamic<[StencilMasks; 2]>,
+    pub stencil_references: StaticOrDynamic<[u32; 2]>,
+
+    /// Specifies whether depth bounds tests are enabled.
+    ///
+    /// If `DeviceLimits::supports_depth_bounds` is `false` then `None` must be
+    /// specified.
+    pub depth_bounds: Option<StaticOrDynamic<DepthBounds>>,
 
     // color blend state
     pub blend_constants: StaticOrDynamic<[f32; 4]>,
@@ -122,8 +132,10 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
             sample_count: 1,
             depth_write: true,
             depth_test: CompareFunction::LessEqual,
-            stencil: StaticOrDynamic::Static(Default::default()),
-            depth_bounds: StaticOrDynamic::Static(None),
+            stencil_ops: Default::default(),
+            stencil_masks: StaticOrDynamic::Static(Default::default()),
+            stencil_references: StaticOrDynamic::Static([0, 0]),
+            depth_bounds: None,
             blend_constants: StaticOrDynamic::Static([0f32; 4]),
             color_attachments: &[],
         }
@@ -131,40 +143,48 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct StencilStateDescription<'a, TGraphicsPipeline: GraphicsPipeline> {
-    pub pipeline: &'a TGraphicsPipeline,
-    pub set: StencilDescriptionSet,
-
-    pub label: Option<&'a str>,
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct StencilDescriptionSet {
-    pub front: StencilDescription,
-    pub back: StencilDescription,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct StencilDescription {
+pub struct StencilOperations {
     pub stencil_fail_operation: StencilOperation,
     pub depth_fail_operation: StencilOperation,
     pub pass_operation: StencilOperation,
     pub compare_function: CompareFunction,
-    pub read_mask: u32,
-    pub write_mask: u32,
-    pub reference: u32,
 }
 
-impl ::std::default::Default for StencilDescription {
+impl ::std::default::Default for StencilOperations {
     fn default() -> Self {
         Self {
             stencil_fail_operation: StencilOperation::Keep,
             depth_fail_operation: StencilOperation::Keep,
             pass_operation: StencilOperation::Keep,
-            compare_function: CompareFunction::Never,
+            compare_function: CompareFunction::Always,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StencilStateDescription<'a, TGraphicsPipeline: GraphicsPipeline> {
+    /// Specifies `GraphicsPipeline` the `StencilState` is based on.
+    ///
+    /// The specified `GraphicsPipeline` must have been created with
+    /// `GraphicsPipelineRasterizerDescription::stencil_masks` set to `Dynamic`.
+    pub pipeline: &'a TGraphicsPipeline,
+
+    pub masks: [StencilMasks; 2],
+
+    pub label: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StencilMasks {
+    pub read_mask: u32,
+    pub write_mask: u32,
+}
+
+impl ::std::default::Default for StencilMasks {
+    fn default() -> Self {
+        Self {
             read_mask: 0,
             write_mask: 0,
-            reference: 0,
         }
     }
 }
@@ -259,6 +279,43 @@ pub enum StaticOrDynamic<T> {
     Dynamic,
 }
 
+impl<T> StaticOrDynamic<T> {
+    pub fn as_ref(&self) -> StaticOrDynamic<&T> {
+        match self {
+            &StaticOrDynamic::Static(ref x) => StaticOrDynamic::Static(x),
+            &StaticOrDynamic::Dynamic => StaticOrDynamic::Dynamic,
+        }
+    }
+
+    pub fn as_mut(&mut self) -> StaticOrDynamic<&mut T> {
+        match self {
+            &mut StaticOrDynamic::Static(ref mut x) => StaticOrDynamic::Static(x),
+            &mut StaticOrDynamic::Dynamic => StaticOrDynamic::Dynamic,
+        }
+    }
+
+    pub fn static_value(self) -> Option<T> {
+        match self {
+            StaticOrDynamic::Static(x) => Some(x),
+            StaticOrDynamic::Dynamic => None,
+        }
+    }
+
+    pub fn is_static(&self) -> bool {
+        match self {
+            &StaticOrDynamic::Static(_) => true,
+            &StaticOrDynamic::Dynamic => false,
+        }
+    }
+
+    pub fn is_dynamic(&self) -> bool {
+        match self {
+            &StaticOrDynamic::Static(_) => false,
+            &StaticOrDynamic::Dynamic => true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct VertexBufferLayoutDescription {
     pub binding: VertexBindingLocation,
@@ -313,13 +370,30 @@ pub struct Viewport {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TriangleFillMode {
+    /// Polygons are rasterized by drawing edges instead of filling the
+    /// inside of them.
+    ///
+    /// Requires a non-solid fill mode feature and
+    /// `DeviceLimits::supports_fill_mode_non_solid` indicates whether it is
+    /// supported by the device.
     Line,
+
+    /// Polygons are rasterized by filling the inside of them.
     Fill,
 }
 
+/// Controls whether fragments with depth values outside the clip volume
+/// is clipped or clamped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DepthClipMode {
+    /// Fragments with depth values outside the clip volume are clipped.
     Clip,
+
+    /// Fragments with depth values outside the clip volume are not clipped
+    /// and the depth values are clamped.
+    ///
+    /// Requires a depth clamping feature and `DeviceLimits::supports_depth_clamp`
+    /// indicates whether it is supported by the device.
     Clamp,
 }
 

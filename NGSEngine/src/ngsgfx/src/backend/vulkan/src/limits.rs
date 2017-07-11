@@ -60,6 +60,8 @@ impl DeviceCapabilities {
                 supports_heap_aliasing: true,
                 supports_depth_bounds: enabled_features.depth_bounds != VK_FALSE,
                 supports_cube_array: enabled_features.image_cube_array != VK_FALSE,
+                supports_depth_clamp: enabled_features.depth_clamp != VK_FALSE,
+                supports_fill_mode_non_solid: enabled_features.fill_mode_non_solid != VK_FALSE,
                 max_image_extent_1d: dev_limits.max_image_dimension1d,
                 max_image_extent_2d: dev_limits.max_image_dimension2d,
                 max_image_extent_3d: dev_limits.max_image_dimension3d,

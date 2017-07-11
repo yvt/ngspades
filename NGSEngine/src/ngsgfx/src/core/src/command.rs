@@ -328,37 +328,91 @@ pub trait BarrierCommandEncoder<B: Backend>
 /// Encodes render commands into a command buffer.
 pub trait RenderSubpassCommandEncoder<B: Backend>
     : Debug + Send + Any + DebugCommandEncoder {
-    /// Sets the current `GraphicsPipeline` object.
+    /// Set the current `GraphicsPipeline` object.
     ///
     /// A render pass must be active and compatible with the specified pipeline.
     ///
-    /// All dynamic states will be reseted. Descriptor sets with incompatible
-    /// layouts (see Vulkan 1.0 Specification "13.2.2. Pipeline Layouts") will be
-    /// unbound.
+    /// All dynamic states will be reseted. If the pipeline contains any
+    /// dynamic states, their values must be specified via comands before recording any
+    /// draw commands. The following shows the correspondences between some fields of
+    /// [`GraphicsPipelineRasterizerDescription`], which can be contained in
+    /// [`GraphicsPipelineDescription`]`::rasterizer`, and the commands to
+    /// specify their values dynamically:
+    ///
+    ///  - [`set_blend_constants`] - `blend_constants`
+    ///  - [`set_depth_bias`] - `depth_bias`
+    ///  - [`set_depth_bounds`] - `depth_bounds`
+    ///  - [`set_stencil_state`] - `stencil_masks`: This is a special case
+    ///    where you have to create a [`StencilState`] with desired values
+    ///    before issuing the command
+    ///  - [`set_stencil_reference`] - `stencil_references`
+    ///  - [`set_viewport`] - `viewport`
+    ///  - [`set_scissor_rect`] - `scissor_rect`
+    ///
+    /// Descriptor sets with incompatible layouts (see Vulkan 1.0 Specification
+    /// "13.2.2. Pipeline Layouts") will be unbound and must be bound again
+    /// before recording any draw commands.
+    ///
+    /// [`GraphicsPipelineDescription`]: ../pipeline/struct.GraphicsPipelineDescription.html
+    /// [`GraphicsPipelineRasterizerDescription`]: ../pipeline/struct.GraphicsPipelineRasterizerDescription.html
+    /// [`StencilState`]: ../pipeline/trait.StencilState.html
+    /// [`set_blend_constants`]: #tymethod.set_blend_constants
+    /// [`set_depth_bias`]: #tymethod.set_depth_bias
+    /// [`set_depth_bounds`]: #tymethod.set_depth_bounds
+    /// [`set_stencil_state`]: #tymethod.set_stencil_state
+    /// [`set_stencil_reference`]: #tymethod.set_stencil_reference
+    /// [`set_viewport`]: #tymethod.set_viewport
+    /// [`set_scissor_rect`]: #tymethod.set_scissor_rect
     fn bind_graphics_pipeline(&mut self, pipeline: &B::GraphicsPipeline);
 
-    /// Specifies the dynamic blend constant values. The current `GraphicsPipeline`'s
-    /// `blend_constants` must be `StaticOrDynamic::Dynamic`.
+    /// Specify the dynamic blend constant values.
+    ///
+    /// The current `GraphicsPipeline` must have been created with rasterization
+    /// enabled and `GraphicsPipelineRasterizerDescription::blend_constants`
+    /// set to `StaticOrDynamic::Dynamic`.
     fn set_blend_constants(&mut self, value: &[f32; 4]);
 
-    /// Specifies the dynamic depth bias values. The current `GraphicsPipeline`'s
-    /// `depth_bias` must be `StaticOrDynamic::Dynamic`.
+    /// Specify the dynamic depth bias values.
+    ///
+    /// The current `GraphicsPipeline` must have been created with rasterization
+    /// enabled and `GraphicsPipelineRasterizerDescription::depth_bias`
+    /// set to `StaticOrDynamic::Dynamic`.
     fn set_depth_bias(&mut self, value: Option<DepthBias>);
 
-    /// Specifies the dynamic depth bound values. The current `GraphicsPipeline`'s
-    /// `depth_bounds` must be `StaticOrDynamic::Dynamic`.
+    /// Specify the dynamic depth bound values.
+    ///
+    /// The current `GraphicsPipeline` must have been created with rasterization
+    /// enabled and `GraphicsPipelineRasterizerDescription::depth_bounds`
+    /// set to `StaticOrDynamic::Dynamic`.
     fn set_depth_bounds(&mut self, value: Option<DepthBounds>);
 
-    /// Sets the current `StencilState` object. The current `GraphicsPipeline`'s
-    /// `stencil_state` must be `StaticOrDynamic::Dynamic`.
+    /// Sets the current `StencilState` object.
+    ///
+    /// The specified `StencilState` must have been created with
+    /// `StencilStateDescription::pipeline` set to the same pipeline as the
+    /// currently active one.
     fn set_stencil_state(&mut self, value: &B::StencilState);
 
-    /// Specifies the dynamic viewport values. The current `GraphicsPipeline`'s
-    /// `viewport` must be `StaticOrDynamic::Dynamic`.
+    /// Set the current stencil reference values for the front-facing primitives and
+    /// back-facing ones, respectively.
+    ///
+    /// The current `GraphicsPipeline` must have been created with rasterization
+    /// enabled and `GraphicsPipelineRasterizerDescription::stencil_references`
+    /// set to `StaticOrDynamic::Dynamic`.
+    fn set_stencil_reference(&mut self, values: [u32; 2]);
+
+    /// Specify the dynamic viewport values.
+    ///
+    /// The current `GraphicsPipeline` must have been created with rasterization
+    /// enabled and `GraphicsPipelineRasterizerDescription::viewport`
+    /// set to `StaticOrDynamic::Dynamic`.
     fn set_viewport(&mut self, value: &Viewport);
 
-    /// Specifies the dynamic scissor rectangle. The current `GraphicsPipeline`'s
-    /// `scissor_rect` must be `StaticOrDynamic::Dynamic`.
+    /// Specify the dynamic scissor rectangle.
+    ///
+    /// The current `GraphicsPipeline` must have been created with rasterization
+    /// enabled and `GraphicsPipelineRasterizerDescription::scissor_rect`
+    /// set to `StaticOrDynamic::Dynamic`.
     fn set_scissor_rect(&mut self, value: &Rect2D<u32>);
 
     fn bind_graphics_descriptor_sets(
@@ -377,7 +431,7 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
 
     fn bind_index_buffer(&mut self, buffer: &B::Buffer, offset: DeviceSize, format: IndexFormat);
 
-    /// Renders primitives.
+    /// Render primitives.
     ///
     /// `vertex_range` specifies the consecutive range of vertex indices to draw.
     ///
@@ -385,7 +439,7 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
     /// Specify `0..1` to perform a normal (not instanced) rendering.
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>);
 
-    /// Renders primitives using a currently bound index buffer.
+    /// Render primitives using a currently bound index buffer.
     ///
     /// Vertex indices are retrived from the consecutive range of index buffer
     /// specified by `index_buffer_range`.
