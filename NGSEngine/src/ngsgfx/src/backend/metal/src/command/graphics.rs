@@ -8,6 +8,8 @@ use {core, metal, OCPtr};
 use imp::{Backend, CommandBuffer, StencilState, GraphicsPipeline, PipelineLayout, Buffer,
           DescriptorSet, SecondaryCommandBuffer, GraphicsResourceBinder};
 
+use std::ops::Range;
+
 use super::descriptors::DescriptorSetBindingState;
 
 #[derive(Debug)]
@@ -125,7 +127,12 @@ impl RenderCommandEncoder {
         );
     }
 
-    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: core::DeviceSize, format: core::IndexFormat) {
+    fn bind_index_buffer(
+        &mut self,
+        buffer: &Buffer,
+        offset: core::DeviceSize,
+        format: core::IndexFormat,
+    ) {
         self.index_binding = Some((
             match format {
                 core::IndexFormat::U16 => metal::MTLIndexType::UInt16,
@@ -136,59 +143,59 @@ impl RenderCommandEncoder {
         ));
     }
 
-    fn draw(
-        &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        start_instance_index: u32,
-    ) {
-        if num_instances == 1 && start_instance_index == 0 {
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
+        if vertex_range.len() == 0 {
+            return;
+        }
+        if instance_range == (0..1) {
             // FIXME: this maybe causes instance index to be undefined?
             self.metal_encoder.draw_primitives(
                 self.expect_pipeline().primitive_type(),
-                start_vertex_index as u64,
-                num_vertices as u64,
+                vertex_range.start as u64,
+                vertex_range.len() as u64,
             );
-        } else if num_instances > 0 {
+        } else if instance_range.len() > 0 {
             self.metal_encoder.draw_primitives_instanced(
                 self.expect_pipeline().primitive_type(),
-                start_vertex_index as u64,
-                num_vertices as u64,
-                num_instances as u64,
-                start_instance_index as u64,
+                vertex_range.start as u64,
+                vertex_range.len() as u64,
+                instance_range.len() as u64,
+                instance_range.start as u64,
             );
         }
     }
-    fn draw_indexed(&mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        index_offset: u32,
-        start_instance_index: u32,
+    fn draw_indexed(
+        &mut self,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
     ) {
-        let &(index_type, ref index_buf, index_base) =
-            self.index_binding.as_ref().expect("index buffer is not bound");
-        let index_offset = index_base +
-        if num_instances == 1 && start_instance_index == 0 && start_vertex_index == 0 {
+        if index_buffer_range.len() == 0 {
+            return;
+        }
+        let &(index_type, ref index_buf, index_offset) = self.index_binding.as_ref().expect(
+            "index buffer is not bound",
+        );
+
+        if instance_range == (0..1) && vertex_offset == 0 {
             // FIXME: this maybe causes instance index to be undefined?
             self.metal_encoder.draw_indexed_primitives(
                 self.expect_pipeline().primitive_type(),
-                num_vertices as u64,
+                index_buffer_range.len() as u64,
                 index_type,
                 index_buf.metal_buffer(),
                 index_offset,
             );
-        } else if num_instances > 0 {
+        } else if instance_range.len() > 0 {
             self.metal_encoder.draw_indexed_primitives_instanced(
                 self.expect_pipeline().primitive_type(),
-                num_vertices as u64,
+                index_buffer_range.len() as u64,
                 index_type,
                 index_buf.metal_buffer(),
                 index_offset,
-                num_instances as u64,
-                start_vertex_index as i64,
-                start_instance_index as u64,
+                instance_range.len() as u64,
+                vertex_offset as i64,
+                instance_range.start as u64,
             );
         }
     }
@@ -258,34 +265,22 @@ impl core::RenderSubpassCommandEncoder<Backend> for CommandBuffer {
         )
     }
 
-    fn draw(
-        &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        start_instance_index: u32,
-    ) {
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
         self.expect_graphics_pipeline().draw(
-            num_vertices,
-            num_instances,
-            start_vertex_index,
-            start_instance_index,
+            vertex_range,
+            instance_range,
         )
     }
     fn draw_indexed(
         &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        index_offset: u32,
-        start_instance_index: u32,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
     ) {
         self.expect_graphics_pipeline().draw_indexed(
-            num_vertices,
-            num_instances,
-            start_vertex_index,
-            index_offset,
-            start_instance_index,
+            index_buffer_range,
+            vertex_offset,
+            instance_range,
         )
     }
 }
@@ -353,34 +348,22 @@ impl core::RenderSubpassCommandEncoder<Backend> for SecondaryCommandBuffer {
         )
     }
 
-    fn draw(
-        &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        start_instance_index: u32,
-    ) {
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
         self.render_command_encoder().draw(
-            num_vertices,
-            num_instances,
-            start_vertex_index,
-            start_instance_index,
+            vertex_range,
+            instance_range,
         )
     }
     fn draw_indexed(
         &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        index_offset: u32,
-        start_instance_index: u32,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
     ) {
         self.render_command_encoder().draw_indexed(
-            num_vertices,
-            num_instances,
-            start_vertex_index,
-            index_offset,
-            start_instance_index,
+            index_buffer_range,
+            vertex_offset,
+            instance_range,
         )
     }
 }

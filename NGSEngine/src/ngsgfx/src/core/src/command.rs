@@ -8,6 +8,7 @@
 //! TODO: provide a documentation on command passes and device engines
 use std::fmt::Debug;
 use std::any::Any;
+use std::ops::Range;
 
 use enumflags::BitFlags;
 
@@ -376,21 +377,34 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
 
     fn bind_index_buffer(&mut self, buffer: &B::Buffer, offset: DeviceSize, format: IndexFormat);
 
-    fn draw(
-        &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        start_instance_index: u32,
-    );
+    /// Renders primitives.
+    ///
+    /// `vertex_range` specifies the consecutive range of vertex indices to draw.
+    ///
+    /// The primivies are drawn for `instance_range.len()` times.
+    /// Specify `0..1` to perform a normal (not instanced) rendering.
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>);
 
+    /// Renders primitives using a currently bound index buffer.
+    ///
+    /// Vertex indices are retrived from the consecutive range of index buffer
+    /// specified by `index_buffer_range`.
+    /// Before indexing into the vertex buffers, the value of `vertex_offset` is
+    /// added to the vertex index.
+    ///
+    /// The primivies are drawn for `instance_range.len()` times. Specify `0..1`
+    /// for `instance_range` to perform a normal (not instanced) rendering.
+    ///
+    /// The largest index value (`0xffff` for `U16` or `0xffffffff` for `U32`)
+    /// is used for primitive restart functionality.
+    /// This functionality is unavailable to "list" primitive topologies.
+    /// For such topologies, the largest index value simply should not be used
+    /// (due to compatibility issues).
     fn draw_indexed(
         &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        index_offset: u32,
-        start_instance_index: u32,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
     );
 
     // TODO: indirect draw

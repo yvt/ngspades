@@ -319,7 +319,7 @@ impl<B: Backend> RendererView<B> {
         cb.bind_graphics_pipeline(&renderer.pipeline);
         cb.set_viewport(&viewport);
         cb.bind_vertex_buffers(0, &[(&renderer.vertex_buffer, 0)]);
-        cb.draw(3, 1, 0, 0);
+        cb.draw(0..3, 0..1);
         cb.end_debug_group();
 
         cb.end_render_subpass();

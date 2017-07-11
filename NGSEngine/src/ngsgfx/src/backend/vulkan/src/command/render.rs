@@ -5,6 +5,8 @@
 //
 use core;
 
+use std::ops::Range;
+
 use imp::{CommandBuffer, SecondaryCommandBuffer, GraphicsPipeline, PipelineLayout, DescriptorSet,
           StencilState, Buffer};
 use {DeviceRef, Backend};
@@ -60,20 +62,16 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
 
     fn draw(
         &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        start_instance_index: u32,
+        vertex_range: Range<u32>,
+        instance_range: Range<u32>,
     ) {
         unimplemented!()
     }
     fn draw_indexed(
         &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        index_offset: u32,
-        start_instance_index: u32,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
     ) {
         unimplemented!()
     }
@@ -130,20 +128,16 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
 
     fn draw(
         &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        start_instance_index: u32,
+        vertex_range: Range<u32>,
+        instance_range: Range<u32>,
     ) {
         unimplemented!()
     }
     fn draw_indexed(
         &mut self,
-        num_vertices: u32,
-        num_instances: u32,
-        start_vertex_index: u32,
-        index_offset: u32,
-        start_instance_index: u32,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
     ) {
         unimplemented!()
     }
