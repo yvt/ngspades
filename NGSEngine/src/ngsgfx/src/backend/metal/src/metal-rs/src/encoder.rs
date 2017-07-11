@@ -380,12 +380,13 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn draw_primitives_instanced(&self, primitive_type: MTLPrimitiveType, vertex_start: u64, vertex_count: u64, instance_count: u64) {
+    pub fn draw_primitives_instanced(&self, primitive_type: MTLPrimitiveType, vertex_start: u64, vertex_count: u64, instance_count: u64, base_instance: u64) {
         unsafe {
             msg_send![self.0, drawPrimitives:primitive_type
                                  vertexStart:vertex_start
                                  vertexCount:vertex_count
-                               instanceCount:instance_count]
+                               instanceCount:instance_count
+                                baseInstance:base_instance]
         }
     }
 

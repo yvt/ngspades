@@ -15,6 +15,7 @@ pub(crate) struct RenderCommandEncoder {
     metal_encoder: OCPtr<metal::MTLRenderCommandEncoder>,
     pipeline: Option<GraphicsPipeline>,
     descriptor_set_binding: DescriptorSetBindingState,
+    index_binding: Option<(metal::MTLIndexType, Buffer, u64)>,
 }
 
 #[derive(Debug)]
@@ -29,6 +30,7 @@ impl RenderCommandEncoder {
             metal_encoder,
             pipeline: None,
             descriptor_set_binding: DescriptorSetBindingState::new(),
+            index_binding: None,
         }
     }
 
@@ -89,8 +91,11 @@ impl RenderCommandEncoder {
             zfar: value.max_depth as f64,
         });
     }
-    fn set_scissor_rect(&mut self, _: &core::Rect2D<u32>) {
-        unimplemented!()
+    fn set_scissor_rect(&mut self, rect: &core::Rect2D<u32>) {
+        self.expect_pipeline().set_dynamic_scissor_rect(
+            *self.metal_encoder,
+            rect,
+        );
     }
     fn bind_graphics_descriptor_sets(
         &mut self,
@@ -120,8 +125,15 @@ impl RenderCommandEncoder {
         );
     }
 
-    fn bind_index_buffer(&mut self, _: &Buffer, _: core::DeviceSize, _: core::IndexFormat) {
-        unimplemented!()
+    fn bind_index_buffer(&mut self, buffer: &Buffer, offset: core::DeviceSize, format: core::IndexFormat) {
+        self.index_binding = Some((
+            match format {
+                core::IndexFormat::U16 => metal::MTLIndexType::UInt16,
+                core::IndexFormat::U32 => metal::MTLIndexType::UInt32,
+            },
+            buffer.clone(),
+            offset,
+        ));
     }
 
     fn draw(
@@ -139,18 +151,46 @@ impl RenderCommandEncoder {
                 num_vertices as u64,
             );
         } else if num_instances > 0 {
-            // TODO: this restriction is not documentated nor exposed anywhere
-            assert_eq!(start_instance_index, 0, "not supported");
             self.metal_encoder.draw_primitives_instanced(
                 self.expect_pipeline().primitive_type(),
                 start_vertex_index as u64,
                 num_vertices as u64,
                 num_instances as u64,
+                start_instance_index as u64,
             );
         }
     }
-    fn draw_indexed(&mut self, _: u32, _: u32, _: u32, _: u32, _: u32) {
-        unimplemented!()
+    fn draw_indexed(&mut self,
+        num_vertices: u32,
+        num_instances: u32,
+        start_vertex_index: u32,
+        index_offset: u32,
+        start_instance_index: u32,
+    ) {
+        let &(index_type, ref index_buf, index_base) =
+            self.index_binding.as_ref().expect("index buffer is not bound");
+        let index_offset = index_base +
+        if num_instances == 1 && start_instance_index == 0 && start_vertex_index == 0 {
+            // FIXME: this maybe causes instance index to be undefined?
+            self.metal_encoder.draw_indexed_primitives(
+                self.expect_pipeline().primitive_type(),
+                num_vertices as u64,
+                index_type,
+                index_buf.metal_buffer(),
+                index_offset,
+            );
+        } else if num_instances > 0 {
+            self.metal_encoder.draw_indexed_primitives_instanced(
+                self.expect_pipeline().primitive_type(),
+                num_vertices as u64,
+                index_type,
+                index_buf.metal_buffer(),
+                index_offset,
+                num_instances as u64,
+                start_vertex_index as i64,
+                start_instance_index as u64,
+            );
+        }
     }
 }
 

@@ -189,7 +189,7 @@ pub fn translate_scissor_rect(value: &core::Rect2D<u32>) -> metal::MTLScissorRec
     metal::MTLScissorRect {
         x: value.min.x as u64,
         y: value.min.y as u64,
-        width: (value.max.x - value.min.x) as u64,
-        height: (value.max.y - value.min.y) as u64,
+        width: value.max.x.saturating_sub(value.min.x) as u64,
+        height: value.max.y.saturating_sub(value.min.y) as u64,
     }
 }

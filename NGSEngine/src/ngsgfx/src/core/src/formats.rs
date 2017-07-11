@@ -415,3 +415,15 @@ pub enum IndexFormat {
     U16,
     U32,
 }
+
+
+impl IndexFormat {
+    /// Retrieve the number of bytes per vertex.
+    pub fn size(&self) -> usize {
+        match *self {
+            IndexFormat::U16 => 2,
+            IndexFormat::U32 => 4,
+        }
+    }
+}
+

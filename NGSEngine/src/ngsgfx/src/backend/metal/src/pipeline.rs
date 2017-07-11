@@ -382,15 +382,25 @@ impl GraphicsPipeline {
     pub(crate) fn bind_pipeline_state(&self, encoder: metal::MTLRenderCommandEncoder) {
         encoder.set_render_pipeline_state(*self.data.metal_pipeline);
 
-        if let Some(GraphicsPipelineRasterizerData {
-                        metal_ds_state: Some((ref state, ref s_ref)), ..
-                    }) = self.data.raster_data
-        {
-            encoder.set_depth_stencil_state(**state);
-            encoder.set_stencil_front_back_reference_value(s_ref.front, s_ref.back);
+        if let Some(ref raster_data) = self.data.raster_data {
+            if let Some((ref state, ref s_ref)) = raster_data.metal_ds_state {
+                encoder.set_depth_stencil_state(**state);
+                encoder.set_stencil_front_back_reference_value(s_ref.front, s_ref.back);
+            }
+            if let Some(ref scissor_rect) = raster_data.scissor_rect {
+                encoder.set_scissor_rect(*scissor_rect);
+            }
+            if let Some(ref viewport) = raster_data.viewport {
+                encoder.set_viewport(*viewport);
+            }
+            encoder.set_cull_mode(raster_data.cull_mode);
+            encoder.set_front_facing_winding(raster_data.front_face);
+            encoder.set_depth_clip_mode(raster_data.depth_clip_mode);
+            encoder.set_triangle_fill_mode(raster_data.triangle_fill_mode);
+            if let Some(ref bc) = raster_data.blend_constants {
+                encoder.set_blend_color(bc[0], bc[1], bc[2], bc[3]);
+            }
         }
-
-        // TODO: set static states
     }
 
     pub(crate) fn primitive_type(&self) -> metal::MTLPrimitiveType {
@@ -418,6 +428,20 @@ impl GraphicsPipeline {
                 );
             }
         }
+    }
+
+    fn expect_rasterizer_data(&self) -> &GraphicsPipelineRasterizerData {
+        self.data.raster_data.as_ref().expect("rasterization is not enabled")
+    }
+
+    pub(crate) fn set_dynamic_scissor_rect(
+        &self,
+        encoder: metal::MTLRenderCommandEncoder,
+        rect: &core::Rect2D<u32>,
+    ) {
+        debug_assert!(self.expect_rasterizer_data().scissor_rect.is_none(),
+            "scissor rect is not a part of dynamic states");
+        encoder.set_scissor_rect(utils::translate_scissor_rect(rect));
     }
 }
 
