@@ -26,7 +26,7 @@ pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     ///
     /// The specified command buffers must be in the `Executable` state.
     ///
-    /// If `event` is specified, it will be signaled upon cmpletion of
+    /// If `event` is specified, it will be signaled upon completion of
     /// the execution. It must not be associated with any other
     /// commands that has not yet completed execution.
     fn submit_commands(
@@ -46,7 +46,7 @@ pub trait CommandBuffer<B: Backend>
     : Debug + Send + Any + CommandEncoder<B> + Marker {
     fn state(&self) -> CommandBufferState;
 
-    /// Stall the current threa until the execution of the command buffer
+    /// Stall the current thread until the execution of the command buffer
     /// completes.
     ///
     /// The current state must be one of `Pending` and `Completed`.
@@ -312,7 +312,7 @@ pub trait BarrierCommandEncoder<B: Backend>
     /// Instruct the device to convert the image layout of the given image into another one.
     ///
     /// There must be an active pass of any type.
-    /// During a render pass, there must be an active subpsas.
+    /// During a render pass, there must be an active subpass.
     fn image_layout_transition(
         &mut self,
         source_stage: PipelineStageFlags,
@@ -333,7 +333,7 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
     /// A render pass must be active and compatible with the specified pipeline.
     ///
     /// All dynamic states will be reseted. If the pipeline contains any
-    /// dynamic states, their values must be specified via comands before recording any
+    /// dynamic states, their values must be specified via commands before recording any
     /// draw commands. The following shows the correspondences between some fields of
     /// [`GraphicsPipelineRasterizerDescription`], which can be contained in
     /// [`GraphicsPipelineDescription`]`::rasterizer`, and the commands to
@@ -435,18 +435,18 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
     ///
     /// `vertex_range` specifies the consecutive range of vertex indices to draw.
     ///
-    /// The primivies are drawn for `instance_range.len()` times.
+    /// The primitives are drawn for `instance_range.len()` times.
     /// Specify `0..1` to perform a normal (not instanced) rendering.
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>);
 
     /// Render primitives using a currently bound index buffer.
     ///
-    /// Vertex indices are retrived from the consecutive range of index buffer
+    /// Vertex indices are retrieved from the consecutive range of index buffer
     /// specified by `index_buffer_range`.
     /// Before indexing into the vertex buffers, the value of `vertex_offset` is
     /// added to the vertex index.
     ///
-    /// The primivies are drawn for `instance_range.len()` times. Specify `0..1`
+    /// The primitives are drawn for `instance_range.len()` times. Specify `0..1`
     /// for `instance_range` to perform a normal (not instanced) rendering.
     ///
     /// The largest index value (`0xffff` for `U16` or `0xffffffff` for `U32`)

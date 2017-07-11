@@ -9,7 +9,7 @@ use cgmath::Vector3;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceLimits {
-    /// Indicates whether the backend supports the memory managment using
+    /// Indicates whether the backend supports the memory management using
     /// specialized heaps or not.
     ///
     /// If this is `false`,
