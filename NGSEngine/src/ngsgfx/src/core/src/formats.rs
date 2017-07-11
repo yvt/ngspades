@@ -210,6 +210,95 @@ impl ImageFormat {
             _ => false,
         }
     }
+
+    pub fn size_class(&self) -> ImageFormatSizeClass {
+        match *self {
+            ImageFormat::R8(_, _) => ImageFormatSizeClass::Color8,
+            ImageFormat::Rg8(_, _) => ImageFormatSizeClass::Color16,
+            ImageFormat::Rgba8(_, _) => ImageFormatSizeClass::Color32,
+            ImageFormat::Rgb10A2(_, _) => ImageFormatSizeClass::Color32,
+            ImageFormat::R16(_, _) => ImageFormatSizeClass::Color16,
+            ImageFormat::Rg16(_, _) => ImageFormatSizeClass::Color32,
+            ImageFormat::Rgba16(_, _) => ImageFormatSizeClass::Color64,
+            ImageFormat::R32(_, _) => ImageFormatSizeClass::Color32,
+            ImageFormat::Rg32(_, _) => ImageFormatSizeClass::Color64,
+            ImageFormat::Rgba32(_, _) => ImageFormatSizeClass::Color128,
+            ImageFormat::Bgra8(_, _) => ImageFormatSizeClass::Color32,
+            ImageFormat::RFloat16 => ImageFormatSizeClass::Color16,
+            ImageFormat::RFloat32 => ImageFormatSizeClass::Color32,
+            ImageFormat::RgFloat16 => ImageFormatSizeClass::Color32,
+            ImageFormat::RgFloat32 => ImageFormatSizeClass::Color64,
+            ImageFormat::RgbaFloat16 => ImageFormatSizeClass::Color64,
+            ImageFormat::RgbaFloat32 => ImageFormatSizeClass::Color128,
+            ImageFormat::SrgbR8 => ImageFormatSizeClass::Color8,
+            ImageFormat::SrgbRg8 => ImageFormatSizeClass::Color16,
+            ImageFormat::SrgbRgba8 => ImageFormatSizeClass::Color32,
+            ImageFormat::SrgbBgra8 => ImageFormatSizeClass::Color32,
+            ImageFormat::Depth16 => ImageFormatSizeClass::Depth16,
+            ImageFormat::Depth24 => ImageFormatSizeClass::Depth24,
+            ImageFormat::DepthFloat32 => ImageFormatSizeClass::Depth32,
+            ImageFormat::Depth24Stencil8 => ImageFormatSizeClass::Depth24Stencil8,
+            ImageFormat::DepthFloat32Stencil8 => ImageFormatSizeClass::Depth32Stencil8,
+        }
+    }
+}
+
+/// Size classes for image formats.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ImageFormatSizeClass {
+    /// Color format class with 8 bits per pixel.
+    Color8,
+
+    /// Color format class with 16 bits per pixel.
+    Color16,
+
+    /// Color format class with 24 bits per pixel.
+    Color24,
+
+    /// Color format class with 32 bits per pixel.
+    Color32,
+
+    /// Color format class with 64 bits per pixel.
+    Color64,
+
+    /// Color format class with 128 bits per pixel.
+    Color128,
+
+    /// Depth format class with 16 bits per pixel.
+    Depth16,
+
+    /// Depth format class with 24 bits per pixel.
+    Depth24,
+
+    /// Depth format class with 32 bits per pixel.
+    Depth32,
+
+    /// Depth and stencil combined format class with 24 and 8 bits per pixel
+    /// for the depth and stencil component, respectively.
+    Depth24Stencil8,
+
+    /// Depth and stencil combined format class with 32 and 8 bits per pixel
+    /// for the depth and stencil component, respectively
+    Depth32Stencil8,
+}
+
+impl ImageFormatSizeClass {
+    /// Compute the *minimum* number of bytes consumed by each pixel for a given format size class.
+    pub fn num_bytes_per_pixel(&self) -> usize {
+        match *self {
+            ImageFormatSizeClass::Color8 => 1,
+            ImageFormatSizeClass::Color16 => 2,
+            ImageFormatSizeClass::Color24 => 3,
+            ImageFormatSizeClass::Color32 => 4,
+            ImageFormatSizeClass::Color64 => 8,
+            ImageFormatSizeClass::Color128 => 16,
+            ImageFormatSizeClass::Depth16 => 2,
+            ImageFormatSizeClass::Depth24 => 3,
+            ImageFormatSizeClass::Depth32 => 4,
+            ImageFormatSizeClass::Depth24Stencil8 => 4,
+            ImageFormatSizeClass::Depth32Stencil8 => 5,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
