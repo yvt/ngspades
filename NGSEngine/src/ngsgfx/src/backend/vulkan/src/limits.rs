@@ -26,11 +26,7 @@ pub struct EngineQueueMappings {
 
 impl EngineQueueMappings {
     pub(crate) fn into_array(&self) -> [&EngineQueueMapping; 3] {
-        [
-            &self.universal,
-            &self.compute,
-            &self.copy,
-        ]
+        [&self.universal, &self.compute, &self.copy]
     }
 }
 

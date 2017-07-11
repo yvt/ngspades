@@ -63,11 +63,7 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         unimplemented!()
     }
 
-    fn draw(
-        &mut self,
-        vertex_range: Range<u32>,
-        instance_range: Range<u32>,
-    ) {
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
         unimplemented!()
     }
     fn draw_indexed(
@@ -132,11 +128,7 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         unimplemented!()
     }
 
-    fn draw(
-        &mut self,
-        vertex_range: Range<u32>,
-        instance_range: Range<u32>,
-    ) {
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
         unimplemented!()
     }
     fn draw_indexed(
