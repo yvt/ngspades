@@ -84,7 +84,10 @@ impl core::Factory<Backend> for Factory {
         // Return a dummy value since we do not have a real
         // heap implementation
         description.debug_expect_valid(Some(self.device_data.capabilities()), "");
-        unimplemented!()
+        core::MemoryRequirements {
+            size: 1,
+            alignment: 1,
+        }
     }
 
     fn make_sampler(&self, description: &core::SamplerDescription) -> core::Result<Sampler> {
