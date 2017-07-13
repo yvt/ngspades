@@ -25,7 +25,7 @@ extern crate block;
 use objc::Message;
 use objc::runtime::{Object, Class, BOOL, YES, NO};
 
-use cocoa::foundation::NSSize;
+use cocoa::foundation::{NSSize, NSRect};
 
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -248,6 +248,20 @@ impl CAMetalLayer {
         }
     }
 
+    // inherited from `CALayer`
+    pub fn bounds(&self) -> NSRect {
+        unsafe {
+            msg_send![self.0, bounds]
+        }
+    }
+
+    // inherited from `CALayer`
+    pub fn contents_scale(&self) -> f64 {
+        unsafe {
+            msg_send![self.0, contentsScale]
+        }
+    }
+
     pub fn presents_with_transaction(&self) -> bool {
         unsafe {
             match msg_send![self.0, presentsWithTransaction] {
@@ -261,6 +275,12 @@ impl CAMetalLayer {
     pub fn set_presents_with_transaction(&self, transaction: bool) {
         unsafe {
             msg_send![self.0, setPresentsWithTransaction:transaction];
+        }
+    }
+
+    pub fn set_framebuffer_only(&self, framebuffer_only: bool) {
+        unsafe {
+            msg_send![self.0, setFramebufferOnly:framebuffer_only];
         }
     }
 

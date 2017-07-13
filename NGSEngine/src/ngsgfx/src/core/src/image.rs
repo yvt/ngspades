@@ -473,7 +473,7 @@ impl<'a, TImage: Image> Validate for ImageViewDescription<'a, TImage> {
 #[derive(Debug, Clone, Copy)]
 pub struct CombinedImageAndImageViewDescription<'a, TImage: Image>(
     pub &'a ImageDescription,
-    pub &'a ImageViewDescription<'a, TImage>,
+    pub &'a ImageViewDescription<'a, TImage>
 );
 
 /// Validation errors for [`CombinedImageAndImageViewDescription`](struct.CombinedImageAndImageViewDescription.html).
@@ -511,8 +511,7 @@ impl<'a, TImage: Image> Validate for CombinedImageAndImageViewDescription<'a, TI
         let view_desc = self.1;
 
         if view_desc.range.num_mip_levels.unwrap_or(1).saturating_add(
-            view_desc.range
-                .base_mip_level,
+            view_desc.range.base_mip_level,
         ) > image_desc.num_mip_levels
         {
             callback(
@@ -520,9 +519,12 @@ impl<'a, TImage: Image> Validate for CombinedImageAndImageViewDescription<'a, TI
             );
         }
 
-        if view_desc.range.num_array_layers.unwrap_or(1).saturating_add(
-            view_desc.range.base_array_layer,
-        ) > image_desc.num_array_layers
+        if view_desc
+            .range
+            .num_array_layers
+            .unwrap_or(1)
+            .saturating_add(view_desc.range.base_array_layer) >
+            image_desc.num_array_layers
         {
             callback(
                 CombinedImageAndImageViewDescriptionValidationError::TooManyArrayLayers,

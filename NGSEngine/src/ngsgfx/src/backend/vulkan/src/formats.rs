@@ -76,6 +76,71 @@ pub fn translate_image_format(format: ImageFormat) -> Option<vk::Format> {
     }
 }
 
+pub fn reverse_translate_image_format(format: vk::Format) -> Option<ImageFormat> {
+    match format {
+        Format::R8Snorm => Some(ImageFormat::R8(Signed, Normalized)),
+        Format::R8Sint => Some(ImageFormat::R8(Signed, Unnormalized)),
+        Format::R8Unorm => Some(ImageFormat::R8(Unsigned, Normalized)),
+        Format::R8Uint => Some(ImageFormat::R8(Unsigned, Unnormalized)),
+        Format::R8Srgb => Some(ImageFormat::SrgbR8),
+        Format::R8g8Snorm => Some(ImageFormat::Rg8(Signed, Normalized)),
+        Format::R8g8Sint => Some(ImageFormat::Rg8(Signed, Unnormalized)),
+        Format::R8g8Unorm => Some(ImageFormat::Rg8(Unsigned, Normalized)),
+        Format::R8g8Uint => Some(ImageFormat::Rg8(Unsigned, Unnormalized)),
+        Format::R8g8Srgb => Some(ImageFormat::SrgbRg8),
+        Format::R8g8b8a8Snorm => Some(ImageFormat::Rgba8(Signed, Normalized)),
+        Format::R8g8b8a8Sint => Some(ImageFormat::Rgba8(Signed, Unnormalized)),
+        Format::R8g8b8a8Unorm => Some(ImageFormat::Rgba8(Unsigned, Normalized)),
+        Format::R8g8b8a8Uint => Some(ImageFormat::Rgba8(Unsigned, Unnormalized)),
+        Format::R8g8b8a8Srgb => Some(ImageFormat::SrgbRgba8),
+
+        Format::B8g8r8a8Snorm => Some(ImageFormat::Bgra8(Signed, Normalized)),
+        Format::B8g8r8a8Sint => Some(ImageFormat::Bgra8(Signed, Unnormalized)),
+        Format::B8g8r8a8Unorm => Some(ImageFormat::Bgra8(Unsigned, Normalized)),
+        Format::B8g8r8a8Uint => Some(ImageFormat::Bgra8(Unsigned, Unnormalized)),
+        Format::B8g8r8a8Srgb => Some(ImageFormat::SrgbBgra8),
+
+        Format::A2b10g10r10SnormPack32 => Some(ImageFormat::Rgb10A2(Signed, Normalized)),
+        Format::A2b10g10r10SintPack32 => Some(ImageFormat::Rgb10A2(Signed, Unnormalized)),
+        Format::A2b10g10r10UnormPack32 => Some(ImageFormat::Rgb10A2(Unsigned, Normalized)),
+        Format::A2b10g10r10UintPack32 => Some(ImageFormat::Rgb10A2(Unsigned, Unnormalized)),
+
+        Format::R16Snorm => Some(ImageFormat::R16(Signed, Normalized)),
+        Format::R16Sint => Some(ImageFormat::R16(Signed, Unnormalized)),
+        Format::R16Unorm => Some(ImageFormat::R16(Unsigned, Normalized)),
+        Format::R16Uint => Some(ImageFormat::R16(Unsigned, Unnormalized)),
+        Format::R16Sfloat => Some(ImageFormat::RFloat16),
+        Format::R16g16Snorm => Some(ImageFormat::Rg16(Signed, Normalized)),
+        Format::R16g16Sint => Some(ImageFormat::Rg16(Signed, Unnormalized)),
+        Format::R16g16Unorm => Some(ImageFormat::Rg16(Unsigned, Normalized)),
+        Format::R16g16Uint => Some(ImageFormat::Rg16(Unsigned, Unnormalized)),
+        Format::R16g16Sfloat => Some(ImageFormat::RgFloat16),
+        Format::R16g16b16a16Snorm => Some(ImageFormat::Rgba16(Signed, Normalized)),
+        Format::R16g16b16a16Sint => Some(ImageFormat::Rgba16(Signed, Unnormalized)),
+        Format::R16g16b16a16Unorm => Some(ImageFormat::Rgba16(Unsigned, Normalized)),
+        Format::R16g16b16a16Uint => Some(ImageFormat::Rgba16(Unsigned, Unnormalized)),
+        Format::R16g16b16a16Sfloat => Some(ImageFormat::RgbaFloat16),
+
+        Format::R32Sint => Some(ImageFormat::R32(Signed, Unnormalized)),
+        Format::R32Uint => Some(ImageFormat::R32(Unsigned, Unnormalized)),
+        Format::R32Sfloat => Some(ImageFormat::RFloat32),
+        Format::R32g32Sint => Some(ImageFormat::Rg32(Signed, Unnormalized)),
+        Format::R32g32Uint => Some(ImageFormat::Rg32(Unsigned, Unnormalized)),
+        Format::R32g32Sfloat => Some(ImageFormat::RgFloat32),
+        Format::R32g32b32a32Sint => Some(ImageFormat::Rgba32(Signed, Unnormalized)),
+        Format::R32g32b32a32Uint => Some(ImageFormat::Rgba32(Unsigned, Unnormalized)),
+        Format::R32g32b32a32Sfloat => Some(ImageFormat::RgbaFloat32),
+
+        Format::D16Unorm => Some(ImageFormat::Depth16),
+        Format::X8D24UnormPack32 => Some(ImageFormat::Depth24),
+        Format::D24UnormS8Uint => Some(ImageFormat::Depth24Stencil8),
+        Format::D32Sfloat => Some(ImageFormat::DepthFloat32),
+        Format::D32SfloatS8Uint => Some(ImageFormat::DepthFloat32Stencil8),
+
+        _ => None,
+    }
+}
+
 pub fn translate_vertex_format(format: VertexFormat) -> Option<vk::Format> {
     match format {
         VertexFormat(Scalar, I8(Signed, Normalized)) => Some(Format::R8Snorm),

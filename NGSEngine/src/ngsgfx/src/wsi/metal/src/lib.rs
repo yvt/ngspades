@@ -21,17 +21,16 @@ extern crate ngsgfx_wsi_core as wsi_core;
 use backend_metal::ll as metal;
 use wsi_core::winit;
 use core::{Instance, DeviceBuilder};
+use core::Signedness::*;
+use core::Normalizedness::*;
 
 use std::sync::Arc;
-use std::cell::RefCell;
 use std::{mem, fmt, ptr};
 use std::os::raw::c_void;
 
-use cgmath::Vector2;
+use cgmath::Vector3;
 
 use objc::runtime::YES;
-
-use backend_metal::imp::ImageView;
 
 use cocoa::base::id as cocoa_id;
 use cocoa::foundation::{NSSize, NSString};
@@ -42,56 +41,142 @@ use winit::os::macos::WindowExt;
 mod utils;
 use utils::OCPtr;
 
-pub struct MetalWindow {
-    window: winit::Window,
+#[derive(Debug)]
+pub struct Drawable {
+    drawable: OCPtr<metal::CAMetalDrawable>,
+    image: backend_metal::imp::Image,
+}
+
+impl Drawable {
+    pub fn new(drawable: metal::CAMetalDrawable) -> Drawable {
+        Drawable {
+            drawable: OCPtr::new(drawable).unwrap(),
+            image: backend_metal::imp::Image::from_raw(drawable.texture()),
+        }
+    }
+    pub fn drawable(&self) -> metal::CAMetalDrawable {
+        *self.drawable
+    }
+}
+
+impl wsi_core::Drawable for Drawable {
+    type Backend = backend_metal::Backend;
+
+    fn image(&self) -> &backend_metal::imp::Image {
+        &self.image
+    }
+
+    fn acquiring_fence(&self) -> Option<&backend_metal::imp::Fence> {
+        None
+    }
+
+    fn finalize(
+        &self,
+        command_buffer: &mut backend_metal::imp::CommandBuffer,
+        _: core::PipelineStageFlags,
+        _: core::AccessTypeFlags,
+        _: core::ImageLayout,
+    ) {
+        command_buffer
+            .metal_command_buffer()
+            .unwrap()
+            .present_drawable(self.drawable());
+    }
+
+    fn present(&self) {}
+}
+
+pub struct Swapchain {
+    window: Arc<winit::Window>,
+    device: Arc<backend_metal::Device>,
     layer: OCPtr<metal::CAMetalLayer>,
-    drawable: RefCell<Option<OCPtr<metal::CAMetalDrawable>>>,
-    pool: RefCell<Option<OCPtr<metal::NSAutoreleasePool>>>,
+    color_space: wsi_core::ColorSpace,
+}
+
+impl fmt::Debug for Swapchain {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("Swapchain")
+            .field("device", &self.device)
+            .field("layer", &self.layer)
+            .field("color_space", &self.color_space)
+            .finish()
+    }
+}
+
+impl Swapchain {
+    pub fn layer(&self) -> metal::CAMetalLayer {
+        *self.layer
+    }
+
+    fn physical_size(&self) -> (u32, u32) {
+        self.window.get_inner_size_pixels().unwrap()
+    }
+
+    fn resize(&self) {
+        let (w, h) = self.physical_size();
+        self.layer.set_drawable_size(
+            NSSize::new(w as f64, h as f64),
+        );
+    }
+}
+
+impl wsi_core::Swapchain for Swapchain {
+    type Backend = backend_metal::Backend;
+    type Drawable = Drawable;
+
+    fn device(&self) -> &backend_metal::Device {
+        &self.device
+    }
+
+    fn next_drawable(
+        &self,
+        _: &wsi_core::FrameDescription,
+    ) -> Result<Self::Drawable, wsi_core::SwapchainError> {
+        let d_size = self.layer.drawable_size();
+        let l_size = self.physical_size();
+        if (d_size.width as u32, d_size.height as u32) != l_size {
+            // emulate the behavior of Windows' Vulkan swapchain
+            return Err(wsi_core::SwapchainError::OutOfDate);
+        }
+        let nd = self.layer.next_drawable();
+        match nd {
+            Some(nd) => Ok(Drawable::new(nd)),
+            None => Err(wsi_core::SwapchainError::NotReady),
+        }
+    }
+
+    fn image_extents(&self) -> Vector3<u32> {
+        let size = self.layer.drawable_size();
+        Vector3::new(size.width as u32, size.height as u32, 1)
+    }
+    fn image_num_array_layers(&self) -> u32 {
+        1
+    }
+    fn image_format(&self) -> core::ImageFormat {
+        backend_metal::imp::translate_metal_pixel_format(self.layer.pixel_format())
+    }
+    fn image_colorspace(&self) -> wsi_core::ColorSpace {
+        self.color_space
+    }
+}
+
+pub struct MetalWindow {
+    window: Arc<winit::Window>,
+    swapchain: Swapchain,
     device: Arc<backend_metal::Device>,
 }
 
 impl fmt::Debug for MetalWindow {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("MetalWindow")
-            .field("layer", &self.layer)
-            .field("drawable", &self.drawable)
-            .field("pool", &self.pool)
+            .field("swapchain", &self.swapchain)
             .field("device", &self.device)
             .finish()
     }
 }
 
-impl MetalWindow {
-    /// Retrieve the current drawable.
-    ///
-    /// The returned `CAMetalDrawable` is valid until this object is dropped or
-    /// `swap_buffers` or `set_framebuffer_size` is called.
-    pub fn drawable(&self) -> metal::CAMetalDrawable {
-        self.ensure_have_drawable();
-        **self.drawable.borrow().as_ref().unwrap()
-    }
-
-    fn update_drawable(&self) {
-        // FIXME: what if this fails?
-        let nd = self.layer.next_drawable().expect(
-            "I just don't know what went wrong! *hopping on a cloud*",
-        );
-        *self.drawable.borrow_mut() = Some(OCPtr::new(nd).unwrap());
-    }
-
-    fn ensure_have_drawable(&self) {
-        if self.drawable.borrow().is_none() {
-            self.update_drawable();
-        }
-    }
-
-    fn forget_drawable(&self) {
-        *self.drawable.borrow_mut() = None;
-    }
-}
-
 #[link(name = "ApplicationServices", kind = "framework")]
-extern {
+extern "C" {
     fn CGColorSpaceCreateWithName(name: cocoa_id) -> *const c_void;
     fn CGColorSpaceRelease(space: *const c_void);
 }
@@ -108,10 +193,34 @@ impl wsi_core::NewWindow for MetalWindow {
         wb: winit::WindowBuilder,
         events_loop: &winit::EventsLoop,
         instance: &backend_metal::Instance,
-        format: core::ImageFormat,
+        swapchain_description: &wsi_core::SwapchainDescription,
     ) -> Result<Self, InitializationError> {
-        let pixel_format =
-            backend_metal::imp::translate_image_format(format).expect("unsupported ImageFormat");
+        let (fmt, color_space) = swapchain_description
+            .desired_formats
+            .iter()
+            .filter_map(|&(fmt, color_space)| {
+                let color_space = color_space.unwrap_or(wsi_core::ColorSpace::SrgbNonlinear);
+                let fmt = fmt.unwrap_or(core::ImageFormat::Bgra8(Unsigned, Normalized));
+                if color_space == wsi_core::ColorSpace::SrgbNonlinear &&
+                    [
+                        core::ImageFormat::Bgra8(Unsigned, Normalized),
+                        core::ImageFormat::SrgbBgra8,
+                        core::ImageFormat::RgbaFloat16,
+                    ].contains(&fmt)
+                {
+                    Some((fmt, color_space))
+                } else {
+                    None
+                }
+            })
+            .nth(0)
+            .ok_or(InitializationError::IncompatibleFormat)?;
+
+        let pixel_format = backend_metal::imp::translate_image_format(fmt).unwrap();
+        let cs_name = match color_space {
+            wsi_core::ColorSpace::SrgbNonlinear => "kCGColorSpaceSRGB",
+        };
+
         let winit_window = wb.build(events_loop).unwrap();
 
         unsafe {
@@ -119,18 +228,18 @@ impl wsi_core::NewWindow for MetalWindow {
             let layer: metal::CAMetalLayer = metal::CAMetalLayer::new();
             layer.set_pixel_format(pixel_format);
 
-            let cs_name = NSString::alloc(ptr::null_mut()).init_str("kCGColorSpaceSRGB");
-            let colorspace = CGColorSpaceCreateWithName(mem::transmute(cs_name));
-            msg_send![cs_name, release];
+            let ns_cs_name = NSString::alloc(ptr::null_mut()).init_str(cs_name);
+            let colorspace = CGColorSpaceCreateWithName(mem::transmute(ns_cs_name));
+            msg_send![ns_cs_name, release];
 
-            let draw_size = winit_window.get_inner_size().unwrap();
             layer.set_edge_antialiasing_mask(0);
             layer.set_masks_to_bounds(true);
             layer.set_colorspace(mem::transmute(colorspace));
             CGColorSpaceRelease(colorspace);
             // layer.set_magnification_filter(kCAFilterNearest);
             // layer.set_minification_filter(kCAFilterNearest);
-            layer.set_drawable_size(NSSize::new(draw_size.0 as f64, draw_size.1 as f64));
+            let fb_only: core::ImageUsageFlags = core::ImageUsage::ColorAttachment.into();
+            layer.set_framebuffer_only(swapchain_description.image_usage == fb_only);
             layer.set_presents_with_transaction(false);
             layer.remove_all_animations();
 
@@ -143,12 +252,18 @@ impl wsi_core::NewWindow for MetalWindow {
             let metal_device = device.metal_device();
             layer.set_device(metal_device);
 
+            let device = Arc::new(device);
+            let winit_window = Arc::new(winit_window);
+
             Ok(MetalWindow {
-                window: winit_window,
-                layer: OCPtr::new(layer).unwrap(),
-                drawable: RefCell::new(None),
-                pool: RefCell::new(Some(OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap())),
-                device: Arc::new(device),
+                window: winit_window.clone(),
+                swapchain: Swapchain {
+                    window: winit_window,
+                    device: device.clone(),
+                    layer: OCPtr::new(layer).unwrap(),
+                    color_space,
+                },
+                device: device,
             })
         }
     }
@@ -156,6 +271,7 @@ impl wsi_core::NewWindow for MetalWindow {
 
 impl wsi_core::Window for MetalWindow {
     type Backend = backend_metal::Backend;
+    type Swapchain = Swapchain;
 
     fn winit_window(&self) -> &winit::Window {
         &self.window
@@ -165,39 +281,12 @@ impl wsi_core::Window for MetalWindow {
         &self.device
     }
 
-    fn acquire_framebuffer(&self) -> backend_metal::imp::ImageView {
-        self.ensure_have_drawable();
-
-        ImageView::new(self.drawable.borrow().as_ref().unwrap().texture())
+    fn swapchain(&self) -> &Self::Swapchain {
+        &self.swapchain
     }
 
-    fn finalize_commands(&self, buffer: &mut backend_metal::imp::CommandBuffer) {
-        self.ensure_have_drawable();
-
-        buffer.metal_command_buffer().unwrap().present_drawable(
-            self.drawable(),
-        );
-    }
-
-    fn swap_buffers(&self) {
-        unsafe {
-            self.forget_drawable();
-
-            self.pool.borrow_mut().take();
-            *self.pool.borrow_mut() = Some(OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap());
-        }
-    }
-
-    fn framebuffer_size(&self) -> Vector2<u32> {
-        self.ensure_have_drawable();
-
-        let texture = self.drawable.borrow().as_ref().unwrap().texture();
-        Vector2::new(texture.width() as u32, texture.height() as u32)
-    }
-
-    fn set_framebuffer_size(&self, size: Vector2<u32>) {
-        self.layer.set_drawable_size(NSSize::new(size.x as f64, size.y as f64));
-        self.forget_drawable();
+    fn update_swapchain(&self) {
+        self.swapchain.resize();
     }
 }
 
@@ -205,6 +294,6 @@ impl wsi_core::Window for MetalWindow {
 pub enum InitializationError {
     /// Could not create a window.
     Window,
-    /// Unable to find a supported driver type.
-    DriverType,
+    /// No compatible formats were found.
+    IncompatibleFormat,
 }

@@ -77,6 +77,15 @@ pub fn translate_image_format(format: ImageFormat) -> Option<MTLPixelFormat> {
     }
 }
 
+pub fn translate_metal_pixel_format(value: MTLPixelFormat) -> ImageFormat {
+    match value {
+        MTLPixelFormat::BGRA8Unorm => ImageFormat::Bgra8(Unsigned, Unnormalized),
+        MTLPixelFormat::BGRA8Unorm_sRGB => ImageFormat::SrgbBgra8,
+        MTLPixelFormat::RGBA16Float => ImageFormat::RgbaFloat16,
+        _ => unimplemented!(),
+    }
+}
+
 pub fn translate_vertex_format(format: VertexFormat) -> Option<MTLVertexFormat> {
     match format {
         VertexFormat(_, I32(_, Normalized)) => None,

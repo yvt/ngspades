@@ -22,8 +22,9 @@ use cgmath::Vector2;
 use gfx::core;
 use gfx::core::{VertexFormat, VectorWidth, ScalarFormat, DebugMarker};
 use gfx::prelude::*;
-use gfx::wsi::{DefaultWindow, NewWindow, Window, winit};
-use gfx::backends::DefaultEnvironment;
+use gfx::wsi::{DefaultWindow, NewWindow, Window, winit, SwapchainDescription, ColorSpace,
+               Swapchain, Drawable, SwapchainError};
+use gfx::backends::{DefaultEnvironment, DefaultBackend};
 
 use std::sync::Arc;
 use std::{mem, ptr};
@@ -275,19 +276,31 @@ impl<B: Backend> RendererView<B> {
         }
     }
 
-    fn render_to<F>(&self, image_view: &B::ImageView, finalizer: F)
+    fn render_to<S>(&self, swapchain: &S) -> Result<(), SwapchainError>
     where
-        F: FnOnce(&mut B::CommandBuffer),
+        S: Swapchain<Backend = B>,
     {
+        let drawable = swapchain.next_drawable(&gfx::wsi::FrameDescription {
+            acquiring_engines: core::DeviceEngine::Universal.into(),
+        })?;
         let renderer: &Renderer<B> = &*self.renderer;
         let device: &B::Device = &*renderer.device;
+        let image_view = device
+            .factory()
+            .make_image_view(&core::ImageViewDescription {
+                image_type: core::ImageType::TwoD,
+                image: drawable.image(),
+                format: swapchain.image_format(),
+                range: core::ImageSubresourceRange::default(),
+            })
+            .unwrap();
         let framebuffer = device
             .factory()
             .make_framebuffer(&core::FramebufferDescription {
                 render_pass: &renderer.render_pass,
                 attachments: &[
                     core::FramebufferAttachmentDescription {
-                        image_view: image_view,
+                        image_view: &image_view,
                         clear_values: core::ClearValues::ColorFloat([0f32, 0f32, 0f32, 1f32]),
                     },
                 ],
@@ -314,7 +327,13 @@ impl<B: Backend> RendererView<B> {
 
         cb.begin_render_pass(&framebuffer, core::DeviceEngine::Universal);
         cb.begin_render_subpass(core::RenderPassContents::Inline);
-
+        if let Some(fence) = drawable.acquiring_fence() {
+            cb.wait_fence(
+                core::PipelineStage::ColorAttachmentOutput.into(),
+                core::AccessType::ColorAttachmentWrite.into(),
+                fence,
+            );
+        }
         cb.begin_debug_group(&DebugMarker::new("render a triangle"));
         cb.bind_graphics_pipeline(&renderer.pipeline);
         cb.set_viewport(&viewport);
@@ -323,12 +342,21 @@ impl<B: Backend> RendererView<B> {
         cb.end_debug_group();
 
         cb.end_render_subpass();
+
+        drawable.finalize(
+            &mut cb,
+            core::PipelineStage::ColorAttachmentOutput.into(),
+            core::AccessType::ColorAttachmentWrite.into(),
+            core::ImageLayout::Present,
+        );
         cb.end_pass();
 
-        finalizer(&mut cb);
         cb.end_encoding();
 
         device.main_queue().submit_commands(&[&*cb], None).unwrap();
+        drawable.present();
+
+        Ok(())
     }
 }
 
@@ -336,14 +364,16 @@ impl<B: Backend> RendererView<B> {
 struct App<W: Window> {
     window: W,
     renderer: Arc<Renderer<W::Backend>>,
-    renderer_view: RefCell<RendererView<W::Backend>>,
+    renderer_view: RefCell<Option<RendererView<W::Backend>>>,
 }
 
 fn create_renderer_view<W: Window>(
     renderer: &Arc<Renderer<W::Backend>>,
     window: &W,
 ) -> RendererView<W::Backend> {
-    RendererView::new(&renderer, window.framebuffer_size())
+    let extents = window.swapchain().image_extents();
+    assert_eq!(extents.z, 1);
+    RendererView::new(&renderer, Vector2::new(extents.x, extents.y))
 }
 
 impl<W: Window> App<W> {
@@ -351,7 +381,7 @@ impl<W: Window> App<W> {
         let device = window.device().clone();
         let renderer = Arc::new(Renderer::new(device));
         Self {
-            renderer_view: RefCell::new(create_renderer_view(&renderer, &window)),
+            renderer_view: RefCell::new(None),
             renderer,
             window,
         }
@@ -359,52 +389,73 @@ impl<W: Window> App<W> {
 
     fn run(&self, events_loop: &mut winit::EventsLoop) {
         let mut running = true;
-        while running {
+
+        DefaultBackend::autorelease_pool_scope(|mut arp| while running {
             events_loop.poll_events(|event| match event {
                 winit::Event::WindowEvent { event: winit::WindowEvent::Closed, .. } => {
                     running = false;
                 }
-                winit::Event::WindowEvent {
-                    event: winit::WindowEvent::Resized(width, height), ..
-                } => {
-                    self.window.set_framebuffer_size(
-                        Vector2::new(width, height),
-                    );
-                    *self.renderer_view.borrow_mut() =
-                        create_renderer_view(&self.renderer, &self.window);
+                winit::Event::WindowEvent { event: winit::WindowEvent::Resized(_, _), .. } => {
+                    self.update_view();
                 }
                 _ => (),
             });
+
             self.update();
-        }
+            arp.drain();
+        });
+    }
+
+    fn update_view(&self) {
+        self.window.update_swapchain();
+        *self.renderer_view.borrow_mut() = Some(create_renderer_view(&self.renderer, &self.window));
     }
 
     fn update(&self) {
-        let fb = self.window.acquire_framebuffer();
-
-        self.renderer_view.borrow_mut().render_to(&fb, |cb| {
-            self.window.finalize_commands(cb)
-        });
-
-        self.window.swap_buffers();
+        if self.renderer_view.borrow().is_none() {
+            self.update_view();
+        }
+        let mut ret = self.renderer_view
+            .borrow_mut()
+            .as_mut()
+            .unwrap()
+            .render_to(self.window.swapchain());
+        if ret == Err(SwapchainError::OutOfDate) {
+            self.update_view();
+            ret = self.renderer_view
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .render_to(self.window.swapchain());
+        }
+        if let Err(x) = ret {
+            println!("failed to acquire the next drawable: {:?}", x);
+        }
     }
 }
 
 fn main() {
     use gfx::core::{Environment, InstanceBuilder};
 
-    let mut events_loop = winit::EventsLoop::new();
-    let builder = winit::WindowBuilder::new();
+    DefaultBackend::autorelease_pool_scope(|_| {
+        let mut events_loop = winit::EventsLoop::new();
+        let builder = winit::WindowBuilder::new();
 
-    let mut instance_builder = <DefaultEnvironment as Environment>::InstanceBuilder::new()
-        .expect("InstanceBuilder::new() have failed");
-    DefaultWindow::modify_instance_builder(&mut instance_builder);
+        let mut instance_builder = <DefaultEnvironment as Environment>::InstanceBuilder::new()
+            .expect("InstanceBuilder::new() have failed");
+        DefaultWindow::modify_instance_builder(&mut instance_builder);
 
-    let instance = instance_builder.build()
-        .expect("InstanceBuilder::build() have failed");
+        let instance = instance_builder.build().expect(
+            "InstanceBuilder::build() have failed",
+        );
 
-    let window = DefaultWindow::new(builder, &events_loop, &instance, core::ImageFormat::SrgbBgra8).unwrap();
-    let app = App::new(window);
-    app.run(&mut events_loop);
-    println!("Exiting...");
+        let sc_desc = SwapchainDescription {
+            desired_formats: &[(None, Some(ColorSpace::SrgbNonlinear))],
+            image_usage: core::ImageUsage::ColorAttachment.into(),
+        };
+        let window = DefaultWindow::new(builder, &events_loop, &instance, &sc_desc).unwrap();
+        let app = App::new(window);
+        app.run(&mut events_loop);
+        println!("Exiting...");
+    });
 }

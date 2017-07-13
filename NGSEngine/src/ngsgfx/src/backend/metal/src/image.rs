@@ -6,10 +6,11 @@
 use core::{self, Validate};
 use metal;
 
+use cgmath::Vector3;
 use cocoa::foundation::NSRange;
 
 use {OCPtr, RefEqArc};
-use imp::translate_image_format;
+use imp::{translate_image_format, translate_metal_pixel_format};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Image {
@@ -119,6 +120,63 @@ impl Image {
                 desc: desc.clone(),
             }),
         })
+    }
+
+    pub fn from_raw(raw: metal::MTLTexture) -> Self {
+        assert!(!raw.is_null());
+        let metal_usage = raw.usage();
+        let can_make_views = metal_usage.contains(metal::MTLTextureUsagePixelFormatView);
+
+        let metal_format = raw.pixel_format();
+        let format = translate_metal_pixel_format(metal_format);
+
+        let mut usage = core::ImageUsageFlags::empty();
+        if metal_usage.contains(metal::MTLTextureUsageShaderRead) {
+            usage.insert(core::ImageUsage::Sampled.into());
+            usage.insert(core::ImageUsage::InputAttachment.into());
+        }
+        if metal_usage.contains(metal::MTLTextureUsageShaderWrite) {
+            usage.insert(core::ImageUsage::Storage.into());
+        }
+        if metal_usage.contains(metal::MTLTextureUsageRenderTarget) {
+            if format.has_color() {
+                usage.insert(core::ImageUsage::ColorAttachment.into());
+            }
+            if format.has_depth() || format.has_stencil() {
+                usage.insert(core::ImageUsage::DepthStencilAttachment.into());
+            }
+        }
+
+        let storage_mode = match raw.storage_mode() {
+            metal::MTLStorageMode::Private => core::StorageMode::Private,
+            metal::MTLStorageMode::Managed => core::StorageMode::Private,
+            metal::MTLStorageMode::Shared => core::StorageMode::Shared,
+        };
+
+        let desc = core::ImageDescription {
+            flags: if can_make_views {
+                core::ImageFlag::MutableFormat | core::ImageFlag::SubrangeViewCompatible |
+                    core::ImageFlag::MutableType
+            } else {
+                core::ImageFlags::empty()
+            },
+            usage,
+            image_type: core::ImageType::TwoD, // TODO: translate image type
+            format,
+            extent: Vector3::new(raw.width() as u32, raw.height() as u32, raw.depth() as u32),
+            num_mip_levels: raw.mipmap_level_count() as u32,
+            num_array_layers: raw.array_length() as u32,
+            initial_layout: core::ImageLayout::Undefined,
+            tiling: core::ImageTiling::Optimal, // TODO: guess tiling
+            storage_mode,
+        };
+        Self {
+            data: RefEqArc::new(ImageData {
+                metal_texture: OCPtr::new(raw).unwrap(),
+                can_make_views,
+                desc,
+            }),
+        }
     }
 
     pub fn metal_texture(&self) -> metal::MTLTexture {

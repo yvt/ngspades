@@ -86,7 +86,7 @@ pub mod ll {
 
 /// Implementations of NgsGFX primitives.
 pub mod imp {
-    use core;
+    use {core, metal, OCPtr};
 
     pub use super::buffer::*;
     pub use super::command::*;
@@ -154,8 +154,21 @@ pub mod imp {
         type SecondaryCommandBuffer = SecondaryCommandBuffer;
         type ShaderModule = ShaderModule;
         type StencilState = StencilState;
+
+        fn autorelease_pool_scope<T, S>(cb: T) -> S where T : FnOnce(&mut core::AutoreleasePool) -> S {
+            let mut op = AutoreleasePool(Some(unsafe { OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap() }));
+            cb(&mut op)
+        }
     }
 
+    struct AutoreleasePool(Option<OCPtr<metal::NSAutoreleasePool>>);
+
+    impl core::AutoreleasePool for AutoreleasePool {
+        fn drain(&mut self) {
+            self.0 = None;
+            self.0 = Some(unsafe { OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap() });
+        }
+    }
 }
 
 pub use self::imp::{Backend, Device, Environment, DeviceBuilder, Instance, InstanceBuilder};

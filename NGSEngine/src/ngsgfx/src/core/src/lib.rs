@@ -166,6 +166,49 @@ pub trait Backend: Sized + 'static {
     type SecondaryCommandBuffer: SecondaryCommandBuffer<Self>;
     type StencilState: StencilState;
     type ShaderModule: ShaderModule;
+
+    /// Create a autorelease pool and call the specified function inside it.
+    ///
+    /// On the macOS platform, the lifetimes of most Cocoa objects are managed by
+    /// reference counting. In some cases, the lifetimes of objects are temporarily
+    /// extended by inserting references to them into the current autorelease pool
+    /// associated with each thread.
+    ///
+    /// In standard macOS applications, a default autorelease pool is automatically
+    /// provided and it is drained at every cycle of the event loop. However,
+    /// this is unlikely to be the case in NgsGFX applications. Without an
+    /// autorelease pool, autoreleased objects will never get released and you will
+    /// leak memory.
+    ///
+    /// This function provides applications a method to create an
+    /// autorelease pool in a cross-platform manner. You must wrap the main event
+    /// loop with this function and drain the autorelease pool periodicaly
+    /// (by calling `AutoreleasePool::drain`), for example, for every iteration.
+    ///
+    /// The default implementation just calls the given function with
+    /// a mutable reference to [`NullAutoreleasePool`] as the parameter value.
+    /// It is expected that the Metal backend is the only backend that provides
+    /// a custom implementation of this function.
+    ///
+    /// [`NullAutoreleasePool`]: struct.NullAutoreleasePool.html
+    fn autorelease_pool_scope<T, S>(cb: T) -> S
+    where
+        T: FnOnce(&mut AutoreleasePool) -> S,
+    {
+        cb(&mut NullAutoreleasePool)
+    }
+}
+
+/// An autorelease pool.
+pub trait AutoreleasePool {
+    fn drain(&mut self);
+}
+
+/// The implementation of `AutoreleasePool` for platforms where the management of
+/// autorelease pools are unnecessary.
+pub struct NullAutoreleasePool;
+impl AutoreleasePool for NullAutoreleasePool {
+    fn drain(&mut self) {}
 }
 
 // flags are indivdually reexported because "enumflags_derive" generates a struct named "InnerXXX" for each

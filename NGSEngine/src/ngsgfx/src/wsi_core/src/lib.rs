@@ -17,21 +17,100 @@ use std::sync::Arc;
 use std::fmt::Debug;
 
 use core::{Environment, Backend};
-use cgmath::Vector2;
+use cgmath::Vector3;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SwapchainError {
+    GenericError(core::GenericError),
+
+    /// The state of swapchain has been changed by some external factors and the
+    /// swapchain needs to be created again before next images to be presented.
+    OutOfDate,
+
+    /// The target of the swapchain is lost. The swapchain no longer can be created again on the same target.
+    TargetLost,
+
+    /// The next image did not became available within.a predetermined duration of time.
+    NotReady,
+}
+
+#[derive(Debug, Clone)]
+pub struct FrameDescription {
+    /// The set of `DeviceEngine`s that will potentially wait on the `Drawable::acquiring_fence()`.
+    pub acquiring_engines: core::DeviceEngineFlags,
+}
+
+pub trait Drawable: Debug {
+    type Backend: core::Backend;
+
+    fn image(&self) -> &<Self::Backend as Backend>::Image;
+
+    /// The `Fence` object that must be waited for before the `image` gets written
+    /// with new contents.
+    fn acquiring_fence(&self) -> Option<&<Self::Backend as Backend>::Fence>;
+
+    /// Inserts commands into the command buffer to prepare the presentation of the image.
+    ///
+    /// The command buffer must in the `Recording` state.
+    /// There must be an active command pass, and the pass's engine must be the one
+    /// having an ownership on the image.
+    ///
+    /// There must not be an active render subpass. This must be called after the
+    /// last subpass in a render pass was ended.
+    ///
+    /// `stage` and `access` specify the pipeline stage and access type that were used
+    /// to write the image, respectively.
+    /// `layout` specifies the current image layout.
+    fn finalize(
+        &self,
+        command_buffer: &mut <Self::Backend as Backend>::CommandBuffer,
+        state: core::PipelineStageFlags,
+        access: core::AccessTypeFlags,
+        layout: core::ImageLayout,
+    );
+
+    /// Present the image.
+    ///
+    /// Must be called after the command buffer in which a presentation preparation command
+    /// was a encoded by `finalize` was submitted.
+    ///
+    /// This also puts this drawable back to the swapchain for the future use, which means
+    /// this must be called for every drawable acquired.
+    fn present(&self);
+}
+
+pub trait Swapchain: Debug {
+    type Backend: core::Backend;
+    type Drawable: Drawable<Backend = Self::Backend>;
+
+    fn device(&self) -> &<Self::Backend as Backend>::Device;
+
+    /// Acquire a next `Drawable`.
+    fn next_drawable(
+        &self,
+        description: &FrameDescription,
+    ) -> Result<Self::Drawable, SwapchainError>;
+
+    fn image_extents(&self) -> Vector3<u32>;
+    fn image_num_array_layers(&self) -> u32;
+    fn image_format(&self) -> core::ImageFormat;
+    fn image_colorspace(&self) -> ColorSpace;
+}
 
 /// Window.
 pub trait Window: Debug {
     type Backend: core::Backend;
+    type Swapchain: Swapchain<Backend = Self::Backend>;
 
     fn winit_window(&self) -> &winit::Window;
     fn device(&self) -> &Arc<<Self::Backend as Backend>::Device>;
-    fn acquire_framebuffer(&self) -> <Self::Backend as Backend>::ImageView;
 
-    /// Inserts commands into the command buffer to present the rendered image.
-    fn finalize_commands(&self, buffer: &mut <Self::Backend as Backend>::CommandBuffer);
-    fn swap_buffers(&self);
-    fn framebuffer_size(&self) -> Vector2<u32>;
-    fn set_framebuffer_size(&self, size: Vector2<u32>);
+    fn swapchain(&self) -> &Self::Swapchain;
+
+    /// Create a swapchain that matches the current state of the `Window`.
+    ///
+    /// For example, call this whenever the window size has changed.
+    fn update_swapchain(&self);
 }
 
 /// Window with a constructor function.
@@ -43,10 +122,26 @@ pub trait NewWindow: Window + Sized {
         wb: winit::WindowBuilder,
         events_loop: &winit::EventsLoop,
         instance: &<Self::Environment as Environment>::Instance,
-        format: core::ImageFormat,
+        swapchain_description: &SwapchainDescription,
     ) -> Result<Self, Self::CreationError>;
 
     /// Updates the supplied `InstanceBuilder` to meet the requirements of this WSI backend.
     #[allow(unused_variables)]
     fn modify_instance_builder(builder: &mut <Self::Environment as Environment>::InstanceBuilder) {}
+}
+
+#[derive(Debug, Clone)]
+pub struct SwapchainDescription<'a> {
+    pub desired_formats: &'a [(Option<core::ImageFormat>, Option<ColorSpace>)],
+
+    /// Specifies the usage of the images returned by drawables.
+    ///
+    /// An excessive number of flags might inhibit optimizations.
+    pub image_usage: core::ImageUsageFlags,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ColorSpace {
+    /// Color values are interpreted using the non-linear sRGB color space.
+    SrgbNonlinear,
 }

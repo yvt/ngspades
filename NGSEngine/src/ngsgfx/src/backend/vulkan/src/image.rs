@@ -12,6 +12,38 @@ use ash::version::DeviceV1_0;
 use std::sync::Arc;
 use std::{mem, ptr};
 
+pub fn translate_image_usage(value: core::ImageUsageFlags) -> vk::ImageUsageFlags {
+    let mut usage = vk::ImageUsageFlags::empty();
+    if value.contains(core::ImageUsage::TransferSource) {
+        usage |= vk::IMAGE_USAGE_TRANSFER_SRC_BIT;
+    }
+    if value.contains(core::ImageUsage::TransferDestination) {
+        usage |= vk::IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+    if value.contains(core::ImageUsage::Sampled) {
+        usage |= vk::IMAGE_USAGE_SAMPLED_BIT;
+    }
+    if value.contains(core::ImageUsage::Storage) {
+        usage |= vk::IMAGE_USAGE_STORAGE_BIT;
+    }
+    if value.contains(core::ImageUsage::ColorAttachment) {
+        usage |= vk::IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    }
+    if value.contains(
+        core::ImageUsage::DepthStencilAttachment,
+    )
+    {
+        usage |= vk::IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+    if value.contains(core::ImageUsage::TransientAttachment) {
+        usage |= vk::IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+    }
+    if value.contains(core::ImageUsage::InputAttachment) {
+        usage |= vk::IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+    }
+    usage
+}
+
 pub(crate) struct UnassociatedImage<'a, T: DeviceRef> {
     device_ref: &'a T,
     handle: vk::Image,
@@ -45,34 +77,7 @@ impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
             core::ImageTiling::Optimal => vk::ImageTiling::Optimal,
         };
 
-        let mut usage = vk::ImageUsageFlags::empty();
-        if desc.usage.contains(core::ImageUsage::TransferSource) {
-            usage |= vk::IMAGE_USAGE_TRANSFER_SRC_BIT;
-        }
-        if desc.usage.contains(core::ImageUsage::TransferDestination) {
-            usage |= vk::IMAGE_USAGE_TRANSFER_DST_BIT;
-        }
-        if desc.usage.contains(core::ImageUsage::Sampled) {
-            usage |= vk::IMAGE_USAGE_SAMPLED_BIT;
-        }
-        if desc.usage.contains(core::ImageUsage::Storage) {
-            usage |= vk::IMAGE_USAGE_STORAGE_BIT;
-        }
-        if desc.usage.contains(core::ImageUsage::ColorAttachment) {
-            usage |= vk::IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        }
-        if desc.usage.contains(
-            core::ImageUsage::DepthStencilAttachment,
-        )
-        {
-            usage |= vk::IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        }
-        if desc.usage.contains(core::ImageUsage::TransientAttachment) {
-            usage |= vk::IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
-        }
-        if desc.usage.contains(core::ImageUsage::InputAttachment) {
-            usage |= vk::IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-        }
+        let usage = translate_image_usage(desc.usage);
 
         let info = vk::ImageCreateInfo {
             s_type: vk::StructureType::ImageCreateInfo,

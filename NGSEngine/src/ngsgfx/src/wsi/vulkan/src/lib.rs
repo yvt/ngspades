@@ -11,6 +11,7 @@
 //! [Ash]: https://github.com/MaikKlein/ash
 
 extern crate cgmath;
+extern crate thunk;
 
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_vulkan as backend_vulkan;
@@ -21,16 +22,23 @@ extern crate winapi;
 #[cfg(windows)]
 extern crate user32;
 
+mod colorspace;
+use colorspace::*;
+
+use thunk::{Thunk, LazyRef};
+
 use wsi_core::winit;
 use backend_vulkan::ash;
-use cgmath::Vector2;
+use cgmath::Vector3;
 
 use self::ash::vk;
-use self::ash::extensions::{Surface, Swapchain, XlibSurface, Win32Surface};
+use self::ash::extensions::{Surface, Swapchain};
 use self::ash::version::{EntryV1_0, InstanceV1_0};
 
-use std::{fmt, ffi, ptr};
+use std::{fmt, ptr};
 use std::sync::Arc;
+use std::collections::{HashSet, HashMap};
+use std::iter::FromIterator;
 
 #[cfg(windows)]
 pub type DefaultVulkanSurface = WindowsVulkanSurface;
@@ -47,7 +55,7 @@ pub trait VulkanSurface: 'static {
         instance: &I,
         window: &winit::Window,
     ) -> Result<vk::SurfaceKHR, vk::Result>;
-    fn modify_instance_builder(builder: &mut backend_vulkan::InstanceBuilder) {}
+    fn modify_instance_builder(_: &mut backend_vulkan::InstanceBuilder) {}
 }
 
 #[cfg(windows)]
@@ -60,6 +68,7 @@ impl VulkanSurface for WindowsVulkanSurface {
         instance: &I,
         window: &winit::Window,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
+        use ash::extensions::Win32Surface;
         use winit::os::windows::WindowExt;
         let hwnd = window.get_hwnd() as *mut winapi::windef::HWND__;
         let hinstance = unsafe { user32::GetWindow(hwnd, 0) as *const () };
@@ -92,6 +101,7 @@ impl VulkanSurface for XlibVulkanSurface {
         instance: &I,
         window: &winit::Window,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
+        use ash::extensions::XlibSurface;
         use winit::os::unix::WindowExt;
         let x11_display = window.get_xlib_display().unwrap();
         let x11_window = window.get_xlib_window().unwrap();
@@ -114,6 +124,62 @@ impl VulkanSurface for XlibVulkanSurface {
     }
 }
 
+#[derive(Debug)]
+pub struct ManagedDrawable;
+
+impl wsi_core::Drawable for ManagedDrawable {
+    type Backend = backend_vulkan::ManagedBackend;
+
+    fn image(&self) -> &<Self::Backend as core::Backend>::Image {
+        unimplemented!()
+    }
+    fn acquiring_fence(&self) -> Option<&<Self::Backend as core::Backend>::Fence> {
+        unimplemented!()
+    }
+    fn finalize(
+        &self,
+        command_buffer: &mut <Self::Backend as core::Backend>::CommandBuffer,
+        state: core::PipelineStageFlags,
+        access: core::AccessTypeFlags,
+        layout: core::ImageLayout,
+    ) {
+        unimplemented!()
+    }
+    fn present(&self) {
+        unimplemented!()
+    }
+}
+
+#[derive(Debug)]
+pub struct ManagedSwapchain;
+
+impl wsi_core::Swapchain for ManagedSwapchain {
+    type Backend = backend_vulkan::ManagedBackend;
+    type Drawable = ManagedDrawable;
+
+    fn device(&self) -> &<Self::Backend as core::Backend>::Device {
+        unimplemented!()
+    }
+    fn next_drawable(
+        &self,
+        description: &wsi_core::FrameDescription,
+    ) -> Result<Self::Drawable, wsi_core::SwapchainError> {
+        unimplemented!()
+    }
+    fn image_extents(&self) -> Vector3<u32> {
+        unimplemented!()
+    }
+    fn image_num_array_layers(&self) -> u32 {
+        unimplemented!()
+    }
+    fn image_format(&self) -> core::ImageFormat {
+        unimplemented!()
+    }
+    fn image_colorspace(&self) -> wsi_core::ColorSpace {
+        unimplemented!()
+    }
+}
+
 pub struct VulkanWindow<S: VulkanSurface> {
     window: winit::Window,
     device: Arc<backend_vulkan::Device<backend_vulkan::ManagedDeviceRef>>,
@@ -131,6 +197,7 @@ pub enum InitializationError {
     VkError(vk::Result),
     LoadError(Vec<&'static str>),
     NoCompatibleDevice,
+    NoCompatibleFormat,
     DeviceBuildError(backend_vulkan::imp::DeviceBuildError),
 }
 
@@ -145,7 +212,7 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
         wb: winit::WindowBuilder,
         events_loop: &winit::EventsLoop,
         instance: &backend_vulkan::Instance,
-        format: core::ImageFormat,
+        sc_desc: &wsi_core::SwapchainDescription,
     ) -> Result<Self, InitializationError> {
         use core::{Instance, DeviceBuilder};
         use backend_vulkan::DeviceRef;
@@ -193,17 +260,81 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
         let surface_formats = surface_loader
             .get_physical_device_surface_formats_khr(adap.physical_device(), surface)
             .unwrap(); // TODO: handle this error
-        let surface_format = surface_formats
-            .iter()
-            .filter_map(|sfmt| if sfmt.color_space ==
-                vk::ColorSpaceKHR::SrgbNonlinear
-            {
-                Some(sfmt)
-            } else {
-                None
-            })
-            .nth(0)
-            .expect("no suitable surface format");
+
+        let surface_formats_set = Thunk::defer(|| {
+            HashSet::<_>::from_iter(surface_formats.iter().map(|x| (x.format, x.color_space)))
+        });
+        let surface_formats_by_format = Thunk::defer(|| {
+            HashMap::<_, _>::from_iter(surface_formats.iter().rev().filter_map(|x| {
+                reverse_translate_color_space(x.color_space).map(|cs| {
+                    (x.format, (cs, x.color_space))
+                })
+            }))
+        });
+        let surface_formats_by_color_space = Thunk::defer(|| {
+            HashMap::<_, _>::from_iter(surface_formats.iter().rev().filter_map(|x| {
+                backend_vulkan::imp::reverse_translate_image_format(x.format)
+                    .map(|f| (x.color_space, (f, x.format)))
+            }))
+        });
+
+        let (surface_format, surface_color_space, vk_format, vk_color_space) =
+            sc_desc
+                .desired_formats
+                .iter()
+                .filter_map(|&(format, color_space)| match (format, color_space) {
+                    (Some(format), Some(color_space)) => {
+                        let vk_format = backend_vulkan::imp::translate_image_format(format);
+                        let vk_color_space = translate_color_space(color_space);
+                        if let (Some(vk_format), Some(vk_color_space)) =
+                            (vk_format, vk_color_space)
+                        {
+                            if surface_formats_set.contains(&(vk_format, vk_color_space)) {
+                                Some((format, color_space, vk_format, vk_color_space))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    (Some(format), None) => {
+                        backend_vulkan::imp::translate_image_format(format).and_then(|vk_format| {
+                            surface_formats_by_format.get(&vk_format).map(
+                                |&(color_space, vk_color_space)| {
+                                    (format, color_space, vk_format, vk_color_space)
+                                },
+                            )
+                        })
+                    }
+
+                    (None, Some(color_space)) => {
+                        translate_color_space(color_space).and_then(|vk_color_space| {
+                            surface_formats_by_color_space.get(&vk_color_space).map(
+                                |&(format, vk_format)| {
+                                    (format, color_space, vk_format, vk_color_space)
+                                },
+                            )
+                        })
+                    }
+                    (None, None) => {
+                        surface_formats
+                            .iter()
+                            .filter_map(|x| {
+                                let format =
+                                    backend_vulkan::imp::reverse_translate_image_format(x.format);
+                                let color_space = reverse_translate_color_space(x.color_space);
+                                if let (Some(format), Some(color_space)) = (format, color_space) {
+                                    Some((format, color_space, x.format, x.color_space))
+                                } else {
+                                    None
+                                }
+                            })
+                            .nth(0)
+                    }
+                })
+                .nth(0)
+                .ok_or(InitializationError::NoCompatibleFormat)?;
         let surface_cap = surface_loader
             .get_physical_device_surface_capabilities_khr(adap.physical_device(), surface)
             .unwrap(); // TODO: handle this error
@@ -224,14 +355,13 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
             _ => surface_cap.current_extent,
         };
 
-        let pre_transform = if surface_cap.supported_transforms.subset(
-            vk::SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
-        )
-        {
-            vk::SURFACE_TRANSFORM_IDENTITY_BIT_KHR
-        } else {
-            surface_cap.current_transform
-        };
+        let pre_transform = surface_cap.current_transform;
+
+        let image_usage = backend_vulkan::imp::translate_image_usage(sc_desc.image_usage);
+        assert!(
+            surface_cap.supported_usage_flags.subset(image_usage),
+            "specified image usage is not supported"
+        ); // TODO: fall-back or something
 
         // `Fifo` is always supported
         let present_mode = vk::PresentModeKHR::Fifo;
@@ -245,11 +375,11 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
             flags: vk::SwapchainCreateFlagsKHR::empty(),
             surface,
             min_image_count: image_count,
-            image_format: surface_format.format,
-            image_color_space: surface_format.color_space,
+            image_format: vk_format,
+            image_color_space: vk_color_space,
             image_extent: surface_size.clone(),
             image_array_layers: 1,
-            image_usage: vk::IMAGE_USAGE_COLOR_ATTACHMENT_BIT, // TODO
+            image_usage,
             image_sharing_mode: vk::SharingMode::Exclusive,
             p_queue_family_indices: ptr::null(), // ignored for `Exclusive`
             queue_family_index_count: 0,
@@ -278,6 +408,7 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
 
 impl<S: VulkanSurface> wsi_core::Window for VulkanWindow<S> {
     type Backend = backend_vulkan::ManagedBackend;
+    type Swapchain = ManagedSwapchain;
 
     fn winit_window(&self) -> &winit::Window {
         &self.window
@@ -287,21 +418,10 @@ impl<S: VulkanSurface> wsi_core::Window for VulkanWindow<S> {
         &self.device
     }
 
-    fn acquire_framebuffer(&self) -> <Self::Backend as core::Backend>::ImageView {
+    fn swapchain(&self) -> &Self::Swapchain {
         unimplemented!()
     }
-
-    fn finalize_commands(&self, buffer: &mut <Self::Backend as core::Backend>::CommandBuffer) {}
-
-    fn swap_buffers(&self) {
-        unimplemented!()
-    }
-
-    fn framebuffer_size(&self) -> Vector2<u32> {
-        unimplemented!()
-    }
-
-    fn set_framebuffer_size(&self, size: Vector2<u32>) {
+    fn update_swapchain(&self) {
         unimplemented!()
     }
 }

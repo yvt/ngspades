@@ -27,38 +27,40 @@ trait BackendDispatch {
 }
 
 fn try_environment<T: BackendDispatch, K: core::Environment>(name: &str, d: T) -> Option<T> {
-    use core::{InstanceBuilder, Instance, DeviceBuilder};
-    let inst_builder: K::InstanceBuilder = match K::InstanceBuilder::new() {
-        Ok(i) => i,
-        Err(e) => {
-            println!("{}: InstanceBuilder::new() failed: {:?}", name, e);
-            return Some(d);
-        }
-    };
-    let instance: K::Instance = match inst_builder.build() {
-        Ok(i) => i,
-        Err(e) => {
-            println!("{}: InstanceBuilder::build() failed: {:?}", name, e);
-            return Some(d);
-        }
-    };
-    let default_adapter = match instance.default_adapter() {
-        Some(a) => a,
-        None => {
-            println!("{}: No compatible adapter found, skipping", name);
-            return Some(d);
-        }
-    };
-    let device_builder = instance.new_device_builder(&default_adapter);
-    let device = match device_builder.build() {
-        Ok(i) => i,
-        Err(e) => {
-            println!("{}: DeviceBuilder::build() failed: {:?}", name, e);
-            return Some(d);
-        }
-    };
-    d.use_device::<K::Backend>(device);
-    None
+    use core::{InstanceBuilder, Instance, DeviceBuilder, Backend};
+    <K::Backend as Backend>::autorelease_pool_scope(|_| {
+        let inst_builder: K::InstanceBuilder = match K::InstanceBuilder::new() {
+            Ok(i) => i,
+            Err(e) => {
+                println!("{}: InstanceBuilder::new() failed: {:?}", name, e);
+                return Some(d);
+            }
+        };
+        let instance: K::Instance = match inst_builder.build() {
+            Ok(i) => i,
+            Err(e) => {
+                println!("{}: InstanceBuilder::build() failed: {:?}", name, e);
+                return Some(d);
+            }
+        };
+        let default_adapter = match instance.default_adapter() {
+            Some(a) => a,
+            None => {
+                println!("{}: No compatible adapter found, skipping", name);
+                return Some(d);
+            }
+        };
+        let device_builder = instance.new_device_builder(&default_adapter);
+        let device = match device_builder.build() {
+            Ok(i) => i,
+            Err(e) => {
+                println!("{}: DeviceBuilder::build() failed: {:?}", name, e);
+                return Some(d);
+            }
+        };
+        d.use_device::<K::Backend>(device);
+        None
+    })
 }
 
 #[cfg(target_os = "macos")]

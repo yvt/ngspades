@@ -426,4 +426,3 @@ impl IndexFormat {
         }
     }
 }
-
