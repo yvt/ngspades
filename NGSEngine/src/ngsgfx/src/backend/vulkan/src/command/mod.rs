@@ -12,8 +12,10 @@ mod encoder;
 mod queue;
 mod render;
 mod secondary;
+mod sync;
 
 pub use self::buffer::*;
 pub use self::queue::*;
 pub use self::secondary::*;
+pub use self::sync::*;
 

@@ -32,7 +32,6 @@ mod pipeline;
 mod renderpass;
 mod sampler;
 mod shader;
-mod sync;
 mod utils;
 
 pub use extif::*;
@@ -62,7 +61,6 @@ pub mod imp {
     pub use super::renderpass::*;
     pub use super::sampler::*;
     pub use super::shader::*;
-    pub use super::sync::*;
 
     pub type GraphicsPipelineDescription<'a, T> =
         core::GraphicsPipelineDescription<'a, RenderPass<T>, PipelineLayout<T>, ShaderModule<T>>;
