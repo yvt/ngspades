@@ -79,11 +79,15 @@ pub enum RenderPassContents {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum SubresourceWithLayout<'a, B: Backend> {
+    /// Specifies an image subresource, potentially with an image layout transition.
     Image {
         image: &'a B::Image,
         range: ImageSubresourceRange,
-        layout: ImageLayout,
+        old_layout: ImageLayout,
+        new_layout: ImageLayout,
     },
+
+    /// Specifies a buffer subresource.
     Buffer {
         buffer: &'a B::Buffer,
         offset: DeviceSize,
@@ -307,21 +311,6 @@ pub trait BarrierCommandEncoder<B: Backend>
         destination_stage: PipelineStageFlags,
         destination_access: AccessTypeFlags,
         resource: &SubresourceWithLayout<B>,
-    );
-
-    /// Instruct the device to convert the image layout of the given image into another one.
-    ///
-    /// There must be an active pass of any type.
-    /// During a render pass, there must be an active subpass.
-    fn image_layout_transition(
-        &mut self,
-        source_stage: PipelineStageFlags,
-        source_access: AccessTypeFlags,
-        source_layout: ImageLayout,
-        destination_stage: PipelineStageFlags,
-        destination_layout: ImageLayout,
-        destination_access: AccessTypeFlags,
-        image: &B::Image,
     );
 }
 

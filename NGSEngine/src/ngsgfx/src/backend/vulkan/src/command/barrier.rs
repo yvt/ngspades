@@ -32,19 +32,6 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
     ) {
         unimplemented!()
     }
-
-    fn image_layout_transition(
-        &mut self,
-        _: core::PipelineStageFlags,
-        _: core::AccessTypeFlags,
-        _: core::ImageLayout,
-        _: core::PipelineStageFlags,
-        _: core::ImageLayout,
-        _: core::AccessTypeFlags,
-        _: &Image<T>,
-    ) {
-        unimplemented!()
-    }
 }
 
 impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for SecondaryCommandBuffer<T> {
@@ -68,19 +55,6 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for SecondaryCommandB
         _: core::PipelineStageFlags,
         _: core::AccessTypeFlags,
         _: &core::SubresourceWithLayout<Backend<T>>,
-    ) {
-        unimplemented!()
-    }
-
-    fn image_layout_transition(
-        &mut self,
-        _: core::PipelineStageFlags,
-        _: core::AccessTypeFlags,
-        _: core::ImageLayout,
-        _: core::PipelineStageFlags,
-        _: core::ImageLayout,
-        _: core::AccessTypeFlags,
-        _: &Image<T>,
     ) {
         unimplemented!()
     }
