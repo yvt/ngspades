@@ -8,9 +8,11 @@
 //!
 //! Implements a NgsGFX backend using the Vulkan API.
 //!
+#![feature(optin_builtin_traits)]
 extern crate ngsgfx_core as core;
 extern crate cgmath;
 extern crate smallvec;
+extern crate atomic_refcell;
 pub extern crate ash;
 
 #[macro_use]

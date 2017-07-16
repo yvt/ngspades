@@ -178,3 +178,106 @@ pub(crate) fn translate_compare_function(value: core::CompareFunction) -> vk::Co
         core::CompareFunction::Always => vk::CompareOp::Always,
     }
 }
+
+pub(crate) fn translate_access_type_flags(value: core::AccessTypeFlags) -> vk::AccessFlags {
+    let mut ret = vk::AccessFlags::empty();
+    if value.contains(core::AccessType::IndirectCommandRead) {
+        ret |= vk::ACCESS_INDIRECT_COMMAND_READ_BIT;
+    }
+    if value.contains(core::AccessType::IndexRead) {
+        ret |= vk::ACCESS_INDEX_READ_BIT;
+    }
+    if value.contains(core::AccessType::VertexAttributeRead) {
+        ret |= vk::ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    }
+    if value.contains(core::AccessType::UniformRead) {
+        ret |= vk::ACCESS_UNIFORM_READ_BIT;
+    }
+    if value.contains(core::AccessType::InputAttachmentRead) {
+        ret |= vk::ACCESS_INPUT_ATTACHMENT_READ_BIT;
+    }
+    if value.contains(core::AccessType::ShaderRead) {
+        ret |= vk::ACCESS_SHADER_READ_BIT;
+    }
+    if value.contains(core::AccessType::ShaderWrite) {
+        ret |= vk::ACCESS_SHADER_WRITE_BIT;
+    }
+    if value.contains(core::AccessType::ColorAttachmentRead) {
+        ret |= vk::ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    }
+    if value.contains(core::AccessType::ColorAttachmentWrite) {
+        ret |= vk::ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    }
+    if value.contains(core::AccessType::DepthStencilAttachmentRead) {
+        ret |= vk::ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    }
+    if value.contains(core::AccessType::DepthStencilAttachmentWrite) {
+        ret |= vk::ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    }
+    if value.contains(core::AccessType::TransferRead) {
+        ret |= vk::ACCESS_TRANSFER_READ_BIT;
+    }
+    if value.contains(core::AccessType::TransferWrite) {
+        ret |= vk::ACCESS_TRANSFER_WRITE_BIT;
+    }
+    if value.contains(core::AccessType::HostRead) {
+        ret |= vk::ACCESS_HOST_READ_BIT;
+    }
+    if value.contains(core::AccessType::HostWrite) {
+        ret |= vk::ACCESS_HOST_WRITE_BIT;
+    }
+    if value.contains(core::AccessType::MemoryRead) {
+        ret |= vk::ACCESS_MEMORY_READ_BIT;
+    }
+    if value.contains(core::AccessType::MemoryWrite) {
+        ret |= vk::ACCESS_MEMORY_WRITE_BIT;
+    }
+    ret
+}
+
+pub(crate) fn translate_pipeline_stage_flags(value: core::PipelineStageFlags) -> vk::PipelineStageFlags {
+    let mut ret = vk::PipelineStageFlags::empty();
+    if value.contains(core::PipelineStage::TopOfPipe) {
+        ret |= vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    }
+    if value.contains(core::PipelineStage::DrawIndirect) {
+        ret |= vk::PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+    }
+    if value.contains(core::PipelineStage::VertexInput) {
+        ret |= vk::PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    }
+    if value.contains(core::PipelineStage::VertexShader) {
+        ret |= vk::PIPELINE_STAGE_VERTEX_SHADER_BIT;
+    }
+    if value.contains(core::PipelineStage::FragmentShader) {
+        ret |= vk::PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    if value.contains(core::PipelineStage::EarlyFragmentTests) {
+        ret |= vk::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    }
+    if value.contains(core::PipelineStage::LateFragmentTests) {
+        ret |= vk::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    }
+    if value.contains(core::PipelineStage::ColorAttachmentOutput) {
+        ret |= vk::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    }
+    if value.contains(core::PipelineStage::ComputeShader) {
+        ret |= vk::PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    }
+    if value.contains(core::PipelineStage::Transfer) {
+        ret |= vk::PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    if value.contains(core::PipelineStage::BottomOfPipe) {
+        ret |= vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    }
+    if value.contains(core::PipelineStage::Host) {
+        ret |= vk::PIPELINE_STAGE_HOST_BIT;
+    }
+    if value.contains(core::PipelineStage::AllGraphics) {
+        ret |= vk::PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+    }
+    if value.contains(core::PipelineStage::AllCommands) {
+        ret |= vk::PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    }
+    ret
+}

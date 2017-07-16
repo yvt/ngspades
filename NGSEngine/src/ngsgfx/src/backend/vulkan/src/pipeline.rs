@@ -41,6 +41,10 @@ impl<T: DeviceRef> GraphicsPipeline<T> {
     ) -> core::Result<Self> {
         unimplemented!()
     }
+
+    pub fn handle(&self) -> vk::Pipeline {
+        self.data.handle
+    }
 }
 
 pub struct StencilState<T: DeviceRef> {

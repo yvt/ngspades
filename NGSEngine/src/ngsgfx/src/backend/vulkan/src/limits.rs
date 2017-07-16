@@ -10,23 +10,35 @@ use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDev
                      QueueFamilyProperties, PhysicalDeviceFeatures, VK_FALSE, PhysicalDeviceLimits};
 
 use std::u32;
+use std::ops;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub struct EngineQueueMapping {
-    pub queue_index: u32,
-    pub queue_family_index: u32,
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct DeviceConfig {
+    /// Specifies the queue family index and queue index for each internal queue
+    /// to be created.
+    ///
+    /// The number of elements must be less than or equal to 32.
+    pub queues: Vec<(u32, u32)>,
+
+    pub engine_queue_mappings: EngineQueueMappings,
 }
 
+/// Defines mappings from `DeviceEngine`s to internal queue indices.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct EngineQueueMappings {
-    pub universal: EngineQueueMapping,
-    pub compute: EngineQueueMapping,
-    pub copy: EngineQueueMapping,
+    pub universal: usize,
+    pub compute: usize,
+    pub copy: usize,
 }
 
 impl EngineQueueMappings {
-    pub(crate) fn into_array(&self) -> [&EngineQueueMapping; 3] {
-        [&self.universal, &self.compute, &self.copy]
+    pub fn internal_queue_for_engine(&self, index: core::DeviceEngine) -> Option<usize> {
+        match index {
+            core::DeviceEngine::Universal => Some(self.universal),
+            core::DeviceEngine::Compute => Some(self.compute),
+            core::DeviceEngine::Copy => Some(self.copy),
+            core::DeviceEngine::Host => None,
+        }
     }
 }
 

@@ -10,28 +10,28 @@ use DeviceRef;
 
 impl<T: DeviceRef> core::DebugCommandEncoder for CommandBuffer<T> {
     fn begin_debug_group(&mut self, marker: &core::DebugMarker) {
-        unimplemented!()
+        // TODO: implement
     }
 
     fn end_debug_group(&mut self) {
-        unimplemented!()
+        // TODO: implement
     }
 
     fn insert_debug_marker(&mut self, marker: &core::DebugMarker) {
-        unimplemented!()
+        // TODO: implement
     }
 }
 
 impl<T: DeviceRef> core::DebugCommandEncoder for SecondaryCommandBuffer<T> {
     fn begin_debug_group(&mut self, marker: &core::DebugMarker) {
-        unimplemented!()
+        // TODO: implement
     }
 
     fn end_debug_group(&mut self) {
-        unimplemented!()
+        // TODO: implement
     }
 
     fn insert_debug_marker(&mut self, marker: &core::DebugMarker) {
-        unimplemented!()
+        // TODO: implement
     }
 }

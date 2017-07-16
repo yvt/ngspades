@@ -10,7 +10,8 @@ use std::sync::Arc;
 use std::{mem, ops, ffi, ptr, fmt};
 use std::collections::{VecDeque, HashSet, HashMap};
 
-use imp::{ManagedEnvironment, Device, EngineQueueMappings, EngineQueueMapping, DeviceCapabilities};
+use imp::{ManagedEnvironment, Device, EngineQueueMappings, DeviceCapabilities,
+    DeviceConfig};
 use ll::{DeviceCreateInfo, DeviceQueueCreateInfo, ApplicationInfo};
 use {translate_generic_error_unwrap, RefEqArc, OwnedInstanceRef, AshInstance, ManagedDeviceRef};
 
@@ -275,14 +276,16 @@ pub struct Adapter(RefEqArc<AdapterData>);
 struct AdapterData {
     physical_device: vk::PhysicalDevice,
     name: String,
-    eqm: EngineQueueMappings,
+    config: DeviceConfig,
 }
 
 impl Adapter {
-    pub fn engine_queue_mappings(&self) -> &EngineQueueMappings {
-        &self.0.eqm
+    /// Return the default `DeviceConfig` for this adapter.
+    pub fn device_config(&self) -> &DeviceConfig {
+        &self.0.config
     }
 
+    /// Return `vk::PhysicalDevice` for this adapter.
     pub fn physical_device(&self) -> vk::PhysicalDevice {
         self.0.physical_device
     }
@@ -290,7 +293,7 @@ impl Adapter {
 
 impl core::Adapter for Adapter {
     fn name(&self) -> &str {
-        "System default adapter"
+        &self.0.name
     }
 }
 
@@ -311,6 +314,7 @@ impl AdapterData {
         let qf_props: Vec<vk::QueueFamilyProperties> =
             instance.get_physical_device_queue_family_properties(physical_device);
         let mut used_count = vec![0; qf_props.len()];
+        let mut internal_queues = Vec::new();
 
         // Universal engine: Choose the first queue family supporting all kind of operations
         let mut universal_fam_index = None;
@@ -329,6 +333,9 @@ impl AdapterData {
         )?;
         let universal_index = used_count[universal_fam_index];
         used_count[universal_fam_index] += 1;
+
+        let universal_internal_index = 0;
+        internal_queues.push((universal_fam_index as u32, universal_index));
 
         // Compute engine: Choose the first queue family supporting compute operations but
         //                 no graphics operations.
@@ -354,11 +361,13 @@ impl AdapterData {
                 }
             }
         }
-        let (compute_fam_index, compute_index) = if let Some(i) = compute_fam_index {
+        let compute_internal_index = if let Some(i) = compute_fam_index {
             used_count[i] += 1;
-            (i, used_count[i] - 1)
+
+            internal_queues.push((i as u32, used_count[i] - 1));
+            internal_queues.len() - 1
         } else {
-            (universal_fam_index, universal_index)
+            universal_internal_index
         };
 
         // Copy engine: Choose the first queue family supporting transfer operations but
@@ -392,32 +401,30 @@ impl AdapterData {
                 }
             }
         }
-        let (copy_fam_index, copy_index) = if let Some(i) = copy_fam_index {
+        let copy_internal_index = if let Some(i) = copy_fam_index {
             used_count[i] += 1;
-            (i, used_count[i] - 1)
+
+            internal_queues.push((i as u32, used_count[i] - 1));
+            internal_queues.len() - 1
         } else {
-            (universal_fam_index, universal_index)
+            universal_internal_index
         };
 
         let eqm = EngineQueueMappings {
-            universal: EngineQueueMapping {
-                queue_family_index: universal_fam_index as u32,
-                queue_index: universal_index,
-            },
-            compute: EngineQueueMapping {
-                queue_family_index: compute_fam_index as u32,
-                queue_index: compute_index,
-            },
-            copy: EngineQueueMapping {
-                queue_family_index: copy_fam_index as u32,
-                queue_index: copy_index,
-            },
+            universal: universal_internal_index,
+            compute: compute_internal_index,
+            copy: copy_internal_index,
+        };
+
+        let config = DeviceConfig {
+            queues: internal_queues,
+            engine_queue_mappings: eqm,
         };
 
         Ok(Self {
             physical_device,
             name,
-            eqm,
+            config,
         })
     }
 
@@ -489,7 +496,7 @@ impl core::Instance<ManagedEnvironment> for Instance {
             DeviceBuilder::new(
                 InstanceRef(self.instance.clone()),
                 adapter.0.physical_device,
-                adapter.0.eqm,
+                adapter.0.config.clone(),
             )
         }
     }
@@ -516,7 +523,7 @@ pub type DeviceBuilder = GenericDeviceBuilder<InstanceRef>;
 #[derive(Debug, Clone)]
 pub struct GenericDeviceBuilder<T: AsRef<AshInstance>> {
     instance: T,
-    eqm: EngineQueueMappings,
+    config: DeviceConfig,
     physical_device: vk::PhysicalDevice,
     features: vk::PhysicalDeviceFeatures,
     supported_features: vk::PhysicalDeviceFeatures,
@@ -534,7 +541,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
     pub unsafe fn new(
         instance: T,
         physical_device: vk::PhysicalDevice,
-        eqm: EngineQueueMappings,
+        config: DeviceConfig,
     ) -> Self {
         let supported_features = instance.as_ref().get_physical_device_features(
             physical_device,
@@ -553,7 +560,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
         Self {
             instance,
             physical_device,
-            eqm,
+            config,
             features: Default::default(),
             supported_features,
             layers: VecDeque::new(),
@@ -638,25 +645,25 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
     ///
     /// You can this function to perform modification or inspection on these
     /// structure.
-    pub fn info(&self) -> (DeviceCreateInfo, EngineQueueMappings, DeviceCapabilities) {
+    pub fn info(&self) -> (DeviceCreateInfo, DeviceConfig, DeviceCapabilities) {
         // Calculate the number of queues required for each queue family
-        let mut used_count = HashMap::new();
-        let eqm = self.eqm;
-        for mapping in eqm.into_array().iter() {
-            if !used_count.contains_key(&mapping.queue_family_index) {
-                used_count.insert(mapping.queue_family_index, 1);
-            } else {
-                *used_count.get_mut(&mapping.queue_family_index).unwrap() += 1;
+        let mut max_indices = HashMap::new();
+        let ref config = self.config;
+        for &(family, queue) in config.queues.iter() {
+            if let Some(max_index) = max_indices.get_mut(&family) {
+                *max_index = ::std::cmp::max(*max_index, queue);
+                continue;
             }
+            max_indices.insert(family, queue);
         }
 
         let mut queue_create_infos = Vec::new();
-        for (&fam_idx, &count) in used_count.iter() {
+        for (&fam_idx, &max_index) in max_indices.iter() {
             queue_create_infos.push(DeviceQueueCreateInfo {
                 p_next: ptr::null(),
                 flags: vk::DeviceQueueCreateFlags::empty(),
                 queue_family_index: fam_idx as u32,
-                queue_priorities: vec![0.5f32; count as usize],
+                queue_priorities: vec![0.5f32; (max_index + 1) as usize],
             });
         }
 
@@ -674,7 +681,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
                 enabled_layer_names: Vec::from(self.layers.clone()),
                 enabled_extension_names: self.extensions.iter().map(Clone::clone).collect(),
             },
-            eqm,
+            config.clone(),
             cap,
         )
     }
@@ -682,8 +689,8 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
     /// Constructs a `AshDevice`.
     pub unsafe fn build_raw(
         &self,
-    ) -> Result<(ash::Device<V1_0>, EngineQueueMappings, DeviceCapabilities), DeviceBuildError> {
-        let (dci, eqm, dc) = self.info();
+    ) -> Result<(ash::Device<V1_0>, DeviceConfig, DeviceCapabilities), DeviceBuildError> {
+        let (dci, cfg, dc) = self.info();
         let inst = self.instance.as_ref();
         let dci_raw = dci.as_raw();
         let dev = inst.create_device(self.physical_device, &dci_raw, None)
@@ -705,7 +712,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
                     translate_generic_error_unwrap(e),
                 ),
             })?;
-        Ok((dev, eqm, dc))
+        Ok((dev, cfg, dc))
     }
 }
 
@@ -713,10 +720,10 @@ impl core::DeviceBuilder<ManagedEnvironment> for DeviceBuilder {
     type BuildError = DeviceBuildError;
     fn build(&self) -> Result<Device<ManagedDeviceRef>, Self::BuildError> {
         unsafe {
-            self.build_raw().map(|(dev, eqm, dc)| {
+            self.build_raw().map(|(dev, cfg, dc)| {
                 let inst_ref = OwnedInstanceRef { instance: self.instance.0.clone() };
                 let dev_ref = ManagedDeviceRef::from_raw(dev, inst_ref);
-                Device::new(dev_ref, eqm, dc)
+                Device::new(dev_ref, cfg, dc)
             })
         }
     }

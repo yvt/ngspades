@@ -5,8 +5,11 @@
 //
 use core;
 
+use ash::vk;
+use ash::version::DeviceV1_0;
+
 use imp::{CommandBuffer, Buffer};
-use {DeviceRef, Backend};
+use {DeviceRef, Backend, AshDevice};
 
 impl<T: DeviceRef> core::CopyCommandEncoder<Backend<T>> for CommandBuffer<T> {
     fn copy_buffer(
@@ -17,6 +20,22 @@ impl<T: DeviceRef> core::CopyCommandEncoder<Backend<T>> for CommandBuffer<T> {
         destination_offset: core::DeviceSize,
         size: core::DeviceSize,
     ) {
-        unimplemented!()
+        let device: &AshDevice = self.data.device_ref.device();
+        let buffer = self.expect_outside_render_pass().buffer;
+
+        unsafe {
+            device.cmd_copy_buffer(
+                buffer,
+                source.handle(),
+                destination.handle(),
+                &[
+                    vk::BufferCopy {
+                        src_offset: source_offset,
+                        dst_offset: destination_offset,
+                        size,
+                    },
+                ],
+            );
+        }
     }
 }

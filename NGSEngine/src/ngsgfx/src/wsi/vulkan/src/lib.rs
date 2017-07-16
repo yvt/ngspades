@@ -178,8 +178,9 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
             .iter()
             .filter_map(|a| {
                 // TODO: support queue families other than universal one for presentation
-                let eqm = a.engine_queue_mappings();
-                let univ_qf = eqm.universal.queue_family_index;
+                let device_config = a.device_config();
+                let univ_iq = device_config.engine_queue_mappings.universal;
+                let univ_qf = device_config.queues[univ_iq].0;
                 if surface_loader.get_physical_device_surface_support_khr(
                     a.physical_device(),
                     univ_qf,

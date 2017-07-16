@@ -5,8 +5,12 @@
 //
 use core;
 
+use ash::version::DeviceV1_0;
+use std::sync::Arc;
+
 use {DeviceRef, Backend};
-use imp::{CommandBuffer, Event, Fence};
+use imp::{CommandBuffer, Event, Fence, DeviceData};
+use super::tokenlock::Token;
 
 pub struct CommandQueue<T: DeviceRef> {
     data: Box<CommandQueueData<T>>,
@@ -18,16 +22,32 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct CommandQueueData<T: DeviceRef> {
-    device: T,
+    device_data: Arc<DeviceData<T>>,
+    pub(crate) token: Token,
+}
+
+impl<T: DeviceRef> CommandQueue<T> {
+    pub(crate) fn new(device_data: &Arc<DeviceData<T>>) -> Self {
+        Self {
+            data: Box::new(CommandQueueData {
+                device_data: device_data.clone(),
+                token: Token::new(),
+            }),
+        }
+    }
+
+    fn device_ref(&self) -> &T {
+        &self.data.device_data.device_ref
+    }
 }
 
 impl<T: DeviceRef> core::CommandQueue<Backend<T>> for CommandQueue<T> {
     fn make_command_buffer(&self) -> core::Result<CommandBuffer<T>> {
-        unimplemented!()
+        CommandBuffer::new(self.device_ref(), &self.data.device_data.cfg)
     }
 
     fn wait_idle(&self) {
-        unimplemented!()
+        self.device_ref().device().device_wait_idle();
     }
 
     fn submit_commands(
@@ -38,8 +58,8 @@ impl<T: DeviceRef> core::CommandQueue<Backend<T>> for CommandQueue<T> {
         unimplemented!()
     }
 
-    fn make_fence(&self, description: &core::FenceDescription) -> core::Result<Fence<T>> {
-        unimplemented!()
+    fn make_fence(&self, _: &core::FenceDescription) -> core::Result<Fence<T>> {
+        Fence::new(self)
     }
 }
 

@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 use core::{self, Validate};
-use std::sync::Arc;
 
 use {Backend, DeviceRef};
 use imp::{self, ComputePipeline, DescriptorPool, Device, DescriptorSetLayout, Event, Framebuffer,

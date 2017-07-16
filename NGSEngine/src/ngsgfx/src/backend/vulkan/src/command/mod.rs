@@ -9,13 +9,15 @@ mod compute;
 mod copy;
 mod debug;
 mod encoder;
+mod event;
+mod fence;
 mod queue;
 mod render;
 mod secondary;
-mod sync;
+mod tokenlock;
 
 pub use self::buffer::*;
 pub use self::queue::*;
 pub use self::secondary::*;
-pub use self::sync::*;
-
+pub use self::event::*;
+pub use self::fence::*;

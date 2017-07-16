@@ -8,3 +8,4 @@ ngsgfx_core = { path = "../../core" }
 cgmath = "0.14.1"
 ash = "0.17.0"
 smallvec = "0.4.1"
+atomic_refcell = "0.1.0"

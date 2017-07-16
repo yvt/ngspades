@@ -9,7 +9,7 @@ use ash::vk;
 use std::sync::Arc;
 
 use DeviceRef;
-use imp::{Backend, CommandQueue, DeviceCapabilities, EngineQueueMappings};
+use imp::{Backend, CommandQueue, DeviceCapabilities, DeviceConfig};
 
 pub struct Device<T: DeviceRef> {
     data: Arc<DeviceData<T>>,
@@ -21,9 +21,9 @@ derive_using_field! {
 
 #[derive(Debug)]
 pub(crate) struct DeviceData<T: DeviceRef> {
-    device_ref: T,
-    cap: DeviceCapabilities,
-    queue_mappings: EngineQueueMappings,
+    pub(crate) device_ref: T,
+    pub(crate) cap: DeviceCapabilities,
+    pub(crate) cfg: DeviceConfig,
 }
 
 impl<T: DeviceRef> core::Device<Backend<T>> for Device<T> {
@@ -41,14 +41,14 @@ impl<T: DeviceRef> core::Device<Backend<T>> for Device<T> {
 impl<T: DeviceRef> Device<T> {
     pub fn new(
         device_ref: T,
-        queue_mappings: EngineQueueMappings,
+        cfg: DeviceConfig,
         cap: DeviceCapabilities,
     ) -> Self {
         Device {
             data: Arc::new(DeviceData{
                 device_ref,
                 cap,
-                queue_mappings,
+                cfg,
             }),
         }
     }

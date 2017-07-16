@@ -5,9 +5,12 @@
 //
 use core;
 
+use ash::vk;
 use std::time::Duration;
 
 use {RefEqArc, DeviceRef};
+use imp;
+use super::tokenlock::TokenLock;
 
 pub struct Event<T: DeviceRef> {
     data: RefEqArc<EventData<T>>,
@@ -32,27 +35,6 @@ impl<T: DeviceRef> core::Event for Event<T> {
 }
 
 impl<T: DeviceRef> core::Marker for Event<T> {
-    fn set_label(&self, label: Option<&str>) {
-        // TODO: set_label
-    }
-}
-
-pub struct Fence<T: DeviceRef> {
-    data: RefEqArc<FenceData<T>>,
-}
-
-derive_using_field! {
-    (T: DeviceRef); (PartialEq, Eq, Hash, Debug, Clone) for Fence<T> => data
-}
-
-#[derive(Debug)]
-struct FenceData<T: DeviceRef> {
-    device: T,
-}
-
-impl<T: DeviceRef> core::Fence for Fence<T> {}
-
-impl<T: DeviceRef> core::Marker for Fence<T> {
     fn set_label(&self, label: Option<&str>) {
         // TODO: set_label
     }

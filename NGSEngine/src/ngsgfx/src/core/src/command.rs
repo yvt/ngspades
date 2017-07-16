@@ -516,7 +516,7 @@ pub trait DebugCommandEncoder: Debug + Send + Any {
 // prevent `InnerXXX` from being exported
 mod flags {
     /// Specifies a type of hardware to execute the commands.
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u32)]
     pub enum DeviceEngine {
         /// Generic engine supporting all kinds of commands.

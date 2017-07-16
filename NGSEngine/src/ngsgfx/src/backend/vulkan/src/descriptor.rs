@@ -179,3 +179,9 @@ impl<T: DeviceRef> core::Marker for DescriptorSet<T> {
         // TODO: set_label
     }
 }
+
+impl<T: DeviceRef> DescriptorSet<T> {
+    pub fn handle(&self) -> vk::DescriptorSet {
+        unimplemented!()
+    }
+}

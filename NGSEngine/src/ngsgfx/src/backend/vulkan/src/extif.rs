@@ -5,7 +5,6 @@
 //
 //! Defines an interface to Vulkan ICD.
 
-use std::ops::Deref;
 use ash::{Device, Instance};
 use ash::version::{V1_0, DeviceV1_0};
 use ash::vk;
