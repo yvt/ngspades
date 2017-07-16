@@ -13,6 +13,7 @@ use imp::{Backend, CommandQueue, DeviceCapabilities, DeviceConfig};
 
 pub struct Device<T: DeviceRef> {
     data: Arc<DeviceData<T>>,
+    main_queue: CommandQueue<T>,
 }
 
 derive_using_field! {
@@ -28,7 +29,7 @@ pub(crate) struct DeviceData<T: DeviceRef> {
 
 impl<T: DeviceRef> core::Device<Backend<T>> for Device<T> {
     fn main_queue(&self) -> &CommandQueue<T> {
-        unimplemented!()
+        &self.main_queue
     }
     fn factory(&self) -> &Device<T> {
         &self
@@ -39,17 +40,15 @@ impl<T: DeviceRef> core::Device<Backend<T>> for Device<T> {
 }
 
 impl<T: DeviceRef> Device<T> {
-    pub fn new(
-        device_ref: T,
-        cfg: DeviceConfig,
-        cap: DeviceCapabilities,
-    ) -> Self {
+    pub fn new(device_ref: T, cfg: DeviceConfig, cap: DeviceCapabilities) -> Self {
+        let data = Arc::new(DeviceData {
+            device_ref,
+            cap,
+            cfg,
+        });
         Device {
-            data: Arc::new(DeviceData{
-                device_ref,
-                cap,
-                cfg,
-            }),
+            main_queue: CommandQueue::new(&data),
+            data,
         }
     }
     pub(crate) fn data(&self) -> &DeviceData<T> {

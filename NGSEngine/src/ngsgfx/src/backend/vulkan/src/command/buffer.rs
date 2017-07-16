@@ -9,7 +9,7 @@ use ash::version::DeviceV1_0;
 use std::{ptr, fmt};
 
 use {DeviceRef, Backend, translate_generic_error_unwrap, AshDevice};
-use imp::{DeviceConfig, Fence};
+use imp::{DeviceConfig, Fence, Framebuffer};
 use super::NestedPassEncoder;
 
 #[derive(Debug)]
@@ -74,13 +74,14 @@ pub(super) struct CommandPass<T: DeviceRef> {
     pub(super) update_fences: Vec<(Fence<T>, core::PipelineStageFlags, core::AccessTypeFlags)>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub(super) enum EncoderState {
+#[derive(Debug)]
+pub(super) enum EncoderState<T: DeviceRef> {
     NoPass,
 
-    RenderPrologue,
-    RenderSubpassInline,
-    RenderSubpassScb,
+    RenderPrologue { framebuffer: Framebuffer<T> },
+    RenderSubpassInline { num_remaining_subpasses: usize },
+    RenderSubpassScb { num_remaining_subpasses: usize },
+    RenderPassIntermission { num_remaining_subpasses: usize },
     RenderEpilogue,
     Compute,
     Copy,
@@ -106,7 +107,7 @@ pub(super) struct CommandBufferData<T: DeviceRef> {
     pub(super) passes: Vec<CommandPass<T>>,
     pub(super) nested_encoder: NestedPassEncoder<T>,
 
-    pub(super) encoder_state: EncoderState,
+    pub(super) encoder_state: EncoderState<T>,
 }
 
 impl<T: DeviceRef> fmt::Debug for CommandBufferData<T> {
@@ -177,48 +178,6 @@ impl<T: DeviceRef> CommandBuffer<T> {
             }
         }
         data.passes.clear();
-    }
-
-    pub(super) fn expect_pass(&self) -> &CommandPass<T> {
-        assert_ne!(self.data.encoder_state, EncoderState::NoPass);
-        &self.data.passes[self.data.passes.len() - 1]
-    }
-
-    pub(super) fn expect_pass_mut(&mut self) -> &mut CommandPass<T> {
-        let ref mut data = *self.data;
-        assert_ne!(data.encoder_state, EncoderState::NoPass);
-
-        let i = data.passes.len() - 1;
-        &mut data.passes[i]
-    }
-
-    pub(super) fn expect_action_pass_mut(&mut self) -> &mut CommandPass<T> {
-        match self.data.encoder_state {
-            EncoderState::RenderSubpassInline |
-            EncoderState::Compute |
-            EncoderState::Copy => self.expect_pass_mut(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(super) fn expect_outside_render_pass(&self) -> &CommandPass<T> {
-        match self.data.encoder_state {
-            EncoderState::RenderEpilogue |
-            EncoderState::RenderPrologue |
-            EncoderState::Compute |
-            EncoderState::Copy => self.expect_pass(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(super) fn expect_render_subpass_inline(&self) -> &CommandPass<T> {
-        assert_eq!(self.data.encoder_state, EncoderState::RenderSubpassInline);
-        self.expect_pass()
-    }
-
-    pub(super) fn expect_render_subpass_scb(&self) -> &CommandPass<T> {
-        assert_eq!(self.data.encoder_state, EncoderState::RenderSubpassScb);
-        self.expect_pass()
     }
 }
 

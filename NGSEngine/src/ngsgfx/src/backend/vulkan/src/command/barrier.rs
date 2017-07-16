@@ -14,6 +14,81 @@ use {DeviceRef, Backend, translate_access_type_flags, translate_pipeline_stage_f
      translate_image_layout, translate_image_subresource_range, AshDevice};
 use super::{CommandPass, SecondaryCommandBufferData};
 
+pub(crate) enum VkResourceBarrier {
+    Buffer([vk::BufferMemoryBarrier; 1]),
+    Image([vk::ImageMemoryBarrier; 1]),
+}
+
+impl VkResourceBarrier {
+    pub fn translate<T: DeviceRef>(
+        resource: &core::SubresourceWithLayout<Backend<T>>,
+        src_access_mask: vk::AccessFlags,
+        dst_access_mask: vk::AccessFlags,
+        src_queue_family_index: u32,
+        dst_queue_family_index: u32,
+    ) -> Self {
+        match resource {
+            &core::SubresourceWithLayout::Buffer {
+                buffer: buf,
+                offset,
+                len,
+            } => VkResourceBarrier::Buffer(
+                [
+                    vk::BufferMemoryBarrier {
+                        s_type: vk::StructureType::BufferMemoryBarrier,
+                        p_next: ptr::null(),
+                        src_access_mask,
+                        dst_access_mask,
+                        src_queue_family_index,
+                        dst_queue_family_index,
+                        buffer: buf.handle(),
+                        offset,
+                        size: len,
+                    },
+                ],
+            ),
+            &core::SubresourceWithLayout::Image {
+                image,
+                range,
+                old_layout,
+                new_layout,
+            } => VkResourceBarrier::Image(
+                [
+                    vk::ImageMemoryBarrier {
+                        s_type: vk::StructureType::ImageMemoryBarrier,
+                        p_next: ptr::null(),
+                        src_access_mask,
+                        dst_access_mask,
+                        old_layout: translate_image_layout(old_layout),
+                        new_layout: translate_image_layout(new_layout),
+                        src_queue_family_index,
+                        dst_queue_family_index,
+                        image: image.handle(),
+                        subresource_range: translate_image_subresource_range(
+                            &range,
+                            vk::IMAGE_ASPECT_COLOR_BIT, // TODO
+                        ),
+                    },
+                ],
+            ),
+        }
+    }
+
+    pub fn buffer_memory_barriers(&self) -> &[vk::BufferMemoryBarrier] {
+        match self {
+            &VkResourceBarrier::Buffer(ref array) => array,
+            &VkResourceBarrier::Image(ref array) => &[],
+        }
+    }
+
+    pub fn image_memory_barriers(&self) -> &[vk::ImageMemoryBarrier] {
+        match self {
+            &VkResourceBarrier::Buffer(ref array) => &[],
+            &VkResourceBarrier::Image(ref array) => array,
+        }
+    }
+}
+
 fn resource_barrier<T: DeviceRef>(
     device: &AshDevice,
     buffer: vk::CommandBuffer,
@@ -23,68 +98,23 @@ fn resource_barrier<T: DeviceRef>(
     destination_access: core::AccessTypeFlags,
     resource: &core::SubresourceWithLayout<Backend<T>>,
 ) {
+    let barrier = VkResourceBarrier::translate(
+        resource,
+        translate_access_type_flags(source_access),
+        translate_access_type_flags(destination_access),
+        vk::VK_QUEUE_FAMILY_IGNORED,
+        vk::VK_QUEUE_FAMILY_IGNORED,
+    );
     unsafe {
-        match resource {
-            &core::SubresourceWithLayout::Buffer {
-                buffer: buf,
-                offset,
-                len,
-            } => {
-                device.cmd_pipeline_barrier(
-                    buffer,
-                    translate_pipeline_stage_flags(source_stage),
-                    translate_pipeline_stage_flags(destination_stage),
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[
-                        vk::BufferMemoryBarrier {
-                            s_type: vk::StructureType::BufferMemoryBarrier,
-                            p_next: ptr::null(),
-                            src_access_mask: translate_access_type_flags(source_access),
-                            dst_access_mask: translate_access_type_flags(destination_access),
-                            src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                            dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                            buffer: buf.handle(),
-                            offset,
-                            size: len,
-                        },
-                    ],
-                    &[],
-                );
-            }
-            &core::SubresourceWithLayout::Image {
-                image,
-                range,
-                old_layout,
-                new_layout,
-            } => {
-                device.cmd_pipeline_barrier(
-                    buffer,
-                    translate_pipeline_stage_flags(source_stage),
-                    translate_pipeline_stage_flags(destination_stage),
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    &[],
-                    &[
-                        vk::ImageMemoryBarrier {
-                            s_type: vk::StructureType::ImageMemoryBarrier,
-                            p_next: ptr::null(),
-                            src_access_mask: translate_access_type_flags(source_access),
-                            dst_access_mask: translate_access_type_flags(destination_access),
-                            old_layout: translate_image_layout(old_layout),
-                            new_layout: translate_image_layout(new_layout),
-                            src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                            dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                            image: image.handle(),
-                            subresource_range: translate_image_subresource_range(
-                                &range,
-                                vk::IMAGE_ASPECT_COLOR_BIT, // TODO
-                            ),
-                        },
-                    ],
-                );
-            }
-        }
+        device.cmd_pipeline_barrier(
+            buffer,
+            translate_pipeline_stage_flags(source_stage),
+            translate_pipeline_stage_flags(destination_stage),
+            vk::DependencyFlags::empty(),
+            &[],
+            barrier.buffer_memory_barriers(),
+            barrier.image_memory_barriers(),
+        );
     }
 }
 
