@@ -174,38 +174,58 @@ impl<'a> GraphicsEncoder<'a> {
 }
 
 impl<T: DeviceRef> CommandBuffer<T> {
-    fn graphics_encoder(&mut self) -> GraphicsEncoder {
-        GraphicsEncoder(
-            &self.data.device_ref.device(),
-            self.expect_render_subpass_inline().buffer,
-        )
+    fn graphics_encoder(&mut self) -> Option<GraphicsEncoder> {
+        if self.encoder_error().is_some() {
+            None
+        } else {
+            Some(GraphicsEncoder(
+                &self.data.device_ref.device(),
+                self.expect_render_subpass_inline().buffer,
+            ))
+        }
     }
 }
 
 impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuffer<T> {
     fn bind_graphics_pipeline(&mut self, pipeline: &GraphicsPipeline<T>) {
-        self.graphics_encoder().bind_graphics_pipeline(pipeline);
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_graphics_pipeline(pipeline);
+        }
     }
     fn set_blend_constants(&mut self, value: &[f32; 4]) {
-        self.graphics_encoder().set_blend_constants(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_blend_constants(value);
+        }
     }
     fn set_depth_bias(&mut self, value: Option<core::DepthBias>) {
-        self.graphics_encoder().set_depth_bias(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_depth_bias(value);
+        }
     }
     fn set_depth_bounds(&mut self, value: Option<core::DepthBounds>) {
-        self.graphics_encoder().set_depth_bounds(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_depth_bounds(value);
+        }
     }
     fn set_stencil_state(&mut self, value: &StencilState<T>) {
-        self.graphics_encoder().set_stencil_state(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_stencil_state(value);
+        }
     }
     fn set_stencil_reference(&mut self, values: [u32; 2]) {
-        self.graphics_encoder().set_stencil_reference(values);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_stencil_reference(values);
+        }
     }
     fn set_viewport(&mut self, value: &core::Viewport) {
-        self.graphics_encoder().set_viewport(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_viewport(value);
+        }
     }
     fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
-        self.graphics_encoder().set_scissor_rect(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_scissor_rect(value);
+        }
     }
     fn bind_graphics_descriptor_sets(
         &mut self,
@@ -214,12 +234,14 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         descriptor_sets: &[&DescriptorSet<T>],
         dynamic_offsets: &[u32],
     ) {
-        self.graphics_encoder().bind_graphics_descriptor_sets(
-            pipeline_layout,
-            start_index,
-            descriptor_sets,
-            dynamic_offsets,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_graphics_descriptor_sets(
+                pipeline_layout,
+                start_index,
+                descriptor_sets,
+                dynamic_offsets,
+            );
+        }
     }
 
     fn bind_vertex_buffers(
@@ -227,10 +249,9 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         start_index: core::VertexBindingLocation,
         buffers: &[(&Buffer<T>, core::DeviceSize)],
     ) {
-        self.graphics_encoder().bind_vertex_buffers(
-            start_index,
-            buffers,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_vertex_buffers(start_index, buffers);
+        }
     }
 
     fn bind_index_buffer(
@@ -239,15 +260,15 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         offset: core::DeviceSize,
         format: core::IndexFormat,
     ) {
-        self.graphics_encoder().bind_index_buffer(
-            buffer,
-            offset,
-            format,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_index_buffer(buffer, offset, format);
+        }
     }
 
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
-        self.graphics_encoder().draw(vertex_range, instance_range);
+        if let Some(e) = self.graphics_encoder() {
+            e.draw(vertex_range, instance_range);
+        }
     }
     fn draw_indexed(
         &mut self,
@@ -255,44 +276,61 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         vertex_offset: u32,
         instance_range: Range<u32>,
     ) {
-        self.graphics_encoder().draw_indexed(
-            index_buffer_range,
-            vertex_offset,
-            instance_range,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.draw_indexed(index_buffer_range, vertex_offset, instance_range);
+        }
     }
 }
 
 impl<T: DeviceRef> SecondaryCommandBuffer<T> {
-    fn graphics_encoder(&mut self) -> GraphicsEncoder {
-        unimplemented!()
+    fn graphics_encoder(&mut self) -> Option<GraphicsEncoder> {
+        self.expect_active().map(|scbd| {
+            GraphicsEncoder(scbd.device_ref.device(), scbd.buffer)
+        })
     }
 }
 
 impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCommandBuffer<T> {
+    // these are *exact* copies of those of `CommandBuffer<T>`
     fn bind_graphics_pipeline(&mut self, pipeline: &GraphicsPipeline<T>) {
-        self.graphics_encoder().bind_graphics_pipeline(pipeline);
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_graphics_pipeline(pipeline);
+        }
     }
     fn set_blend_constants(&mut self, value: &[f32; 4]) {
-        self.graphics_encoder().set_blend_constants(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_blend_constants(value);
+        }
     }
     fn set_depth_bias(&mut self, value: Option<core::DepthBias>) {
-        self.graphics_encoder().set_depth_bias(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_depth_bias(value);
+        }
     }
     fn set_depth_bounds(&mut self, value: Option<core::DepthBounds>) {
-        self.graphics_encoder().set_depth_bounds(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_depth_bounds(value);
+        }
     }
     fn set_stencil_state(&mut self, value: &StencilState<T>) {
-        self.graphics_encoder().set_stencil_state(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_stencil_state(value);
+        }
     }
     fn set_stencil_reference(&mut self, values: [u32; 2]) {
-        self.graphics_encoder().set_stencil_reference(values);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_stencil_reference(values);
+        }
     }
     fn set_viewport(&mut self, value: &core::Viewport) {
-        self.graphics_encoder().set_viewport(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_viewport(value);
+        }
     }
     fn set_scissor_rect(&mut self, value: &core::Rect2D<u32>) {
-        self.graphics_encoder().set_scissor_rect(value);
+        if let Some(e) = self.graphics_encoder() {
+            e.set_scissor_rect(value);
+        }
     }
     fn bind_graphics_descriptor_sets(
         &mut self,
@@ -301,12 +339,14 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         descriptor_sets: &[&DescriptorSet<T>],
         dynamic_offsets: &[u32],
     ) {
-        self.graphics_encoder().bind_graphics_descriptor_sets(
-            pipeline_layout,
-            start_index,
-            descriptor_sets,
-            dynamic_offsets,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_graphics_descriptor_sets(
+                pipeline_layout,
+                start_index,
+                descriptor_sets,
+                dynamic_offsets,
+            );
+        }
     }
 
     fn bind_vertex_buffers(
@@ -314,10 +354,9 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         start_index: core::VertexBindingLocation,
         buffers: &[(&Buffer<T>, core::DeviceSize)],
     ) {
-        self.graphics_encoder().bind_vertex_buffers(
-            start_index,
-            buffers,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_vertex_buffers(start_index, buffers);
+        }
     }
 
     fn bind_index_buffer(
@@ -326,15 +365,15 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         offset: core::DeviceSize,
         format: core::IndexFormat,
     ) {
-        self.graphics_encoder().bind_index_buffer(
-            buffer,
-            offset,
-            format,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.bind_index_buffer(buffer, offset, format);
+        }
     }
 
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
-        self.graphics_encoder().draw(vertex_range, instance_range);
+        if let Some(e) = self.graphics_encoder() {
+            e.draw(vertex_range, instance_range);
+        }
     }
     fn draw_indexed(
         &mut self,
@@ -342,10 +381,8 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         vertex_offset: u32,
         instance_range: Range<u32>,
     ) {
-        self.graphics_encoder().draw_indexed(
-            index_buffer_range,
-            vertex_offset,
-            instance_range,
-        );
+        if let Some(e) = self.graphics_encoder() {
+            e.draw_indexed(index_buffer_range, vertex_offset, instance_range);
+        }
     }
 }

@@ -4,69 +4,14 @@
 // This source code is a part of Nightingales.
 //
 use core;
-use ash::{self, vk};
-use ash::version::DeviceV1_0;
+use ash::vk;
 use std::{ptr, fmt};
 
-use {DeviceRef, Backend, translate_generic_error_unwrap, AshDevice};
-use imp::{DeviceConfig, Fence, Framebuffer};
+use {DeviceRef, Backend, AshDevice};
+use imp::{DeviceConfig, Fence};
 use super::NestedPassEncoder;
 use super::encoder::EncoderState;
-
-#[derive(Debug)]
-pub(super) struct QueuePool {
-    vk_pool: vk::CommandPool, // destroyed by CommandBufferData::drop
-    buffers: [(Vec<vk::CommandBuffer>, usize); 2],
-}
-
-impl QueuePool {
-    fn new(vk_pool: vk::CommandPool) -> Self {
-        Self {
-            vk_pool,
-            buffers: Default::default(),
-        }
-    }
-
-    unsafe fn reset(&mut self, device: &AshDevice) {
-        for &mut (_, ref mut used_count) in self.buffers.iter_mut() {
-            *used_count = 0;
-        }
-        device
-            .reset_command_pool(self.vk_pool, vk::CommandPoolResetFlags::empty())
-            .unwrap(); // TODO: handle this error
-    }
-
-    unsafe fn get_buffer(&mut self, index: usize, device: &AshDevice) -> vk::CommandBuffer {
-        let (ref mut reserve, ref mut used_count) = self.buffers[index];
-        if *used_count == reserve.len() {
-            let info = vk::CommandBufferAllocateInfo {
-                s_type: vk::StructureType::CommandBufferAllocateInfo,
-                p_next: ptr::null(),
-                command_pool: self.vk_pool,
-                level: if index == 0 {
-                    vk::CommandBufferLevel::Primary
-                } else {
-                    vk::CommandBufferLevel::Secondary
-                },
-                command_buffer_count: 1,
-            };
-            let buffer = device.allocate_command_buffers(&info).expect(
-                "command buffer allocation failed (sorry)",
-            )
-                [0]; // TODO: handle this error
-            reserve.push(buffer);
-        }
-        *used_count += 1;
-        reserve[*used_count - 1]
-    }
-
-    pub(super) unsafe fn get_primary_buffer(&mut self, device: &AshDevice) -> vk::CommandBuffer {
-        self.get_buffer(0, device)
-    }
-    pub(super) unsafe fn get_secondary_buffer(&mut self, device: &AshDevice) -> vk::CommandBuffer {
-        self.get_buffer(1, device)
-    }
-}
+use super::cbpool::CommandBufferPool;
 
 #[derive(Debug)]
 pub(super) struct CommandPass<T: DeviceRef> {
@@ -90,7 +35,7 @@ pub(super) struct CommandBufferData<T: DeviceRef> {
     pub(super) device_config: DeviceConfig,
 
     /// Vulkan command pool for each internal queue.
-    pub(super) pools: Vec<QueuePool>,
+    pub(super) pools: Vec<CommandBufferPool>,
 
     pub(super) passes: Vec<CommandPass<T>>,
     pub(super) nested_encoder: NestedPassEncoder<T>,
@@ -111,12 +56,10 @@ impl<T: DeviceRef> fmt::Debug for CommandBufferData<T> {
 
 impl<T: DeviceRef> Drop for CommandBufferData<T> {
     fn drop(&mut self) {
-        let device: &AshDevice = self.device_ref.device();
-        for q_pool in self.pools.iter() {
-            // this frees all command buffers allocated from it automatically
+        for q_pool in self.pools.drain(..) {
             unsafe {
-                device.destroy_command_pool(q_pool.vk_pool, self.device_ref.allocation_callbacks())
-            };
+                q_pool.destroy(&self.device_ref);
+            }
         }
     }
 }
@@ -125,38 +68,50 @@ impl<T: DeviceRef> Drop for CommandBuffer<T> {
     fn drop(&mut self) {
         use core::CommandBuffer;
         // FIXME: should we panic instead?
-        self.wait_completion();
+        self.wait_completion().unwrap();
     }
 }
 
 impl<T: DeviceRef> CommandBuffer<T> {
     pub(super) fn new(device_ref: &T, device_config: &DeviceConfig) -> core::Result<Self> {
-        let device_config = device_config.clone();
-        let device: &AshDevice = device_ref.device();
         let mut data = CommandBufferData {
             device_ref: device_ref.clone(),
-            device_config,
+            device_config: device_config.clone(),
             pools: Vec::new(),
             passes: Vec::new(),
             nested_encoder: NestedPassEncoder::new(),
-            encoder_state: EncoderState::NoPass,
+            encoder_state: EncoderState::Initial,
         };
-        let mut info = vk::CommandPoolCreateInfo {
-            s_type: vk::StructureType::CommandPoolCreateInfo,
-            p_next: ptr::null(),
-            flags: vk::COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            queue_family_index: 0, // set it later
-        };
+
+        // Create `CommandBufferPool`s
+        //
+        // (This is done after `CommandBufferData` was constructed so if an
+        //  error should happen during the process, already created pools will
+        //  be destroyed automatically by `CommandBufferData::drop`)
         for &(family, _) in data.device_config.queues.iter() {
-            info.queue_family_index = family;
-            let handle = unsafe {
-                device.create_command_pool(&info, device_ref.allocation_callbacks())
-            }.map_err(translate_generic_error_unwrap)?;
-            data.pools.push(QueuePool::new(handle));
+            let info = vk::CommandPoolCreateInfo {
+                s_type: vk::StructureType::CommandPoolCreateInfo,
+                p_next: ptr::null(),
+                flags: vk::COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                queue_family_index: family,
+            };
+
+            // Make a room for the new element
+            //
+            // (I don't want to leave `CommandBufferPool` in limbo in case of
+            //  `Vec`'s allocation failure. `CommandBufferPool` does not
+            //  implement `Drop`.)
+            data.pools.reserve(1);
+
+            let pool = unsafe { CommandBufferPool::new(device_ref, &info)? };
+            data.pools.push(pool);
         }
+
         Ok(CommandBuffer { data: Box::new(data) })
     }
 
+    /// Removes all command passes and returns all `vk::CommandBuffer`s to
+    /// `pools`.
     pub(super) fn reset(&mut self) {
         let ref mut data = *self.data;
         let device: &AshDevice = data.device_ref.device();
@@ -171,7 +126,16 @@ impl<T: DeviceRef> CommandBuffer<T> {
 
 impl<T: DeviceRef> core::CommandBuffer<Backend<T>> for CommandBuffer<T> {
     fn state(&self) -> core::CommandBufferState {
-        unimplemented!()
+        match self.data.encoder_state {
+            EncoderState::Initial => core::CommandBufferState::Initial,
+            EncoderState::Error(_) => core::CommandBufferState::Error,
+            EncoderState::Invalid => unreachable!(),
+            EncoderState::End => {
+                // TODO: return one of Executable, Pending, Completed, and Error
+                unimplemented!()
+            }
+            _ => core::CommandBufferState::Recording,
+        }
     }
     fn wait_completion(&self) -> core::Result<()> {
         unimplemented!()

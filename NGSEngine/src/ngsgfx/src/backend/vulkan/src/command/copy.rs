@@ -20,6 +20,10 @@ impl<T: DeviceRef> core::CopyCommandEncoder<Backend<T>> for CommandBuffer<T> {
         destination_offset: core::DeviceSize,
         size: core::DeviceSize,
     ) {
+        if self.encoder_error().is_some() {
+            return;
+        }
+
         let device: &AshDevice = self.data.device_ref.device();
         let buffer = self.expect_outside_render_pass().buffer;
 

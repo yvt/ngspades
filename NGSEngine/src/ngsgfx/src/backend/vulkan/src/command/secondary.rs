@@ -5,12 +5,13 @@
 //
 use core;
 
-use std::fmt;
+use std::{fmt, mem};
 use ash::vk;
+use ash::version::DeviceV1_0;
 use std::sync::Arc;
 use atomic_refcell::AtomicRefCell;
 
-use {DeviceRef, Backend, AshDevice};
+use {DeviceRef, Backend, AshDevice, translate_generic_error_unwrap};
 use imp::Fence;
 
 /// Used to encode a render subpass with secondary command buffers.
@@ -35,34 +36,56 @@ impl<T: DeviceRef> NestedPassEncoder<T> {
         }
     }
 
+    /// Creates a secondary command buffer that encodes nothing.
+    ///
+    /// This is sometimes required to handle error states in the command encoder.
+    pub fn make_noop_secondary_command_buffer(&mut self) -> SecondaryCommandBuffer<T> {
+        SecondaryCommandBuffer { data: SecondaryCommandBufferState::Noop }
+    }
+
     pub fn make_secondary_command_buffer<F>(
         &mut self,
         device_ref: &T,
-        buffer_allocator: F,
-    ) -> SecondaryCommandBuffer<T>
+        buffer_allocator: &mut F,
+    ) -> core::Result<SecondaryCommandBuffer<T>>
     where
-        F: FnOnce() -> vk::CommandBuffer,
+        F: FnMut() -> core::Result<vk::CommandBuffer>,
     {
         if self.used_count == self.secondary_buffers.len() {
             self.secondary_buffers.push(Arc::new(
                 AtomicRefCell::new(Some(SecondaryCommandBufferData {
                     device_ref: device_ref.clone(),
 
-                    buffer: buffer_allocator(),
+                    buffer: buffer_allocator()?,
                     wait_fences: Vec::new(),
                     update_fences: Vec::new(),
+
+                    result: Ok(()),
                 })),
             ));
         }
         self.used_count += 1;
         let ref mut next_sb_data = self.secondary_buffers[self.used_count - 1];
-        let sb_data = Arc::get_mut(next_sb_data)
-            .unwrap()
-            .borrow_mut()
-            .take()
-            .unwrap();
+        let sb_data = match Arc::get_mut(next_sb_data).unwrap().borrow_mut().take() {
+            Some(sb_data) => sb_data,
+            None => {
+                // FIXME: this means someone still has `SecondaryCommandBufferData`
+                //        and this is very unsafe!
+                SecondaryCommandBufferData {
+                    device_ref: device_ref.clone(),
 
-        SecondaryCommandBuffer { data: Some((sb_data, next_sb_data.clone())) }
+                    buffer: buffer_allocator()?,
+                    wait_fences: Vec::new(),
+                    update_fences: Vec::new(),
+
+                    result: Ok(()),
+                }
+            }
+        };
+
+        Ok(SecondaryCommandBuffer {
+            data: SecondaryCommandBufferState::Encoding(sb_data, next_sb_data.clone()),
+        })
     }
 
     pub fn start(&mut self) {
@@ -91,37 +114,72 @@ impl<T: DeviceRef> NestedPassEncoder<T> {
 }
 
 pub struct SecondaryCommandBuffer<T: DeviceRef> {
-    data: Option<
-        (SecondaryCommandBufferData<T>,
-         Arc<AtomicRefCell<Option<SecondaryCommandBufferData<T>>>>),
-    >,
+    data: SecondaryCommandBufferState<T>,
 }
 
-impl<T: DeviceRef> fmt::Debug for SecondaryCommandBuffer<T> {
+derive_using_field! {
+    (T: DeviceRef); (Debug) for SecondaryCommandBuffer<T> => data
+}
+
+enum SecondaryCommandBufferState<T: DeviceRef> {
+    Encoding(
+        SecondaryCommandBufferData<T>,
+        Arc<AtomicRefCell<Option<SecondaryCommandBufferData<T>>>>
+    ),
+    NotEncoding,
+    Noop,
+}
+
+impl<T: DeviceRef> fmt::Debug for SecondaryCommandBufferState<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.data {
-            &Some((ref work, _)) => {
-                f.debug_struct("SecondaryCommandBuffer")
-                    .field("data", work)
+        match self {
+            &SecondaryCommandBufferState::Encoding(ref work, _) => {
+                f.debug_tuple("SecondaryCommandBufferState::Encoding")
+                    .field(work)
                     .finish()
             }
-            &None => f.debug_struct("SecondaryCommandBuffer").finish(),
+            &SecondaryCommandBufferState::NotEncoding => {
+                f.debug_tuple("SecondaryCommandBufferState::NotEncoding")
+                    .finish()
+            }
+            &SecondaryCommandBufferState::Noop => {
+                f.debug_tuple("SecondaryCommandBufferState::NotEncoding")
+                    .finish()
+            }
         }
     }
 }
 
 impl<T: DeviceRef> SecondaryCommandBuffer<T> {
-    pub(super) fn exepct_active(&self) -> &SecondaryCommandBufferData<T> {
-        &self.data
-            .as_ref()
-            .expect("this secondary command buffer is not recording")
-            .0
+    pub(super) fn expect_active(&self) -> Option<&SecondaryCommandBufferData<T>> {
+        match self.data {
+            SecondaryCommandBufferState::Encoding(ref work, _) => Some(work),
+            SecondaryCommandBufferState::NotEncoding => {
+                panic!("this secondary command buffer is not recording")
+            }
+            SecondaryCommandBufferState::Noop => None,
+        }
     }
-    pub(super) fn exepct_active_mut(&mut self) -> &mut SecondaryCommandBufferData<T> {
-        &mut self.data
-            .as_mut()
-            .expect("this secondary command buffer is not recording")
-            .0
+    pub(super) fn expect_active_mut(&mut self) -> Option<&mut SecondaryCommandBufferData<T>> {
+        match self.data {
+            SecondaryCommandBufferState::Encoding(ref mut work, _) => Some(work),
+            SecondaryCommandBufferState::NotEncoding => {
+                panic!("this secondary command buffer is not recording")
+            }
+            SecondaryCommandBufferState::Noop => None,
+        }
+    }
+
+    pub(super) fn release(&mut self) {
+        let (work, result_cell) =
+            match mem::replace(&mut self.data, SecondaryCommandBufferState::NotEncoding) {
+                SecondaryCommandBufferState::Encoding(work, result_cell) => (work, result_cell),
+                SecondaryCommandBufferState::NotEncoding => unreachable!(),
+                SecondaryCommandBufferState::Noop => return,
+            };
+        let mut result = result_cell.borrow_mut();
+        assert!(result.is_none());
+        *result = Some(work);
     }
 }
 
@@ -131,6 +189,7 @@ pub(super) struct SecondaryCommandBufferData<T: DeviceRef> {
     pub(super) buffer: vk::CommandBuffer,
     pub(super) wait_fences: Vec<(Fence<T>, core::PipelineStageFlags, core::AccessTypeFlags)>,
     pub(super) update_fences: Vec<(Fence<T>, core::PipelineStageFlags, core::AccessTypeFlags)>,
+    pub(super) result: core::Result<()>,
 }
 
 impl<T: DeviceRef> fmt::Debug for SecondaryCommandBufferData<T> {
@@ -146,12 +205,20 @@ impl<T: DeviceRef> fmt::Debug for SecondaryCommandBufferData<T> {
 
 impl<T: DeviceRef> core::SecondaryCommandBuffer<Backend<T>> for SecondaryCommandBuffer<T> {
     fn end_encoding(&mut self) {
-        let (work, result_cell) = self.data.take().expect(
-            "this secondary command buffer is not recording",
-        );
-        let mut result = result_cell.borrow_mut();
-        assert!(result.is_none());
-        *result = Some(work);
+        if let Some(sbd) = self.expect_active_mut() {
+            let end_result = {
+                let device: &AshDevice = sbd.device_ref.device();
+                let buffer = sbd.buffer;
+                unsafe {
+                    device.end_command_buffer(buffer).map_err(
+                        translate_generic_error_unwrap,
+                    )
+                }
+            };
+            sbd.result = end_result;
+        }
+
+        self.release();
     }
 }
 

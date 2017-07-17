@@ -9,7 +9,7 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 use std::ptr;
 
-use imp::{CommandBuffer, SecondaryCommandBuffer, Fence, Image};
+use imp::{CommandBuffer, SecondaryCommandBuffer, Fence};
 use {DeviceRef, Backend, translate_access_type_flags, translate_pipeline_stage_flags,
      translate_image_layout, translate_image_subresource_range, AshDevice};
 use super::{CommandPass, SecondaryCommandBufferData};
@@ -125,6 +125,10 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
         access: core::AccessTypeFlags,
         fence: &Fence<T>,
     ) {
+        if self.encoder_error().is_some() {
+            return;
+        }
+
         self.expect_action_pass_mut().wait_fences.push((
             fence.clone(),
             stage,
@@ -138,6 +142,10 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
         access: core::AccessTypeFlags,
         fence: &Fence<T>,
     ) {
+        if self.encoder_error().is_some() {
+            return;
+        }
+
         self.expect_action_pass_mut().update_fences.push((
             fence.clone(),
             stage,
@@ -153,6 +161,10 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
         destination_access: core::AccessTypeFlags,
         resource: &core::SubresourceWithLayout<Backend<T>>,
     ) {
+        if self.encoder_error().is_some() {
+            return;
+        }
+
         let &mut CommandPass { buffer, .. } = self.expect_action_pass_mut();
         let device: &AshDevice = self.data.device_ref.device();
 
@@ -175,11 +187,9 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for SecondaryCommandB
         access: core::AccessTypeFlags,
         fence: &Fence<T>,
     ) {
-        self.exepct_active_mut().wait_fences.push((
-            fence.clone(),
-            stage,
-            access,
-        ));
+        if let Some(sbd) = self.expect_active_mut() {
+            sbd.wait_fences.push((fence.clone(), stage, access));
+        }
     }
 
     fn update_fence(
@@ -188,11 +198,9 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for SecondaryCommandB
         access: core::AccessTypeFlags,
         fence: &Fence<T>,
     ) {
-        self.exepct_active_mut().update_fences.push((
-            fence.clone(),
-            stage,
-            access,
-        ));
+        if let Some(sbd) = self.expect_active_mut() {
+            sbd.update_fences.push((fence.clone(), stage, access));
+        }
     }
 
     fn resource_barrier(
@@ -207,7 +215,10 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for SecondaryCommandB
             ref device_ref,
             ref buffer,
             ..
-        } = self.exepct_active_mut();
+        } = match self.expect_active_mut() {
+            Some(x) => x,
+            None => return,
+        };
         let device: &AshDevice = device_ref.device();
 
         resource_barrier(

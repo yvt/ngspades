@@ -5,6 +5,7 @@
 //
 mod barrier;
 mod buffer;
+mod cbpool;
 mod compute;
 mod copy;
 mod debug;

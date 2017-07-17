@@ -18,6 +18,10 @@ impl<T: DeviceRef> core::ComputeCommandEncoder<Backend<T>> for CommandBuffer<T> 
     // TODO: lock descriptor set update until command buffer execution is completed
 
     fn bind_compute_pipeline(&mut self, pipeline: &ComputePipeline<T>) {
+        if self.encoder_error().is_some() {
+            return;
+        }
+
         let device: &AshDevice = self.data.device_ref.device();
         let buffer = self.expect_outside_render_pass().buffer;
 
@@ -33,6 +37,10 @@ impl<T: DeviceRef> core::ComputeCommandEncoder<Backend<T>> for CommandBuffer<T> 
         descriptor_sets: &[&DescriptorSet<T>],
         dynamic_offsets: &[u32],
     ) {
+        if self.encoder_error().is_some() {
+            return;
+        }
+
         let device: &AshDevice = self.data.device_ref.device();
         let buffer = self.expect_outside_render_pass().buffer;
 
@@ -50,6 +58,10 @@ impl<T: DeviceRef> core::ComputeCommandEncoder<Backend<T>> for CommandBuffer<T> 
     }
 
     fn dispatch(&mut self, workgroup_count: Vector3<u32>) {
+        if self.encoder_error().is_some() {
+            return;
+        }
+
         let device: &AshDevice = self.data.device_ref.device();
         let buffer = self.expect_outside_render_pass().buffer;
 
