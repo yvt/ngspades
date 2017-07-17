@@ -10,7 +10,7 @@ use ash::vk;
 use std::sync::Arc;
 use atomic_refcell::AtomicRefCell;
 
-use {DeviceRef, Backend};
+use {DeviceRef, Backend, AshDevice};
 use imp::Fence;
 
 /// Used to encode a render subpass with secondary command buffers.
@@ -61,6 +61,7 @@ impl<T: DeviceRef> NestedPassEncoder<T> {
             .borrow_mut()
             .take()
             .unwrap();
+
         SecondaryCommandBuffer { data: Some((sb_data, next_sb_data.clone())) }
     }
 

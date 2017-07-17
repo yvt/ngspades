@@ -11,6 +11,7 @@ use std::{ptr, fmt};
 use {DeviceRef, Backend, translate_generic_error_unwrap, AshDevice};
 use imp::{DeviceConfig, Fence, Framebuffer};
 use super::NestedPassEncoder;
+use super::encoder::EncoderState;
 
 #[derive(Debug)]
 pub(super) struct QueuePool {
@@ -30,7 +31,9 @@ impl QueuePool {
         for &mut (_, ref mut used_count) in self.buffers.iter_mut() {
             *used_count = 0;
         }
-        device.reset_command_pool(self.vk_pool, vk::CommandPoolResetFlags::empty());
+        device
+            .reset_command_pool(self.vk_pool, vk::CommandPoolResetFlags::empty())
+            .unwrap(); // TODO: handle this error
     }
 
     unsafe fn get_buffer(&mut self, index: usize, device: &AshDevice) -> vk::CommandBuffer {
@@ -72,21 +75,6 @@ pub(super) struct CommandPass<T: DeviceRef> {
 
     pub(super) wait_fences: Vec<(Fence<T>, core::PipelineStageFlags, core::AccessTypeFlags)>,
     pub(super) update_fences: Vec<(Fence<T>, core::PipelineStageFlags, core::AccessTypeFlags)>,
-}
-
-#[derive(Debug)]
-pub(super) enum EncoderState<T: DeviceRef> {
-    NoPass,
-
-    RenderPrologue { framebuffer: Framebuffer<T> },
-    RenderSubpassInline { num_remaining_subpasses: usize },
-    RenderSubpassScb { num_remaining_subpasses: usize },
-    RenderPassIntermission { num_remaining_subpasses: usize },
-    RenderEpilogue,
-    Compute,
-    Copy,
-
-    End,
 }
 
 pub struct CommandBuffer<T: DeviceRef> {

@@ -102,4 +102,8 @@ impl<T: DeviceRef> Framebuffer<T> {
     pub fn handle(&self) -> vk::Framebuffer {
         self.data.handle
     }
+
+    pub(crate) fn render_pass_handle(&self) -> vk::RenderPass {
+        self.data.render_pass.handle()
+    }
 }

@@ -7,14 +7,50 @@ use core;
 
 use ash::vk;
 use ash::version::DeviceV1_0;
-use std::ptr;
+use std::{ptr, mem};
 
 use imp::{CommandBuffer, Framebuffer, SecondaryCommandBuffer, DeviceConfig};
 use {DeviceRef, Backend, AshDevice, translate_access_type_flags, translate_pipeline_stage_flags};
-use super::{EncoderState, NestedPassEncoder, CommandPass};
+use super::{NestedPassEncoder, CommandPass};
 use super::barrier::VkResourceBarrier;
 
+#[derive(Debug)]
+pub(super) enum EncoderState<T: DeviceRef> {
+    NoPass,
+
+    RenderPrologue(RenderPassState<T>),
+    RenderSubpassInline(RenderPassState<T>),
+    RenderSubpassScb(RenderPassState<T>),
+    RenderPassIntermission(RenderPassState<T>),
+    RenderEpilogue,
+    Compute,
+    Copy,
+
+    End,
+
+    /// An error occured while encoding some commands.
+    ///
+    /// This error will be reported upon submission or via CB state.
+    Error(core::GenericError),
+
+    /// Internal error
+    Invalid,
+}
+
+#[derive(Debug)]
+pub(super) struct RenderPassState<T: DeviceRef> {
+    framebuffer: Framebuffer<T>,
+    subpass: usize,
+}
+
 impl<T: DeviceRef> CommandBuffer<T> {
+    pub(super) fn encoder_error(&self) -> Option<core::GenericError> {
+        match self.data.encoder_state {
+            EncoderState::Error(err) => Some(err),
+            _ => None,
+        }
+    }
+
     pub(super) fn expect_recording_no_pass(&self) {
         match self.data.encoder_state {
             EncoderState::NoPass => {}
@@ -77,12 +113,27 @@ impl<T: DeviceRef> CommandBuffer<T> {
         self.expect_recording_no_pass();
 
         let ref mut data = *self.data;
-        let device = data.device_ref.device();
+        let device: &AshDevice = data.device_ref.device();
         let iq = data.device_config
             .engine_queue_mappings
             .internal_queue_for_engine(engine)
             .unwrap();
         let buffer = unsafe { data.pools[iq].get_primary_buffer(device) };
+
+        unsafe {
+            device
+                .begin_command_buffer(
+                    buffer,
+                    &vk::CommandBufferBeginInfo {
+                        s_type: vk::StructureType::CommandBufferBeginInfo,
+                        p_next: ptr::null(),
+                        flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                        p_inheritance_info: ptr::null(),
+                    },
+                )
+                .unwrap(); // TODO: handle this error
+        }
+
         data.passes.push(CommandPass {
             internal_queue_index: iq,
             buffer,
@@ -104,9 +155,11 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
         );
 
         self.reset();
+        self.data.encoder_state = EncoderState::NoPass;
     }
     fn end_encoding(&mut self) {
-        unimplemented!()
+        self.expect_recording_no_pass();
+        self.data.encoder_state = EncoderState::End;
     }
     fn acquire_resource(
         &mut self,
@@ -189,7 +242,11 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
         assert_eq!(engine, core::DeviceEngine::Universal);
         self.begin_pass_internal(engine);
 
-        self.data.encoder_state = EncoderState::RenderPrologue { framebuffer: framebuffer.clone() };
+        let rps = RenderPassState {
+            framebuffer: framebuffer.clone(),
+            subpass: 0,
+        };
+        self.data.encoder_state = EncoderState::RenderPrologue(rps);
         let buffer = self.expect_pass().buffer;
 
         // Vulkan render pass is started when the first subpass was started
@@ -211,39 +268,95 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
         self.data.encoder_state = EncoderState::Copy;
     }
     fn make_secondary_command_buffer(&mut self) -> SecondaryCommandBuffer<T> {
-        self.expect_render_subpass_scb();
-
         let ref mut data = *self.data;
-        let device_ref = &data.device_ref;
 
-        let ref mut nested_encoder: NestedPassEncoder<T> = data.nested_encoder;
+        match data.encoder_state {
+            EncoderState::RenderSubpassScb(ref rp_state) => {
+                let device_ref = &data.device_ref;
+                let device: &AshDevice = device_ref.device();
 
-        let univ_iq = data.device_config.engine_queue_mappings.universal;
-        let ref mut univ_pool = data.pools[univ_iq];
+                // Get a free secondary command buffer
+                let ref mut nested_encoder: NestedPassEncoder<T> = data.nested_encoder;
 
-        nested_encoder.make_secondary_command_buffer(device_ref, || unsafe {
-            univ_pool.get_secondary_buffer(device_ref.device())
-        })
+                let univ_iq = data.device_config.engine_queue_mappings.universal;
+                let ref mut univ_pool = data.pools[univ_iq];
+
+                let scb = nested_encoder.make_secondary_command_buffer(device_ref, || unsafe {
+                    univ_pool.get_secondary_buffer(device_ref.device())
+                });
+
+                // Begin recording the command buffer
+                let scb_cb = scb.exepct_active().buffer;
+                let ref framebuffer: Framebuffer<T> = rp_state.framebuffer;
+
+                unsafe {
+                    device
+                        .begin_command_buffer(
+                            scb_cb,
+                            &vk::CommandBufferBeginInfo {
+                                s_type: vk::StructureType::CommandBufferBeginInfo,
+                                p_next: ptr::null(),
+                                flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT |
+                                    vk::COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
+                                p_inheritance_info: [
+                                    vk::CommandBufferInheritanceInfo {
+                                        s_type: vk::StructureType::CommandBufferInheritanceInfo,
+                                        p_next: ptr::null(),
+                                        render_pass: framebuffer.render_pass_handle(),
+                                        subpass: rp_state.subpass as u32,
+                                        framebuffer: framebuffer.handle(),
+                                        occlusion_query_enable: vk::VK_FALSE,
+                                        query_flags: vk::QueryControlFlags::empty(),
+                                        pipeline_statistics:
+                                            vk::QueryPipelineStatisticFlags::empty(),
+                                    },
+                                ].as_ptr(),
+                            },
+                        )
+                        .unwrap(); // TODO: handle this error
+                }
+
+                scb
+            }
+            _ => panic!("bad state"),
+        }
     }
     fn end_pass(&mut self) {
         match self.data.encoder_state {
             EncoderState::RenderEpilogue |
             EncoderState::Compute |
             EncoderState::Copy => {
+                {
+                    let buffer = self.expect_pass().buffer;
+                    let device: &AshDevice = self.data.device_ref.device();
+
+                    unsafe {
+                        device.end_command_buffer(buffer).unwrap(); // TODO: handle this error
+                    }
+                }
+
                 self.data.encoder_state = EncoderState::NoPass;
             }
             _ => panic!("bad state"),
         }
     }
     fn begin_render_subpass(&mut self, contents: core::RenderPassContents) {
-        let next_state = match self.data.encoder_state {
-            EncoderState::RenderPrologue { ref framebuffer } => {
-                let buffer = self.expect_pass().buffer;
-                let device: &AshDevice = self.data.device_ref.device();
+        match self.data.encoder_state {
+            EncoderState::RenderPrologue(_) |
+            EncoderState::RenderPassIntermission(_) => {}
+            _ => panic!("bad state"),
+        }
+
+        let buffer = self.expect_pass().buffer;
+        let ref mut data = *self.data;
+        let device: &AshDevice = data.device_ref.device();
+
+        let next_state = match mem::replace(&mut data.encoder_state, EncoderState::Invalid) {
+            EncoderState::RenderPrologue(rp_state) => {
                 unsafe {
                     device.cmd_begin_render_pass(
                         buffer,
-                        &framebuffer.render_pass_begin_info(),
+                        &rp_state.framebuffer.render_pass_begin_info(),
                         match contents {
                             core::RenderPassContents::Inline => vk::SubpassContents::Inline,
                             core::RenderPassContents::SecondaryCommandBuffers => {
@@ -254,19 +367,13 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                 }
 
                 match contents {
-                    core::RenderPassContents::Inline => EncoderState::RenderSubpassInline {
-                        num_remaining_subpasses: framebuffer.num_subpasses(),
-                    },
+                    core::RenderPassContents::Inline => EncoderState::RenderSubpassInline(rp_state),
                     core::RenderPassContents::SecondaryCommandBuffers => {
-                        EncoderState::RenderSubpassScb {
-                            num_remaining_subpasses: framebuffer.num_subpasses(),
-                        }
+                        EncoderState::RenderSubpassScb(rp_state)
                     }
                 }
             }
-            EncoderState::RenderPassIntermission { num_remaining_subpasses } => {
-                let buffer = self.expect_pass().buffer;
-                let device: &AshDevice = self.data.device_ref.device();
+            EncoderState::RenderPassIntermission(rp_state) => {
                 unsafe {
                     unimplemented!();
                     // why does not ash have `cmd_next_subpass`
@@ -280,29 +387,27 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                 }
 
                 match contents {
-                    core::RenderPassContents::Inline => EncoderState::RenderSubpassInline {
-                        num_remaining_subpasses: num_remaining_subpasses - 1,
-                    },
+                    core::RenderPassContents::Inline => EncoderState::RenderSubpassInline(rp_state),
                     core::RenderPassContents::SecondaryCommandBuffers => {
-                        EncoderState::RenderSubpassScb {
-                            num_remaining_subpasses: num_remaining_subpasses - 1,
-                        }
+                        EncoderState::RenderSubpassScb(rp_state)
                     }
                 }
             }
-            _ => {
-                panic!("bad state");
-            }
+            _ => unreachable!(),
         };
-        self.data.encoder_state = next_state;
+        data.encoder_state = next_state;
     }
     fn end_render_subpass(&mut self) {
-        let num_remaining_subpasses = match self.data.encoder_state {
-            EncoderState::RenderSubpassInline { num_remaining_subpasses } => {
-                num_remaining_subpasses
-            }
-            EncoderState::RenderSubpassScb { num_remaining_subpasses } => {
-                let ref mut data = *self.data;
+        match self.data.encoder_state {
+            EncoderState::RenderSubpassInline(_) |
+            EncoderState::RenderSubpassScb(_) => {}
+            _ => panic!("bad state"),
+        }
+
+        let ref mut data = *self.data;
+        let mut rp_state = match mem::replace(&mut data.encoder_state, EncoderState::Invalid) {
+            EncoderState::RenderSubpassInline(rp_state) => rp_state,
+            EncoderState::RenderSubpassScb(rp_state) => {
                 let device_ref = &data.device_ref;
 
                 let ref mut nested_encoder: NestedPassEncoder<T> = data.nested_encoder;
@@ -316,19 +421,21 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                     );
 
                     unsafe {
+                        // TODO: minimize the number of calls
                         device.cmd_execute_commands(current_pass.buffer, &[scbd.buffer]);
                     }
                 });
-                num_remaining_subpasses
+                rp_state
             }
             _ => panic!("render subpass is not active"),
         };
 
-        if num_remaining_subpasses == 0 {
-            self.data.encoder_state = EncoderState::RenderEpilogue;
+        rp_state.subpass += 1;
+
+        if rp_state.subpass == rp_state.framebuffer.num_subpasses() {
+            data.encoder_state = EncoderState::RenderEpilogue;
         } else {
-            self.data.encoder_state =
-                EncoderState::RenderPassIntermission { num_remaining_subpasses };
+            data.encoder_state = EncoderState::RenderPassIntermission(rp_state);
         }
     }
 }

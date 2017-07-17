@@ -77,13 +77,13 @@ impl VkResourceBarrier {
     pub fn buffer_memory_barriers(&self) -> &[vk::BufferMemoryBarrier] {
         match self {
             &VkResourceBarrier::Buffer(ref array) => array,
-            &VkResourceBarrier::Image(ref array) => &[],
+            &VkResourceBarrier::Image(_) => &[],
         }
     }
 
     pub fn image_memory_barriers(&self) -> &[vk::ImageMemoryBarrier] {
         match self {
-            &VkResourceBarrier::Buffer(ref array) => &[],
+            &VkResourceBarrier::Buffer(_) => &[],
             &VkResourceBarrier::Image(ref array) => array,
         }
     }
