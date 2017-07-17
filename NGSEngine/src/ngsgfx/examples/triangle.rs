@@ -259,7 +259,7 @@ impl<B: Backend> Renderer<B> {
             },
         );
         cb.end_pass();
-        cb.end_encoding();
+        cb.end_encoding().unwrap();
         queue.submit_commands(&[&cb], None).unwrap();
         cb.wait_completion().unwrap();
 
@@ -351,7 +351,7 @@ impl<B: Backend> RendererView<B> {
         );
         cb.end_pass();
 
-        cb.end_encoding();
+        cb.end_encoding().unwrap();
 
         device.main_queue().submit_commands(&[&*cb], None).unwrap();
         drawable.present();

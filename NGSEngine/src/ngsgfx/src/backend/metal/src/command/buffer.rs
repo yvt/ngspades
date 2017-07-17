@@ -186,9 +186,10 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         self.update_label();
     }
 
-    fn end_encoding(&mut self) {
+    fn end_encoding(&mut self) -> core::Result<()> {
         self.expect_no_pass();
         self.encoder = EncoderState::NotRecording;
+        Ok(())
     }
 
     fn acquire_resource(

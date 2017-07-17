@@ -191,7 +191,7 @@ impl<'a, 'b: 'a, B: core::Backend, T: 'static> ResultBuffer<'a, 'b, B, T> {
             },
         );
         cb.end_pass();
-        cb.end_encoding();
+        cb.end_encoding().unwrap();
 
         queue.submit_commands(&[&cb], None).unwrap();
 
@@ -315,7 +315,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
             },
         );
         cb.end_pass();
-        cb.end_encoding();
+        cb.end_encoding().unwrap();
 
         queue.submit_commands(&[&cb], None).unwrap();
 
@@ -364,7 +364,7 @@ impl BackendDispatch for SimpleTest {
         cb.bind_compute_pipeline(&pipeline);
         cb.dispatch(Vector3::new(1, 1, 1));
         cb.end_pass();
-        cb.end_encoding();
+        cb.end_encoding().unwrap();
 
         queue.submit_commands(&[&cb], None).unwrap();
         cb.wait_completion().unwrap();
@@ -538,7 +538,7 @@ impl BackendDispatch for Conv1Test {
         cb.bind_compute_descriptor_sets(&layout, 0, &[&desc_set], &[]);
         cb.dispatch(Vector3::new(global_size as u32, 1, 1));
         cb.end_pass();
-        cb.end_encoding();
+        cb.end_encoding().unwrap();
 
         queue.submit_commands(&[&cb], None).unwrap();
         cb.wait_completion().unwrap();

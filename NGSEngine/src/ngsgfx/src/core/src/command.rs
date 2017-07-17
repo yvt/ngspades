@@ -174,11 +174,16 @@ pub trait CommandEncoder<B: Backend>
     /// The command buffer must be in the `Initial`, `Executable`, `Completed`, or `Error` state.
     fn begin_encoding(&mut self);
 
-    /// End recording a command buffer.
+    /// End recording a command buffer. After this function is called,
+    /// the command buffer will be moved to the `Executable` state.
     ///
     /// The command buffer must be in the `Recording` state.
     /// No kind of passes can be active at the point of call.
-    fn end_encoding(&mut self);
+    ///
+    /// If there was an error while recording the command buffer, it will be notified
+    /// via this function. In such a case, the command buffer will be moved to the `Error`
+    /// state.
+    fn end_encoding(&mut self) -> Result<()>;
 
     /// Acquire an ownership of the specified resource.
     ///
