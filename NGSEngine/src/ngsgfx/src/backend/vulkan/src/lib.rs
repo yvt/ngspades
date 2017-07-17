@@ -10,6 +10,7 @@
 //!
 #![feature(optin_builtin_traits)]
 extern crate ngsgfx_core as core;
+extern crate ngsgfx_common;
 extern crate cgmath;
 extern crate smallvec;
 extern crate atomic_refcell;
@@ -38,6 +39,7 @@ mod utils;
 
 pub use extif::*;
 use utils::*;
+use ngsgfx_common::*;
 
 /// Low-level wrappers.
 pub mod ll {

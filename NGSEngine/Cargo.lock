@@ -308,6 +308,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ngsgfx_common"
+version = "0.1.0"
+
+[[package]]
 name = "ngsgfx_core"
 version = "0.1.0"
 dependencies = [
@@ -324,6 +328,7 @@ dependencies = [
  "block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cocoa 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsgfx_common 0.1.0",
  "ngsgfx_core 0.1.0",
  "ngsgfx_metal-rs 0.3.0",
  "rspirv 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -350,6 +355,7 @@ dependencies = [
  "ash 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "atomic_refcell 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsgfx_common 0.1.0",
  "ngsgfx_core 0.1.0",
  "smallvec 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

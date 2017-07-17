@@ -52,6 +52,7 @@
 #![feature(never_type)]
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_metal_rs as metal;
+extern crate ngsgfx_common;
 extern crate cgmath;
 extern crate atomic_refcell;
 extern crate block;
@@ -75,9 +76,13 @@ mod renderpass;
 mod sampler;
 mod shader;
 mod sync;
-mod utils;
+
+// not meant to be stablized --- I just want to reduce the code duplication
+#[doc(hidden)]
+pub mod utils;
 
 use utils::*;
+use ngsgfx_common::*;
 
 /// Reexports items from `metal-rs`.
 pub mod ll {

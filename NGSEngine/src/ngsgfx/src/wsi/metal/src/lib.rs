@@ -38,8 +38,7 @@ use cocoa::appkit::{NSWindow, NSView};
 
 use winit::os::macos::WindowExt;
 
-mod utils;
-use utils::OCPtr;
+use backend_metal::utils::OCPtr;
 
 #[derive(Debug)]
 pub struct Drawable {
