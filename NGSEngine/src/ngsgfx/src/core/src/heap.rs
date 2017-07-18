@@ -3,6 +3,72 @@
 //
 // This source code is a part of Nightingales.
 //
+//! All buffer and image resources are allocated from heaps.
+//!
+//! There are two kinds of heaps:
+//!
+//!  1. **Universal heaps** - Supports allocation of any kinds of resources.
+//!     Aliasing is not supported on this type of heap. Their usage is similar to how
+//!     resources are created in legacy APIs, but note that individual heaps cannot be
+//!     shared among multiple threads at the same time. This allows almost lock-free
+//!     and performant implementation of such heaps.
+//!
+//!     Universal heaps expand as more spaces are needed. This means their allocation
+//!     functions will never return `Ok(None)`. In cases such as out of video memory,
+//!     they will return `Err(GenericError::OutOfDeviceMemory)`.
+//!
+//!     While it is possible to create multiple universal heaps, you are advised to
+//!     keep the number of universal heaps as low as possible. On some backends they are
+//!     implemented by allocating large chunks and suballocating resources from them,
+//!     and with such implementations creating many universal heaps might leave much of
+//!     space unoccupied yet unavailable for allocations via other heaps.
+//!
+//!  2. **Specialized heaps** - The usage and size of the heap must be specified at
+//!     the creation time. Potentially have lower overheads compared to universal heaps.
+//!     Since their sizes are fixed and they do not expand or shrink as being used,
+//!     individual specialized heaps are more likely to be able to work independently
+//!     of each other, leading to much higher and more predictable multi-thread performance.
+//!
+//!     Specialized heaps have fixed sizes and their allocation functions will return
+//!     `Ok(None)` if there is no enough free space for the allocation request.
+//!     `Err(_)` might also be returned on some situations.
+//!
+//!     The kind and properties of objects that can be created in the heap is specified
+//!     at the creation time using `SpecializedHeapUsage`, which contains functions named
+//!     `supports_image` and `supports_buffer` that can be used to check whether a resource
+//!     can be allocated in a heap with a specific `SpecializedHeapUsage`.
+//!
+//!     Not all backends support this type of heap. You can check the support by reading
+//!     `DeviceLimits::supports_specialized_heap`.
+//!
+//!
+//! Memory Requirements
+//! -------------------
+//!
+//! For specialized heaps, you have to specify the size of a heap before creation.
+//! [`Factory`] provides methods (namely, [`get_buffer_memory_requirements`] and
+//! [`get_image_memory_requirements`]) that can be used to retrieve the memory
+//! requirements, which help you to determine the correct size of the heap.
+//!
+//! If you are using a heap like a stack, the following assumption holds:
+//!
+//!  - Let `R` be a set of resources with the same `SpecializedHeapUsage` properties.
+//!  - Let `a_n` be the alignment requirement of each resources of `R`. (Must be a power of two)
+//!  - Let `A` be the maximum value of `a_n`.
+//!  - Let `s_n` be the size requirement of each resource in `R`.
+//!  - Let `s'_n` be `ceiling(s_n / A) * A`.
+//!  - You are guaranteed to be able to allocate and store `R` at the same time in any order
+//!    in a heap created with the size at least or equal to the sum of `s'_n`s.
+//!
+//! For other use cases, it is possible that `R` cannot be allocated at the same
+//! time because of memory fragmentation.
+//!
+//! FIXME: What is the point of having `alignment` in `MemoryRequirements` when
+//! the unit of `size` is practically not specified?
+//!
+//! [`Factory`]: ../factory/trait.Factory.html
+//! [`get_buffer_memory_requirements`]: ../factory/trait.Factory.html#tymethod.get_buffer_memory_requirements
+//! [`get_image_memory_requirements`]: ../factory/trait.Factory.html#tymethod.get_image_memory_requirements
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
@@ -16,44 +82,12 @@ use {Result, Backend, BufferDescription, ImageDescription, Validate, DeviceCapab
 ///
 /// Objects allocated from a heap hold a reference to the underlying storage of the heap.
 ///
-/// See the helper trait [`MappableHeap`](trait.MappableHeap.html) for functions that deal with `Allocation`s.
+/// There are two kinds of heaps: universal heaps and specialized heaps.
+/// See the [module-level documentation] for more.
 ///
-/// There are two kinds of heaps:
+/// See the helper trait [`MappableHeap`](trait.MappableHeap.html) for more functions.
 ///
-///  1. **Universal heaps** - Supports allocation of any kinds of resources.
-///     Aliasing is not supported on this type of heap. Their usage is similar to how
-///     resources are created in legacy APIs, but note that individual heaps cannot be
-///     shared among multiple threads at the same time. This allows almost lock-free
-///     and performant implementation of such heaps.
-///
-///     Universal heaps expand as more spaces are needed. This means their allocation
-///     functions will never return `Ok(None)`. In cases such as out of video memory,
-///     they will return `Err(GenericError::OutOfDeviceMemory)`.
-///
-///     While it is possible to create multiple universal heaps, you are advised to
-///     keep the number of universal heaps as low as possible. On some backends they are
-///     implemented by allocating large chunks and suballocating resources from them,
-///     and with such implementations creating many universal heaps might leave much of
-///     space unoccupied yet unavailable for allocations via other heaps.
-///
-///  2. **Specialized heaps** - The usage and size of the heap must be specified at
-///     the creation time. Potentially have lower overheads compared to universal heaps.
-///     Since their sizes are fixed and they do not expand or shrink as being used,
-///     individual specialized heaps are more likely to be able to work independently
-///     of each other, leading to much higher and more predictable multi-thread performance.
-///
-///     Specialized heaps have fixed sizes and their allocation functions will return
-///     `Ok(None)` if there is no enough free space for the allocation request.
-///     `Err(_)` might also be returned on some situations.
-///
-///     The kind and properties of objects that can be created in the heap is specified
-///     at the creation time using `SpecializedHeapUsage`, which contains functions named
-///     `supports_image` and `supports_buffer` that can be used to check whether a resource
-///     can be allocated in a heap with a specific `SpecializedHeapUsage`.
-///
-///     Not all backends support this type of heap. You can check the support by reading
-///     `DeviceLimits::supports_specialized_heap`.
-///
+/// [module-level documentation]: ../heap/
 pub trait Heap<B: Backend>: Debug + Send + Any + MappableHeap + Marker {
     /// Creates a buffer and allocates a region for it.
     ///

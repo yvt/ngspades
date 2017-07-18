@@ -141,6 +141,7 @@ pub trait Environment: Sized + 'static {
     type InstanceBuilder: InstanceBuilder<Self>;
 }
 
+/// Aggregates types specific to a backend.
 pub trait Backend: Sized + 'static {
     type Buffer: Buffer;
     type CommandBuffer: CommandBuffer<Self>;
@@ -200,6 +201,10 @@ pub trait Backend: Sized + 'static {
 }
 
 /// An autorelease pool.
+///
+/// See [`Backend::autorelease_pool_scope`] for more.
+///
+/// [`Backend::autorelease_pool_scope`]: trait.Backend.html#method.autorelease_pool_scope
 pub trait AutoreleasePool {
     fn drain(&mut self);
 }

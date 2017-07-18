@@ -30,8 +30,26 @@ pub trait Factory<B: Backend>: Debug + Any {
     fn make_universal_heap(&self) -> Result<B::UniversalHeap>;
     fn make_image_view(&self, description: &ImageViewDescription<B::Image>)
         -> Result<B::ImageView>;
+
+    /// Retrieve the memory requirements for a given buffer description.
+    ///
+    /// See the module-level documentation of [`heap`] for more about
+    /// the memory requirements.
+    ///
+    /// Warning: The required size may be larger than `BufferDescription::size`.
+    ///
+    /// [`heap`]: ../heap/index.html
+    /// [`SpecializedHeapUsage`]: ../heap/enum.SpecializedHeapUsage.html
     fn get_buffer_memory_requirements(&self, description: &BufferDescription)
         -> MemoryRequirements;
+
+    /// Retrieve the memory requirements for a given image description.
+    ///
+    /// See the module-level documentation of [`heap`] for more about
+    /// the memory requirements.
+    ///
+    /// [`heap`]: ../heap/index.html
+    /// [`SpecializedHeapUsage`]: ../heap/enum.SpecializedHeapUsage.html
     fn get_image_memory_requirements(&self, description: &ImageDescription) -> MemoryRequirements;
 
     fn make_sampler(&self, description: &SamplerDescription) -> Result<B::Sampler>;
