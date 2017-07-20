@@ -69,9 +69,7 @@
 //! [`Factory`]: ../factory/trait.Factory.html
 //! [`get_buffer_memory_requirements`]: ../factory/trait.Factory.html#tymethod.get_buffer_memory_requirements
 //! [`get_image_memory_requirements`]: ../factory/trait.Factory.html#tymethod.get_image_memory_requirements
-use std::hash::Hash;
 use std::fmt::Debug;
-use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 use std::marker::Send;
 
@@ -108,6 +106,11 @@ pub trait Heap<B: Backend>: Debug + Send + Any + MappableHeap + Marker {
     ) -> Result<Option<(Self::Allocation, B::Image)>>;
 }
 
+/// Represents an allocated region.
+pub trait Allocation: Debug + PartialEq + Send + Any {
+    fn is_mappable(&self) -> bool;
+}
+
 /// Helper trait for the trait `Heap`.
 pub trait MappableHeap: Debug + Send + Any {
     /// Represents an allocated region. Can outlive the parent `MappableHeap`.
@@ -115,7 +118,11 @@ pub trait MappableHeap: Debug + Send + Any {
     ///
     /// You can specify this associate type in your code like this:
     /// `<B::UniversalHeap as MappableHeap>::Allocation` where `B: Backend`
-    type Allocation: Hash + Debug + Eq + PartialEq + Send + Any;
+    ///
+    /// Equivalence relations might not be defined over `Allocation`s which
+    /// were marked as aliasable by `make_aliasable`. For this reason,
+    /// it is not required to implement `Eq` nor `Hash`.
+    type Allocation: Allocation;
 
     /// Used to unmap a memory region.
     type MappingInfo: Debug + Send;
@@ -125,9 +132,7 @@ pub trait MappableHeap: Debug + Send + Any {
     fn make_aliasable(&mut self, allocation: &mut Self::Allocation);
 
     /// Deallocates a region. `allocation` must orignate from the same `Heap`.
-    ///
-    /// Does nothing if `allocation` is already deallocated.
-    fn deallocate(&mut self, allocation: &mut Self::Allocation);
+    fn deallocate(&mut self, allocation: Self::Allocation);
 
     /// Unmaps a region previously mapped by `raw_map_memory`.
     /// Application developers should use `map_memory` instead of using this directly.
@@ -145,39 +150,23 @@ pub trait MappableHeap: Debug + Send + Any {
     unsafe fn raw_map_memory(
         &mut self,
         allocation: &mut Self::Allocation,
-    ) -> (*mut u8, usize, Self::MappingInfo);
-
-    /// Flush a region from the host cache.
-    fn flush_memory(
-        &mut self,
-        allocation: &mut Self::Allocation,
-        offset: DeviceSize,
-        size: Option<DeviceSize>,
-    );
-
-    /// Invalidate a region from the host cache.
-    fn invalidate_memory(
-        &mut self,
-        allocation: &mut Self::Allocation,
-        offset: DeviceSize,
-        size: Option<DeviceSize>,
-    );
+    ) -> Result<(*mut u8, usize, Self::MappingInfo)>;
 
     /// Maps a region to a host virtual memory.
     ///
     /// - The heap must have been created with `StorageMode::Shared`.
     /// - If the allocation was done for an image, the image must have been
     ///   created with `ImageTiling::Linear`. This is due to the Metal backend's restriction.
-    fn map_memory(&mut self, allocation: &mut Self::Allocation) -> HeapMapGuard<Self>
+    fn map_memory(&mut self, allocation: &mut Self::Allocation) -> Result<HeapMapGuard<Self>>
     where
         Self: Sized,
     {
-        let (mem, size, info) = unsafe { self.raw_map_memory(allocation) };
-        HeapMapGuard {
+        let (mem, size, info) = unsafe { self.raw_map_memory(allocation)? };
+        Ok(HeapMapGuard {
             heap: self,
             slice: unsafe { ::std::slice::from_raw_parts_mut(mem, size) },
             info: Some(info),
-        }
+        })
     }
 }
 

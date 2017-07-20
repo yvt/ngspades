@@ -99,7 +99,7 @@ struct DeviceUtils<'a, B: core::Backend> {
 struct UniqueResource<'a, 'b: 'a, B: core::Backend, T>(
     &'a DeviceUtils<'b, B>,
     T,
-    <B::UniversalHeap as core::MappableHeap>::Allocation
+    Option<<B::UniversalHeap as core::MappableHeap>::Allocation>
 );
 
 impl<'a, 'b: 'a, B: core::Backend, T> ::std::ops::Deref for UniqueResource<'a, 'b, B, T> {
@@ -117,7 +117,7 @@ impl<'a, 'b: 'a, B: core::Backend, T> ::std::ops::DerefMut for UniqueResource<'a
 
 impl<'a, 'b: 'a, B: core::Backend, T> Drop for UniqueResource<'a, 'b, B, T> {
     fn drop(&mut self) {
-        self.0.deallocate(&mut self.2);
+        self.0.deallocate(self.2.take().unwrap());
     }
 }
 
@@ -125,7 +125,7 @@ struct ResultBuffer<'a, 'b: 'a, B: core::Backend, T: 'static>(
     &'a DeviceUtils<'b, B>,
     B::Buffer,
     &'a mut [T],
-    <B::UniversalHeap as core::MappableHeap>::Allocation
+    Option<<B::UniversalHeap as core::MappableHeap>::Allocation>
 );
 
 impl<'a, 'b: 'a, B: core::Backend, T: 'static> ResultBuffer<'a, 'b, B, T> {
@@ -198,14 +198,14 @@ impl<'a, 'b: 'a, B: core::Backend, T: 'static> ResultBuffer<'a, 'b, B, T> {
         cb.wait_completion().unwrap();
 
         {
-            let map = heap.map_memory(&mut staging_alloc);
+            let map = heap.map_memory(&mut staging_alloc).unwrap();
             unsafe {
                 ptr::copy(map.as_ptr() as *mut T, self.2.as_mut_ptr(), self.2.len());
             }
         }
 
-        heap.deallocate(&mut staging_alloc);
-        heap.deallocate(&mut self.3);
+        heap.deallocate(staging_alloc);
+        heap.deallocate(self.3.take().unwrap());
 
         self.2
     }
@@ -219,7 +219,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         }
     }
 
-    fn deallocate(&self, allocation: &mut <B::UniversalHeap as core::MappableHeap>::Allocation) {
+    fn deallocate(&self, allocation: <B::UniversalHeap as core::MappableHeap>::Allocation) {
         self.heap.borrow_mut().deallocate(allocation);
     }
 
@@ -239,7 +239,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         // Create a device heap/buffer
         let mut heap = self.heap.borrow_mut();
         let (allocation, buffer) = heap.make_buffer(&buffer_desc).unwrap().unwrap();
-        ResultBuffer(self, buffer, data, allocation)
+        ResultBuffer(self, buffer, data, Some(allocation))
     }
 
     fn make_preinitialized_buffer<'b, T>(
@@ -271,7 +271,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         let (mut staging_alloc, staging_buffer) =
             heap.make_buffer(&staging_buffer_desc).unwrap().unwrap();
         {
-            let mut map = heap.map_memory(&mut staging_alloc);
+            let mut map = heap.map_memory(&mut staging_alloc).unwrap();
             unsafe {
                 ptr::copy(data.as_ptr(), map.as_mut_ptr() as *mut T, data.len());
             }
@@ -321,10 +321,10 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
 
         cb.wait_completion().unwrap();
 
-        heap.deallocate(&mut staging_alloc);
+        heap.deallocate(staging_alloc);
 
         // Phew! Done!
-        UniqueResource(&self, buffer, allocation)
+        UniqueResource(&self, buffer, Some(allocation))
     }
 }
 

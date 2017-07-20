@@ -211,7 +211,7 @@ impl<B: Backend> Renderer<B> {
         let (mut staging_alloc, staging_buffer) =
             heap.make_buffer(&staging_buffer_desc).unwrap().unwrap();
         {
-            let mut map = heap.map_memory(&mut staging_alloc);
+            let mut map = heap.map_memory(&mut staging_alloc).unwrap();
             unsafe {
                 ptr::copy(
                     vertices.as_ptr(),

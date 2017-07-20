@@ -29,7 +29,6 @@ pub struct HeapAllocation {
 
 #[derive(Debug, PartialEq, Eq)]
 enum HeapAllocationState {
-    Invalid,
     Mappable(Buffer),
     Unmappable,
 }
@@ -115,6 +114,12 @@ impl core::Heap<Backend> for Heap {
     }
 }
 
+impl core::Allocation for HeapAllocation {
+    fn is_mappable(&self) -> bool {
+        *self.state != HeapAllocationState::Unmappable
+    }
+}
+
 impl core::MappableHeap for Heap {
     type Allocation = HeapAllocation;
     type MappingInfo = ();
@@ -123,28 +128,7 @@ impl core::MappableHeap for Heap {
     fn make_aliasable(&mut self, _: &mut Self::Allocation) {}
 
     /// Removes a reference to the associated object.
-    fn deallocate(&mut self, allocation: &mut Self::Allocation) {
-        assert_ne!(*allocation.state, HeapAllocationState::Invalid);
-        *allocation.state = HeapAllocationState::Invalid;
-    }
-
-    fn flush_memory(
-        &mut self,
-        _: &mut Self::Allocation,
-        _: core::DeviceSize,
-        _: Option<core::DeviceSize>,
-    ) {
-        // No-op.
-    }
-
-    fn invalidate_memory(
-        &mut self,
-        _: &mut Self::Allocation,
-        _: core::DeviceSize,
-        _: Option<core::DeviceSize>,
-    ) {
-        // No-op.
-    }
+    fn deallocate(&mut self, allocation: Self::Allocation) {}
 
     /// No-op.
     unsafe fn raw_unmap_memory(&mut self, _: Self::MappingInfo) {}
@@ -153,9 +137,9 @@ impl core::MappableHeap for Heap {
     unsafe fn raw_map_memory(
         &mut self,
         allocation: &mut Self::Allocation,
-    ) -> (*mut u8, usize, Self::MappingInfo) {
+    ) -> core::Result<(*mut u8, usize, Self::MappingInfo)> {
         if let HeapAllocationState::Mappable(ref buffer) = *allocation.state {
-            (buffer.contents() as *mut u8, buffer.len() as usize, ())
+            Ok((buffer.contents() as *mut u8, buffer.len() as usize, ()))
         } else {
             panic!("Unmappable or invalid object");
         }
