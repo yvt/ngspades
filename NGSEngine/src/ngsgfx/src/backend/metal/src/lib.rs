@@ -82,7 +82,7 @@ mod sync;
 pub mod utils;
 
 use utils::*;
-use ngsgfx_common::*;
+use ngsgfx_common::refeq::{RefEqBox, RefEqArc};
 
 /// Reexports items from `metal-rs`.
 pub mod ll {

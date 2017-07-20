@@ -39,7 +39,7 @@ mod utils;
 
 pub use extif::*;
 use utils::*;
-use ngsgfx_common::*;
+use ngsgfx_common::refeq::{RefEqBox, RefEqArc};
 
 /// Low-level wrappers.
 pub mod ll {
