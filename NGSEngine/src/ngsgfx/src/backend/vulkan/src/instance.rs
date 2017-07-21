@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::{mem, ops, ffi, ptr, fmt};
 use std::collections::{VecDeque, HashSet, HashMap};
 
-use imp::{ManagedEnvironment, Device, EngineQueueMappings, DeviceCapabilities,
-    DeviceConfig};
+use imp::{ManagedEnvironment, Device, EngineQueueMappings, DeviceCapabilities, DeviceConfig,
+          StorageModeMappings, HeapStrategy};
 use ll::{DeviceCreateInfo, DeviceQueueCreateInfo, ApplicationInfo};
 use {translate_generic_error_unwrap, RefEqArc, OwnedInstanceRef, AshInstance, ManagedDeviceRef};
 
@@ -416,9 +416,64 @@ impl AdapterData {
             copy: copy_internal_index,
         };
 
+        let m_props = instance.get_physical_device_memory_properties(physical_device);
+
+        let memory_types: Vec<_> = m_props.memory_types[0..m_props.memory_type_count as usize]
+            .iter()
+            .map(Clone::clone)
+            .collect();
+
+        let smm = {
+            let make_sm_map = |flags_list: &[vk::MemoryPropertyFlags]| {
+                let mut v = Vec::new();
+                for &flags in flags_list.iter() {
+                    for (i, memory_type) in memory_types.iter().enumerate() {
+                        if memory_type.property_flags.subset(flags) {
+                            v.push(i as u8);
+                        }
+                    }
+                }
+                v
+            };
+            StorageModeMappings {
+                private: make_sm_map(
+                    &[
+                        vk::MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                        vk::MemoryPropertyFlags::empty(),
+                    ],
+                ),
+                shared: make_sm_map(
+                    &[
+                        vk::MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                            vk::MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    ],
+                ),
+                memoryless: make_sm_map(
+                    &[
+                        vk::MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                            vk::MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT,
+                        vk::MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT,
+                    ],
+                ),
+            }
+        };
+
+        let memory_type_infos = memory_types
+            .iter()
+            .map(|memory_type| {
+                let ref heap = m_props.memory_heaps[memory_type.heap_index as usize];
+                (
+                    memory_type.clone(),
+                    HeapStrategy::default_with_heap_size(heap.size),
+                )
+            })
+            .collect();
+
         let config = DeviceConfig {
             queues: internal_queues,
             engine_queue_mappings: eqm,
+            memory_types: memory_type_infos,
+            storage_mode_mappings: smm,
         };
 
         Ok(Self {

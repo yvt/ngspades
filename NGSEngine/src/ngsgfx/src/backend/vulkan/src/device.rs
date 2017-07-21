@@ -3,8 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use {core, ash};
-use ash::vk;
+use core;
 
 use std::sync::Arc;
 
@@ -12,7 +11,7 @@ use DeviceRef;
 use imp::{Backend, CommandQueue, DeviceCapabilities, DeviceConfig};
 
 pub struct Device<T: DeviceRef> {
-    data: Arc<DeviceData<T>>,
+    pub(crate) data: Arc<DeviceData<T>>,
     main_queue: CommandQueue<T>,
 }
 

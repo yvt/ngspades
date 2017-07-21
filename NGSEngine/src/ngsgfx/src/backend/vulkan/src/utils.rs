@@ -39,6 +39,19 @@ pub(crate) fn translate_generic_error_unwrap(result: vk::Result) -> core::Generi
     translate_generic_error(result).unwrap()
 }
 
+pub(crate) fn translate_map_memory_error(
+    result: vk::Result,
+) -> Result<core::GenericError, vk::Result> {
+    match result {
+        vk::Result::ErrorMemoryMapFailed => panic!("out of virtual memory space"),
+        result => translate_generic_error(result),
+    }
+}
+
+pub(crate) fn translate_map_memory_error_unwrap(result: vk::Result) -> core::GenericError {
+    translate_map_memory_error(result).unwrap()
+}
+
 pub(crate) fn translate_image_layout(value: core::ImageLayout) -> vk::ImageLayout {
     match value {
         core::ImageLayout::Undefined => vk::ImageLayout::Undefined,

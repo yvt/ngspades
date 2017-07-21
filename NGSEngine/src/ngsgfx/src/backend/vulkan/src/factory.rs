@@ -7,8 +7,8 @@ use core::{self, Validate};
 
 use {Backend, DeviceRef};
 use imp::{self, ComputePipeline, DescriptorPool, Device, DescriptorSetLayout, Event, Framebuffer,
-          GraphicsPipeline, Heap, Image, ImageView, PipelineLayout, RenderPass, Sampler,
-          ShaderModule, StencilState, UnassociatedImage, UnassociatedBuffer};
+          GraphicsPipeline, Image, ImageView, PipelineLayout, RenderPass, Sampler, ShaderModule,
+          StencilState, UnassociatedImage, UnassociatedBuffer, UniversalHeap, SpecializedHeap};
 
 impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
     fn make_event(&self, description: &core::EventDescription) -> core::Result<Event<T>> {
@@ -33,13 +33,13 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
     fn make_specialized_heap(
         &self,
         description: &core::SpecializedHeapDescription,
-    ) -> core::Result<Heap<T>> {
+    ) -> core::Result<SpecializedHeap<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // Ok(Heap::new_specialized(&self.device_data, description))
+        SpecializedHeap::new(self.data.clone(), description)
     }
 
-    fn make_universal_heap(&self) -> core::Result<Heap<T>> {
-        unimplemented!() // Ok(Heap::new_universal(&self.device_data))
+    fn make_universal_heap(&self) -> core::Result<UniversalHeap<T>> {
+        Ok(UniversalHeap::new(self.data.clone()))
     }
 
     fn make_image_view(

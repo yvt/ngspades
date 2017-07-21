@@ -7,12 +7,13 @@ use {core, ash};
 use cgmath::Vector3;
 use ash::version::{V1_0, InstanceV1_0};
 use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties,
-                     QueueFamilyProperties, PhysicalDeviceFeatures, VK_FALSE, PhysicalDeviceLimits};
+                     QueueFamilyProperties, PhysicalDeviceFeatures, VK_FALSE,
+                     PhysicalDeviceLimits, MemoryType};
 
 use std::u32;
 use std::ops;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Hash, Clone)]
 pub struct DeviceConfig {
     /// Specifies the queue family index and queue index for each internal queue
     /// to be created.
@@ -21,6 +22,11 @@ pub struct DeviceConfig {
     pub queues: Vec<(u32, u32)>,
 
     pub engine_queue_mappings: EngineQueueMappings,
+
+    /// Specifies mappings from `StorageMode` to memory types.
+    pub storage_mode_mappings: StorageModeMappings,
+
+    pub memory_types: Vec<(MemoryType, HeapStrategy)>,
 }
 
 /// Defines mappings from `DeviceEngine`s to internal queue indices.
@@ -39,6 +45,79 @@ impl EngineQueueMappings {
             core::DeviceEngine::Copy => Some(self.copy),
             core::DeviceEngine::Host => None,
         }
+    }
+}
+
+/// Defines `UniversalHeap`'s memory allocation strategy for a specific memory type.
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub struct HeapStrategy {
+    /// The size of "small resource" zones.
+    pub small_zone_size: core::DeviceSize,
+
+    /// The size threshold that determines whether a resource should be
+    /// allocated in "small resource" zones or not.
+    pub size_threshold: core::DeviceSize,
+}
+
+impl HeapStrategy {
+    /// Provide a reasonable default value of `HeapStrategy` using the
+    /// specified heap size, based on some heuristics.
+    pub fn default_with_heap_size(size: core::DeviceSize) -> HeapStrategy {
+        assert_ne!(size, 0);
+        if size < 65536 {
+            Self {
+                small_zone_size: 64,
+                size_threshold: 0,
+            }
+        } else if size > 1024u64 * 1024 * 1024 * 4 {
+            Self::default_with_heap_size(1024u64 * 1024 * 1024 * 4)
+        } else {
+            Self {
+                small_zone_size: size >> 9,
+                size_threshold: size >> 11,
+            }
+        }
+    }
+}
+
+/// Defines mapping from `StorageMode` to memory types.
+///
+/// Each field contains a list of memory types. During a resource allocation,
+/// each item (from first to last) is checked against the memory requirements
+/// and the first matching item is selected.
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct StorageModeMappings {
+    /// Memory type candidates for `StorageMode::Private`.
+    ///
+    /// Must have at least one element.
+    pub private: Vec<u8>,
+
+    /// Memory type candidates for `StorageMode::Shared`.
+    ///
+    /// Must have at least one element.
+    pub shared: Vec<u8>,
+
+    /// Memory type candidates for `StorageMode::Memoryless`.
+    pub memoryless: Vec<u8>,
+}
+
+impl StorageModeMappings {
+    pub fn memory_types_for_storage_mode(&self, index: core::StorageMode) -> &[u8] {
+        match index {
+            core::StorageMode::Private => &self.private,
+            core::StorageMode::Shared => &self.shared,
+            core::StorageMode::Memoryless => &self.memoryless,
+        }
+    }
+
+    pub fn map_storage_mode(&self, storage_mode: core::StorageMode, valid_bits: u32) -> Option<u8> {
+        use ngsgfx_common::int::BinaryInteger;
+
+        self.memory_types_for_storage_mode(storage_mode)
+            .iter()
+            .filter(|&&t| valid_bits.get_bit(t as u32))
+            .nth(0)
+            .cloned()
     }
 }
 

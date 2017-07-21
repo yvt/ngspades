@@ -15,6 +15,13 @@ pub(crate) struct MemoryHunk<T: DeviceRef> {
 }
 
 impl<T: DeviceRef> MemoryHunk<T> {
+    pub unsafe fn from_raw(device_ref: &T, handle: vk::DeviceMemory) -> Self {
+        Self {
+            device_ref: device_ref.clone(),
+            handle,
+        }
+    }
+
     pub fn device_ref(&self) -> &T {
         &self.device_ref
     }

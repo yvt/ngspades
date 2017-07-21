@@ -103,8 +103,8 @@ pub mod imp {
         type Event = Event<T>;
         type Framebuffer = Framebuffer<T>;
         type GraphicsPipeline = GraphicsPipeline<T>;
-        type UniversalHeap = Heap<T>;
-        type SpecializedHeap = Heap<T>;
+        type UniversalHeap = UniversalHeap<T>;
+        type SpecializedHeap = SpecializedHeap<T>;
         type Image = Image<T>;
         type ImageView = ImageView<T>;
         type PipelineLayout = PipelineLayout<T>;
