@@ -12,7 +12,7 @@ use std::sync::Arc;
 use atomic_refcell::AtomicRefCell;
 
 use {DeviceRef, Backend, AshDevice, translate_generic_error_unwrap};
-use imp::Fence;
+use imp::{Fence, CommandDependencyTable};
 
 /// Used to encode a render subpass with secondary command buffers.
 pub(super) struct NestedPassEncoder<T: DeviceRef> {
@@ -59,6 +59,7 @@ impl<T: DeviceRef> NestedPassEncoder<T> {
                     buffer: buffer_allocator()?,
                     wait_fences: Vec::new(),
                     update_fences: Vec::new(),
+                    dependency_table: CommandDependencyTable::new(),
 
                     result: Ok(()),
                 })),
@@ -77,6 +78,7 @@ impl<T: DeviceRef> NestedPassEncoder<T> {
                     buffer: buffer_allocator()?,
                     wait_fences: Vec::new(),
                     update_fences: Vec::new(),
+                    dependency_table: CommandDependencyTable::new(),
 
                     result: Ok(()),
                 }
@@ -181,6 +183,10 @@ impl<T: DeviceRef> SecondaryCommandBuffer<T> {
         assert!(result.is_none());
         *result = Some(work);
     }
+
+    pub(super) fn dependency_table(&mut self) -> Option<&mut CommandDependencyTable<T>> {
+        self.expect_active_mut().map(|x| &mut x.dependency_table)
+    }
 }
 
 pub(super) struct SecondaryCommandBufferData<T: DeviceRef> {
@@ -190,6 +196,8 @@ pub(super) struct SecondaryCommandBufferData<T: DeviceRef> {
     pub(super) wait_fences: Vec<(Fence<T>, core::PipelineStageFlags, core::AccessTypeFlags)>,
     pub(super) update_fences: Vec<(Fence<T>, core::PipelineStageFlags, core::AccessTypeFlags)>,
     pub(super) result: core::Result<()>,
+
+    pub(super) dependency_table: CommandDependencyTable<T>,
 }
 
 impl<T: DeviceRef> fmt::Debug for SecondaryCommandBufferData<T> {

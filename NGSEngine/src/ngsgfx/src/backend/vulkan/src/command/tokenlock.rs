@@ -38,7 +38,7 @@ impl<T: ?Sized> fmt::Debug for TokenLock<T> {
 }
 
 impl<T> TokenLock<T> {
-    fn new(token: &Token, data: T) -> Self {
+    pub fn new(token: &Token, data: T) -> Self {
         Self {
             keyhole: token.0.clone(),
             data: UnsafeCell::new(data),
@@ -48,12 +48,12 @@ impl<T> TokenLock<T> {
 
 impl<T: ?Sized> TokenLock<T> {
     #[inline]
-    fn get_mut(&mut self) -> &mut T {
+    pub fn get_mut(&mut self) -> &mut T {
         unsafe { mem::transmute(self.data.get()) }
     }
 
     #[inline]
-    fn read<'a: 'b, 'b>(&'a self, token: &'b Token) -> Option<&'b T> {
+    pub fn read<'a: 'b, 'b>(&'a self, token: &'b Token) -> Option<&'b T> {
         if token.0 == self.keyhole {
             Some(unsafe { mem::transmute(self.data.get()) })
         } else {
@@ -62,7 +62,7 @@ impl<T: ?Sized> TokenLock<T> {
     }
 
     #[inline]
-    fn write<'a: 'b, 'b>(&'a self, token: &'b mut Token) -> Option<&'b mut T> {
+    pub fn write<'a: 'b, 'b>(&'a self, token: &'b mut Token) -> Option<&'b mut T> {
         if token.0 == self.keyhole {
             Some(unsafe { mem::transmute(self.data.get()) })
         } else {

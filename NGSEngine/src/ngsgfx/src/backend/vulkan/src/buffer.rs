@@ -5,12 +5,13 @@
 //
 use core;
 use std::{ptr, mem};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use ash::vk;
 use ash::version::DeviceV1_0;
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
-use imp::MemoryHunk;
+use command::mutex::{ResourceMutex, ResourceMutexRef};
+use imp::{MemoryHunk, LlFence};
 
 pub(crate) struct UnassociatedBuffer<'a, T: DeviceRef> {
     device_ref: &'a T,
@@ -75,10 +76,14 @@ impl<'a, T: DeviceRef> UnassociatedBuffer<'a, T> {
         unsafe { device.bind_buffer_memory(self.handle, hunk.handle(), offset) }
             .map_err(translate_generic_error_unwrap)?;
 
+        let bld = BufferLockData{
+            hunk,
+            handle: self.into_raw(),
+        };
         Ok(Buffer {
             data: RefEqArc::new(BufferData {
-                hunk,
-                handle: self.into_raw(),
+                handle: bld.handle,
+                mutex: Mutex::new(ResourceMutex::new(bld)),
             }),
         })
     }
@@ -103,6 +108,13 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct BufferData<T: DeviceRef> {
+    /// Copy of `BufferLockData::handle`. (Do not destroy!)
+    handle: vk::Buffer,
+    mutex: Mutex<ResourceMutex<LlFence<T>, BufferLockData<T>>>,
+}
+
+#[derive(Debug)]
+pub(crate) struct BufferLockData<T: DeviceRef> {
     hunk: Arc<MemoryHunk<T>>,
     handle: vk::Buffer,
 }
@@ -115,7 +127,7 @@ impl<T: DeviceRef> core::Marker for Buffer<T> {
     }
 }
 
-impl<T: DeviceRef> Drop for BufferData<T> {
+impl<T: DeviceRef> Drop for BufferLockData<T> {
     fn drop(&mut self) {
         let device_ref = self.hunk.device_ref();
         let device: &AshDevice = device_ref.device();
@@ -126,5 +138,9 @@ impl<T: DeviceRef> Drop for BufferData<T> {
 impl<T: DeviceRef> Buffer<T> {
     pub fn handle(&self) -> vk::Buffer {
         self.data.handle
+    }
+
+    pub(crate) fn lock_device(&self) -> ResourceMutexRef<LlFence<T>, BufferLockData<T>> {
+        self.data.mutex.lock().unwrap().lock_device().clone()
     }
 }

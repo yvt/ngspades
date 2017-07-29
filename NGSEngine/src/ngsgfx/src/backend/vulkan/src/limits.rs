@@ -13,12 +13,14 @@ use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDev
 use std::u32;
 use std::ops;
 
+pub const MAX_NUM_QUEUES: usize = 4;
+
 #[derive(Debug, Hash, Clone)]
 pub struct DeviceConfig {
     /// Specifies the queue family index and queue index for each internal queue
     /// to be created.
     ///
-    /// The number of elements must be less than or equal to 32.
+    /// The number of elements must be less than or equal to `MAX_NUM_QUEUES`.
     pub queues: Vec<(u32, u32)>,
 
     pub engine_queue_mappings: EngineQueueMappings,

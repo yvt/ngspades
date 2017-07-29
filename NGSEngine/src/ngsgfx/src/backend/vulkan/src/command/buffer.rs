@@ -8,7 +8,7 @@ use ash::vk;
 use std::{ptr, fmt};
 
 use {DeviceRef, Backend, AshDevice};
-use imp::{DeviceConfig, Fence};
+use imp::{DeviceConfig, Fence, CommandDependencyTable};
 use super::NestedPassEncoder;
 use super::encoder::EncoderState;
 use super::cbpool::CommandBufferPool;
@@ -41,6 +41,8 @@ pub(super) struct CommandBufferData<T: DeviceRef> {
     pub(super) nested_encoder: NestedPassEncoder<T>,
 
     pub(super) encoder_state: EncoderState<T>,
+
+    pub(super) dependency_table: CommandDependencyTable<T>,
 }
 
 impl<T: DeviceRef> fmt::Debug for CommandBufferData<T> {
@@ -81,6 +83,7 @@ impl<T: DeviceRef> CommandBuffer<T> {
             passes: Vec::new(),
             nested_encoder: NestedPassEncoder::new(),
             encoder_state: EncoderState::Initial,
+            dependency_table: CommandDependencyTable::new(),
         };
 
         // Create `CommandBufferPool`s
@@ -121,6 +124,10 @@ impl<T: DeviceRef> CommandBuffer<T> {
             }
         }
         data.passes.clear();
+    }
+
+    pub(super) fn dependency_table(&mut self) -> Option<&mut CommandDependencyTable<T>> {
+        Some(&mut self.data.dependency_table)
     }
 }
 

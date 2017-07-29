@@ -490,6 +490,7 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
             EncoderState::RenderSubpassInline(rp_state) => Ok(rp_state),
             EncoderState::RenderSubpassScb(rp_state) => {
                 let ref mut nested_encoder: NestedPassEncoder<T> = data.nested_encoder;
+                let ref mut dependency_table = data.dependency_table;
                 let mut result = Ok(rp_state);
 
                 nested_encoder.end(|scbd| {
@@ -509,6 +510,8 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                     current_pass.update_fences.extend(
                         scbd.update_fences.drain(..),
                     );
+
+                    dependency_table.inherit(&mut scbd.dependency_table);
 
                     unsafe {
                         // TODO: minimize the number of calls

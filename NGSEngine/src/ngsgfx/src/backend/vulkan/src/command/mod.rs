@@ -12,6 +12,7 @@ mod debug;
 mod encoder;
 mod event;
 mod fence;
+pub(crate) mod mutex;
 mod queue;
 mod render;
 mod secondary;

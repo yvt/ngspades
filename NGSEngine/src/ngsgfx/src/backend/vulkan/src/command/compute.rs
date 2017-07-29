@@ -41,6 +41,10 @@ impl<T: DeviceRef> core::ComputeCommandEncoder<Backend<T>> for CommandBuffer<T> 
             return;
         }
 
+        for ds in descriptor_sets.iter() {
+            self.data.dependency_table.insert_descriptor_set(ds);
+        }
+
         let device: &AshDevice = self.data.device_ref.device();
         let buffer = self.expect_outside_render_pass().buffer;
 

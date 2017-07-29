@@ -12,6 +12,8 @@ extern crate test;
 extern crate num_integer;
 extern crate num_traits;
 
+pub mod atom2;
+pub mod barc;
 pub mod int;
 pub mod pool;
 pub mod refeq;

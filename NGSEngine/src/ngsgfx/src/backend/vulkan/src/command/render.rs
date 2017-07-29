@@ -234,6 +234,11 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         descriptor_sets: &[&DescriptorSet<T>],
         dynamic_offsets: &[u32],
     ) {
+        if let Some(table) = self.dependency_table() {
+            for ds in descriptor_sets.iter() {
+                table.insert_descriptor_set(ds);
+            }
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_graphics_descriptor_sets(
                 pipeline_layout,
@@ -249,6 +254,11 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         start_index: core::VertexBindingLocation,
         buffers: &[(&Buffer<T>, core::DeviceSize)],
     ) {
+        if let Some(table) = self.dependency_table() {
+            for buffer in buffers.iter() {
+                table.insert_buffer(buffer.0);
+            }
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_vertex_buffers(start_index, buffers);
         }
@@ -260,6 +270,9 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         offset: core::DeviceSize,
         format: core::IndexFormat,
     ) {
+        if let Some(table) = self.dependency_table() {
+            table.insert_buffer(buffer);
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_index_buffer(buffer, offset, format);
         }
@@ -339,6 +352,11 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         descriptor_sets: &[&DescriptorSet<T>],
         dynamic_offsets: &[u32],
     ) {
+        if let Some(table) = self.dependency_table() {
+            for ds in descriptor_sets.iter() {
+                table.insert_descriptor_set(ds);
+            }
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_graphics_descriptor_sets(
                 pipeline_layout,
@@ -354,6 +372,11 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         start_index: core::VertexBindingLocation,
         buffers: &[(&Buffer<T>, core::DeviceSize)],
     ) {
+        if let Some(table) = self.dependency_table() {
+            for buffer in buffers.iter() {
+                table.insert_buffer(buffer.0);
+            }
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_vertex_buffers(start_index, buffers);
         }
@@ -365,6 +388,9 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         offset: core::DeviceSize,
         format: core::IndexFormat,
     ) {
+        if let Some(table) = self.dependency_table() {
+            table.insert_buffer(buffer);
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_index_buffer(buffer, offset, format);
         }

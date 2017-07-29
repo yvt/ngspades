@@ -196,6 +196,20 @@ pub enum WriteDescriptors<'a, B: Backend> {
 }
 
 impl<'a, B: Backend> WriteDescriptors<'a, B> {
+    pub fn len(&self) -> usize {
+        match *self {
+            WriteDescriptors::StorageImage(x) => x.len(),
+            WriteDescriptors::SampledImage(x) => x.len(),
+            WriteDescriptors::Sampler(x) => x.len(),
+            WriteDescriptors::CombinedImageSampler(x) => x.len(),
+            WriteDescriptors::ConstantBuffer(x) => x.len(),
+            WriteDescriptors::StorageBuffer(x) => x.len(),
+            WriteDescriptors::DynamicConstantBuffer(x) => x.len(),
+            WriteDescriptors::DynamicStorageBuffer(x) => x.len(),
+            WriteDescriptors::InputAttachment(x) => x.len(),
+        }
+    }
+
     pub fn descriptor_type(&self) -> DescriptorType {
         match *self {
             WriteDescriptors::StorageImage(_) => DescriptorType::StorageImage,
