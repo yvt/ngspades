@@ -13,6 +13,11 @@ use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDev
 use std::u32;
 use std::ops;
 
+/// The maximum number of internal queues.
+///
+/// This value is guaranteed to be less than 32 and greater than 0. This is mainly
+/// because the implementation of this backend often uses `u32` bit fields to
+/// represent sets of internal queues.
 pub const MAX_NUM_QUEUES: usize = 4;
 
 #[derive(Debug, Hash, Clone)]

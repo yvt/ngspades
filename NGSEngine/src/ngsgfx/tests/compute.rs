@@ -193,7 +193,7 @@ impl<'a, 'b: 'a, B: core::Backend, T: 'static> ResultBuffer<'a, 'b, B, T> {
         cb.end_pass();
         cb.end_encoding().unwrap();
 
-        queue.submit_commands(&[&cb], None).unwrap();
+        queue.submit_commands(&mut [&mut cb], None).unwrap();
 
         cb.wait_completion().unwrap();
 
@@ -317,7 +317,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         cb.end_pass();
         cb.end_encoding().unwrap();
 
-        queue.submit_commands(&[&cb], None).unwrap();
+        queue.submit_commands(&mut [&mut cb], None).unwrap();
 
         cb.wait_completion().unwrap();
 
@@ -366,7 +366,7 @@ impl BackendDispatch for SimpleTest {
         cb.end_pass();
         cb.end_encoding().unwrap();
 
-        queue.submit_commands(&[&cb], None).unwrap();
+        queue.submit_commands(&mut [&mut cb], None).unwrap();
         cb.wait_completion().unwrap();
     }
 }
@@ -540,7 +540,7 @@ impl BackendDispatch for Conv1Test {
         cb.end_pass();
         cb.end_encoding().unwrap();
 
-        queue.submit_commands(&[&cb], None).unwrap();
+        queue.submit_commands(&mut [&mut cb], None).unwrap();
         cb.wait_completion().unwrap();
 
         let result = output_buffer.take(

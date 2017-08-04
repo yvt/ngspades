@@ -8,7 +8,7 @@ use core;
 use std::sync::Arc;
 
 use DeviceRef;
-use imp::{Backend, CommandQueue, DeviceCapabilities, DeviceConfig};
+use imp::{Backend, CommandQueue, DeviceCapabilities, DeviceConfig, LlFenceFactory, LlFence, Event};
 
 pub struct Device<T: DeviceRef> {
     pub(crate) data: Arc<DeviceData<T>>,
@@ -24,6 +24,7 @@ pub(crate) struct DeviceData<T: DeviceRef> {
     pub(crate) device_ref: T,
     pub(crate) cap: DeviceCapabilities,
     pub(crate) cfg: DeviceConfig,
+    pub(crate) llfence_factory: LlFenceFactory<T>,
 }
 
 impl<T: DeviceRef> core::Device<Backend<T>> for Device<T> {
@@ -41,6 +42,7 @@ impl<T: DeviceRef> core::Device<Backend<T>> for Device<T> {
 impl<T: DeviceRef> Device<T> {
     pub fn new(device_ref: T, cfg: DeviceConfig, cap: DeviceCapabilities) -> Self {
         let data = Arc::new(DeviceData {
+            llfence_factory: LlFenceFactory::new(device_ref.clone()),
             device_ref,
             cap,
             cfg,
@@ -58,5 +60,15 @@ impl<T: DeviceRef> Device<T> {
     }
     pub(crate) fn capabilities(&self) -> &DeviceCapabilities {
         &self.data.cap
+    }
+}
+
+impl<T: DeviceRef> DeviceData<T> {
+    pub fn make_llfence(&self, signaled: bool) -> core::Result<LlFence<T>> {
+        self.llfence_factory.build(self.cfg.queues.len(), signaled)
+    }
+
+    pub fn make_event(&self, desc: &core::EventDescription) -> core::Result<Event<T>> {
+        Ok(Event::new(Arc::new(self.make_llfence(desc.signaled)?)))
     }
 }

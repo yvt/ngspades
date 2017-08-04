@@ -17,6 +17,7 @@ use super::barrier::VkResourceBarrier;
 
 #[derive(Debug)]
 pub(super) enum EncoderState<T: DeviceRef> {
+    /// `CommandBuffer` was just created, or is awaiting the next encoding.
     Initial,
 
     NoPass,
@@ -30,6 +31,8 @@ pub(super) enum EncoderState<T: DeviceRef> {
     Copy,
 
     End,
+
+    Submitted,
 
     /// An error occured while encoding some commands.
     ///
@@ -120,7 +123,12 @@ impl<T: DeviceRef> CommandBuffer<T> {
             .engine_queue_mappings
             .internal_queue_for_engine(engine)
             .unwrap();
-        let buffer = unsafe { data.pools[iq].get_primary_buffer(device)? };
+        let buffer = unsafe {
+            data.pools
+                .lock_host_write()
+                .get_mut(iq)
+                .get_primary_buffer(device)?
+        };
 
         unsafe {
             device
@@ -328,7 +336,7 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                 let ref mut nested_encoder: NestedPassEncoder<T> = data.nested_encoder;
 
                 let univ_iq = data.device_config.engine_queue_mappings.universal;
-                let ref mut univ_pool = data.pools[univ_iq];
+                let ref mut univ_pool = data.pools.lock_host_write().get_mut(univ_iq);
 
                 let scb =
                     nested_encoder.make_secondary_command_buffer(device_ref, &mut || unsafe {
@@ -452,7 +460,9 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                         buffer,
                         match contents {
                             core::RenderPassContents::Inline => vk::SubpassContents::Inline,
-                            core::RenderPassContents::SecondaryCommandBuffers => vk::SubpassContents::SecondaryCommandBuffers,
+                            core::RenderPassContents::SecondaryCommandBuffers => {
+                                vk::SubpassContents::SecondaryCommandBuffers
+                            }
                         },
                     );
                 }
@@ -506,6 +516,14 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                         return;
                     }
 
+                    // Check if it is valid to wait on these fences from this
+                    // internal queue
+                    for fence in scbd.wait_fences.iter() {
+                        fence.0.expect_waitable_by_iq(
+                            current_pass.internal_queue_index,
+                        );
+                    }
+
                     current_pass.wait_fences.extend(scbd.wait_fences.drain(..));
                     current_pass.update_fences.extend(
                         scbd.update_fences.drain(..),
@@ -533,7 +551,6 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
 
                     // This was the last subpass.
                     unsafe {
-                        unimplemented!();
                         device.cmd_end_render_pass(current_pass.buffer);
                     }
                 } else {

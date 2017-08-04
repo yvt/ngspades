@@ -24,12 +24,12 @@ impl CommandQueue {
 }
 
 struct SubmissionTransaction<'a> {
-    buffers: &'a [&'a CommandBuffer],
+    buffers: &'a [&'a mut CommandBuffer],
     num_successful_transitions: usize,
     event_associated: Option<&'a Event>,
 }
 
-fn submit_commands(buffers: &[&CommandBuffer], event: Option<&Event>) -> core::Result<()> {
+fn submit_commands(buffers: &mut [&mut CommandBuffer], event: Option<&Event>) -> core::Result<()> {
     let mut transaction = SubmissionTransaction {
         buffers: buffers,
         num_successful_transitions: 0,
@@ -125,7 +125,7 @@ impl core::CommandQueue<Backend> for CommandQueue {
 
     fn submit_commands(
         &self,
-        buffers: &[&CommandBuffer],
+        buffers: &mut [&mut CommandBuffer],
         event: Option<&Event>,
     ) -> core::Result<()> {
         submit_commands(buffers, event)

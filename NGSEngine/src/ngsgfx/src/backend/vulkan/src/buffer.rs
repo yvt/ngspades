@@ -10,7 +10,7 @@ use ash::vk;
 use ash::version::DeviceV1_0;
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
-use command::mutex::{ResourceMutex, ResourceMutexRef};
+use command::mutex::{ResourceMutex, ResourceMutexDeviceRef};
 use imp::{MemoryHunk, LlFence};
 
 pub(crate) struct UnassociatedBuffer<'a, T: DeviceRef> {
@@ -76,14 +76,14 @@ impl<'a, T: DeviceRef> UnassociatedBuffer<'a, T> {
         unsafe { device.bind_buffer_memory(self.handle, hunk.handle(), offset) }
             .map_err(translate_generic_error_unwrap)?;
 
-        let bld = BufferLockData{
+        let bld = BufferLockData {
             hunk,
             handle: self.into_raw(),
         };
         Ok(Buffer {
             data: RefEqArc::new(BufferData {
                 handle: bld.handle,
-                mutex: Mutex::new(ResourceMutex::new(bld)),
+                mutex: Mutex::new(ResourceMutex::new(bld, false)),
             }),
         })
     }
@@ -140,7 +140,7 @@ impl<T: DeviceRef> Buffer<T> {
         self.data.handle
     }
 
-    pub(crate) fn lock_device(&self) -> ResourceMutexRef<LlFence<T>, BufferLockData<T>> {
-        self.data.mutex.lock().unwrap().lock_device().clone()
+    pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, BufferLockData<T>> {
+        self.data.mutex.lock().unwrap().lock_device()
     }
 }

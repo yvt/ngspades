@@ -13,7 +13,8 @@ use imp::{self, ComputePipeline, DescriptorPool, Device, DescriptorSetLayout, Ev
 impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
     fn make_event(&self, description: &core::EventDescription) -> core::Result<Event<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // Ok(Event::new(description))
+
+        self.data.make_event(description)
     }
     fn make_render_pass(
         &self,

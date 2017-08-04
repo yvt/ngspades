@@ -14,6 +14,8 @@ mod event;
 mod fence;
 pub(crate) mod mutex;
 mod queue;
+mod queuesched;
+mod recycler;
 mod render;
 mod secondary;
 mod tokenlock;

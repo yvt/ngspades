@@ -6,19 +6,23 @@
 //! Reimplementation of the [atom] library with specialized and extended features.
 //!
 //! [atom]: https://crates.io/crates/atom
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::marker::PhantomData;
 use std::{ptr, mem, fmt};
 
-pub trait RcLike: Sized + Clone {
+/// Types whose value can be represented as a non-zero pointer-sized value.
+pub unsafe trait PtrSized: Sized + Clone {
     type Value;
 
     fn into_raw(this: Self) -> *const Self::Value;
     unsafe fn from_raw(ptr: *const Self::Value) -> Self;
 }
 
-impl<T> RcLike for Arc<T> {
+/// Pointers returned by `into_raw` are safe to dereference.
+pub unsafe trait RcLike: PtrSized {}
+
+unsafe impl<T> PtrSized for Arc<T> {
     type Value = T;
 
     fn into_raw(this: Self) -> *const Self::Value {
@@ -28,8 +32,20 @@ impl<T> RcLike for Arc<T> {
         Arc::from_raw(ptr)
     }
 }
+unsafe impl<T> RcLike for Arc<T> {}
 
-impl<T> RcLike for ::barc::BArc<T> {
+unsafe impl<T> PtrSized for Weak<T> {
+    type Value = ();
+
+    fn into_raw(this: Self) -> *const Self::Value {
+        unsafe { mem::transmute(this) }
+    }
+    unsafe fn from_raw(ptr: *const Self::Value) -> Self {
+        mem::transmute(ptr)
+    }
+}
+
+unsafe impl<T> PtrSized for ::barc::BArc<T> {
     type Value = T;
 
     fn into_raw(this: Self) -> *const Self::Value {
@@ -39,16 +55,18 @@ impl<T> RcLike for ::barc::BArc<T> {
         ::barc::BArc::from_raw(ptr)
     }
 }
+unsafe impl<T> RcLike for ::barc::BArc<T>  {}
 
-pub struct AtomicArc<T: RcLike> {
+/// An atomic `Option<Arc<T>>` storage that can be safely shared between threads.
+pub struct AtomicArc<T: PtrSized> {
     ptr: AtomicPtr<T::Value>,
     phantom: PhantomData<T>,
 }
 
-unsafe impl<T: RcLike + Sync> Sync for AtomicArc<T> {}
-unsafe impl<T: RcLike + Send> Send for AtomicArc<T> {}
+unsafe impl<T: PtrSized + Sync> Sync for AtomicArc<T> {}
+unsafe impl<T: PtrSized + Send> Send for AtomicArc<T> {}
 
-unsafe fn option_arc_from_raw<T: RcLike>(p: *const T::Value) -> Option<T> {
+unsafe fn option_arc_from_raw<T: PtrSized>(p: *const T::Value) -> Option<T> {
     if p.is_null() {
         None
     } else {
@@ -56,16 +74,15 @@ unsafe fn option_arc_from_raw<T: RcLike>(p: *const T::Value) -> Option<T> {
     }
 }
 
-fn option_arc_into_raw<T: RcLike>(x: Option<T>) -> *const T::Value {
+fn option_arc_into_raw<T: PtrSized>(x: Option<T>) -> *const T::Value {
     if let Some(x) = x {
-        RcLike::into_raw(x)
+        PtrSized::into_raw(x)
     } else {
         ptr::null()
     }
 }
 
-/// An atomic `Option<Arc<T>>` storage that can be safely shared between threads.
-impl<T: RcLike> AtomicArc<T> {
+impl<T: PtrSized> AtomicArc<T> {
     pub fn empty() -> Self {
         Self {
             ptr: AtomicPtr::default(),
@@ -89,15 +106,6 @@ impl<T: RcLike> AtomicArc<T> {
         unsafe { option_arc_from_raw(p) }
     }
 
-    pub fn as_ref(&mut self) -> Option<&T::Value> {
-        let p = *self.ptr.get_mut();
-        if p.is_null() {
-            None
-        } else {
-            Some(unsafe { &*p })
-        }
-    }
-
     pub fn load(&mut self) -> Option<T> {
         let mut p = self.ptr.get_mut();
         if let Some(arc) = unsafe { option_arc_from_raw::<T>(*p) } {
@@ -108,6 +116,8 @@ impl<T: RcLike> AtomicArc<T> {
             None
         }
     }
+
+    // FIXME: maybe we should enforce some ordering or this could be unsafe
 
     pub fn swap(&self, x: Option<T>, order: Ordering) -> Option<T> {
         let new_ptr = option_arc_into_raw(x);
@@ -151,19 +161,30 @@ impl<T: RcLike> AtomicArc<T> {
     }
 }
 
-impl<T: RcLike> fmt::Debug for AtomicArc<T> {
+impl<T: RcLike> AtomicArc<T> {
+    pub fn as_ref(&mut self) -> Option<&T::Value> {
+        let p = *self.ptr.get_mut();
+        if p.is_null() {
+            None
+        } else {
+            Some(unsafe { &*p })
+        }
+    }
+}
+
+impl<T: PtrSized> fmt::Debug for AtomicArc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("AtomicArc").field(&self.ptr).finish()
     }
 }
 
-impl<T: RcLike> Drop for AtomicArc<T> {
+impl<T: PtrSized> Drop for AtomicArc<T> {
     fn drop(&mut self) {
         self.take(Ordering::Relaxed);
     }
 }
 
-impl<T: RcLike> Default for AtomicArc<T> {
+impl<T: PtrSized> Default for AtomicArc<T> {
     fn default() -> Self {
         AtomicArc::empty()
     }

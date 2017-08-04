@@ -8,12 +8,28 @@
 //!
 //! Implements a NgsGFX backend using the Vulkan API.
 //!
+//! Performance Notes
+//! -----------------
+//!
+//! ### Inter-queue Fences
+//!
+//! When creating `Fence`, make sure to specify only engines that are actually
+//! going to wait on the fence as `wait_engines`.
+//!
+//! Inter-queue fence synchronization is implemented using `vk::Semaphore` and
+//! `vk::Semaphore` is created for every destination engine with a distinct device
+//! queue. Specifying some engine in `wait_engines` and not waiting on the fence
+//! from that engine might leave a `vk::Semaphore` signaled but no batch waiting
+//! for it. Updating such fences will be penalized because that `vk::Semaphore`
+//! must be waited first before signalling it again.
+//!
 #![feature(optin_builtin_traits)]
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_common;
 extern crate cgmath;
 extern crate smallvec;
 extern crate atomic_refcell;
+extern crate parking_lot;
 pub extern crate ash;
 
 #[macro_use]

@@ -69,6 +69,7 @@ impl CommandBufferPool {
         if *used_count == reserve.len() {
             // allocate extra buffers to avoid frequent allocations
             let extend_count = 1 + (reserve.len() >> 2);
+            reserve.reserve(extend_count);
 
             let info = vk::CommandBufferAllocateInfo {
                 s_type: vk::StructureType::CommandBufferAllocateInfo,

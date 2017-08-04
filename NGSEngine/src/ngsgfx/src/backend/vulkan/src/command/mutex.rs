@@ -10,9 +10,10 @@
 use ash::vk;
 use ash::version::DeviceV1_0;
 use std::collections::HashMap;
-use std::sync::{Mutex, Arc, Weak};
-use std::{mem, fmt, marker, ops};
+use std::sync::{Arc, Weak};
+use std::{mem, fmt, marker, ops, ptr};
 use std::sync::atomic::Ordering;
+use parking_lot::Mutex;
 
 use ngsgfx_common::barc::{BArc, BArcBox, BWeak};
 use ngsgfx_common::atom2::AtomicArc;
@@ -20,37 +21,61 @@ use ngsgfx_common::atom2::AtomicArc;
 use super::tokenlock::{TokenLock, Token};
 use {RefEqArc, DeviceRef, AshDevice};
 
-pub(crate) trait GetResourceFenceDependencyTable<T>
-    : fmt::Debug + ResourceFence + marker::Sized {
-    fn get_dependency_table<'a: 'b, 'b>(
-        &'a self,
-        token: &'b mut Token,
-    ) -> &'b mut ResourceFenceDependencyTable<Self, T>;
-}
-
 /// Manages resources that are still in use by the device.
 ///
 /// Users must not drop a `ResourceFenceDependencyTable` until the device's operation is
 /// completed and `ResourceFenceDependencyTable::clear` is called.
 #[derive(Debug)]
-pub(crate) struct ResourceFenceDependencyTable<F: ResourceFence + GetResourceFenceDependencyTable<T>, T>(
-    HashMap<RefEqArc<()>, Arc<ResourceMutexDeviceRef<F, T>>>,
-);
+pub(crate) struct ResourceFenceDependencyTable<F: ResourceFence, T>(HashMap<RefEqArc<()>, Arc<ResourceMutexDeviceRef<F, T>>>);
 
-impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceFenceDependencyTable<F, T> {
+impl<F: ResourceFence, T> ResourceFenceDependencyTable<F, T> {
     pub fn new() -> Self {
         ResourceFenceDependencyTable(HashMap::new())
     }
 
     /// Declare that resources associated with this fence are no longer used
     /// by the device.
-    pub fn clear(&mut self) {
-        self.0.clear();
+    pub fn clear(&mut self, fence: Option<&F>) {
+        for (_, dr) in self.0.drain() {
+            let fa: Option<Arc<FenceAccessor<F>>> = dr.1.upgrade();
+            if let Some(fa) = fa {
+                let mut fence_cell = fa.fence.lock();
+                if let Some(fence) = fence {
+                    if fence_cell.as_ref().map(
+                        |fence_arc| ptr::eq(&**fence_arc, fence),
+                    ) == Some(true)
+                    {
+                        *fence_cell = None;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Associate the resource with this fence.
+    ///
+    /// If the resource is currently associated with another fence, it must be
+    /// signalled before this fence.
+    pub fn insert(&mut self, fence: &Arc<F>, mut dr: ResourceMutexDeviceRef<F, T>) {
+        let data: BArc<ResourceMutexData<_, _>> = dr.0.load().unwrap();
+        let f_accessor = dr.1.upgrade();
+        let dr_arc = Arc::new(dr);
+        let dr_weak = Arc::downgrade(&dr_arc);
+        self.0.insert(Clone::clone(&data.id), dr_arc);
+
+        if let Some(f_accessor) = f_accessor {
+            let mut fence_cell = f_accessor.fence.lock();
+            *fence_cell = Some(fence.clone());
+        }
+
+        let old_dr_weak = data.device_ref.swap(Some(dr_weak), Ordering::Relaxed);
+        if let Some(old_dr) = old_dr_weak.and_then(|w| w.upgrade()) {
+            old_dr.0.take(Ordering::Relaxed);
+        }
     }
 }
 
-impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> Drop
-    for ResourceFenceDependencyTable<F, T> {
+impl<F: ResourceFence, T> Drop for ResourceFenceDependencyTable<F, T> {
     fn drop(&mut self) {
         assert!(self.0.len() == 0);
     }
@@ -60,64 +85,29 @@ pub(crate) trait ResourceFence: fmt::Debug {
     /// Check the state of the Vulkan fence. If it is in the signalled state,
     /// release all references by calling `self`'s
     /// `ResourceFenceDependencyTable::clear`.
-    fn check_fence(&self);
-}
-
-/// A reference to resource.
-#[derive(Debug)]
-pub(crate) struct ResourceMutexRef<F: ResourceFence + GetResourceFenceDependencyTable<T>, T>(BArc<ResourceMutexData<F, T>>);
-
-impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutexRef<F, T> {
-    fn id(&self) -> &RefEqArc<()> {
-        &self.0.id
-    }
-
-    /// Associate this resource with the specified fence.
-    ///
-    /// If this resource was previously associated with another fence, the new
-    /// fence must be signalled after, or must be the same as the previous one.
-    pub fn update_fence(&self, fence_token: &mut Token, fence: &Arc<F>) {
-        let table_lg = fence.get_dependency_table(fence_token);
-        let ref mut table: ResourceFenceDependencyTable<F, T> = *table_lg;
-        if table.0.contains_key(&self.0.id) {
-            return;
-        }
-
-        let mut device_ref_cell = self.0.device_ref.lock().unwrap();
-
-        // Dissociate with the previous one
-        if let Some(prev_device_ref) = device_ref_cell.upgrade() {
-            prev_device_ref.0.take(Ordering::Relaxed);
-        }
-
-        // Create a new device reference
-        let dr = ResourceMutexDeviceRef(
-            AtomicArc::new(Some(BArc::clone(&self.0))),
-            Arc::downgrade(fence),
-        );
-        let dr_arc = Arc::new(dr);
-        let dr_weak = Arc::downgrade(&dr_arc);
-        table.0.insert(self.0.id.clone(), dr_arc);
-
-        *device_ref_cell = dr_weak;
-    }
-}
-
-impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> Clone for ResourceMutexRef<F, T> {
-    fn clone(&self) -> Self {
-        ResourceMutexRef(self.0.clone())
-    }
+    fn check_fence(&self, wait: bool);
 }
 
 /// A reference to resource from a device (fence).
 #[derive(Debug)]
-pub(crate) struct ResourceMutexDeviceRef<F: ResourceFence + GetResourceFenceDependencyTable<T>, T>(
+pub(crate) struct ResourceMutexDeviceRef<F: ResourceFence, T>(
     AtomicArc<BArc<ResourceMutexData<F, T>>>,
-    Weak<F>,
+    Weak<FenceAccessor<F>>
 );
 
+#[derive(Debug, Default)]
+struct FenceAccessor<F: ResourceFence> {
+    fence: Mutex<Option<Arc<F>>>,
+}
+
+impl<F: ResourceFence> FenceAccessor<F> {
+    fn new() -> Self {
+        Self { fence: Mutex::new(None) }
+    }
+}
+
 #[derive(Debug)]
-pub(crate) struct ResourceMutexData<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> {
+struct ResourceMutexData<F: ResourceFence, T> {
     id: RefEqArc<()>,
 
     /// The inner value.
@@ -126,14 +116,14 @@ pub(crate) struct ResourceMutexData<F: ResourceFence + GetResourceFenceDependenc
     data: Option<BArcBox<T>>,
 
     /// `ResourceMutexDeviceRef` that own a reference to `self`.
-    device_ref: Mutex<Weak<ResourceMutexDeviceRef<F, T>>>,
+    device_ref: AtomicArc<Weak<ResourceMutexDeviceRef<F, T>>>,
 }
 
 derive_using_field! {
-    (F: ResourceFence + GetResourceFenceDependencyTable<T>, T); (PartialEq, Eq, Hash) for ResourceMutexData<F, T> => id
+    (F: ResourceFence, T); (PartialEq, Eq, Hash) for ResourceMutexData<F, T> => id
 }
 
-impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutexData<F, T> {
+impl<F: ResourceFence, T> ResourceMutexData<F, T> {
     fn data(&self) -> &T {
         self.data.as_ref().unwrap()
     }
@@ -176,12 +166,15 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutexData
 ///    TODO: how to associate it with a fence
 ///
 #[derive(Debug)]
-pub(crate) struct ResourceMutex<F: ResourceFence + GetResourceFenceDependencyTable<T>, T>(ResourceMutexState<F, T>);
+pub(crate) struct ResourceMutex<F: ResourceFence, T>(
+    ResourceMutexState<F, T>,
+    Option<Arc<FenceAccessor<F>>>
+);
 
 #[derive(Debug)]
-enum ResourceMutexState<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> {
+enum ResourceMutexState<F: ResourceFence, T> {
     /// The device might be accessing the object.
-    Limbo(ResourceMutexRef<F, T>),
+    Limbo(BArc<ResourceMutexData<F, T>>),
 
     /// A full host accessbility is guaranteed.
     Owned(BArcBox<ResourceMutexData<F, T>>),
@@ -189,14 +182,26 @@ enum ResourceMutexState<F: ResourceFence + GetResourceFenceDependencyTable<T>, T
     Invalid,
 }
 
-impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, T> {
-    pub fn new(x: T) -> Self {
+impl<F: ResourceFence, T> ResourceMutex<F, T> {
+    pub fn new(x: T, mutable: bool) -> Self {
         let data = ResourceMutexData {
             id: RefEqArc::new(()),
             data: Some(BArcBox::new(x)),
-            device_ref: Mutex::new(Weak::new()),
+            device_ref: AtomicArc::new(Some(Weak::new())),
         };
-        ResourceMutex(ResourceMutexState::Owned(BArcBox::new(data)))
+        ResourceMutex(
+            ResourceMutexState::Owned(BArcBox::new(data)),
+            if mutable {
+                Some(Arc::new(FenceAccessor::new()))
+            } else {
+                None
+            },
+        )
+    }
+
+    /// Deny further host write accesses.
+    pub fn make_immutable(&mut self) {
+        self.1 = None;
     }
 
     /// Acquire a host read accessibility to the inner value and return it.
@@ -205,7 +210,7 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, 
     pub fn get_host_read(&self) -> &T {
         match self.0 {
             ResourceMutexState::Owned(ref data) => data.data(),
-            ResourceMutexState::Limbo(ResourceMutexRef(ref data)) => data.data(),
+            ResourceMutexState::Limbo(ref data) => data.data(),
             ResourceMutexState::Invalid => unreachable!(),
         }
     }
@@ -216,7 +221,10 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, 
     ///
     /// Panics if it is still being accessed by the device.
     pub fn lock_host_write(&mut self) -> &mut T {
-        self.try_lock_host_write().expect(
+        // Actually, this error message is inaccurate becuase a lock failure
+        // can occur for other reasons including:
+        //  - The resource is marked as immutable.
+        self.try_lock_host_write(false).expect(
             "cannot acquire a host write access permission because \
             the device might be still accessing it",
         )
@@ -224,7 +232,13 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, 
 
     /// Attempts to acquire a host write accessbility to the inner value.
     /// If it succeeds, returns the inner value.
-    pub fn try_lock_host_write(&mut self) -> Option<&mut T> {
+    ///
+    /// If `wait` is set to `true` and the resource is currently being accessed
+    /// by the device, the current thread will be suspended until the resouce
+    /// is available for a host write access. Even if `wait` is set to `true`,
+    /// this method might return `None` immediately if this resource is not
+    /// associated to any fences yet.
+    pub fn try_lock_host_write(&mut self, wait: bool) -> Option<&mut T> {
         let data_box = match self.0 {
             ResourceMutexState::Owned(ref mut data) => {
                 return Some(data.data_mut());
@@ -237,14 +251,13 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, 
 
         // Take `limbo_arc`
         let next_state = match mem::replace(&mut self.0, ResourceMutexState::Invalid) {
-            ResourceMutexState::Limbo(ResourceMutexRef(data_arc)) => {
-                // There must not be a weak reference of this.
+            ResourceMutexState::Limbo(data_arc) => {
+                // There must not be another strong reference to this to perform a host write.
                 if BArc::strong_count(&data_arc) > 1 {
                     // Try `ResourceFence::check_fence` first to make a fence relinquish the ownership
-                    let device_ref_cell = data_arc.device_ref.lock().unwrap();
-                    if let Some(device_ref) = device_ref_cell.upgrade() {
-                        if let Some(fence) = device_ref.1.upgrade() {
-                            fence.check_fence();
+                    if let Some(accessor) = self.1.as_ref() {
+                        if let Some(fence) = accessor.fence.lock().clone() {
+                            fence.check_fence(wait);
                         }
                     }
                 }
@@ -255,7 +268,7 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, 
 
                         ResourceMutexState::Owned(data_box)
                     }
-                    Err(data_arc) => ResourceMutexState::Limbo(ResourceMutexRef(data_arc)),
+                    Err(data_arc) => ResourceMutexState::Limbo(data_arc),
                 }
             }
             _ => unreachable!(),
@@ -269,18 +282,53 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, 
         }
     }
 
+    pub fn is_host_writable(&self) -> bool {
+        match self.0 {
+            ResourceMutexState::Owned(_) => true,
+            ResourceMutexState::Limbo(ref data_arc) => {
+                // There must not be another strong reference to this to perform a host write.
+                if BArc::strong_count(data_arc) > 1 {
+                    // Try `ResourceFence::check_fence` first to make a fence relinquish the ownership
+                    if let Some(accessor) = self.1.as_ref() {
+                        if let Some(fence) = accessor.fence.lock().clone() {
+                            fence.check_fence(false);
+                        }
+                    }
+                }
+
+                BArc::strong_count(&data_arc) == 1
+            }
+            ResourceMutexState::Invalid => unreachable!(),
+        }
+    }
+
+    pub fn wait_host_writable(&self) {
+        if let Some(accessor) = self.1.as_ref() {
+            if let Some(fence) = accessor.fence.lock().clone() {
+                fence.check_fence(true);
+            }
+        }
+    }
+
     /// Acquire a device read accessbility to the inner value and return it.
     ///
     /// The device accessbility lasts until the execution of command buffers
     /// associated with the given fence complete.
-    pub fn lock_device(&mut self) -> &ResourceMutexRef<F, T> {
+    pub fn lock_device(&mut self) -> ResourceMutexDeviceRef<F, T> {
         match self.0 {
             ResourceMutexState::Owned(_) => {
                 // We can't take the data in this `match` block
                 // So first we need to leave from it
             }
             ResourceMutexState::Limbo(ref data_ref) => {
-                return data_ref;
+                return ResourceMutexDeviceRef(
+                    AtomicArc::new(Some(Clone::clone(data_ref))),
+                    if let Some(ref fa) = self.1 {
+                        Arc::downgrade(fa)
+                    } else {
+                        Weak::new()
+                    },
+                );
             }
             ResourceMutexState::Invalid => unreachable!(),
         }
@@ -291,11 +339,15 @@ impl<F: ResourceFence + GetResourceFenceDependencyTable<T>, T> ResourceMutex<F, 
             _ => unreachable!(),
         };
         let data_arc = BArcBox::into_arc(data_box);
-        self.0 = ResourceMutexState::Limbo(ResourceMutexRef(data_arc));
+        self.0 = ResourceMutexState::Limbo(Clone::clone(&data_arc));
 
-        match self.0 {
-            ResourceMutexState::Limbo(ref data_ref) => data_ref,
-            _ => unreachable!(),
-        }
+        ResourceMutexDeviceRef(
+            AtomicArc::new(Some(data_arc)),
+            if let Some(ref fa) = self.1 {
+                Arc::downgrade(fa)
+            } else {
+                Weak::new()
+            },
+        )
     }
 }

@@ -28,10 +28,18 @@ pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     ///
     /// If `event` is specified, it will be signaled upon completion of
     /// the execution. It must not be associated with any other
-    /// commands that has not yet completed execution.
+    /// commands that has not yet completed execution. It must be in the
+    /// unsignalled state.
+    ///
+    /// After a successful submission, all specified command buffers will be in
+    /// the `Pending` or `Completed` state.
+    /// If an error occurs during the submission, command buffers will remain
+    /// in the original state (`Executable`) and all referenced objects will be
+    /// unaffected.
+    ///
     fn submit_commands(
         &self,
-        buffers: &[&B::CommandBuffer],
+        buffers: &mut [&mut B::CommandBuffer],
         event: Option<&B::Event>,
     ) -> Result<()>;
 

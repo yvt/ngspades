@@ -17,6 +17,13 @@
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum GenericError {
     OutOfDeviceMemory,
+
+    /// The device became lost due to hardware/software errors, execution
+    /// timeouts, or other reasons.
+    ///
+    /// Backend implementations may use this value to indicate that the integrity
+    /// was compromised because of a software error and cannot proceed a proper
+    /// operation.
     DeviceLost,
 }
 

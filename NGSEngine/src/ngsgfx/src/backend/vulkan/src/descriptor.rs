@@ -11,7 +11,7 @@ use ash::version::DeviceV1_0;
 use smallvec::SmallVec;
 
 use {RefEqArc, DeviceRef, AshDevice, Backend, translate_generic_error_unwrap};
-use command::mutex::{ResourceMutex, ResourceMutexRef};
+use command::mutex::{ResourceMutex, ResourceMutexDeviceRef};
 use imp::LlFence;
 
 pub struct DescriptorSetLayout<T: DeviceRef> {
@@ -134,7 +134,9 @@ struct DescriptorPoolData<T: DeviceRef> {
 impl<T: DeviceRef> Drop for DescriptorPoolData<T> {
     fn drop(&mut self) {
         let device: &AshDevice = self.device_ref.device();
-        unsafe { device.destroy_descriptor_pool(self.handle, self.device_ref.allocation_callbacks()) };
+        unsafe {
+            device.destroy_descriptor_pool(self.handle, self.device_ref.allocation_callbacks())
+        };
     }
 }
 
@@ -216,51 +218,43 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
                     StorageImage(images) |
                     SampledImage(images) |
                     InputAttachment(images) => {
-                        image_infos.extend(images
-                            .iter()
-                            .map(|di| {
-                                vk::DescriptorImageInfo{
-                                    sampler: vk::Sampler::null(),
-                                    image_view: di.image_view.handle(),
-                                    image_layout: translate_image_layout(di.image_layout),
-                                }
-                            }));
+                        image_infos.extend(images.iter().map(|di| {
+                            vk::DescriptorImageInfo {
+                                sampler: vk::Sampler::null(),
+                                image_view: di.image_view.handle(),
+                                image_layout: translate_image_layout(di.image_layout),
+                            }
+                        }));
                     }
                     Sampler(samplers) => {
-                        image_infos.extend(samplers
-                            .iter()
-                            .map(|s| {
-                                vk::DescriptorImageInfo{
-                                    sampler: s.handle(),
-                                    image_view: vk::ImageView::null(),
-                                    image_layout: vk::ImageLayout::Undefined,
-                                }
-                            }));
+                        image_infos.extend(samplers.iter().map(|s| {
+                            vk::DescriptorImageInfo {
+                                sampler: s.handle(),
+                                image_view: vk::ImageView::null(),
+                                image_layout: vk::ImageLayout::Undefined,
+                            }
+                        }));
                     }
                     CombinedImageSampler(iss) => {
-                        image_infos.extend(iss
-                            .iter()
-                            .map(|&(ref di, ref s)| {
-                                vk::DescriptorImageInfo{
-                                    sampler: s.handle(),
-                                    image_view: di.image_view.handle(),
-                                    image_layout: translate_image_layout(di.image_layout),
-                                }
-                            }));
+                        image_infos.extend(iss.iter().map(|&(ref di, ref s)| {
+                            vk::DescriptorImageInfo {
+                                sampler: s.handle(),
+                                image_view: di.image_view.handle(),
+                                image_layout: translate_image_layout(di.image_layout),
+                            }
+                        }));
                     }
                     ConstantBuffer(dbs) |
                     StorageBuffer(dbs) |
                     DynamicConstantBuffer(dbs) |
                     DynamicStorageBuffer(dbs) => {
-                        buffer_infos.extend(dbs
-                            .iter()
-                            .map(|db| {
-                                vk::DescriptorBufferInfo{
-                                    buffer: db.buffer.handle(),
-                                    offset: db.offset,
-                                    range: db.range,
-                                }
-                            }));
+                        buffer_infos.extend(dbs.iter().map(|db| {
+                            vk::DescriptorBufferInfo {
+                                buffer: db.buffer.handle(),
+                                offset: db.offset,
+                                range: db.range,
+                            }
+                        }));
                     }
                 }
                 indices
@@ -270,7 +264,7 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
             .iter()
             .zip(write_tmp.iter())
             .map(|(wds, &(image_index, buffer_index))| {
-                vk::WriteDescriptorSet{
+                vk::WriteDescriptorSet {
                     s_type: vk::StructureType::WriteDescriptorSet,
                     p_next: ptr::null(),
                     dst_set: lock_data.handle,
@@ -308,8 +302,10 @@ impl<T: DeviceRef> DescriptorSet<T> {
         self.data.handle
     }
 
-    pub(crate) fn lock_device(&self) -> ResourceMutexRef<LlFence<T>, DescriptorSetLockData<T>> {
-        self.data.mutex.lock().unwrap().lock_device().clone()
+    pub(crate) fn lock_device(
+        &self,
+    ) -> ResourceMutexDeviceRef<LlFence<T>, DescriptorSetLockData<T>> {
+        self.data.mutex.lock().unwrap().lock_device()
     }
 }
 

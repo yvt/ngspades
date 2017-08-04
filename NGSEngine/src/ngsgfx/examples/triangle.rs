@@ -260,7 +260,7 @@ impl<B: Backend> Renderer<B> {
         );
         cb.end_pass();
         cb.end_encoding().unwrap();
-        queue.submit_commands(&[&cb], None).unwrap();
+        queue.submit_commands(&mut [&mut cb], None).unwrap();
         cb.wait_completion().unwrap();
 
         // Phew! Done!
@@ -353,7 +353,10 @@ impl<B: Backend> RendererView<B> {
 
         cb.end_encoding().unwrap();
 
-        device.main_queue().submit_commands(&[&*cb], None).unwrap();
+        device
+            .main_queue()
+            .submit_commands(&mut [&mut *cb], None)
+            .unwrap();
         drawable.present();
 
         Ok(())

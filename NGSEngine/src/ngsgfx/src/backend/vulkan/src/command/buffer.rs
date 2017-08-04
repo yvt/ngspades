@@ -8,10 +8,11 @@ use ash::vk;
 use std::{ptr, fmt};
 
 use {DeviceRef, Backend, AshDevice};
-use imp::{DeviceConfig, Fence, CommandDependencyTable};
+use imp::{DeviceConfig, Fence, CommandDependencyTable, LlFence};
 use super::NestedPassEncoder;
 use super::encoder::EncoderState;
 use super::cbpool::CommandBufferPool;
+use super::mutex::ResourceMutex;
 
 #[derive(Debug)]
 pub(super) struct CommandPass<T: DeviceRef> {
@@ -35,8 +36,9 @@ pub(super) struct CommandBufferData<T: DeviceRef> {
     pub(super) device_config: DeviceConfig,
 
     /// Vulkan command pool for each internal queue.
-    pub(super) pools: Vec<CommandBufferPool>,
+    pub(super) pools: ResourceMutex<LlFence<T>, CommandBufferPoolSet<T>>,
 
+    // TODO: put `pools` into `ResourceMutex`
     pub(super) passes: Vec<CommandPass<T>>,
     pub(super) nested_encoder: NestedPassEncoder<T>,
 
@@ -44,6 +46,10 @@ pub(super) struct CommandBufferData<T: DeviceRef> {
 
     pub(super) dependency_table: CommandDependencyTable<T>,
 }
+
+/// Vulkan command pool for each internal queue.
+#[derive(Debug)]
+pub(super) struct CommandBufferPoolSet<T: DeviceRef>(Vec<CommandBufferPool>, T);
 
 impl<T: DeviceRef> fmt::Debug for CommandBufferData<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -56,13 +62,27 @@ impl<T: DeviceRef> fmt::Debug for CommandBufferData<T> {
     }
 }
 
-impl<T: DeviceRef> Drop for CommandBufferData<T> {
+impl<T: DeviceRef> Drop for CommandBufferPoolSet<T> {
     fn drop(&mut self) {
-        for q_pool in self.pools.drain(..) {
+        for q_pool in self.0.drain(..) {
             unsafe {
-                q_pool.destroy(&self.device_ref);
+                q_pool.destroy(&self.1);
             }
         }
+    }
+}
+
+impl<T: DeviceRef> CommandBufferPoolSet<T> {
+    pub fn reset(&mut self) {
+        let device: &AshDevice = self.1.device();
+        for pool in self.0.iter_mut() {
+            unsafe {
+                pool.reset(device);
+            }
+        }
+    }
+    pub fn get_mut(&mut self, iq: usize) -> &mut CommandBufferPool {
+        &mut self.0[iq]
     }
 }
 
@@ -76,22 +96,9 @@ impl<T: DeviceRef> Drop for CommandBuffer<T> {
 
 impl<T: DeviceRef> CommandBuffer<T> {
     pub(super) fn new(device_ref: &T, device_config: &DeviceConfig) -> core::Result<Self> {
-        let mut data = CommandBufferData {
-            device_ref: device_ref.clone(),
-            device_config: device_config.clone(),
-            pools: Vec::new(),
-            passes: Vec::new(),
-            nested_encoder: NestedPassEncoder::new(),
-            encoder_state: EncoderState::Initial,
-            dependency_table: CommandDependencyTable::new(),
-        };
-
+        let mut pool_set = CommandBufferPoolSet(Vec::new(), device_ref.clone());
         // Create `CommandBufferPool`s
-        //
-        // (This is done after `CommandBufferData` was constructed so if an
-        //  error should happen during the process, already created pools will
-        //  be destroyed automatically by `CommandBufferData::drop`)
-        for &(family, _) in data.device_config.queues.iter() {
+        for &(family, _) in device_config.queues.iter() {
             let info = vk::CommandPoolCreateInfo {
                 s_type: vk::StructureType::CommandPoolCreateInfo,
                 p_next: ptr::null(),
@@ -99,16 +106,19 @@ impl<T: DeviceRef> CommandBuffer<T> {
                 queue_family_index: family,
             };
 
-            // Make a room for the new element
-            //
-            // (I don't want to leave `CommandBufferPool` in limbo in case of
-            //  `Vec`'s allocation failure. `CommandBufferPool` does not
-            //  implement `Drop`.)
-            data.pools.reserve(1);
-
             let pool = unsafe { CommandBufferPool::new(device_ref, &info)? };
-            data.pools.push(pool);
+            pool_set.0.push(pool);
         }
+
+        let mut data = CommandBufferData {
+            device_ref: device_ref.clone(),
+            device_config: device_config.clone(),
+            pools: ResourceMutex::new(pool_set, true),
+            passes: Vec::new(),
+            nested_encoder: NestedPassEncoder::new(),
+            encoder_state: EncoderState::Initial,
+            dependency_table: CommandDependencyTable::new(),
+        };
 
         Ok(CommandBuffer { data: Box::new(data) })
     }
@@ -117,12 +127,7 @@ impl<T: DeviceRef> CommandBuffer<T> {
     /// `pools`.
     pub(super) fn reset(&mut self) {
         let ref mut data = *self.data;
-        let device: &AshDevice = data.device_ref.device();
-        for pool in data.pools.iter_mut() {
-            unsafe {
-                pool.reset(device);
-            }
-        }
+        data.pools.lock_host_write().reset();
         data.passes.clear();
     }
 
@@ -137,15 +142,20 @@ impl<T: DeviceRef> core::CommandBuffer<Backend<T>> for CommandBuffer<T> {
             EncoderState::Initial => core::CommandBufferState::Initial,
             EncoderState::Error(_) => core::CommandBufferState::Error,
             EncoderState::Invalid => unreachable!(),
-            EncoderState::End => {
-                // TODO: return one of Executable, Pending, Completed, and Error
-                unimplemented!()
+            EncoderState::End => core::CommandBufferState::Executable,
+            EncoderState::Submitted => {
+                if self.data.pools.is_host_writable() {
+                    core::CommandBufferState::Completed
+                } else {
+                    core::CommandBufferState::Pending
+                }
             }
             _ => core::CommandBufferState::Recording,
         }
     }
     fn wait_completion(&self) -> core::Result<()> {
-        unimplemented!()
+        self.data.pools.wait_host_writable();
+        Ok(())
     }
 }
 

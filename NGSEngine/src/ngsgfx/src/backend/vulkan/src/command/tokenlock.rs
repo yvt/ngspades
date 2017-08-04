@@ -8,6 +8,9 @@ use std::mem;
 use std::cell::UnsafeCell;
 use std::fmt;
 
+/// An inforgeable token used to access the contents of a `TokenLock`.
+///
+/// This type is not `Clone` to ensure an exclusive access to `TokenLock`.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Token(RefEqArc<()>);
 
@@ -18,6 +21,17 @@ impl Token {
 }
 
 impl !Sync for Token {}
+
+/// A reference to `Token`. Cannot be used to access the contents of a
+/// `TokenLock`, but can be used to create a new `TokenLock`.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct TokenRef(RefEqArc<()>);
+
+impl<'a> From<&'a Token> for TokenRef {
+    fn from(x: &'a Token) -> TokenRef {
+        TokenRef(x.0.clone())
+    }
+}
 
 /// A mutual exclusive primitive that can be accessed using a `Token`
 /// with a very low over-head.
@@ -38,9 +52,9 @@ impl<T: ?Sized> fmt::Debug for TokenLock<T> {
 }
 
 impl<T> TokenLock<T> {
-    pub fn new(token: &Token, data: T) -> Self {
+    pub fn new<S: Into<TokenRef>>(token: S, data: T) -> Self {
         Self {
-            keyhole: token.0.clone(),
+            keyhole: token.into().0,
             data: UnsafeCell::new(data),
         }
     }

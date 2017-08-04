@@ -17,6 +17,8 @@ pub trait BinaryInteger
     + ops::DivAssign
     + RefSaturatingAdd<Output = Self>
     + fmt::Debug {
+    type OneDigits: Iterator<Item=u32>;
+
     fn max_digits() -> u32;
 
     fn ones(range: ops::Range<u32>) -> Self;
@@ -28,6 +30,9 @@ pub trait BinaryInteger
 
     /// Return the number of leading zeros in its binary representation.
     fn leading_zeros(&self) -> u32;
+
+    /// Return the number of ones in its binary representation.
+    fn count_ones(&self) -> u32;
 
     /// Return the position of the least significant set bit since the position
     /// `start`.
@@ -50,6 +55,10 @@ pub trait BinaryInteger
     /// Perform `ceil` treating the value as a fixed point number with `fp`
     /// fractional part digits.
     fn checked_ceil_fix(self, fp: u32) -> Option<Self>;
+
+    /// Get an iterator over set bits, from the least significant bit to
+    /// the most significant one.
+    fn one_digits(&self) -> Self::OneDigits;
 }
 
 /// Types that supports saturating addition.
@@ -64,9 +73,14 @@ pub trait BinaryUInteger: BinaryInteger {
     fn is_power_of_two(&self) -> bool;
 }
 
+#[doc(hidden)]
+pub struct OneDigits<T>(T);
+
 macro_rules! impl_binary_integer {
     ($size:expr, $type:ty) => (
         impl BinaryInteger for $type {
+            type OneDigits = OneDigits<Self>;
+
             #[inline]
             fn max_digits() -> u32 {
                 $size
@@ -92,6 +106,10 @@ macro_rules! impl_binary_integer {
             #[inline]
             fn leading_zeros(&self) -> u32 {
                 (*self).leading_zeros()
+            }
+            #[inline]
+            fn count_ones(&self) -> u32 {
+                (*self).count_ones()
             }
             #[inline]
             fn bit_scan_forward(&self, start: u32) -> u32 {
@@ -140,11 +158,50 @@ macro_rules! impl_binary_integer {
                         .map(|x| x & !mask)
                 }
             }
+            #[inline]
+            fn one_digits(&self) -> Self::OneDigits {
+                OneDigits(*self)
+            }
         }
         impl RefSaturatingAdd for $type {
             type Output = Self;
             fn ref_saturating_add(&self, rhs: Self) -> Self::Output {
                 (*self).saturating_add(rhs)
+            }
+        }
+        impl Iterator for OneDigits<$type> {
+            type Item = u32;
+            fn next(&mut self) -> Option<u32> {
+                if self.0 == 0 {
+                    None
+                } else {
+                    let index = self.0.trailing_zeros();
+                    self.0 &= !((1 as $type) << index);
+                    Some(index)
+                }
+            }
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                let ones = self.len();
+                (ones, Some(ones))
+            }
+            fn count(self) -> usize {
+                self.len()
+            }
+        }
+        impl ExactSizeIterator for OneDigits<$type> {
+            fn len(&self) -> usize {
+                self.0.count_ones() as usize
+            }
+        }
+        impl DoubleEndedIterator for OneDigits<$type> {
+            fn next_back(&mut self) -> Option<u32> {
+                if self.0 == 0 {
+                    None
+                } else {
+                    let index = $size - 1 - self.0.leading_zeros();
+                    self.0 &= !((1 as $type) << index);
+                    Some(index)
+                }
             }
         }
     )

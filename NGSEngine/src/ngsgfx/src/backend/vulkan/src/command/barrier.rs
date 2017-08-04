@@ -129,11 +129,11 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
             return;
         }
 
-        self.expect_action_pass_mut().wait_fences.push((
-            fence.clone(),
-            stage,
-            access,
-        ));
+        let mut ap = self.expect_action_pass_mut();
+
+        fence.expect_waitable_by_iq(ap.internal_queue_index);
+
+        ap.wait_fences.push((fence.clone(), stage, access));
     }
 
     fn update_fence(
@@ -188,6 +188,7 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for SecondaryCommandB
         fence: &Fence<T>,
     ) {
         if let Some(sbd) = self.expect_active_mut() {
+            // `expect_waitable_by_iq` is called when this subpass is ended
             sbd.wait_fences.push((fence.clone(), stage, access));
         }
     }
