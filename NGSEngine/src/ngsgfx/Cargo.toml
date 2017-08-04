@@ -8,6 +8,7 @@ default = []
 
 [dependencies]
 ngsgfx_core = { path = "src/core" }
+ngsgfx_debug = { path = "src/debug" }
 ngsgfx_wsi_core = { path = "src/wsi_core" }
 ngsgfx_vulkan = { path = "src/backend/vulkan" }
 ngsgfx_wsi_vulkan = { path = "src/wsi/vulkan" }

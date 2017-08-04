@@ -6,12 +6,12 @@
 //! Defines an interface to Vulkan ICD.
 
 use ash::{Device, Instance};
-use ash::version::{V1_0, DeviceV1_0};
+use ash::version::{V1_0, DeviceV1_0, InstanceV1_0};
 use ash::vk;
 use std::sync::Arc;
 use std::{fmt, mem, ops};
 
-use imp::UniqueInstance;
+use imp::DebugReportConduit;
 
 /// `ash::Device` of the version used by this backend.
 pub type AshDevice = Device<V1_0>;
@@ -47,8 +47,53 @@ pub unsafe trait DeviceRef: Clone + Send + Sync + fmt::Debug + 'static {
     }
 }
 
+pub unsafe trait InstanceRef: Clone + Send + Sync + fmt::Debug + 'static {
+    fn instance(&self) -> &AshInstance;
+
+    /// Retrieve `AllocationCallbacks` used to perform host memory allocations.
+    ///
+    /// Since this trait requires `Sync` and this function's return type is
+    /// a reference to `AllocationCallbacks`, the allocation functions are
+    /// required to be thread-safe. (I wish Rust had higher-kinded types)
+    ///
+    /// Returns `None` by default.
+    fn allocation_callbacks(&self) -> Option<&vk::AllocationCallbacks> {
+        None
+    }
+}
+
 pub trait DeviceRefFromRaw: DeviceRef + Sized {
     unsafe fn from_raw(device: AshDevice) -> Self;
+}
+
+/// Destroys the contained `AshInstance` automatically when dropped.
+struct UniqueInstance(AshInstance);
+impl UniqueInstance {
+    fn take(this: Self) -> AshInstance {
+        let ret = this.0.clone();
+        mem::forget(this);
+        ret
+    }
+}
+impl Drop for UniqueInstance {
+    fn drop(&mut self) {
+        unsafe {
+            self.0.destroy_instance(None);
+        }
+    }
+}
+impl ops::Deref for UniqueInstance {
+    type Target = AshInstance;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl fmt::Debug for UniqueInstance {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("UniqueInstance")
+            .field(&self.0.handle())
+            .finish()
+    }
 }
 
 /// Destroys the contained `AshDevice` automatically when dropped.
@@ -76,12 +121,21 @@ impl fmt::Debug for UniqueDevice {
 /// An owned reference to `ash::Instance`.
 #[derive(Debug, Clone)]
 pub struct OwnedInstanceRef {
-    pub(crate) instance: Arc<UniqueInstance>,
+    instance: Arc<UniqueInstance>,
+}
+
+unsafe impl InstanceRef for OwnedInstanceRef {
+    fn instance(&self) -> &AshInstance {
+        &self.instance
+    }
 }
 
 impl OwnedInstanceRef {
-    pub fn instance(&self) -> &AshInstance {
-        &self.instance
+    /// Construct an `OwnedInstanceRef` with a given instance object.
+    ///
+    /// TODO: Talk about ownership
+    pub unsafe fn from_raw(instance: AshInstance) -> Self {
+        Self { instance: Arc::new(UniqueInstance(instance)) }
     }
 
     /// Return the contained `ash::Instance` if there is exactly one reference to it
@@ -104,6 +158,9 @@ impl OwnedInstanceRef {
 ///
 /// The device will be destroyed automatically with *null* allocation callbacks
 /// when all references are removed.
+///
+/// `T` is a type of value that you want to carry around with the device, for example,
+/// `OwnedInstanceRef`.
 #[derive(Debug)]
 pub struct OwnedDeviceRef<T> {
     device: Arc<(UniqueDevice, T)>,
@@ -141,9 +198,7 @@ impl<T> OwnedDeviceRef<T> {
     ///
     /// If a panic occurs during the allocation, the given device will be destroyed.
     pub unsafe fn from_raw(device: AshDevice, other: T) -> Self {
-        Self {
-            device: Arc::new((UniqueDevice(device), other))
-        }
+        Self { device: Arc::new((UniqueDevice(device), other)) }
     }
 
     /// Return the contained `ash::Device` if there is exactly one reference to it
@@ -161,4 +216,7 @@ impl<T> OwnedDeviceRef<T> {
 }
 
 /// `OwnedDeviceRef` with an owned reference to the parent instance.
-pub type ManagedDeviceRef = OwnedDeviceRef<OwnedInstanceRef>;
+pub type ManagedDeviceRef = OwnedDeviceRef<
+    (OwnedInstanceRef,
+     Option<Arc<DebugReportConduit<OwnedInstanceRef>>>),
+>;

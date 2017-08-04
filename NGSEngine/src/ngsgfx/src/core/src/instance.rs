@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Provides an abstraction on a connection to API and the underlying system.
-use {Environment, Backend};
+use {Environment, Backend, DebugReportTypeFlags, DebugReportHandler};
 use std::fmt;
 use std::hash::Hash;
 
@@ -15,6 +15,29 @@ pub trait InstanceBuilder<E: Environment>: fmt::Debug + Sync + Send {
     fn new() -> Result<Self, Self::InitializationError>
     where
         Self: Sized;
+
+    /// Register a debug report handler.
+    ///
+    /// You can provide a custom debug report handler, or you can use one
+    /// provided by the crate `ngsgfx_debug`.
+    fn enable_debug_report<T: DebugReportHandler + 'static>(
+        &mut self,
+        _: DebugReportTypeFlags,
+        _: T,
+    ) {
+        // No-op by default
+    }
+
+    /// Enable validation layers if available.
+    fn enable_validation(&mut self) {
+        // No-op by default
+    }
+
+    /// Enable the `Marker` and `DebugCommandEncoder` trait if available.
+    fn enable_debug_marker(&mut self) {
+        // No-op by default
+    }
+
     fn build(&self) -> Result<E::Instance, Self::BuildError>;
 }
 

@@ -11,9 +11,9 @@ use std::{mem, ops, ffi, ptr, fmt};
 use std::collections::{VecDeque, HashSet, HashMap};
 
 use imp::{ManagedEnvironment, Device, EngineQueueMappings, DeviceCapabilities, DeviceConfig,
-          StorageModeMappings, HeapStrategy};
+          StorageModeMappings, HeapStrategy, DebugReportConduit};
 use ll::{DeviceCreateInfo, DeviceQueueCreateInfo, ApplicationInfo};
-use {translate_generic_error_unwrap, RefEqArc, OwnedInstanceRef, AshInstance, ManagedDeviceRef};
+use {translate_generic_error_unwrap, RefEqArc, OwnedInstanceRef, AshInstance, InstanceRef, ManagedDeviceRef};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InstanceBuildError {
@@ -56,6 +56,7 @@ pub struct InstanceBuilder {
     extensions: HashSet<ffi::CString>,
     supported_layers: HashMap<ffi::CString, u32>,
     supported_extensions: HashMap<ffi::CString, u32>,
+    debug_report_handlers: Vec<(core::DebugReportTypeFlags, Arc<core::DebugReportHandler>)>,
 }
 
 impl fmt::Debug for InstanceBuilder {
@@ -100,8 +101,23 @@ impl core::InstanceBuilder<ManagedEnvironment> for InstanceBuilder {
             extensions: HashSet::new(),
             supported_layers,
             supported_extensions,
+            debug_report_handlers: Vec::new(),
         })
     }
+
+    fn enable_debug_report<T: core::DebugReportHandler + 'static>(&mut self, flags: core::DebugReportTypeFlags, handler: T) {
+        if self.enable_extension("VK_EXT_debug_report") {
+            self.debug_report_handlers.push((flags, Arc::new(handler)));
+        }
+
+    }
+    fn enable_validation(&mut self) {
+        self.push_back_standard_validation_layer();
+    }
+    fn enable_debug_marker(&mut self) {
+        // TODO: enable `VK_EXT_debug_marker`
+    }
+
     fn build(&self) -> Result<Instance, Self::BuildError> {
         let layers: Vec<_> = self.layers.iter().map(|n| n.as_ptr()).collect();
         let exts: Vec<_> = self.extensions.iter().map(|n| n.as_ptr()).collect();
@@ -137,7 +153,23 @@ impl core::InstanceBuilder<ManagedEnvironment> for InstanceBuilder {
                     translate_generic_error_unwrap(e),
                 ),
             })?;
-        Ok(Instance::from_raw(self.entry.clone(), inst))
+
+        let instance_ref = unsafe { OwnedInstanceRef::from_raw(inst) };
+        let mut drc = if self.debug_report_handlers.len() > 0 {
+            DebugReportConduit::new(&self.entry, &instance_ref).ok()
+        } else {
+            None
+        };
+
+        for drh in self.debug_report_handlers.iter() {
+            drc.as_mut().unwrap().add_handler(drh.0, drh.1.clone());
+        }
+
+        let mut ngs_instance = unsafe {
+            Instance::from_raw(self.entry.clone(), instance_ref)
+        };
+        ngs_instance.debug_report_conduit = drc.map(Arc::new);
+        Ok(ngs_instance)
     }
 }
 
@@ -187,7 +219,10 @@ impl InstanceBuilder {
         let cname = ffi::CString::new(name);
         if let Ok(cname) = cname {
             if self.supported_layers.contains_key(&cname) {
-                self.layers.push_back(ffi::CString::new(name).unwrap());
+                if self.layers.iter().any(|n| *n == cname) {
+                    return true;
+                }
+                self.layers.push_back(cname);
                 true
             } else {
                 false
@@ -203,7 +238,10 @@ impl InstanceBuilder {
         let cname = ffi::CString::new(name);
         if let Ok(cname) = cname {
             if self.supported_layers.contains_key(&cname) {
-                self.layers.push_front(ffi::CString::new(name).unwrap());
+                if self.layers.iter().any(|n| *n == cname) {
+                    return true;
+                }
+                self.layers.push_front(cname);
                 true
             } else {
                 false
@@ -226,39 +264,11 @@ impl InstanceBuilder {
     }
 }
 
-pub(crate) struct UniqueInstance(AshInstance);
-impl UniqueInstance {
-    fn take(this: Self) -> AshInstance {
-        let ret = this.0.clone();
-        mem::forget(this);
-        ret
-    }
-}
-impl Drop for UniqueInstance {
-    fn drop(&mut self) {
-        unsafe {
-            self.0.destroy_instance(None);
-        }
-    }
-}
-impl ops::Deref for UniqueInstance {
-    type Target = AshInstance;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl fmt::Debug for UniqueInstance {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("UniqueInstance")
-            .field(&self.0.handle())
-            .finish()
-    }
-}
-
 pub struct Instance {
     entry: ash::Entry<V1_0>,
-    instance: Arc<UniqueInstance>,
+    instance_ref: OwnedInstanceRef,
     adapters: Vec<Adapter>,
+    debug_report_conduit: Option<Arc<DebugReportConduit<OwnedInstanceRef>>>,
 }
 
 impl fmt::Debug for Instance {
@@ -489,15 +499,14 @@ impl AdapterData {
 }
 
 impl Instance {
-    pub fn from_raw(entry: ash::Entry<V1_0>, instance: AshInstance) -> Self {
-        let inst_arc = Arc::new(UniqueInstance(instance));
-        let phys_devices = inst_arc.enumerate_physical_devices().unwrap_or_else(
+    pub unsafe fn from_raw(entry: ash::Entry<V1_0>, instance_ref: OwnedInstanceRef) -> Self {
+        let phys_devices = instance_ref.instance().enumerate_physical_devices().unwrap_or_else(
             |_| Vec::new(),
         );
         let adapters = phys_devices
             .iter()
             .filter_map(|&pd| {
-                AdapterData::new(&inst_arc, pd)
+                AdapterData::new(instance_ref.instance(), pd)
                     .ok()
                     .map(RefEqArc::new)
                     .map(Adapter)
@@ -505,31 +514,19 @@ impl Instance {
             .collect();
         Self {
             entry,
-            instance: inst_arc,
+            instance_ref,
             adapters,
+            debug_report_conduit: None,
         }
     }
     pub fn entry(&self) -> &ash::Entry<V1_0> {
         &self.entry
     }
+    pub fn instance_ref(&self) -> &OwnedInstanceRef {
+        &self.instance_ref
+    }
     pub fn instance(&self) -> &AshInstance {
-        &self.instance
-    }
-    pub fn try_take(self) -> Result<AshInstance, Self> {
-        match Arc::try_unwrap(self.instance) {
-            Ok(i) => Ok(UniqueInstance::take(i)),
-            Err(i) => Err(Self {
-                entry: self.entry,
-                instance: i,
-                adapters: self.adapters,
-            }),
-        }
-    }
-}
-
-impl AsRef<AshInstance> for Instance {
-    fn as_ref(&self) -> &AshInstance {
-        &self.instance
+        self.instance_ref.instance()
     }
 }
 
@@ -547,37 +544,23 @@ impl core::Instance<ManagedEnvironment> for Instance {
             "the given Adapter does not belong to this"
         );
 
-        unsafe {
+        let mut db = unsafe {
             DeviceBuilder::new(
-                InstanceRef(self.instance.clone()),
+                self.instance_ref.clone(),
                 adapter.0.physical_device,
                 adapter.0.config.clone(),
             )
-        }
+        };
+        db.debug_report_conduit = self.debug_report_conduit.clone();
+        db
     }
 }
 
-/// `AsRef` wrapper for `Arc<UniqueInstance>` (used internally)
-pub struct InstanceRef(Arc<UniqueInstance>);
-
-impl AsRef<AshInstance> for InstanceRef {
-    fn as_ref(&self) -> &AshInstance {
-        &self.0
-    }
-}
-
-impl fmt::Debug for InstanceRef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // FIXME: write pointer
-        f.debug_tuple("InstanceRef").finish()
-    }
-}
-
-pub type DeviceBuilder = GenericDeviceBuilder<InstanceRef>;
+pub type DeviceBuilder = GenericDeviceBuilder<OwnedInstanceRef>;
 
 #[derive(Debug, Clone)]
-pub struct GenericDeviceBuilder<T: AsRef<AshInstance>> {
-    instance: T,
+pub struct GenericDeviceBuilder<T: InstanceRef> {
+    instance_ref: T,
     config: DeviceConfig,
     physical_device: vk::PhysicalDevice,
     features: vk::PhysicalDeviceFeatures,
@@ -585,24 +568,25 @@ pub struct GenericDeviceBuilder<T: AsRef<AshInstance>> {
     layers: VecDeque<ffi::CString>,
     extensions: HashSet<ffi::CString>,
     supported_extensions: HashSet<ffi::CString>,
+    debug_report_conduit: Option<Arc<DebugReportConduit<T>>>,
 }
 
-impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
+impl<T: InstanceRef> GenericDeviceBuilder<T> {
     /// Constructs a new `DeviceBuilder`.
     ///
     /// - The specified Vulkan instance pointed at by `instance` must be valid
     ///   and outlive the created `DeviceBuilder`.
     /// - The specified `physical_device` must be valid.
     pub unsafe fn new(
-        instance: T,
+        instance_ref: T,
         physical_device: vk::PhysicalDevice,
         config: DeviceConfig,
     ) -> Self {
-        let supported_features = instance.as_ref().get_physical_device_features(
+        let supported_features = instance_ref.instance().get_physical_device_features(
             physical_device,
         );
-        let ext_props = instance
-            .as_ref()
+        let ext_props = instance_ref
+            .instance()
             .enumerate_device_extension_properties(physical_device)
             .unwrap();
         let mut supported_extensions = HashSet::new();
@@ -613,7 +597,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
         }
 
         Self {
-            instance,
+            instance_ref,
             physical_device,
             config,
             features: Default::default(),
@@ -621,6 +605,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
             layers: VecDeque::new(),
             extensions: HashSet::new(),
             supported_extensions,
+            debug_report_conduit: None,
         }
     }
 
@@ -723,7 +708,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
         }
 
         let cap =
-            DeviceCapabilities::new(self.instance.as_ref(), self.physical_device, &self.features);
+            DeviceCapabilities::new(self.instance_ref.instance(), self.physical_device, &self.features);
 
         // TODO: enable debug markers (VK_EXT_debug_marker) somehow
 
@@ -746,7 +731,7 @@ impl<T: AsRef<AshInstance>> GenericDeviceBuilder<T> {
         &self,
     ) -> Result<(ash::Device<V1_0>, DeviceConfig, DeviceCapabilities), DeviceBuildError> {
         let (dci, cfg, dc) = self.info();
-        let inst = self.instance.as_ref();
+        let inst = self.instance_ref.instance();
         let dci_raw = dci.as_raw();
         let dev = inst.create_device(self.physical_device, &dci_raw, None)
             .map_err(|e| match e {
@@ -775,11 +760,9 @@ impl core::DeviceBuilder<ManagedEnvironment> for DeviceBuilder {
     type BuildError = DeviceBuildError;
     fn build(&self) -> Result<Device<ManagedDeviceRef>, Self::BuildError> {
         unsafe {
-            self.build_raw().map(|(dev, cfg, dc)| {
-                let inst_ref = OwnedInstanceRef { instance: self.instance.0.clone() };
-                let dev_ref = ManagedDeviceRef::from_raw(dev, inst_ref);
-                Device::new(dev_ref, cfg, dc)
-            })
+            let (dev, cfg, dc) = self.build_raw()?;
+            let dev_ref = ManagedDeviceRef::from_raw(dev, (self.instance_ref.clone(), self.debug_report_conduit.clone()));
+            Ok(Device::new(dev_ref, cfg, dc))
         }
     }
 }

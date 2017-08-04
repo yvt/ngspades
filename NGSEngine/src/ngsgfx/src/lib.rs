@@ -10,6 +10,8 @@
 pub extern crate ngsgfx_core as core;
 extern crate ngsgfx_wsi_core;
 
+pub extern crate ngsgfx_debug as debug;
+
 /// Includes a backend for each target API.
 pub mod backends {
     #[cfg(target_os = "macos")]

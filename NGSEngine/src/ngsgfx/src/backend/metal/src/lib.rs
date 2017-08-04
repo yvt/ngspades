@@ -49,6 +49,16 @@
 //!    barrier();               // OpControlBarrier - mapped to workgroup_barrier(...)
 //!    ```
 //!
+//! ### Debugging
+//!
+//! To enable a validation layer, it must be activated via Xcode's scheme settings. Please
+//! see [Metal Tools] in *Metal Programming Guide* for the instructions.
+//!
+//! Debug reports are always written to Xcode's output pane. There is no way to intercept
+//! them from an application.
+//!
+//! [Metal Tools]: https://developer.apple.com/library/content/documentation/Miscellaneous/Conceptual/MetalProgrammingGuide/Dev-Technique/Dev-Technique.html
+//!
 #![feature(never_type)]
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_metal_rs as metal;

@@ -8,6 +8,34 @@
 //!
 //! Implements a NgsGFX backend using the Vulkan API.
 //!
+//! Feature Mappings
+//! ----------------
+//!
+//! TODO
+//!
+//! ### Debugging
+//!
+//! Some debug layers are proided by the LunarG Vulkan SDK. Some of them can be
+//! enabled via trait methods implemented by [`InstanceBuilder`], provided that they
+//! are installed on the target system. They are no-op if the corresponding layers
+//! or extensions are not installed.
+//!
+//!  - Standard validation layers (`VK_LAYER_LUNARG_standard_validation`)
+//!    are enabled by calling [`enable_validation`].
+//!  - Validation messages are delivered via the `VK_EXT_debug_report`
+//!    extension. An application can register one or more debug report handlers
+//!    by calling [`enable_debug_report`].
+//!  - The `VK_EXT_debug_marker` extension provides the ability to give objects
+//!    names (via the `Marker` trait) and to insert debug markers into command
+//!    buffers to ease the inspection by an external debugger (e.g., RenderDoc).
+//!    This extension can be enabled by calling [`enable_debug_marker`].
+//!
+//!    TODO: ... which is not supported because `ash` does not have a wrapper for it yet
+//!
+//! [`InstanceBuilder`]: struct.InstanceBuilder.html
+//! [`enable_validation`]: struct.InstanceBuilder.html#tymethod.enable_validation
+//! [`enable_debug_report`]: struct.InstanceBuilder.html#tymethod.enable_debug_report
+//!
 //! Performance Notes
 //! -----------------
 //!
@@ -37,6 +65,7 @@ mod macros;
 
 mod buffer;
 mod command;
+mod debug;
 mod descriptor;
 mod device;
 mod device_ll;
@@ -69,6 +98,7 @@ pub mod imp {
 
     pub use super::buffer::*;
     pub use super::command::*;
+    pub use super::debug::*;
     pub use super::descriptor::*;
     pub use super::device::*;
     pub use super::factory::*;

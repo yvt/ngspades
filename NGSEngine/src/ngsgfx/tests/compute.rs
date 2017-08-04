@@ -11,6 +11,7 @@ extern crate include_data;
 
 use gfx::core;
 use gfx::prelude::*;
+use gfx::debug::PrintDebugReportHandler;
 
 use cgmath::Vector3;
 
@@ -29,13 +30,22 @@ trait BackendDispatch {
 fn try_environment<T: BackendDispatch, K: core::Environment>(name: &str, d: T) -> Option<T> {
     use core::{InstanceBuilder, Instance, DeviceBuilder, Backend};
     <K::Backend as Backend>::autorelease_pool_scope(|_| {
-        let inst_builder: K::InstanceBuilder = match K::InstanceBuilder::new() {
+        let mut inst_builder: K::InstanceBuilder = match K::InstanceBuilder::new() {
             Ok(i) => i,
             Err(e) => {
                 println!("{}: InstanceBuilder::new() failed: {:?}", name, e);
                 return Some(d);
             }
         };
+        inst_builder.enable_debug_report(
+            core::DebugReportType::Information |
+            core::DebugReportType::Warning |
+            core::DebugReportType::PerformanceWarning |
+            core::DebugReportType::Error,
+            PrintDebugReportHandler::new()
+        );
+        inst_builder.enable_validation();
+        inst_builder.enable_debug_marker();
         let instance: K::Instance = match inst_builder.build() {
             Ok(i) => i,
             Err(e) => {

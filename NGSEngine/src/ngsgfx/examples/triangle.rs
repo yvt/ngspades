@@ -447,6 +447,14 @@ fn main() {
         let mut instance_builder = <DefaultEnvironment as Environment>::InstanceBuilder::new()
             .expect("InstanceBuilder::new() have failed");
         DefaultWindow::modify_instance_builder(&mut instance_builder);
+        instance_builder.enable_debug_report(
+            core::DebugReportType::Information | core::DebugReportType::Warning |
+                core::DebugReportType::PerformanceWarning |
+                core::DebugReportType::Error,
+            gfx::debug::TermStdoutDebugReportHandler::new(),
+        );
+        instance_builder.enable_validation();
+        instance_builder.enable_debug_marker();
 
         let instance = instance_builder.build().expect(
             "InstanceBuilder::build() have failed",
