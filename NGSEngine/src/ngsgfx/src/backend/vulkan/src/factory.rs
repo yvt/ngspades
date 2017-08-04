@@ -117,7 +117,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::DescriptorSetLayoutDescription<Sampler<T>>,
     ) -> core::Result<DescriptorSetLayout<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // DescriptorSetLayout::new(description)
+        DescriptorSetLayout::new(self.device_ref(), description)
     }
     fn make_pipeline_layout(
         &self,
@@ -132,6 +132,6 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::DescriptorPoolDescription,
     ) -> core::Result<DescriptorPool<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // Ok(DescriptorPool::new(&self.device_data, description))
+        DescriptorPool::new(self.device_ref(), description)
     }
 }

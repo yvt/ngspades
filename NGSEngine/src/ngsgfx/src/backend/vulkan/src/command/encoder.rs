@@ -205,7 +205,7 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                 vk::VK_QUEUE_FAMILY_IGNORED,
                 vk::VK_QUEUE_FAMILY_IGNORED,
             )
-        } else { 
+        } else {
             let another_iq_index = data.device_config
                 .engine_queue_mappings
                 .internal_queue_for_engine(from_engine)

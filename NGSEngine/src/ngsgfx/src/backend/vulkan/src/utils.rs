@@ -197,3 +197,17 @@ pub(crate) fn translate_pipeline_stage_flags(value: core::PipelineStageFlags) ->
     }
     ret
 }
+
+pub(crate) fn translate_shader_stage_flags(value: core::ShaderStageFlags) -> vk::ShaderStageFlags {
+    let mut ret = vk::ShaderStageFlags::empty();
+    if value.contains(core::ShaderStage::Vertex) {
+        ret |= vk::SHADER_STAGE_VERTEX_BIT;
+    }
+    if value.contains(core::ShaderStage::Fragment) {
+        ret |= vk::SHADER_STAGE_FRAGMENT_BIT;
+    }
+    if value.contains(core::ShaderStage::Compute) {
+        ret |= vk::SHADER_STAGE_COMPUTE_BIT;
+    }
+    ret
+}
