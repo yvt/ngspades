@@ -16,11 +16,12 @@ use super::LlFence;
 #[derive(Debug)]
 pub(super) struct Recycler<T> {
     thread: Option<thread::JoinHandle<()>>,
-    sender: Mutex<mpsc::Sender<T>>,
+    sender: Option<Mutex<mpsc::Sender<T>>>,
 }
 
 impl<T> Drop for Recycler<T> {
     fn drop(&mut self) {
+        self.sender.take();
         self.thread.take().unwrap().join().unwrap();
     }
 }
@@ -33,11 +34,11 @@ impl<T: Send + 'static> Recycler<T> {
             .unwrap();
         Self {
             thread: Some(thread),
-            sender: Mutex::new(tx),
+            sender: Some(Mutex::new(tx)),
         }
     }
 
     pub fn recycle(&self, obj: T) {
-        self.sender.lock().send(obj).unwrap();
+        self.sender.as_ref().unwrap().lock().send(obj).unwrap();
     }
 }

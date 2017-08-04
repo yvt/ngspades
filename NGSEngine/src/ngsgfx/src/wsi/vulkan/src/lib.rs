@@ -84,6 +84,7 @@ impl VulkanSurface for WindowsVulkanSurface {
     }
 
     fn modify_instance_builder(builder: &mut backend_vulkan::InstanceBuilder) {
+        use ash::extensions::Win32Surface;
         // TODO: check the result
         builder.enable_extension(Surface::name().to_str().unwrap());
         builder.enable_extension(Win32Surface::name().to_str().unwrap());
@@ -117,11 +118,14 @@ impl VulkanSurface for XlibVulkanSurface {
     }
 
     fn modify_instance_builder(builder: &mut backend_vulkan::InstanceBuilder) {
+        use ash::extensions::XlibSurface;
         // TODO: check the result
         builder.enable_extension(Surface::name().to_str().unwrap());
         builder.enable_extension(XlibSurface::name().to_str().unwrap());
     }
 }
+
+// TODO: support Wayland and Mir
 
 pub struct VulkanWindow<S: VulkanSurface> {
     window: winit::Window,

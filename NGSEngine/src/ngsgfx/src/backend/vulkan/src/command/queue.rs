@@ -469,6 +469,7 @@ impl<T: DeviceRef> CommandSender<T> {
                             info.signal_semaphore_count = 0;
                         }
                     }
+					batch_i += 1;
                 }
                 if info.command_buffer_count > 0 {
                     infos.push(info.clone());
@@ -548,7 +549,7 @@ impl<T: DeviceRef> CommandSender<T> {
         // Even unused queues must have `vk::Fence` to ensure the total
         // chronological order of `LlFence`
         for (iq, info_is_i) in last_info_is_i.iter().enumerate() {
-            if info_is_i.is_none() {
+            if info_is_i.is_none() && iq < data.queues.len() {
                 let queue = data.queues[iq];
                 let fence = llfence.fences()[iq];
                 unsafe {

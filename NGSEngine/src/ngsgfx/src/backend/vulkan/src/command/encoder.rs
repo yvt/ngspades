@@ -197,18 +197,28 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
         } = self.expect_outside_render_pass();
         let ref mut data = self.data;
         let device: &AshDevice = data.device_ref.device();
-        let another_iq_index = data.device_config
-            .engine_queue_mappings
-            .internal_queue_for_engine(from_engine)
-            .unwrap();
+        let barrier = if from_engine == core::DeviceEngine::Host {
+            VkResourceBarrier::translate(
+                resource,
+                vk::ACCESS_HOST_READ_BIT | vk::ACCESS_HOST_WRITE_BIT,
+                translate_access_type_flags(access),
+                vk::VK_QUEUE_FAMILY_IGNORED,
+                vk::VK_QUEUE_FAMILY_IGNORED,
+            )
+        } else { 
+            let another_iq_index = data.device_config
+                .engine_queue_mappings
+                .internal_queue_for_engine(from_engine)
+                .unwrap();
 
-        let barrier = VkResourceBarrier::translate(
-            resource,
-            vk::AccessFlags::empty(),
-            translate_access_type_flags(access),
-            data.device_config.queues[another_iq_index].0,
-            data.device_config.queues[internal_queue_index].0,
-        );
+            VkResourceBarrier::translate(
+                resource,
+                vk::AccessFlags::empty(),
+                translate_access_type_flags(access),
+                data.device_config.queues[another_iq_index].0,
+                data.device_config.queues[internal_queue_index].0,
+            )
+        };
         unsafe {
             device.cmd_pipeline_barrier(
                 buffer,
@@ -239,18 +249,28 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
         } = self.expect_outside_render_pass();
         let ref mut data = self.data;
         let device: &AshDevice = data.device_ref.device();
-        let another_iq_index = data.device_config
-            .engine_queue_mappings
-            .internal_queue_for_engine(to_engine)
-            .unwrap();
+        let barrier = if to_engine == core::DeviceEngine::Host {
+            VkResourceBarrier::translate(
+                resource,
+                translate_access_type_flags(access),
+                vk::ACCESS_HOST_READ_BIT | vk::ACCESS_HOST_WRITE_BIT,
+                vk::VK_QUEUE_FAMILY_IGNORED,
+                vk::VK_QUEUE_FAMILY_IGNORED,
+            )
+        } else {
+            let another_iq_index = data.device_config
+                .engine_queue_mappings
+                .internal_queue_for_engine(to_engine)
+                .unwrap();
 
-        let barrier = VkResourceBarrier::translate(
-            resource,
-            translate_access_type_flags(access),
-            vk::AccessFlags::empty(),
-            data.device_config.queues[internal_queue_index].0,
-            data.device_config.queues[another_iq_index].0,
-        );
+            VkResourceBarrier::translate(
+                resource,
+                translate_access_type_flags(access),
+                vk::AccessFlags::empty(),
+                data.device_config.queues[internal_queue_index].0,
+                data.device_config.queues[another_iq_index].0,
+            )
+        };
         unsafe {
             device.cmd_pipeline_barrier(
                 buffer,

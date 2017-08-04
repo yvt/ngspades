@@ -304,7 +304,8 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
 
     pub fn wait_host_writable(&self) {
         if let Some(accessor) = self.1.as_ref() {
-            if let Some(fence) = accessor.fence.lock().clone() {
+            let fence = accessor.fence.lock().clone();
+            if let Some(fence) = fence {
                 fence.check_fence(true);
             }
         }
