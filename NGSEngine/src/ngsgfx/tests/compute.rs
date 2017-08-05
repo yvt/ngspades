@@ -182,7 +182,7 @@ impl<'a, 'b: 'a, B: core::Backend, T: 'static> ResultBuffer<'a, 'b, B, T> {
             core::PipelineStage::Transfer.into(),
             core::AccessType::TransferRead.into(),
             &core::SubresourceWithLayout::Buffer {
-                buffer: &staging_buffer,
+                buffer: &buffer,
                 offset: 0,
                 len: size,
             },
@@ -241,7 +241,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         let size = mem::size_of_val(data) as core::DeviceSize;
         let storage_mode = core::StorageMode::Private;
         let buffer_desc = core::BufferDescription {
-            usage,
+            usage: usage | core::BufferUsage::TransferSource,
             size,
             storage_mode,
         };
@@ -270,7 +270,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         };
         let storage_mode = core::StorageMode::Private;
         let buffer_desc = core::BufferDescription {
-            usage,
+            usage: usage | core::BufferUsage::TransferDestination,
             size,
             storage_mode,
         };
@@ -319,7 +319,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
             first_pipeline_stage,
             first_access_mask,
             &core::SubresourceWithLayout::Buffer {
-                buffer: &staging_buffer,
+                buffer: &buffer,
                 offset: 0,
                 len: size,
             },

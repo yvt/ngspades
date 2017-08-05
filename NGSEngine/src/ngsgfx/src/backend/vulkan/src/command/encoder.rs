@@ -222,7 +222,11 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
         unsafe {
             device.cmd_pipeline_barrier(
                 buffer,
-                vk::PipelineStageFlags::empty(),
+                if from_engine == core::DeviceEngine::Host {
+                    vk::PIPELINE_STAGE_HOST_BIT
+                } else {
+                    vk::PipelineStageFlags::empty()
+                },
                 translate_pipeline_stage_flags(stage),
                 vk::DependencyFlags::empty(),
                 &[],
@@ -275,7 +279,11 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
             device.cmd_pipeline_barrier(
                 buffer,
                 translate_pipeline_stage_flags(stage),
-                vk::PipelineStageFlags::empty(),
+                if to_engine == core::DeviceEngine::Host {
+                    vk::PIPELINE_STAGE_HOST_BIT
+                } else {
+                    vk::PipelineStageFlags::empty()
+                },
                 vk::DependencyFlags::empty(),
                 &[],
                 barrier.buffer_memory_barriers(),

@@ -253,7 +253,7 @@ impl<B: Backend> Renderer<B> {
             core::PipelineStage::VertexInput.into(),
             core::AccessType::VertexAttributeRead.into(),
             &core::SubresourceWithLayout::Buffer {
-                buffer: &staging_buffer,
+                buffer: &buffer,
                 offset: 0,
                 len: size,
             },

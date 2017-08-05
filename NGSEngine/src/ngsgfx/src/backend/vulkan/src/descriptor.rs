@@ -38,6 +38,15 @@ impl<T: DeviceRef> core::Marker for DescriptorSetLayout<T> {
     }
 }
 
+impl<T: DeviceRef> Drop for DescriptorSetLayoutData<T> {
+    fn drop(&mut self) {
+        let device: &AshDevice = self.device_ref.device();
+        unsafe {
+            device.destroy_descriptor_set_layout(self.handle, self.device_ref.allocation_callbacks())
+        };
+    }
+}
+
 impl<T: DeviceRef> DescriptorSetLayout<T> {
     pub(crate) fn new(
         device_ref: &T,
