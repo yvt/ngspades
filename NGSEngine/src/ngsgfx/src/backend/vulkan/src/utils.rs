@@ -16,7 +16,7 @@ use core;
 /// `ErrorOutOfHostMemory` is escalated to a panic. (Maybe we should call `alloc::oom::oom()`?)
 ///
 /// Unsupported values are returned unmodified.
-pub(crate) fn translate_generic_error(
+pub fn translate_generic_error(
     result: vk::Result,
 ) -> Result<core::GenericError, vk::Result> {
     match result {
@@ -35,7 +35,7 @@ pub(crate) fn translate_generic_error(
 ///  - `ErrorDeviceLost`
 ///  - `ErrorOutOfHostMemory` (escalated to a panic)
 ///
-pub(crate) fn translate_generic_error_unwrap(result: vk::Result) -> core::GenericError {
+pub fn translate_generic_error_unwrap(result: vk::Result) -> core::GenericError {
     translate_generic_error(result).unwrap()
 }
 

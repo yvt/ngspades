@@ -410,6 +410,7 @@ name = "ngsgfx_wsi_vulkan"
 version = "0.1.0"
 dependencies = [
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsgfx_common 0.1.0",
  "ngsgfx_core 0.1.0",
  "ngsgfx_vulkan 0.1.0",
  "ngsgfx_wsi_core 0.1.0",

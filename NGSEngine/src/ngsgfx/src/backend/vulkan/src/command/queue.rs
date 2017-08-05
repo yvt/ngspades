@@ -7,7 +7,7 @@ use core;
 
 use ash::vk;
 use ash::version::DeviceV1_0;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::ops::Range;
 use std::ptr;
 use ngsgfx_common::int::BinaryInteger;
@@ -81,6 +81,13 @@ impl<T: DeviceRef> CommandQueue<T> {
 
     pub(super) fn device_ref(&self) -> &T {
         &self.data.device_data.device_ref
+    }
+
+    /// Lock the queue for internal state manipulation.
+    pub fn lock(&self) -> CommandQueueLockGuard<T> {
+        CommandQueueLockGuard {
+            excl_data: self.data.excl_data.lock().unwrap()
+        }
     }
 }
 
@@ -250,7 +257,9 @@ impl<T: DeviceRef> CommandSender<T> {
                             dst_scope.1 = dst_scope.1 | fence.2;
                         }
                         Semaphore { signalled_by } => {
-                            dep_bits.set_bit(signalled_by);
+                            if let Some(signalled_by) = signalled_by {
+                                dep_bits.set_bit(signalled_by);
+                            }
                         }
                         _ => {}
                     }
@@ -274,7 +283,7 @@ impl<T: DeviceRef> CommandSender<T> {
                     match fqd.wait_states[iq] {
                         Semaphore { .. } => {
                             fqd.wait_states[iq] = Ready;
-                            s.sems[iq].push(fence.0.get_semaphore(iq));
+                            s.sems[iq].push(fqd.get_semaphore(iq));
                         }
                         _ => {}
                     }
@@ -341,7 +350,7 @@ impl<T: DeviceRef> CommandSender<T> {
                                 // It cannot be signaled again until it is waited
                                 // by someone.
                                 *wait_state = Ready;
-                                s.sems[iq].push(fence.0.get_semaphore(to_iq));
+                                s.sems[iq].push(fqd.mutex.get_host_read().semaphores[to_iq].unwrap());
                             }
                             _ => {}
                         }
@@ -380,8 +389,8 @@ impl<T: DeviceRef> CommandSender<T> {
                                 ),
                             };
                         } else {
-                            *wait_state = Semaphore { signalled_by: iq as u32 };
-                            s.sems[iq].push(fence.0.get_semaphore(to_iq));
+                            *wait_state = Semaphore { signalled_by: Some(iq as u32) };
+                            s.sems[iq].push(fqd.mutex.get_host_read().semaphores[to_iq].unwrap());
                         }
                     }
                 }
@@ -603,5 +612,22 @@ impl<T: DeviceRef> core::CommandQueue<Backend<T>> for CommandQueue<T> {
 impl<T: DeviceRef> core::Marker for CommandQueue<T> {
     fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
+    }
+}
+
+/// Provides access to the queue and fence internal states.
+///
+/// This can be obtained from `CommandQueue` by calling `lock`.
+///
+/// `Fence::lock` accepts `CommandQueueLockGuard` to provide access to some of its
+/// internal states.
+#[derive(Debug)]
+pub struct CommandQueueLockGuard<'a, T: DeviceRef> {
+    excl_data: MutexGuard<'a, CommandQueueExclData<T>>,
+}
+
+impl<'a, T: DeviceRef> CommandQueueLockGuard<'a, T> {
+    pub(super) fn token(&mut self) -> &mut Token {
+        &mut self.excl_data.token
     }
 }

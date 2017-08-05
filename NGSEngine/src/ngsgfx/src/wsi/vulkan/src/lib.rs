@@ -9,6 +9,16 @@
 //! Partially based on [Ash]'s example.
 //!
 //! [Ash]: https://github.com/MaikKlein/ash
+//!
+//! Restrictions
+//! ------------
+//!
+//!  - You must specify exactly one internal queue by `FrameDescription::acquiring_engines`.
+//!    This is due to the `VK_KHR_swapchain`'s restriction. There exist no efficient solutions.
+//!  - After calling `Swapchain::next_drawable`, you must submit a command buffer containing
+//!    a fence wait operation on the returned drawable's `acquiring_fence` before caling
+//!    `Swapchain::next_drawable` again. This should not be a problem for most applications.
+//!
 
 extern crate cgmath;
 extern crate thunk;
@@ -16,6 +26,7 @@ extern crate thunk;
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_vulkan as backend_vulkan;
 extern crate ngsgfx_wsi_core as wsi_core;
+extern crate ngsgfx_common;
 
 #[cfg(windows)]
 extern crate winapi;
@@ -25,8 +36,8 @@ extern crate user32;
 mod colorspace;
 mod swapchain;
 
-use swapchain::*;
-use colorspace::*;
+pub use swapchain::*;
+pub use colorspace::*;
 
 use wsi_core::winit;
 use backend_vulkan::ash;
@@ -38,6 +49,9 @@ use self::ash::version::{EntryV1_0, InstanceV1_0};
 
 use std::{fmt, ptr};
 use std::sync::Arc;
+
+pub type ManagedDevice = backend_vulkan::Device<backend_vulkan::ManagedDeviceRef>;
+pub type ManagedImage = backend_vulkan::imp::Image<backend_vulkan::ManagedDeviceRef>;
 
 #[cfg(windows)]
 pub type DefaultVulkanSurface = WindowsVulkanSurface;
@@ -127,9 +141,19 @@ impl VulkanSurface for XlibVulkanSurface {
 
 // TODO: support Wayland and Mir
 
+// TODO: Specifying surface extension via generic parameter turned out to be a bad idea. Remove it
+
 pub struct VulkanWindow<S: VulkanSurface> {
     window: winit::Window,
-    device: Arc<backend_vulkan::Device<backend_vulkan::ManagedDeviceRef>>,
+    device: Arc<ManagedDevice>,
+    phys_device: vk::PhysicalDevice,
+    surface_loader: Surface,
+    surface: vk::SurfaceKHR,
+    swapchain: Option<Swapchain>,
+
+    scd_desired_formats: Vec<(Option<core::ImageFormat>, Option<wsi_core::ColorSpace>)>,
+    scd_image_usage: core::ImageUsageFlags,
+
     phantom: ::std::marker::PhantomData<S>,
 }
 
@@ -163,6 +187,7 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
     ) -> Result<Self, InitializationError> {
         use core::{Instance, DeviceBuilder};
         use backend_vulkan::DeviceRef;
+        use ash::version::DeviceV1_0;
 
         let winit_window = wb.build(events_loop).unwrap();
 
@@ -205,84 +230,138 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
         let device = device_builder.build().map_err(
             InitializationError::DeviceBuildError,
         )?;
-        let surface_formats = surface_loader
-            .get_physical_device_surface_formats_khr(adap.physical_device(), surface)
-            .unwrap(); // TODO: handle this error
-
-        let (vk_format, vk_color_space) = choose_visual(sc_desc.desired_formats, || {
-            surface_formats.iter().map(|x| (x.format, x.color_space))
-        }).ok_or(InitializationError::NoCompatibleFormat)?;
-
-        let surface_cap = surface_loader
-            .get_physical_device_surface_capabilities_khr(adap.physical_device(), surface)
-            .unwrap(); // TODO: handle this error
-        let mut image_count = surface_cap.min_image_count + 1;
-        if surface_cap.max_image_count > 0 && image_count > surface_cap.max_image_count {
-            image_count = surface_cap.max_image_count;
-        }
-
-        // On Win32 and Xlib, `current_extent` is the window size
-        let window_size = winit_window.get_inner_size_pixels().unwrap(); // we're sure the window exists
-        let surface_size = match surface_cap.current_extent.width {
-            std::u32::MAX => {
-                vk::Extent2D {
-                    width: window_size.0,
-                    height: window_size.1,
-                }
-            }
-            _ => surface_cap.current_extent,
-        };
-
-        let pre_transform = surface_cap.current_transform;
-
-        let image_usage = backend_vulkan::imp::translate_image_usage(sc_desc.image_usage);
-        assert!(
-            surface_cap.supported_usage_flags.subset(image_usage),
-            "specified image usage is not supported"
-        ); // TODO: fall-back or something
-
-        // `Fifo` is always supported
-        let present_mode = vk::PresentModeKHR::Fifo;
 
         let swapchain_loader = SwapchainExt::new(vk_instance, device.device_ref().device())
             .map_err(InitializationError::LoadError)?;
 
-        let swapchain_create_info = vk::SwapchainCreateInfoKHR {
-            s_type: vk::StructureType::SwapchainCreateInfoKhr,
-            p_next: ptr::null(),
-            flags: vk::SwapchainCreateFlagsKHR::empty(),
+        let swapchain_create_info = make_swapchain_create_info(
+            sc_desc,
+            adap.physical_device(),
+            &surface_loader,
             surface,
-            min_image_count: image_count,
-            image_format: vk_format,
-            image_color_space: vk_color_space,
-            image_extent: surface_size.clone(),
-            image_array_layers: 1,
-            image_usage,
-            image_sharing_mode: vk::SharingMode::Exclusive,
-            p_queue_family_indices: ptr::null(), // ignored for `Exclusive`
-            queue_family_index_count: 0,
-            pre_transform,
-            composite_alpha: vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // TODO: is this required?
-            present_mode,
-            clipped: vk::VK_TRUE,
-            old_swapchain: vk::SwapchainKHR::null(),
-        };
+            &winit_window,
+        )?;
+
         let swapchain = unsafe {
             swapchain_loader.create_swapchain_khr(&swapchain_create_info, None)
         }.expect("swapchain creation failed"); // TODO: handle this error
         // TODO: handle resize
 
-        let _ = swapchain; // TODO: implement and use NgsGFX standard WSI interface
+        let device = Arc::new(device);
+
+        // TODO: support presentation from other than the universal queue
+        let univ_iq = device.config().engine_queue_mappings.universal;
+        let univ_qf_qi = device.config().queues[univ_iq];
+        let univ_q = unsafe {
+            device.device_ref().device().get_device_queue(
+                univ_qf_qi.0,
+                univ_qf_qi.1,
+            )
+        };
+        let wsi_swapchain = unsafe {
+            Swapchain::from_raw(SwapchainConfig {
+                device: device.clone(),
+                swapchain_loader,
+                swapchain,
+                present_queue: univ_q,
+                present_queue_family: univ_qf_qi.0,
+                info: drawable_info_from_swapchain_info(&swapchain_create_info),
+            })
+        }.expect("Swapchain::from_raw failed"); // TDOO: handle this error
 
         Ok(VulkanWindow {
             window: winit_window,
-            device: Arc::new(device),
+            device,
+            phys_device: adap.physical_device(),
+            surface_loader,
+            surface,
+            swapchain: Some(wsi_swapchain),
+            scd_desired_formats: sc_desc.desired_formats.iter().map(Clone::clone).collect(),
+            scd_image_usage: sc_desc.image_usage,
             phantom: Default::default(),
         })
     }
 
     fn modify_instance_builder(builder: &mut backend_vulkan::InstanceBuilder) {
         S::modify_instance_builder(builder);
+    }
+}
+
+fn make_swapchain_create_info(
+    sc_desc: &wsi_core::SwapchainDescription,
+    phys_device: vk::PhysicalDevice,
+    surface_loader: &Surface,
+    surface: vk::SurfaceKHR,
+    winit_window: &winit::Window,
+) -> Result<vk::SwapchainCreateInfoKHR, InitializationError> {
+    let surface_formats = surface_loader
+        .get_physical_device_surface_formats_khr(phys_device, surface)
+        .unwrap(); // TODO: handle this error
+
+    let (vk_format, vk_color_space) = choose_visual(sc_desc.desired_formats, || {
+        surface_formats.iter().map(|x| (x.format, x.color_space))
+    }).ok_or(InitializationError::NoCompatibleFormat)?;
+
+    let surface_cap = surface_loader
+        .get_physical_device_surface_capabilities_khr(phys_device, surface)
+        .unwrap(); // TODO: handle this error
+
+    let mut image_count = surface_cap.min_image_count + 1;
+    if surface_cap.max_image_count > 0 && image_count > surface_cap.max_image_count {
+        image_count = surface_cap.max_image_count;
+    }
+
+    // On Win32 and Xlib, `current_extent` is the window size
+    let window_size = winit_window.get_inner_size_pixels().unwrap(); // we're sure the window exists
+    let surface_size = match surface_cap.current_extent.width {
+        std::u32::MAX => {
+            vk::Extent2D {
+                width: window_size.0,
+                height: window_size.1,
+            }
+        }
+        _ => surface_cap.current_extent,
+    };
+
+    let pre_transform = surface_cap.current_transform;
+
+    let image_usage = backend_vulkan::imp::translate_image_usage(sc_desc.image_usage);
+    assert!(
+        surface_cap.supported_usage_flags.subset(image_usage),
+        "specified image usage is not supported"
+    ); // TODO: fall-back or something
+
+    // `Fifo` is always supported
+    let present_mode = vk::PresentModeKHR::Fifo;
+
+    Ok(vk::SwapchainCreateInfoKHR {
+        s_type: vk::StructureType::SwapchainCreateInfoKhr,
+        p_next: ptr::null(),
+        flags: vk::SwapchainCreateFlagsKHR::empty(),
+        surface,
+        min_image_count: image_count,
+        image_format: vk_format,
+        image_color_space: vk_color_space,
+        image_extent: surface_size.clone(),
+        image_array_layers: 1,
+        image_usage,
+        image_sharing_mode: vk::SharingMode::Exclusive,
+        p_queue_family_indices: ptr::null(), // ignored for `Exclusive`
+        queue_family_index_count: 0,
+        pre_transform,
+        composite_alpha: vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // TODO: is this required?
+        present_mode,
+        clipped: vk::VK_TRUE,
+        old_swapchain: vk::SwapchainKHR::null(),
+    })
+}
+
+impl<S: VulkanSurface> Drop for VulkanWindow<S> {
+    fn drop(&mut self) {
+        self.swapchain.take();
+        unsafe {
+            self.surface_loader.destroy_surface_khr(self.surface, None);
+        }
     }
 }
 
@@ -299,9 +378,40 @@ impl<S: VulkanSurface> wsi_core::Window for VulkanWindow<S> {
     }
 
     fn swapchain(&self) -> &Self::Swapchain {
-        unimplemented!()
+        self.swapchain.as_ref().unwrap()
     }
-    fn update_swapchain(&self) {
-        unimplemented!()
+    fn update_swapchain(&mut self) {
+        let mut new_info = make_swapchain_create_info(
+            &wsi_core::SwapchainDescription {
+                desired_formats: &self.scd_desired_formats,
+                image_usage: self.scd_image_usage,
+            },
+            self.phys_device,
+            &self.surface_loader,
+            self.surface,
+            &self.window,
+        ).unwrap();
+        let sc_cfg = self.swapchain().config().clone();
+        new_info.old_swapchain = sc_cfg.swapchain;
+
+        let swapchain = unsafe {
+            sc_cfg.swapchain_loader.create_swapchain_khr(
+                &new_info,
+                None,
+            )
+        }.expect("swapchain creation failed"); // TODO: handle this error
+
+        self.swapchain = Some(
+            unsafe {
+                Swapchain::from_raw(SwapchainConfig {
+                    device: self.device.clone(),
+                    swapchain_loader: sc_cfg.swapchain_loader.clone(),
+                    swapchain,
+                    present_queue: sc_cfg.present_queue,
+                    present_queue_family: sc_cfg.present_queue_family,
+                    info: drawable_info_from_swapchain_info(&new_info),
+                })
+            }.expect("Swapchain::from_raw failed"),
+        );
     }
 }

@@ -48,7 +48,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::ImageViewDescription<Image<T>>,
     ) -> core::Result<ImageView<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        ImageView::new(description, self.capabilities())
+        ImageView::new(self.device_ref(), description, self.capabilities())
     }
     fn get_buffer_memory_requirements(
         &self,

@@ -55,6 +55,9 @@ impl<T: DeviceRef> Device<T> {
     pub fn device_ref(&self) -> &T {
         &self.data.device_ref
     }
+    pub fn config(&self) -> &DeviceConfig {
+        &self.data.cfg
+    }
     pub(crate) fn capabilities(&self) -> &DeviceCapabilities {
         &self.data.cap
     }

@@ -8,7 +8,7 @@ use cgmath::Vector3;
 use ash::version::{V1_0, InstanceV1_0};
 use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties,
                      PhysicalDeviceFeatures, VK_FALSE, PhysicalDeviceLimits, MemoryType};
-
+use ngsgfx_common::int::BinaryInteger;
 use std::u32;
 
 /// The maximum number of internal queues.
@@ -50,6 +50,20 @@ impl EngineQueueMappings {
             core::DeviceEngine::Copy => Some(self.copy),
             core::DeviceEngine::Host => None,
         }
+    }
+
+    pub fn internal_queues_for_engines(&self, index: core::DeviceEngineFlags) -> u32 {
+        let mut bits = 0u32;
+        if index.contains(core::DeviceEngine::Universal) {
+            bits.set_bit(self.universal as u32);
+        }
+        if index.contains(core::DeviceEngine::Compute) {
+            bits.set_bit(self.compute as u32);
+        }
+        if index.contains(core::DeviceEngine::Copy) {
+            bits.set_bit(self.copy as u32);
+        }
+        bits
     }
 }
 

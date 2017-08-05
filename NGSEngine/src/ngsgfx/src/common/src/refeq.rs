@@ -89,6 +89,13 @@ impl<T> RefEqArc<T> {
     pub fn new(data: T) -> Self {
         RefEqArc(Arc::new(data))
     }
+
+    pub fn try_unwrap(this: Self) -> Result<T, Self> {
+        match Arc::try_unwrap(this.0) {
+            Ok(obj) => Ok(obj),
+            Err(arc) => Err(RefEqArc(arc)),
+        }
+    }
 }
 
 impl<T: ?Sized> Clone for RefEqArc<T> {

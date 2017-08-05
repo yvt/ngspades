@@ -47,6 +47,8 @@ pub trait Drawable: Debug {
 
     /// The `Fence` object that must be waited for before the `image` gets written
     /// with new contents.
+    ///
+    /// Do not use the returned `Fence` for other purposes!
     fn acquiring_fence(&self) -> Option<&<Self::Backend as Backend>::Fence>;
 
     /// Inserts commands into the command buffer to prepare the presentation of the image.
@@ -79,6 +81,18 @@ pub trait Drawable: Debug {
     fn present(&self);
 }
 
+#[derive(Debug, Clone)]
+pub struct DrawableInfo {
+    pub extents: Vector3<u32>,
+    pub num_array_layers: u32,
+    pub format: core::ImageFormat,
+    pub colorspace: ColorSpace,
+}
+
+/// Swapchain.
+///
+/// An application must ensure all images acquired from it are no longer in use
+/// by the application or device before dropping `Swapchain`.
 pub trait Swapchain: Debug {
     type Backend: core::Backend;
     type Drawable: Drawable<Backend = Self::Backend>;
@@ -91,10 +105,7 @@ pub trait Swapchain: Debug {
         description: &FrameDescription,
     ) -> Result<Self::Drawable, SwapchainError>;
 
-    fn image_extents(&self) -> Vector3<u32>;
-    fn image_num_array_layers(&self) -> u32;
-    fn image_format(&self) -> core::ImageFormat;
-    fn image_colorspace(&self) -> ColorSpace;
+    fn drawable_info(&self) -> DrawableInfo;
 }
 
 /// Window.
@@ -110,7 +121,7 @@ pub trait Window: Debug {
     /// Create a swapchain that matches the current state of the `Window`.
     ///
     /// For example, call this whenever the window size has changed.
-    fn update_swapchain(&self);
+    fn update_swapchain(&mut self);
 }
 
 /// Window with a constructor function.

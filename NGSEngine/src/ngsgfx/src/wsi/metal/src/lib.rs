@@ -144,18 +144,15 @@ impl wsi_core::Swapchain for Swapchain {
         }
     }
 
-    fn image_extents(&self) -> Vector3<u32> {
+    fn drawable_info(&self) -> wsi_core::DrawableInfo {
         let size = self.layer.drawable_size();
-        Vector3::new(size.width as u32, size.height as u32, 1)
-    }
-    fn image_num_array_layers(&self) -> u32 {
-        1
-    }
-    fn image_format(&self) -> core::ImageFormat {
-        backend_metal::imp::translate_metal_pixel_format(self.layer.pixel_format())
-    }
-    fn image_colorspace(&self) -> wsi_core::ColorSpace {
-        self.color_space
+
+        wsi_core::DrawableInfo {
+            extents: Vector3::new(size.width as u32, size.height as u32, 1),
+            num_array_layers: 1,
+            format: backend_metal::imp::translate_metal_pixel_format(self.layer.pixel_format()),
+            crolospace: self.color_space
+        }
     }
 }
 

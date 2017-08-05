@@ -290,7 +290,7 @@ impl<B: Backend> RendererView<B> {
             .make_image_view(&core::ImageViewDescription {
                 image_type: core::ImageType::TwoD,
                 image: drawable.image(),
-                format: swapchain.image_format(),
+                format: swapchain.drawable_info().format,
                 range: core::ImageSubresourceRange::default(),
             })
             .unwrap();
@@ -365,7 +365,7 @@ impl<B: Backend> RendererView<B> {
 
 
 struct App<W: Window> {
-    window: W,
+    window: RefCell<W>,
     renderer: Arc<Renderer<W::Backend>>,
     renderer_view: RefCell<Option<RendererView<W::Backend>>>,
 }
@@ -374,7 +374,7 @@ fn create_renderer_view<W: Window>(
     renderer: &Arc<Renderer<W::Backend>>,
     window: &W,
 ) -> RendererView<W::Backend> {
-    let extents = window.swapchain().image_extents();
+    let extents = window.swapchain().drawable_info().extents;
     assert_eq!(extents.z, 1);
     RendererView::new(&renderer, Vector2::new(extents.x, extents.y))
 }
@@ -386,7 +386,7 @@ impl<W: Window> App<W> {
         Self {
             renderer_view: RefCell::new(None),
             renderer,
-            window,
+            window: RefCell::new(window),
         }
     }
 
@@ -410,8 +410,8 @@ impl<W: Window> App<W> {
     }
 
     fn update_view(&self) {
-        self.window.update_swapchain();
-        *self.renderer_view.borrow_mut() = Some(create_renderer_view(&self.renderer, &self.window));
+        self.window.borrow_mut().update_swapchain();
+        *self.renderer_view.borrow_mut() = Some(create_renderer_view(&self.renderer, &*self.window.borrow()));
     }
 
     fn update(&self) {
@@ -422,14 +422,14 @@ impl<W: Window> App<W> {
             .borrow_mut()
             .as_mut()
             .unwrap()
-            .render_to(self.window.swapchain());
+            .render_to(self.window.borrow().swapchain());
         if ret == Err(SwapchainError::OutOfDate) {
             self.update_view();
             ret = self.renderer_view
                 .borrow_mut()
                 .as_mut()
                 .unwrap()
-                .render_to(self.window.swapchain());
+                .render_to(self.window.borrow().swapchain());
         }
         if let Err(x) = ret {
             println!("failed to acquire the next drawable: {:?}", x);

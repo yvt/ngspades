@@ -8,6 +8,7 @@ cgmath = "0.14.1"
 ngsgfx_core = { path = "../../core" }
 ngsgfx_vulkan = { path = "../../backend/vulkan"}
 ngsgfx_wsi_core = { path = "../../wsi_core" }
+ngsgfx_common = { path = "../../common" }
 thunk = "0.3"
 
 [target.'cfg(windows)'.dependencies]

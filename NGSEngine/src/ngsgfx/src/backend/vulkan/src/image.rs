@@ -128,7 +128,7 @@ impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
 
         Ok(Image {
             data: RefEqArc::new(ImageData {
-                hunk,
+                hunk: Some(hunk),
                 handle: self.into_raw(),
             }),
         })
@@ -154,7 +154,7 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct ImageData<T: DeviceRef> {
-    hunk: Arc<MemoryHunk<T>>,
+    hunk: Option<Arc<MemoryHunk<T>>>,
     handle: vk::Image,
 }
 
@@ -168,13 +168,49 @@ impl<T: DeviceRef> core::Marker for Image<T> {
 
 impl<T: DeviceRef> Drop for ImageData<T> {
     fn drop(&mut self) {
-        let device_ref = self.hunk.device_ref();
-        let device: &AshDevice = device_ref.device();
-        unsafe { device.destroy_image(self.handle, device_ref.allocation_callbacks()) };
+        if let Some(ref hunk) = self.hunk {
+            let device_ref = hunk.device_ref();
+            let device: &AshDevice = device_ref.device();
+            unsafe { device.destroy_image(self.handle, device_ref.allocation_callbacks()) };
+        }
     }
 }
 
 impl<T: DeviceRef> Image<T> {
+    /// Construct `Image` from an externally provided `vk::Image`.
+    ///
+    /// The given `image` will *not* be destroyed automatically.
+    ///
+    /// It is the caller's responsibility to make sure the `Image` is not used after
+    /// `image` was destroyed. For example, `try_take` can be used to take back the
+    /// ownership of the `vk::Image`.
+    pub unsafe fn import(image: vk::Image) -> Self {
+        assert!(image != vk::Image::null());
+        Self{
+            data: RefEqArc::new(ImageData{
+                hunk: None,
+                handle: image,
+            }),
+        }
+    }
+
+    /// Take the contained `vk::Image` if there are no other references
+    /// (including device access) to it.
+    ///
+    /// The `Image` must have been created with `import`. Otherwise a panic will occur.
+    pub fn try_take(self) -> Result<vk::Image, Self> {
+        if self.data.hunk.is_some() {
+            // Can't take a managed image.
+            panic!("cannot take a managed image");
+        }
+        match RefEqArc::try_unwrap(self.data) {
+            Ok(data) => Ok(data.handle),
+            Err(data) => Err(Self {
+                data,
+            })
+        }
+    }
+
     pub fn handle(&self) -> vk::Image {
         self.data.handle
     }
@@ -190,6 +226,7 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct ImageViewData<T: DeviceRef> {
+    device_ref: T,
     image_data: RefEqArc<ImageData<T>>,
     handle: vk::ImageView,
 }
@@ -204,14 +241,14 @@ impl<T: DeviceRef> core::Marker for ImageView<T> {
 
 impl<T: DeviceRef> Drop for ImageViewData<T> {
     fn drop(&mut self) {
-        let device_ref = self.image_data.hunk.device_ref();
-        let device: &AshDevice = device_ref.device();
-        unsafe { device.destroy_image_view(self.handle, device_ref.allocation_callbacks()) };
+        let device: &AshDevice = self.device_ref.device();
+        unsafe { device.destroy_image_view(self.handle, self.device_ref.allocation_callbacks()) };
     }
 }
 
 impl<T: DeviceRef> ImageView<T> {
     pub(crate) fn new(
+        device_ref: &T,
         desc: &core::ImageViewDescription<Image<T>>,
         _: &core::DeviceCapabilities,
     ) -> core::Result<Self> {
@@ -257,13 +294,13 @@ impl<T: DeviceRef> ImageView<T> {
             subresource_range: translate_image_subresource_range(&desc.range, aspect_mask),
         };
 
-        let device_ref = desc.image.data.hunk.device_ref();
         let device: &AshDevice = device_ref.device();
         let handle = unsafe { device.create_image_view(&info, device_ref.allocation_callbacks()) }
             .map_err(translate_generic_error_unwrap)?;
 
         Ok(ImageView {
             data: RefEqArc::new(ImageViewData {
+                device_ref: device_ref.clone(),
                 image_data: desc.image.data.clone(),
                 handle,
             }),

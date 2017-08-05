@@ -112,6 +112,7 @@ pub mod imp {
     pub use super::renderpass::*;
     pub use super::sampler::*;
     pub use super::shader::*;
+    pub use super::utils::*;
 
     pub type GraphicsPipelineDescription<'a, T> =
         core::GraphicsPipelineDescription<'a, RenderPass<T>, PipelineLayout<T>, ShaderModule<T>>;
