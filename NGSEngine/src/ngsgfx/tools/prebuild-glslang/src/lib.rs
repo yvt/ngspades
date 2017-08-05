@@ -121,17 +121,10 @@ fn spawn(cmd: &mut Command, program: &str) -> (Child, JoinHandle<()>) {
             (child, print)
         }
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
-            let extra = if cfg!(windows) {
-                " (see https://github.com/alexcrichton/gcc-rs#compile-time-requirements \
-                   for help)"
-            } else {
-                ""
-            };
             fail(&format!("failed to execute command: {}\nIs `{}` \
-                           not installed?{}",
+                           not installed?",
                           e,
-                          program,
-                          extra));
+                          program));
         }
         Err(e) => fail(&format!("failed to execute command: {}", e)),
     }
