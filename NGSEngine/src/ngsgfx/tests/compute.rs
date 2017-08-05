@@ -11,7 +11,7 @@ extern crate include_data;
 
 use gfx::core;
 use gfx::prelude::*;
-use gfx::debug::PrintDebugReportHandler;
+use gfx::debug::report::PrintDebugReportHandler;
 
 use cgmath::Vector3;
 

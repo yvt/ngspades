@@ -451,7 +451,7 @@ fn main() {
             core::DebugReportType::Information | core::DebugReportType::Warning |
                 core::DebugReportType::PerformanceWarning |
                 core::DebugReportType::Error,
-            gfx::debug::TermStdoutDebugReportHandler::new(),
+            gfx::debug::report::TermStdoutDebugReportHandler::new(),
         );
         instance_builder.enable_validation();
         instance_builder.enable_debug_marker();
