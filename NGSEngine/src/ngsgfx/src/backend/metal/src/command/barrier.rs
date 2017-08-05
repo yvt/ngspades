@@ -5,7 +5,7 @@
 //
 use core;
 
-use imp::{Backend, CommandBuffer, Image, Fence, SecondaryCommandBuffer};
+use imp::{Backend, CommandBuffer, Fence, SecondaryCommandBuffer};
 
 impl core::BarrierCommandEncoder<Backend> for CommandBuffer {
     fn wait_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {

@@ -7,7 +7,7 @@ use core;
 use ash::{self, vk};
 use ash::version::{V1_0, InstanceV1_0, EntryV1_0};
 use std::sync::Arc;
-use std::{mem, ops, ffi, ptr, fmt};
+use std::{ffi, ptr, fmt};
 use std::collections::{VecDeque, HashSet, HashMap};
 
 use imp::{ManagedEnvironment, Device, EngineQueueMappings, DeviceCapabilities, DeviceConfig,
@@ -491,10 +491,6 @@ impl AdapterData {
             name,
             config,
         })
-    }
-
-    fn physical_device(&self) -> vk::PhysicalDevice {
-        self.physical_device
     }
 }
 

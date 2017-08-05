@@ -246,7 +246,7 @@ impl<T: DeviceRef> core::MappableHeap for SpecializedHeap<T> {
 }
 
 impl<T: DeviceRef> core::Marker for SpecializedHeap<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

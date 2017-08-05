@@ -28,6 +28,7 @@ impl wsi_core::Drawable for Drawable {
         access: core::AccessTypeFlags,
         layout: core::ImageLayout,
     ) {
+        let _ = (command_buffer, state, access, layout);
         unimplemented!()
     }
     fn present(&self) {
@@ -49,6 +50,7 @@ impl wsi_core::Swapchain for Swapchain {
         &self,
         description: &wsi_core::FrameDescription,
     ) -> Result<Self::Drawable, wsi_core::SwapchainError> {
+        let _ = description;
         unimplemented!()
     }
     fn image_extents(&self) -> Vector3<u32> {

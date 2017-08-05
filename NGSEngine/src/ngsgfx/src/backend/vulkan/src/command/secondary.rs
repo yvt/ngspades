@@ -231,7 +231,7 @@ impl<T: DeviceRef> core::SecondaryCommandBuffer<Backend<T>> for SecondaryCommand
 }
 
 impl<T: DeviceRef> core::Marker for SecondaryCommandBuffer<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

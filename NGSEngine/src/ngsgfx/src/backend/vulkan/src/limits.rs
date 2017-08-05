@@ -7,11 +7,9 @@ use {core, ash};
 use cgmath::Vector3;
 use ash::version::{V1_0, InstanceV1_0};
 use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties,
-                     QueueFamilyProperties, PhysicalDeviceFeatures, VK_FALSE,
-                     PhysicalDeviceLimits, MemoryType};
+                     PhysicalDeviceFeatures, VK_FALSE, PhysicalDeviceLimits, MemoryType};
 
 use std::u32;
-use std::ops;
 
 /// The maximum number of internal queues.
 ///

@@ -42,12 +42,10 @@ impl CommandBufferPool {
     ///
     /// `device_ref` must be the same one as used to create this `CommandBufferPool`.
     pub unsafe fn destroy<T: DeviceRef>(self, device_ref: &T) {
-        unsafe {
-            device_ref.device().destroy_command_pool(
-                self.vk_pool,
-                device_ref.allocation_callbacks(),
-            );
-        }
+        device_ref.device().destroy_command_pool(
+            self.vk_pool,
+            device_ref.allocation_callbacks(),
+        );
     }
 
     /// Reset all command buffers allocated from this pool.

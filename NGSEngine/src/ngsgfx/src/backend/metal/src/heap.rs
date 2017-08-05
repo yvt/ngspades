@@ -128,7 +128,7 @@ impl core::MappableHeap for Heap {
     fn make_aliasable(&mut self, _: &mut Self::Allocation) {}
 
     /// Removes a reference to the associated object.
-    fn deallocate(&mut self, allocation: Self::Allocation) {}
+    fn deallocate(&mut self, _: Self::Allocation) {}
 
     /// No-op.
     unsafe fn raw_unmap_memory(&mut self, _: Self::MappingInfo) {}

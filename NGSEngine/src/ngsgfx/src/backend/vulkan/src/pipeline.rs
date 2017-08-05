@@ -9,7 +9,7 @@ use ash::version::DeviceV1_0;
 use std::{ptr, ffi};
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
-use imp::{self, ShaderModule, PipelineLayout};
+use imp::{self, ShaderModule};
 
 pub struct GraphicsPipeline<T: DeviceRef> {
     data: RefEqArc<GraphicsPipelineData<T>>,
@@ -39,6 +39,7 @@ impl<T: DeviceRef> GraphicsPipeline<T> {
         device_ref: &T,
         desc: &imp::GraphicsPipelineDescription<T>,
     ) -> core::Result<Self> {
+        let _ = (device_ref, desc);
         unimplemented!()
     }
 
@@ -116,10 +117,6 @@ impl<T: DeviceRef> ComputePipeline<T> {
         Ok(ComputePipeline {
             data: RefEqArc::new(ComputePipelineData { device_ref, handle }),
         })
-    }
-
-    pub(crate) fn device_ref(&self) -> &T {
-        &self.data.device_ref
     }
 
     pub fn handle(&self) -> vk::Pipeline {

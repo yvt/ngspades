@@ -33,8 +33,9 @@
 //!    TODO: ... which is not supported because `ash` does not have a wrapper for it yet
 //!
 //! [`InstanceBuilder`]: struct.InstanceBuilder.html
-//! [`enable_validation`]: struct.InstanceBuilder.html#tymethod.enable_validation
-//! [`enable_debug_report`]: struct.InstanceBuilder.html#tymethod.enable_debug_report
+//! [`enable_validation`]: struct.InstanceBuilder.html#method.enable_validation
+//! [`enable_debug_report`]: struct.InstanceBuilder.html#method.enable_debug_report
+//! [`enable_debug_marker`]: struct.InstanceBuilder.html#method.enable_debug_marker
 //!
 //! Performance Notes
 //! -----------------

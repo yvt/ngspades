@@ -127,7 +127,7 @@ impl<T: DeviceRef> core::MappableHeap for UniversalHeap<T> {
     type Allocation = UniversalHeapAllocation<T>;
     type MappingInfo = UniversalHeapMappingInfo;
 
-    fn make_aliasable(&mut self, allocation: &mut Self::Allocation) {
+    fn make_aliasable(&mut self, _: &mut Self::Allocation) {
         // No-op; unsupported on universal heap
     }
 
@@ -172,7 +172,7 @@ impl<T: DeviceRef> core::MappableHeap for UniversalHeap<T> {
             }
         };
 
-        let ptr = unsafe { device.map_memory(buffer, offset, size, vk::MemoryMapFlags::empty()) }
+        let ptr = device.map_memory(buffer, offset, size, vk::MemoryMapFlags::empty())
             .map_err(translate_map_memory_error_unwrap)?;
 
         Ok((
@@ -184,7 +184,7 @@ impl<T: DeviceRef> core::MappableHeap for UniversalHeap<T> {
 }
 
 impl<T: DeviceRef> core::Marker for UniversalHeap<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

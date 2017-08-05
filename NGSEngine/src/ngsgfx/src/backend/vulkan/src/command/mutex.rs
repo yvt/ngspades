@@ -7,19 +7,16 @@
 //! host write accesses to them which are still in use.
 //! Moreover, retains a reference to them and prevents them from being
 //! destroyed as long as they are still in use.
-use ash::vk;
-use ash::version::DeviceV1_0;
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
-use std::{mem, fmt, marker, ops, ptr};
+use std::{mem, fmt, ptr};
 use std::sync::atomic::Ordering;
 use parking_lot::Mutex;
 
-use ngsgfx_common::barc::{BArc, BArcBox, BWeak};
+use ngsgfx_common::barc::{BArc, BArcBox};
 use ngsgfx_common::atom2::AtomicArc;
 
-use super::tokenlock::{TokenLock, Token};
-use {RefEqArc, DeviceRef, AshDevice};
+use RefEqArc;
 
 /// Manages resources that are still in use by the device.
 ///
@@ -124,6 +121,7 @@ derive_using_field! {
 }
 
 impl<F: ResourceFence, T> ResourceMutexData<F, T> {
+    #[allow(dead_code)]
     fn data(&self) -> &T {
         self.data.as_ref().unwrap()
     }
@@ -200,13 +198,16 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
     }
 
     /// Deny further host write accesses.
+    #[allow(dead_code)]
     pub fn make_immutable(&mut self) {
+        // marked as `#[allow(dead_code)]` because it might be used by descriptor sets in the future
         self.1 = None;
     }
 
     /// Acquire a host read accessibility to the inner value and return it.
     ///
     /// This always succeeds.
+    #[allow(dead_code)]
     pub fn get_host_read(&self) -> &T {
         match self.0 {
             ResourceMutexState::Owned(ref data) => data.data(),
@@ -239,7 +240,7 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
     /// this method might return `None` immediately if this resource is not
     /// associated to any fences yet.
     pub fn try_lock_host_write(&mut self, wait: bool) -> Option<&mut T> {
-        let data_box = match self.0 {
+        match self.0 {
             ResourceMutexState::Owned(ref mut data) => {
                 return Some(data.data_mut());
             }

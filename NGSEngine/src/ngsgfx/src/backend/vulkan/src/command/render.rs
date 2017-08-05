@@ -30,23 +30,23 @@ impl<'a> GraphicsEncoder<'a> {
             )
         };
     }
-    fn set_blend_constants(&self, value: &[f32; 4]) {
+    fn set_blend_constants(&self, _: &[f32; 4]) {
         // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
         unimplemented!()
     }
-    fn set_depth_bias(&self, value: Option<core::DepthBias>) {
+    fn set_depth_bias(&self, _: Option<core::DepthBias>) {
         // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
         unimplemented!()
     }
-    fn set_depth_bounds(&self, value: Option<core::DepthBounds>) {
+    fn set_depth_bounds(&self, _: Option<core::DepthBounds>) {
         // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
         unimplemented!()
     }
-    fn set_stencil_state<T: DeviceRef>(&self, value: &StencilState<T>) {
+    fn set_stencil_state<T: DeviceRef>(&self, _: &StencilState<T>) {
         // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
         unimplemented!()
     }
-    fn set_stencil_reference(&self, values: [u32; 2]) {
+    fn set_stencil_reference(&self, _: [u32; 2]) {
         // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
         unimplemented!()
     }

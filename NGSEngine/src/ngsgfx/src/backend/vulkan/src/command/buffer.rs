@@ -110,7 +110,7 @@ impl<T: DeviceRef> CommandBuffer<T> {
             pool_set.0.push(pool);
         }
 
-        let mut data = CommandBufferData {
+        let data = CommandBufferData {
             device_ref: device_ref.clone(),
             device_config: device_config.clone(),
             pools: ResourceMutex::new(pool_set, true),
@@ -160,7 +160,7 @@ impl<T: DeviceRef> core::CommandBuffer<Backend<T>> for CommandBuffer<T> {
 }
 
 impl<T: DeviceRef> core::Marker for CommandBuffer<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

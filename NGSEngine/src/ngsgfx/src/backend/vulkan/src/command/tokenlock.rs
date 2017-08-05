@@ -62,11 +62,13 @@ impl<T> TokenLock<T> {
 
 impl<T: ?Sized> TokenLock<T> {
     #[inline]
+    #[allow(dead_code)]
     pub fn get_mut(&mut self) -> &mut T {
         unsafe { mem::transmute(self.data.get()) }
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn read<'a: 'b, 'b>(&'a self, token: &'b Token) -> Option<&'b T> {
         if token.0 == self.keyhole {
             Some(unsafe { mem::transmute(self.data.get()) })

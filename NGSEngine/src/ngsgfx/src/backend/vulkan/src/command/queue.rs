@@ -18,7 +18,7 @@ use utils::{translate_pipeline_stage_flags, translate_access_type_flags};
 use super::encoder::EncoderState;
 use super::tokenlock::{Token, TokenRef};
 use super::queuesched::QueueScheduler;
-use super::event::{CommandDependencyTable, LlFence, LlFenceFactory};
+use super::event::{CommandDependencyTable, LlFence};
 use super::fence::{FenceQueueData, FenceWaitState};
 
 pub struct CommandQueue<T: DeviceRef> {
@@ -122,7 +122,9 @@ impl<T: DeviceRef> Drop for CommandSender<T> {
     fn drop(&mut self) {
         if self.panicking {
             let device: &AshDevice = self.device_ref.device();
-            device.device_wait_idle();
+
+            // Ignore errors since we really can't do anything with that
+            let _ = device.device_wait_idle();
         }
     }
 }
@@ -298,7 +300,7 @@ impl<T: DeviceRef> CommandSender<T> {
                                 flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
                                 p_inheritance_info: ptr::null(),
                             },
-                        );
+                        ).map_err(translate_generic_error_unwrap)?;
                         device.cmd_pipeline_barrier(
                             cb,
                             translate_pipeline_stage_flags(intra_stage_src),
@@ -315,7 +317,8 @@ impl<T: DeviceRef> CommandSender<T> {
                             &[],
                             &[],
                         );
-                        device.end_command_buffer(cb);
+                        device.end_command_buffer(cb)
+                            .map_err(translate_generic_error_unwrap)?;
                     }
 
                     s.cbs[iq].push(cb);
@@ -348,7 +351,7 @@ impl<T: DeviceRef> CommandSender<T> {
                 let wait_sem_range = sem_start..s.sems[iq].len();
 
                 // Assemble the list of semaphores to signal
-                let mut sem_start = s.sems[iq].len();
+                let sem_start = s.sems[iq].len();
                 for fence in pass.update_fences.iter() {
                     let fqd: &mut FenceQueueData<_> =
                         fence.0.queue_data_write(&mut excl_data.token);
@@ -365,7 +368,6 @@ impl<T: DeviceRef> CommandSender<T> {
                             }
                             &mut PipelineBarrier { .. } |
                             &mut Ready => {}
-                            _ => unreachable!(),
                         }
 
                         if to_iq == iq {
@@ -580,7 +582,8 @@ impl<T: DeviceRef> core::CommandQueue<Backend<T>> for CommandQueue<T> {
     }
 
     fn wait_idle(&self) {
-        self.device_ref().device().device_wait_idle();
+        // Ignore errors
+        let _ = self.device_ref().device().device_wait_idle();
         // FIXME: make sure or wait until all active references to `ResourceMutexDeviceRef`s are destroyed
     }
 
@@ -598,7 +601,7 @@ impl<T: DeviceRef> core::CommandQueue<Backend<T>> for CommandQueue<T> {
 }
 
 impl<T: DeviceRef> core::Marker for CommandQueue<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

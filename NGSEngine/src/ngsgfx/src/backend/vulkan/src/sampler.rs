@@ -74,10 +74,6 @@ impl<T: DeviceRef> Sampler<T> {
         })
     }
 
-    pub(crate) fn device_ref(&self) -> &T {
-        &self.data.device_ref
-    }
-
     pub fn handle(&self) -> vk::Sampler {
         self.data.handle
     }
@@ -129,7 +125,7 @@ impl<T: DeviceRef> Drop for SamplerData<T> {
 impl<T: DeviceRef> core::Sampler for Sampler<T> {}
 
 impl<T: DeviceRef> core::Marker for Sampler<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

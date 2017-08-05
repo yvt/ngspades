@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::{ptr, fmt};
 use core;
 
-use {InstanceRef, AshInstance, translate_generic_error_unwrap};
+use {InstanceRef, translate_generic_error_unwrap};
 
 /// Wraps the interface to the `VK_EXT_debug_report` instance extension.
 pub struct DebugReportConduit<T: InstanceRef> {

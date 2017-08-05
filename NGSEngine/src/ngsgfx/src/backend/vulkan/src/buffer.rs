@@ -122,7 +122,7 @@ pub(crate) struct BufferLockData<T: DeviceRef> {
 impl<T: DeviceRef> core::Buffer for Buffer<T> {}
 
 impl<T: DeviceRef> core::Marker for Buffer<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

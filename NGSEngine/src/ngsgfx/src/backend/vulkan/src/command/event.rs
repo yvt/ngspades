@@ -11,7 +11,7 @@ use std::time::Duration;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::{ptr, mem};
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
 use imp::{DescriptorSetLockData, DescriptorSet, BufferLockData, Buffer};
@@ -23,7 +23,8 @@ use super::fence::FenceLockData;
 /// Low-level fence. Implements `ResourceFence`.
 #[derive(Debug)]
 pub(crate) struct LlFence<T: DeviceRef> {
-    data: Mutex<LlFenceData<T>>,
+    /// uses `Option` to implement `Drop`
+    data: Option<Mutex<LlFenceData<T>>>,
     recycler: Arc<Recycler<LlFenceData<T>>>,
 
     /// Copy of `LlFenceData::fences`. Do not destroy!
@@ -42,7 +43,7 @@ impl<T: DeviceRef> LlFenceFactory<T> {
         let data = LlFenceData::new(self.1.clone(), num_fences, signaled)?;
         Ok(LlFence {
             fences: data.fences.clone(),
-            data: Mutex::new(data),
+            data: Some(Mutex::new(data)),
             recycler: self.0.clone(),
         })
     }
@@ -72,7 +73,10 @@ pub(super) struct LlFenceDepInjector<'a, T: DeviceRef>(&'a mut LlFenceData<T>, &
 
 impl<T: DeviceRef> ResourceFence for LlFence<T> {
     fn check_fence(&self, wait: bool) {
-        self.data.lock().check_fence(wait, Some(self))
+        self.data.as_ref().unwrap().lock().check_fence(
+            wait,
+            Some(self),
+        )
     }
 }
 
@@ -81,7 +85,7 @@ impl<T: DeviceRef> LlFence<T> {
     where
         F: FnOnce(LlFenceDepInjector<T>),
     {
-        let mut data = this.data.lock();
+        let mut data = this.data.as_ref().unwrap().lock();
 
         assert_eq!(data.state, LlFenceState::Initial);
 
@@ -89,7 +93,7 @@ impl<T: DeviceRef> LlFence<T> {
     }
 
     pub fn mark_submitted(&self) {
-        let mut data = self.data.lock();
+        let mut data = self.data.as_ref().unwrap().lock();
         assert_eq!(data.state, LlFenceState::Initial);
         data.state = LlFenceState::Unsignaled;
     }
@@ -104,7 +108,7 @@ impl<T: DeviceRef> LlFence<T> {
     }
 
     fn reset(&self) -> core::Result<()> {
-        let mut data = self.data.lock();
+        let mut data = self.data.as_ref().unwrap().lock();
         match data.state {
             LlFenceState::Unsignaled => {
                 data.check_fence(false, Some(self));
@@ -129,6 +133,16 @@ impl<T: DeviceRef> LlFence<T> {
         }
         data.state = LlFenceState::Initial;
         Ok(())
+    }
+}
+
+impl<T: DeviceRef> Drop for LlFence<T> {
+    fn drop(&mut self) {
+        let data = self.data.take().unwrap().into_inner();
+        if data.state == LlFenceState::Unsignaled {
+            // Wait for the completion in a background thread
+            self.recycler.recycle(data);
+        }
     }
 }
 
@@ -273,6 +287,7 @@ impl<T: DeviceRef> CommandDependencyTable<T> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.descriptor_sets.clear();
         self.buffers.clear();
@@ -337,7 +352,7 @@ impl<T: DeviceRef> core::Event for Event<T> {
 }
 
 impl<T: DeviceRef> core::Marker for Event<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

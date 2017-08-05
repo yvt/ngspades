@@ -69,6 +69,7 @@ pub trait DeviceRefFromRaw: DeviceRef + Sized {
 /// Destroys the contained `AshInstance` automatically when dropped.
 struct UniqueInstance(AshInstance);
 impl UniqueInstance {
+    #[allow(dead_code)]
     fn take(this: Self) -> AshInstance {
         let ret = this.0.clone();
         mem::forget(this);

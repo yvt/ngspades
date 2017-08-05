@@ -161,7 +161,7 @@ struct ImageData<T: DeviceRef> {
 impl<T: DeviceRef> core::Image for Image<T> {}
 
 impl<T: DeviceRef> core::Marker for Image<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }
@@ -197,7 +197,7 @@ struct ImageViewData<T: DeviceRef> {
 impl<T: DeviceRef> core::ImageView for ImageView<T> {}
 
 impl<T: DeviceRef> core::Marker for ImageView<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

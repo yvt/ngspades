@@ -9,7 +9,7 @@ use ash::version::DeviceV1_0;
 use ash::vk;
 use std::ptr;
 
-use {RefEqArc, DeviceRef, Backend, AshDevice};
+use {RefEqArc, DeviceRef, AshDevice};
 
 pub struct RenderPass<T: DeviceRef> {
     data: RefEqArc<RenderPassData<T>>,
@@ -35,7 +35,7 @@ impl<T: DeviceRef> Drop for RenderPassData<T> {
 impl<T: DeviceRef> core::RenderPass for RenderPass<T> {}
 
 impl<T: DeviceRef> core::Marker for RenderPass<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }
@@ -74,7 +74,7 @@ impl<T: DeviceRef> Drop for FramebufferData<T> {
 impl<T: DeviceRef> core::Framebuffer for Framebuffer<T> {}
 
 impl<T: DeviceRef> core::Marker for Framebuffer<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }

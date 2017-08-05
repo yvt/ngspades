@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 use ngsgfx_common::suballoc::{TlsfSuballoc, TlsfSuballocRegion};
-use std::hash;
 
 #[derive(Debug)]
 pub struct Suballocator(TlsfSuballoc<u64>);

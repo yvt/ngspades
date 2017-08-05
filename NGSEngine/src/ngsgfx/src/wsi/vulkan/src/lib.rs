@@ -272,6 +272,8 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
         }.expect("swapchain creation failed"); // TODO: handle this error
         // TODO: handle resize
 
+        let _ = swapchain; // TODO: implement and use NgsGFX standard WSI interface
+
         Ok(VulkanWindow {
             window: winit_window,
             device: Arc::new(device),

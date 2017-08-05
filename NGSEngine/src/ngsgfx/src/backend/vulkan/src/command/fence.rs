@@ -8,7 +8,6 @@ use core;
 use std::ptr;
 use ash::vk;
 use ash::version::DeviceV1_0;
-use std::time::Duration;
 use ngsgfx_common::int::BinaryInteger;
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
@@ -39,7 +38,7 @@ struct FenceData<T: DeviceRef> {
 impl<T: DeviceRef> core::Fence for Fence<T> {}
 
 impl<T: DeviceRef> core::Marker for Fence<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }
@@ -162,7 +161,7 @@ impl<T: DeviceRef> Fence<T> {
             wait_states,
             mutex: ResourceMutex::new(l_data, false),
         };
-        let mut data = FenceData {
+        let data = FenceData {
             device_ref: queue.device_ref().clone(),
             semaphores,
             q_data: TokenLock::new(queue.token_ref().clone(), q_data),
@@ -177,6 +176,7 @@ impl<T: DeviceRef> Fence<T> {
         queue: &imp::CommandQueue<T>,
         desc: &core::FenceDescription,
     ) -> core::Result<Self> {
+        let _ = (queue, desc);
         unimplemented!()
     }
 

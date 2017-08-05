@@ -5,7 +5,7 @@
 //
 use core;
 use parking_lot::Mutex;
-use std::{mem, ptr};
+use std::ptr;
 use ash::vk;
 use ash::version::DeviceV1_0;
 use smallvec::SmallVec;
@@ -33,7 +33,7 @@ struct DescriptorSetLayoutData<T: DeviceRef> {
 impl<T: DeviceRef> core::DescriptorSetLayout for DescriptorSetLayout<T> {}
 
 impl<T: DeviceRef> core::Marker for DescriptorSetLayout<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }
@@ -72,7 +72,7 @@ impl<T: DeviceRef> DescriptorSetLayout<T> {
             }
         }
 
-        let mut vk_imm_samplers: Vec<_> = imm_samplers.iter().map(|s| s.handle()).collect();
+        let vk_imm_samplers: Vec<_> = imm_samplers.iter().map(|s| s.handle()).collect();
         for (vk_binding, imm_sampler_i) in vk_bindings.iter_mut().zip(imm_sampler_is.iter()) {
             if let &Some(ref imm_sampler_i) = imm_sampler_i {
                 vk_binding.p_immutable_samplers = &vk_imm_samplers[imm_sampler_i.start];
@@ -126,7 +126,7 @@ struct PipelineLayoutData<T: DeviceRef> {
 impl<T: DeviceRef> core::PipelineLayout for PipelineLayout<T> {}
 
 impl<T: DeviceRef> core::Marker for PipelineLayout<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }
@@ -174,10 +174,6 @@ impl<T: DeviceRef> PipelineLayout<T> {
         Ok(Self {
             data: RefEqArc::new(PipelineLayoutData { device_ref, handle }),
         })
-    }
-
-    pub(crate) fn device_ref(&self) -> &T {
-        &self.data.device_ref
     }
 
     pub fn handle(&self) -> vk::PipelineLayout {
@@ -275,7 +271,7 @@ impl<T: DeviceRef> DescriptorPool<T> {
 }
 
 impl<T: DeviceRef> core::Marker for DescriptorPool<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }
@@ -314,7 +310,7 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
     fn update(&self, writes: &[core::WriteDescriptorSet<Backend<T>>]) {
         // TODO: add references to the objects
         let mut locked = self.data.mutex.lock();
-        let mut lock_data = locked.lock_host_write();
+        let lock_data = locked.lock_host_write();
         let device: &AshDevice = lock_data.pool.data.device_ref.device();
         let mut image_infos: SmallVec<[_; 32]> = SmallVec::new();
         let mut buffer_infos: SmallVec<[_; 32]> = SmallVec::new();
@@ -394,6 +390,7 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
     }
 
     fn copy_from(&self, copies: &[core::CopyDescriptorSet<Self>]) {
+        let _ = copies;
         // let mut locked = self.data.mutex.lock().unwrap();
         // let mut lock_data = locked.lock_host_write();
         // let device: &AshDevice = lock_data.pool.data.device_ref.device();
@@ -402,7 +399,7 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
 }
 
 impl<T: DeviceRef> core::Marker for DescriptorSet<T> {
-    fn set_label(&self, label: Option<&str>) {
+    fn set_label(&self, _: Option<&str>) {
         // TODO: set_label
     }
 }
