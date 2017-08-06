@@ -396,6 +396,10 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
         // let device: &AshDevice = lock_data.pool.data.device_ref.device();
         unimplemented!()
     }
+
+    fn make_immutable(&self) {
+        self.data.mutex.lock().make_immutable();
+    }
 }
 
 impl<T: DeviceRef> core::Marker for DescriptorSet<T> {

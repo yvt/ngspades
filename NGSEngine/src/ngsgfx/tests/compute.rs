@@ -536,6 +536,7 @@ impl BackendDispatch for Conv1Test {
                 },
             ],
         );
+        desc_set.make_immutable();
 
         let pipeline = factory.make_compute_pipeline(&pipeline_desc).unwrap();
 

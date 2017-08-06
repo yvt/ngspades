@@ -204,7 +204,6 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
     /// Deny further host write accesses.
     #[allow(dead_code)]
     pub fn make_immutable(&mut self) {
-        // marked as `#[allow(dead_code)]` because it might be used by descriptor sets in the future
         self.1 = None;
 
         match self.0 {

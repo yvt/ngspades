@@ -52,6 +52,12 @@
 //! for it. Updating such fences will be penalized because that `vk::Semaphore`
 //! must be waited first before signalling it again.
 //!
+//! ### Other Hints
+//!
+//!  - Mark descriptor sets as immutable by calling `DescriptorSet::make_immutable`
+//!    if they will never be modified in the future. Doing so will reduce the
+//!    lifetime tracking overhead.
+//!
 #![feature(optin_builtin_traits)]
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_common;

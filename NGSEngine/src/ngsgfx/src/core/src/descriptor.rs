@@ -56,6 +56,22 @@ pub trait DescriptorSet<B: Backend>
 
     /// Copies one or more descriptors to this descriptor set.
     fn copy_from(&self, copies: &[CopyDescriptorSet<Self>]);
+
+    /// Make this descriptor set immutable.
+    ///
+    /// Some backends can have a lower performance overhead when descriptor sets
+    /// are marked as immutable.
+    ///
+    /// Further updates (by calling `update` or `copy_from`) on the same
+    /// descriptor set can result in any of the following possible outcomes:
+    ///
+    ///  - Succeesful update.
+    ///  - No operation.
+    ///  - Application hang.
+    ///  - Panic.
+    ///
+    /// By default, this method does nothing.
+    fn make_immutable(&self) {}
 }
 
 #[derive(Debug, Clone, Copy)]
