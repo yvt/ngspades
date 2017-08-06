@@ -379,13 +379,13 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
     /// `lock_device` that only requires an immutable reference to `Self`.
     ///
     /// This might panic when called on a mutable resource because it cannot
-    /// provoke the host write accessibility. For this reason, this must be used
+    /// revoke the host write accessibility. For this reason, this must be used
     /// only with immutable resources (specified at the creation time, or by
     /// calling `make_immutable`).
     pub fn expect_device_access(&self) -> (ResourceMutexDeviceRef<F, T>, &T) {
         match self.0 {
             ResourceMutexState::Owned(_) => {
-                panic!("cannot provoke host write accessibility");
+                panic!("cannot revoke host write accessibility");
             }
             ResourceMutexState::Limbo(ref data_ref) => {
                 (
