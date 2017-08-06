@@ -151,7 +151,7 @@ impl wsi_core::Swapchain for Swapchain {
             extents: Vector3::new(size.width as u32, size.height as u32, 1),
             num_array_layers: 1,
             format: backend_metal::imp::translate_metal_pixel_format(self.layer.pixel_format()),
-            crolospace: self.color_space
+            colorspace: self.color_space
         }
     }
 }
@@ -281,7 +281,7 @@ impl wsi_core::Window for MetalWindow {
         &self.swapchain
     }
 
-    fn update_swapchain(&self) {
+    fn update_swapchain(&mut self) {
         self.swapchain.resize();
     }
 }

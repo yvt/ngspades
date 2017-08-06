@@ -79,7 +79,7 @@ pub fn translate_image_format(format: ImageFormat) -> Option<MTLPixelFormat> {
 
 pub fn translate_metal_pixel_format(value: MTLPixelFormat) -> ImageFormat {
     match value {
-        MTLPixelFormat::BGRA8Unorm => ImageFormat::Bgra8(Unsigned, Unnormalized),
+        MTLPixelFormat::BGRA8Unorm => ImageFormat::Bgra8(Unsigned, Normalized),
         MTLPixelFormat::BGRA8Unorm_sRGB => ImageFormat::SrgbBgra8,
         MTLPixelFormat::RGBA16Float => ImageFormat::RgbaFloat16,
         _ => unimplemented!(),
