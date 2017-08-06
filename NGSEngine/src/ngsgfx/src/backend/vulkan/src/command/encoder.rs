@@ -315,6 +315,10 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
             return;
         }
 
+        self.dependency_table().unwrap().insert_framebuffer(
+            framebuffer,
+        );
+
         if let Err(err) = self.begin_pass_internal(engine) {
             self.data.encoder_state = EncoderState::Error(err);
             return;

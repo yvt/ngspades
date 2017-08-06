@@ -188,7 +188,11 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
             device_ref: AtomicArc::new(Some(Weak::new())),
         };
         ResourceMutex(
-            ResourceMutexState::Owned(BArcBox::new(data)),
+            if mutable {
+                ResourceMutexState::Owned(BArcBox::new(data))
+            } else {
+                ResourceMutexState::Limbo(BArc::new(data))
+            },
             if mutable {
                 Some(Arc::new(FenceAccessor::new()))
             } else {
@@ -202,6 +206,25 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
     pub fn make_immutable(&mut self) {
         // marked as `#[allow(dead_code)]` because it might be used by descriptor sets in the future
         self.1 = None;
+
+        match self.0 {
+            ResourceMutexState::Owned(_) => {
+                // We can't take the data in this `match` block
+                // So first we need to leave from it
+            }
+            ResourceMutexState::Limbo(_) => {
+                return;
+            }
+            ResourceMutexState::Invalid => unreachable!(),
+        }
+
+        // Take value
+        let data_box = match mem::replace(&mut self.0, ResourceMutexState::Invalid) {
+            ResourceMutexState::Owned(data_box) => data_box,
+            _ => unreachable!(),
+        };
+        let data_arc = BArcBox::into_arc(data_box);
+        self.0 = ResourceMutexState::Limbo(data_arc);
     }
 
     /// Acquire a host read accessibility to the inner value and return it.
@@ -351,5 +374,33 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
                 Weak::new()
             },
         )
+    }
+
+    /// `lock_device` that only requires an immutable reference to `Self`.
+    ///
+    /// This might panic when called on a mutable resource because it cannot
+    /// provoke the host write accessibility. For this reason, this must be used
+    /// only with immutable resources (specified at the creation time, or by
+    /// calling `make_immutable`).
+    pub fn expect_device_access(&self) -> (ResourceMutexDeviceRef<F, T>, &T) {
+        match self.0 {
+            ResourceMutexState::Owned(_) => {
+                panic!("cannot provoke host write accessibility");
+            }
+            ResourceMutexState::Limbo(ref data_ref) => {
+                (
+                    ResourceMutexDeviceRef(
+                        AtomicArc::new(Some(Clone::clone(data_ref))),
+                        if let Some(ref fa) = self.1 {
+                            Arc::downgrade(fa)
+                        } else {
+                            Weak::new()
+                        },
+                    ),
+                    data_ref.data(),
+                )
+            }
+            ResourceMutexState::Invalid => unreachable!(),
+        }
     }
 }

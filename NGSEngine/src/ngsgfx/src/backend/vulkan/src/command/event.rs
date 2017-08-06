@@ -14,7 +14,8 @@ use std::{ptr, mem};
 use parking_lot::Mutex;
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
-use imp::{DescriptorSetLockData, DescriptorSet, BufferLockData, Buffer};
+use imp::{DescriptorSetLockData, DescriptorSet, BufferLockData, Buffer, Framebuffer,
+          FramebufferLockData};
 use super::mutex::{ResourceFence, ResourceFenceDependencyTable, ResourceMutexDeviceRef};
 use super::recycler::Recycler;
 use super::buffer::CommandBufferPoolSet;
@@ -59,6 +60,7 @@ struct LlFenceData<T: DeviceRef> {
     buffers: ResourceFenceDependencyTable<LlFence<T>, BufferLockData<T>>,
     cbp_sets: ResourceFenceDependencyTable<LlFence<T>, CommandBufferPoolSet<T>>,
     semaphores: ResourceFenceDependencyTable<LlFence<T>, FenceLockData<T>>,
+    framebuffers: ResourceFenceDependencyTable<LlFence<T>, FramebufferLockData<T>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -155,6 +157,9 @@ impl<'a, T: DeviceRef> LlFenceDepInjector<'a, T> {
         for (_, rmdr) in source.buffers.drain() {
             self.0.buffers.insert(self.1, rmdr);
         }
+        for (_, rmdr) in source.framebuffers.drain() {
+            self.0.framebuffers.insert(self.1, rmdr);
+        }
     }
 
     pub fn insert_cbp_set(
@@ -187,6 +192,7 @@ impl<T: DeviceRef> LlFenceData<T> {
             buffers: ResourceFenceDependencyTable::new(),
             cbp_sets: ResourceFenceDependencyTable::new(),
             semaphores: ResourceFenceDependencyTable::new(),
+            framebuffers: ResourceFenceDependencyTable::new(),
         };
 
         {
@@ -250,6 +256,7 @@ impl<T: DeviceRef> LlFenceData<T> {
         self.buffers.clear(fence);
         self.cbp_sets.clear(fence);
         self.semaphores.clear(fence);
+        self.framebuffers.clear(fence);
         self.state = LlFenceState::Signaled;
     }
 }
@@ -272,10 +279,11 @@ pub(crate) struct CommandDependencyTable<T: DeviceRef> {
     descriptor_sets:
         HashMap<DescriptorSet<T>, ResourceMutexDeviceRef<LlFence<T>, DescriptorSetLockData<T>>>,
     buffers: HashMap<Buffer<T>, ResourceMutexDeviceRef<LlFence<T>, BufferLockData<T>>>,
+    framebuffers:
+        HashMap<Framebuffer<T>, ResourceMutexDeviceRef<LlFence<T>, FramebufferLockData<T>>>,
     // TODO: graphics pipelines
     // TODO: compute pipelines
     // TODO: stencil states
-    // TODO: framebuffer
     // TODO: images
 }
 
@@ -284,6 +292,7 @@ impl<T: DeviceRef> CommandDependencyTable<T> {
         Self {
             descriptor_sets: Default::default(),
             buffers: Default::default(),
+            framebuffers: Default::default(),
         }
     }
 
@@ -291,6 +300,7 @@ impl<T: DeviceRef> CommandDependencyTable<T> {
     pub fn clear(&mut self) {
         self.descriptor_sets.clear();
         self.buffers.clear();
+        self.framebuffers.clear();
     }
 
     pub fn insert_descriptor_set(&mut self, obj: &DescriptorSet<T>) {
@@ -311,10 +321,20 @@ impl<T: DeviceRef> CommandDependencyTable<T> {
         self.buffers.insert(obj.clone(), device_ref);
     }
 
+    pub fn insert_framebuffer(&mut self, obj: &Framebuffer<T>) {
+        if self.framebuffers.contains_key(obj) {
+            return;
+        }
+
+        let device_ref = obj.lock_device();
+        self.framebuffers.insert(obj.clone(), device_ref);
+    }
+
     /// Move all dependencies from `source` to `self`.
     pub fn inherit(&mut self, source: &mut Self) {
         self.descriptor_sets.extend(source.descriptor_sets.drain());
         self.buffers.extend(source.buffers.drain());
+        self.framebuffers.extend(source.framebuffers.drain());
     }
 }
 

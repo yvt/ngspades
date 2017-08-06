@@ -13,6 +13,8 @@ use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
 use imp;
 use imp::{translate_image_format, translate_image_layout, translate_access_type_flags,
           translate_pipeline_stage_flags};
+use command::mutex::{ResourceMutex, ResourceMutexDeviceRef};
+use command::LlFence;
 
 pub struct RenderPass<T: DeviceRef> {
     data: RefEqArc<RenderPassData<T>>,
@@ -214,15 +216,24 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct FramebufferData<T: DeviceRef> {
+    clear_values: Vec<vk::ClearValue>,
+    extent: vk::Extent2D,
+    render_pass: RenderPass<T>,
+
+    /// Copy of `FramebufferLockData::handle` -- do not destroy!
+    handle: vk::Framebuffer,
+    mutex: ResourceMutex<LlFence<T>, FramebufferLockData<T>>,
+}
+
+#[derive(Debug)]
+pub(crate) struct FramebufferLockData<T: DeviceRef> {
     device_ref: T,
     handle: vk::Framebuffer,
-    clear_values: Vec<vk::ClearValue>,
     render_pass: RenderPass<T>,
-    extent: vk::Extent2D,
     ivs: Vec<imp::ImageView<T>>,
 }
 
-impl<T: DeviceRef> Drop for FramebufferData<T> {
+impl<T: DeviceRef> Drop for FramebufferLockData<T> {
     fn drop(&mut self) {
         let device: &AshDevice = self.device_ref.device();
         unsafe { device.destroy_framebuffer(self.handle, self.device_ref.allocation_callbacks()) };
@@ -285,9 +296,15 @@ impl<T: DeviceRef> Framebuffer<T> {
                 .map_err(translate_generic_error_unwrap)?;
         }
 
+        let fbld = FramebufferLockData {
+            device_ref,
+            handle,
+            ivs,
+            render_pass: desc.render_pass.clone(),
+        };
+
         Ok(Framebuffer {
             data: RefEqArc::new(FramebufferData {
-                device_ref,
                 handle,
                 clear_values,
                 render_pass: desc.render_pass.clone(),
@@ -295,7 +312,7 @@ impl<T: DeviceRef> Framebuffer<T> {
                     width: desc.width,
                     height: desc.height,
                 },
-                ivs,
+                mutex: ResourceMutex::new(fbld, false),
             }),
         })
     }
@@ -316,6 +333,10 @@ impl<T: DeviceRef> Framebuffer<T> {
             clear_value_count: self.data.clear_values.len() as u32,
             p_clear_values: self.data.clear_values.as_ptr(),
         }
+    }
+
+    pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, FramebufferLockData<T>> {
+        self.data.mutex.expect_device_access().0
     }
 
     pub fn handle(&self) -> vk::Framebuffer {
