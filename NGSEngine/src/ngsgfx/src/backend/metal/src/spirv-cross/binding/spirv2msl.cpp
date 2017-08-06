@@ -21,6 +21,10 @@ public:
     {
         try {
             compiler.reset(new CompilerMSL{ spirv, static_cast<size_t>(spirv_count) });
+
+            CompilerMSL::Options options;
+            options.flip_vert_y = true;
+            compiler->set_options(options);
         } catch (const std::exception &ex) {
             last_error = ex.what();
         }
