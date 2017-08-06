@@ -81,6 +81,10 @@ pub struct ShaderStageDescription<'a, TShaderModule: ShaderModule> {
 pub struct GraphicsPipelineRasterizerDescription<'a> {
     // viewport/scissor
     pub viewport: StaticOrDynamic<Viewport>,
+
+    /// Scissor rect.
+    ///
+    /// All coordinate values must lie in the range `[0, i32::max_value()]`.
     pub scissor_rect: StaticOrDynamic<Rect2D<u32>>,
 
     // rasterization state
@@ -121,7 +125,7 @@ impl<'a> ::std::default::Default for GraphicsPipelineRasterizerDescription<'a> {
             viewport: StaticOrDynamic::Dynamic,
             scissor_rect: StaticOrDynamic::Static(Rect2D::new(
                 Vector2::new(0, 0),
-                Vector2::new(u32::max_value(), u32::max_value()),
+                Vector2::new(i32::max_value() as u32, i32::max_value() as u32),
             )),
             cull_mode: CullMode::Back,
             front_face: Winding::CounterClockwise,

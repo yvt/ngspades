@@ -415,6 +415,8 @@ pub trait RenderSubpassCommandEncoder<B: Backend>
     /// The current `GraphicsPipeline` must have been created with rasterization
     /// enabled and `GraphicsPipelineRasterizerDescription::scissor_rect`
     /// set to `StaticOrDynamic::Dynamic`.
+    ///
+    /// All coordinate values must lie in the range `[0, i32::max_value()]`.
     fn set_scissor_rect(&mut self, value: &Rect2D<u32>);
 
     fn bind_graphics_descriptor_sets(
