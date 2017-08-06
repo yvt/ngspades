@@ -125,6 +125,12 @@ pub mod imp {
         GraphicsPipeline<T>,
     >;
 
+    pub type FramebufferDescription<'a, T> = core::FramebufferDescription<
+        'a,
+        RenderPass<T>,
+        ImageView<T>,
+    >;
+
     pub struct ManagedEnvironment;
     impl core::Environment for ManagedEnvironment {
         type Backend = ManagedBackend;

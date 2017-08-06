@@ -21,14 +21,14 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
         description: &core::RenderPassDescription,
     ) -> core::Result<RenderPass<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // Ok(RenderPass::new(description))
+        RenderPass::new(self.device_ref(), description)
     }
     fn make_framebuffer(
         &self,
         description: &core::FramebufferDescription<RenderPass<T>, ImageView<T>>,
     ) -> core::Result<Framebuffer<T>> {
         description.debug_expect_valid(Some(self.capabilities()), "");
-        unimplemented!() // Ok(Framebuffer::new(description))
+        Framebuffer::new(description)
     }
 
     fn make_specialized_heap(

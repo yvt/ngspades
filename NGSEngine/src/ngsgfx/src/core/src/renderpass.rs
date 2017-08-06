@@ -93,7 +93,6 @@ pub struct RenderSubpassDependency {
     pub destination_stage_mask: PipelineStageFlags,
     pub source_access_mask: AccessTypeFlags,
     pub destination_access_mask: AccessTypeFlags,
-    pub by_region: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

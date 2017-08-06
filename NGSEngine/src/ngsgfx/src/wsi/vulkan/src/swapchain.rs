@@ -223,8 +223,8 @@ impl wsi_core::Swapchain for Swapchain {
         );
 
         assert!(
-            !iqs.is_power_of_two(),
-            "unsuppported: acquiring fence cannot be waited by multiple or zero internal queues"
+            iqs.is_power_of_two(),
+            "unsuppported: acquiring fence cannot be waited by multiple or zero internal queues {}"
         );
 
 

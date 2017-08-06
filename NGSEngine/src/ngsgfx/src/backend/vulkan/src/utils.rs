@@ -198,6 +198,14 @@ pub(crate) fn translate_pipeline_stage_flags(value: core::PipelineStageFlags) ->
     ret
 }
 
+pub(crate) fn translate_shader_stage(value: core::ShaderStage) -> vk::ShaderStageFlags {
+    match value {
+        core::ShaderStage::Vertex => vk::SHADER_STAGE_VERTEX_BIT,
+        core::ShaderStage::Fragment => vk::SHADER_STAGE_FRAGMENT_BIT,
+        core::ShaderStage::Compute => vk::SHADER_STAGE_COMPUTE_BIT,
+    }
+}
+
 pub(crate) fn translate_shader_stage_flags(value: core::ShaderStageFlags) -> vk::ShaderStageFlags {
     let mut ret = vk::ShaderStageFlags::empty();
     if value.contains(core::ShaderStage::Vertex) {
@@ -210,4 +218,17 @@ pub(crate) fn translate_shader_stage_flags(value: core::ShaderStageFlags) -> vk:
         ret |= vk::SHADER_STAGE_COMPUTE_BIT;
     }
     ret
+}
+
+pub(crate) fn translate_rect2d_u32(value: &core::Rect2D<u32>) -> vk::Rect2D {
+    vk::Rect2D {
+        offset: vk::Offset2D {
+            x: value.min.x as i32,
+            y: value.min.y as i32,
+        },
+        extent: vk::Extent2D {
+            width: value.max.x.saturating_sub(value.min.x),
+            height: value.max.y.saturating_sub(value.min.y),
+        },
+    }
 }
