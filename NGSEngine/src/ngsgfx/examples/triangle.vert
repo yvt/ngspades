@@ -3,7 +3,7 @@
 layout(location = 0) in vec3 input_position;
 layout(location = 1) in vec3 input_color;
 
-layout(location = 0) out vec4 output_color;
+layout(location = 0) out mediump vec4 output_color;
 
 void main()
 {

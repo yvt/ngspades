@@ -53,10 +53,10 @@ struct RendererView<B: Backend> {
 }
 
 impl<B: Backend> Renderer<B> {
-    fn new(device: Arc<B::Device>) -> Self {
+    fn new(device: Arc<B::Device>, drawable_format: core::ImageFormat) -> Self {
         let mut heap = device.factory().make_universal_heap().unwrap();
         let vertex_buffer = Self::make_vertex_buffer(&device, &mut heap);
-        let render_pass = Self::make_render_pass(&device);
+        let render_pass = Self::make_render_pass(&device, drawable_format);
         let pipeline = Self::make_pipeline(&device, &render_pass);
         let command_buffer = device
             .main_queue()
@@ -78,14 +78,14 @@ impl<B: Backend> Renderer<B> {
         }
     }
 
-    fn make_render_pass(device: &B::Device) -> B::RenderPass {
+    fn make_render_pass(device: &B::Device, drawable_format: core::ImageFormat) -> B::RenderPass {
         let factory = device.factory();
 
         let desc = core::RenderPassDescription {
             attachments: &[
                 core::RenderPassAttachmentDescription {
                     may_alias: false,
-                    format: core::ImageFormat::SrgbBgra8,
+                    format: drawable_format,
                     load_op: core::AttachmentLoadOp::Clear,
                     store_op: core::AttachmentStoreOp::Store,
                     stencil_load_op: core::AttachmentLoadOp::DontCare,
@@ -382,7 +382,10 @@ fn create_renderer_view<W: Window>(
 impl<W: Window> App<W> {
     fn new(window: W) -> Self {
         let device = window.device().clone();
-        let renderer = Arc::new(Renderer::new(device));
+        let renderer = Arc::new(Renderer::new(
+            device,
+            window.swapchain().drawable_info().format,
+        ));
         Self {
             renderer_view: RefCell::new(None),
             renderer,
@@ -411,7 +414,8 @@ impl<W: Window> App<W> {
 
     fn update_view(&self) {
         self.window.borrow_mut().update_swapchain();
-        *self.renderer_view.borrow_mut() = Some(create_renderer_view(&self.renderer, &*self.window.borrow()));
+        *self.renderer_view.borrow_mut() =
+            Some(create_renderer_view(&self.renderer, &*self.window.borrow()));
     }
 
     fn update(&self) {
