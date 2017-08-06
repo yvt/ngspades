@@ -368,6 +368,10 @@ impl<B: Backend> RendererView<B> {
 
         Ok(())
     }
+
+    fn wait_completion(&self) {
+        let _ = self.renderer.command_buffer.borrow().wait_completion();
+    }
 }
 
 
@@ -417,9 +421,25 @@ impl<W: Window> App<W> {
             self.update();
             arp.drain();
         });
+
+        // We have to Wait for the completion because we have to ensure all uses of
+        // swapchain images are completed before destroying the swapchain.
+        DefaultBackend::autorelease_pool_scope(|_| {
+            self.renderer_view
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .wait_completion();
+        });
     }
 
     fn update_view(&self) {
+        // We have to Wait for the completion because we have to ensure all uses of
+        // swapchain images are completed before updating the swapchain.
+        if let Some(x) = self.renderer_view.borrow_mut().as_mut() {
+            x.wait_completion();
+        }
+
         self.window.borrow_mut().update_swapchain();
         *self.renderer_view.borrow_mut() =
             Some(create_renderer_view(&self.renderer, &*self.window.borrow()));
