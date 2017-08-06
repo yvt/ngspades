@@ -278,7 +278,7 @@ impl<'a, T: DeviceRef> FenceLockGuard<'a, T> {
     ///
     /// An example of the intended usage is shown below:
     ///
-    /// ```rust,no_run
+    /// ```text
     /// let mut queue_guard = queue.lock();
     /// let mut fence_guard = fence.lock(&mut queue_guard);
     /// let mut sems = Vec::new();
@@ -342,7 +342,7 @@ impl<'a, T: DeviceRef> FenceLockGuard<'a, T> {
     ///
     /// An example of the intended usage is shown below:
     ///
-    /// ```rust,no_run
+    /// ```text
     /// let mut queue_guard = queue.lock();
     /// let mut fence_guard = fence.lock(&mut queue_guard);
     /// let (sem, signaled) = fence_guard.get_external_semaphore(i);

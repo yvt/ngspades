@@ -424,14 +424,14 @@ impl<T: DeviceRef> CommandSender<T> {
         // Assemble `SubmitInfo`s. Try to merge as many consecutive command
         // buffers into one `SubmitInfo` as possible.
 
-        /// List of `SubmitInfo`s.
+        // List of `SubmitInfo`s.
         let mut infos = Vec::new();
 
-        /// List containing the starting index in `infos` and the internal queue
-        /// index for every batch group.
+        // List containing the starting index in `infos` and the internal queue
+        // index for every batch group.
         let mut info_is = Vec::new();
 
-        /// List containing the last index in `info_is` for every internal queue.
+        // List containing the last index in `info_is` for every internal queue.
         let mut last_info_is_i = [None; MAX_NUM_QUEUES];
 
         {
