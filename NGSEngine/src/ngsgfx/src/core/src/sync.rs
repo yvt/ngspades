@@ -13,8 +13,7 @@ use std::marker::Sized;
 
 use {Result, Validate, DeviceCapabilities, Marker, DeviceEngineFlags, DeviceEngine};
 
-/// Handle for the synchronization primitive used to synchronize between the
-/// render/compute/copy passes.
+/// Inter-pass synchronization primitive.
 pub trait Fence: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {}
 
 #[derive(Debug, Clone, Copy)]
@@ -30,7 +29,7 @@ pub struct FenceDescription {
     pub wait_engines: DeviceEngineFlags,
 }
 
-/// Handle for the synchronization primitive used to synchronize between the host and device.
+/// Host-device synchronization primitive.
 pub trait Event: Hash + Debug + Eq + PartialEq + Send + Sync + Any + Marker {
     fn reset(&self) -> Result<()>;
     fn wait(&self, timeout: Duration) -> Result<bool>;

@@ -5,7 +5,69 @@
 //
 //! Command queues and command buffers.
 //!
-//! TODO: provide a documentation on command passes and device engines
+//! Command Passes
+//! --------------
+//!
+//! Most commands only can be submitted during a command pass.
+//! There are three types of command passes:
+//!
+//!  - Render pass, only during which render commands defined in [`RenderSubpassCommandEncoder`]
+//!    can be encoded. A render pass can be started with [`begin_render_pass`].
+//!  - Compute pass, only during which compute commands defined in [`ComputeCommandEncoder`]
+//!    can be encoded. A compute pass can be started with [`begin_compute_pass`].
+//!  - Copy pass, only during which copy commands defined in [`CopyCommandEncoder`]
+//!    can be encoded. A copy pass can be started with [`begin_copy_pass`].
+//!
+//! After it was started, a command pass is said to be *active* until it is
+//! ended by a call to [`end_pass`]. Only one command pass can be active at
+//! the same time, so you must ensure to call `end_pass` before starting a new
+//! one.
+//!
+//! Furthermore, a render pass can contain one or more subpasses. During a
+//! render pass, [`begin_render_subpass`] and [`end_render_subpass`]
+//! must be called for every subpass specified in [`RenderPassDescription`]
+//! used to create the [`RenderPass`] associated with the specified
+//! [`Framebuffer`].
+//!
+//! [`RenderSubpassCommandEncoder`]: trait.RenderSubpassCommandEncoder.html
+//! [`ComputeCommandEncoder`]: trait.ComputeCommandEncoder.html
+//! [`CopyCommandEncoder`]: trait.CopyCommandEncoder.html
+//! [`begin_render_pass`]: #tymethod.begin_render_pass
+//! [`begin_compute_pass`]: #tymethod.begin_compute_pass
+//! [`begin_copy_pass`]: #tymethod.begin_copy_pass
+//! [`end_pass`]: #tymethod.end_pass
+//! [`begin_render_subpass`]: #tymethod.begin_render_subpass
+//! [`end_render_subpass`]: #tymethod.end_render_subpass
+//! [`RenderPassDescription`]: ../renderpass/struct.RenderPassDescription.html
+//! [`RenderPass`]: ../renderpass/trait.RenderPass.html
+//! [`Framebuffer`]: ../framebuffer/trait.Framebuffer.html
+//!
+//! Engine
+//! ------
+//!
+//! Device engines ([`DeviceEngine`]) represent different parts of the hardware
+//! that can process commands concurrently.
+//!
+//! Every pass is associated with one of device engine other than `Host`.
+//!
+//! Every subresource can be used by only one device engine at the same time.
+//! Also, you need to perform a *engine ownership transfer operation* before
+//! using a subresource in a engine other than the engine which was previously
+//! accessing the subresource. The engine ownership transfer operation can be
+//! performed by a call to [`release_resource`] in the source engine followed by
+//! another call to [`acquire_resource`] in the destination engine.
+//! You must make sure `acquire_resource` happens-after `release_resource` by
+//! using appropriate synchronization primitives (e.g., `Fence` or
+//! `CommandBuffer::wait_completion`).
+//! If the source or destination engine is `Host` then the corresponding call to
+//! `release_resource` or `acquire_resource` (respectively) is not required
+//! (in fact, it is impossible since there is no way to start a command pass with
+//! the `Host` engine).
+//!
+//! [`DeviceEngine`]: enum.DeviceEngine.html
+//! [`release_resource`]: #tymethod.release_resource
+//! [`acquire_resource`]: #tymethod.acquire_resource
+//!
 use std::fmt::Debug;
 use std::any::Any;
 use std::ops::Range;
@@ -18,6 +80,11 @@ use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Resu
 
 use cgmath::Vector3;
 
+/// Command queue that accepts and executes command buffers.
+///
+/// See the [module-level documentation] for more about command buffers.
+///
+/// [module-level documentation]: ../command/
 pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     fn make_command_buffer(&self) -> Result<B::CommandBuffer>;
     fn make_fence(&self, description: &FenceDescription) -> Result<B::Fence>;
@@ -46,10 +113,14 @@ pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
     fn wait_idle(&self);
 }
 
-/// Command buffer.
+/// Command buffer used to record commands to be subsequently submitted to
+/// `CommandQueue`.
 ///
 /// When dropping a `CommandBuffer`, it must not be in the `Pending` state.
-/// Also, it must not outlive the originating `CommandQueue`.
+///
+/// See the [module-level documentation] for more about command buffers.
+///
+/// [module-level documentation]: ../command/
 pub trait CommandBuffer<B: Backend>
     : Debug + Send + Any + CommandEncoder<B> + Marker {
     fn state(&self) -> CommandBufferState;
@@ -105,69 +176,9 @@ pub enum SubresourceWithLayout<'a, B: Backend> {
 
 /// Encodes commands into a command buffer.
 ///
-/// Command Passes
-/// --------------
+/// See the [module-level documentation] for more.
 ///
-/// Most commands only can be submitted during a command pass.
-/// There are three types of command passes:
-///
-///  - Render pass, only during which render commands defined in [`RenderSubpassCommandEncoder`]
-///    can be encoded. A render pass can be started with [`begin_render_pass`].
-///  - Compute pass, only during which compute commands defined in [`ComputeCommandEncoder`]
-///    can be encoded. A compute pass can be started with [`begin_compute_pass`].
-///  - Copy pass, only during which copy commands defined in [`CopyCommandEncoder`]
-///    can be encoded. A copy pass can be started with [`begin_copy_pass`].
-///
-/// After it was started, a command pass is said to be *active* until it is
-/// ended by a call to [`end_pass`]. Only one command pass can be active at
-/// the same time, so you must ensure to call `end_pass` before starting a new
-/// one.
-///
-/// Furthermore, a render pass can contain one or more subpasses. During a
-/// render pass, [`begin_render_subpass`] and [`end_render_subpass`]
-/// must be called for every subpass specified in [`RenderPassDescription`]
-/// used to create the [`RenderPass`] associated with the specified
-/// [`Framebuffer`].
-///
-/// [`RenderSubpassCommandEncoder`]: trait.RenderSubpassCommandEncoder.html
-/// [`ComputeCommandEncoder`]: trait.ComputeCommandEncoder.html
-/// [`CopyCommandEncoder`]: trait.CopyCommandEncoder.html
-/// [`begin_render_pass`]: #tymethod.begin_render_pass
-/// [`begin_compute_pass`]: #tymethod.begin_compute_pass
-/// [`begin_copy_pass`]: #tymethod.begin_copy_pass
-/// [`end_pass`]: #tymethod.end_pass
-/// [`begin_render_subpass`]: #tymethod.begin_render_subpass
-/// [`end_render_subpass`]: #tymethod.end_render_subpass
-/// [`RenderPassDescription`]: ../renderpass/struct.RenderPassDescription.html
-/// [`RenderPass`]: ../renderpass/trait.RenderPass.html
-/// [`Framebuffer`]: ../framebuffer/trait.Framebuffer.html
-///
-/// Engine
-/// ------
-///
-/// Device engines ([`DeviceEngine`]) represent different parts of the hardware
-/// that can process commands concurrently.
-///
-/// Every pass is associated with one of device engine other than `Host`.
-///
-/// Every subresource can be used by only one device engine at the same time.
-/// Also, you need to perform a *engine ownership transfer operation* before
-/// using a subresource in a engine other than the engine which was previously
-/// accessing the subresource. The engine ownership transfer operation can be
-/// performed by a call to [`release_resource`] in the source engine followed by
-/// another call to [`acquire_resource`] in the destination engine.
-/// You must make sure `acquire_resource` happens-after `release_resource` by
-/// using appropriate synchronization primitives (e.g., `Fence` or
-/// `CommandBuffer::wait_completion`).
-/// If the source or destination engine is `Host` then the corresponding call to
-/// `release_resource` or `acquire_resource` (respectively) is not required
-/// (in fact, it is impossible since there is no way to start a command pass with
-/// the `Host` engine).
-///
-/// [`DeviceEngine`]: enum.DeviceEngine.html
-/// [`release_resource`]: #tymethod.release_resource
-/// [`acquire_resource`]: #tymethod.acquire_resource
-///
+/// [module-level documentation]: ../command/
 pub trait CommandEncoder<B: Backend>
     : Debug
     + Send

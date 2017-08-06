@@ -63,9 +63,6 @@
 //! For other use cases, it is possible that `R` cannot be allocated at the same
 //! time because of memory fragmentation.
 //!
-//! FIXME: What is the point of having `alignment` in `MemoryRequirements` when
-//! the unit of `size` is practically not specified?
-//!
 //! [`Factory`]: ../factory/trait.Factory.html
 //! [`get_buffer_memory_requirements`]: ../factory/trait.Factory.html#tymethod.get_buffer_memory_requirements
 //! [`get_image_memory_requirements`]: ../factory/trait.Factory.html#tymethod.get_image_memory_requirements

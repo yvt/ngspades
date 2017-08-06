@@ -7,8 +7,8 @@
 //!
 //! Supported formats differ depending on the backend and the hardware.
 //!
-//! - **Supported** means the backend exposes the hardware's capability to use the format in some way.
-//! - **Mandatory** means the format is always available if it's supported by the backend.
+//! - **Supported** means backends can expose the hardware's capability to use the format in some way.
+//! - **Mandatory** means backends are required to support the format in some way.
 //! - **Undefined** means some operations cannot be defined on the format in a meaningful way.
 //!     - Filtering, blending, and MSAA resolve operation are undefined on all unnormalized formats.
 //!     - Depth/stencil operations are undefined on all non-depth/stencil formats.
