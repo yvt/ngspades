@@ -37,6 +37,9 @@ impl wsi_core::Drawable for Drawable {
     fn acquiring_fence(&self) -> Option<&<Self::Backend as core::Backend>::Fence> {
         Some(&self.acq_fence)
     }
+    fn releasing_fence(&self) -> Option<&<Self::Backend as core::Backend>::Fence> {
+        Some(&self.rel_fence)
+    }
     fn finalize(
         &self,
         command_buffer: &mut <Self::Backend as core::Backend>::CommandBuffer,
@@ -45,9 +48,8 @@ impl wsi_core::Drawable for Drawable {
         layout: core::ImageLayout,
     ) {
         // TODO: layout transition and queue family ownership transtiion
-        let _ = layout;
-        use core::BarrierCommandEncoder;
-        command_buffer.update_fence(stage, access, &self.rel_fence);
+        let ref cfg: &SwapchainConfig = self.data.cfg.as_ref().unwrap();
+        let vk_cb = command_buffer.active_command_buffer().unwrap();
     }
     fn present(&self) {
         use core::Device;

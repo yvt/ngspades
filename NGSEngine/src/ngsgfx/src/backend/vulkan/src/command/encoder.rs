@@ -70,6 +70,22 @@ impl<T: DeviceRef> CommandBuffer<T> {
         }
     }
 
+    /// Return the internal queue index of the currently active command pass.
+    pub fn active_internal_queue_index(&self) -> Option<usize> {
+        match self.data.encoder_state {
+            EncoderState::NoPass | EncoderState::End => None,
+            _ => Some(self.expect_pass().internal_queue_index),
+        }
+    }
+
+    /// Return the `vk::CommandBuffer` of the currently active command pass.
+    pub fn active_command_buffer(&self) -> Option<vk::CommandBuffer> {
+        match self.data.encoder_state {
+            EncoderState::NoPass | EncoderState::End => None,
+            _ => Some(self.expect_pass().buffer),
+        }
+    }
+
     pub(super) fn expect_pass(&self) -> &CommandPass<T> {
         match self.data.encoder_state {
             EncoderState::NoPass | EncoderState::End => panic!("bad state"),

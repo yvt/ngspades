@@ -38,6 +38,9 @@ pub enum SwapchainError {
 pub struct FrameDescription {
     /// The set of `DeviceEngine`s that will potentially wait on the `Drawable::acquiring_fence()`.
     pub acquiring_engines: core::DeviceEngineFlags,
+
+    /// The set of `DeviceEngine`s that will potentially update the `Drawable::releasing_fence()`.
+    pub releasing_engines: core::DeviceEngineFlags,
 }
 
 pub trait Drawable: Debug {
@@ -49,7 +52,13 @@ pub trait Drawable: Debug {
     /// with new contents.
     ///
     /// Do not use the returned `Fence` for other purposes!
-    fn acquiring_fence(&self) -> Option<&<Self::Backend as Backend>::Fence>;
+    fn acquiring_fence(&self) -> Option<&<Self::Backend as Backend>::Fence> { None }
+
+    /// The `Fence` object that must be updated after the `image` was updated with
+    /// the contents to be presented.
+    ///
+    /// Do not use the returned `Fence` for other purposes!
+    fn releasing_fence(&self) -> Option<&<Self::Backend as Backend>::Fence> { None }
 
     /// Inserts commands into the command buffer to prepare the presentation of the image.
     ///

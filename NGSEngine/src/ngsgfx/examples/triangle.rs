@@ -282,6 +282,7 @@ impl<B: Backend> RendererView<B> {
     {
         let drawable = swapchain.next_drawable(&gfx::wsi::FrameDescription {
             acquiring_engines: core::DeviceEngine::Universal.into(),
+            releasing_engines: core::DeviceEngine::Universal.into(),
         })?;
         let renderer: &Renderer<B> = &*self.renderer;
         let device: &B::Device = &*renderer.device;
@@ -340,7 +341,13 @@ impl<B: Backend> RendererView<B> {
         cb.bind_vertex_buffers(0, &[(&renderer.vertex_buffer, 0)]);
         cb.draw(0..3, 0..1);
         cb.end_debug_group();
-
+        if let Some(fence) = drawable.releasing_fence() {
+            cb.update_fence(
+                core::PipelineStage::ColorAttachmentOutput.into(),
+                core::AccessType::ColorAttachmentWrite.into(),
+                fence,
+            );
+        }
         cb.end_render_subpass();
 
         drawable.finalize(
