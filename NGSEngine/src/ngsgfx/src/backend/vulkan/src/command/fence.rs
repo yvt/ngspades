@@ -175,8 +175,14 @@ impl<T: DeviceRef> Fence<T> {
         queue: &imp::CommandQueue<T>,
         desc: &core::FenceDescription,
     ) -> core::Result<Self> {
-        let _ = (queue, desc);
-        unimplemented!()
+        Self::new(
+            queue,
+            queue
+                .device_config()
+                .engine_queue_mappings
+                .internal_queues_for_engines(desc.wait_engines),
+            0,
+        )
     }
 
     pub(super) fn queue_data_write<'a: 'b, 'b>(

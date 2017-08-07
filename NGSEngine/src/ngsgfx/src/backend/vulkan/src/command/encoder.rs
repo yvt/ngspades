@@ -241,7 +241,8 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                 if from_engine == core::DeviceEngine::Host {
                     vk::PIPELINE_STAGE_HOST_BIT
                 } else {
-                    vk::PipelineStageFlags::empty()
+                    // FIXME: this is over-conservative
+                    vk::PIPELINE_STAGE_ALL_COMMANDS_BIT
                 },
                 translate_pipeline_stage_flags(stage),
                 vk::DependencyFlags::empty(),
@@ -298,7 +299,8 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                 if to_engine == core::DeviceEngine::Host {
                     vk::PIPELINE_STAGE_HOST_BIT
                 } else {
-                    vk::PipelineStageFlags::empty()
+                    // FIXME: this is over-conservative
+                    vk::PIPELINE_STAGE_ALL_COMMANDS_BIT
                 },
                 vk::DependencyFlags::empty(),
                 &[],
