@@ -3,9 +3,6 @@
 //
 // This source code is a part of Nightingales.
 //
-
-// Based on Sascha Williems' "triangle.c" Vulkan example (which is licensed under MIT).
-// https://github.com/SaschaWillems/Vulkan/blob/master/triangle/triangle.cpp
 extern crate ngsgfx as gfx;
 extern crate cgmath;
 
