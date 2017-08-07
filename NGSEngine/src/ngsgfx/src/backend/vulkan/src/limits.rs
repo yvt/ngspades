@@ -204,6 +204,8 @@ impl DeviceCapabilities {
                         translate_image_format_feature_flags(fp.linear_tiling_features),
                     ],
                 );
+            } else {
+                image_features.insert(fmt, [core::ImageFormatFeatureFlags::empty(); 2]);
             }
         }
         for &fmt in core::VertexFormat::values().iter() {
@@ -214,6 +216,8 @@ impl DeviceCapabilities {
                     fmt,
                     translate_vertex_format_feature_flags(fp.buffer_features),
                 );
+            } else {
+                vertex_features.insert(fmt, core::VertexFormatFeatureFlags::empty());
             }
         }
 
