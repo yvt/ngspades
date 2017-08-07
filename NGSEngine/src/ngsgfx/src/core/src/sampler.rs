@@ -37,6 +37,7 @@ pub struct SamplerDescription {
     /// Specifies whether texture coordinates are normalized to the range `[0.0, 1.0]`.
     ///
     /// When set to `true`, the following conditions must met or the results of sampling are undefined:
+    ///
     ///  - `min_filter` and `mag_filter` must be equal.
     ///  - `lod_min_clamp` and `lod_max_clamp` must be zero.
     ///  - `max_anisotropy` must be one.
