@@ -1,4 +1,4 @@
-use cocoa::foundation::{NSUInteger};
+use cocoa::foundation::{NSUInteger, NSRange};
 use objc::runtime::Class;
 use objc_foundation::{NSString, INSString};
 
@@ -12,7 +12,7 @@ use buffer::MTLBuffer;
 use pipeline::{MTLRenderPipelineState, MTLComputePipelineState};
 use sampler::MTLSamplerState;
 use depthstencil::MTLDepthStencilState;
-use types::MTLSize;
+use types::{MTLSize, MTLOrigin};
 
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -66,6 +66,15 @@ pub enum MTLDepthClipMode {
 pub enum MTLTriangleFillMode {
     Fill = 0,
     Lines = 1,
+}
+
+bitflags! {
+    pub flags MTLBlitOption: NSUInteger {
+        const MTLBlitOptionNone                    = 0,
+        const MTLBlitOptionDepthFromDepthStencil   = 1 << 0,
+        const MTLBlitOptionStencilFromDepthStencil = 1 << 1,
+        const MTLBlitOptionRowLinearPVRTC          = 1 << 2
+    }
 }
 
 #[repr(C)]
@@ -443,6 +452,14 @@ impl MTLBlitCommandEncoder {
         }
     }
 
+    pub fn fill_buffer(&self, buffer: MTLBuffer, range: NSRange, value: u8) {
+        unsafe {
+            msg_send![self.0, fillBuffer:buffer
+                                   range:range
+                                   value:value]
+        }
+    }
+
     pub fn copy_from_buffer_to_buffer(&self, source_buffer: MTLBuffer, source_offset: u64, destination_buffer: MTLBuffer, destination_offset: u64, size: u64) {
         unsafe {
             msg_send![self.0, copyFromBuffer:source_buffer
@@ -450,6 +467,85 @@ impl MTLBlitCommandEncoder {
                                     toBuffer:destination_buffer
                            destinationOffset:destination_offset
                                         size:size]
+        }
+    }
+
+    pub fn copy_from_buffer_to_image(
+        &self,
+        source_buffer: MTLBuffer,
+        source_offset: u64,
+        source_bytes_per_row: u64,
+        source_bytes_per_image: u64,
+        source_size: MTLSize,
+        destination_texture: MTLTexture,
+        destination_slice: u64,
+        destination_level: u64,
+        destination_origin: MTLOrigin,
+        options: MTLBlitOption,
+    ) {
+        unsafe {
+            msg_send![self.0, copyFromBuffer:source_buffer
+                                sourceOffset:source_offset
+                           sourceBytesPerRow:source_bytes_per_row
+                         sourceBytesPerImage:source_bytes_per_image
+                                  sourceSize:source_size
+                                   toTexture:destination_texture
+                            destinationSlice:destination_slice
+                            destinationLevel:destination_level
+                           destinationOrigin:destination_origin
+                                     options:options]
+        }
+    }
+
+    pub fn copy_from_image_to_buffer(
+        &self,
+        source_texture: MTLTexture,
+        source_slice: u64,
+        source_level: u64,
+        source_origin: MTLOrigin,
+        source_size: MTLSize,
+        destination_buffer: MTLBuffer,
+        destination_offset: u64,
+        destination_bytes_per_row: u64,
+        destination_bytes_per_image: u64,
+        options: MTLBlitOption,
+    ) {
+        unsafe {
+            msg_send![self.0, copyFromTexture:source_texture
+                                  sourceSlice:source_slice
+                                  sourceLevel:source_level
+                                 sourceOrigin:source_origin
+                                   sourceSize:source_size
+                                     toBuffer:destination_buffer
+                            destinationOffset:destination_offset
+                       destinationBytesPerRow:destination_bytes_per_row
+                     destinationBytesPerImage:destination_bytes_per_image
+                                      options:options]
+        }
+    }
+
+    pub fn copy_from_image_to_image(
+        &self,
+        source_texture: MTLTexture,
+        source_slice: u64,
+        source_level: u64,
+        source_origin: MTLOrigin,
+        source_size: MTLSize,
+        destination_texture: MTLTexture,
+        destination_slice: u64,
+        destination_level: u64,
+        destination_origin: MTLOrigin,
+    ) {
+        unsafe {
+            msg_send![self.0, copyFromTexture:source_texture
+                                  sourceSlice:source_slice
+                                  sourceLevel:source_level
+                                 sourceOrigin:source_origin
+                                   sourceSize:source_size
+                                    toTexture:destination_texture
+                             destinationSlice:destination_slice
+                             destinationLevel:destination_level
+                            destinationOrigin:destination_origin]
         }
     }
 

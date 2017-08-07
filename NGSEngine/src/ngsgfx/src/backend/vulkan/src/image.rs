@@ -29,10 +29,7 @@ pub fn translate_image_usage(value: core::ImageUsageFlags) -> vk::ImageUsageFlag
     if value.contains(core::ImageUsage::ColorAttachment) {
         usage |= vk::IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     }
-    if value.contains(
-        core::ImageUsage::DepthStencilAttachment,
-    )
-    {
+    if value.contains(core::ImageUsage::DepthStencilAttachment) {
         usage |= vk::IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
     if value.contains(core::ImageUsage::TransientAttachment) {
@@ -47,6 +44,7 @@ pub fn translate_image_usage(value: core::ImageUsageFlags) -> vk::ImageUsageFlag
 pub(crate) struct UnassociatedImage<'a, T: DeviceRef> {
     device_ref: &'a T,
     handle: vk::Image,
+    info: ImageInfo,
 }
 
 impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
@@ -101,11 +99,27 @@ impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
             initial_layout: translate_image_layout(desc.initial_layout),
         };
 
+        let mut aspect = vk::ImageAspectFlags::empty();
+        if desc.format.has_color() {
+            aspect |= vk::IMAGE_ASPECT_COLOR_BIT;
+        }
+        if desc.format.has_depth() {
+            aspect |= vk::IMAGE_ASPECT_DEPTH_BIT;
+        }
+        if desc.format.has_stencil() {
+            aspect |= vk::IMAGE_ASPECT_STENCIL_BIT;
+        }
+        let img_info = ImageInfo { aspect };
+
         let device: &AshDevice = device_ref.device();
         let handle = unsafe { device.create_image(&info, device_ref.allocation_callbacks()) }
             .map_err(translate_generic_error_unwrap)?;
 
-        Ok(UnassociatedImage { device_ref, handle })
+        Ok(UnassociatedImage {
+            device_ref,
+            handle,
+            info: img_info,
+        })
     }
 
     pub(crate) fn memory_requirements(&self) -> vk::MemoryRequirements {
@@ -129,6 +143,7 @@ impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
         Ok(Image {
             data: RefEqArc::new(ImageData {
                 hunk: Some(hunk),
+                info: self.info.clone(),
                 handle: self.into_raw(),
             }),
         })
@@ -156,6 +171,12 @@ derive_using_field! {
 struct ImageData<T: DeviceRef> {
     hunk: Option<Arc<MemoryHunk<T>>>,
     handle: vk::Image,
+    info: ImageInfo,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ImageInfo {
+    pub aspect: vk::ImageAspectFlags,
 }
 
 impl<T: DeviceRef> core::Image for Image<T> {}
@@ -184,12 +205,15 @@ impl<T: DeviceRef> Image<T> {
     /// It is the caller's responsibility to make sure the `Image` is not used after
     /// `image` was destroyed. For example, `try_take` can be used to take back the
     /// ownership of the `vk::Image`.
+    ///
+    /// The image must be a color image.
     pub unsafe fn import(image: vk::Image) -> Self {
         assert!(image != vk::Image::null());
-        Self{
-            data: RefEqArc::new(ImageData{
+        Self {
+            data: RefEqArc::new(ImageData {
                 hunk: None,
                 handle: image,
+                info: ImageInfo { aspect: vk::IMAGE_ASPECT_COLOR_BIT },
             }),
         }
     }
@@ -205,14 +229,16 @@ impl<T: DeviceRef> Image<T> {
         }
         match RefEqArc::try_unwrap(self.data) {
             Ok(data) => Ok(data.handle),
-            Err(data) => Err(Self {
-                data,
-            })
+            Err(data) => Err(Self { data }),
         }
     }
 
     pub fn handle(&self) -> vk::Image {
         self.data.handle
+    }
+
+    pub(crate) fn info(&self) -> &ImageInfo {
+        &self.data.info
     }
 }
 

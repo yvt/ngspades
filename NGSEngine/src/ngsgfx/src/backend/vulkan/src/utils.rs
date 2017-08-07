@@ -82,6 +82,26 @@ pub(crate) fn translate_image_subresource_range(
     }
 }
 
+pub(crate) fn translate_image_subresource_layers(
+    value: &core::ImageSubresourceLayers,
+    aspect_mask: vk::ImageAspectFlags,
+) -> vk::ImageSubresourceLayers {
+    vk::ImageSubresourceLayers {
+        aspect_mask,
+        mip_level: value.mip_level,
+        base_array_layer: value.base_array_layer,
+        layer_count: value.num_array_layers,
+    }
+}
+
+pub(crate) fn translate_image_aspect(value: core::ImageAspect) -> vk::ImageAspectFlags {
+    match value {
+        core::ImageAspect::Color => vk::IMAGE_ASPECT_COLOR_BIT,
+        core::ImageAspect::Depth => vk::IMAGE_ASPECT_DEPTH_BIT,
+        core::ImageAspect::Stencil => vk::IMAGE_ASPECT_STENCIL_BIT,
+    }
+}
+
 pub(crate) fn translate_compare_function(value: core::CompareFunction) -> vk::CompareOp {
     match value {
         core::CompareFunction::Never => vk::CompareOp::Never,

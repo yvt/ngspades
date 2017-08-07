@@ -22,6 +22,7 @@ struct ImageData {
     metal_texture: OCPtr<metal::MTLTexture>,
     can_make_views: bool,
     desc: core::ImageDescription,
+    num_bytes_per_pixel: usize,
 }
 
 impl core::Image for Image {}
@@ -118,6 +119,7 @@ impl Image {
                 metal_texture,
                 can_make_views,
                 desc: desc.clone(),
+                num_bytes_per_pixel: desc.format.size_class().num_bytes_per_pixel(),
             }),
         })
     }
@@ -175,12 +177,34 @@ impl Image {
                 metal_texture: OCPtr::new(raw).unwrap(),
                 can_make_views,
                 desc,
+                num_bytes_per_pixel: format.size_class().num_bytes_per_pixel(),
             }),
         }
     }
 
     pub fn metal_texture(&self) -> metal::MTLTexture {
         *self.data.metal_texture
+    }
+
+    pub(crate) fn num_bytes_per_pixel(&self) -> usize {
+        self.data.num_bytes_per_pixel
+    }
+
+    pub(crate) fn resolve_subresource_range(
+        &self,
+        range: &core::ImageSubresourceRange,
+    ) -> ImageSubresourceRange {
+        let ref desc = self.data.desc;
+        ImageSubresourceRange {
+            base_mip_level: range.base_mip_level,
+            base_array_layer: range.base_array_layer,
+            num_mip_levels: range.num_mip_levels.unwrap_or_else(|| {
+                desc.num_mip_levels - range.base_mip_level
+            }),
+            num_array_layers: range.num_array_layers.unwrap_or_else(|| {
+                desc.num_array_layers - range.base_array_layer
+            }),
+        }
     }
 }
 
@@ -253,16 +277,7 @@ impl ImageView {
         core::CombinedImageAndImageViewDescription(&image.data.desc, desc)
             .debug_expect_valid(Some(cap), "");
 
-        let range = ImageSubresourceRange {
-            base_mip_level: desc.range.base_mip_level,
-            base_array_layer: desc.range.base_array_layer,
-            num_mip_levels: desc.range.num_mip_levels.unwrap_or_else(|| {
-                image.data.desc.num_mip_levels - desc.range.base_mip_level
-            }),
-            num_array_layers: desc.range.num_array_layers.unwrap_or_else(|| {
-                image.data.desc.num_array_layers - desc.range.base_array_layer
-            }),
-        };
+        let range = image.resolve_subresource_range(&desc.range);
 
         let subranged = range.base_mip_level != 0 || range.base_array_layer != 0 ||
             range.num_mip_levels != image.data.desc.num_mip_levels ||

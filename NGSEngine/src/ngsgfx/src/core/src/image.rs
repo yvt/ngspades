@@ -131,6 +131,18 @@ pub struct ImageSubresourceRange {
     pub num_array_layers: Option<u32>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct ImageSubresourceLayers {
+    /// The mipmap level to use.
+    pub mip_level: u32,
+
+    /// The first array layer to use.
+    pub base_array_layer: u32,
+
+    /// The number of array layers.
+    pub num_array_layers: u32,
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ImageLayout {
     Undefined,
@@ -163,6 +175,14 @@ mod flags {
 
     #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u32)]
+    pub enum ImageAspect {
+        Color = 0b001,
+        Depth = 0b010,
+        Stencil = 0b100,
+    }
+
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+    #[repr(u32)]
     pub enum ImageFlag {
         /// Indicates `ImageView` can created from the image with a `ImageFormat` different
         /// from the one used to create the image.
@@ -182,10 +202,11 @@ mod flags {
     }
 }
 
-pub use self::flags::{ImageUsage, ImageFlag};
+pub use self::flags::{ImageUsage, ImageFlag, ImageAspect};
 
 pub type ImageFlags = BitFlags<ImageFlag>;
 pub type ImageUsageFlags = BitFlags<ImageUsage>;
+pub type ImageAspectFlags = BitFlags<ImageAspect>;
 
 /// Validation errors for [`ImageDescription`](struct.ImageDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

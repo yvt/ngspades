@@ -76,7 +76,8 @@ use enumflags::BitFlags;
 
 use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Marker,
      ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker,
-     FenceDescription, DescriptorSetBindingLocation, DeviceSize, VertexBindingLocation};
+     FenceDescription, DescriptorSetBindingLocation, DeviceSize, VertexBindingLocation,
+     ImageAspect, ImageSubresourceLayers};
 
 use cgmath::Vector3;
 
@@ -504,7 +505,15 @@ pub trait ComputeCommandEncoder<B: Backend>
 /// Encodes copy commands into a command buffer.
 pub trait CopyCommandEncoder<B: Backend>
     : Debug + Send + Any + DebugCommandEncoder {
+    /// Fill a buffer with a constant byte value.
+    ///
+    /// Each of `range.start` and `range.end` must be a multiple of 4.
+    fn fill_buffer(&mut self, destination: &B::Buffer, range: Range<DeviceSize>, value: u8);
+
     /// Copy data from a buffer to another buffer.
+    ///
+    /// Each of `source_offset`, `destination_offset`, and `size` must be a
+    /// multiple of 4.
     fn copy_buffer(
         &mut self,
         source: &B::Buffer,
@@ -514,7 +523,82 @@ pub trait CopyCommandEncoder<B: Backend>
         size: DeviceSize,
     );
 
-    // TODO: more commands
+    /// Copy data from a buffer to an image.
+    ///
+    /// The image must be in the `General` or `TransferDestination` layout.
+    ///
+    /// If the image has a depth/stencil format, the current device engine must
+    /// be `DeviceEngine::Universal`.
+    fn copy_buffer_to_image(
+        &mut self,
+        source: &B::Buffer,
+        source_range: &BufferImageRange,
+        destination: &B::Image,
+        destination_layout: ImageLayout,
+        destination_aspect: ImageAspect,
+        destination_subresource_range: &ImageSubresourceLayers,
+        destination_origin: Vector3<u32>,
+        size: Vector3<u32>,
+    );
+
+    /// Copy data from an image to an buffer.
+    ///
+    /// The image must be in the `General` or `TransferSource` layout.
+    ///
+    /// If the image has a depth/stencil format, the current device engine must
+    /// be `DeviceEngine::Universal`.
+    fn copy_image_to_buffer(
+        &mut self,
+        source: &B::Image,
+        source_layout: ImageLayout,
+        source_aspect: ImageAspect,
+        source_subresource_range: &ImageSubresourceLayers,
+        source_origin: Vector3<u32>,
+        destination: &B::Buffer,
+        destination_range: &BufferImageRange,
+        size: Vector3<u32>,
+    );
+
+    /// Copy data from an image to another image.
+    ///
+    /// The source image must be in the `General` or `TransferSource` layout.
+    /// The destination must be in the `General` or `TransferDestination` layout.
+    ///
+    /// The source and destination images must have the same image format and
+    /// the same sample count.
+    ///
+    /// `source_subresource_range` and `destination_subresource_range` must have
+    /// the same number of array layers.
+    fn copy_image(
+        &mut self,
+        source: &B::Image,
+        source_layout: ImageLayout,
+        source_subresource_range: &ImageSubresourceLayers,
+        source_origin: Vector3<u32>,
+        destination: &B::Image,
+        destination_layout: ImageLayout,
+        destination_subresource_range: &ImageSubresourceLayers,
+        destination_origin: Vector3<u32>,
+        size: Vector3<u32>,
+    );
+}
+
+/// Specifies the layout of an image data in a buffer.
+pub struct BufferImageRange {
+    /// Offset (in bytes) of the image data from the start of the buffer.
+    ///
+    /// Must be a multiple of 4 and the image's pixel size.
+    pub offset: DeviceSize,
+
+    /// Strides (in pixels) between rows of the buffer data.
+    ///
+    /// Must be less than or equal to 32767.
+    pub row_stride: DeviceSize,
+
+    /// Strides (in pixels) between 2D images of the buffer data.
+    ///
+    /// Must be less than `2^32`.
+    pub plane_stride: DeviceSize,
 }
 
 /// Encodes debug markers into a command buffer.
