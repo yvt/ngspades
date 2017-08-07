@@ -16,9 +16,7 @@ use core;
 /// `ErrorOutOfHostMemory` is escalated to a panic. (Maybe we should call `alloc::oom::oom()`?)
 ///
 /// Unsupported values are returned unmodified.
-pub fn translate_generic_error(
-    result: vk::Result,
-) -> Result<core::GenericError, vk::Result> {
+pub fn translate_generic_error(result: vk::Result) -> Result<core::GenericError, vk::Result> {
     match result {
         vk::Result::ErrorOutOfDeviceMemory => Ok(core::GenericError::OutOfDeviceMemory),
         vk::Result::ErrorDeviceLost => Ok(core::GenericError::DeviceLost),
@@ -171,7 +169,9 @@ pub(crate) fn translate_access_type_flags(value: core::AccessTypeFlags) -> vk::A
     ret
 }
 
-pub(crate) fn translate_pipeline_stage_flags(value: core::PipelineStageFlags) -> vk::PipelineStageFlags {
+pub(crate) fn translate_pipeline_stage_flags(
+    value: core::PipelineStageFlags,
+) -> vk::PipelineStageFlags {
     let mut ret = vk::PipelineStageFlags::empty();
     if value.contains(core::PipelineStage::TopOfPipe) {
         ret |= vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT;
