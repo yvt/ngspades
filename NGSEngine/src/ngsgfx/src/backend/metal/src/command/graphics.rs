@@ -18,6 +18,7 @@ pub(crate) struct RenderCommandEncoder {
     pipeline: Option<GraphicsPipeline>,
     descriptor_set_binding: DescriptorSetBindingState,
     index_binding: Option<(metal::MTLIndexType, Buffer, u64)>,
+    extents: [u32; 2],
 }
 
 #[derive(Debug)]
@@ -27,12 +28,16 @@ pub(crate) enum GraphicsEncoderState {
 }
 
 impl RenderCommandEncoder {
-    pub fn new(metal_encoder: OCPtr<metal::MTLRenderCommandEncoder>) -> Self {
+    pub fn new(
+        metal_encoder: OCPtr<metal::MTLRenderCommandEncoder>,
+        fb_extents: &[u32; 2],
+    ) -> Self {
         Self {
             metal_encoder,
             pipeline: None,
             descriptor_set_binding: DescriptorSetBindingState::new(),
             index_binding: None,
+            extents: fb_extents.clone(),
         }
     }
 
@@ -51,7 +56,7 @@ impl RenderCommandEncoder {
 
     fn bind_graphics_pipeline(&mut self, pipeline: &GraphicsPipeline) {
         self.pipeline = Some(pipeline.clone());
-        pipeline.bind_pipeline_state(*self.metal_encoder);
+        pipeline.bind_pipeline_state(*self.metal_encoder, &self.extents);
     }
 
     fn expect_pipeline(&self) -> &GraphicsPipeline {
@@ -103,6 +108,7 @@ impl RenderCommandEncoder {
         self.expect_pipeline().set_dynamic_scissor_rect(
             *self.metal_encoder,
             rect,
+            &self.extents,
         );
     }
     fn bind_graphics_descriptor_sets(

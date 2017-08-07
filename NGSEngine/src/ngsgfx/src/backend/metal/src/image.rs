@@ -343,7 +343,7 @@ impl ImageView {
     /// specified by `ImageSubresourceRange`).
     pub fn metal_texture(&self) -> metal::MTLTexture {
         assert!(
-            self.data.metal_texture_subranged,
+            !self.data.metal_texture_subranged,
             "Inappropriate usage of ImageView -- check ImageFlags"
         );
         *self.data.metal_texture

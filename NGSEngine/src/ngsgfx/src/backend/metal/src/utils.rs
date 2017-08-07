@@ -100,3 +100,29 @@ pub fn translate_scissor_rect(value: &core::Rect2D<u32>) -> metal::MTLScissorRec
         height: value.max.y.saturating_sub(value.min.y) as u64,
     }
 }
+
+pub fn clip_scissor_rect(
+    value: &metal::MTLScissorRect,
+    extents: &[u32; 2],
+) -> metal::MTLScissorRect {
+    let (mut x1, mut x2) = (value.x, value.x + value.width);
+    let (mut y1, mut y2) = (value.y, value.y + value.height);
+    if x1 > extents[0] as u64 {
+        x1 = extents[0] as u64;
+    }
+    if x2 > extents[0] as u64 {
+        x2 = extents[0] as u64;
+    }
+    if y1 > extents[1] as u64 {
+        y1 = extents[1] as u64;
+    }
+    if y2 > extents[1] as u64 {
+        y2 = extents[1] as u64;
+    }
+    metal::MTLScissorRect {
+        x: x1,
+        y: y1,
+        width: x2 - x1,
+        height: y2 - y1,
+    }
+}

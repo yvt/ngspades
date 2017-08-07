@@ -270,6 +270,7 @@ pub struct Framebuffer {
 #[derive(Debug)]
 pub(crate) struct FramebufferData {
     metal_descriptors: Vec<OCPtr<metal::MTLRenderPassDescriptor>>,
+    extents: [u32; 2],
     label: Mutex<Option<String>>,
 }
 
@@ -377,6 +378,7 @@ impl Framebuffer {
 
         let data = FramebufferData {
             metal_descriptors,
+            extents: [description.width, description.height],
             label: Mutex::new(None),
         };
 
@@ -389,6 +391,10 @@ impl Framebuffer {
 
     pub(crate) fn subpass(&self, index: usize) -> metal::MTLRenderPassDescriptor {
         *self.data.metal_descriptors[index]
+    }
+
+    pub(crate) fn extents(&self) -> &[u32; 2] {
+        &self.data.extents
     }
 }
 

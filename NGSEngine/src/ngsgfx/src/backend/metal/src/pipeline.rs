@@ -8,7 +8,7 @@ use metal;
 
 use std::iter::empty;
 
-use {RefEqArc, OCPtr, imp, utils, formats, translate_compare_function};
+use {RefEqArc, OCPtr, imp, utils, formats, translate_compare_function, clip_scissor_rect};
 
 /// Graphics pipeline state.
 ///
@@ -412,7 +412,11 @@ impl GraphicsPipeline {
         Ok(GraphicsPipeline { data: RefEqArc::new(data) })
     }
 
-    pub(crate) fn bind_pipeline_state(&self, encoder: metal::MTLRenderCommandEncoder) {
+    pub(crate) fn bind_pipeline_state(
+        &self,
+        encoder: metal::MTLRenderCommandEncoder,
+        extents: &[u32; 2],
+    ) {
         encoder.set_render_pipeline_state(*self.data.metal_pipeline);
 
         if let Some(ref raster_data) = self.data.raster_data {
@@ -423,7 +427,7 @@ impl GraphicsPipeline {
                 encoder.set_stencil_front_back_reference_value(s_ref[0], s_ref[1]);
             }
             if let Some(ref scissor_rect) = raster_data.scissor_rect {
-                encoder.set_scissor_rect(*scissor_rect);
+                encoder.set_scissor_rect(clip_scissor_rect(scissor_rect, extents));
             }
             if let Some(ref viewport) = raster_data.viewport {
                 encoder.set_viewport(*viewport);
@@ -471,12 +475,16 @@ impl GraphicsPipeline {
         &self,
         encoder: metal::MTLRenderCommandEncoder,
         rect: &core::Rect2D<u32>,
+        extents: &[u32; 2],
     ) {
         debug_assert!(
             self.expect_rasterizer_data().scissor_rect.is_none(),
             "scissor rect is not a part of dynamic states"
         );
-        encoder.set_scissor_rect(utils::translate_scissor_rect(rect));
+        encoder.set_scissor_rect(clip_scissor_rect(
+            &utils::translate_scissor_rect(rect),
+            extents,
+        ));
     }
 
     pub(crate) fn set_dynamic_stencil_reference(

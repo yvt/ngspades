@@ -236,11 +236,14 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
 
     fn make_secondary_command_buffer(&mut self) -> SecondaryCommandBuffer {
         if let EncoderState::Graphics {
-            encoder: GraphicsEncoderState::SecondaryCommandBuffers(ref prce), ..
+            ref framebuffer,
+            encoder: GraphicsEncoderState::SecondaryCommandBuffers(ref prce),
+            ..
         } = self.encoder
         {
+            let extents = framebuffer.extents();
             OCPtr::new(prce.render_command_encoder())
-                .map(RenderCommandEncoder::new)
+                .map(|e| RenderCommandEncoder::new(e, extents))
                 .map(SecondaryCommandBuffer::new)
                 .unwrap()
         } else {
@@ -320,6 +323,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
                                     next_subpass,
                                 ),
                             ).unwrap(),
+                            framebuffer.extents(),
                         ),
                     ),
                     core::RenderPassContents::SecondaryCommandBuffers => {
