@@ -286,7 +286,7 @@ impl<B: Backend> MyApp<B> {
                 address_mode: [core::SamplerAddressMode::Repeat; 3],
                 lod_min_clamp: 0f32,
                 lod_max_clamp: 0.5f32,
-                max_anisotropy: 8,
+                max_anisotropy: 1,
                 compare_function: None,
                 border_color: core::SamplerBorderColor::FloatOpaqueBlack,
                 unnormalized_coordinates: false,
@@ -459,7 +459,7 @@ impl<B: Backend> MyApp<B> {
                     stencil_load_op: core::AttachmentLoadOp::DontCare,
                     stencil_store_op: core::AttachmentStoreOp::DontCare,
                     initial_layout: core::ImageLayout::Undefined,
-                    final_layout: core::ImageLayout::Undefined,
+                    final_layout: core::ImageLayout::DepthStencilAttachment,
                 },
             ],
             subpasses: &[

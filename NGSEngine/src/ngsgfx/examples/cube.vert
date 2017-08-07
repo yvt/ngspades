@@ -1,7 +1,7 @@
 #version 310 es
 
-layout(location = 0) in vec4 input_position;
-layout(location = 1) in vec2 input_uv;
+layout(location = 0) in ivec4 input_position;
+layout(location = 1) in ivec2 input_uv;
 
 layout(location = 0) out mediump vec2 output_uv;
 
@@ -17,6 +17,6 @@ void main()
 {
     gl_Position = u_scene_params.view_proj_matrix *
         u_obj_params.model_matrix *
-        input_position;
-    output_uv = input_uv;
+        vec4(input_position);
+    output_uv = vec2(input_uv);
 }
