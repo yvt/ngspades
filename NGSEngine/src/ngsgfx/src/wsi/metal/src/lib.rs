@@ -112,7 +112,13 @@ impl Swapchain {
     }
 
     fn resize(&self) {
-        let (w, h) = self.physical_size();
+        let (mut w, mut h) = self.physical_size();
+        if w == 0 {
+            w = 1;
+        }
+        if h == 0 {
+            h = 1;
+        }
         self.layer.set_drawable_size(
             NSSize::new(w as f64, h as f64),
         );
@@ -251,14 +257,17 @@ impl wsi_core::NewWindow for MetalWindow {
             let device = Arc::new(device);
             let winit_window = Arc::new(winit_window);
 
-            Ok(MetalWindow {
+            let swapchain = Swapchain {
                 window: winit_window.clone(),
-                swapchain: Swapchain {
-                    window: winit_window,
-                    device: device.clone(),
-                    layer: OCPtr::new(layer).unwrap(),
-                    color_space,
-                },
+                device: device.clone(),
+                layer: OCPtr::new(layer).unwrap(),
+                color_space,
+            };
+            swapchain.resize();
+
+            Ok(MetalWindow {
+                window: winit_window,
+                swapchain,
                 device: device,
             })
         }
