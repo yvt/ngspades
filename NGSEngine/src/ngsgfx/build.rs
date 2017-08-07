@@ -17,6 +17,16 @@ fn main() {
         .flag("-V")
         .compile("triangle.vert.spv");
 
+    prebuild_glslang::Config::new()
+        .file("examples/cube.frag")
+        .flag("-V")
+        .compile("cube.frag.spv");
+
+    prebuild_glslang::Config::new()
+        .file("examples/cube.vert")
+        .flag("-V")
+        .compile("cube.vert.spv");
+
     // TODO: call these only fofr test builds
     prebuild_glslang::Config::new()
         .file("tests/compute_null.comp")

@@ -22,6 +22,9 @@ ngsgfx_wsi_metal = { path = "src/wsi/metal" }
 name = "triangle"
 
 [[example]]
+name = "cube"
+
+[[example]]
 name = "capsviewer"
 
 [build-dependencies]
