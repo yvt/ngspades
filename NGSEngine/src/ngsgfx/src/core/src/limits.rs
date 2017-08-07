@@ -4,8 +4,10 @@
 // This source code is a part of Nightingales.
 //
 use std::fmt::Debug;
-
 use cgmath::Vector3;
+use enumflags::BitFlags;
+
+use {ImageFormat, ImageTiling, VertexFormat};
 
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceLimits {
@@ -61,6 +63,42 @@ pub struct DeviceLimits {
     // TODO: expose more limits
 }
 
+
+// prevent `InnerXXX` from being exported
+mod flags {
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+    #[repr(u32)]
+    pub enum ImageFormatFeature {
+        Sampled = 0b000000001,
+        SampledFilterLinear = 0b000000010,
+        Storage = 0b000000100,
+        StorageAtomic = 0b000001000,
+        ColorAttachment = 0b000010000,
+        ColorAttachmentBlend = 0b000100000,
+        DepthStencilAttachment = 0b001000000,
+        TransferSource = 0b010000000,
+        TransferDestination = 0b100000000,
+    }
+
+    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+    #[repr(u32)]
+    pub enum VertexFormatFeature {
+        VertexBuffer = 0b1,
+    }
+}
+
+pub use self::flags::ImageFormatFeature;
+pub use self::flags::VertexFormatFeature;
+
+pub type ImageFormatFeatureFlags = BitFlags<ImageFormatFeature>;
+pub type VertexFormatFeatureFlags = BitFlags<VertexFormatFeature>;
+
 pub trait DeviceCapabilities: Debug + Send + Sync {
     fn limits(&self) -> &DeviceLimits;
+    fn image_format_features(
+        &self,
+        format: ImageFormat,
+        tiling: ImageTiling,
+    ) -> ImageFormatFeatureFlags;
+    fn vertex_format_features(&self, format: VertexFormat) -> VertexFormatFeatureFlags;
 }

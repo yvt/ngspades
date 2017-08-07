@@ -4,12 +4,14 @@
 // This source code is a part of Nightingales.
 //
 use {core, ash};
+use ash::vk;
 use cgmath::Vector3;
 use ash::version::{V1_0, InstanceV1_0};
-use ash::vk::types::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties,
-                     PhysicalDeviceFeatures, VK_FALSE, PhysicalDeviceLimits, MemoryType};
+use ash::vk::types::{PhysicalDevice, PhysicalDeviceProperties, PhysicalDeviceFeatures, VK_FALSE,
+                     PhysicalDeviceLimits, MemoryType};
 use ngsgfx_common::int::BinaryInteger;
 use std::u32;
+use std::collections::HashMap;
 
 /// The maximum number of internal queues.
 ///
@@ -143,8 +145,8 @@ impl StorageModeMappings {
 #[derive(Debug, Clone)]
 pub struct DeviceCapabilities {
     limits: core::DeviceLimits,
-    pub(crate) mem_prop: PhysicalDeviceMemoryProperties,
-    pub(crate) dev_prop: PhysicalDeviceProperties,
+    image_features: HashMap<core::ImageFormat, [core::ImageFormatFeatureFlags; 2]>,
+    vertex_features: HashMap<core::VertexFormat, core::VertexFormatFeatureFlags>,
 }
 
 impl DeviceCapabilities {
@@ -153,50 +155,72 @@ impl DeviceCapabilities {
         phys_device: PhysicalDevice,
         enabled_features: &PhysicalDeviceFeatures,
     ) -> Self {
-        let mem_prop: PhysicalDeviceMemoryProperties =
-            instance.get_physical_device_memory_properties(phys_device);
         let dev_prop: PhysicalDeviceProperties =
             instance.get_physical_device_properties(phys_device);
         let limits;
 
-        {
-            let ref dev_limits: PhysicalDeviceLimits = dev_prop.limits;
-            limits = core::DeviceLimits {
-                supports_specialized_heap: true,
-                supports_heap_aliasing: true,
-                supports_depth_bounds: enabled_features.depth_bounds != VK_FALSE,
-                supports_cube_array: enabled_features.image_cube_array != VK_FALSE,
-                supports_depth_clamp: enabled_features.depth_clamp != VK_FALSE,
-                supports_fill_mode_non_solid: enabled_features.fill_mode_non_solid != VK_FALSE,
-                max_image_extent_1d: dev_limits.max_image_dimension1d,
-                max_image_extent_2d: dev_limits.max_image_dimension2d,
-                max_image_extent_3d: dev_limits.max_image_dimension3d,
-                max_image_num_array_layers: dev_limits.max_image_array_layers,
-                max_framebuffer_extent: *[
-                    dev_limits.max_framebuffer_width,
-                    dev_limits.max_framebuffer_height,
-                ].iter()
-                    .min()
-                    .unwrap(),
-                max_compute_workgroup_size: Vector3::new(
-                    dev_limits.max_compute_work_group_size[0],
-                    dev_limits.max_compute_work_group_size[1],
-                    dev_limits.max_compute_work_group_size[2],
-                ),
-                max_num_compute_workgroup_invocations: dev_limits
-                    .max_compute_work_group_invocations,
-                max_compute_workgroup_count: Vector3::new(
-                    dev_limits.max_compute_work_group_count[0],
-                    dev_limits.max_compute_work_group_count[1],
-                    dev_limits.max_compute_work_group_count[2],
-                ),
-            };
+        let ref dev_limits: PhysicalDeviceLimits = dev_prop.limits;
+        limits = core::DeviceLimits {
+            supports_specialized_heap: true,
+            supports_heap_aliasing: true,
+            supports_depth_bounds: enabled_features.depth_bounds != VK_FALSE,
+            supports_cube_array: enabled_features.image_cube_array != VK_FALSE,
+            supports_depth_clamp: enabled_features.depth_clamp != VK_FALSE,
+            supports_fill_mode_non_solid: enabled_features.fill_mode_non_solid != VK_FALSE,
+            max_image_extent_1d: dev_limits.max_image_dimension1d,
+            max_image_extent_2d: dev_limits.max_image_dimension2d,
+            max_image_extent_3d: dev_limits.max_image_dimension3d,
+            max_image_num_array_layers: dev_limits.max_image_array_layers,
+            max_framebuffer_extent: *[
+                dev_limits.max_framebuffer_width,
+                dev_limits.max_framebuffer_height,
+            ].iter()
+                .min()
+                .unwrap(),
+            max_compute_workgroup_size: Vector3::new(
+                dev_limits.max_compute_work_group_size[0],
+                dev_limits.max_compute_work_group_size[1],
+                dev_limits.max_compute_work_group_size[2],
+            ),
+            max_num_compute_workgroup_invocations: dev_limits.max_compute_work_group_invocations,
+            max_compute_workgroup_count: Vector3::new(
+                dev_limits.max_compute_work_group_count[0],
+                dev_limits.max_compute_work_group_count[1],
+                dev_limits.max_compute_work_group_count[2],
+            ),
+        };
+
+        let mut image_features = HashMap::new();
+        let mut vertex_features = HashMap::new();
+
+        for &fmt in core::ImageFormat::values().iter() {
+            use imp::translate_image_format;
+            if let Some(vk_fmt) = translate_image_format(fmt) {
+                let fp = instance.get_physical_device_format_properties(phys_device, vk_fmt);
+                image_features.insert(
+                    fmt,
+                    [
+                        translate_image_format_feature_flags(fp.optimal_tiling_features),
+                        translate_image_format_feature_flags(fp.linear_tiling_features),
+                    ],
+                );
+            }
+        }
+        for &fmt in core::VertexFormat::values().iter() {
+            use imp::translate_vertex_format;
+            if let Some(vk_fmt) = translate_vertex_format(fmt) {
+                let fp = instance.get_physical_device_format_properties(phys_device, vk_fmt);
+                vertex_features.insert(
+                    fmt,
+                    translate_vertex_format_feature_flags(fp.buffer_features),
+                );
+            }
         }
 
         Self {
             limits,
-            mem_prop,
-            dev_prop,
+            image_features,
+            vertex_features,
         }
     }
 }
@@ -205,4 +229,65 @@ impl core::DeviceCapabilities for DeviceCapabilities {
     fn limits(&self) -> &core::DeviceLimits {
         &self.limits
     }
+
+    fn image_format_features(
+        &self,
+        format: core::ImageFormat,
+        tiling: core::ImageTiling,
+    ) -> core::ImageFormatFeatureFlags {
+        self.image_features.get(&format).unwrap()[match tiling {
+                                                      core::ImageTiling::Optimal => 0,
+                                                      core::ImageTiling::Linear => 1,
+                                                  }]
+    }
+
+    fn vertex_format_features(&self, format: core::VertexFormat) -> core::VertexFormatFeatureFlags {
+        *self.vertex_features.get(&format).unwrap()
+    }
+}
+
+fn translate_image_format_feature_flags(
+    value: vk::FormatFeatureFlags,
+) -> core::ImageFormatFeatureFlags {
+    let mut ret = core::ImageFormatFeatureFlags::empty();
+    if value.intersects(vk::FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+        ret = ret | core::ImageFormatFeature::Sampled;
+    }
+    if value.intersects(vk::FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
+        ret = ret | core::ImageFormatFeature::Storage;
+    }
+    if value.intersects(vk::FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT) {
+        ret = ret | core::ImageFormatFeature::StorageAtomic;
+    }
+    if value.intersects(vk::FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
+        ret = ret | core::ImageFormatFeature::ColorAttachment;
+    }
+    if value.intersects(vk::FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT) {
+        ret = ret | core::ImageFormatFeature::ColorAttachmentBlend;
+    }
+    if value.intersects(vk::FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+        ret = ret | core::ImageFormatFeature::DepthStencilAttachment;
+    }
+    if value.intersects(vk::FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) {
+        ret = ret | core::ImageFormatFeature::SampledFilterLinear;
+    }
+    // Without the extension `VK_KHR_maintenance1`, any othet flags imply that
+    // transfer is possible
+    if value.is_empty() {
+        // TODO: `FORMAT_FEATURE_TRANSFER_{SRC,DST}_BIT_KHR`
+    } else {
+        ret = ret | core::ImageFormatFeature::TransferSource;
+        ret = ret | core::ImageFormatFeature::TransferDestination;
+    }
+    ret
+}
+
+fn translate_vertex_format_feature_flags(
+    value: vk::FormatFeatureFlags,
+) -> core::VertexFormatFeatureFlags {
+    let mut ret = core::VertexFormatFeatureFlags::empty();
+    if value.intersects(vk::FORMAT_FEATURE_VERTEX_BUFFER_BIT) {
+        ret = ret | core::VertexFormatFeature::VertexBuffer;
+    }
+    ret
 }

@@ -89,6 +89,8 @@ extern crate cgmath;
 extern crate enumflags;
 #[macro_use]
 extern crate enumflags_derive;
+#[macro_use]
+extern crate lazy_static;
 
 use std::fmt::Debug;
 use std::marker::Sized;

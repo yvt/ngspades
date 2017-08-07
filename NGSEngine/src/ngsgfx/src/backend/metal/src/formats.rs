@@ -28,6 +28,7 @@ pub fn translate_image_format(format: ImageFormat) -> Option<MTLPixelFormat> {
         ImageFormat::Rgba8(Unsigned, Unnormalized) => Some(MTLPixelFormat::RGBA8Uint),
         ImageFormat::SrgbRgba8 => Some(MTLPixelFormat::RGBA8Unorm_sRGB),
 
+        // These are defined and supported by Metal, but `metal-rs` does not expose them
         ImageFormat::Bgra8(Signed, _) => None,
         ImageFormat::Bgra8(Unsigned, Normalized) => Some(MTLPixelFormat::BGRA8Unorm),
         ImageFormat::Bgra8(Unsigned, Unnormalized) => None,

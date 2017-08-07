@@ -21,6 +21,9 @@ ngsgfx_wsi_metal = { path = "src/wsi/metal" }
 [[example]]
 name = "triangle"
 
+[[example]]
+name = "capsviewer"
+
 [build-dependencies]
 prebuild-glslang = { path = "tools/prebuild-glslang" } # required for examples
 

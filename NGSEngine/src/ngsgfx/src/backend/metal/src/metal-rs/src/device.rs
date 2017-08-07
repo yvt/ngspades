@@ -39,6 +39,10 @@ pub enum MTLFeatureSet {
     iOS_GPUFamily2_v2 = 3,
     iOS_GPUFamily3_v1 = 4,
     OSX_GPUFamily1_v1 = 10000,
+    OSX_GPUFamily1_v2 = 10001,
+    OSX_ReadWriteTextureTier2 = 10002,
+    tvOS_GPUFamily1_v1 = 30000,
+    tvOS_GPUFamily1_v2 = 30001,
 }
 
 bitflags! {
