@@ -1,0 +1,16 @@
+[package]
+name = "ngsengine"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+enet = { path = "../enet" }
+lazy_static = { version = "0.2" }
+ngsbase = { path = "../ngsbase" }
+ngscom = { path = "../ngscom" }
+ngsgfx = { path = "../ngsgfx" }
+yfft = { path = "../yfft" }
+xdispatch = { path = "../xdispatch" }

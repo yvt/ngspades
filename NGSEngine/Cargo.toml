@@ -1,13 +1,9 @@
-[package]
-name = "ngsengine"
-version = "0.1.0"
-authors = ["yvt <i@yvt.jp>"]
-
 [workspace]
 members = [
     "src/enet",
     "src/ngsbase",
     "src/ngscom",
+    "src/ngsengine",
     "src/ngsgfx",
     "src/ngsgfx/tools/include_data",
     "src/ngsgfx/tools/prebuild-glslang",
@@ -24,18 +20,6 @@ members = [
     "src/yfft",
     "src/xdispatch",
 ]
-
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
-enet = { path = "src/enet" }
-lazy_static = { version = "0.2" }
-ngsbase = { path = "src/ngsbase" }
-ngscom = { path = "src/ngscom" }
-ngsgfx = { path = "src/ngsgfx" }
-yfft = { path = "src/yfft" }
-xdispatch = { path = "src/xdispatch" }
 
 [profile.release]
 lto = true
