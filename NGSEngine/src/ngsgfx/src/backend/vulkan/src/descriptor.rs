@@ -288,6 +288,7 @@ derive_using_field! {
 struct DescriptorSetData<T: DeviceRef> {
     /// Copy of `DescriptorSetLockData::handle`. (Do not destroy!)
     handle: vk::DescriptorSet,
+    layout: DescriptorSetLayout<T>,
     mutex: Mutex<ResourceMutex<LlFence<T>, DescriptorSetLockData<T>>>,
 }
 
@@ -439,6 +440,7 @@ impl<T: DeviceRef> DescriptorSet<T> {
                 };
                 let dsd = DescriptorSetData {
                     handle,
+                    layout: description.layout.clone(),
                     mutex: Mutex::new(ResourceMutex::new(dsld, true)),
                 };
                 Self { data: RefEqArc::new(dsd) }

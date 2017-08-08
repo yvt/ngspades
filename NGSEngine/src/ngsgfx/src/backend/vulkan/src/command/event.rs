@@ -285,6 +285,7 @@ pub(crate) struct CommandDependencyTable<T: DeviceRef> {
     // TODO: compute pipelines
     // TODO: stencil states
     // TODO: images
+    // TODO: pipeline layouts?
 }
 
 impl<T: DeviceRef> CommandDependencyTable<T> {
