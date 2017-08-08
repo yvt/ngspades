@@ -83,12 +83,12 @@ pub trait Validate: Debug {
     }
 
     #[cfg(not(debug_assertions))]
-    fn debug_expect_valid(&self, cap: Option<&DeviceCapabilities>, msg: &str) -> &Self {
+    fn debug_expect_valid(&self, _: Option<&DeviceCapabilities>, _: &str) -> &Self {
         self
     }
 
     #[cfg(not(debug_assertions))]
-    fn debug_expect_valid_mut(&mut self, cap: Option<&DeviceCapabilities>, msg: &str) -> &mut Self {
+    fn debug_expect_valid_mut(&mut self, _: Option<&DeviceCapabilities>, _: &str) -> &mut Self {
         self
     }
 }
