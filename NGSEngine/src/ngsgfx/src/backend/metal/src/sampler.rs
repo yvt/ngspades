@@ -34,7 +34,9 @@ impl Sampler {
         metal_device: metal::MTLDevice,
         desc: &core::SamplerDescription,
     ) -> core::Result<Sampler> {
-        let metal_desc = OCPtr::new(metal::MTLSamplerDescriptor::new()).unwrap();
+        let metal_desc = unsafe {
+            OCPtr::from_raw(metal::MTLSamplerDescriptor::new())
+        }.unwrap();
         metal_desc.set_min_filter(translate_filter(desc.min_filter));
         metal_desc.set_mag_filter(translate_filter(desc.mag_filter));
         metal_desc.set_mip_filter(if desc.unnormalized_coordinates {
@@ -57,7 +59,9 @@ impl Sampler {
         metal_desc.set_border_color(translate_border_color(desc.border_color));
         metal_desc.set_normalized_coordinates(!desc.unnormalized_coordinates);
 
-        let metal_sampler = OCPtr::new(metal_device.new_sampler(*metal_desc)).ok_or(
+        let metal_sampler = unsafe {
+            OCPtr::from_raw(metal_device.new_sampler(*metal_desc))
+        }.ok_or(
             core::GenericError::OutOfDeviceMemory,
         )?;
         let data = SamplerData { metal_sampler };

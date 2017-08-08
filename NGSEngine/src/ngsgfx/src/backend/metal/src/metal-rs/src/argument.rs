@@ -10,6 +10,7 @@ use objc_foundation::{NSString, INSString, NSArray};
 
 use super::{id, NSObjectPrototype, NSObjectProtocol};
 
+use std::mem::transmute_copy;
 use texture::MTLTextureType;
 
 #[repr(u64)]
@@ -159,7 +160,7 @@ impl<'a> MTLStructType {
         let nsname = NSString::from_str(name);
 
         unsafe {
-            msg_send![self.0, memberByName:nsname]
+            msg_send![self.0, memberByName:transmute_copy::<_, *const ()>(&nsname)]
         }
     }
 }

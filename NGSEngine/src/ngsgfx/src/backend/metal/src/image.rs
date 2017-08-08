@@ -112,7 +112,7 @@ impl Image {
 
         // TODO: handle allocation failure
         let metal_texture =
-            OCPtr::new(metal_device.new_texture(*metal_desc)).expect("texture creation failed");
+            unsafe { OCPtr::from_raw(metal_device.new_texture(*metal_desc)) }.expect("texture creation failed");
 
         Ok(Image {
             data: RefEqArc::new(ImageData {

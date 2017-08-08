@@ -5,6 +5,7 @@ use objc_foundation::{NSString, INSString};
 use super::{id, NSObjectPrototype, NSObjectProtocol};
 
 use libc;
+use std::mem::transmute_copy;
 
 use resource::MTLResource;
 use texture::MTLTexture;
@@ -132,21 +133,21 @@ impl<'a> MTLCommandEncoder {
     pub fn set_label(&self, label: &str) {
         unsafe {
             let nslabel = NSString::from_str(label);
-            msg_send![self.0, setLabel:nslabel]
+            msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
         }
     }
 
     pub fn insert_debug_signpost(&self, string: &str) {
         unsafe {
             let nsstring = NSString::from_str(string);
-            msg_send![self.0, insertDebugSignpost:nsstring]
+            msg_send![self.0, insertDebugSignpost:transmute_copy::<_, *const ()>(&nsstring)]
         }
     }
 
     pub fn push_debug_group(&self, string: &str) {
         unsafe {
             let nsstring = NSString::from_str(string);
-            msg_send![self.0, pushDebugGroup:nsstring]
+            msg_send![self.0, pushDebugGroup:transmute_copy::<_, *const ()>(&nsstring)]
         }
     }
 

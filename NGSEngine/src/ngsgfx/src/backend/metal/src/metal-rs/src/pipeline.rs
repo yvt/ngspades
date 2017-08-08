@@ -8,6 +8,7 @@
 use cocoa::foundation::NSUInteger;
 use objc::runtime::{Class, YES, NO};
 use objc_foundation::{INSString, NSString};
+use std::mem::transmute_copy;
 
 use super::{id, NSObjectPrototype, NSObjectProtocol, NSArray};
 
@@ -267,7 +268,7 @@ impl<'a> MTLRenderPipelineDescriptor {
     pub fn set_label(&self, label: &str) {
         unsafe {
             let nslabel = NSString::from_str(label);
-            msg_send![self.0, setLabel:nslabel]
+            msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
         }
     }
 
@@ -454,7 +455,7 @@ impl<'a> MTLComputePipelineDescriptor {
     pub fn set_label(&self, label: &str) {
         unsafe {
             let nslabel = NSString::from_str(label);
-            msg_send![self.0, setLabel:nslabel]
+            msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
         }
     }
 

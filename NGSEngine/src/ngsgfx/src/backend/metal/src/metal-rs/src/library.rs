@@ -7,6 +7,7 @@
 
 use objc::runtime::{Class, YES, NO};
 use objc_foundation::{NSString, INSString};
+use std::mem::transmute_copy;
 
 use super::{id, NSObjectPrototype, NSObjectProtocol, NSArray};
 
@@ -203,7 +204,7 @@ impl<'a> MTLLibrary {
     pub fn set_label(&self, label: &str) {
         unsafe {
             let nslabel = NSString::from_str(label);
-            msg_send![self.0, setLabel:nslabel]
+            msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
         }
     }
 
