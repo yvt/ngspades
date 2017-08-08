@@ -36,3 +36,6 @@ ngscom = { path = "src/ngscom" }
 ngsgfx = { path = "src/ngsgfx" }
 yfft = { path = "src/yfft" }
 xdispatch = { path = "src/xdispatch" }
+
+[profile.release]
+lto = true

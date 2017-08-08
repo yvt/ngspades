@@ -192,6 +192,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         Ok(())
     }
 
+    #[inline]
     fn acquire_resource(
         &mut self,
         _: core::PipelineStageFlags,
@@ -202,6 +203,7 @@ impl core::CommandEncoder<Backend> for CommandBuffer {
         // no-op
     }
 
+    #[inline]
     fn release_resource(
         &mut self,
         _: core::PipelineStageFlags,

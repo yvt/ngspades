@@ -8,14 +8,17 @@ use core;
 use imp::{Backend, CommandBuffer, Fence, SecondaryCommandBuffer};
 
 impl core::BarrierCommandEncoder<Backend> for CommandBuffer {
+    #[inline]
     fn wait_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
         // no-op for now
     }
 
+    #[inline]
     fn update_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
         // no-op for now
     }
 
+    #[inline]
     fn resource_barrier(
         &mut self,
         _: core::PipelineStageFlags,
@@ -29,14 +32,17 @@ impl core::BarrierCommandEncoder<Backend> for CommandBuffer {
 }
 
 impl core::BarrierCommandEncoder<Backend> for SecondaryCommandBuffer {
+    #[inline]
     fn wait_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
         // no-op for now
     }
 
+    #[inline]
     fn update_fence(&mut self, _: core::PipelineStageFlags, _: core::AccessTypeFlags, _: &Fence) {
         // no-op for now
     }
 
+    #[inline]
     fn resource_barrier(
         &mut self,
         _: core::PipelineStageFlags,
