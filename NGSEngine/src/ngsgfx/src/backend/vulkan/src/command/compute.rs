@@ -14,7 +14,6 @@ use imp::{CommandBuffer, DescriptorSet, PipelineLayout, ComputePipeline};
 use {DeviceRef, Backend, AshDevice};
 
 impl<T: DeviceRef> core::ComputeCommandEncoder<Backend<T>> for CommandBuffer<T> {
-    // TODO: Do not allow dispatch calls until all descriptor set bindings are set properly
     fn bind_compute_pipeline(&mut self, pipeline: &ComputePipeline<T>) {
         if self.encoder_error().is_some() {
             return;

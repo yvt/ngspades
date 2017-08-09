@@ -58,6 +58,19 @@
 //!    if they will never be modified in the future. Doing so will reduce the
 //!    lifetime tracking overhead.
 //!
+//!
+//! Unimplemented Features
+//! ----------------------
+//!
+//!  - `CommandEncoder` happily accepts dsecriptor sets whose descriptor bindings
+//!    are not initialized properly. Performing this check precisely would be
+//!    hard and would have a considerable runtime cost because we have to examine
+//!    each shader and determine which bindings are statically used, and then we
+//!    have to compare it with the current state of the descriptor set.
+//!
+//!    Use the Vulkan validation layers provided by LunarG to detect this kind of
+//!    error.
+//!
 #![feature(optin_builtin_traits)]
 extern crate ngsgfx_core as core;
 extern crate ngsgfx_common;

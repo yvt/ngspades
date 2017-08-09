@@ -347,8 +347,6 @@ impl<T: DeviceRef> Drop for DescriptorSetLockData<T> {
     }
 }
 
-// TODO: make sure all descriptors filled before the first use?
-
 impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
     fn update(&self, writes: &[core::WriteDescriptorSet<Backend<T>>]) {
         let mut locked = self.data.mutex.lock();

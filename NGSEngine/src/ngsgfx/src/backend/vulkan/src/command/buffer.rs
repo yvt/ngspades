@@ -38,7 +38,6 @@ pub(super) struct CommandBufferData<T: DeviceRef> {
     /// Vulkan command pool for each internal queue.
     pub(super) pools: ResourceMutex<LlFence<T>, CommandBufferPoolSet<T>>,
 
-    // TODO: put `pools` into `ResourceMutex`
     pub(super) passes: Vec<CommandPass<T>>,
     pub(super) nested_encoder: NestedPassEncoder<T>,
 
