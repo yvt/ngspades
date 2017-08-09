@@ -10,7 +10,8 @@ use std::{ptr, ffi};
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
 use imp::{self, ShaderModule, translate_shader_stage, translate_vertex_format,
-          translate_rect2d_u32, translate_compare_function};
+          translate_rect2d_u32, translate_compare_function, LlFence};
+use command::mutex::{ResourceMutex, ResourceMutexDeviceRef};
 
 pub struct GraphicsPipeline<T: DeviceRef> {
     data: RefEqArc<GraphicsPipelineData<T>>,
@@ -22,13 +23,18 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct GraphicsPipelineData<T: DeviceRef> {
+    mutex: ResourceMutex<LlFence<T>, GraphicsPipelineLockData<T>>,
+}
+
+#[derive(Debug)]
+pub(crate) struct GraphicsPipelineLockData<T: DeviceRef> {
     device_ref: T,
     handle: vk::Pipeline,
 }
 
 impl<T: DeviceRef> core::GraphicsPipeline for GraphicsPipeline<T> {}
 
-impl<T: DeviceRef> Drop for GraphicsPipelineData<T> {
+impl<T: DeviceRef> Drop for GraphicsPipelineLockData<T> {
     fn drop(&mut self) {
         let device: &AshDevice = self.device_ref.device();
         unsafe { device.destroy_pipeline(self.handle, self.device_ref.allocation_callbacks()) };
@@ -399,32 +405,35 @@ impl<T: DeviceRef> GraphicsPipeline<T> {
 
         Ok(GraphicsPipeline {
             data: RefEqArc::new(GraphicsPipelineData {
-                device_ref: device_ref.clone(),
-                handle,
+                mutex: ResourceMutex::new(GraphicsPipelineLockData{
+                    device_ref: device_ref.clone(),
+                    handle,
+                }, false),
             }),
         })
     }
 
     pub fn handle(&self) -> vk::Pipeline {
-        self.data.handle
+        self.data.mutex.get_host_read().handle
+    }
+
+    pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, GraphicsPipelineLockData<T>> {
+        self.data.mutex.expect_device_access().0
     }
 }
 
-pub struct StencilState<T: DeviceRef> {
-    data: RefEqArc<StencilStateData<T>>,
+pub struct StencilState {
+    data: RefEqArc<StencilStateData>,
 }
 
 derive_using_field! {
-    (T: DeviceRef); (PartialEq, Eq, Hash, Debug, Clone) for StencilState<T> => data
+    (); (PartialEq, Eq, Hash, Debug, Clone) for StencilState => data
 }
 
 #[derive(Debug)]
-struct StencilStateData<T: DeviceRef> {
-    device: T,
-}
+struct StencilStateData {}
 
-impl<T: DeviceRef> core::StencilState for StencilState<T> {}
-
+impl core::StencilState for StencilState {}
 
 pub struct ComputePipeline<T: DeviceRef> {
     data: RefEqArc<ComputePipelineData<T>>,
@@ -436,13 +445,18 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct ComputePipelineData<T: DeviceRef> {
+    mutex: ResourceMutex<LlFence<T>, ComputePipelineLockData<T>>,
+}
+
+#[derive(Debug)]
+pub(crate) struct ComputePipelineLockData<T: DeviceRef> {
     device_ref: T,
     handle: vk::Pipeline,
 }
 
 impl<T: DeviceRef> core::ComputePipeline for ComputePipeline<T> {}
 
-impl<T: DeviceRef> Drop for ComputePipelineData<T> {
+impl<T: DeviceRef> Drop for ComputePipelineLockData<T> {
     fn drop(&mut self) {
         let device: &AshDevice = self.device_ref.device();
         unsafe { device.destroy_pipeline(self.handle, self.device_ref.allocation_callbacks()) };
@@ -477,12 +491,20 @@ impl<T: DeviceRef> ComputePipeline<T> {
         }
 
         Ok(ComputePipeline {
-            data: RefEqArc::new(ComputePipelineData { device_ref, handle }),
+            data: RefEqArc::new(ComputePipelineData {
+                mutex: ResourceMutex::new(ComputePipelineLockData {
+                    device_ref, handle
+                }, false),
+            }),
         })
     }
 
     pub fn handle(&self) -> vk::Pipeline {
-        self.data.handle
+        self.data.mutex.get_host_read().handle
+    }
+
+    pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, ComputePipelineLockData<T>> {
+        self.data.mutex.expect_device_access().0
     }
 }
 

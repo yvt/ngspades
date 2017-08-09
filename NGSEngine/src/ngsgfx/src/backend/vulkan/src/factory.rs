@@ -107,7 +107,7 @@ impl<T: DeviceRef> core::Factory<Backend<T>> for Device<T> {
     fn make_stencil_state(
         &self,
         description: &core::StencilStateDescription<GraphicsPipeline<T>>,
-    ) -> core::Result<StencilState<T>> {
+    ) -> core::Result<StencilState> {
         description.debug_expect_valid(Some(self.capabilities()), "");
         unimplemented!() // StencilState::new(self.metal_device(), description)
     }

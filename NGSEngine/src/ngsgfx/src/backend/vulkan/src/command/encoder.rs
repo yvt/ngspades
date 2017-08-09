@@ -211,7 +211,7 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
             buffer,
             ..
         } = self.expect_outside_render_pass();
-        let ref mut data = self.data;
+        let ref mut data = *self.data;
         let device: &AshDevice = data.device_ref.device();
         let barrier = if from_engine == core::DeviceEngine::Host {
             VkResourceBarrier::translate(
@@ -235,6 +235,14 @@ impl<T: DeviceRef> core::CommandEncoder<Backend<T>> for CommandBuffer<T> {
                 data.device_config.queues[internal_queue_index].0,
             )
         };
+        match resource {
+            &core::SubresourceWithLayout::Buffer { buffer, .. } => {
+                data.dependency_table.insert_buffer(buffer);
+            }
+            &core::SubresourceWithLayout::Image { image, .. } => {
+                data.dependency_table.insert_image(image);
+            }
+        }
         unsafe {
             device.cmd_pipeline_barrier(
                 buffer,

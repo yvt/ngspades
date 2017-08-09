@@ -15,7 +15,8 @@ use parking_lot::Mutex;
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
 use imp::{DescriptorSetLockData, DescriptorSet, BufferLockData, Buffer, Framebuffer,
-          FramebufferLockData};
+          FramebufferLockData, ComputePipeline, ComputePipelineLockData, GraphicsPipeline,
+          GraphicsPipelineLockData, PipelineLayout, PipelineLayoutLockData, Image, ImageLockData};
 use super::mutex::{ResourceFence, ResourceFenceDependencyTable, ResourceMutexDeviceRef};
 use super::recycler::Recycler;
 use super::buffer::CommandBufferPoolSet;
@@ -58,9 +59,15 @@ struct LlFenceData<T: DeviceRef> {
 
     descriptor_sets: ResourceFenceDependencyTable<LlFence<T>, DescriptorSetLockData<T>>,
     buffers: ResourceFenceDependencyTable<LlFence<T>, BufferLockData<T>>,
+    images: ResourceFenceDependencyTable<LlFence<T>, ImageLockData<T>>,
+    framebuffers: ResourceFenceDependencyTable<LlFence<T>, FramebufferLockData<T>>,
+    graphics_pipelines: ResourceFenceDependencyTable<LlFence<T>, GraphicsPipelineLockData<T>>,
+    compute_pipelines: ResourceFenceDependencyTable<LlFence<T>, ComputePipelineLockData<T>>,
+    pipeline_layouts: ResourceFenceDependencyTable<LlFence<T>, PipelineLayoutLockData<T>>,
+
+    // The following dependencies are inserted by `CommandQueue`
     cbp_sets: ResourceFenceDependencyTable<LlFence<T>, CommandBufferPoolSet<T>>,
     semaphores: ResourceFenceDependencyTable<LlFence<T>, FenceLockData<T>>,
-    framebuffers: ResourceFenceDependencyTable<LlFence<T>, FramebufferLockData<T>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -157,8 +164,20 @@ impl<'a, T: DeviceRef> LlFenceDepInjector<'a, T> {
         for (_, rmdr) in source.buffers.drain() {
             self.0.buffers.insert(self.1, rmdr);
         }
+        for (_, rmdr) in source.images.drain() {
+            self.0.images.insert(self.1, rmdr);
+        }
         for (_, rmdr) in source.framebuffers.drain() {
             self.0.framebuffers.insert(self.1, rmdr);
+        }
+        for (_, rmdr) in source.graphics_pipelines.drain() {
+            self.0.graphics_pipelines.insert(self.1, rmdr);
+        }
+        for (_, rmdr) in source.compute_pipelines.drain() {
+            self.0.compute_pipelines.insert(self.1, rmdr);
+        }
+        for (_, rmdr) in source.pipeline_layouts.drain() {
+            self.0.pipeline_layouts.insert(self.1, rmdr);
         }
     }
 
@@ -190,9 +209,13 @@ impl<T: DeviceRef> LlFenceData<T> {
 
             descriptor_sets: ResourceFenceDependencyTable::new(),
             buffers: ResourceFenceDependencyTable::new(),
+            images: ResourceFenceDependencyTable::new(),
             cbp_sets: ResourceFenceDependencyTable::new(),
             semaphores: ResourceFenceDependencyTable::new(),
             framebuffers: ResourceFenceDependencyTable::new(),
+            graphics_pipelines: ResourceFenceDependencyTable::new(),
+            compute_pipelines: ResourceFenceDependencyTable::new(),
+            pipeline_layouts: ResourceFenceDependencyTable::new(),
         };
 
         {
@@ -254,9 +277,13 @@ impl<T: DeviceRef> LlFenceData<T> {
 
         self.descriptor_sets.clear(fence);
         self.buffers.clear(fence);
+        self.images.clear(fence);
         self.cbp_sets.clear(fence);
         self.semaphores.clear(fence);
         self.framebuffers.clear(fence);
+        self.graphics_pipelines.clear(fence);
+        self.compute_pipelines.clear(fence);
+        self.pipeline_layouts.clear(fence);
         self.state = LlFenceState::Signaled;
     }
 }
@@ -279,21 +306,29 @@ pub(crate) struct CommandDependencyTable<T: DeviceRef> {
     descriptor_sets:
         HashMap<DescriptorSet<T>, ResourceMutexDeviceRef<LlFence<T>, DescriptorSetLockData<T>>>,
     buffers: HashMap<Buffer<T>, ResourceMutexDeviceRef<LlFence<T>, BufferLockData<T>>>,
+    images: HashMap<Image<T>, ResourceMutexDeviceRef<LlFence<T>, ImageLockData<T>>>,
     framebuffers:
         HashMap<Framebuffer<T>, ResourceMutexDeviceRef<LlFence<T>, FramebufferLockData<T>>>,
-    // TODO: graphics pipelines
-    // TODO: compute pipelines
-    // TODO: stencil states
-    // TODO: images
-    // TODO: pipeline layouts?
+    graphics_pipelines: HashMap<
+        GraphicsPipeline<T>,
+        ResourceMutexDeviceRef<LlFence<T>, GraphicsPipelineLockData<T>>,
+    >,
+    compute_pipelines:
+        HashMap<ComputePipeline<T>, ResourceMutexDeviceRef<LlFence<T>, ComputePipelineLockData<T>>>,
+    pipeline_layouts:
+        HashMap<PipelineLayout<T>, ResourceMutexDeviceRef<LlFence<T>, PipelineLayoutLockData<T>>>,
 }
 
 impl<T: DeviceRef> CommandDependencyTable<T> {
     pub fn new() -> Self {
-        Self {
-            descriptor_sets: Default::default(),
-            buffers: Default::default(),
-            framebuffers: Default::default(),
+        CommandDependencyTable {
+            descriptor_sets: HashMap::new(),
+            buffers: HashMap::new(),
+            images: HashMap::new(),
+            framebuffers: HashMap::new(),
+            graphics_pipelines: HashMap::new(),
+            compute_pipelines: HashMap::new(),
+            pipeline_layouts: HashMap::new(),
         }
     }
 
@@ -301,7 +336,11 @@ impl<T: DeviceRef> CommandDependencyTable<T> {
     pub fn clear(&mut self) {
         self.descriptor_sets.clear();
         self.buffers.clear();
+        self.images.clear();
         self.framebuffers.clear();
+        self.graphics_pipelines.clear();
+        self.compute_pipelines.clear();
+        self.pipeline_layouts.clear();
     }
 
     pub fn insert_descriptor_set(&mut self, obj: &DescriptorSet<T>) {
@@ -322,6 +361,15 @@ impl<T: DeviceRef> CommandDependencyTable<T> {
         self.buffers.insert(obj.clone(), device_ref);
     }
 
+    pub fn insert_image(&mut self, obj: &Image<T>) {
+        if self.images.contains_key(obj) {
+            return;
+        }
+
+        let device_ref = obj.lock_device();
+        self.images.insert(obj.clone(), device_ref);
+    }
+
     pub fn insert_framebuffer(&mut self, obj: &Framebuffer<T>) {
         if self.framebuffers.contains_key(obj) {
             return;
@@ -331,11 +379,48 @@ impl<T: DeviceRef> CommandDependencyTable<T> {
         self.framebuffers.insert(obj.clone(), device_ref);
     }
 
+    pub fn insert_graphics_pipeline(&mut self, obj: &GraphicsPipeline<T>) {
+        if self.graphics_pipelines.contains_key(obj) {
+            return;
+        }
+
+        let device_ref = obj.lock_device();
+        self.graphics_pipelines.insert(obj.clone(), device_ref);
+    }
+
+    pub fn insert_compute_pipeline(&mut self, obj: &ComputePipeline<T>) {
+        if self.compute_pipelines.contains_key(obj) {
+            return;
+        }
+
+        let device_ref = obj.lock_device();
+        self.compute_pipelines.insert(obj.clone(), device_ref);
+    }
+
+    pub fn insert_pipeline_layout(&mut self, obj: &PipelineLayout<T>) {
+        if self.pipeline_layouts.contains_key(obj) {
+            return;
+        }
+
+        let device_ref = obj.lock_device();
+        self.pipeline_layouts.insert(obj.clone(), device_ref);
+    }
+
     /// Move all dependencies from `source` to `self`.
     pub fn inherit(&mut self, source: &mut Self) {
         self.descriptor_sets.extend(source.descriptor_sets.drain());
         self.buffers.extend(source.buffers.drain());
+        self.images.extend(source.images.drain());
         self.framebuffers.extend(source.framebuffers.drain());
+        self.graphics_pipelines.extend(
+            source.graphics_pipelines.drain(),
+        );
+        self.compute_pipelines.extend(
+            source.compute_pipelines.drain(),
+        );
+        self.pipeline_layouts.extend(
+            source.pipeline_layouts.drain(),
+        );
     }
 }
 

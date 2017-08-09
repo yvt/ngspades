@@ -119,6 +119,11 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct PipelineLayoutData<T: DeviceRef> {
+    mutex: ResourceMutex<LlFence<T>, PipelineLayoutLockData<T>>,
+}
+
+#[derive(Debug)]
+pub(crate)struct PipelineLayoutLockData<T: DeviceRef> {
     device_ref: T,
     handle: vk::PipelineLayout,
 }
@@ -131,7 +136,7 @@ impl<T: DeviceRef> core::Marker for PipelineLayout<T> {
     }
 }
 
-impl<T: DeviceRef> Drop for PipelineLayoutData<T> {
+impl<T: DeviceRef> Drop for PipelineLayoutLockData<T> {
     fn drop(&mut self) {
         let device: &AshDevice = self.device_ref.device();
         unsafe {
@@ -172,12 +177,18 @@ impl<T: DeviceRef> PipelineLayout<T> {
         }
 
         Ok(Self {
-            data: RefEqArc::new(PipelineLayoutData { device_ref, handle }),
+            data: RefEqArc::new(PipelineLayoutData {
+                mutex: ResourceMutex::new(PipelineLayoutLockData { device_ref, handle }, false),
+            }),
         })
     }
 
     pub fn handle(&self) -> vk::PipelineLayout {
-        self.data.handle
+        self.data.mutex.get_host_read().handle
+    }
+
+    pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, PipelineLayoutLockData<T>> {
+        self.data.mutex.expect_device_access().0
     }
 }
 

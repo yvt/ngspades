@@ -14,13 +14,13 @@ use imp::{CommandBuffer, DescriptorSet, PipelineLayout, ComputePipeline};
 use {DeviceRef, Backend, AshDevice};
 
 impl<T: DeviceRef> core::ComputeCommandEncoder<Backend<T>> for CommandBuffer<T> {
-    // TODO: add strong references to given descriptor sets and pipelines, and so on
-    // TODO: lock descriptor set update until command buffer execution is completed
-
+    // TODO: Do not allow dispatch calls until all descriptor set bindings are set properly
     fn bind_compute_pipeline(&mut self, pipeline: &ComputePipeline<T>) {
         if self.encoder_error().is_some() {
             return;
         }
+
+        self.data.dependency_table.insert_compute_pipeline(pipeline);
 
         let device: &AshDevice = self.data.device_ref.device();
         let buffer = self.expect_outside_render_pass().buffer;
@@ -41,6 +41,9 @@ impl<T: DeviceRef> core::ComputeCommandEncoder<Backend<T>> for CommandBuffer<T> 
             return;
         }
 
+        self.data.dependency_table.insert_pipeline_layout(
+            pipeline_layout,
+        );
         for ds in descriptor_sets.iter() {
             self.data.dependency_table.insert_descriptor_set(ds);
         }

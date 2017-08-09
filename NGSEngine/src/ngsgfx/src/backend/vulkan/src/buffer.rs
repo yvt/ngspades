@@ -5,7 +5,7 @@
 //
 use core;
 use std::{ptr, mem};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use ash::vk;
 use ash::version::DeviceV1_0;
 
@@ -81,10 +81,7 @@ impl<'a, T: DeviceRef> UnassociatedBuffer<'a, T> {
             handle: self.into_raw(),
         };
         Ok(Buffer {
-            data: RefEqArc::new(BufferData {
-                handle: bld.handle,
-                mutex: Mutex::new(ResourceMutex::new(bld, false)),
-            }),
+            data: RefEqArc::new(BufferData { mutex: ResourceMutex::new(bld, false) }),
         })
     }
 }
@@ -108,9 +105,7 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct BufferData<T: DeviceRef> {
-    /// Copy of `BufferLockData::handle`. (Do not destroy!)
-    handle: vk::Buffer,
-    mutex: Mutex<ResourceMutex<LlFence<T>, BufferLockData<T>>>,
+    mutex: ResourceMutex<LlFence<T>, BufferLockData<T>>,
 }
 
 #[derive(Debug)]
@@ -137,10 +132,10 @@ impl<T: DeviceRef> Drop for BufferLockData<T> {
 
 impl<T: DeviceRef> Buffer<T> {
     pub fn handle(&self) -> vk::Buffer {
-        self.data.handle
+        self.data.mutex.get_host_read().handle
     }
 
     pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, BufferLockData<T>> {
-        self.data.mutex.lock().unwrap().lock_device()
+        self.data.mutex.expect_device_access().0
     }
 }

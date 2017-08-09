@@ -17,10 +17,7 @@ use {DeviceRef, Backend, AshDevice};
 struct GraphicsEncoder<'a>(&'a AshDevice, vk::CommandBuffer);
 
 impl<'a> GraphicsEncoder<'a> {
-    // TODO: this implementation is actually very unsafe
-    // TODO: add strong references to given descriptor sets and pipelines, and so on
-    // TODO: lock descriptor set update until command buffer execution is completed
-
+    // TODO: Do not allow draw calls until all descriptor set bindings are set properly
     fn bind_graphics_pipeline<T: DeviceRef>(&self, pipeline: &GraphicsPipeline<T>) {
         unsafe {
             self.0.cmd_bind_pipeline(
@@ -42,7 +39,7 @@ impl<'a> GraphicsEncoder<'a> {
         // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
         unimplemented!()
     }
-    fn set_stencil_state<T: DeviceRef>(&self, _: &StencilState<T>) {
+    fn set_stencil_state(&self, _: &StencilState) {
         // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
         unimplemented!()
     }
@@ -188,6 +185,9 @@ impl<T: DeviceRef> CommandBuffer<T> {
 
 impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuffer<T> {
     fn bind_graphics_pipeline(&mut self, pipeline: &GraphicsPipeline<T>) {
+        if let Some(table) = self.dependency_table() {
+            table.insert_graphics_pipeline(pipeline);
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_graphics_pipeline(pipeline);
         }
@@ -207,7 +207,7 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
             e.set_depth_bounds(value);
         }
     }
-    fn set_stencil_state(&mut self, value: &StencilState<T>) {
+    fn set_stencil_state(&mut self, value: &StencilState) {
         if let Some(e) = self.graphics_encoder() {
             e.set_stencil_state(value);
         }
@@ -235,6 +235,7 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for CommandBuff
         dynamic_offsets: &[u32],
     ) {
         if let Some(table) = self.dependency_table() {
+            table.insert_pipeline_layout(pipeline_layout);
             for ds in descriptor_sets.iter() {
                 table.insert_descriptor_set(ds);
             }
@@ -306,6 +307,9 @@ impl<T: DeviceRef> SecondaryCommandBuffer<T> {
 impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCommandBuffer<T> {
     // these are *exact* copies of those of `CommandBuffer<T>`
     fn bind_graphics_pipeline(&mut self, pipeline: &GraphicsPipeline<T>) {
+        if let Some(table) = self.dependency_table() {
+            table.insert_graphics_pipeline(pipeline);
+        }
         if let Some(e) = self.graphics_encoder() {
             e.bind_graphics_pipeline(pipeline);
         }
@@ -325,7 +329,7 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
             e.set_depth_bounds(value);
         }
     }
-    fn set_stencil_state(&mut self, value: &StencilState<T>) {
+    fn set_stencil_state(&mut self, value: &StencilState) {
         if let Some(e) = self.graphics_encoder() {
             e.set_stencil_state(value);
         }
@@ -353,6 +357,7 @@ impl<T: DeviceRef> core::RenderSubpassCommandEncoder<Backend<T>> for SecondaryCo
         dynamic_offsets: &[u32],
     ) {
         if let Some(table) = self.dependency_table() {
+            table.insert_pipeline_layout(pipeline_layout);
             for ds in descriptor_sets.iter() {
                 table.insert_descriptor_set(ds);
             }

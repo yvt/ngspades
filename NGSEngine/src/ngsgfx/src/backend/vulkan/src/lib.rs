@@ -171,7 +171,7 @@ pub mod imp {
         type RenderPass = RenderPass<T>;
         type Sampler = Sampler<T>;
         type SecondaryCommandBuffer = SecondaryCommandBuffer<T>;
-        type StencilState = StencilState<T>;
+        type StencilState = StencilState;
         type ShaderModule = ShaderModule<T>;
     }
 

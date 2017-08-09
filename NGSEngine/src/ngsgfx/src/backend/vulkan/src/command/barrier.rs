@@ -165,6 +165,17 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
             return;
         }
 
+        if let Some(table) = self.dependency_table() {
+            match resource {
+                &core::SubresourceWithLayout::Buffer { buffer, .. } => {
+                    table.insert_buffer(buffer);
+                }
+                &core::SubresourceWithLayout::Image { image, .. } => {
+                    table.insert_image(image);
+                }
+            }
+        }
+
         let &mut CommandPass { buffer, .. } = self.expect_action_pass_mut();
         let device: &AshDevice = self.data.device_ref.device();
 
@@ -212,6 +223,17 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for SecondaryCommandB
         destination_access: core::AccessTypeFlags,
         resource: &core::SubresourceWithLayout<Backend<T>>,
     ) {
+        if let Some(table) = self.dependency_table() {
+            match resource {
+                &core::SubresourceWithLayout::Buffer { buffer, .. } => {
+                    table.insert_buffer(buffer);
+                }
+                &core::SubresourceWithLayout::Image { image, .. } => {
+                    table.insert_image(image);
+                }
+            }
+        }
+
         let &mut SecondaryCommandBufferData {
             ref device_ref,
             ref buffer,

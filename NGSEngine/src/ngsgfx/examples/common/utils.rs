@@ -18,6 +18,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         Self { device }
     }
 
+    #[allow(dead_code)]
     pub fn make_preinitialized_buffer<T>(
         &self,
         heap: &mut B::UniversalHeap,
@@ -102,6 +103,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
         (buffer, allocation)
     }
 
+    #[allow(dead_code)]
     pub fn make_preinitialized_image_no_mip<T>(
         &self,
         heap: &mut B::UniversalHeap,

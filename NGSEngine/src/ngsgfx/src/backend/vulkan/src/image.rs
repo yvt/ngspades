@@ -5,7 +5,8 @@
 //
 use {core, RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap, translate_image_layout,
      translate_image_subresource_range};
-use imp::{MemoryHunk, translate_image_format};
+use imp::{MemoryHunk, translate_image_format, LlFence};
+use command::mutex::{ResourceMutex, ResourceMutexDeviceRef};
 
 use ash::vk;
 use ash::version::DeviceV1_0;
@@ -142,9 +143,14 @@ impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
 
         Ok(Image {
             data: RefEqArc::new(ImageData {
-                hunk: Some(hunk),
-                info: self.info.clone(),
-                handle: self.into_raw(),
+                mutex: ResourceMutex::new(
+                    ImageLockData {
+                        hunk: Some(hunk),
+                        info: self.info.clone(),
+                        handle: self.into_raw(),
+                    },
+                    false,
+                ),
             }),
         })
     }
@@ -169,6 +175,11 @@ derive_using_field! {
 
 #[derive(Debug)]
 struct ImageData<T: DeviceRef> {
+    mutex: ResourceMutex<LlFence<T>, ImageLockData<T>>,
+}
+
+#[derive(Debug)]
+pub(crate) struct ImageLockData<T: DeviceRef> {
     hunk: Option<Arc<MemoryHunk<T>>>,
     handle: vk::Image,
     info: ImageInfo,
@@ -187,7 +198,7 @@ impl<T: DeviceRef> core::Marker for Image<T> {
     }
 }
 
-impl<T: DeviceRef> Drop for ImageData<T> {
+impl<T: DeviceRef> Drop for ImageLockData<T> {
     fn drop(&mut self) {
         if let Some(ref hunk) = self.hunk {
             let device_ref = hunk.device_ref();
@@ -209,11 +220,18 @@ impl<T: DeviceRef> Image<T> {
     /// The image must be a color image.
     pub unsafe fn import(image: vk::Image) -> Self {
         assert!(image != vk::Image::null());
+
+        // Make `ResourceMutex` mutable so it can be `try_take`-ed later
         Self {
             data: RefEqArc::new(ImageData {
-                hunk: None,
-                handle: image,
-                info: ImageInfo { aspect: vk::IMAGE_ASPECT_COLOR_BIT },
+                mutex: ResourceMutex::new(
+                    ImageLockData {
+                        hunk: None,
+                        handle: image,
+                        info: ImageInfo { aspect: vk::IMAGE_ASPECT_COLOR_BIT },
+                    },
+                    true,
+                ),
             }),
         }
     }
@@ -223,22 +241,35 @@ impl<T: DeviceRef> Image<T> {
     ///
     /// The `Image` must have been created with `import`. Otherwise a panic will occur.
     pub fn try_take(self) -> Result<vk::Image, Self> {
-        if self.data.hunk.is_some() {
+        if self.data.mutex.get_host_read().hunk.is_some() {
             // Can't take a managed image.
             panic!("cannot take a managed image");
         }
         match RefEqArc::try_unwrap(self.data) {
-            Ok(data) => Ok(data.handle),
+            Ok(mut data) => {
+                if let Some(lock_data) = data.mutex.try_lock_host_write(false) {
+                    // The image is not in use - we can take it
+                    return Ok(lock_data.handle);
+                }
+
+                // The device is still accessing the `vk::Image`
+                Err(Self { data: RefEqArc::new(data) })
+            }
+            // There are other references to `ImageData`
             Err(data) => Err(Self { data }),
         }
     }
 
     pub fn handle(&self) -> vk::Image {
-        self.data.handle
+        self.data.mutex.get_host_read().handle
     }
 
     pub(crate) fn info(&self) -> &ImageInfo {
-        &self.data.info
+        &self.data.mutex.get_host_read().info
+    }
+
+    pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, ImageLockData<T>> {
+        self.data.mutex.expect_device_access().0
     }
 }
 
