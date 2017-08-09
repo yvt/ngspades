@@ -13,7 +13,7 @@ use smallvec::SmallVec;
 use {RefEqArc, DeviceRef, AshDevice, Backend, translate_generic_error_unwrap,
      translate_shader_stage_flags};
 use command::mutex::{ResourceMutex, ResourceMutexDeviceRef};
-use imp::{LlFence, Sampler};
+use imp::{LlFence, Sampler, ImageView, Buffer};
 
 pub struct DescriptorSetLayout<T: DeviceRef> {
     data: RefEqArc<DescriptorSetLayoutData<T>>,
@@ -28,6 +28,12 @@ struct DescriptorSetLayoutData<T: DeviceRef> {
     device_ref: T,
     handle: vk::DescriptorSetLayout,
     imm_samplers: Vec<Sampler<T>>,
+
+    /// The total number of descriptors
+    num_descriptors: usize,
+
+    /// The starting index for each binding
+    binding_offsets: Vec<usize>,
 }
 
 impl<T: DeviceRef> core::DescriptorSetLayout for DescriptorSetLayout<T> {}
@@ -52,9 +58,20 @@ impl<T: DeviceRef> DescriptorSetLayout<T> {
         device_ref: &T,
         desc: &core::DescriptorSetLayoutDescription<Sampler<T>>,
     ) -> core::Result<Self> {
+        let mut num_descriptors = 0;
+        let binding_offsets = desc.bindings
+            .iter()
+            .map(|binding| {
+                let offset = num_descriptors;
+                num_descriptors += binding.num_elements;
+                offset
+            })
+            .collect();
+
         let mut vk_bindings = Vec::with_capacity(desc.bindings.len());
         let mut imm_sampler_is = Vec::with_capacity(desc.bindings.len());
         let mut imm_samplers = Vec::new();
+
         for binding in desc.bindings.iter() {
             vk_bindings.push(vk::DescriptorSetLayoutBinding {
                 binding: binding.location as u32,
@@ -101,6 +118,8 @@ impl<T: DeviceRef> DescriptorSetLayout<T> {
                 device_ref,
                 handle,
                 imm_samplers,
+                num_descriptors,
+                binding_offsets,
             }),
         })
     }
@@ -299,7 +318,6 @@ derive_using_field! {
 struct DescriptorSetData<T: DeviceRef> {
     /// Copy of `DescriptorSetLockData::handle`. (Do not destroy!)
     handle: vk::DescriptorSet,
-    layout: DescriptorSetLayout<T>,
     mutex: Mutex<ResourceMutex<LlFence<T>, DescriptorSetLockData<T>>>,
 }
 
@@ -307,6 +325,19 @@ struct DescriptorSetData<T: DeviceRef> {
 pub(crate) struct DescriptorSetLockData<T: DeviceRef> {
     handle: vk::DescriptorSet,
     pool: DescriptorPool<T>,
+    slots: Vec<Option<DescriptorSlot<T>>>,
+
+    /// DescriptorSetLayout must be held here because it can contain
+    /// immutable samplers
+    layout: DescriptorSetLayout<T>,
+}
+
+#[derive(Debug, Clone)]
+enum DescriptorSlot<T: DeviceRef> {
+    ImageView(ImageView<T>),
+    Sampler(Sampler<T>),
+    CombinedImageSampler(ImageView<T>, Sampler<T>),
+    Buffer(Buffer<T>),
 }
 
 impl<T: DeviceRef> Drop for DescriptorSetLockData<T> {
@@ -320,9 +351,53 @@ impl<T: DeviceRef> Drop for DescriptorSetLockData<T> {
 
 impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
     fn update(&self, writes: &[core::WriteDescriptorSet<Backend<T>>]) {
-        // TODO: add references to the objects
         let mut locked = self.data.mutex.lock();
-        let lock_data = locked.lock_host_write();
+        let mut lock_data: &mut DescriptorSetLockData<T> = locked.lock_host_write();
+
+        // Update internal slots
+        let ref layout = *lock_data.layout.data;
+        for wds in writes {
+            // Firstly perform bounds check (to prevent corrupted internal states)
+            let offset = layout.binding_offsets[wds.start_binding] + wds.start_index;
+            let _ = lock_data.slots[offset..offset + wds.elements.len()];
+        }
+        for wds in writes {
+            use core::WriteDescriptors::*;
+            let offset = layout.binding_offsets[wds.start_binding] + wds.start_index;
+            let slots = lock_data.slots[offset..].iter_mut();
+            match wds.elements {
+                StorageImage(desc_images) |
+                SampledImage(desc_images) |
+                InputAttachment(desc_images) => {
+                    for (mut slot, di) in slots.zip(desc_images) {
+                        *slot = Some(DescriptorSlot::ImageView(di.image_view.clone()));
+                    }
+                }
+                Sampler(samplers) => {
+                    for (mut slot, s) in slots.zip(samplers) {
+                        *slot = Some(DescriptorSlot::Sampler((*s).clone()));
+                    }
+                }
+                CombinedImageSampler(iss) => {
+                    for (ref mut slot, &(ref di, ref s)) in slots.zip(iss) {
+                        **slot = Some(DescriptorSlot::CombinedImageSampler(
+                            di.image_view.clone(),
+                            (*s).clone()
+                        ));
+                    }
+                }
+                ConstantBuffer(desc_buffers) |
+                StorageBuffer(desc_buffers) |
+                DynamicConstantBuffer(desc_buffers) |
+                DynamicStorageBuffer(desc_buffers) => {
+                    for (mut slot, db) in slots.zip(desc_buffers) {
+                        *slot = Some(DescriptorSlot::Buffer(db.buffer.clone()));
+                    }
+                }
+            }
+        }
+
+        // And then perform real updates
         let device: &AshDevice = lock_data.pool.data.device_ref.device();
         let mut image_infos: SmallVec<[_; 32]> = SmallVec::new();
         let mut buffer_infos: SmallVec<[_; 32]> = SmallVec::new();
@@ -447,11 +522,12 @@ impl<T: DeviceRef> DescriptorSet<T> {
                 let handle = handles[0];
                 let dsld = DescriptorSetLockData {
                     handle,
+                    layout: description.layout.clone(),
                     pool: pool.clone(),
+                    slots: vec![None; description.layout.data.num_descriptors],
                 };
                 let dsd = DescriptorSetData {
                     handle,
-                    layout: description.layout.clone(),
                     mutex: Mutex::new(ResourceMutex::new(dsld, true)),
                 };
                 Self { data: RefEqArc::new(dsd) }

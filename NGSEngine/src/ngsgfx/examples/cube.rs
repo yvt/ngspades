@@ -311,8 +311,6 @@ impl<B: Backend> MyApp<B> {
                 },
             ],
         );
-        // HACK: Vulkan backend currently does not retain references to descriptors
-        mem::forget(image_view);
 
         let obj_params_fence = device
             .main_queue()
