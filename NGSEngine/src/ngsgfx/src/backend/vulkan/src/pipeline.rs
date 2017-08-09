@@ -431,9 +431,46 @@ derive_using_field! {
 }
 
 #[derive(Debug)]
-struct StencilStateData {}
+struct StencilStateData {
+    masks: [core::StencilMasks; 2],
+}
 
 impl core::StencilState for StencilState {}
+
+impl StencilState {
+    pub(crate) fn new<T: DeviceRef>(desc: &core::StencilStateDescription<GraphicsPipeline<T>>) -> StencilState {
+        Self {
+            data: RefEqArc::new(StencilStateData {
+                masks: desc.masks.clone(),
+            }),
+        }
+    }
+
+    pub(crate) fn cmd_set_dynamic(&self, device: &AshDevice, cb: vk::CommandBuffer) {
+        unsafe {
+            device.fp_v1_0().cmd_set_stencil_compare_mask(
+                cb,
+                vk::STENCIL_FACE_FRONT_BIT,
+                self.data.masks[0].read_mask,
+            );
+            device.fp_v1_0().cmd_set_stencil_compare_mask(
+                cb,
+                vk::STENCIL_FACE_BACK_BIT,
+                self.data.masks[1].read_mask,
+            );
+            device.fp_v1_0().cmd_set_stencil_write_mask(
+                cb,
+                vk::STENCIL_FACE_FRONT_BIT,
+                self.data.masks[0].write_mask,
+            );
+            device.fp_v1_0().cmd_set_stencil_write_mask(
+                cb,
+                vk::STENCIL_FACE_BACK_BIT,
+                self.data.masks[1].write_mask,
+            );
+        }
+    }
+}
 
 pub struct ComputePipeline<T: DeviceRef> {
     data: RefEqArc<ComputePipelineData<T>>,

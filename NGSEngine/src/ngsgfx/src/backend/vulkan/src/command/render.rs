@@ -17,7 +17,6 @@ use {DeviceRef, Backend, AshDevice};
 struct GraphicsEncoder<'a>(&'a AshDevice, vk::CommandBuffer);
 
 impl<'a> GraphicsEncoder<'a> {
-    // TODO: Do not allow draw calls until all descriptor set bindings are set properly
     fn bind_graphics_pipeline<T: DeviceRef>(&self, pipeline: &GraphicsPipeline<T>) {
         unsafe {
             self.0.cmd_bind_pipeline(
@@ -27,25 +26,46 @@ impl<'a> GraphicsEncoder<'a> {
             )
         };
     }
-    fn set_blend_constants(&self, _: &[f32; 4]) {
-        // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
-        unimplemented!()
+    fn set_blend_constants(&self, value: &[f32; 4]) {
+        unsafe {
+            self.0.fp_v1_0().cmd_set_blend_constants(self.1, value);
+        }
     }
-    fn set_depth_bias(&self, _: Option<core::DepthBias>) {
-        // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
-        unimplemented!()
+    fn set_depth_bias(&self, value: Option<core::DepthBias>) {
+        unsafe {
+            self.0.fp_v1_0().cmd_set_depth_bias(
+                self.1,
+                value.map_or(0f32, |v| v.constant_factor),
+                value.map_or(0f32, |v| v.clamp),
+                value.map_or(0f32, |v| v.slope_factor),
+            );
+        }
     }
-    fn set_depth_bounds(&self, _: Option<core::DepthBounds>) {
-        // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
-        unimplemented!()
+    fn set_depth_bounds(&self, value: Option<core::DepthBounds>) {
+        unsafe {
+            self.0.fp_v1_0().cmd_set_depth_bounds(
+                self.1,
+                value.map_or(0f32, |v| v.min),
+                value.map_or(1f32, |v| v.max),
+            );
+        }
     }
-    fn set_stencil_state(&self, _: &StencilState) {
-        // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
-        unimplemented!()
+    fn set_stencil_state(&self, state: &StencilState) {
+        state.cmd_set_dynamic(self.0, self.1);
     }
-    fn set_stencil_reference(&self, _: [u32; 2]) {
-        // it exists in the Vulkan spec but `DeviceV1_0` does not implement it
-        unimplemented!()
+    fn set_stencil_reference(&self, refs: [u32; 2]) {
+        unsafe {
+            self.0.fp_v1_0().cmd_set_stencil_reference(
+                self.1,
+                vk::STENCIL_FACE_FRONT_BIT,
+                refs[0],
+            );
+            self.0.fp_v1_0().cmd_set_stencil_reference(
+                self.1,
+                vk::STENCIL_FACE_BACK_BIT,
+                refs[1],
+            );
+        }
     }
     fn set_viewport(&self, value: &core::Viewport) {
         unsafe {

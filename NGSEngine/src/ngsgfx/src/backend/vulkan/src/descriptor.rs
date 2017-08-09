@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use core;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use std::ptr;
 use ash::vk;
 use ash::version::DeviceV1_0;
@@ -475,11 +475,139 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
     }
 
     fn copy_from(&self, copies: &[core::CopyDescriptorSet<Self>]) {
-        let _ = copies;
-        // let mut locked = self.data.mutex.lock().unwrap();
-        // let mut lock_data = locked.lock_host_write();
-        // let device: &AshDevice = lock_data.pool.data.device_ref.device();
-        unimplemented!()
+        let mut locked = self.data.mutex.lock();
+        let mut lock_data: &mut DescriptorSetLockData<T> = locked.lock_host_write();
+
+        // To access the source contents, we have to lock `Mutex`, but if there
+        // were multiple elements in `copies` with the same `DescriptorSet`, a
+        // dead lock would occur. To avoid this, we split the update in multiple
+        // phases.
+        //
+        // We construct the `vk::CopyDescriptorSet` list, but does not unlock
+        // the source descriptors until it is submitted to the device.
+        // Consequently, if a lock attempt fails, that means one of the following:
+        //
+        //  1. The current `vk::CopyDescriptorSet` list contains the same source
+        //     descriptor set. In this case, we could reuse the lock, but we would
+        //     like to avoid the worst case of O(n^2). So we only take a look on
+        //     the last element, and if it was not the descriptor set we are looking
+        //     for, flush the current batch. After that, we attempt the lock on the
+        //     descriptor set again, but this time we can rule out the case 1.
+        //
+        //  2. The copy source is the same as `self`. In this case we can safely
+        //     reuse `lock_data`.
+        //
+        //  3. The descriptor set is currently being used by `update_descriptor_sets`
+        //     or `lock_device`. In this case, we have to wait until the mutex is
+        //     unlocked. (Applications are required to not cause a race conditions on
+        //     `DescriptorSet`s, but `lock_device` is not a write access, so it is
+        //     okay)
+        //
+        let device: &AshDevice = lock_data.pool.data.device_ref.device();
+        let ref layout = *lock_data.layout.data;
+
+        let mut vk_copies: SmallVec<[_; 32]> = SmallVec::new();
+        let mut locks: SmallVec<[_; 32]> = SmallVec::new();
+        let mut lock_copy_refs: SmallVec<[(Option<usize>, _); 32]> = SmallVec::new();
+        let mut last_source = None;
+
+        let flush = |
+            mut dst_slots: &mut Vec<_>,
+            locks: &SmallVec<[MutexGuard<ResourceMutex<_, DescriptorSetLockData<T>>>; 32]>,
+            lock_copy_refs: &SmallVec<[(Option<usize>, &core::CopyDescriptorSet<Self>); 32]>
+        | {
+            // this closure will never panic
+            for &(lock_ref, cds) in lock_copy_refs.iter() {
+                let src_lock = lock_ref.map(|i| &locks[i]);
+                let src_lock_data = src_lock.map(|l| l.get_host_read());
+                let src_layout = if let Some(src_lock_data) = src_lock_data {
+                    // cds.source != self
+                    &src_lock_data.layout.data
+                } else {
+                    // cds.source == self
+                    layout
+                };
+
+                let dst_offset = layout.binding_offsets[cds.destination_binding] + cds.destination_index;
+                let src_offset = src_layout.binding_offsets[cds.source_binding] + cds.source_index;
+
+                if let Some(src_lock_data) = src_lock_data {
+                    for i in 0 .. cds.num_elements {
+                        dst_slots[dst_offset + i] = src_lock_data.slots[src_offset + i].clone();
+                    }
+                } else {
+                    for i in 0 .. cds.num_elements {
+                        dst_slots[dst_offset + i] = dst_slots[src_offset + i].clone();
+                    }
+                }
+            }
+        };
+
+        let mut i = 0;
+        while i < copies.len() {
+            let ref cds = copies[i];
+            let lock_ref = if Some(cds.source) == last_source {
+                // Case 1; no lock needed
+                Some(lock_copy_refs[lock_copy_refs.len() - 1].0)
+            } else if cds.source == self {
+                // Case 2; no lock needed
+                Some(None)
+            } else if lock_copy_refs.len() == 0 {
+                // Case 3
+                let lock = cds.source.data.mutex.lock();
+                locks.push(lock);
+                Some(Some(locks.len() - 1))
+            } else {
+                // Case 1 or 3
+                let lock = cds.source.data.mutex.try_lock();
+                if let Some(lock) = lock {
+                    locks.push(lock);
+                    Some(Some(locks.len() - 1))
+                } else {
+                    None
+                }
+            };
+            if let Some(lock_ref) = lock_ref {
+                // Validate ranges (might panic)
+                {
+                    let src_lock = lock_ref.map(|i| &locks[i]);
+                    let src_lock_data = if let Some(src_lock) = src_lock {
+                        // cds.source != self
+                        src_lock.get_host_read()
+                    } else {
+                        // cds.source == self
+                        lock_data as &_
+                    };
+                    let ref src_layout = src_lock_data.layout.data;
+
+                    let dst_offset = layout.binding_offsets[cds.destination_binding] + cds.destination_index;
+                    let _ = lock_data.slots[dst_offset..dst_offset + cds.num_elements];
+
+                    let src_offset = src_layout.binding_offsets[cds.source_binding] + cds.source_index;
+                    let _ = src_lock_data.slots[src_offset..src_offset + cds.num_elements];
+                }
+
+                lock_copy_refs.push((lock_ref, cds));
+                last_source = Some(cds.source);
+
+                i += 1;
+            } else {
+                // Flush the current batch and try again
+                flush(&mut lock_data.slots, &locks, &lock_copy_refs);
+                unsafe {
+                    device.update_descriptor_sets(&vk_copies, &[]);
+                }
+                vk_copies.clear();
+                locks.clear();
+                lock_copy_refs.clear();
+                last_source = None;
+            }
+        }
+
+        flush(&mut lock_data.slots, &locks, &lock_copy_refs);
+        unsafe {
+            device.update_descriptor_sets(&vk_copies, &[]);
+        }
     }
 
     fn make_immutable(&self) {
