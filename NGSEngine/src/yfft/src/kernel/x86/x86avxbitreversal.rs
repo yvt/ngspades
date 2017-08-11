@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::if_compatible;
+use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::Num;
 
 use simd::x86::avx::u64x4;
@@ -21,9 +21,9 @@ where
     }
 
     if_compatible(|| {
-        Some(Box::new(
+        Some(Box::new(AlignReqKernelWrapper::new(
             AvxDWordBitReversalKernel { indices: indices.clone() },
-        ) as Box<Kernel<f32>>)
+        )) as Box<Kernel<f32>>)
     })
 }
 
@@ -32,11 +32,9 @@ struct AvxDWordBitReversalKernel {
     indices: Vec<usize>,
 }
 
-impl<T: Num> Kernel<T> for AvxDWordBitReversalKernel {
-    fn transform(&self, params: &mut KernelParams<T>) {
+impl<T: Num> AlignReqKernel<T> for AvxDWordBitReversalKernel {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<T>) {
         assert_eq!(mem::size_of::<T>(), 4);
-
-        // TODO: check alignment
 
         let indices = unsafe { SliceAccessor::new(&self.indices) };
         let size = self.indices.len();
@@ -64,8 +62,8 @@ impl<T: Num> Kernel<T> for AvxDWordBitReversalKernel {
             let src8: *const u64 = &wa[index8 * 2] as *const T as *const u64;
             let dest: *mut u64x4 = &mut data[i * 2] as *mut T as *mut u64x4;
             unsafe {
-                *dest = u64x4::new(*src1, *src2, *src3, *src4);
-                *dest.offset(1) = u64x4::new(*src5, *src6, *src7, *src8);
+                I::write(dest, u64x4::new(*src1, *src2, *src3, *src4));
+                I::write(dest.offset(1), u64x4::new(*src5, *src6, *src7, *src8));
             }
 
             i += 8;
@@ -84,5 +82,8 @@ impl<T: Num> Kernel<T> for AvxDWordBitReversalKernel {
     }
     fn required_work_area_size(&self) -> usize {
         self.indices.len() * 2
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }

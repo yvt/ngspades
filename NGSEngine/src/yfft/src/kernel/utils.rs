@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{KernelType, KernelCreationParams};
-use std::fmt;
+use super::{Kernel, KernelType, KernelCreationParams, KernelParams};
+use std::{fmt, ptr};
 use std::any::Any;
 
 pub trait StaticParams: fmt::Debug + 'static {
@@ -97,4 +97,70 @@ where
         *ret = f();
     }
     ret_cell
+}
+
+#[derive(Debug)]
+pub struct AlignReqKernelWrapper<T>(T);
+
+impl<T> AlignReqKernelWrapper<T> {
+    pub fn new(x: T) -> Self {
+        AlignReqKernelWrapper(x)
+    }
+}
+
+impl<T: AlignReqKernel<S>, S> Kernel<S> for AlignReqKernelWrapper<T> {
+    fn transform(&self, params: &mut KernelParams<S>) {
+        let a_req = self.0.alignment_requirement();
+        let addr = params.coefs.as_ptr() as usize;
+        if (addr & (a_req - 1)) != 0 {
+            self.0.transform::<AlignInfoUnaligned>(params);
+        } else {
+            self.0.transform::<AlignInfoAligned>(params);
+        }
+    }
+    fn required_work_area_size(&self) -> usize {
+        self.0.required_work_area_size()
+    }
+}
+
+pub trait AlignReqKernel<T>: fmt::Debug + Sized {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<T>);
+    fn required_work_area_size(&self) -> usize {
+        0
+    }
+    fn alignment_requirement(&self) -> usize;
+}
+
+pub trait AlignInfo: Sized {
+    fn is_aligned() -> bool;
+    unsafe fn read<T>(p: *const T) -> T;
+    unsafe fn write<T>(p: *mut T, value: T);
+}
+
+struct AlignInfoAligned;
+
+impl AlignInfo for AlignInfoAligned {
+    fn is_aligned() -> bool {
+        true
+    }
+    unsafe fn read<T>(p: *const T) -> T {
+        ptr::read(p)
+    }
+    unsafe fn write<T>(p: *mut T, value: T) {
+        ptr::write(p, value)
+    }
+}
+
+struct AlignInfoUnaligned;
+
+impl AlignInfo for AlignInfoUnaligned {
+    fn is_aligned() -> bool {
+        false
+    }
+    unsafe fn read<T>(p: *const T) -> T {
+        ptr::read_unaligned(p)
+    }
+    unsafe fn write<T>(p: *mut T, value: T) {
+        ptr::write_unaligned(p, value)
+    }
 }

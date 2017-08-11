@@ -14,7 +14,8 @@
 //! For small transforms ties with a commercial-level FFT library, but tends to be much slower for large transforms.
 
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible};
+use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
+                   AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::super::simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri_inner};
 
 use num_complex::Complex;
@@ -43,9 +44,15 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     {
 
         match cparams.unit {
-            unit if unit % 8 == 0 => Some(Box::new(AvxRadix4Kernel4::new(cparams, sparams))),
-            unit if unit % 4 == 0 => Some(Box::new(AvxRadix4Kernel3::new(cparams, sparams))),
-            2 => Some(Box::new(AvxRadix4Kernel2::new(cparams, sparams))),
+            unit if unit % 8 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
+                AvxRadix4Kernel4::new(cparams, sparams),
+            ))),
+            unit if unit % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
+                AvxRadix4Kernel3::new(cparams, sparams),
+            ))),
+            2 => Some(Box::new(AlignReqKernelWrapper::new(
+                AvxRadix4Kernel2::new(cparams, sparams),
+            ))),
             _ => None,
         }
     }
@@ -92,13 +99,11 @@ impl<T: StaticParams> AvxRadix4Kernel2<T> {
     }
 }
 
-impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel2<T> {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
-
-        // TODO: check alignment?
 
         let twiddles1 = self.twiddles1;
         let twiddles2 = self.twiddles2;
@@ -119,8 +124,8 @@ impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel2<T> {
             let cur2 = &mut data[x + 8] as *mut f32 as *mut f32x8;
 
             // riri format
-            let xy1 = unsafe { *cur1 };
-            let zw1 = unsafe { *cur2 };
+            let xy1 = unsafe { I::read(cur1) };
+            let zw1 = unsafe { I::read(cur2) };
 
             // apply twiddle factor
             let (xy2, zw2) = if pre_twiddle {
@@ -171,9 +176,12 @@ impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel2<T> {
                 (xy3, zw3)
             };
 
-            unsafe { *cur1 = xy4 };
-            unsafe { *cur2 = zw4 };
+            unsafe { I::write(cur1, xy4) };
+            unsafe { I::write(cur2, zw4) };
         }
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }
 
@@ -295,13 +303,11 @@ impl<T: StaticParams> AvxRadix4Kernel3<T> {
     }
 }
 
-impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel3<T> {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel3<T> {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
-
-        // TODO: check alignment?
 
         let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
 
@@ -337,10 +343,10 @@ impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel3<T> {
                 let twiddle_3b = twiddles[y * 6 + 5];
 
                 // riri format
-                let x1 = unsafe { *cur1 };
-                let y1 = unsafe { *cur2 };
-                let z1 = unsafe { *cur3 };
-                let w1 = unsafe { *cur4 };
+                let x1 = unsafe { I::read(cur1) };
+                let y1 = unsafe { I::read(cur2) };
+                let z1 = unsafe { I::read(cur3) };
+                let w1 = unsafe { I::read(cur4) };
 
                 // apply twiddle factor
                 let x2 = x1;
@@ -396,12 +402,15 @@ impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel3<T> {
                     w4
                 };
 
-                unsafe { *cur1 = x5 };
-                unsafe { *cur2 = y5 };
-                unsafe { *cur3 = z5 };
-                unsafe { *cur4 = w5 };
+                unsafe { I::write(cur1, x5) };
+                unsafe { I::write(cur2, y5) };
+                unsafe { I::write(cur3, z5) };
+                unsafe { I::write(cur4, w5) };
             }
         }
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }
 
@@ -552,13 +561,11 @@ impl<T: StaticParams> AvxRadix4Kernel4<T> {
     }
 }
 
-impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel4<T> {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel4<T> {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
-
-        // TODO: check alignment?
 
         let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
         let pre_twiddle = sparams.kernel_type() == KernelType::Dit;
@@ -581,14 +588,14 @@ impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel4<T> {
                 let twiddle3_r = twiddles[y * 6 + 4];
                 let twiddle3_i = twiddles[y * 6 + 5];
 
-                let x1a = unsafe { *cur1a };
-                let x1b = unsafe { *cur1b };
-                let y1a = unsafe { *cur2a };
-                let y1b = unsafe { *cur2b };
-                let z1a = unsafe { *cur3a };
-                let z1b = unsafe { *cur3b };
-                let w1a = unsafe { *cur4a };
-                let w1b = unsafe { *cur4b };
+                let x1a = unsafe { I::read(cur1a) };
+                let x1b = unsafe { I::read(cur1b) };
+                let y1a = unsafe { I::read(cur2a) };
+                let y1b = unsafe { I::read(cur2b) };
+                let z1a = unsafe { I::read(cur3a) };
+                let z1b = unsafe { I::read(cur3b) };
+                let w1a = unsafe { I::read(cur4a) };
+                let w1b = unsafe { I::read(cur4b) };
 
                 // convert riririri-riririri to rrrrrrrr-iiiiiiii (vshufps)
                 //         1 2 3 4  5 6 7 8     12563478
@@ -699,15 +706,18 @@ impl<T: StaticParams> Kernel<f32> for AvxRadix4Kernel4<T> {
                 let w7a = f32x8_shuffle!(w6r, w6i, [0, 8, 1, 9, 4, 12, 5, 13]);
                 let w7b = f32x8_shuffle!(w6r, w6i, [2, 10, 3, 11, 6, 14, 7, 15]);
 
-                unsafe { *cur1a = x7a };
-                unsafe { *cur1b = x7b };
-                unsafe { *cur2a = y7a };
-                unsafe { *cur2b = y7b };
-                unsafe { *cur3a = z7a };
-                unsafe { *cur3b = z7b };
-                unsafe { *cur4a = w7a };
-                unsafe { *cur4b = w7b };
+                unsafe { I::write(cur1a, x7a) };
+                unsafe { I::write(cur1b, x7b) };
+                unsafe { I::write(cur2a, y7a) };
+                unsafe { I::write(cur2b, y7b) };
+                unsafe { I::write(cur3a, z7a) };
+                unsafe { I::write(cur3b, z7b) };
+                unsafe { I::write(cur4a, w7a) };
+                unsafe { I::write(cur4b, w7b) };
             }
         }
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }

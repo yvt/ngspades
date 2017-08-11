@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::if_compatible;
+use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 
 use simd::x86::avx::{f32x8, u32x8};
 use num_iter::range_step;
@@ -26,9 +26,9 @@ where
     T: Num,
 {
     if_compatible(|| if len % 16 == 0 && len > 16 {
-        Some(Box::new(
+        Some(Box::new(AlignReqKernelWrapper::new(
             AvxF32RealFFTPrePostProcessKernel::new(len, inverse),
-        ) as Box<Kernel<f32>>)
+        )) as Box<Kernel<f32>>)
     } else {
         None
     })
@@ -51,8 +51,8 @@ impl AvxF32RealFFTPrePostProcessKernel {
     }
 }
 
-impl Kernel<f32> for AvxF32RealFFTPrePostProcessKernel {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl AlignReqKernel<f32> for AvxF32RealFFTPrePostProcessKernel {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..self.len]) };
         let table_a = unsafe { SliceAccessor::new(&self.table[0][..]) };
         let table_b = unsafe { SliceAccessor::new(&self.table[1][..]) };
@@ -91,7 +91,7 @@ impl Kernel<f32> for AvxF32RealFFTPrePostProcessKernel {
 
             // riri
             let x1 = unsafe { read_unaligned(cur1) };
-            let x2 = unsafe { *cur2 };
+            let x2 = unsafe { I::read(cur2) };
             let a1 = unsafe { read_unaligned(a_p1) };
             let a2 = unsafe { *a_p2 };
             let b1 = unsafe { read_unaligned(b_p1) };
@@ -107,8 +107,12 @@ impl Kernel<f32> for AvxF32RealFFTPrePostProcessKernel {
 
             unsafe {
                 write_unaligned(cur1, g1);
-                *cur2 = g2;
+                I::write(cur2, g2);
             }
         }
+    }
+
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }

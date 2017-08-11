@@ -14,7 +14,8 @@
 //! machine.
 
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible};
+use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
+                   AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::super::simdutils::{f32x4_bitxor, f32x4_complex_mul_rrii};
 
 use num_complex::Complex;
@@ -43,9 +44,15 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     {
 
         match cparams.unit {
-            unit if unit % 4 == 0 => Some(Box::new(SseRadix4Kernel3::new(cparams, sparams))),
-            unit if unit % 2 == 0 => Some(Box::new(SseRadix4Kernel2::new(cparams, sparams))),
-            1 => Some(Box::new(SseRadix4Kernel1::new(cparams, sparams))),
+            unit if unit % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
+                SseRadix4Kernel3::new(cparams, sparams),
+            ))),
+            unit if unit % 2 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
+                SseRadix4Kernel2::new(cparams, sparams),
+            ))),
+            1 => Some(Box::new(AlignReqKernelWrapper::new(
+                SseRadix4Kernel1::new(cparams, sparams),
+            ))),
             _ => None,
         }
     }
@@ -70,13 +77,11 @@ impl<T: StaticParams> SseRadix4Kernel1<T> {
     }
 }
 
-impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel1<T> {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel1<T> {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
-
-        // TODO: check alignment?
 
         let neg_mask_raw: [u32; 4] = if sparams.inverse() {
             [0, 0, 0x80000000, 0]
@@ -90,8 +95,8 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel1<T> {
             let cur2 = &mut data[x + 4] as *mut f32 as *mut f32x4;
 
             // riri format
-            let x1 = unsafe { *cur1 };
-            let y1 = unsafe { *cur2 };
+            let x1 = unsafe { I::read(cur1) };
+            let y1 = unsafe { I::read(cur2) };
 
             // perform size-4 small FFT (see generic2.rs for human-readable code)
             let t_1_2 = x1 + y1;
@@ -104,9 +109,12 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel1<T> {
             let x2 = t_1_3 + t_2_4;
             let y2 = t_1_3 - t_2_4;
 
-            unsafe { *cur1 = x2 };
-            unsafe { *cur2 = y2 };
+            unsafe { I::write(cur1, x2) };
+            unsafe { I::write(cur2, y2) };
         }
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }
 
@@ -157,13 +165,11 @@ impl<T: StaticParams> SseRadix4Kernel2<T> {
     }
 }
 
-impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel2<T> {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
-
-        // TODO: check alignment?
 
         let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
 
@@ -189,10 +195,10 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
                 let twiddle_3 = twiddles[y * 3 + 2];
 
                 // riri format
-                let x1 = unsafe { *cur1 };
-                let y1 = unsafe { *cur2 };
-                let z1 = unsafe { *cur3 };
-                let w1 = unsafe { *cur4 };
+                let x1 = unsafe { I::read(cur1) };
+                let y1 = unsafe { I::read(cur2) };
+                let z1 = unsafe { I::read(cur3) };
+                let w1 = unsafe { I::read(cur4) };
 
                 // apply twiddle factor
                 let x2 = x1;
@@ -257,12 +263,15 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel2<T> {
                     w4
                 };
 
-                unsafe { *cur1 = x5 };
-                unsafe { *cur2 = y5 };
-                unsafe { *cur3 = z5 };
-                unsafe { *cur4 = w5 };
+                unsafe { I::write(cur1, x5) };
+                unsafe { I::write(cur2, y5) };
+                unsafe { I::write(cur3, z5) };
+                unsafe { I::write(cur4, w5) };
             }
         }
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }
 
@@ -330,13 +339,11 @@ impl<T: StaticParams> SseRadix4Kernel3<T> {
     }
 }
 
-impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel3<T> {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
-
-        // TODO: check alignment?
 
         let twiddles = unsafe { SliceAccessor::new(self.twiddles.as_slice()) };
         let pre_twiddle = sparams.kernel_type() == KernelType::Dit;
@@ -359,14 +366,14 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
                 let twiddle3_r = twiddles[y * 6 + 4];
                 let twiddle3_i = twiddles[y * 6 + 5];
 
-                let x1a = unsafe { *cur1a };
-                let x1b = unsafe { *cur1b };
-                let y1a = unsafe { *cur2a };
-                let y1b = unsafe { *cur2b };
-                let z1a = unsafe { *cur3a };
-                let z1b = unsafe { *cur3b };
-                let w1a = unsafe { *cur4a };
-                let w1b = unsafe { *cur4b };
+                let x1a = unsafe { I::read(cur1a) };
+                let x1b = unsafe { I::read(cur1b) };
+                let y1a = unsafe { I::read(cur2a) };
+                let y1b = unsafe { I::read(cur2b) };
+                let z1a = unsafe { I::read(cur3a) };
+                let z1b = unsafe { I::read(cur3b) };
+                let w1a = unsafe { I::read(cur4a) };
+                let w1b = unsafe { I::read(cur4b) };
 
                 // convert riri-riri to rrrr-iiii (shufps)
                 let x2r = f32x4_shuffle!(x1a, x1b, [0, 2, 4, 6]);
@@ -476,15 +483,18 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
                 let w7a = f32x4_shuffle!(w6r, w6i, [0, 4, 1, 5]);
                 let w7b = f32x4_shuffle!(w6r, w6i, [2, 6, 3, 7]);
 
-                unsafe { *cur1a = x7a };
-                unsafe { *cur1b = x7b };
-                unsafe { *cur2a = y7a };
-                unsafe { *cur2b = y7b };
-                unsafe { *cur3a = z7a };
-                unsafe { *cur3b = z7b };
-                unsafe { *cur4a = w7a };
-                unsafe { *cur4b = w7b };
+                unsafe { I::write(cur1a, x7a) };
+                unsafe { I::write(cur1b, x7b) };
+                unsafe { I::write(cur2a, y7a) };
+                unsafe { I::write(cur2b, y7b) };
+                unsafe { I::write(cur3a, z7a) };
+                unsafe { I::write(cur3b, z7b) };
+                unsafe { I::write(cur4a, w7a) };
+                unsafe { I::write(cur4b, w7b) };
             }
         }
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }

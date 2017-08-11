@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::if_compatible;
+use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::Num;
 
 use simd::x86::sse2::u64x2;
@@ -16,9 +16,9 @@ where
     T: Num,
 {
     if_compatible(|| {
-        Some(Box::new(
+        Some(Box::new(AlignReqKernelWrapper::new(
             SseDWordBitReversalKernel { indices: indices.clone() },
-        ) as Box<Kernel<f32>>)
+        )) as Box<Kernel<f32>>)
     })
 }
 
@@ -27,11 +27,9 @@ struct SseDWordBitReversalKernel {
     indices: Vec<usize>,
 }
 
-impl<T: Num> Kernel<T> for SseDWordBitReversalKernel {
-    fn transform(&self, params: &mut KernelParams<T>) {
+impl<T: Num> AlignReqKernel<T> for SseDWordBitReversalKernel {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<T>) {
         assert_eq!(mem::size_of::<T>(), 4);
-
-        // TODO: check alignment
 
         let indices = unsafe { SliceAccessor::new(&self.indices) };
         let size = self.indices.len();
@@ -52,8 +50,8 @@ impl<T: Num> Kernel<T> for SseDWordBitReversalKernel {
             let dest: *mut u64x2 = &mut data[i * 2] as *mut T as *mut u64x2;
 
             unsafe {
-                *dest = u64x2::new(*src1, *src2);
-                *dest.offset(1) = u64x2::new(*src3, *src4);
+                I::write(dest, u64x2::new(*src1, *src2));
+                I::write(dest.offset(1), u64x2::new(*src3, *src4));
             }
 
             i += 4;
@@ -72,5 +70,8 @@ impl<T: Num> Kernel<T> for SseDWordBitReversalKernel {
     }
     fn required_work_area_size(&self) -> usize {
         self.indices.len() * 2
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }

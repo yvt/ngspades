@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::if_compatible;
+use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 
 use simd::{f32x4, u32x4};
 use num_iter::range_step;
@@ -24,9 +24,9 @@ where
     T: Num,
 {
     if_compatible(|| if len % 8 == 0 && len > 8 {
-        Some(Box::new(
+        Some(Box::new(AlignReqKernelWrapper::new(
             SseRealFFTPrePostProcessKernel::new(len, inverse),
-        ) as Box<Kernel<f32>>)
+        )) as Box<Kernel<f32>>)
     } else {
         None
     })
@@ -73,8 +73,8 @@ impl SseRealFFTPrePostProcessKernel {
     }
 }
 
-impl Kernel<f32> for SseRealFFTPrePostProcessKernel {
-    fn transform(&self, params: &mut KernelParams<f32>) {
+impl AlignReqKernel<f32> for SseRealFFTPrePostProcessKernel {
+    fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..self.len]) };
         let table_a = unsafe { SliceAccessor::new(&self.table[0][..]) };
         let table_b = unsafe { SliceAccessor::new(&self.table[1][..]) };
@@ -102,7 +102,7 @@ impl Kernel<f32> for SseRealFFTPrePostProcessKernel {
 
             // riri
             let x1 = unsafe { read_unaligned(cur1) };
-            let x2 = unsafe { *cur2 };
+            let x2 = unsafe { I::read(cur2) };
             let a1i = unsafe { read_unaligned(a_p1) };
             let a2i = unsafe { *a_p2 };
             let b1i = unsafe { read_unaligned(b_p1) };
@@ -132,8 +132,11 @@ impl Kernel<f32> for SseRealFFTPrePostProcessKernel {
 
             unsafe {
                 write_unaligned(cur1, y1);
-                *cur2 = y2;
+                I::write(cur2, y2);
             }
         }
+    }
+    fn alignment_requirement(&self) -> usize {
+        16
     }
 }
