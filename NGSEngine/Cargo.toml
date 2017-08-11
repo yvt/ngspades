@@ -19,6 +19,8 @@ members = [
     "src/ngsgfx/src/wsi/vulkan",
     "src/yfft",
     "src/ysr2",
+    "src/ysr2/src/localizer",
+    "src/ysr2/src/mixer",
     "src/xdispatch",
 ]
 

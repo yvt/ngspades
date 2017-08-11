@@ -1,0 +1,10 @@
+[package]
+name = "ysr2_kemar_data"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+
+[build-dependencies]
+yfft = { path = "../../../../yfft" }
+byteorder = "1.1.0"

@@ -1013,6 +1013,21 @@ dependencies = [
  "ysr2_mixer 0.1.0",
 ]
 
+[[package]]
+name = "ysr2_kemar_data"
+version = "0.1.0"
+dependencies = [
+ "byteorder 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "yfft 0.1.0",
+]
+
+[[package]]
+name = "ysr2_localizer"
+version = "0.1.0"
+dependencies = [
+ "ysr2_kemar_data 0.1.0",
+]
+
 [metadata]
 "checksum android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
 "checksum approx 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08abcc3b4e9339e33a3d0a5ed15d84a687350c05689d825e0f6655eef9e76a94"
