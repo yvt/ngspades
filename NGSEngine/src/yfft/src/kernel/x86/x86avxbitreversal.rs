@@ -19,7 +19,7 @@ pub fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Ke
         return None;
     }
 
-    if_compatible(|| Some(Box::new(AvxDWordBitReversalKernel { indices: indices.clone() })))
+    if_compatible(|| Some(Box::new(AvxDWordBitReversalKernel { indices: indices.clone() }) as Box<Kernel<f32>>))
 }
 
 #[derive(Debug)]
