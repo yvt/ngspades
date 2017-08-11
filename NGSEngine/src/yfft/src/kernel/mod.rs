@@ -4,9 +4,11 @@
 // This source code is a part of Nightingales.
 //
 mod accessor;
+mod convert;
 mod bitreversal;
 mod generic;
 mod generic2;
+mod realfft;
 mod utils;
 
 #[cfg(any(target_arch="x86", target_arch="x86_64"))] mod x86;
@@ -15,6 +17,7 @@ mod utils;
 #[cfg(not(any(target_arch="x86", target_arch="x86_64")))] mod x86 {
     pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>> { None }
     pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>> { None }
+    pub fn new_x86_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Box<Kernel<T>> { None }
 }
 
 use std::fmt::Debug;
@@ -23,6 +26,8 @@ use super::Num;
 use self::accessor::SliceAccessor;
 
 pub use self::bitreversal::new_bit_reversal_kernel;
+pub use self::convert::*;
+pub use self::realfft::*;
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum KernelType {

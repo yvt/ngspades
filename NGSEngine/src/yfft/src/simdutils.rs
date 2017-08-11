@@ -22,6 +22,7 @@ macro_rules! f32x4_shuffle {
 }
 
 /// Shuffles `f32x8` elements.
+#[allow(unused_macros)]
 macro_rules! f32x8_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
         unsafe { $crate::simdutils::simd_shuffle8::<$crate::simdutils::f32x8, $crate::simdutils::f32x8>($x, $y, $idx) }

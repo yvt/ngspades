@@ -17,6 +17,7 @@ mod x86avxf32radix2;
 mod x86avxf32radix4;
 mod x86sse1radix2;
 mod x86sse1radix4;
+mod x86sse1realfft;
 mod x86sse2;
 #[cfg(target_feature = "sse3")]
 mod x86sse3f32radix4;
@@ -71,4 +72,11 @@ pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel
 {
     None.or_else(|| x86avxbitreversal::new_x86_avx_bit_reversal_kernel(indices))
         .or_else(|| bitreversal::new_x86_bit_reversal_kernel(indices))
+}
+
+
+pub fn new_x86_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<Kernel<T>>>
+    where T: Num
+{
+    None.or_else(|| x86sse1realfft::new_x86_sse_real_fft_pre_post_process_kernel(len, inverse))
 }

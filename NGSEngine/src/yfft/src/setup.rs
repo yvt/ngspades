@@ -8,7 +8,9 @@ use std::result::Result;
 use std::error;
 use std::fmt;
 use super::Num;
-use super::kernel::{Kernel, KernelType, KernelCreationParams, new_bit_reversal_kernel};
+use super::kernel::{Kernel, KernelType, KernelCreationParams, new_bit_reversal_kernel,
+    new_real_fft_pre_post_process_kernel, new_real_to_complex_kernel,
+    new_half_complex_to_complex_kernel};
 
 /// Specifies the data order in which the data is supplied to or returned from the kernel.
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
@@ -32,10 +34,20 @@ pub enum DataFormat {
     /// Specifies the interleaved complex format.
     Complex,
 
-    /// Not supported.
+    /// Specifies the real number format.
     Real,
 
-    /// Not supported.
+    /// Specifies the interleaved complex format only having the first half part
+    /// and the second part is implied from the the first one.
+    ///
+    /// Suppose `G` is a sequence of `N/2` complex numbers in the `HalfComplex`
+    /// format. This sequence represents a sequence `X` of `N` complex numbers
+    /// using the following equations:
+    ///
+    ///  - For `1 <= k <= N/2 - 1`, `X[k] == G[k]` and `X[N - k] == conj(G[k])`
+    ///  - `X[0] == Re(G[0])`
+    ///  - `X[N] == Re(G[0]) - Im(G[0])`
+    ///
     HalfComplex,
 }
 
@@ -44,27 +56,38 @@ pub enum DataFormat {
 pub struct Options {
     /// Specifies the input data order.
     ///
-    /// Must be `Natural` if `output_data_order` is not `Natural`, or put in another way, this and `input_data_order`
-    /// must not be `Naterual` at the same time.
+    /// - Must be `Natural` if `output_data_order` is not `Natural`, or put in another way, this and `input_data_order`
+    ///   must not be not `Natural` at the same time.
+    /// - Must be `Natural` if `input_data_format` is `Real`.
+    /// - Must be `Natural` if `input_data_format` is `HalfComplex`.
     pub input_data_order: DataOrder,
 
     /// Specifies the output data order.
     ///
-    /// Must be `Natural` if `input_data_order` is not `Natural`, or put in another way, this and `output_data_order`
-    /// must not be `Naterual` at the same time.
+    /// - Must be `Natural` if `input_data_order` is not `Natural`, or put in another way, this and `output_data_order`
+    ///   must not be not `Natural` at the same time.
+    /// - Must be `Natural` if `output_data_format` is `Real`.
+    /// - Must be `Natural` if `output_data_format` is `HalfComplex`.
     pub output_data_order: DataOrder,
 
     /// Specifies the input data format.
+    ///
+    /// - Must not be `Real` if `inverse == true`.
     pub input_data_format: DataFormat,
 
     /// Specifies the output data format.
+    ///
+    /// - Can be `Real` only if `inverse == true && input_data_format == HalfComplex`.
     pub output_data_format: DataFormat,
 
     /// Specifies the length of the data to be processed.
+    ///
+    ///  - Must be an even number if `input_data_format` is `Real` or `HalfComplex`
+    ///  - Must be an even number if `output_data_format` is `Real` or `HalfComplex`
     pub len: usize,
 
     /// Specifies whether the inverse (backward) transformation is used.
-    pub inverse: bool
+    pub inverse: bool,
 }
 
 /// The error type which is returned from the `Setup` creation function.
@@ -143,6 +166,8 @@ impl<T> Setup<T> where T : Num + 'static {
             options.input_data_order == DataOrder::BitReversed ||
             options.output_data_order == DataOrder::BitReversed;
 
+        let is_even_sized = options.len % 2 == 0;
+
         let input_swizzled = match options.input_data_order {
             DataOrder::Natural => false,
             DataOrder::Swizzled => true,
@@ -155,6 +180,14 @@ impl<T> Setup<T> where T : Num + 'static {
             DataOrder::BitReversed => true
         };
 
+        if input_swizzled && options.input_data_format != DataFormat::Complex {
+            return Err(PlanError::InvalidInput);
+        }
+
+        if output_swizzled && options.output_data_format != DataFormat::Complex {
+            return Err(PlanError::InvalidInput);
+        }
+
         let (post_bit_reversal, kernel_type) =
             match (input_swizzled, output_swizzled) {
                 (false, false) => (true,  KernelType::Dif),
@@ -163,31 +196,52 @@ impl<T> Setup<T> where T : Num + 'static {
                 (true,  true)  => return Err(PlanError::InvalidInput)
             };
 
-        match (options.input_data_format, options.output_data_format, options.inverse) {
-            (DataFormat::Complex, DataFormat::Complex, _) => {},
-            (DataFormat::Real, DataFormat::HalfComplex, false) => unimplemented!(),
-            (DataFormat::HalfComplex, DataFormat::Real, true) => unimplemented!(),
-            _ => return Err(PlanError::InvalidInput)
-        }
+        let (pre_r2c, post_hc2c, post_r2c, use_realfft) =
+            match (options.input_data_format, options.output_data_format, options.inverse, is_even_sized) {
+                (DataFormat::Complex, DataFormat::Complex, _, _) => (false, false, false, false),
+                (DataFormat::Real, DataFormat::Complex, _, false) => (true, false, false, false),
+                (DataFormat::Real, DataFormat::Complex, false, true) => (false, true, false, true),
+
+                // note: `HalfComplex` is not defined for odd sizes
+                (DataFormat::Real, DataFormat::HalfComplex, false, true) => (false, false, false, true),
+                (DataFormat::HalfComplex, DataFormat::Real, true, true) => (false, false, false, true),
+                (DataFormat::HalfComplex, DataFormat::Complex, true, true) => (false, false, true, true),
+                _ => return Err(PlanError::InvalidInput)
+            };
+
+        let fft_len = if use_realfft {
+            options.len / 2
+        } else {
+            options.len
+        };
 
         let mut radixes = if constain_radix2 {
-            try!(factorize_radix2(options.len))
+            try!(factorize_radix2(fft_len))
         } else {
-            factorize(options.len)
+            factorize(fft_len)
         };
         if kernel_type == KernelType::Dit {
             radixes.reverse();
         }
 
         let mut kernels = Vec::new();
+
+        if pre_r2c {
+            kernels.push(new_real_to_complex_kernel(options.len));
+        }
+
+        if use_realfft && options.inverse {
+            kernels.push(new_real_fft_pre_post_process_kernel(options.len, true));
+        }
+
         match kernel_type {
             KernelType::Dif => {
-                let mut unit = options.len;
+                let mut unit = fft_len;
                 for radix_ref in &radixes {
                     let radix = *radix_ref;
                     unit /= radix;
                     kernels.push(Kernel::new(&KernelCreationParams {
-                        size: options.len,
+                        size: fft_len,
                         kernel_type: kernel_type,
                         radix: radix,
                         unit: unit,
@@ -200,7 +254,7 @@ impl<T> Setup<T> where T : Num + 'static {
                 for radix_ref in &radixes {
                     let radix = *radix_ref;
                     kernels.push(Kernel::new(&KernelCreationParams {
-                        size: options.len,
+                        size: fft_len,
                         kernel_type: kernel_type,
                         radix: radix,
                         unit: unit,
@@ -211,8 +265,20 @@ impl<T> Setup<T> where T : Num + 'static {
             },
         }
 
-        if post_bit_reversal && options.len > 1 {
+        if post_bit_reversal && fft_len > 1 {
             kernels.push(new_bit_reversal_kernel(radixes.as_slice()));
+        }
+
+        if use_realfft && !options.inverse {
+            kernels.push(new_real_fft_pre_post_process_kernel(options.len, false));
+        }
+
+        if post_hc2c {
+            kernels.push(new_half_complex_to_complex_kernel(options.len));
+        }
+
+        if post_r2c {
+            kernels.push(new_real_to_complex_kernel(options.len));
         }
 
         Ok(Self {
