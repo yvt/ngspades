@@ -5,7 +5,7 @@
 //
 use super::{Kernel, KernelParams, SliceAccessor};
 
-use {mul_pos_i, Num, complex_from_slice, Complex};
+use {mul_pos_i, Num, Complex};
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
 pub fn new_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Box<Kernel<T>>
@@ -81,14 +81,30 @@ impl<T> Kernel<T> for RealFFTPrePostProcessKernel<T> where T : Num {
             data[1] = (x1 - x2) * T::from(0.5).unwrap();
         }
         for i in 1..len_2 / 2 + 1 {
-            let a1 = complex_from_slice(&table[i * 4..]);
-            let b1 = complex_from_slice(&table[i * 4 + 2..]);
-            let a2 = complex_from_slice(&table[(len_2 - i) * 4..]);
-            let b2 = complex_from_slice(&table[(len_2 - i) * 4 + 2..]);
-            let x1 = complex_from_slice(&data[i * 2..]);
-            let x2 = complex_from_slice(&data[(len_2 - i) * 2..]);
+            let a1r = table[i * 4];
+            let b1r = table[i * 4 + 2];
+            let a2r = table[(len_2 - i) * 4];
+            let b2r = table[(len_2 - i) * 4 + 2];
+            let x1r = data[i * 2];
+            let x2r = data[(len_2 - i) * 2];
+
+            let a1i = table[i * 4 + 1];
+            let b1i = table[i * 4 + 3];
+            let a2i = table[(len_2 - i) * 4 + 1];
+            let b2i = table[(len_2 - i) * 4 + 3];
+            let x1i = data[i * 2 + 1];
+            let x2i = data[(len_2 - i) * 2 + 1];
+
+            let a1 = Complex::new(a1r, a1i);
+            let b1 = Complex::new(b1r, b1i);
+            let a2 = Complex::new(a2r, a2i);
+            let b2 = Complex::new(b2r, b2i);
+            let x1 = Complex::new(x1r, x1i);
+            let x2 = Complex::new(x2r, x2i);
+
             let g1 = x1 * a1 + x2.conj() * b1;
             let g2 = x2 * a2 + x1.conj() * b2;
+
             data[i * 2] = g1.re;
             data[i * 2 + 1] = g1.im;
             data[(len_2 - i) * 2] = g2.re;

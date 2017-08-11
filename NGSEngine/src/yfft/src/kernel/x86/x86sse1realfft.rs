@@ -6,25 +6,55 @@
 use super::{Kernel, KernelParams, SliceAccessor};
 use super::utils::{if_compatible};
 
-use simd::f32x4;
+use simd::{f32x4, u32x4};
+use num_iter::range_step;
+use std::ptr::{read_unaligned, write_unaligned};
+use std::mem;
+use std::f32;
 
-use {mul_pos_i, Num, complex_from_slice, Complex};
+use {mul_pos_i, Num, Complex};
+use simdutils::{f32x4_complex_mul_rrii, f32x4_bitxor};
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
 pub fn new_x86_sse_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<Kernel<T>>>
     where T : Num
 {
-    None
+    if_compatible(|| if len % 8 == 0 && len > 8 {
+        Some(Box::new(SseRealFFTPrePostProcessKernel::new(len, inverse)) as Box<Kernel<f32>>)
+    } else {
+        None
+    })
 }
 
-pub(super) fn new_real_fft_coef_table(len: usize, inverse: bool) -> Vec<f32x4> {
-    unimplemented!()
+pub(super) fn new_real_fft_coef_table(len: usize, inverse: bool) -> [Vec<f32>; 2] {
+    assert!(len % 2 == 0);
+    let mut table_a = Vec::with_capacity(len);
+    let mut table_b = Vec::with_capacity(len);
+    for i in 0..(len / 2) {
+        let c = Complex::new(0f32,
+            (i as f32) * -f32::consts::PI / (len / 2) as f32).exp();
+
+        let a = (Complex::new(1f32, 0f32) - mul_pos_i(c)) * 0.5f32;
+        let b = (Complex::new(1f32, 0f32) + mul_pos_i(c)) * 0.5f32;
+        if inverse {
+            table_a.push(a.re);
+            table_a.push(-a.im);
+            table_b.push(b.re);
+            table_b.push(-b.im);
+        } else {
+            table_a.push(a.re);
+            table_a.push(a.im);
+            table_b.push(b.re);
+            table_b.push(b.im);
+        }
+    }
+    [table_a, table_b]
 }
 
 #[derive(Debug)]
 struct SseRealFFTPrePostProcessKernel {
     len: usize,
-    table: Vec<f32x4>,
+    table: [Vec<f32>; 2],
     inverse: bool,
 }
 
@@ -41,41 +71,64 @@ impl SseRealFFTPrePostProcessKernel {
 impl Kernel<f32> for SseRealFFTPrePostProcessKernel {
     fn transform(&self, params: &mut KernelParams<f32>) {
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. self.len]) };
-        unimplemented!()
-        /*let table = unsafe { SliceAccessor::new(&self.table[..]) };
+        let table_a = unsafe { SliceAccessor::new(&self.table[0][..]) };
+        let table_b = unsafe { SliceAccessor::new(&self.table[1][..]) };
         let len_2 = self.len / 2;
         if !self.inverse {
-            // A(0) = (1 - j) / 2, B(0) = (1 + j) / 2
-            // A(k) = (1 + j) / 2, B(k) = (1 - j) / 2
-            // x A(0) + conj(x) B(0) = Re(x) + Im(x)
-            // x A(k) + conj(x) B(k) = Re(x) - Im(x)
-            // Store G(0) as X_r(0)
-            // Store G(N/2) as X_i(0)
-            // data[1] = data[0] - data[1];
             let (x1, x2) = (data[0], data[1]);
             data[0] = x1 + x2;
             data[1] = x1 - x2;
         } else {
-            // A(0) = (1 + j) / 2, B(0) = (1 - j) / 2
-            // A(k) = (1 - j) / 2, B(k) = (1 + j) / 2
-            // Re(x) A(0) + Im(x) B(0) = (Re(x) + Im(x)) / 2 + j(Re(x) - Im(x)) /2
             let (x1, x2) = (data[0], data[1]);
-            data[0] = (x1 + x2) * T::from(0.5).unwrap();
-            data[1] = (x1 - x2) * T::from(0.5).unwrap();
+            data[0] = (x1 + x2) * 0.5f32;
+            data[1] = (x1 - x2) * 0.5f32;
         }
-        for i in 1..len_2 {
-            let a1 = complex_from_slice(&table[i * 4..]);
-            let b1 = complex_from_slice(&table[i * 4 + 2..]);
-            let a2 = complex_from_slice(&table[(len_2 - i) * 4..]);
-            let b2 = complex_from_slice(&table[(len_2 - i) * 4 + 2..]);
-            let x1 = complex_from_slice(&data[i * 2..]);
-            let x2 = complex_from_slice(&data[(len_2 - i) * 2..]);
-            let g1 = x1 * a1 + x2.conj() * b1;
-            let g2 = x2 * a2 + x1.conj() * b2;
-            data[i * 2] = g1.re;
-            data[i * 2 + 1] = g1.im;
-            data[(len_2 - i) * 2] = g2.re;
-            data[(len_2 - i) * 2 + 1] = g2.im;
-        } */
+
+        let neg_mask: f32x4 = unsafe { mem::transmute(u32x4::new(0x80000000, 0x80000000, 0, 0)) };
+        let conj_mask: f32x4 = unsafe { mem::transmute(u32x4::new(0, 0, 0x80000000, 0x80000000)) };
+        for i in range_step(1, len_2 / 2, 2) {
+            let cur1 = &mut data[i * 2] as *mut f32 as *mut f32x4;
+            let cur2 = &mut data[(len_2 - i - 1) * 2] as *mut f32 as *mut f32x4;
+
+            let a_p1 = &table_a[i * 2] as *const f32 as *const f32x4;
+            let a_p2 = &table_a[(len_2 - i - 1) * 2] as *const f32 as *const f32x4;
+            let b_p1 = &table_b[i * 2] as *const f32 as *const f32x4;
+            let b_p2 = &table_b[(len_2 - i - 1) * 2] as *const f32 as *const f32x4;
+
+            // riri
+            let x1 = unsafe { read_unaligned(cur1) };
+            let x2 = unsafe { *cur2 };
+            let a1i = unsafe { read_unaligned(a_p1) };
+            let a2i = unsafe { *a_p2 };
+            let b1i = unsafe { read_unaligned(b_p1) };
+            let b2i = unsafe { *b_p2 };
+
+            // riri to rrii
+            let t1 = f32x4_shuffle!(x1, x1, [0, 2, 5, 7]);
+            let t2 = f32x4_shuffle!(x2, x2, [0, 2, 5, 7]);
+            let a1 = f32x4_shuffle!(a1i, a1i, [0, 2, 5, 7]);
+            let a2 = f32x4_shuffle!(a2i, a2i, [0, 2, 5, 7]);
+            let b1 = f32x4_shuffle!(b1i, b1i, [0, 2, 5, 7]);
+            let b2 = f32x4_shuffle!(b2i, b2i, [0, 2, 5, 7]);
+
+            let t1c = f32x4_bitxor(t1, conj_mask);
+            let t2c = f32x4_bitxor(t2, conj_mask);
+            let t1c = f32x4_shuffle!(t1c, t1c, [1, 0, 7, 6]);
+            let t2c = f32x4_shuffle!(t2c, t2c, [1, 0, 7, 6]);
+
+            let g1 = f32x4_complex_mul_rrii(t1, a1, neg_mask) +
+                f32x4_complex_mul_rrii(t2c, b1, neg_mask);
+            let g2 = f32x4_complex_mul_rrii(t2, a2, neg_mask) +
+                f32x4_complex_mul_rrii(t1c, b2, neg_mask);
+
+            // rrii to riri
+            let y1 = f32x4_shuffle!(g1, g1, [0, 2, 5, 7]);
+            let y2 = f32x4_shuffle!(g2, g2, [0, 2, 5, 7]);
+
+            unsafe {
+                write_unaligned(cur1, y1);
+                *cur2 = y2;
+            }
+        }
     }
 }

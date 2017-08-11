@@ -88,8 +88,7 @@ pub fn f32x4_complex_mul_rrii(x: f32x4, y: f32x4, neg_mask: f32x4) -> f32x4 {
 
 #[test]
 fn test_f32x4_complex_mul_rrii() {
-    let neg_mask_raw: [u32; 4] = [0x80000000, 0x80000000, 0, 0];
-    let neg_mask = unsafe { *(&neg_mask_raw as *const u32 as *const f32x4) };
+    let neg_mask = unsafe { mem::transmute(u32x4::new(0x80000000, 0x80000000, 0, 0)) };
 
     let c1: Complex<f32> = Complex::new(123f32, 456f32);
     let c2: Complex<f32> = Complex::new(789f32, 135f32);

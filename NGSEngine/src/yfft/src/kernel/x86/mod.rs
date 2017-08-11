@@ -15,12 +15,16 @@ mod bitreversal;
 mod x86avxf32radix2;
 #[cfg(target_feature = "avx")]
 mod x86avxf32radix4;
+#[cfg(target_feature = "avx")]
+mod x86avxf32realfft;
 mod x86sse1radix2;
 mod x86sse1radix4;
 mod x86sse1realfft;
 mod x86sse2;
 #[cfg(target_feature = "sse3")]
 mod x86sse3f32radix4;
+#[cfg(target_feature = "sse3")]
+mod x86sse3f32realfft;
 #[cfg(target_feature = "avx")]
 mod x86avxbitreversal;
 
@@ -40,10 +44,24 @@ mod x86avxf32radix4 {
     }
 }
 
+#[cfg(not(target_feature = "avx"))]
+mod x86avxf32realfft {
+    pub fn new_x86_avx_f32_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<super::Kernel<T>>> {
+        None
+    }
+}
+
 #[cfg(not(target_feature = "sse3"))]
 mod x86sse3f32radix4 {
     pub fn new_x86_sse3_f32_radix4_kernel<T>(_: &super::KernelCreationParams)
                                              -> Option<Box<super::Kernel<T>>> {
+        None
+    }
+}
+
+#[cfg(not(target_feature = "sse3"))]
+mod x86sse3f32realfft {
+    pub fn new_x86_sse3_f32_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<super::Kernel<T>>> {
         None
     }
 }
@@ -78,5 +96,7 @@ pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel
 pub fn new_x86_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<Kernel<T>>>
     where T: Num
 {
-    None.or_else(|| x86sse1realfft::new_x86_sse_real_fft_pre_post_process_kernel(len, inverse))
+    None.or_else(|| x86avxf32realfft::new_x86_avx_f32_real_fft_pre_post_process_kernel(len, inverse))
+        .or_else(|| x86sse3f32realfft::new_x86_sse3_f32_real_fft_pre_post_process_kernel(len, inverse))
+        .or_else(|| x86sse1realfft::new_x86_sse_real_fft_pre_post_process_kernel(len, inverse))
 }
