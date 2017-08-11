@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::{if_compatible};
+use super::utils::if_compatible;
 
 use simd::{f32x4, u32x4};
 use num_iter::range_step;
@@ -16,11 +16,17 @@ use {mul_pos_i, Num, Complex};
 use simdutils::{f32x4_complex_mul_rrii, f32x4_bitxor};
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
-pub fn new_x86_sse_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<Kernel<T>>>
-    where T : Num
+pub fn new_x86_sse_real_fft_pre_post_process_kernel<T>(
+    len: usize,
+    inverse: bool,
+) -> Option<Box<Kernel<T>>>
+where
+    T: Num,
 {
     if_compatible(|| if len % 8 == 0 && len > 8 {
-        Some(Box::new(SseRealFFTPrePostProcessKernel::new(len, inverse)) as Box<Kernel<f32>>)
+        Some(Box::new(
+            SseRealFFTPrePostProcessKernel::new(len, inverse),
+        ) as Box<Kernel<f32>>)
     } else {
         None
     })
@@ -31,8 +37,7 @@ pub(super) fn new_real_fft_coef_table(len: usize, inverse: bool) -> [Vec<f32>; 2
     let mut table_a = Vec::with_capacity(len);
     let mut table_b = Vec::with_capacity(len);
     for i in 0..(len / 2) {
-        let c = Complex::new(0f32,
-            (i as f32) * -f32::consts::PI / (len / 2) as f32).exp();
+        let c = Complex::new(0f32, (i as f32) * -f32::consts::PI / (len / 2) as f32).exp();
 
         let a = (Complex::new(1f32, 0f32) - mul_pos_i(c)) * 0.5f32;
         let b = (Complex::new(1f32, 0f32) + mul_pos_i(c)) * 0.5f32;
@@ -70,7 +75,7 @@ impl SseRealFFTPrePostProcessKernel {
 
 impl Kernel<f32> for SseRealFFTPrePostProcessKernel {
     fn transform(&self, params: &mut KernelParams<f32>) {
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. self.len]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..self.len]) };
         let table_a = unsafe { SliceAccessor::new(&self.table[0][..]) };
         let table_b = unsafe { SliceAccessor::new(&self.table[1][..]) };
         let len_2 = self.len / 2;

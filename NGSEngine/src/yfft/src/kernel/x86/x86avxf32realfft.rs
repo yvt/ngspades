@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::{if_compatible};
+use super::utils::if_compatible;
 
 use simd::x86::avx::{f32x8, u32x8};
 use num_iter::range_step;
@@ -18,11 +18,17 @@ use simdutils::{avx_f32x8_complex_mul_riri, avx_f32x8_bitxor};
 use super::x86sse1realfft::new_real_fft_coef_table;
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
-pub fn new_x86_avx_f32_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<Kernel<T>>>
-    where T : Num
+pub fn new_x86_avx_f32_real_fft_pre_post_process_kernel<T>(
+    len: usize,
+    inverse: bool,
+) -> Option<Box<Kernel<T>>>
+where
+    T: Num,
 {
     if_compatible(|| if len % 16 == 0 && len > 16 {
-        Some(Box::new(AvxF32RealFFTPrePostProcessKernel::new(len, inverse)) as Box<Kernel<f32>>)
+        Some(Box::new(
+            AvxF32RealFFTPrePostProcessKernel::new(len, inverse),
+        ) as Box<Kernel<f32>>)
     } else {
         None
     })
@@ -47,7 +53,7 @@ impl AvxF32RealFFTPrePostProcessKernel {
 
 impl Kernel<f32> for AvxF32RealFFTPrePostProcessKernel {
     fn transform(&self, params: &mut KernelParams<f32>) {
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. self.len]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..self.len]) };
         let table_a = unsafe { SliceAccessor::new(&self.table[0][..]) };
         let table_b = unsafe { SliceAccessor::new(&self.table[1][..]) };
         let len_2 = self.len / 2;
@@ -61,7 +67,18 @@ impl Kernel<f32> for AvxF32RealFFTPrePostProcessKernel {
             data[1] = (x1 - x2) * 0.5f32;
         }
 
-        let conj_mask: f32x8 = unsafe { mem::transmute(u32x8::new(0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000)) };
+        let conj_mask: f32x8 = unsafe {
+            mem::transmute(u32x8::new(
+                0,
+                0x80000000,
+                0,
+                0x80000000,
+                0,
+                0x80000000,
+                0,
+                0x80000000,
+            ))
+        };
 
         for i in range_step(1, len_2 / 2, 4) {
             let cur1 = &mut data[i * 2] as *mut f32 as *mut f32x8;
@@ -85,10 +102,8 @@ impl Kernel<f32> for AvxF32RealFFTPrePostProcessKernel {
             let x1c = f32x8_shuffle!(x1c, x1c, [6, 7, 4, 5, 2, 3, 0, 1]);
             let x2c = f32x8_shuffle!(x2c, x2c, [6, 7, 4, 5, 2, 3, 0, 1]);
 
-            let g1 = avx_f32x8_complex_mul_riri(x1, a1) +
-                avx_f32x8_complex_mul_riri(x2c, b1);
-            let g2 = avx_f32x8_complex_mul_riri(x2, a2) +
-                avx_f32x8_complex_mul_riri(x1c, b2);
+            let g1 = avx_f32x8_complex_mul_riri(x1, a1) + avx_f32x8_complex_mul_riri(x2c, b1);
+            let g2 = avx_f32x8_complex_mul_riri(x2, a2) + avx_f32x8_complex_mul_riri(x1c, b2);
 
             unsafe {
                 write_unaligned(cur1, g1);

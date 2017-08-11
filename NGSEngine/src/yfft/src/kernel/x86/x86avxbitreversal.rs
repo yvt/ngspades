@@ -12,14 +12,19 @@ use simd::x86::avx::u64x4;
 use std::mem;
 
 pub fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
-    where T: Num
+where
+    T: Num,
 {
     if indices.len() < 8 {
         // doesn't benefit much
         return None;
     }
 
-    if_compatible(|| Some(Box::new(AvxDWordBitReversalKernel { indices: indices.clone() }) as Box<Kernel<f32>>))
+    if_compatible(|| {
+        Some(Box::new(
+            AvxDWordBitReversalKernel { indices: indices.clone() },
+        ) as Box<Kernel<f32>>)
+    })
 }
 
 #[derive(Debug)]

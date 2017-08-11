@@ -29,7 +29,8 @@ use simd::f32x4;
 use std::f32;
 
 pub fn new_x86_sse3_f32_radix4_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T: Num
+where
+    T: Num,
 {
     if cparams.radix != 4 {
         return None;
@@ -41,7 +42,8 @@ pub fn new_x86_sse3_f32_radix4_kernel<T>(cparams: &KernelCreationParams) -> Opti
 struct Factory {}
 impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     fn consume<T>(self, cparams: &KernelCreationParams, sparams: T) -> Option<Box<Kernel<f32>>>
-        where T: StaticParams
+    where
+        T: StaticParams,
     {
 
         match cparams.unit {
@@ -72,10 +74,16 @@ impl<T: StaticParams> Sse3Radix4Kernel2<T> {
         let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
         let mut twiddles = Vec::new();
         for i in range_step(0, cparams.unit, 2) {
-            let c1 = Complex::new(0f32, full_circle * (i) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-            let c2 = Complex::new(0f32, full_circle * (i + 1) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+            let c1 = Complex::new(
+                0f32,
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
+            let c2 = Complex::new(
+                0f32,
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
             // riri format, modified for sse3_f32x4_complex_mul_riri_inner
             twiddles.push(f32x4::new(c1.re, -c1.im, c2.re, -c2.im));
             twiddles.push(f32x4::new(c1.im, c1.re, c2.im, c2.re));
@@ -138,13 +146,27 @@ impl<T: StaticParams> Kernel<f32> for Sse3Radix4Kernel2<T> {
 
                 // apply twiddle factor
                 let x2 = x1;
-                let y2 = if pre_twiddle { sse3_f32x4_complex_mul_riri_inner(y1, twiddle_1a, twiddle_1b) } else { y1 };
-                let z2 = if pre_twiddle { sse3_f32x4_complex_mul_riri_inner(z1, twiddle_2a, twiddle_2b) } else { z1 };
-                let w2 = if pre_twiddle { sse3_f32x4_complex_mul_riri_inner(w1, twiddle_3a, twiddle_3b) } else { w1 };
+                let y2 = if pre_twiddle {
+                    sse3_f32x4_complex_mul_riri_inner(y1, twiddle_1a, twiddle_1b)
+                } else {
+                    y1
+                };
+                let z2 = if pre_twiddle {
+                    sse3_f32x4_complex_mul_riri_inner(z1, twiddle_2a, twiddle_2b)
+                } else {
+                    z1
+                };
+                let w2 = if pre_twiddle {
+                    sse3_f32x4_complex_mul_riri_inner(w1, twiddle_3a, twiddle_3b)
+                } else {
+                    w1
+                };
 
                 // perform size-4 FFT
-                let x3 = x2 + z2; let y3 = y2 + w2;
-                let z3 = x2 - z2; let w3t = y2 - w2;
+                let x3 = x2 + z2;
+                let y3 = y2 + w2;
+                let z3 = x2 - z2;
+                let w3t = y2 - w2;
 
                 // w3 = w3t * i
                 let w3 = f32x4_bitxor(f32x4_shuffle!(w3t, w3t, [1, 0, 7, 6]), neg_mask2);
@@ -157,9 +179,21 @@ impl<T: StaticParams> Kernel<f32> for Sse3Radix4Kernel2<T> {
 
                 // apply twiddle factor
                 let x5 = x4;
-                let y5 = if post_twiddle { sse3_f32x4_complex_mul_riri_inner(y4, twiddle_1a, twiddle_1b) } else { y4 };
-                let z5 = if post_twiddle { sse3_f32x4_complex_mul_riri_inner(z4, twiddle_2a, twiddle_2b) } else { z4 };
-                let w5 = if post_twiddle { sse3_f32x4_complex_mul_riri_inner(w4, twiddle_3a, twiddle_3b) } else { w4 };
+                let y5 = if post_twiddle {
+                    sse3_f32x4_complex_mul_riri_inner(y4, twiddle_1a, twiddle_1b)
+                } else {
+                    y4
+                };
+                let z5 = if post_twiddle {
+                    sse3_f32x4_complex_mul_riri_inner(z4, twiddle_2a, twiddle_2b)
+                } else {
+                    z4
+                };
+                let w5 = if post_twiddle {
+                    sse3_f32x4_complex_mul_riri_inner(w4, twiddle_3a, twiddle_3b)
+                } else {
+                    w4
+                };
 
                 unsafe { *cur1 = x5 };
                 unsafe { *cur2 = y5 };

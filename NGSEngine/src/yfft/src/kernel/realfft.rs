@@ -9,28 +9,31 @@ use {mul_pos_i, Num, Complex};
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
 pub fn new_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Box<Kernel<T>>
-    where T : Num
+where
+    T: Num,
 {
-    super::x86::new_x86_real_fft_pre_post_process_kernel(len, inverse)
-        .unwrap_or_else(|| {
-            assert!(len % 2 == 0);
-            Box::new(RealFFTPrePostProcessKernel {
-                len,
-                table: new_real_fft_coef_table(len, inverse),
-                inverse,
-            })
+    super::x86::new_x86_real_fft_pre_post_process_kernel(len, inverse).unwrap_or_else(|| {
+        assert!(len % 2 == 0);
+        Box::new(RealFFTPrePostProcessKernel {
+            len,
+            table: new_real_fft_coef_table(len, inverse),
+            inverse,
         })
+    })
 }
 
 pub(super) fn new_real_fft_coef_table<T>(len: usize, inverse: bool) -> Vec<T>
-    where T : Num
+where
+    T: Num,
 {
     assert!(len % 2 == 0);
     let mut table = Vec::with_capacity(len * 2);
     let half = T::from(0.5).unwrap();
     for i in 0..(len / 2) {
-        let c = Complex::new(T::zero(),
-            T::from(i).unwrap() * -T::PI() / T::from(len / 2).unwrap()).exp();
+        let c = Complex::new(
+            T::zero(),
+            T::from(i).unwrap() * -T::PI() / T::from(len / 2).unwrap(),
+        ).exp();
 
         let a = (Complex::new(T::one(), T::zero()) - mul_pos_i(c)) * half;
         let b = (Complex::new(T::one(), T::zero()) + mul_pos_i(c)) * half;
@@ -56,9 +59,12 @@ struct RealFFTPrePostProcessKernel<T> {
     inverse: bool,
 }
 
-impl<T> Kernel<T> for RealFFTPrePostProcessKernel<T> where T : Num {
+impl<T> Kernel<T> for RealFFTPrePostProcessKernel<T>
+where
+    T: Num,
+{
     fn transform(&self, params: &mut KernelParams<T>) {
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. self.len]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..self.len]) };
         let table = unsafe { SliceAccessor::new(&self.table[..]) };
         let len_2 = self.len / 2;
         if !self.inverse {

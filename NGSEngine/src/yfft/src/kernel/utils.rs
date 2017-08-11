@@ -7,7 +7,7 @@ use super::{KernelType, KernelCreationParams};
 use std::fmt;
 use std::any::Any;
 
-pub trait StaticParams : fmt::Debug + 'static {
+pub trait StaticParams: fmt::Debug + 'static {
     fn inverse(&self) -> bool;
     fn kernel_type(&self) -> KernelType;
     fn check_param(&self, cparams: &KernelCreationParams) {
@@ -16,28 +16,56 @@ pub trait StaticParams : fmt::Debug + 'static {
     }
 }
 
-#[derive(Debug)] struct StaticParamsDitForward {}
+#[derive(Debug)]
+struct StaticParamsDitForward {}
 impl StaticParams for StaticParamsDitForward {
-    #[inline] fn inverse(&self) -> bool { false }
-    #[inline] fn kernel_type(&self) -> KernelType { KernelType::Dit }
+    #[inline]
+    fn inverse(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn kernel_type(&self) -> KernelType {
+        KernelType::Dit
+    }
 }
 
-#[derive(Debug)] struct StaticParamsDitBackward {}
+#[derive(Debug)]
+struct StaticParamsDitBackward {}
 impl StaticParams for StaticParamsDitBackward {
-    #[inline] fn inverse(&self) -> bool { true }
-    #[inline] fn kernel_type(&self) -> KernelType { KernelType::Dit }
+    #[inline]
+    fn inverse(&self) -> bool {
+        true
+    }
+    #[inline]
+    fn kernel_type(&self) -> KernelType {
+        KernelType::Dit
+    }
 }
 
-#[derive(Debug)] struct StaticParamsDifForward {}
+#[derive(Debug)]
+struct StaticParamsDifForward {}
 impl StaticParams for StaticParamsDifForward {
-    #[inline] fn inverse(&self) -> bool { false }
-    #[inline] fn kernel_type(&self) -> KernelType { KernelType::Dif }
+    #[inline]
+    fn inverse(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn kernel_type(&self) -> KernelType {
+        KernelType::Dif
+    }
 }
 
-#[derive(Debug)] struct StaticParamsDifBackward {}
+#[derive(Debug)]
+struct StaticParamsDifBackward {}
 impl StaticParams for StaticParamsDifBackward {
-    #[inline] fn inverse(&self) -> bool { true }
-    #[inline] fn kernel_type(&self) -> KernelType { KernelType::Dif }
+    #[inline]
+    fn inverse(&self) -> bool {
+        true
+    }
+    #[inline]
+    fn kernel_type(&self) -> KernelType {
+        KernelType::Dif
+    }
 }
 
 /// Poor man's generic lambda
@@ -46,21 +74,23 @@ pub trait StaticParamsConsumer<TRet> {
 }
 
 pub fn branch_on_static_params<F, T>(cparams: &KernelCreationParams, f: F) -> T
-    where F : StaticParamsConsumer<T>
+where
+    F: StaticParamsConsumer<T>,
 {
 
     match (cparams.kernel_type, cparams.inverse) {
-        (KernelType::Dit, false) => f.consume(cparams, StaticParamsDitForward{}),
-        (KernelType::Dif, false) => f.consume(cparams, StaticParamsDifForward{}),
-        (KernelType::Dit, true) =>  f.consume(cparams, StaticParamsDitBackward{}),
-        (KernelType::Dif, true) =>  f.consume(cparams, StaticParamsDifBackward{})
+        (KernelType::Dit, false) => f.consume(cparams, StaticParamsDitForward {}),
+        (KernelType::Dif, false) => f.consume(cparams, StaticParamsDifForward {}),
+        (KernelType::Dit, true) => f.consume(cparams, StaticParamsDitBackward {}),
+        (KernelType::Dif, true) => f.consume(cparams, StaticParamsDifBackward {}),
     }
 }
 
 pub fn if_compatible<TExpect, TRequired, F>(f: F) -> Option<TRequired>
-    where Option<TRequired> : Any,
-          Option<TExpect> : Any,
-          F : FnOnce () -> Option<TExpect>
+where
+    Option<TRequired>: Any,
+    Option<TExpect>: Any,
+    F: FnOnce() -> Option<TExpect>,
 {
     let mut ret_cell = None;
     if let Some(ret) = (&mut ret_cell as &mut Any).downcast_mut() {

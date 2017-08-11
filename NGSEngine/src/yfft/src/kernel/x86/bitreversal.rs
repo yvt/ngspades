@@ -12,9 +12,14 @@ use simd::x86::sse2::u64x2;
 use std::mem;
 
 pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
-    where T: Num
+where
+    T: Num,
 {
-    if_compatible(|| Some(Box::new(SseDWordBitReversalKernel { indices: indices.clone() }) as Box<Kernel<f32>>))
+    if_compatible(|| {
+        Some(Box::new(
+            SseDWordBitReversalKernel { indices: indices.clone() },
+        ) as Box<Kernel<f32>>)
+    })
 }
 
 #[derive(Debug)]

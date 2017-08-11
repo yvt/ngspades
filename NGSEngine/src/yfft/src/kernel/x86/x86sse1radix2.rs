@@ -25,7 +25,8 @@ use simd::f32x4;
 use std::f32;
 
 pub fn new_x86_sse_radix2_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T: Num
+where
+    T: Num,
 {
     if cparams.radix != 2 {
         return None;
@@ -37,7 +38,8 @@ pub fn new_x86_sse_radix2_kernel<T>(cparams: &KernelCreationParams) -> Option<Bo
 struct Factory {}
 impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     fn consume<T>(self, cparams: &KernelCreationParams, sparams: T) -> Option<Box<Kernel<f32>>>
-        where T: StaticParams
+    where
+        T: StaticParams,
     {
 
         match cparams.unit {
@@ -101,10 +103,16 @@ impl<T: StaticParams> SseRadix2Kernel2<T> {
         let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
         let twiddles = range_step(0, cparams.unit, 2)
             .map(|i| {
-                let c1 = Complex::new(0f32, full_circle * (i) as f32 /
-                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-                let c2 = Complex::new(0f32, full_circle * (i + 1) as f32 /
-                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c1 = Complex::new(
+                    0f32,
+                    full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
+                        f32::consts::PI,
+                ).exp();
+                let c2 = Complex::new(
+                    0f32,
+                    full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
+                        f32::consts::PI,
+                ).exp();
                 // rrii format
                 f32x4::new(c1.re, c2.re, c1.im, c2.im)
             })
@@ -199,14 +207,26 @@ impl<T: StaticParams> SseRadix2Kernel3<T> {
         let twiddles = range_step(0, cparams.unit, 2)
             .map(|i| {
                 let k = i / 4 * 4;
-                let c1 = Complex::new(0f32, full_circle * (k) as f32 /
-                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-                let c2 = Complex::new(0f32, full_circle * (k + 1) as f32 /
-                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-                let c3 = Complex::new(0f32, full_circle * (k + 2) as f32 /
-                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-                let c4 = Complex::new(0f32, full_circle * (k + 3) as f32 /
-                    (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+                let c1 = Complex::new(
+                    0f32,
+                    full_circle * (k) as f32 / (cparams.radix * cparams.unit) as f32 *
+                        f32::consts::PI,
+                ).exp();
+                let c2 = Complex::new(
+                    0f32,
+                    full_circle * (k + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
+                        f32::consts::PI,
+                ).exp();
+                let c3 = Complex::new(
+                    0f32,
+                    full_circle * (k + 2) as f32 / (cparams.radix * cparams.unit) as f32 *
+                        f32::consts::PI,
+                ).exp();
+                let c4 = Complex::new(
+                    0f32,
+                    full_circle * (k + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
+                        f32::consts::PI,
+                ).exp();
                 // rrrr-iiii format
                 // TODO: more efficient creation
                 if i % 4 != 0 {
@@ -261,8 +281,16 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel3<T> {
                 // apply twiddle factor
                 let x3r = x2r;
                 let x3i = x2i;
-                let y3r = if pre_twiddle { y2r * twiddle_r - y2i * twiddle_i } else { y2r };
-                let y3i = if pre_twiddle { y2r * twiddle_i + y2i * twiddle_r } else { y2i };
+                let y3r = if pre_twiddle {
+                    y2r * twiddle_r - y2i * twiddle_i
+                } else {
+                    y2r
+                };
+                let y3i = if pre_twiddle {
+                    y2r * twiddle_i + y2i * twiddle_r
+                } else {
+                    y2i
+                };
 
                 // perform size-2 FFT
                 let x4r = x3r + y3r;
@@ -273,8 +301,16 @@ impl<T: StaticParams> Kernel<f32> for SseRadix2Kernel3<T> {
                 // apply twiddle factor
                 let x5r = x4r;
                 let x5i = x4i;
-                let y5r = if post_twiddle { y4r * twiddle_r - y4i * twiddle_i } else { y4r };
-                let y5i = if post_twiddle { y4r * twiddle_i + y4i * twiddle_r } else { y4i };
+                let y5r = if post_twiddle {
+                    y4r * twiddle_r - y4i * twiddle_i
+                } else {
+                    y4r
+                };
+                let y5i = if post_twiddle {
+                    y4r * twiddle_i + y4i * twiddle_r
+                } else {
+                    y4i
+                };
 
                 // convert to rrrr-iiii to riri-riri (unpcklps/unpckups)
                 let x6a = f32x4_shuffle!(x5r, x5i, [0, 4, 1, 5]);

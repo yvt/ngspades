@@ -14,7 +14,8 @@
 use super::{Kernel, KernelCreationParams, Num};
 
 pub fn new_x86_sse2_kernel<T>(_: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T: Num
+where
+    T: Num,
 {
     None
 }

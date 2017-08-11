@@ -26,41 +26,58 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 pub fn new_specialized_generic_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T : Num {
+where
+    T: Num,
+{
 
-    branch_on_static_params(cparams, Factory::<T>{ phantom: PhantomData })
+    branch_on_static_params(cparams, Factory::<T> { phantom: PhantomData })
 }
 
-struct Factory<T>{ phantom: PhantomData<T> }
+struct Factory<T> {
+    phantom: PhantomData<T>,
+}
 impl<T: Num> StaticParamsConsumer<Option<Box<Kernel<T>>>> for Factory<T> {
-    fn consume<TSParams>(self, cparams: &KernelCreationParams, sparams: TSParams) -> Option<Box<Kernel<T>>>
-        where TSParams : StaticParams,
-              T : Num {
+    fn consume<TSParams>(
+        self,
+        cparams: &KernelCreationParams,
+        sparams: TSParams,
+    ) -> Option<Box<Kernel<T>>>
+    where
+        TSParams: StaticParams,
+        T: Num,
+    {
 
         let full_circle = if cparams.inverse { 2 } else { -2 };
-        let twiddle_delta = Complex::new(Zero::zero(),
-                T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
-                T::from(full_circle).unwrap() * T::PI() / T::from(cparams.size).unwrap()).exp();
+        let twiddle_delta = Complex::new(
+            Zero::zero(),
+            T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
+                T::from(full_circle).unwrap() * T::PI() /
+                T::from(cparams.size).unwrap(),
+        ).exp();
 
         match cparams.radix {
-            2 => Some(Box::new(SpecializedGenericDitKernel::<T, SmallFFT2<T>, TSParams> {
-                cparams: *cparams,
-                twiddle_delta: twiddle_delta,
-                small_fft: PhantomData,
-                sparams: sparams
-            })),
-            4 => Some(Box::new(SpecializedGenericDitKernel::<T, SmallFFT4<T>, TSParams> {
-                cparams: *cparams,
-                twiddle_delta: twiddle_delta,
-                small_fft: PhantomData,
-                sparams: sparams
-            })),
-            _ => None
+            2 => Some(Box::new(
+                SpecializedGenericDitKernel::<T, SmallFFT2<T>, TSParams> {
+                    cparams: *cparams,
+                    twiddle_delta: twiddle_delta,
+                    small_fft: PhantomData,
+                    sparams: sparams,
+                },
+            )),
+            4 => Some(Box::new(
+                SpecializedGenericDitKernel::<T, SmallFFT4<T>, TSParams> {
+                    cparams: *cparams,
+                    twiddle_delta: twiddle_delta,
+                    small_fft: PhantomData,
+                    sparams: sparams,
+                },
+            )),
+            _ => None,
         }
     }
 }
 
-trait SmallFFT<T> : Debug + Default + 'static {
+trait SmallFFT<T>: Debug + Default + 'static {
     fn radix() -> usize;
     fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize);
     fn twiddle(&mut self, c: Complex<T>);
@@ -76,25 +93,33 @@ struct SmallFFT2<T> {
 }
 
 impl<T: Num> SmallFFT<T> for SmallFFT2<T> {
-    #[inline] fn radix() -> usize { 2 }
-    #[inline] fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
+    #[inline]
+    fn radix() -> usize {
+        2
+    }
+    #[inline]
+    fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         self.x1.re = data[offset];
         self.x1.im = data[offset + 1];
         self.x2.re = data[offset + stride];
         self.x2.im = data[offset + stride + 1];
     }
-    #[inline] fn twiddle(&mut self, c: Complex<T>) {
+    #[inline]
+    fn twiddle(&mut self, c: Complex<T>) {
         self.x2 = self.x2 * c;
     }
-    #[inline] fn transform_forward(&mut self) {
+    #[inline]
+    fn transform_forward(&mut self) {
         let orig = *self;
         self.x1 = orig.x1 + orig.x2;
         self.x2 = orig.x1 - orig.x2;
     }
-    #[inline] fn transform_backward(&mut self) {
+    #[inline]
+    fn transform_backward(&mut self) {
         self.transform_forward();
     }
-    #[inline] fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
+    #[inline]
+    fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         data[offset] = self.x1.re;
         data[offset + 1] = self.x1.im;
         data[offset + stride] = self.x2.re;
@@ -111,8 +136,12 @@ struct SmallFFT4<T> {
 }
 
 impl<T: Num> SmallFFT<T> for SmallFFT4<T> {
-    #[inline] fn radix() -> usize { 4 }
-    #[inline] fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
+    #[inline]
+    fn radix() -> usize {
+        4
+    }
+    #[inline]
+    fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         self.x1.re = data[offset];
         self.x1.im = data[offset + 1];
         self.x2.re = data[offset + stride];
@@ -122,13 +151,15 @@ impl<T: Num> SmallFFT<T> for SmallFFT4<T> {
         self.x4.re = data[offset + stride * 3];
         self.x4.im = data[offset + stride * 3 + 1];
     }
-    #[inline] fn twiddle(&mut self, c: Complex<T>) {
+    #[inline]
+    fn twiddle(&mut self, c: Complex<T>) {
         let c2 = c * c;
         self.x2 = self.x2 * c;
         self.x3 = self.x3 * c2;
         self.x4 = self.x4 * (c * c2);
     }
-    #[inline] fn transform_forward(&mut self) {
+    #[inline]
+    fn transform_forward(&mut self) {
         let t1 = self.x1 + self.x3;
         let t2 = self.x2 + self.x4;
         let t3 = self.x1 - self.x3;
@@ -138,7 +169,8 @@ impl<T: Num> SmallFFT<T> for SmallFFT4<T> {
         self.x3 = t1 - t2;
         self.x4 = t3 + mul_pos_i(t4);
     }
-    #[inline] fn transform_backward(&mut self) {
+    #[inline]
+    fn transform_backward(&mut self) {
         let t1 = self.x1 + self.x3;
         let t2 = self.x2 + self.x4;
         let t3 = self.x1 - self.x3;
@@ -148,7 +180,8 @@ impl<T: Num> SmallFFT<T> for SmallFFT4<T> {
         self.x3 = t1 - t2;
         self.x4 = t3 - mul_pos_i(t4);
     }
-    #[inline] fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
+    #[inline]
+    fn store(&self, data: &mut SliceAccessor<&mut [T]>, offset: usize, stride: usize) {
         data[offset] = self.x1.re;
         data[offset + 1] = self.x1.im;
         data[offset + stride] = self.x2.re;
@@ -165,7 +198,7 @@ struct SpecializedGenericDitKernel<T, TSmallFFT, TSParams> {
     cparams: KernelCreationParams,
     twiddle_delta: Complex<T>,
     small_fft: PhantomData<TSmallFFT>,
-    sparams: TSParams
+    sparams: TSParams,
 }
 
 impl<T, TSmallFFT, TSParams> Kernel<T> for SpecializedGenericDitKernel<T, TSmallFFT, TSParams>

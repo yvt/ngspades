@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::{if_compatible};
+use super::utils::if_compatible;
 
 use simd::{f32x4, u32x4};
 use num_iter::range_step;
@@ -18,11 +18,17 @@ use simdutils::{sse3_f32x4_complex_mul_riri, f32x4_bitxor};
 use super::x86sse1realfft::new_real_fft_coef_table;
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
-pub fn new_x86_sse3_f32_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Option<Box<Kernel<T>>>
-    where T : Num
+pub fn new_x86_sse3_f32_real_fft_pre_post_process_kernel<T>(
+    len: usize,
+    inverse: bool,
+) -> Option<Box<Kernel<T>>>
+where
+    T: Num,
 {
     if_compatible(|| if len % 8 == 0 && len > 8 {
-        Some(Box::new(Sse3F32RealFFTPrePostProcessKernel::new(len, inverse)) as Box<Kernel<f32>>)
+        Some(Box::new(
+            Sse3F32RealFFTPrePostProcessKernel::new(len, inverse),
+        ) as Box<Kernel<f32>>)
     } else {
         None
     })
@@ -47,7 +53,7 @@ impl Sse3F32RealFFTPrePostProcessKernel {
 
 impl Kernel<f32> for Sse3F32RealFFTPrePostProcessKernel {
     fn transform(&self, params: &mut KernelParams<f32>) {
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. self.len]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..self.len]) };
         let table_a = unsafe { SliceAccessor::new(&self.table[0][..]) };
         let table_b = unsafe { SliceAccessor::new(&self.table[1][..]) };
         let len_2 = self.len / 2;
@@ -85,10 +91,8 @@ impl Kernel<f32> for Sse3F32RealFFTPrePostProcessKernel {
             let x1c = f32x4_shuffle!(x1c, x1c, [2, 3, 4, 5]);
             let x2c = f32x4_shuffle!(x2c, x2c, [2, 3, 4, 5]);
 
-            let g1 = sse3_f32x4_complex_mul_riri(x1, a1) +
-                sse3_f32x4_complex_mul_riri(x2c, b1);
-            let g2 = sse3_f32x4_complex_mul_riri(x2, a2) +
-                sse3_f32x4_complex_mul_riri(x1c, b2);
+            let g1 = sse3_f32x4_complex_mul_riri(x1, a1) + sse3_f32x4_complex_mul_riri(x2c, b1);
+            let g2 = sse3_f32x4_complex_mul_riri(x2, a2) + sse3_f32x4_complex_mul_riri(x1c, b2);
 
             unsafe {
                 write_unaligned(cur1, g1);

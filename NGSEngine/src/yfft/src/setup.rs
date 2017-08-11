@@ -9,8 +9,8 @@ use std::error;
 use std::fmt;
 use super::Num;
 use super::kernel::{Kernel, KernelType, KernelCreationParams, new_bit_reversal_kernel,
-    new_real_fft_pre_post_process_kernel, new_real_to_complex_kernel,
-    new_half_complex_to_complex_kernel};
+                    new_real_fft_pre_post_process_kernel, new_real_to_complex_kernel,
+                    new_half_complex_to_complex_kernel};
 
 /// Specifies the data order in which the data is supplied to or returned from the kernel.
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
@@ -25,7 +25,7 @@ pub enum DataOrder {
 
     /// The data is ordered in a Radix-2 bit-reversal order.
     /// The data length must be a power of two.
-    BitReversed
+    BitReversed,
 }
 
 /// Specifies the data format.
@@ -94,13 +94,13 @@ pub struct Options {
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum PlanError {
     /// A parameter was incorrect.
-    InvalidInput
+    InvalidInput,
 }
 
 impl fmt::Display for PlanError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            PlanError::InvalidInput => write!(f, "The parameter is invalid.")
+            PlanError::InvalidInput => write!(f, "The parameter is invalid."),
         }
     }
 }
@@ -108,18 +108,20 @@ impl fmt::Display for PlanError {
 impl error::Error for PlanError {
     fn description(&self) -> &str {
         match *self {
-            PlanError::InvalidInput => "Invalid input"
+            PlanError::InvalidInput => "Invalid input",
         }
     }
 
-    fn cause(&self) -> Option<&error::Error> { None }
+    fn cause(&self) -> Option<&error::Error> {
+        None
+    }
 }
 
 /// Encapsulates the FFT kernel configuration.
 #[derive(Debug)]
 pub struct Setup<T> {
     #[doc(hidden)]
-    pub kernels: Vec<Box<Kernel<T>>>
+    pub kernels: Vec<Box<Kernel<T>>>,
 }
 
 pub fn factorize_radix2(x: usize) -> Result<Vec<usize>, PlanError> {
@@ -135,20 +137,19 @@ pub fn factorize(mut x: usize) -> Vec<usize> {
     let mut possible_factor_min = 3;
 
     while x > 1 {
-        let radix =
-            if x % 4 == 0 {
-                4
-            } else if x % 2 == 0 {
-                2
-            } else {
-                let found_radix = (0..)
-                    .map(|r| r * 2 + possible_factor_min)
-                    .filter(|r| x % r == 0)
-                    .nth(0)
-                    .unwrap();
-                possible_factor_min = found_radix;
-                found_radix
-            };
+        let radix = if x % 4 == 0 {
+            4
+        } else if x % 2 == 0 {
+            2
+        } else {
+            let found_radix = (0..)
+                .map(|r| r * 2 + possible_factor_min)
+                .filter(|r| x % r == 0)
+                .nth(0)
+                .unwrap();
+            possible_factor_min = found_radix;
+            found_radix
+        };
         vec.push(radix);
         x /= radix;
     }
@@ -156,14 +157,16 @@ pub fn factorize(mut x: usize) -> Vec<usize> {
     vec
 }
 
-impl<T> Setup<T> where T : Num + 'static {
+impl<T> Setup<T>
+where
+    T: Num + 'static,
+{
     pub fn new(options: &Options) -> Result<Self, PlanError> {
         if options.len == 0 {
-            return Err(PlanError::InvalidInput)
+            return Err(PlanError::InvalidInput);
         }
 
-        let constain_radix2 =
-            options.input_data_order == DataOrder::BitReversed ||
+        let constain_radix2 = options.input_data_order == DataOrder::BitReversed ||
             options.output_data_order == DataOrder::BitReversed;
 
         let is_even_sized = options.len % 2 == 0;
@@ -171,13 +174,13 @@ impl<T> Setup<T> where T : Num + 'static {
         let input_swizzled = match options.input_data_order {
             DataOrder::Natural => false,
             DataOrder::Swizzled => true,
-            DataOrder::BitReversed => true
+            DataOrder::BitReversed => true,
         };
 
         let output_swizzled = match options.output_data_order {
             DataOrder::Natural => false,
             DataOrder::Swizzled => true,
-            DataOrder::BitReversed => true
+            DataOrder::BitReversed => true,
         };
 
         if input_swizzled && options.input_data_format != DataFormat::Complex {
@@ -188,26 +191,34 @@ impl<T> Setup<T> where T : Num + 'static {
             return Err(PlanError::InvalidInput);
         }
 
-        let (post_bit_reversal, kernel_type) =
-            match (input_swizzled, output_swizzled) {
-                (false, false) => (true,  KernelType::Dif),
-                (true,  false) => (false, KernelType::Dit),
-                (false, true)  => (false, KernelType::Dif),
-                (true,  true)  => return Err(PlanError::InvalidInput)
-            };
+        let (post_bit_reversal, kernel_type) = match (input_swizzled, output_swizzled) {
+            (false, false) => (true, KernelType::Dif),
+            (true, false) => (false, KernelType::Dit),
+            (false, true) => (false, KernelType::Dif),
+            (true, true) => return Err(PlanError::InvalidInput),
+        };
 
-        let (pre_r2c, post_hc2c, post_r2c, use_realfft) =
-            match (options.input_data_format, options.output_data_format, options.inverse, is_even_sized) {
-                (DataFormat::Complex, DataFormat::Complex, _, _) => (false, false, false, false),
-                (DataFormat::Real, DataFormat::Complex, _, false) => (true, false, false, false),
-                (DataFormat::Real, DataFormat::Complex, false, true) => (false, true, false, true),
+        let (pre_r2c, post_hc2c, post_r2c, use_realfft) = match (
+            options.input_data_format,
+            options.output_data_format,
+            options.inverse,
+            is_even_sized,
+        ) {
+            (DataFormat::Complex, DataFormat::Complex, _, _) => (false, false, false, false),
+            (DataFormat::Real, DataFormat::Complex, _, false) => (true, false, false, false),
+            (DataFormat::Real, DataFormat::Complex, false, true) => (false, true, false, true),
 
-                // note: `HalfComplex` is not defined for odd sizes
-                (DataFormat::Real, DataFormat::HalfComplex, false, true) => (false, false, false, true),
-                (DataFormat::HalfComplex, DataFormat::Real, true, true) => (false, false, false, true),
-                (DataFormat::HalfComplex, DataFormat::Complex, true, true) => (false, false, true, true),
-                _ => return Err(PlanError::InvalidInput)
-            };
+            // note: `HalfComplex` is not defined for odd sizes
+            (DataFormat::Real, DataFormat::HalfComplex, false, true) => (false, false, false, true),
+            (DataFormat::HalfComplex, DataFormat::Real, true, true) => (false, false, false, true),
+            (DataFormat::HalfComplex, DataFormat::Complex, true, true) => (
+                false,
+                false,
+                true,
+                true,
+            ),
+            _ => return Err(PlanError::InvalidInput),
+        };
 
         let fft_len = if use_realfft {
             options.len / 2
@@ -248,7 +259,7 @@ impl<T> Setup<T> where T : Num + 'static {
                         inverse: options.inverse,
                     }));
                 }
-            },
+            }
             KernelType::Dit => {
                 let mut unit = 1;
                 for radix_ref in &radixes {
@@ -262,7 +273,7 @@ impl<T> Setup<T> where T : Num + 'static {
                     }));
                     unit *= radix;
                 }
-            },
+            }
         }
 
         if post_bit_reversal && fft_len > 1 {
@@ -281,16 +292,16 @@ impl<T> Setup<T> where T : Num + 'static {
             kernels.push(new_real_to_complex_kernel(options.len));
         }
 
-        Ok(Self {
-            kernels: kernels
-        })
+        Ok(Self { kernels: kernels })
     }
 
     #[doc(hidden)]
     pub fn required_work_area_size(&self) -> usize {
-        self.kernels.iter()
+        self.kernels
+            .iter()
             .map(|k| k.required_work_area_size())
-            .max().unwrap_or(0)
+            .max()
+            .unwrap_or(0)
     }
 }
 

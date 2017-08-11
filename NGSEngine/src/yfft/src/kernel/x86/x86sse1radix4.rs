@@ -25,7 +25,8 @@ use simd::f32x4;
 use std::f32;
 
 pub fn new_x86_sse_radix4_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T: Num
+where
+    T: Num,
 {
     if cparams.radix != 4 {
         return None;
@@ -37,7 +38,8 @@ pub fn new_x86_sse_radix4_kernel<T>(cparams: &KernelCreationParams) -> Option<Bo
 struct Factory {}
 impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     fn consume<T>(self, cparams: &KernelCreationParams, sparams: T) -> Option<Box<Kernel<f32>>>
-        where T: StaticParams
+    where
+        T: StaticParams,
     {
 
         match cparams.unit {
@@ -94,7 +96,7 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel1<T> {
             // perform size-4 small FFT (see generic2.rs for human-readable code)
             let t_1_2 = x1 + y1;
             let t_3_4 = x1 - y1;
-            let t_1_3 =  f32x4_shuffle!(t_1_2, t_3_4, [0, 1, 4, 5]);
+            let t_1_3 = f32x4_shuffle!(t_1_2, t_3_4, [0, 1, 4, 5]);
             let t_2_4t = f32x4_shuffle!(t_1_2, t_3_4, [2, 3, 7, 6]);
 
             // multiply the last elem (t4) by I (backward) or -I (forward)
@@ -125,10 +127,16 @@ impl<T: StaticParams> SseRadix4Kernel2<T> {
         let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
         let mut twiddles = Vec::new();
         for i in range_step(0, cparams.unit, 2) {
-            let c1 = Complex::new(0f32, full_circle * (i) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-            let c2 = Complex::new(0f32, full_circle * (i + 1) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+            let c1 = Complex::new(
+                0f32,
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
+            let c2 = Complex::new(
+                0f32,
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
             // rr-ii format
             twiddles.push(f32x4::new(c1.re, c2.re, c1.im, c2.im));
 
@@ -275,14 +283,26 @@ impl<T: StaticParams> SseRadix4Kernel3<T> {
         let full_circle = if cparams.inverse { 2f32 } else { -2f32 };
         let mut twiddles = Vec::new();
         for i in range_step(0, cparams.unit, 4) {
-            let c1 = Complex::new(0f32, full_circle * (i) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-            let c2 = Complex::new(0f32, full_circle * (i + 1) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-            let c3 = Complex::new(0f32, full_circle * (i + 2) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
-            let c4 = Complex::new(0f32, full_circle * (i + 3) as f32 /
-                (cparams.radix * cparams.unit) as f32 * f32::consts::PI).exp();
+            let c1 = Complex::new(
+                0f32,
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
+            let c2 = Complex::new(
+                0f32,
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
+            let c3 = Complex::new(
+                0f32,
+                full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
+            let c4 = Complex::new(
+                0f32,
+                full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
+                    f32::consts::PI,
+            ).exp();
             // rrrr-iiii format
             twiddles.push(f32x4::new(c1.re, c2.re, c3.re, c4.re));
             twiddles.push(f32x4::new(c1.im, c2.im, c3.im, c4.im));
@@ -339,10 +359,14 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
                 let twiddle3_r = twiddles[y * 6 + 4];
                 let twiddle3_i = twiddles[y * 6 + 5];
 
-                let x1a = unsafe { *cur1a }; let x1b = unsafe { *cur1b };
-                let y1a = unsafe { *cur2a }; let y1b = unsafe { *cur2b };
-                let z1a = unsafe { *cur3a }; let z1b = unsafe { *cur3b };
-                let w1a = unsafe { *cur4a }; let w1b = unsafe { *cur4b };
+                let x1a = unsafe { *cur1a };
+                let x1b = unsafe { *cur1b };
+                let y1a = unsafe { *cur2a };
+                let y1b = unsafe { *cur2b };
+                let z1a = unsafe { *cur3a };
+                let z1b = unsafe { *cur3b };
+                let w1a = unsafe { *cur4a };
+                let w1b = unsafe { *cur4b };
 
                 // convert riri-riri to rrrr-iiii (shufps)
                 let x2r = f32x4_shuffle!(x1a, x1b, [0, 2, 4, 6]);
@@ -357,21 +381,51 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
                 // apply twiddle factor
                 let x3r = x2r;
                 let x3i = x2i;
-                let y3r = if pre_twiddle { y2r * twiddle1_r - y2i * twiddle1_i } else { y2r };
-                let y3i = if pre_twiddle { y2r * twiddle1_i + y2i * twiddle1_r } else { y2i };
-                let z3r = if pre_twiddle { z2r * twiddle2_r - z2i * twiddle2_i } else { z2r };
-                let z3i = if pre_twiddle { z2r * twiddle2_i + z2i * twiddle2_r } else { z2i };
-                let w3r = if pre_twiddle { w2r * twiddle3_r - w2i * twiddle3_i } else { w2r };
-                let w3i = if pre_twiddle { w2r * twiddle3_i + w2i * twiddle3_r } else { w2i };
+                let y3r = if pre_twiddle {
+                    y2r * twiddle1_r - y2i * twiddle1_i
+                } else {
+                    y2r
+                };
+                let y3i = if pre_twiddle {
+                    y2r * twiddle1_i + y2i * twiddle1_r
+                } else {
+                    y2i
+                };
+                let z3r = if pre_twiddle {
+                    z2r * twiddle2_r - z2i * twiddle2_i
+                } else {
+                    z2r
+                };
+                let z3i = if pre_twiddle {
+                    z2r * twiddle2_i + z2i * twiddle2_r
+                } else {
+                    z2i
+                };
+                let w3r = if pre_twiddle {
+                    w2r * twiddle3_r - w2i * twiddle3_i
+                } else {
+                    w2r
+                };
+                let w3i = if pre_twiddle {
+                    w2r * twiddle3_i + w2i * twiddle3_r
+                } else {
+                    w2i
+                };
 
                 // perform size-4 FFT
-                let x4r = x3r + z3r; let x4i = x3i + z3i;
-                let y4r = y3r + w3r; let y4i = y3i + w3i;
-                let z4r = x3r - z3r; let z4i = x3i - z3i;
-                let w4r = y3r - w3r; let w4i = y3i - w3i;
+                let x4r = x3r + z3r;
+                let x4i = x3i + z3i;
+                let y4r = y3r + w3r;
+                let y4i = y3i + w3i;
+                let z4r = x3r - z3r;
+                let z4i = x3i - z3i;
+                let w4r = y3r - w3r;
+                let w4i = y3i - w3i;
 
-                let x5r = x4r + y4r; let x5i = x4i + y4i;
-                let z5r = x4r - y4r; let z5i = x4i - y4i;
+                let x5r = x4r + y4r;
+                let x5i = x4i + y4i;
+                let z5r = x4r - y4r;
+                let z5i = x4i - y4i;
                 let (y5r, y5i, w5r, w5i) = if self.sparams.inverse() {
                     (z4r - w4i, z4i + w4r, z4r + w4i, z4i - w4r)
                 } else {
@@ -381,12 +435,36 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
                 // apply twiddle factor
                 let x6r = x5r;
                 let x6i = x5i;
-                let y6r = if post_twiddle { y5r * twiddle1_r - y5i * twiddle1_i } else { y5r };
-                let y6i = if post_twiddle { y5r * twiddle1_i + y5i * twiddle1_r } else { y5i };
-                let z6r = if post_twiddle { z5r * twiddle2_r - z5i * twiddle2_i } else { z5r };
-                let z6i = if post_twiddle { z5r * twiddle2_i + z5i * twiddle2_r } else { z5i };
-                let w6r = if post_twiddle { w5r * twiddle3_r - w5i * twiddle3_i } else { w5r };
-                let w6i = if post_twiddle { w5r * twiddle3_i + w5i * twiddle3_r } else { w5i };
+                let y6r = if post_twiddle {
+                    y5r * twiddle1_r - y5i * twiddle1_i
+                } else {
+                    y5r
+                };
+                let y6i = if post_twiddle {
+                    y5r * twiddle1_i + y5i * twiddle1_r
+                } else {
+                    y5i
+                };
+                let z6r = if post_twiddle {
+                    z5r * twiddle2_r - z5i * twiddle2_i
+                } else {
+                    z5r
+                };
+                let z6i = if post_twiddle {
+                    z5r * twiddle2_i + z5i * twiddle2_r
+                } else {
+                    z5i
+                };
+                let w6r = if post_twiddle {
+                    w5r * twiddle3_r - w5i * twiddle3_i
+                } else {
+                    w5r
+                };
+                let w6i = if post_twiddle {
+                    w5r * twiddle3_i + w5i * twiddle3_r
+                } else {
+                    w5i
+                };
 
                 // convert to rrrr-iiii to riri-riri (unpcklps/unpckups)
                 let x7a = f32x4_shuffle!(x6r, x6i, [0, 4, 1, 5]);
@@ -398,10 +476,14 @@ impl<T: StaticParams> Kernel<f32> for SseRadix4Kernel3<T> {
                 let w7a = f32x4_shuffle!(w6r, w6i, [0, 4, 1, 5]);
                 let w7b = f32x4_shuffle!(w6r, w6i, [2, 6, 3, 7]);
 
-                unsafe { *cur1a = x7a }; unsafe { *cur1b = x7b };
-                unsafe { *cur2a = y7a }; unsafe { *cur2b = y7b };
-                unsafe { *cur3a = z7a }; unsafe { *cur3b = z7b };
-                unsafe { *cur4a = w7a }; unsafe { *cur4b = w7b };
+                unsafe { *cur1a = x7a };
+                unsafe { *cur1b = x7b };
+                unsafe { *cur2a = y7a };
+                unsafe { *cur2b = y7b };
+                unsafe { *cur3a = z7a };
+                unsafe { *cur3b = z7b };
+                unsafe { *cur4a = w7a };
+                unsafe { *cur4b = w7b };
             }
         }
     }

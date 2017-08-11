@@ -39,25 +39,50 @@ use std::fmt::Debug;
 
 use num_complex::Complex;
 
-#[macro_use] mod simdutils;
+#[macro_use]
+mod simdutils;
 mod setup;
 mod kernel;
 mod env;
 
-pub trait Num :
-    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + Default +
-    num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
-impl<T> Num for T where T :
-    Clone + Debug + AddAssign + SubAssign + MulAssign + DivAssign + Default +
-    num_traits::Float + num_traits::FloatConst + num_traits::Zero + 'static {}
+pub trait Num
+    : Clone
+    + Debug
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + Default
+    + num_traits::Float
+    + num_traits::FloatConst
+    + num_traits::Zero
+    + 'static {
+}
+impl<T> Num for T
+where
+    T: Clone
+        + Debug
+        + AddAssign
+        + SubAssign
+        + MulAssign
+        + DivAssign
+        + Default
+        + num_traits::Float
+        + num_traits::FloatConst
+        + num_traits::Zero
+        + 'static,
+{
+}
 
 #[inline]
-fn complex_from_slice<T : Num>(x: &[T]) -> Complex<T> {
+fn complex_from_slice<T: Num>(x: &[T]) -> Complex<T> {
     Complex::new(x[0], x[1])
 }
 
 #[inline]
-fn mul_pos_i<T : Num>(x: Complex<T>) -> Complex<T> { Complex::new(-x.im, x.re) }
+fn mul_pos_i<T: Num>(x: Complex<T>) -> Complex<T> {
+    Complex::new(-x.im, x.re)
+}
 
 pub use setup::{DataOrder, DataFormat, Options, Setup, PlanError};
 pub use env::Env;

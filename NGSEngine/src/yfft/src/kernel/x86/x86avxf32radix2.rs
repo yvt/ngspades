@@ -24,7 +24,8 @@ use simd::x86::avx::{f32x8, u32x8};
 use std::{mem, f32};
 
 pub fn new_x86_avx_f32_radix2_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
-    where T: Num
+where
+    T: Num,
 {
     if cparams.radix != 2 {
         return None;
@@ -36,7 +37,8 @@ pub fn new_x86_avx_f32_radix2_kernel<T>(cparams: &KernelCreationParams) -> Optio
 struct Factory {}
 impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     fn consume<T>(self, cparams: &KernelCreationParams, _: T) -> Option<Box<Kernel<f32>>>
-        where T: StaticParams
+    where
+        T: StaticParams,
     {
 
         match cparams.unit {
@@ -64,7 +66,16 @@ impl Kernel<f32> for AvxRadix2Kernel1 {
         // TODO: check alignment?
 
         let neg_mask: f32x8 = unsafe {
-            mem::transmute(u32x8::new(0, 0, 0x80000000, 0x80000000, 0, 0, 0x80000000, 0x80000000))
+            mem::transmute(u32x8::new(
+                0,
+                0,
+                0x80000000,
+                0x80000000,
+                0,
+                0,
+                0x80000000,
+                0x80000000,
+            ))
         };
 
         for x in range_step(0, cparams.size * 2, 8) {

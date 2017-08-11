@@ -6,24 +6,25 @@
 use std::borrow::Borrow;
 use super::{Setup, Num};
 use num_traits::Zero;
-use super::kernel::{KernelParams};
+use super::kernel::KernelParams;
 
 /// Encapsulates the working area required for a transformation.
 #[derive(Debug)]
 pub struct Env<TNum, TSetupRef> {
     setup: TSetupRef,
-    work_area: Vec<TNum>
+    work_area: Vec<TNum>,
 }
 
 impl<TNum, TSetupRef> Env<TNum, TSetupRef>
-    where TNum: Num + 'static,
-          TSetupRef: Borrow<Setup<TNum>> {
-
+where
+    TNum: Num + 'static,
+    TSetupRef: Borrow<Setup<TNum>>,
+{
     pub fn new(setup: TSetupRef) -> Self {
         let work_area_size = setup.borrow().required_work_area_size();
         Env {
             setup: setup,
-            work_area: vec![Zero::zero(); work_area_size]
+            work_area: vec![Zero::zero(); work_area_size],
         }
     }
 
@@ -35,7 +36,7 @@ impl<TNum, TSetupRef> Env<TNum, TSetupRef>
     pub fn transform(&mut self, data: &mut [TNum]) {
         let mut kernel_param = KernelParams {
             coefs: data,
-            work_area: self.work_area.as_mut_slice()
+            work_area: self.work_area.as_mut_slice(),
         };
         let setup = self.setup.borrow();
         // println!("{:#?}", setup);

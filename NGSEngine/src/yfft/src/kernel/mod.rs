@@ -11,13 +11,24 @@ mod generic2;
 mod realfft;
 mod utils;
 
-#[cfg(any(target_arch="x86", target_arch="x86_64"))] mod x86;
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+mod x86;
 
 // Stub for non-x86 systems
-#[cfg(not(any(target_arch="x86", target_arch="x86_64")))] mod x86 {
-    pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>> { None }
-    pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>> { None }
-    pub fn new_x86_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Box<Kernel<T>> { None }
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+mod x86 {
+    pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>> {
+        None
+    }
+    pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>> {
+        None
+    }
+    pub fn new_x86_real_fft_pre_post_process_kernel<T>(
+        len: usize,
+        inverse: bool,
+    ) -> Box<Kernel<T>> {
+        None
+    }
 }
 
 use std::fmt::Debug;
@@ -35,7 +46,7 @@ pub enum KernelType {
     Dit,
 
     /// Decimation-in-frequency.
-    Dif
+    Dif,
 }
 
 // for Radix-2 DIT, (dim1, dim2) = (2, x)
@@ -56,15 +67,20 @@ pub struct KernelCreationParams {
 #[derive(Debug)]
 pub struct KernelParams<'a, T: 'a> {
     pub coefs: &'a mut [T],
-    pub work_area: &'a mut [T]
+    pub work_area: &'a mut [T],
 }
 
-pub trait Kernel<T> : Debug {
+pub trait Kernel<T>: Debug {
     fn transform(&self, params: &mut KernelParams<T>);
-    fn required_work_area_size(&self) -> usize { 0 }
+    fn required_work_area_size(&self) -> usize {
+        0
+    }
 }
 
-impl<T> Kernel<T> where T : Num + 'static {
+impl<T> Kernel<T>
+where
+    T: Num + 'static,
+{
     pub fn new(cparams: &KernelCreationParams) -> Box<Kernel<T>> {
         x86::new_x86_kernel(cparams)
             .or_else(|| generic2::new_specialized_generic_kernel(cparams))

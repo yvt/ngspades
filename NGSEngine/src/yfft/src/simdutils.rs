@@ -41,9 +41,18 @@ extern "platform-intrinsic" {
 fn test_f32x4_shuffle() {
     let x = f32x4::new(1f32, 2f32, 3f32, 4f32);
     let y = f32x4::new(5f32, 6f32, 7f32, 8f32);
-    assert_eq!(f32x4_to_array(f32x4_shuffle!(x, y, [0, 1, 2, 3])), [1f32, 2f32, 3f32, 4f32]);
-    assert_eq!(f32x4_to_array(f32x4_shuffle!(x, y, [0, 1, 4, 5])), [1f32, 2f32, 5f32, 6f32]);
-    assert_eq!(f32x4_to_array(f32x4_shuffle!(x, y, [2, 3, 6, 7])), [3f32, 4f32, 7f32, 8f32]);
+    assert_eq!(
+        f32x4_to_array(f32x4_shuffle!(x, y, [0, 1, 2, 3])),
+        [1f32, 2f32, 3f32, 4f32]
+    );
+    assert_eq!(
+        f32x4_to_array(f32x4_shuffle!(x, y, [0, 1, 4, 5])),
+        [1f32, 2f32, 5f32, 6f32]
+    );
+    assert_eq!(
+        f32x4_to_array(f32x4_shuffle!(x, y, [2, 3, 6, 7])),
+        [3f32, 4f32, 7f32, 8f32]
+    );
 }
 
 #[allow(dead_code)]
@@ -130,8 +139,11 @@ pub fn sse3_f32x4_complex_mul_riri_inner(x: f32x4, y1: f32x4, y2: f32x4) -> f32x
 pub fn sse3_f32x4_complex_mul_riri(x: f32x4, y: f32x4) -> f32x4 {
     let neg_mask: f32x4 = unsafe { mem::transmute(u32x4::new(0, 0x80000000, 0, 0x80000000)) };
 
-    sse3_f32x4_complex_mul_riri_inner(x,
-        f32x4_bitxor(y, neg_mask), f32x4_shuffle!(y, y, [1, 0, 7, 6]))
+    sse3_f32x4_complex_mul_riri_inner(
+        x,
+        f32x4_bitxor(y, neg_mask),
+        f32x4_shuffle!(y, y, [1, 0, 7, 6]),
+    )
 }
 
 #[cfg(target_feature = "sse3")]
@@ -176,10 +188,24 @@ pub fn avx_f32x8_complex_mul_riri_inner(x: f32x8, y1: f32x8, y2: f32x8) -> f32x8
 #[inline]
 #[allow(dead_code)]
 pub fn avx_f32x8_complex_mul_riri(x: f32x8, y: f32x8) -> f32x8 {
-    let neg_mask: f32x8 = unsafe { mem::transmute(u32x8::new(0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000)) };
+    let neg_mask: f32x8 = unsafe {
+        mem::transmute(u32x8::new(
+            0,
+            0x80000000,
+            0,
+            0x80000000,
+            0,
+            0x80000000,
+            0,
+            0x80000000,
+        ))
+    };
 
-    avx_f32x8_complex_mul_riri_inner(x,
-        avx_f32x8_bitxor(y, neg_mask), f32x8_shuffle!(y, y, [1, 0, 11, 10, 5, 4, 15, 14]))
+    avx_f32x8_complex_mul_riri_inner(
+        x,
+        avx_f32x8_bitxor(y, neg_mask),
+        f32x8_shuffle!(y, y, [1, 0, 11, 10, 5, 4, 15, 14]),
+    )
 }
 
 #[cfg(target_feature = "avx")]
@@ -204,7 +230,10 @@ fn test_avx_f32x8_complex_mul_riri() {
     let y = f32x8::new(c3.re, c3.im, c4.re, c4.im, c7.re, c7.im, c8.re, c8.im);
     let z = avx_f32x8_complex_mul_riri(x, y);
 
-    assert_eq!(f32x8_to_array(z), [d1.re, d1.im, d2.re, d2.im, d3.re, d3.im, d4.re, d4.im]);
+    assert_eq!(
+        f32x8_to_array(z),
+        [d1.re, d1.im, d2.re, d2.im, d3.re, d3.im, d4.re, d4.im]
+    );
 }
 
 #[cfg(target_feature = "avx")]
@@ -220,7 +249,14 @@ pub fn avx_f32x8_bitxor(lhs: f32x8, rhs: f32x8) -> f32x8 {
 #[cfg(target_feature = "avx")]
 #[allow(dead_code)]
 pub fn f32x8_to_array(x: f32x8) -> [f32; 8] {
-    [x.extract(0), x.extract(1), x.extract(2), x.extract(3),
-     x.extract(4), x.extract(5), x.extract(6), x.extract(7)]
+    [
+        x.extract(0),
+        x.extract(1),
+        x.extract(2),
+        x.extract(3),
+        x.extract(4),
+        x.extract(5),
+        x.extract(6),
+        x.extract(7),
+    ]
 }
-
