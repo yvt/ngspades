@@ -19,7 +19,9 @@ members = [
     "src/ngsgfx/src/wsi/vulkan",
     "src/yfft",
     "src/ysr2",
+    "src/ysr2/src/common",
     "src/ysr2/src/localizer",
+    "src/ysr2/src/localizer/kemar_data",
     "src/ysr2/src/mixer",
     "src/xdispatch",
 ]

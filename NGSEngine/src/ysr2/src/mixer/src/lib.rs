@@ -3,5 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
+extern crate parking_lot;
+extern crate ysr2_common;
 
-// TODO
+pub mod clip;
+pub mod clipplayer;
+pub mod event;
