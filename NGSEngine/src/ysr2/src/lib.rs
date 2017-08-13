@@ -37,4 +37,5 @@
 //!
 //! [some fan art]: https://derpibooru.org/1266994
 //! -->
+pub extern crate ysr2_common as common;
 pub extern crate ysr2_mixer as mixer;

@@ -10,10 +10,11 @@ use std::cmp;
 
 use ysr2_common::stream::StreamProperties;
 use ysr2_common::values::DynamicValue;
-use ysr2_common::slicezip::{SliceZipMut, IndexByValMut};
+use ysr2_common::slicezip::{SliceZipMut, IndexByVal, IndexByValMut};
 use clip::{Clip, WAVE_PAD_LEN};
 use event::Event;
 
+#[derive(Debug)]
 pub struct ClipPlayer {
     clip: Clip,
     output_prop: StreamProperties,
@@ -154,8 +155,7 @@ impl ClipPlayer {
     /// Produce an output audio data.
     ///
     /// `to.len()` must be equal to `output_properties().num_channels`.
-    pub fn render(&mut self, to: &mut [&mut [f32]]) {
-        // TODO: additive rendering
+    pub fn render_additive(&mut self, to: &mut [&mut [f32]]) {
         let ref clip = self.clip;
         let mut index = 0;
         let reader = clip.read_samples();
@@ -183,27 +183,23 @@ impl ClipPlayer {
                             // Reached the end of clip.
                             self.pitch.update_multi(remaining as f64);
                             self.gain.update_multi(remaining as f64);
-
-                            while index < writer.len() {
-                                writer.set(index, [0f32; $num]);
-                                index += 1;
-                            }
                             break;
                         }
 
                         let next_casp_time = self.pitch.next_cusp_time(remaining);
                         let next_casp_time = self.gain.next_cusp_time(next_casp_time);
+                        assert_ne!(next_casp_time, 0);
                         {
                             for _ in 0..next_casp_time {
                                 // Generate the output waveform
                                 {
-                                    let mut out = [0f32; $num];
+                                    let mut out: [f32; $num] = writer.get(index).unwrap();
                                     let in_index = self.position as usize;
                                     let x = (self.position - self.position as usize as f64) as f32;
                                     let gain = self.gain.get() as f32;
                                     for i in 0..$num {
                                         let in_slice = &reader.raw_get_channel(i)[in_index..in_index + 4];
-                                        out[i] = cubic_hermite(x, [in_slice[0], in_slice[1], in_slice[2], in_slice[3]])
+                                        out[i] += cubic_hermite(x, [in_slice[0], in_slice[1], in_slice[2], in_slice[3]])
                                             * gain;
                                     }
                                     writer.set(index, out);

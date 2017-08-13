@@ -5,6 +5,7 @@
 //
 
 /// Value that changes dynamically in a piecewise linear fashion.
+#[derive(Debug, Clone, Copy)]
 pub struct DynamicValue {
     pub current: f64,
     pub change_rate: f64,

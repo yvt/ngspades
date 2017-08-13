@@ -6,6 +6,7 @@
 //! A chunk of audio data.
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::Arc;
+use std::fmt;
 use ysr2_common::stream::StreamProperties;
 
 pub(crate) const WAVE_PAD_LEN: usize = 4;
@@ -20,12 +21,21 @@ pub struct ClipReadGuard<'a>(RwLockReadGuard<'a, Vec<Vec<f32>>>, usize);
 /// RAII structure used to read and write the waveform of `Clip`.
 pub struct ClipWriteGuard<'a>(RwLockWriteGuard<'a, Vec<Vec<f32>>>, usize, Option<usize>);
 
-#[derive(Debug)]
 struct ClipData {
     wave: RwLock<Vec<Vec<f32>>>,
     prop: StreamProperties,
     num_samples: usize,
     loop_start: Option<usize>,
+}
+
+impl fmt::Debug for ClipData {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("ClipData")
+            .field("prop", &self.prop)
+            .field("num_samples", &self.num_samples)
+            .field("loop_start", &self.loop_start)
+            .finish()
+    }
 }
 
 impl Clip {
