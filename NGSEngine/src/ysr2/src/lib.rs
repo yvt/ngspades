@@ -37,5 +37,27 @@
 //!
 //! [some fan art]: https://derpibooru.org/1266994
 //! -->
+//!
+//! Building
+//! --------
+//!
+//! Examples of YSR2 have a dependency on the `portaudio` crate. It is merely a
+//! binding to the PortAudio library, so you have to install the library in one
+//! of the following ways:
+//!
+//!  - **On Linux:** No actions are necessary; `portaudio` comes with a
+//!    `build.rs` which downloads and builds PortAudio automatically.
+//!  - **On Windows:** You have to [download PortAudio] and build it by yourself.
+//!    After that, you must copy the built `portaudio.lib` to the `target/*/deps`
+//!    directory.
+//!  - **On macOS:** You have to install `portaudio` and `pkg-config`. Using
+//!    [Homebrew], this can be done by running `brew install portaudio pkg-config`.
+//!
+//! Ideally, we should not have to do this manually. For example, we could put a
+//! copy of the PortAudio source tree into ours and integrate it into the Cargo
+//! build system by using the `gcc` crate.
+//!
+//! [download PortAudio]: http://www.portaudio.com/download.html
+//! [Homebrew]: https://brew.sh
 pub extern crate ysr2_common as common;
 pub extern crate ysr2_mixer as mixer;
