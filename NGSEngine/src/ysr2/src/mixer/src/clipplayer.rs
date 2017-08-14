@@ -188,19 +188,25 @@ impl ClipPlayer {
 
                         let next_casp_time = self.pitch.next_cusp_time(remaining);
                         let next_casp_time = self.gain.next_cusp_time(next_casp_time);
-                        assert_ne!(next_casp_time, 0);
+                        debug_assert_ne!(next_casp_time, 0);
                         {
                             for _ in 0..next_casp_time {
                                 // Generate the output waveform
                                 {
                                     let mut out: [f32; $num] = writer.get(index).unwrap();
                                     let in_index = self.position as usize;
+                                    debug_assert!(in_index + 3 < reader.num_samples() + WAVE_PAD_LEN * 2);
                                     let x = (self.position - self.position as usize as f64) as f32;
                                     let gain = self.gain.get() as f32;
                                     for i in 0..$num {
-                                        let in_slice = &reader.raw_get_channel(i)[in_index..in_index + 4];
-                                        out[i] += cubic_hermite(x, [in_slice[0], in_slice[1], in_slice[2], in_slice[3]])
-                                            * gain;
+                                        let chan = unsafe { reader.raw_get_channel(i) };
+                                        let in_samples = unsafe { [
+                                            *chan.get_unchecked(in_index),
+                                            *chan.get_unchecked(in_index + 1),
+                                            *chan.get_unchecked(in_index + 2),
+                                            *chan.get_unchecked(in_index + 3),
+                                        ] };
+                                        out[i] += cubic_hermite(x, in_samples) * gain;
                                     }
                                     writer.set(index, out);
                                 }
@@ -285,6 +291,7 @@ impl ClipPlayer {
 /// Perform Hermite cubic spline interpolation.
 ///
 /// `samples` specifies the discrete sample values at `x = -1, 0, 1, 2`.
+/// `x` must in the range `[0, 1]`.
 fn cubic_hermite(x: f32, samples: [f32; 4]) -> f32 {
     let x2 = x * x;
     let x3 = x2 * x;

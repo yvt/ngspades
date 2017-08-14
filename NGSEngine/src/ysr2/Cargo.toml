@@ -6,3 +6,8 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 ysr2_common = { path = "src/common" }
 ysr2_mixer = { path = "src/mixer" }
+
+[dev-dependencies]
+portaudio = "0.7.0"
+rimd = "0.0.1"
+clap = "2.26.0"

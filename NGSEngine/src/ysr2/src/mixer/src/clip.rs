@@ -102,8 +102,8 @@ impl<'a> ClipReadGuard<'a> {
         &self.0[channel][WAVE_PAD_LEN..WAVE_PAD_LEN + self.1]
     }
 
-    pub(crate) fn raw_get_channel(&self, channel: usize) -> &[f32] {
-        &self.0[channel][..]
+    pub(crate) unsafe fn raw_get_channel(&self, channel: usize) -> &[f32] {
+        &self.0.get_unchecked(channel)[..]
     }
 
     pub fn num_channels(&self) -> usize {
