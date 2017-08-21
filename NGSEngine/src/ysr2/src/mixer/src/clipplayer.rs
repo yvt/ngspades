@@ -7,6 +7,7 @@
 //! conversion.
 use std::collections::BinaryHeap;
 use std::cmp;
+use std::ops::Range;
 
 use ysr2_common::stream::StreamProperties;
 use ysr2_common::values::DynamicValue;
@@ -91,8 +92,34 @@ impl ClipPlayer {
         &self.clip
     }
 
+    /// Retrieve the current playback position.
+    ///
+    /// FIXME: precise definition of the position.
     pub fn position(&self) -> f64 {
-        self.position
+        self.position - WAVE_PAD_LEN as f64 + 2.0
+    }
+
+    /// Set the playback position.
+    pub fn seek(&mut self, new_position: f64) {
+        self.position = new_position + WAVE_PAD_LEN as f64 - 2.0;
+
+        let ref clip = self.clip;
+        let end_position = clip.num_samples() as f64 + WAVE_PAD_LEN as f64;
+        let loop_len = if let Some(loop_start) = clip.loop_start() {
+            Some((clip.num_samples() - loop_start) as f64)
+        } else {
+            None
+        };
+
+        if self.position >= end_position {
+            if let Some(loop_len) = loop_len {
+                while self.position >= end_position {
+                    self.position -= loop_len;
+                }
+            } else {
+                self.position = end_position;
+            }
+        }
     }
 
     pub fn pitch(&self) -> &DynamicValue {
@@ -111,12 +138,16 @@ impl ClipPlayer {
         &mut self.gain
     }
 
+    pub fn is_stopped(&self) -> bool {
+        !self.clip.is_looping() && (self.position as usize) >= self.clip.num_samples() + WAVE_PAD_LEN
+    }
+
     pub fn is_active(&self) -> bool {
         // The gain is non-zero
         !(self.gain.change_rate == 0f64 && self.gain.current == 0f64) &&
 
         // There is more samples to playback
-        (self.clip.is_looping() || (self.position as usize) < self.clip.num_samples() + WAVE_PAD_LEN)
+        !self.is_stopped()
     }
 
     pub fn insert_event(&mut self, at: usize, event: &Event) {
@@ -155,27 +186,30 @@ impl ClipPlayer {
     /// Produce an output audio data.
     ///
     /// `to.len()` must be equal to `output_properties().num_channels`.
-    pub fn render_additive(&mut self, to: &mut [&mut [f32]]) {
+    pub fn render_additive(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
         let ref clip = self.clip;
-        let mut index = 0;
+        let mut index = range.start;
         let reader = clip.read_samples();
         let speed_scale = clip.sampling_rate() / self.output_prop.sampling_rate;
         let end_position = clip.num_samples() as f64 + WAVE_PAD_LEN as f64;
         let loop_len = if let Some(loop_start) = clip.loop_start() {
-            self.pitch.update_multi(to[0].len() as f64);
-            self.gain.update_multi(to[0].len() as f64);
-
             Some((clip.num_samples() - loop_start) as f64)
         } else {
             None
         };
 
+        // validate the range
+        assert!(range.start <= range.end);
+        for ch in to.iter() {
+            let _ = &ch[range.clone()];
+        }
+
         macro_rules! case {
             ($num:expr) => (
                 {
                     let mut writer = SliceZipMut::<[f32; $num], _, _>::new(to);
-                    while index < writer.len() {
-                        let remaining = writer.len() - index;
+                    while index < range.end {
+                        let remaining = range.end - index;
 
                         assert!(self.position >= 0.0);
 

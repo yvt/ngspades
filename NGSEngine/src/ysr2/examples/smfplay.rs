@@ -15,10 +15,11 @@ extern crate portaudio;
 use std::path::Path;
 use std::cmp;
 use std::collections::BinaryHeap;
+use std::cell::RefCell;
 
-use ysr2::common::stream::{StreamProperties, ChannelConfig};
+use ysr2::common::stream::{StreamProperties, ChannelConfig, Generator};
 use ysr2::mixer::clip::Clip;
-use ysr2::mixer::clipplayer::ClipPlayer;
+use ysr2::mixer::clipmixer::{ClipMixer, NoteId};
 
 fn make_wave() -> Clip {
     let period: usize = 64;
@@ -66,8 +67,9 @@ struct SmfPlayer {
     smf: rimd::SMF,
     clip: Clip,
     next_events: BinaryHeap<NextEvent>,
+    mixer: RefCell<ClipMixer>,
     output_prop: StreamProperties,
-    notes: Vec<Note>,
+    notes: RefCell<Vec<Note>>,
     channels: [MidiChannelState; 16],
     /// samples per tick
     tempo: f64,
@@ -90,16 +92,7 @@ struct MidiChannelState {
 struct Note {
     channel: u8,
     note: u8,
-    delay: usize,
-    state: NoteState,
-    player: ClipPlayer,
-}
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-enum NoteState {
-    On,
-    OffQueued(usize),
-    Off,
+    note_id: NoteId,
 }
 
 impl Ord for NextEvent {
@@ -144,8 +137,9 @@ impl SmfPlayer {
             smf,
             clip: make_wave(),
             next_events,
+            mixer: RefCell::new(ClipMixer::new(output_prop)),
             output_prop: output_prop.clone(),
-            notes: Vec::new(),
+            notes: RefCell::new(Vec::new()),
             channels: Default::default(),
             tempo,
             time: 0.0,
@@ -153,7 +147,35 @@ impl SmfPlayer {
     }
 
     fn is_done(&self) -> bool {
-        self.next_events.is_empty() && self.notes.is_empty()
+        self.next_events.is_empty() && self.notes.borrow().is_empty() &&
+            !self.mixer.borrow().is_active()
+    }
+
+    fn note_off(&self, delay: u64, note_no: u8, chan: u8) {
+        self.notes.borrow_mut().retain(
+            |note| if note.note == note_no &&
+                note.channel == chan
+            {
+                let mut mixer = self.mixer.borrow_mut();
+                mixer
+                    .set_gain(
+                        delay,
+                        note.note_id,
+                        0.0,
+                        self.output_prop.sampling_rate * 0.5,
+                    )
+                    .unwrap();
+                mixer
+                    .stop(
+                        delay + (self.output_prop.sampling_rate * 0.5) as u64,
+                        note.note_id,
+                    )
+                    .unwrap();
+                false
+            } else {
+                true
+            },
+        );
     }
 
     fn render(&mut self, buffer: &mut [f32]) {
@@ -163,8 +185,8 @@ impl SmfPlayer {
             let new_next_event = if let Some(next_event) = self.next_events.peek() {
                 let evt_sample_offs = (next_event.abs_ticks as f64 - self.time) * self.tempo +
                     sample_offs;
-                let evt_sample_offs_i = evt_sample_offs as usize;
-                if evt_sample_offs_i >= buffer.len() {
+                let evt_sample_offs_i = evt_sample_offs as u64;
+                if evt_sample_offs_i >= buffer.len() as u64 {
                     break;
                 }
 
@@ -185,40 +207,29 @@ impl SmfPlayer {
                                 let vel = (data[2] as f64) / 127.0;
                                 if vel == 0.0 {
                                     // 0 velocity note on is note off
-                                    for note in self.notes.iter_mut() {
-                                        if note.state == NoteState::On && note.note == note_no &&
-                                            note.channel == chan
-                                        {
-                                            note.state = NoteState::OffQueued(evt_sample_offs_i);
-                                        }
-                                    }
+                                    self.note_off(evt_sample_offs_i, note_no, chan);
                                 } else if chan != 9 && self.channels[chan as usize].program < 120 {
                                     // ignore the rhythm channel and SFXs
-                                    let mut note = Note {
-                                        channel: chan,
-                                        note: note_no,
-                                        delay: evt_sample_offs_i,
-                                        state: NoteState::On,
-                                        player: ClipPlayer::new(&self.clip, &self.output_prop),
-                                    };
-
                                     let pitch = ((note_no as f64 - 69.0) / 12.0).exp2();
 
-                                    note.player.gain_mut().set(vel * vel * 0.05);
-                                    note.player.pitch_mut().set(pitch);
-                                    self.notes.push(note);
+                                    let note_id = self.mixer
+                                        .borrow_mut()
+                                        .build_note(&self.clip)
+                                        .pitch(pitch)
+                                        .gain(vel * vel * 0.05)
+                                        .start(evt_sample_offs_i);
+
+                                    self.notes.borrow_mut().push(Note {
+                                        channel: chan,
+                                        note: note_no,
+                                        note_id,
+                                    });
                                 }
                             }
                             0x80 => {
                                 // note off
                                 let note_no = data[1];
-                                for note in self.notes.iter_mut() {
-                                    if note.state == NoteState::On && note.note == note_no &&
-                                        note.channel == chan
-                                    {
-                                        note.state = NoteState::OffQueued(evt_sample_offs_i);
-                                    }
-                                }
+                                self.note_off(evt_sample_offs_i, note_no, chan);
                             }
                             0xc0 => {
                                 // program change
@@ -268,43 +279,8 @@ impl SmfPlayer {
 
         self.time += (buffer.len() as f64 - sample_offs) / self.tempo;
 
-        for i in buffer.iter_mut() {
-            *i = 0f32;
-        }
-
-        {
-            let mut i = 0;
-            while i < self.notes.len() {
-                // `player` becomes inactive when its gain reaches `0`.
-                if self.notes[i].state != NoteState::On && !self.notes[i].player.is_active() {
-                    self.notes.swap_remove(i);
-                    continue;
-                }
-
-                let ref mut note = self.notes[i];
-                match note.state {
-                    NoteState::On | NoteState::Off => {
-                        note.player.render_additive(
-                            &mut [&mut buffer[note.delay..]],
-                        );
-                    }
-                    NoteState::OffQueued(delay) => {
-                        note.player.render_additive(
-                            &mut [&mut buffer[note.delay..delay]],
-                        );
-                        note.player.gain_mut().set_slow(
-                            0.0,
-                            self.output_prop.sampling_rate * 0.5,
-                        );
-                        note.player.render_additive(&mut [&mut buffer[delay..]]);
-                        note.state = NoteState::Off;
-                    }
-                }
-
-                note.delay = 0;
-                i += 1;
-            }
-        }
+        let range = 0..buffer.len();
+        self.mixer.borrow_mut().render(&mut [buffer], range);
     }
 }
 

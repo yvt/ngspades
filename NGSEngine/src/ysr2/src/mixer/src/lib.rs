@@ -7,5 +7,6 @@ extern crate parking_lot;
 extern crate ysr2_common;
 
 pub mod clip;
+pub mod clipmixer;
 pub mod clipplayer;
 pub mod event;
