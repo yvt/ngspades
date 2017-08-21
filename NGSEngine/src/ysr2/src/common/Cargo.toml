@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
+xdispatch = { path = "../../../xdispatch" }
