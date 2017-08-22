@@ -4,4 +4,6 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-xdispatch = { path = "../../../xdispatch" }
+xdispatch = { path = "../../../xdispatch", optional = true }
+num_cpus = "1.0"
+cgmath = "0.14.1"

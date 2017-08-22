@@ -312,6 +312,10 @@ impl Generator for ClipMixer {
         self.time = new_cur_time;
     }
 
+    fn skip(&mut self, _: usize) {
+        // If `is_active()` is `false`, then we have no `Note` to update.
+    }
+
     fn is_active(&self) -> bool {
         !self.notes.is_empty()
     }
