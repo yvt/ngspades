@@ -363,6 +363,15 @@ fn main() {
                 .possible_values(&["equalpower", "hrtf"])
                 .default_value("equalpower"),
         )
+        .arg(
+            Arg::with_name("benchmark")
+                .short("b")
+                .long("benchmark")
+                .help(
+                    "Renders the output as fast as possible. The audio output \
+                       will be disabled in this mode.",
+                ),
+        )
         .get_matches();
 
     // Load the input SMF file
@@ -388,6 +397,15 @@ fn main() {
     } else {
         unreachable!()
     };
+
+    if matches.is_present("benchmark") {
+        // Benchmark mode - render as fast as possible
+        let mut buffer = vec![0.0; 16384];
+        while !player.is_done() {
+            player.render(&mut buffer);
+        }
+        return;
+    }
 
     // Initialize PortAudio
     println!("Initializing the audio device");
