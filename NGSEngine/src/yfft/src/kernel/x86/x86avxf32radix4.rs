@@ -181,7 +181,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
         }
     }
     fn alignment_requirement(&self) -> usize {
-        16
+        32
     }
 }
 
@@ -410,7 +410,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel3<T> {
         }
     }
     fn alignment_requirement(&self) -> usize {
-        16
+        32
     }
 }
 
@@ -718,6 +718,6 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel4<T> {
         }
     }
     fn alignment_requirement(&self) -> usize {
-        16
+        32
     }
 }

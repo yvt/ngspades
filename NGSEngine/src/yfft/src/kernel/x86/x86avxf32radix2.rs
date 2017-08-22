@@ -94,6 +94,6 @@ impl AlignReqKernel<f32> for AvxRadix2Kernel1 {
         }
     }
     fn alignment_requirement(&self) -> usize {
-        16
+        32
     }
 }

@@ -84,6 +84,6 @@ impl<T: Num> AlignReqKernel<T> for AvxDWordBitReversalKernel {
         self.indices.len() * 2
     }
     fn alignment_requirement(&self) -> usize {
-        16
+        32
     }
 }

@@ -113,6 +113,6 @@ impl AlignReqKernel<f32> for AvxF32RealFFTPrePostProcessKernel {
     }
 
     fn alignment_requirement(&self) -> usize {
-        16
+        32
     }
 }
