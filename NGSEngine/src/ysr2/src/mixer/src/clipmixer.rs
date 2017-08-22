@@ -252,7 +252,7 @@ impl Generator for ClipMixer {
             while rel_time < num_rendered_samples {
                 let (slice_time, has_event) = if let Some(event) = note.events.peek() {
                     let delta = event.abs_time - time;
-                    if delta > num_rendered_samples as u64 {
+                    if delta > (num_rendered_samples - rel_time) as u64 {
                         (num_rendered_samples - rel_time, false)
                     } else {
                         (delta as usize, true)
