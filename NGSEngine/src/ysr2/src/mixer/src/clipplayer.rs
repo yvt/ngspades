@@ -266,7 +266,7 @@ impl ClipPlayer {
 
                                 if self.position >= end_position {
                                     if let Some(loop_len) = loop_len {
-                                        if self.events.peek().is_some() {
+                                        if $has_events && self.events.peek().is_some() {
                                             self.cur_iter += 1;
                                         }
 
