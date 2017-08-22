@@ -70,7 +70,7 @@ pub struct KernelParams<'a, T: 'a> {
     pub work_area: &'a mut [T],
 }
 
-pub trait Kernel<T>: Debug {
+pub trait Kernel<T>: Debug + Sync + Send {
     fn transform(&self, params: &mut KernelParams<T>);
     fn required_work_area_size(&self) -> usize {
         0

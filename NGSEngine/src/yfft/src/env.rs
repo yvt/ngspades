@@ -9,7 +9,7 @@ use num_traits::Zero;
 use super::kernel::KernelParams;
 
 /// Encapsulates the working area required for a transformation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Env<TNum, TSetupRef> {
     setup: TSetupRef,
     work_area: Vec<TNum>,

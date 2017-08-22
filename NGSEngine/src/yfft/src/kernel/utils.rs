@@ -7,7 +7,7 @@ use super::{Kernel, KernelType, KernelCreationParams, KernelParams};
 use std::{fmt, ptr};
 use std::any::Any;
 
-pub trait StaticParams: fmt::Debug + 'static {
+pub trait StaticParams: fmt::Debug + 'static + Sync + Send {
     fn inverse(&self) -> bool;
     fn kernel_type(&self) -> KernelType;
     fn check_param(&self, cparams: &KernelCreationParams) {
@@ -123,7 +123,7 @@ impl<T: AlignReqKernel<S>, S> Kernel<S> for AlignReqKernelWrapper<T> {
     }
 }
 
-pub trait AlignReqKernel<T>: fmt::Debug + Sized {
+pub trait AlignReqKernel<T>: fmt::Debug + Sized + Sync + Send {
     fn transform<I: AlignInfo>(&self, params: &mut KernelParams<T>);
     fn required_work_area_size(&self) -> usize {
         0

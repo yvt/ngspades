@@ -77,7 +77,7 @@ impl<T: Num> StaticParamsConsumer<Option<Box<Kernel<T>>>> for Factory<T> {
     }
 }
 
-trait SmallFFT<T>: Debug + Default + 'static {
+trait SmallFFT<T>: Debug + Default + 'static + Sync + Send {
     fn radix() -> usize;
     fn load(&mut self, data: &SliceAccessor<&mut [T]>, offset: usize, stride: usize);
     fn twiddle(&mut self, c: Complex<T>);

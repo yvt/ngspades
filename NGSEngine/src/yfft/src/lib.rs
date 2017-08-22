@@ -56,7 +56,9 @@ pub trait Num
     + num_traits::Float
     + num_traits::FloatConst
     + num_traits::Zero
-    + 'static {
+    + 'static
+    + Sync
+    + Send {
 }
 impl<T> Num for T
 where
@@ -70,7 +72,9 @@ where
         + num_traits::Float
         + num_traits::FloatConst
         + num_traits::Zero
-        + 'static,
+        + 'static
+        + Sync
+        + Send,
 {
 }
 
