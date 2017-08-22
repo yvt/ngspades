@@ -139,7 +139,8 @@ impl ClipPlayer {
     }
 
     pub fn is_stopped(&self) -> bool {
-        !self.clip.is_looping() && (self.position as usize) >= self.clip.num_samples() + WAVE_PAD_LEN
+        !self.clip.is_looping() &&
+            (self.position as usize) >= self.clip.num_samples() + WAVE_PAD_LEN
     }
 
     pub fn is_active(&self) -> bool {
@@ -205,7 +206,7 @@ impl ClipPlayer {
         }
 
         macro_rules! case {
-            ($num:expr) => (
+            ($num:expr, $has_events:expr) => (
                 {
                     let mut writer = SliceZipMut::<[f32; $num], _, _>::new(to);
                     while index < range.end {
@@ -248,17 +249,19 @@ impl ClipPlayer {
                                 self.position += speed_scale * self.pitch.get();
 
                                 // Check events
-                                loop {
-                                    if let Some(event) = self.events.peek() {
-                                        if event.iter == self.cur_iter && self.position >= event.position {
-                                            event.event.set();
+                                if $has_events {
+                                    loop {
+                                        if let Some(event) = self.events.peek() {
+                                            if event.iter == self.cur_iter && self.position >= event.position {
+                                                event.event.set();
+                                            } else {
+                                                break;
+                                            }
                                         } else {
                                             break;
                                         }
-                                    } else {
-                                        break;
+                                        self.events.pop().unwrap();
                                     }
-                                    self.events.pop().unwrap();
                                 }
 
                                 if self.position >= end_position {
@@ -271,18 +274,20 @@ impl ClipPlayer {
                                         self.position -= loop_len;
 
                                         // Check events again
-                                        loop {
-                                            if let Some(event) = self.events.peek() {
-                                                debug_assert_eq!(event.iter, self.cur_iter);
-                                                if self.position >= event.position {
-                                                    event.event.set();
+                                        if $has_events {
+                                            loop {
+                                                if let Some(event) = self.events.peek() {
+                                                    debug_assert_eq!(event.iter, self.cur_iter);
+                                                    if self.position >= event.position {
+                                                        event.event.set();
+                                                    } else {
+                                                        break;
+                                                    }
                                                 } else {
                                                     break;
                                                 }
-                                            } else {
-                                                break;
+                                                self.events.pop();
                                             }
-                                            self.events.pop();
                                         }
 
                                         // Maybe the playback is really fast
@@ -308,15 +313,23 @@ impl ClipPlayer {
                 }
             )
         }
-        match to.len() {
-            1 => case!(1),
-            2 => case!(2),
-            3 => case!(3),
-            4 => case!(4),
-            5 => case!(5),
-            6 => case!(6),
-            7 => case!(7),
-            8 => case!(8),
+        match (to.len(), !self.events.is_empty()) {
+            (1, false) => case!(1, false),
+            (2, false) => case!(2, false),
+            (3, false) => case!(3, false),
+            (4, false) => case!(4, false),
+            (5, false) => case!(5, false),
+            (6, false) => case!(6, false),
+            (7, false) => case!(7, false),
+            (8, false) => case!(8, false),
+            (1, true) => case!(1, true),
+            (2, true) => case!(2, true),
+            (3, true) => case!(3, true),
+            (4, true) => case!(4, true),
+            (5, true) => case!(5, true),
+            (6, true) => case!(6, true),
+            (7, true) => case!(7, true),
+            (8, true) => case!(8, true),
             _ => panic!("too many channels"),
         }
     }
