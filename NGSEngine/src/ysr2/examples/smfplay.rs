@@ -35,7 +35,7 @@ fn make_wave() -> Clip {
     let clip = Clip::new(period * cycles, Some(period * (cycles - 1)), &prop);
     {
         let mut writer = clip.write_samples();
-        let mut chan = writer.get_channel_mut(0);
+        let chan = writer.get_channel_mut(0);
         let rho = std::f32::consts::PI * 2.0 / period as f32;
         for i in 0..chan.len() {
             let mut s = 0f32;
@@ -164,7 +164,7 @@ impl<T: Panner<ClipMixer>> SmfPlayer<T> {
                 note.channel == chan
             {
                 let mut panner = self.panner.borrow_mut();
-                let mut mixer = panner
+                let mixer = panner
                     .generator_mut(&self.channels[chan as usize].source_id)
                     .unwrap();
                 mixer

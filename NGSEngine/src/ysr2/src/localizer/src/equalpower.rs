@@ -120,14 +120,14 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for EqualPowerPanner<T, Q> 
     fn render(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
         assert_eq!(to.len(), 2, "output must be stereo");
         let num_channels = to.len();
-        let (mut to1, mut to2) = to.split_at_mut(1);
-        let (mut to1, mut to2) = (&mut to1[0][range.clone()], &mut to2[0][range.clone()]);
+        let (to1, to2) = to.split_at_mut(1);
+        let (to1, to2) = (&mut to1[0][range.clone()], &mut to2[0][range.clone()]);
 
         let num_samples = range.len();
 
         let mut sources: Vec<_> = self.sources
             .iter_mut()
-            .filter_map(|(_, mut s)| if s.generator.is_active() {
+            .filter_map(|(_, s)| if s.generator.is_active() {
                 Some(s)
             } else {
                 s.direction.update_multi(num_samples as f64);
@@ -147,8 +147,8 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for EqualPowerPanner<T, Q> 
                 source.direction.update_multi(num_samples as f64);
                 let gain2 = source.channel_gain();
 
-                let (mut buf1, mut buf2) = source.buffer.split_at_mut(1);
-                let (mut buf1, mut buf2) = (&mut buf1[0], &mut buf2[0]);
+                let (buf1, buf2) = source.buffer.split_at_mut(1);
+                let (buf1, buf2) = (&mut buf1[0], &mut buf2[0]);
 
                 buf1.resize(num_samples, 0.0);
                 buf2.resize(num_samples, 0.0);
@@ -181,7 +181,7 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for EqualPowerPanner<T, Q> 
                     let start_src = sources.len() * i / num_accum_buffers;
                     let end_src = sources.len() * (i + 1) / num_accum_buffers;
 
-                    for (ch, mut ch_ab) in accum_buffer.iter_mut().enumerate() {
+                    for (ch, ch_ab) in accum_buffer.iter_mut().enumerate() {
                         ch_ab.clone_from(&sources[start_src].buffer[ch]);
                         for src_i in start_src + 1..end_src {
                             let ref src = sources[src_i].buffer[ch][0..ch_ab.len()];

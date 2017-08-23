@@ -389,8 +389,8 @@ unsafe impl<T> Send for SendPtr<T> {}
 impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
     fn render(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
         assert_eq!(to.len(), 2, "output must be stereo");
-        let (mut to1, mut to2) = to.split_at_mut(1);
-        let (mut to1, mut to2) = (&mut to1[0], &mut to2[0]);
+        let (to1, to2) = to.split_at_mut(1);
+        let (to1, to2) = (&mut to1[0], &mut to2[0]);
 
         // validate the range
         assert!(range.start <= range.end);
@@ -445,7 +445,7 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
             }
 
             // Render the sources
-            self.queue.foreach(&mut sources, |_, mut source_info| {
+            self.queue.foreach(&mut sources, |_, source_info| {
                 let ref mut source = source_info.source;
                 source.generator.render(
                     &mut [&mut *source.buffer],
@@ -469,7 +469,7 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
                 let bins = SendPtr(self.bins.bins.as_mut_ptr());
                 let ref feed_bins = self.bins.feed_bins;
                 self.queue.apply(feed_bins.len(), |i| {
-                    let mut bin: &mut Bin = unsafe { &mut *bins.0.offset(feed_bins[i] as isize) };
+                    let bin: &mut Bin = unsafe { &mut *bins.0.offset(feed_bins[i] as isize) };
 
                     for x in bin.buffer[0][chunk_i..end_chunk_i].iter_mut() {
                         *x = 0.0;
@@ -529,8 +529,7 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
                     let ref active_bins = self.bins.active_bins;
                     let bin_table = self.bins.bin_table;
                     self.queue.apply(active_bins.len(), |i| {
-                        let mut bin: &mut Bin =
-                            unsafe { &mut *bins.0.offset(active_bins[i] as isize) };
+                        let bin: &mut Bin = unsafe { &mut *bins.0.offset(active_bins[i] as isize) };
 
                         for i in 0..128 {
                             bin.buffer[0][i] *= 1.0 / 128.0;
