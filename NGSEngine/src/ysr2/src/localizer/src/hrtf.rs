@@ -5,8 +5,8 @@
 //
 use std::cmp::min;
 use std::{mem, fmt};
-use std::sync::Arc;
 use std::ops::Range;
+use std::cell::RefCell;
 use cgmath::Vector3;
 use std::collections::HashMap;
 
@@ -130,6 +130,36 @@ impl BinTable {
     }
 }
 
+lazy_static! {
+    static ref YFFT_SETUPS: [yfft::Setup<f32>; 2] = {
+        let setup1 = yfft::Setup::new(&yfft::Options {
+            input_data_order: yfft::DataOrder::Natural,
+            output_data_order: yfft::DataOrder::Natural,
+            input_data_format: yfft::DataFormat::Real,
+            output_data_format: yfft::DataFormat::HalfComplex,
+            len: 256,
+            inverse: false,
+        }).unwrap();
+        let setup2 = yfft::Setup::new(&yfft::Options {
+            input_data_order: yfft::DataOrder::Natural,
+            output_data_order: yfft::DataOrder::Natural,
+            input_data_format: yfft::DataFormat::HalfComplex,
+            output_data_format: yfft::DataFormat::Real,
+            len: 256,
+            inverse: true,
+        }).unwrap();
+        [setup1, setup2]
+    };
+}
+
+thread_local! {
+    static YFFT_ENVS: RefCell<[yfft::Env<f32, &'static yfft::Setup<f32>>; 2]> =
+        RefCell::new([
+            yfft::Env::new(&YFFT_SETUPS[0]),
+            yfft::Env::new(&YFFT_SETUPS[1]),
+        ]);
+}
+
 /// A panner based on the pinna (HRTF) model.
 ///
 /// This has the following restrictions:
@@ -210,8 +240,6 @@ struct Bin {
     buffer: [[f32; 256]; 2],
     first_feed_source: [Option<usize>; 3],
     active: bool,
-    env1: yfft::Env<f32, Arc<yfft::Setup<f32>>>,
-    env2: yfft::Env<f32, Arc<yfft::Setup<f32>>>,
 }
 
 impl<T: Generator, Q: Queue> HrtfPanner<T, Q> {
@@ -219,29 +247,10 @@ impl<T: Generator, Q: Queue> HrtfPanner<T, Q> {
         let bin_table: &BinTable = &*BIN_TABLE;
         let num_accum = queue.hardware_concurrency();
 
-        let setup1 = yfft::Setup::new(&yfft::Options {
-            input_data_order: yfft::DataOrder::Natural,
-            output_data_order: yfft::DataOrder::Natural,
-            input_data_format: yfft::DataFormat::Real,
-            output_data_format: yfft::DataFormat::HalfComplex,
-            len: 256,
-            inverse: false,
-        }).unwrap();
-        let setup2 = yfft::Setup::new(&yfft::Options {
-            input_data_order: yfft::DataOrder::Natural,
-            output_data_order: yfft::DataOrder::Natural,
-            input_data_format: yfft::DataFormat::HalfComplex,
-            output_data_format: yfft::DataFormat::Real,
-            len: 256,
-            inverse: true,
-        }).unwrap();
-
         let bin = Bin {
             buffer: [[0.0; 256], [0.0; 256]],
             first_feed_source: [None, None, None],
             active: false,
-            env1: yfft::Env::new(Arc::new(setup1)),
-            env2: yfft::Env::new(Arc::new(setup2)),
         };
         Self {
             queue,
@@ -541,23 +550,39 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
                         }
 
                         // forward FFT
-                        bin.env1.transform(&mut bin.buffer[0]);
-                        bin.env1.transform(&mut bin.buffer[1]);
+                        YFFT_ENVS.with(|envs| {
+                            let mut envs = envs.borrow_mut();
 
-                        // perform convolution
-                        let ref bin_info: BinInfo = bin_table.bins[active_bins[i]];
+                            envs[0].transform(&mut bin.buffer[0]);
+                            envs[0].transform(&mut bin.buffer[1]);
 
-                        if bin_info.reversed {
-                            spectrum_convolve(&mut bin.buffer[0], &bin_info.sample.ir_fft_hc[1]);
-                            spectrum_convolve(&mut bin.buffer[1], &bin_info.sample.ir_fft_hc[0]);
-                        } else {
-                            spectrum_convolve(&mut bin.buffer[0], &bin_info.sample.ir_fft_hc[0]);
-                            spectrum_convolve(&mut bin.buffer[1], &bin_info.sample.ir_fft_hc[1]);
-                        }
+                            // perform convolution
+                            let ref bin_info: BinInfo = bin_table.bins[active_bins[i]];
 
-                        // backward FFT
-                        bin.env2.transform(&mut bin.buffer[0]);
-                        bin.env2.transform(&mut bin.buffer[1]);
+                            if bin_info.reversed {
+                                spectrum_convolve(
+                                    &mut bin.buffer[0],
+                                    &bin_info.sample.ir_fft_hc[1],
+                                );
+                                spectrum_convolve(
+                                    &mut bin.buffer[1],
+                                    &bin_info.sample.ir_fft_hc[0],
+                                );
+                            } else {
+                                spectrum_convolve(
+                                    &mut bin.buffer[0],
+                                    &bin_info.sample.ir_fft_hc[0],
+                                );
+                                spectrum_convolve(
+                                    &mut bin.buffer[1],
+                                    &bin_info.sample.ir_fft_hc[1],
+                                );
+                            }
+
+                            // backward FFT
+                            envs[1].transform(&mut bin.buffer[0]);
+                            envs[1].transform(&mut bin.buffer[1]);
+                        });
 
                         bin.active = false;
                     });
