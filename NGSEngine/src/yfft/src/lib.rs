@@ -26,8 +26,8 @@
 //
 // This source code is a part of Nightingales.
 //
-
-#![feature(test, slice_get_slice, platform_intrinsics, cfg_target_feature)]
+#![cfg_attr(test, feature(test))]
+#![feature(platform_intrinsics, cfg_target_feature)]
 
 extern crate num_complex;
 extern crate num_iter;

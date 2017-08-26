@@ -128,13 +128,13 @@ macro_rules! slice_zip_impl {
             }
 
             pub unsafe fn get_slice_unchecked_mut(&self, i: usize) -> &'a mut [T] {
-                let mut arr: &'a mut [TSlice] = ::std::mem::transmute_copy(&self.0);
+                let arr: &'a mut [TSlice] = ::std::mem::transmute_copy(&self.0);
                 arr.get_unchecked_mut(i).borrow_mut()
             }
 
             pub fn get_slice_mut(&self, i: usize) -> Option<&'a mut [T]> {
                 unsafe {
-                    let mut arr: &'a mut [TSlice] = ::std::mem::transmute_copy(&self.0);
+                    let arr: &'a mut [TSlice] = ::std::mem::transmute_copy(&self.0);
                     arr.get_mut(i).map(BorrowMut::borrow_mut)
                 }
             }
