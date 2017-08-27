@@ -12,14 +12,27 @@ use utils::assert_num_slice_approx_eq;
 use siso::SisoFilter;
 
 #[test]
-fn identity() {
-    let signal: Vec<_> = (1..256).map(|x| x as f32).collect();
+fn identity_inplace() {
+    let signal: Vec<_> = (1..256i32).map(|x| x as f32).collect();
     let coefs = biquad::BiquadCoefs::identity();
     let mut kernel = biquad::SimpleBiquadKernel::new(&coefs, 1);
 
     let mut signal_new = signal.clone();
     let len = signal.len();
     kernel.render_inplace(&mut [&mut signal_new], 0..len);
+
+    assert_num_slice_approx_eq(&signal_new, &signal, 1.0e-5);
+}
+
+#[test]
+fn identity_outplace() {
+    let signal: Vec<_> = (1..256).map(|x| x as f32).collect();
+    let coefs = biquad::BiquadCoefs::identity();
+    let mut kernel = biquad::SimpleBiquadKernel::new(&coefs, 1);
+
+    let mut signal_new = vec![0.0; signal.len()];
+    let len = signal.len();
+    kernel.render(&mut [&mut signal_new], 0..len, Some((&[&signal], 0..len)));
 
     assert_num_slice_approx_eq(&signal_new, &signal, 1.0e-5);
 }
