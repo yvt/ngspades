@@ -38,19 +38,22 @@ impl SisoFilter for SimpleBiquadKernel {
         }
         assert_eq!(self.states.len(), to.len());
 
-        let ref coefs = self.coefs;
 
         for i in 0..to.len() {
+            let coefs = self.coefs.clone();
             let ref mut state = self.states[i];
             apply_by_sample(
                 &mut to[i][range.clone()],
                 from.as_ref().map(|&(ref inputs, ref in_range)| &inputs[i][in_range.clone()]),
-                |&x| {
-                    // Direct form 2 implementation
-                    let t = x as f64 - state.0 * coefs.a1 - state.1 * coefs.a2;
-                    let out = t * coefs.b0 + state.0 * coefs.b1 + state.1 * coefs.b2;
-                    *state = (t, state.0);
-                    out as f32
+                move |iter| {
+                    let mut st = *state;
+                    for x in iter {
+                        // Direct form 2 implementation
+                        let t = *x as f64 - st.0 * coefs.a1 - st.1 * coefs.a2;
+                        *x = (t * coefs.b0 + st.0 * coefs.b1 + st.1 * coefs.b2) as f32;
+                        st = (t, st.0);
+                    }
+                    *state = st;
                 },
             );
         }

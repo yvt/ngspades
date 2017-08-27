@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use std::{ptr, marker};
 
 #[cfg(test)]
 pub fn assert_num_slice_approx_eq(got: &[f32], expected: &[f32], releps: f32) {
@@ -28,20 +29,73 @@ pub fn assert_num_slice_approx_eq(got: &[f32], expected: &[f32], releps: f32) {
     }
 }
 
-/// Process the signal in the sample-by-sample basis, in-place or out-place.
-pub fn apply_by_sample<T, F>(to: &mut [T], from: Option<&[T]>, mut cb: F)
+pub struct ApplyBySample<'a, T: 'a> {
+    to: *mut T,
+    from: *const T,
+    i: usize,
+    len: usize,
+    _marker: marker::PhantomData<&'a mut T>,
+}
+
+/// Call the given closure with an iterator that can be used to process the
+/// signal in the sample-by-sample basis, in-place or out-place.
+pub fn apply_by_sample<'a, T: 'a, F, R>(to: &'a mut [T], from: Option<&'a [T]>, cb: F) -> R
 where
     T: Clone,
-    F: FnMut(&T) -> T,
+    F: FnOnce(ApplyBySample<'a, T>) -> R,
 {
-    if let Some(from) = from {
-        assert!(to.len() == from.len());
-        for i in 0..to.len() {
-            to[i] = cb(&from[i]);
-        }
+    let iter = ApplyBySample {
+        to: to.as_mut_ptr(),
+        from: if let Some(from) = from {
+            assert!(to.len() == from.len());
+            from.as_ptr()
+        } else {
+            ptr::null()
+        },
+        i: 0,
+        len: to.len(),
+        _marker: marker::PhantomData,
+    };
+
+    if iter.from.is_null() {
+        cb(iter)
     } else {
-        for x in to.iter_mut() {
-            *x = cb(x);
+        cb(iter)
+    }
+}
+
+impl<'a, T> Iterator for ApplyBySample<'a, T>
+where
+    T: Clone,
+{
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i >= self.len {
+            None
+        } else {
+            unsafe {
+                let r = &mut *self.to.offset(self.i as isize);
+                if !self.from.is_null() {
+                    *r = (&*self.from.offset(self.i as isize)).clone();
+                }
+                self.i += 1;
+                Some(r)
+            }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
+impl<'a, T> ExactSizeIterator for ApplyBySample<'a, T>
+where
+    T: Clone,
+{
+    fn len(&self) -> usize {
+        self.len - self.i
     }
 }
