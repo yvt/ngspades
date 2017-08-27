@@ -20,6 +20,7 @@ members = [
     "src/yfft",
     "src/ysr2",
     "src/ysr2/src/common",
+    "src/ysr2/src/filters",
     "src/ysr2/src/localizer",
     "src/ysr2/src/localizer/kemar_data",
     "src/ysr2/src/mixer",
@@ -27,4 +28,7 @@ members = [
 ]
 
 [profile.release]
+lto = true
+
+[profile.bench]
 lto = true

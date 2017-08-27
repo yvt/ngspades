@@ -1131,6 +1131,7 @@ dependencies = [
  "portaudio 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rimd 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ysr2_common 0.1.0",
+ "ysr2_filters 0.1.0",
  "ysr2_localizer 0.1.0",
  "ysr2_mixer 0.1.0",
 ]
@@ -1142,6 +1143,13 @@ dependencies = [
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "xdispatch 0.1.0",
+]
+
+[[package]]
+name = "ysr2_filters"
+version = "0.1.0"
+dependencies = [
+ "ysr2_common 0.1.0",
 ]
 
 [[package]]

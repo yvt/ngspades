@@ -5,6 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 ysr2_common = { path = "src/common" }
+ysr2_filters = { path = "src/filters" }
 ysr2_localizer = { path = "src/localizer" }
 ysr2_mixer = { path = "src/mixer" }
 
