@@ -5,6 +5,7 @@
 //
 use std::ops::Range;
 
+use Filter;
 use super::BiquadCoefs;
 use siso::SisoFilter;
 use utils::apply_by_sample;
@@ -25,6 +26,12 @@ impl SimpleBiquadKernel {
 }
 
 impl SisoFilter for SimpleBiquadKernel {
+    fn num_channels(&self) -> Option<usize> {
+        Some(self.states.len())
+    }
+}
+
+impl Filter for SimpleBiquadKernel {
     fn render(
         &mut self,
         to: &mut [&mut [f32]],
@@ -68,8 +75,12 @@ impl SisoFilter for SimpleBiquadKernel {
         false
     }
 
-    fn num_channels(&self) -> Option<usize> {
-        Some(self.states.len())
+    fn num_input_channels(&self) -> Option<usize> {
+        self.num_channels()
+    }
+
+    fn num_output_channels(&self) -> Option<usize> {
+        self.num_channels()
     }
 
     fn skip(&mut self, num_samples: usize) {

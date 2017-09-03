@@ -6,44 +6,29 @@
 //! Defines a trait for a single-input and single-output causal filter.
 use std::ops::Range;
 use std::borrow::BorrowMut;
+use Filter;
 
 /// A single-input and single-output causal filter.
-pub trait SisoFilter {
-    /// Apply the filter to the input signal `from.unwrap_or((to, range))` and
-    /// write the output to `to`.
-    ///
-    /// If `from` is `Some((inputs, from_range))`, `from_range.len()` must be
-    /// equal to `range.len()` and `inputs.len()` must be equal to `to.len()`.
-    fn render(
-        &mut self,
-        to: &mut [&mut [f32]],
-        range: Range<usize>,
-        from: Option<(&[&[f32]], Range<usize>)>,
-    );
-
-    /// Apply the filter to the signal `to` in-place.
-    ///
-    /// This can be used a syntax sugar of `render(to, range, None)`.
-    fn render_inplace(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
-        self.render(to, range, None)
-    }
-
+///
+/// Even though it is a single-input and single-output filter, it can accept
+/// multi-channel signals. In this case, the same filter should be applied to
+/// each channel. This also means the number of input channels and that of
+/// output channel must be equal.
+pub trait SisoFilter: Filter {
     /// Return the number of channels of the input/output signal.
     ///
     /// `None` is a wild card value that means it can accept any number of
-    /// channels.
-    fn num_channels(&self) -> Option<usize>;
-
-    /// Determine whether a following call to `render` generates a non-zero
-    /// (more precisely, above a predetermined threshold) signal even with a
-    /// zero input signal.
-    fn is_active(&self) -> bool;
-
-    /// Feed `num_samples` samples with zero values and discard the output.
-    fn skip(&mut self, num_samples: usize);
-
-    /// Reset the filter to the initial state.
-    fn reset(&mut self);
+    /// channels. Even in this case, the number of input channels and that of
+    /// output channel must be equal.
+    ///
+    /// The returned value must be equal to both of `num_input_channels()` and
+    /// `num_output_channels()`.
+    fn num_channels(&self) -> Option<usize> {
+        let inp = self.num_input_channels();
+        let out = self.num_output_channels();
+        assert_eq!(inp, out);
+        inp
+    }
 }
 
 /// SISO filter that applies multiple `SisoFilter`s in a serial fashion.
@@ -75,6 +60,18 @@ impl<T> SisoFilter for CascadedSisoFilter<T>
 where
     T: BorrowMut<SisoFilter>,
 {
+    fn num_channels(&self) -> Option<usize> {
+        self.0
+            .iter()
+            .filter_map(|f| f.borrow().num_channels())
+            .nth(0)
+    }
+}
+
+impl<T> Filter for CascadedSisoFilter<T>
+where
+    T: BorrowMut<SisoFilter>,
+{
     fn render(
         &mut self,
         to: &mut [&mut [f32]],
@@ -90,11 +87,12 @@ where
         self.0.iter().any(|f| f.borrow().is_active())
     }
 
-    fn num_channels(&self) -> Option<usize> {
-        self.0
-            .iter()
-            .filter_map(|f| f.borrow().num_channels())
-            .nth(0)
+    fn num_input_channels(&self) -> Option<usize> {
+        self.num_channels()
+    }
+
+    fn num_output_channels(&self) -> Option<usize> {
+        self.num_channels()
     }
 
     fn skip(&mut self, num_samples: usize) {
