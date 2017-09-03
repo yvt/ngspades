@@ -68,6 +68,10 @@ impl SisoFilter for SimpleBiquadKernel {
         false
     }
 
+    fn num_channels(&self) -> Option<usize> {
+        Some(self.states.len())
+    }
+
     fn skip(&mut self, num_samples: usize) {
         // FIXME: there should be a O(1) method for this
         let ref coefs = self.coefs;
