@@ -5,6 +5,7 @@
 //
 use std::marker;
 use std::borrow::{Borrow, BorrowMut};
+use std::ops::Range;
 
 pub trait IndexByVal<T> {
     fn len(&self) -> usize;
@@ -37,31 +38,33 @@ unsafe impl<'a, T> ImmutableLen<T> for &'a [T] {}
 unsafe impl<'a, T> ImmutableLen<T> for &'a mut [T] {}
 unsafe impl<T> ImmutableLen<T> for Vec<T> {}
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct SliceZip<'a, TArray, TSlice: ImmutableLen<T> + Borrow<[T]> + 'a, T: 'a>(
     &'a [TSlice],
+    Range<usize>,
     marker::PhantomData<(T, TArray)>
 );
 
 #[derive(Debug)]
 pub struct SliceZipMut<'a, TArray, TSlice: ImmutableLen<T> + BorrowMut<[T]> + 'a, T: 'a>(
     &'a mut [TSlice],
+    Range<usize>,
     marker::PhantomData<(T, TArray)>
 );
 
 macro_rules! slice_zip_impl {
     ($num:expr; ($($idx:expr),*)) => (
         impl<'a, T: 'a, TSlice: ImmutableLen<T> + Borrow<[T]>> SliceZip<'a, [T; $num], TSlice, T> {
-            pub fn new(x: &'a[TSlice]) -> Self {
+            pub fn new(x: &'a[TSlice], range: Range<usize>) -> Self {
                 assert_eq!(x.len(), $num);
-                for i in 1..$num {
-                    assert_eq!(x[i].borrow().len(), x[0].borrow().len());
+                for i in x.iter() {
+                    &i.borrow()[range.clone()];
                 }
-                SliceZip(x, marker::PhantomData)
+                SliceZip(x, range, marker::PhantomData)
             }
 
             pub fn len(&self) -> usize {
-                self.0[0].borrow().len()
+                self.1.len()
             }
 
             pub fn width(&self) -> usize {
@@ -69,98 +72,100 @@ macro_rules! slice_zip_impl {
             }
 
             pub unsafe fn get_slice_unchecked(&self, i: usize) -> &'a [T] {
-                self.0.get_unchecked(i).borrow()
+                &self.0.get_unchecked(i).borrow()[self.1.clone()]
             }
 
             pub fn get_slice(&self, i: usize) -> Option<&'a [T]> {
-                self.0.get(i).map(Borrow::borrow)
+                self.0.get(i).map(|x| &x.borrow()[self.1.clone()])
             }
         }
 
         impl<'a, T: 'a, TSlice: ImmutableLen<T> + Borrow<[T]>> IndexByVal<[&'a T; $num]> for SliceZip<'a, [T; $num], TSlice, T> {
             fn len(&self) -> usize {
-                self.0[0].borrow().len()
+                self.1.len()
             }
             #[allow(unused_variables)]
             unsafe fn get_unchecked(&self, i: usize) -> [&'a T; $num] {
                 [
-                    $(self.0.get_unchecked($idx).borrow().get_unchecked(i)),*
+                    $(self.0.get_unchecked($idx)
+                        .borrow().get_unchecked(i + self.1.start)),*
                 ]
             }
         }
 
         impl<'a, T: 'a + Clone, TSlice: ImmutableLen<T> + Borrow<[T]>> IndexByVal<[T; $num]> for SliceZip<'a, [T; $num], TSlice, T> {
             fn len(&self) -> usize {
-                self.0[0].borrow().len()
+                self.1.len()
             }
             #[allow(unused_variables)]
             unsafe fn get_unchecked(&self, i: usize) -> [T; $num] {
                 [
-                    $(self.0.get_unchecked($idx).borrow().get_unchecked(i).clone()),*
+                    $(self.0.get_unchecked($idx)
+                        .borrow().get_unchecked(i + self.1.start).clone()),*
                 ]
             }
         }
 
         impl<'a, T: 'a, TSlice: ImmutableLen<T> + BorrowMut<[T]>> SliceZipMut<'a, [T; $num], TSlice, T> {
-            pub fn new(x: &'a mut[TSlice]) -> Self {
+            pub fn new(x: &'a mut[TSlice], range: Range<usize>) -> Self {
                 assert_eq!(x.len(), $num);
-                for i in 1..$num {
-                    assert_eq!(x[i].borrow().len(), x[0].borrow().len());
+                for i in x.iter() {
+                    &i.borrow()[range.clone()];
                 }
-                SliceZipMut(x, marker::PhantomData)
+                SliceZipMut(x, range, marker::PhantomData)
             }
 
             pub fn len(&self) -> usize {
-                self.0[0].borrow().len()
+                self.1.len()
             }
 
             pub unsafe fn get_slice_unchecked(&self, i: usize) -> &'a [T] {
                 // TODO: do we really need `transmute_copy`?
                 let arr: &'a [TSlice] = ::std::mem::transmute_copy(&self.0);
-                arr.get_unchecked(i).borrow()
+                &arr.get_unchecked(i).borrow()[self.1.clone()]
             }
 
             pub fn get_slice(&self, i: usize) -> Option<&'a [T]> {
                 unsafe {
                     let arr: &'a [TSlice] = ::std::mem::transmute_copy(&self.0);
-                    arr.get(i).map(Borrow::borrow)
+                    arr.get(i).map(|x| &x.borrow()[self.1.clone()])
                 }
             }
 
             pub unsafe fn get_slice_unchecked_mut(&self, i: usize) -> &'a mut [T] {
                 let arr: &'a mut [TSlice] = ::std::mem::transmute_copy(&self.0);
-                arr.get_unchecked_mut(i).borrow_mut()
+                &mut arr.get_unchecked_mut(i).borrow_mut()[self.1.clone()]
             }
 
             pub fn get_slice_mut(&self, i: usize) -> Option<&'a mut [T]> {
                 unsafe {
                     let arr: &'a mut [TSlice] = ::std::mem::transmute_copy(&self.0);
-                    arr.get_mut(i).map(BorrowMut::borrow_mut)
+                    arr.get_mut(i).map(|x| &mut x.borrow_mut()[self.1.clone()])
                 }
             }
         }
 
         impl<'a, T: 'a, TSlice: ImmutableLen<T> + BorrowMut<[T]>> IndexByVal<[&'a T; $num]> for SliceZipMut<'a, [T; $num], TSlice, T> {
             fn len(&self) -> usize {
-                self.0[0].borrow().len()
+                self.1.len()
             }
             #[allow(unused_variables)]
             unsafe fn get_unchecked(&self, i: usize) -> [&'a T; $num] {
                 let arr: &'a [TSlice] = ::std::mem::transmute_copy(&self.0);
                 [
-                    $(arr.get_unchecked($idx).borrow().get_unchecked(i)),*
+                    $(arr.get_unchecked($idx).borrow().get_unchecked(i + self.1.start)),*
                 ]
             }
         }
 
         impl<'a, T: 'a + Clone, TSlice: ImmutableLen<T> + BorrowMut<[T]>> IndexByVal<[T; $num]> for SliceZipMut<'a, [T; $num], TSlice, T> {
             fn len(&self) -> usize {
-                self.0[0].borrow().len()
+                self.1.len()
             }
             #[allow(unused_variables)]
             unsafe fn get_unchecked(&self, i: usize) -> [T; $num] {
                 [
-                    $(self.0.get_unchecked($idx).borrow().get_unchecked(i).clone()),*
+                    $(self.0.get_unchecked($idx).borrow().get_unchecked(i + self.1.start).clone()),*
                 ]
             }
         }
@@ -168,7 +173,11 @@ macro_rules! slice_zip_impl {
         impl<'a, T: 'a + Clone, TSlice: ImmutableLen<T> + BorrowMut<[T]>> IndexByValMut<[T; $num]> for SliceZipMut<'a, [T; $num], TSlice, T> {
             #[allow(unused_variables)]
             unsafe fn set_unchecked(&mut self, i: usize, value: [T; $num]) {
-                $(*self.0.get_unchecked_mut($idx).borrow_mut().get_unchecked_mut(i) = value[$idx].clone();)*
+                $(
+                    *self.0.get_unchecked_mut($idx)
+                        .borrow_mut()
+                        .get_unchecked_mut(i + self.1.start) = value[$idx].clone();
+                )*
             }
         }
     )

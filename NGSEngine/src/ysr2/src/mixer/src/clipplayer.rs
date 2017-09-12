@@ -189,7 +189,7 @@ impl ClipPlayer {
     /// `to.len()` must be equal to `output_properties().num_channels`.
     pub fn render_additive(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
         let ref clip = self.clip;
-        let mut index = range.start;
+        let mut index = 0;
         let reader = clip.read_samples();
         let speed_scale = clip.sampling_rate() / self.output_prop.sampling_rate;
         let end_position = clip.num_samples() as f64 + WAVE_PAD_LEN as f64;
@@ -199,18 +199,12 @@ impl ClipPlayer {
             None
         };
 
-        // validate the range
-        assert!(range.start <= range.end);
-        for ch in to.iter() {
-            let _ = &ch[range.clone()];
-        }
-
         macro_rules! case {
             ($num:expr, $has_events:expr) => (
                 {
-                    let mut writer = SliceZipMut::<[f32; $num], _, _>::new(to);
-                    while index < range.end {
-                        let remaining = range.end - index;
+                    let mut writer = SliceZipMut::<[f32; $num], _, _>::new(to, range);
+                    while index < writer.len() {
+                        let remaining = writer.len() - index;
 
                         assert!(self.position >= 0.0);
 
