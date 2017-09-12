@@ -5,10 +5,12 @@
 //
 #![cfg_attr(test, feature(test))]
 extern crate ysr2_common;
+extern crate primal;
 
 use std::ops::Range;
 
 pub mod biquad;
+pub mod reverb;
 pub mod siso;
 mod utils;
 

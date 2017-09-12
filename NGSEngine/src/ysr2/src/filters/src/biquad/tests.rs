@@ -9,7 +9,7 @@ use self::test::Bencher;
 
 use biquad;
 use utils::assert_num_slice_approx_eq;
-use siso::SisoFilter;
+use Filter;
 
 #[test]
 fn identity_inplace() {
