@@ -65,6 +65,17 @@ struct DelayLine {
     position: usize,
 }
 
+/// A reference to `DelayLine`.
+///
+/// Using `DelayLineRef` in place of a mutable reference of `[DelayLine; 8]`
+/// showed a 20% improvement in the performance because the code gen could store
+/// `position` in a register.
+struct DelayLineRef<'a> {
+    buffer: &'a mut [f32],
+    position_ref: &'a mut usize,
+    position: usize,
+}
+
 impl MatrixReverb {
     pub fn new(params: &MatrixReverbParams) -> Self {
         // Decide the delay line lengths
@@ -93,16 +104,7 @@ impl MatrixReverb {
         }
 
         // Create delay lines
-        let delay_lines = [
-            DelayLine::new(lens[0]),
-            DelayLine::new(lens[1]),
-            DelayLine::new(lens[2]),
-            DelayLine::new(lens[3]),
-            DelayLine::new(lens[4]),
-            DelayLine::new(lens[5]),
-            DelayLine::new(lens[6]),
-            DelayLine::new(lens[7]),
-        ];
+        let delay_lines = map8(|x| DelayLine::new(*x), &lens);
 
         // Compute the actual mean delay line lengths
         let total_delay_time: usize = lens.iter().sum();
@@ -171,7 +173,7 @@ impl Filter for MatrixReverb {
         let mut lpf_states = self.lpf_states.clone();
         let lpf_coef0 = self.lpf_coef0;
         let lpf_coef1 = self.lpf_coef1;
-        let delay_lines = &mut self.delay_lines;
+        let mut delay_lines = mut_map8(DelayLine::borrow, &mut self.delay_lines);
 
         macro_rules! case {
             ($len:expr) => ({
@@ -185,16 +187,7 @@ impl Filter for MatrixReverb {
                     };
 
                     // Read delay lines
-                    let mut delayed: [f32; 8] = [
-                        delay_lines[0].peek(),
-                        delay_lines[1].peek(),
-                        delay_lines[2].peek(),
-                        delay_lines[3].peek(),
-                        delay_lines[4].peek(),
-                        delay_lines[5].peek(),
-                        delay_lines[6].peek(),
-                        delay_lines[7].peek(),
-                    ];
+                    let mut delayed = map8(DelayLineRef::peek, &delay_lines);
 
                     // Write output
                     output.copy_from_slice(&delayed[0..$len]);
@@ -238,6 +231,9 @@ impl Filter for MatrixReverb {
         }
 
         self.lpf_states = lpf_states;
+        for x in delay_lines.iter_mut() {
+            x.finalize();
+        }
     }
 
     /// Always return `Some(1)`.
@@ -283,6 +279,22 @@ impl DelayLine {
         }
     }
 
+    fn borrow(&mut self) -> DelayLineRef {
+        assert!(self.position < self.buffer.len());
+
+        DelayLineRef {
+            position: self.position,
+            position_ref: &mut self.position,
+            buffer: &mut self.buffer[..],
+        }
+    }
+}
+
+impl<'a> DelayLineRef<'a> {
+    fn finalize(&mut self) {
+        *self.position_ref = self.position;
+    }
+
     fn peek(&self) -> f32 {
         unsafe { *self.buffer.get_unchecked(self.position) }
     }
@@ -295,6 +307,39 @@ impl DelayLine {
         if self.position >= self.buffer.len() {
             self.position = 0;
         }
+    }
+}
+
+/// `map` for fixed-size arrays
+fn map8<'a, T, R, F: FnMut(&'a T) -> R>(mut f: F, x: &'a [T; 8]) -> [R; 8] {
+    [
+        f(&x[0]),
+        f(&x[1]),
+        f(&x[2]),
+        f(&x[3]),
+        f(&x[4]),
+        f(&x[5]),
+        f(&x[6]),
+        f(&x[7]),
+    ]
+}
+
+/// `map` for mutable fixed-size arrays
+fn mut_map8<'a, T, R, F: FnMut(&'a mut T) -> R>(mut f: F, x: &'a mut [T; 8]) -> [R; 8] {
+    let p = x.as_mut_ptr();
+
+    // This is safe because we are only forming unique mutable references
+    unsafe {
+        [
+            f(&mut *p.offset(0)),
+            f(&mut *p.offset(1)),
+            f(&mut *p.offset(2)),
+            f(&mut *p.offset(3)),
+            f(&mut *p.offset(4)),
+            f(&mut *p.offset(5)),
+            f(&mut *p.offset(6)),
+            f(&mut *p.offset(7)),
+        ]
     }
 }
 
