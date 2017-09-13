@@ -36,6 +36,9 @@ pub struct MatrixReverb {
     lpf_states: [f32; WIDTH],
     lpf_coef0: f32,
     lpf_coef1: f32,
+
+    tail_len: f64,
+    tail_remaining: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -167,6 +170,8 @@ impl MatrixReverb {
             lpf_states: [0.0; WIDTH],
             lpf_coef0: lpf_coef0 as f32,
             lpf_coef1: lpf_coef1 as f32,
+            tail_len: params.reverb_time * 4.0,
+            tail_remaining: 0.0,
         }
     }
 }
@@ -193,10 +198,11 @@ impl Filter for MatrixReverb {
             .into_inner()
             .ok()
             .unwrap();
+        let mut max_input_abs = 0.0f32;
 
         macro_rules! case {
             ($len:expr) => ({
-                let mut writer = SliceZipMut::<[f32; $len], _, _>::new(to, range);
+                let mut writer = SliceZipMut::<[f32; $len], _, _>::new(to, range.clone());
                 for i in 0..writer.len() {
                     let mut output: [f32; $len] = writer.get(i).unwrap();
                     let input = if let Some(from) = from {
@@ -204,6 +210,7 @@ impl Filter for MatrixReverb {
                     } else {
                         output[0]
                     };
+                    max_input_abs = max_input_abs.max(input.abs());
 
                     // Read delay lines
                     let mut delayed = delay_lines
@@ -258,6 +265,9 @@ impl Filter for MatrixReverb {
         for x in delay_lines.iter_mut() {
             x.finalize();
         }
+
+        self.tail_remaining =
+            (self.tail_remaining - range.len() as f64).max(max_input_abs as f64 * self.tail_len);
     }
 
     /// Always return `Some(1)`.
@@ -271,12 +281,63 @@ impl Filter for MatrixReverb {
     }
 
     fn is_active(&self) -> bool {
-        // TODO
-        true
+        self.tail_remaining > 0.0
     }
 
-    fn skip(&mut self, _: usize) {
-        unimplemented!()
+    fn skip(&mut self, num_samples: usize) {
+        let num_processed_samples = if num_samples as f64 >= self.tail_remaining {
+            num_samples
+        } else if self.tail_remaining >= 0.0 {
+            self.tail_remaining as usize
+        } else {
+            0
+        };
+
+        // Note: Make sure to synchronize this with `render`
+        let mut lpf_states = self.lpf_states.clone();
+        let lpf_coef0 = self.lpf_coef0;
+        let lpf_coef1 = self.lpf_coef1;
+        let mut delay_lines = self.delay_lines
+            .iter_mut()
+            .map(DelayLine::borrow)
+            .collect::<ArrayVec<[_; WIDTH]>>()
+            .into_inner()
+            .ok()
+            .unwrap();
+
+        for _ in 0..num_processed_samples {
+            // Read delay lines
+            let mut delayed = delay_lines
+                .iter()
+                .map(DelayLineRef::peek)
+                .collect::<ArrayVec<[_; WIDTH]>>()
+                .into_inner()
+                .unwrap();
+
+            // No input, no output
+
+            // Apply diffusion matrix
+            // (Actually, the matrix `fwht8` represents have eigenvalues
+            //  greater than `1`. This is compensated by `lpf_coef0`)
+            fwht8(&mut delayed);
+
+            // Apply loop filter
+            for i in 0..WIDTH {
+                lpf_states[i] = delayed[i] * lpf_coef0 + lpf_states[i] * lpf_coef1;
+            }
+
+            // Feed delay lines
+            for i in 0..WIDTH {
+                delay_lines[i].feed(lpf_states[i]);
+            }
+        }
+
+        self.lpf_states = lpf_states;
+        for x in delay_lines.iter_mut() {
+            x.finalize();
+        }
+
+        self.tail_remaining -= num_samples as f64;
     }
 
     fn reset(&mut self) {
