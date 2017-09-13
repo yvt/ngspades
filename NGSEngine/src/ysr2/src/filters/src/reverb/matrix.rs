@@ -19,18 +19,21 @@
 /// This filter accepts a single channel input signal and up to 8 output
 /// channels.
 use primal::is_prime;
+use arrayvec::ArrayVec;
 use std::ops::Range;
 
 use ysr2_common::slicezip::{SliceZipMut, IndexByVal, IndexByValMut};
 use Filter;
 
+const WIDTH: usize = 8;
+
 #[derive(Debug, Clone)]
 pub struct MatrixReverb {
-    delay_lines: [DelayLine; 8],
+    delay_lines: [DelayLine; WIDTH],
 
     // Loop filter
     // y[n] = c0 x[n] + c1 y[n - 1]
-    lpf_states: [f32; 8],
+    lpf_states: [f32; WIDTH],
     lpf_coef0: f32,
     lpf_coef1: f32,
 }
@@ -67,7 +70,7 @@ struct DelayLine {
 
 /// A reference to `DelayLine`.
 ///
-/// Using `DelayLineRef` in place of a mutable reference of `[DelayLine; 8]`
+/// Using `DelayLineRef` in place of a mutable reference of `[DelayLine; WIDTH]`
 /// showed a 20% improvement in the performance because the code gen could store
 /// `position` in a register.
 struct DelayLineRef<'a> {
@@ -79,15 +82,21 @@ struct DelayLineRef<'a> {
 impl MatrixReverb {
     pub fn new(params: &MatrixReverbParams) -> Self {
         // Decide the delay line lengths
-        let mut lens = [0; 8];
-        for i in 0..8 {
-            let factor = 2.0f64.powf((i as f64 - 3.5) * (1.0 / 8.0) * params.diffusion);
-            let f_len = params.mean_delay_time * factor;
-            lens[i] = (f_len.max(2.0)) as usize | 1;
-        }
+        let mut lens = (0..WIDTH)
+            .map(|i| {
+                let factor = 2.0f64.powf(
+                    (i as f64 - (WIDTH - 1) as f64 / 2.0) * (1.0 / WIDTH as f64) *
+                        params.diffusion,
+                );
+                let f_len = params.mean_delay_time * factor;
+                (f_len.max(2.0)) as usize | 1
+            })
+            .collect::<ArrayVec<[_; WIDTH]>>()
+            .into_inner()
+            .unwrap();
 
         // Choose prime numbers
-        for i in 0..8 {
+        for i in 0..WIDTH {
             let mut start = lens[i];
             if i > 0 && lens[i - 1] >= start {
                 start = lens[i - 1] + 2;
@@ -104,7 +113,11 @@ impl MatrixReverb {
         }
 
         // Create delay lines
-        let delay_lines = map8(|x| DelayLine::new(*x), &lens);
+        let delay_lines = lens.iter()
+            .map(|x| DelayLine::new(*x))
+            .collect::<ArrayVec<[_; WIDTH]>>()
+            .into_inner()
+            .unwrap();
 
         // Compute the actual mean delay line lengths
         let total_delay_time: usize = lens.iter().sum();
@@ -147,11 +160,11 @@ impl MatrixReverb {
         let lpf_coef1 = lpf_coef;
 
         // Compensate for the factor of `fwht8`
-        let lpf_coef0 = lpf_coef0 / 8.0f64.sqrt();
+        let lpf_coef0 = lpf_coef0 / (WIDTH as f64).sqrt();
 
         Self {
             delay_lines,
-            lpf_states: [0.0; 8],
+            lpf_states: [0.0; WIDTH],
             lpf_coef0: lpf_coef0 as f32,
             lpf_coef1: lpf_coef1 as f32,
         }
@@ -173,7 +186,13 @@ impl Filter for MatrixReverb {
         let mut lpf_states = self.lpf_states.clone();
         let lpf_coef0 = self.lpf_coef0;
         let lpf_coef1 = self.lpf_coef1;
-        let mut delay_lines = mut_map8(DelayLine::borrow, &mut self.delay_lines);
+        let mut delay_lines = self.delay_lines
+            .iter_mut()
+            .map(DelayLine::borrow)
+            .collect::<ArrayVec<[_; WIDTH]>>()
+            .into_inner()
+            .ok()
+            .unwrap();
 
         macro_rules! case {
             ($len:expr) => ({
@@ -187,7 +206,12 @@ impl Filter for MatrixReverb {
                     };
 
                     // Read delay lines
-                    let mut delayed = map8(DelayLineRef::peek, &delay_lines);
+                    let mut delayed = delay_lines
+                        .iter()
+                        .map(DelayLineRef::peek)
+                        .collect::<ArrayVec<[_; WIDTH]>>()
+                        .into_inner()
+                        .unwrap();
 
                     // Write output
                     output.copy_from_slice(&delayed[0..$len]);
@@ -202,12 +226,12 @@ impl Filter for MatrixReverb {
                     fwht8(&mut delayed);
 
                     // Apply loop filter
-                    for i in 0..8 {
+                    for i in 0..WIDTH {
                         lpf_states[i] = delayed[i] * lpf_coef0 + lpf_states[i] * lpf_coef1;
                     }
 
                     // Feed delay lines
-                    for i in 0..8 {
+                    for i in 0..WIDTH {
                         delay_lines[i].feed(lpf_states[i]);
                     }
                 }
@@ -307,39 +331,6 @@ impl<'a> DelayLineRef<'a> {
         if self.position >= self.buffer.len() {
             self.position = 0;
         }
-    }
-}
-
-/// `map` for fixed-size arrays
-fn map8<'a, T, R, F: FnMut(&'a T) -> R>(mut f: F, x: &'a [T; 8]) -> [R; 8] {
-    [
-        f(&x[0]),
-        f(&x[1]),
-        f(&x[2]),
-        f(&x[3]),
-        f(&x[4]),
-        f(&x[5]),
-        f(&x[6]),
-        f(&x[7]),
-    ]
-}
-
-/// `map` for mutable fixed-size arrays
-fn mut_map8<'a, T, R, F: FnMut(&'a mut T) -> R>(mut f: F, x: &'a mut [T; 8]) -> [R; 8] {
-    let p = x.as_mut_ptr();
-
-    // This is safe because we are only forming unique mutable references
-    unsafe {
-        [
-            f(&mut *p.offset(0)),
-            f(&mut *p.offset(1)),
-            f(&mut *p.offset(2)),
-            f(&mut *p.offset(3)),
-            f(&mut *p.offset(4)),
-            f(&mut *p.offset(5)),
-            f(&mut *p.offset(6)),
-            f(&mut *p.offset(7)),
-        ]
     }
 }
 

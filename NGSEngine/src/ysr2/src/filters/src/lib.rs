@@ -6,6 +6,7 @@
 #![cfg_attr(test, feature(test))]
 extern crate ysr2_common;
 extern crate primal;
+extern crate arrayvec;
 
 use std::ops::Range;
 
