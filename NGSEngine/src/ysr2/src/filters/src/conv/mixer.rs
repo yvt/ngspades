@@ -513,15 +513,21 @@ fn mul_usize_x(x: usize, y: usize, fract: u32) -> usize {
 
 /// Perform convolution given two data serieses in the half complex format in
 /// the frequency domain.
+///
+/// TODO: eliminate code duplication
 fn spectrum_convolve_additive(to: &mut [f32], x: &[f32], y: &[f32]) {
     // A (cyclic) convolution in the time domain can be accomplished by the
     // pointwise product in the frequency domain.
     to[0] += x[0] * y[0];
     to[1] += x[1] * y[1];
-    for i in 1..to.len() / 2 {
-        let (r1, i1) = (x[i * 2], x[i * 2 + 1]);
-        let (r2, i2) = (y[i * 2], y[i * 2 + 1]);
-        to[i * 2] += r1 * r2 - i1 * i2;
-        to[i * 2 + 1] += r1 * i2 + r2 * i1;
+    assert_eq!(x.len(), to.len());
+    assert_eq!(y.len(), to.len());
+    unsafe {
+        for i in 1..to.len() / 2 {
+            let (r1, i1) = (*x.get_unchecked(i * 2), *x.get_unchecked(i * 2 + 1));
+            let (r2, i2) = (*y.get_unchecked(i * 2), *y.get_unchecked(i * 2 + 1));
+            *to.get_unchecked_mut(i * 2) += r1 * r2 - i1 * i2;
+            *to.get_unchecked_mut(i * 2 + 1) += r1 * i2 + r2 * i1;
+        }
     }
 }

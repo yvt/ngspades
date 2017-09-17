@@ -56,3 +56,21 @@ impl<T: Generator> Generator for BorrowMut<T> {
         self.borrow().is_active()
     }
 }
+
+pub struct ZeroGenerator;
+
+impl Generator for ZeroGenerator {
+    fn render(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
+        for ch in to.iter_mut() {
+            for x in ch[range.clone()].iter_mut() {
+                *x = 0.0;
+            }
+        }
+    }
+
+    fn skip(&mut self, _: usize) {}
+
+    fn is_active(&self) -> bool {
+        false
+    }
+}

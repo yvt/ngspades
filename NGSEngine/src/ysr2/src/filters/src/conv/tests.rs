@@ -228,3 +228,101 @@ fn conv_solo_nonuniform4() {
         latency: 2,
     });
 }
+
+pub struct MyZeroGenerator;
+
+impl Generator for MyZeroGenerator {
+    fn render(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
+        for ch in to.iter_mut() {
+            for x in ch[range.clone()].iter_mut() {
+                *x = 0.0;
+            }
+        }
+    }
+
+    fn skip(&mut self, _: usize) {}
+
+    fn is_active(&self) -> bool {
+        // To force `MultiConvolver` to work
+        true
+    }
+}
+
+fn conv_bench(b: &mut Bencher, len: usize, block_size: usize) {
+    let mut output = vec![0.0; 100000];
+    let num_groups = if len <= 1024 {
+        1
+    } else if len <= 8192 {
+        2
+    } else if len <= 65536 {
+        3
+    } else if len <= 524288 {
+        4
+    } else {
+        unreachable!();
+    };
+    let setup = ConvSetup::new(&ConvParams {
+        blocks: Vec::from(
+            &[
+                // 128 * 7
+                (7, 7),
+                // 1024 * 7
+                (10, 7),
+                // 8192 * 7
+                (13, 7),
+                // 65536 * 7
+                (16, 7),
+            ]
+                [0..num_groups],
+        ),
+        latency: 128,
+    });
+    let ir = IrSpectrum::from_ir(&vec![0.0; len], &setup);
+    let mut conv = MultiConvolver::new(&setup, 1, SerialQueue);
+    let src = conv.insert_source(MyZeroGenerator);
+    conv.insert_mapping(&src, &ir, 0).unwrap();
+
+    b.iter(move || {
+        conv.render(&mut [&mut output[..]], 0..block_size);
+    });
+}
+
+#[bench]
+fn conv_100000_000512(b: &mut Bencher) {
+    conv_bench(b, 512, 100000);
+}
+
+#[bench]
+fn conv_100000_002048(b: &mut Bencher) {
+    conv_bench(b, 2048, 100000);
+}
+
+#[bench]
+fn conv_100000_008192(b: &mut Bencher) {
+    conv_bench(b, 8192, 100000);
+}
+
+#[bench]
+fn conv_100000_032768(b: &mut Bencher) {
+    conv_bench(b, 32768, 100000);
+}
+
+#[bench]
+fn conv_100000_131072(b: &mut Bencher) {
+    conv_bench(b, 131072, 100000);
+}
+
+#[bench]
+fn conv_100000_524288(b: &mut Bencher) {
+    conv_bench(b, 524288, 100000);
+}
+
+#[bench]
+fn conv_000128_131072(b: &mut Bencher) {
+    conv_bench(b, 131072, 128);
+}
+
+#[bench]
+fn conv_001024_131072(b: &mut Bencher) {
+    conv_bench(b, 131072, 1024);
+}
