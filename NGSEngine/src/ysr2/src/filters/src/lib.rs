@@ -7,10 +7,12 @@
 extern crate ysr2_common;
 extern crate primal;
 extern crate arrayvec;
+extern crate yfft;
 
 use std::ops::Range;
 
 pub mod biquad;
+pub mod conv;
 pub mod reverb;
 pub mod siso;
 mod utils;

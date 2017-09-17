@@ -1226,6 +1226,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "primal 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "yfft 0.1.0",
  "ysr2_common 0.1.0",
 ]
 
