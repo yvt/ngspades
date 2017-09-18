@@ -276,7 +276,7 @@ where
             }
         }
 
-        if post_bit_reversal && fft_len > 1 {
+        if post_bit_reversal && radixes.len() > 1 {
             kernels.push(new_bit_reversal_kernel(radixes.as_slice()));
         }
 
