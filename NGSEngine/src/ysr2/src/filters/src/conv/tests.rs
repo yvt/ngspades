@@ -239,6 +239,7 @@ fn conv_solo_nonuniform4() {
 pub struct MyZeroGenerator;
 
 impl Generator for MyZeroGenerator {
+    #[inline(never)]
     fn render(&mut self, to: &mut [&mut [f32]], range: Range<usize>) {
         for ch in to.iter_mut() {
             for x in ch[range.clone()].iter_mut() {
