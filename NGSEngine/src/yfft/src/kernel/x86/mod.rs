@@ -17,6 +17,7 @@ mod x86avxf32radix2;
 mod x86avxf32radix4;
 #[cfg(target_feature = "avx")]
 mod x86avxf32realfft;
+mod x86sse1bitreversal;
 mod x86sse1radix2;
 mod x86sse1radix4;
 mod x86sse1realfft;
@@ -80,6 +81,12 @@ mod x86avxbitreversal {
     pub fn new_x86_avx_bit_reversal_kernel<T>(_: &Vec<usize>) -> Option<Box<super::Kernel<T>>> {
         None
     }
+    pub fn new_x86_avx_radix2_bit_reversal_kernel<T>(_: &Vec<usize>) -> Option<Box<super::Kernel<T>>> {
+        None
+    }
+    pub fn new_x86_avx_radix4_bit_reversal_kernel<T>(_: &Vec<usize>) -> Option<Box<super::Kernel<T>>> {
+        None
+    }
 }
 
 pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
@@ -95,15 +102,34 @@ where
 }
 
 
-pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
+pub unsafe fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
 where
     T: Num,
 {
+    let radix2 = indices.len() % 2 == 0 && (0..indices.len() / 2).all(|i| {
+        indices[i + indices.len() / 2] == indices[i] + 1
+    });
+    let radix4 = indices.len() % 4 == 0 && (0..indices.len() / 4).all(|i| {
+        indices[i + indices.len() / 4] == indices[i] + 1 &&
+        indices[i + indices.len() / 4 * 2] == indices[i] + 2 &&
+        indices[i + indices.len() / 4 * 3] == indices[i] + 3
+    });
     None.or_else(|| {
+        if radix4 {
+            x86avxbitreversal::new_x86_avx_radix4_bit_reversal_kernel(indices)
+        } else {
+            None
+        }
+    }).or_else(|| {
+        if radix2 {
+            x86avxbitreversal::new_x86_avx_radix2_bit_reversal_kernel(indices)
+        } else {
+            None
+        }
+    }).or_else(|| {
         x86avxbitreversal::new_x86_avx_bit_reversal_kernel(indices)
     }).or_else(|| bitreversal::new_x86_bit_reversal_kernel(indices))
 }
-
 
 pub fn new_x86_real_fft_pre_post_process_kernel<T>(
     len: usize,

@@ -45,8 +45,9 @@ where
         }
     }
 
-    super::x86::new_x86_bit_reversal_kernel(&indices)
-        .unwrap_or_else(|| BitReversalKernel::new(indices))
+    unsafe {
+        super::x86::new_x86_bit_reversal_kernel(&indices)
+    }.unwrap_or_else(|| BitReversalKernel::new(indices))
 }
 
 #[derive(Debug)]

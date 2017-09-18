@@ -11,7 +11,7 @@ use simd::x86::sse2::u64x2;
 
 use std::mem;
 
-pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
+pub unsafe fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
 where
     T: Num,
 {

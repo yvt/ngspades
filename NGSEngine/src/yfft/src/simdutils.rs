@@ -5,14 +5,32 @@
 //
 
 pub use simd::{Simd, f32x4, i32x4, u32x4};
+#[cfg(target_feature = "sse2")]
+pub use simd::x86::sse2::{f64x2, u64x2};
 #[cfg(target_feature = "sse3")]
 use simd::x86::sse3::Sse3F32x4;
 #[cfg(target_feature = "avx")]
-pub use simd::x86::avx::{i32x8, f32x8, u32x8, AvxF32x8};
+pub use simd::x86::avx::{i32x8, f32x8, u32x8, AvxF32x8, u64x4};
 use std::mem;
 
 #[cfg(test)]
 use num_complex::Complex;
+
+/// Shuffles `u64x2` elements.
+#[allow(unused_macros)]
+macro_rules! u64x2_shuffle {
+    ($x:expr, $y:expr, $idx:expr) => {
+        unsafe { $crate::simdutils::simd_shuffle2::<$crate::simdutils::u64x2, $crate::simdutils::u64x2>($x, $y, $idx) }
+    }
+}
+
+/// Shuffles `f64x2` elements.
+#[allow(unused_macros)]
+macro_rules! f64x2_shuffle {
+    ($x:expr, $y:expr, $idx:expr) => {
+        unsafe { $crate::simdutils::simd_shuffle2::<$crate::simdutils::f64x2, $crate::simdutils::f64x2>($x, $y, $idx) }
+    }
+}
 
 /// Shuffles `f32x4` elements.
 macro_rules! f32x4_shuffle {
@@ -26,6 +44,14 @@ macro_rules! f32x4_shuffle {
 macro_rules! f32x8_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
         unsafe { $crate::simdutils::simd_shuffle8::<$crate::simdutils::f32x8, $crate::simdutils::f32x8>($x, $y, $idx) }
+    }
+}
+
+/// Shuffles `u64x4` elements.
+#[allow(unused_macros)]
+macro_rules! u64x4_shuffle {
+    ($x:expr, $y:expr, $idx:expr) => {
+        unsafe { $crate::simdutils::simd_shuffle4::<$crate::simdutils::u64x4, $crate::simdutils::u64x4>($x, $y, $idx) }
     }
 }
 

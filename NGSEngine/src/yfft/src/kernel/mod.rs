@@ -20,7 +20,7 @@ mod x86 {
     pub fn new_x86_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>> {
         None
     }
-    pub fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>> {
+    pub unsafe fn new_x86_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>> {
         None
     }
     pub fn new_x86_real_fft_pre_post_process_kernel<T>(
