@@ -248,7 +248,7 @@ impl Generator for MyZeroGenerator {
     }
 }
 
-fn conv_bench(b: &mut Bencher, len: usize, block_size: usize) {
+fn conv_bench(b: &mut Bencher, len: usize, block_size: usize, num_src: usize) {
     let mut output = vec![0.0; 100000];
     let num_groups = if len <= 1024 {
         1
@@ -279,8 +279,12 @@ fn conv_bench(b: &mut Bencher, len: usize, block_size: usize) {
     });
     let ir = IrSpectrum::from_ir(&vec![0.0; len], &setup);
     let mut conv = MultiConvolver::new(&setup, 1, SerialQueue);
-    let src = conv.insert_source(MyZeroGenerator);
-    conv.insert_mapping(&src, &ir, 0).unwrap();
+    let src: Vec<_> = (0..num_src)
+        .map(|_| conv.insert_source(MyZeroGenerator))
+        .collect();
+    for src in src.iter() {
+        conv.insert_mapping(src, &ir, 0).unwrap();
+    }
 
     b.iter(move || {
         conv.render(&mut [&mut output[..]], 0..block_size);
@@ -289,40 +293,42 @@ fn conv_bench(b: &mut Bencher, len: usize, block_size: usize) {
 
 #[bench]
 fn conv_100000_000512(b: &mut Bencher) {
-    conv_bench(b, 512, 100000);
+    conv_bench(b, 512, 100000, 1);
 }
 
 #[bench]
 fn conv_100000_002048(b: &mut Bencher) {
-    conv_bench(b, 2048, 100000);
+    conv_bench(b, 2048, 100000, 1);
 }
 
 #[bench]
 fn conv_100000_008192(b: &mut Bencher) {
-    conv_bench(b, 8192, 100000);
+    conv_bench(b, 8192, 100000, 1);
 }
 
 #[bench]
 fn conv_100000_032768(b: &mut Bencher) {
-    conv_bench(b, 32768, 100000);
+    conv_bench(b, 32768, 100000, 1);
 }
 
 #[bench]
 fn conv_100000_131072(b: &mut Bencher) {
-    conv_bench(b, 131072, 100000);
+    conv_bench(b, 131072, 100000, 1);
 }
 
 #[bench]
 fn conv_100000_524288(b: &mut Bencher) {
-    conv_bench(b, 524288, 100000);
+    conv_bench(b, 524288, 100000, 1);
 }
 
 #[bench]
-fn conv_000128_131072(b: &mut Bencher) {
-    conv_bench(b, 131072, 128);
+fn conv_000128_131072_1000(b: &mut Bencher) {
+    // 1000 sources
+    conv_bench(b, 131072, 128, 1000);
 }
 
 #[bench]
-fn conv_001024_131072(b: &mut Bencher) {
-    conv_bench(b, 131072, 1024);
+fn conv_001024_131072_100(b: &mut Bencher) {
+    // 100 sources
+    conv_bench(b, 131072, 1024, 100);
 }
