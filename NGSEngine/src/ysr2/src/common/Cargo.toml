@@ -7,3 +7,4 @@ authors = ["yvt <i@yvt.jp>"]
 xdispatch = { path = "../../../xdispatch", optional = true }
 num_cpus = "1.0"
 cgmath = "0.14.1"
+simd = "0.2.0"
