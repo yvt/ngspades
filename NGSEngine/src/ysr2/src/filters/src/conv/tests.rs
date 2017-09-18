@@ -124,6 +124,7 @@ fn test_solo_with_params(params: &ConvParams) {
         for pat2 in patterns.iter() {
             test_solo_with_patterns(&setup, pat1, pat2, 16);
             test_solo_with_patterns(&setup, pat1, pat2, 2);
+            test_solo_with_patterns(&setup, pat1, pat2, 5);
         }
     }
 }
@@ -272,18 +273,18 @@ fn conv_bench(b: &mut Bencher, len: usize, block_size: usize, num_src: usize) {
     let setup = ConvSetup::new(&ConvParams {
         blocks: Vec::from(
             &[
-                // 128 * 7
-                (7, 7),
-                // 1024 * 7
-                (10, 7),
-                // 8192 * 7
-                (13, 7),
-                // 65536 * 7
+                // 128 * 14
+                (7, 14),
+                // 1024 * 14
+                (10, 14),
+                // 8192 * 14
+                (13, 14),
+                // 65536 * x
                 (16, 7),
             ]
                 [0..num_groups],
         ),
-        latency: 128,
+        latency: 256,
     });
     let ir = IrSpectrum::from_ir(&vec![0.0; len], &setup);
     let mut conv = MultiConvolver::new(&setup, 1, SerialQueue);

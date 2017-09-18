@@ -117,7 +117,7 @@ impl ConvSetup {
                     }
 
                     let use_tdr_on_source = fdl_delay > 0;
-                    let use_tdr_on_mapping = false; // fdl_delay > 1; TODO: not supported by `MultiConvolver` yet
+                    let use_tdr_on_mapping = fdl_delay > 1;
 
                     let mut input_fdl_delay = fdl_delay;
 

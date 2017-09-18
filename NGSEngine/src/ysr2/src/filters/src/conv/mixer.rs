@@ -94,6 +94,14 @@ use conv::source::Source;
 ///  - Amortization is not performed on output transforms since the number of
 ///    the operations does not increase with those of sources or mappings.
 ///
+/// The lengths of FDLs are computed from `offset[i]` (see the documentation
+/// of [`ConvParams`] for the definition) using the following formula:
+/// `offset[i] / (1 << blocks[i].0)`. Therefore, it is important to configure
+/// the number of blocks (`blocks[i].1`) and `latency` large enough so every
+/// FDLs are at least two blocks long.
+///
+/// [`ConvParams`]: struct.ConvParams.html
+///
 /// # Hot-swapping Impulse Responses
 ///
 /// This engine supports hot-swapping impulse responses i.e. replacing an IR of
@@ -345,10 +353,12 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                 let block_end_pos = block_pos + num_processed_ub;
                 let block_end_pos_sat = min(block_end_pos, block_size);
 
+                let group_info = setup.group(i);
+
                 let source_i_end = mul_usize_x(block_end_pos_sat, sources.len(), block_size_log2);
                 let mapping_i_end = mul_usize_x(block_end_pos_sat, mappings.len(), block_size_log2);
 
-                if self.setup.group(i).use_tdr_on_source {
+                if group_info.use_tdr_on_source {
                     for &mut (_, ref mut source) in &mut sources[source_i_start[i]..source_i_end] {
                         let ref mut src_group = source.source.groups[i];
                         if src_group.fresh_block.active {
@@ -364,11 +374,26 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                         }
                     }
                 }
-                if self.setup.group(i).use_tdr_on_mapping {
-                    for &mut (_, ref mut mapping, _) in
+                if group_info.use_tdr_on_mapping {
+                    // Merge outputs from sources in the frequency domain
+                    let ref mut preoutput_buffers = group_states[i].preoutput_buffer;
+                    for &mut (_, ref mut mapping, source_i) in
                         &mut mappings[mapping_i_start[i]..mapping_i_end]
                     {
-                        // TODO
+                        let ref source: Source = sources[source_i].1.source;
+                        let ir: &IrSpectrum = mapping.ir.borrow();
+                        for k in 0..ir.num_blocks_for_size(i) {
+                            let ref block = source.groups[i].blocks[k + group_info.input_fdl_delay];
+                            if !block.active {
+                                continue;
+                            }
+
+                            spectrum_convolve_additive(
+                                preoutput_buffers[mapping.output].as_mut_slice(),
+                                &block.buffer,
+                                ir.get(i, k),
+                            );
+                        }
                     }
                 }
 
@@ -445,25 +470,22 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
 
                 // Merge outputs from all sources in the frequency domain
                 let ref mut preoutput_buffers = group_state.preoutput_buffer;
-                for ch in preoutput_buffers.iter_mut() {
-                    for x in ch.iter_mut() {
-                        *x = 0.0;
-                    }
-                }
-                for &mut (_, ref mut mapping, source_i) in mappings.iter_mut() {
-                    let ref source: Source = sources[source_i].1.source;
-                    let ir: &IrSpectrum = mapping.ir.borrow();
-                    for k in 0..ir.num_blocks_for_size(i) {
-                        let ref block = source.groups[i].blocks[k + group_info.input_fdl_delay];
-                        if !block.active {
-                            continue;
-                        }
+                if !self.setup.group(i).use_tdr_on_mapping {
+                    for &mut (_, ref mut mapping, source_i) in mappings.iter_mut() {
+                        let ref source: Source = sources[source_i].1.source;
+                        let ir: &IrSpectrum = mapping.ir.borrow();
+                        for k in 0..ir.num_blocks_for_size(i) {
+                            let ref block = source.groups[i].blocks[k + group_info.input_fdl_delay];
+                            if !block.active {
+                                continue;
+                            }
 
-                        spectrum_convolve_additive(
-                            preoutput_buffers[mapping.output].as_mut_slice(),
-                            &block.buffer,
-                            ir.get(i, k),
-                        );
+                            spectrum_convolve_additive(
+                                preoutput_buffers[mapping.output].as_mut_slice(),
+                                &block.buffer,
+                                ir.get(i, k),
+                            );
+                        }
                     }
                 }
 
@@ -506,6 +528,10 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                         {
                             *y += *x;
                         }
+                    }
+
+                    for x in ch.iter_mut() {
+                        *x = 0.0;
                     }
                 }
             }
