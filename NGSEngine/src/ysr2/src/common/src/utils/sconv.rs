@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-//! Common utilities. Not intended for a public use.
-#![doc(hidden)]
+//! Fast convolution on data sequences in the frequency domain and the half
+//! complex format.
 
 #[allow(unused_imports)]
 use std::ptr;
