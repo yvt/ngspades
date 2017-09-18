@@ -47,33 +47,16 @@ pub fn f32x4_bitxor(lhs: f32x4, rhs: f32x4) -> f32x4 {
 
 #[cfg(target_feature = "sse3")]
 #[inline]
-fn sse3_f32x4_complex_mul_riri_inner(x: f32x4, y1: f32x4, y2: f32x4) -> f32x4 {
-    // (r1, i1, ...) * (r3, i3, ...)
-    //   --> (r1 * r3 - i1 * i3, r1 * i3 + i1 * r3, ...)
-
-    // (r1 * r3, -i1 * i3, ...)
-    let t1 = x * y1;
-
-    // (r1 * i3, i1 * r3, ...)
-    let t2 = x * y2;
-
-    // (r1 * r3 - i1 * i3, ..., r1 * i3 + i1 * r3, ...)
-    let t3 = t1.hadd(t2);
-
-    f32x4_shuffle!(t3, t3, [0, 2, 5, 7])
-}
-
-#[cfg(target_feature = "sse3")]
-#[inline]
 #[allow(dead_code)]
 pub fn sse3_f32x4_complex_mul_riri(x: f32x4, y: f32x4) -> f32x4 {
-    let neg_mask: f32x4 = unsafe { mem::transmute(u32x4::new(0, 0x80000000, 0, 0x80000000)) };
-
-    sse3_f32x4_complex_mul_riri_inner(
-        x,
-        f32x4_bitxor(y, neg_mask),
-        f32x4_shuffle!(y, y, [1, 0, 7, 6]),
-    )
+    // (r1, i1, ...) * (r3, i3, ...)
+    //   --> ((r1 * r3) - (i1 * i3), (r1 * i3) + (i1 * r3), ...)
+    let x1 = f32x4_shuffle!(x, x, [0, 0, 2, 2]); // movsldup
+    let x2 = f32x4_shuffle!(x, x, [1, 1, 3, 3]); // movshdup
+    let y1 = y;
+    let y2 = f32x4_shuffle!(y, y, [1, 0, 3, 2]); // shufps
+    let z = (x1 * y1).addsub(x2 * y2); // vaddsubps
+    return z;
 }
 
 #[cfg(target_feature = "avx")]
@@ -88,42 +71,14 @@ pub fn avx_f32x8_bitxor(lhs: f32x8, rhs: f32x8) -> f32x8 {
 
 #[cfg(target_feature = "avx")]
 #[inline]
-fn avx_f32x8_complex_mul_riri_inner(x: f32x8, y1: f32x8, y2: f32x8) -> f32x8 {
-    // (r1, i1, ...) * (r3, i3, ...)
-    //   --> (r1 * r3 - i1 * i3, r1 * i3 + i1 * r3, ...)
-
-    // (r1 * r3, -i1 * i3, ...)
-    let t1 = x * y1;
-
-    // (r1 * i3, i1 * r3, ...)
-    let t2 = x * y2;
-
-    // (r1 * r3 - i1 * i3, ..., r1 * i3 + i1 * r3, ...)
-    let t3 = t1.hadd(t2);
-
-    f32x8_shuffle!(t3, t3, [0, 2, 9, 11, 4, 6, 13, 15])
-}
-
-#[cfg(target_feature = "avx")]
-#[inline]
 #[allow(dead_code)]
 pub fn avx_f32x8_complex_mul_riri(x: f32x8, y: f32x8) -> f32x8 {
-    let neg_mask: f32x8 = unsafe {
-        mem::transmute(u32x8::new(
-            0,
-            0x80000000,
-            0,
-            0x80000000,
-            0,
-            0x80000000,
-            0,
-            0x80000000,
-        ))
-    };
-
-    avx_f32x8_complex_mul_riri_inner(
-        x,
-        avx_f32x8_bitxor(y, neg_mask),
-        f32x8_shuffle!(y, y, [1, 0, 11, 10, 5, 4, 15, 14]),
-    )
+    // (r1, i1, ...) * (r3, i3, ...)
+    //   --> ((r1 * r3) - (i1 * i3), (r1 * i3) + (i1 * r3), ...)
+    let x1 = f32x8_shuffle!(x, x, [0, 0, 2, 2, 4, 4, 6, 6]); // vmovsldup
+    let x2 = f32x8_shuffle!(x, x, [1, 1, 3, 3, 5, 5, 7, 7]); // vmovshdup
+    let y1 = y;
+    let y2 = f32x8_shuffle!(y, y, [1, 0, 3, 2, 5, 4, 7, 6]); // vpermilps
+    let z = (x1 * y1).addsub(x2 * y2); // vaddsubps
+    return z;
 }

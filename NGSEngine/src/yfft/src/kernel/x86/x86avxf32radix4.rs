@@ -16,7 +16,7 @@
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
 use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
                    AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
-use super::super::super::simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri_inner};
+use super::super::super::simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri};
 
 use num_complex::Complex;
 use num_iter::range_step;
@@ -62,8 +62,7 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
 #[derive(Debug)]
 struct AvxRadix4Kernel2<T> {
     cparams: KernelCreationParams,
-    twiddles1: f32x8,
-    twiddles2: f32x8,
+    twiddles: f32x8,
     sparams: T,
 }
 
@@ -86,14 +85,12 @@ impl<T: StaticParams> AvxRadix4Kernel2<T> {
             0f32,
             full_circle * 3 as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
         ).exp();
-        // riri format, modified for sse3_f32x4_complex_mul_riri_inner
-        let twiddles1 = f32x8::new(1f32, 0f32, c1.re, -c1.im, c2.re, -c2.im, c3.re, -c3.im);
-        let twiddles2 = f32x8::new(0f32, 1f32, c1.im, c1.re, c2.im, c2.re, c3.im, c3.re);
+        // riri format
+        let twiddles = f32x8::new(1f32, 0f32, c1.re, c1.im, c2.re, c2.im, c3.re, c3.im);
 
         Self {
             cparams: *cparams,
-            twiddles1: twiddles1,
-            twiddles2: twiddles2,
+            twiddles: twiddles,
             sparams: sparams,
         }
     }
@@ -105,8 +102,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
-        let twiddles1 = self.twiddles1;
-        let twiddles2 = self.twiddles2;
+        let twiddles = self.twiddles;
 
         let neg_mask2: f32x8 = unsafe {
             mem::transmute(if sparams.inverse() {
@@ -132,7 +128,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
                 // riririri-riririri -> riririri
                 //   12  34   56  78    12563478
                 let t1 = f32x8_shuffle!(xy1, zw1, [2, 3, 10, 11, 6, 7, 14, 15]);
-                let t2 = avx_f32x8_complex_mul_riri_inner(t1, twiddles1, twiddles2);
+                let t2 = avx_f32x8_complex_mul_riri(t1, twiddles);
                 // t3: --12--34 (vmovddup)
                 let t3 = f32x8_shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
                 // vblendps
@@ -164,7 +160,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
                 // riririri-riririri -> riririri
                 //   12  34   56  78    12563478
                 let t1 = f32x8_shuffle!(xy3, zw3, [2, 3, 10, 11, 6, 7, 14, 15]);
-                let t2 = avx_f32x8_complex_mul_riri_inner(t1, twiddles1, twiddles2);
+                let t2 = avx_f32x8_complex_mul_riri(t1, twiddles);
                 // t3: --12--34 (vmovddup)
                 let t3 = f32x8_shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
                 // vblendps
@@ -222,26 +218,16 @@ impl<T: StaticParams> AvxRadix4Kernel3<T> {
                 full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
                     f32::consts::PI,
             ).exp();
-            // riri format, modified for sse3_f32x4_complex_mul_riri_inner
+            // riri format
             twiddles.push(f32x8::new(
                 c1.re,
-                -c1.im,
-                c2.re,
-                -c2.im,
-                c3.re,
-                -c3.im,
-                c4.re,
-                -c4.im,
-            ));
-            twiddles.push(f32x8::new(
                 c1.im,
-                c1.re,
-                c2.im,
                 c2.re,
-                c3.im,
+                c2.im,
                 c3.re,
-                c4.im,
+                c3.im,
                 c4.re,
+                c4.im,
             ));
 
             let c12 = c1 * c1;
@@ -250,23 +236,13 @@ impl<T: StaticParams> AvxRadix4Kernel3<T> {
             let c42 = c4 * c4;
             twiddles.push(f32x8::new(
                 c12.re,
-                -c12.im,
-                c22.re,
-                -c22.im,
-                c32.re,
-                -c32.im,
-                c42.re,
-                -c42.im,
-            ));
-            twiddles.push(f32x8::new(
                 c12.im,
-                c12.re,
-                c22.im,
                 c22.re,
-                c32.im,
+                c22.im,
                 c32.re,
-                c42.im,
+                c32.im,
                 c42.re,
+                c42.im,
             ));
 
             let c13 = c12 * c1;
@@ -275,23 +251,13 @@ impl<T: StaticParams> AvxRadix4Kernel3<T> {
             let c43 = c42 * c4;
             twiddles.push(f32x8::new(
                 c13.re,
-                -c13.im,
-                c23.re,
-                -c23.im,
-                c33.re,
-                -c33.im,
-                c43.re,
-                -c43.im,
-            ));
-            twiddles.push(f32x8::new(
                 c13.im,
-                c13.re,
-                c23.im,
                 c23.re,
-                c33.im,
+                c23.im,
                 c33.re,
-                c43.im,
+                c33.im,
                 c43.re,
+                c43.im,
             ));
         }
 
@@ -335,12 +301,9 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel3<T> {
                 let cur4 = &mut data[x + y * 8 + cparams.unit * 6] as *mut f32 as *mut f32x8;
 
                 // riri format
-                let twiddle_1a = twiddles[y * 6];
-                let twiddle_1b = twiddles[y * 6 + 1];
-                let twiddle_2a = twiddles[y * 6 + 2];
-                let twiddle_2b = twiddles[y * 6 + 3];
-                let twiddle_3a = twiddles[y * 6 + 4];
-                let twiddle_3b = twiddles[y * 6 + 5];
+                let twiddle_1 = twiddles[y * 3];
+                let twiddle_2 = twiddles[y * 3 + 1];
+                let twiddle_3 = twiddles[y * 3 + 2];
 
                 // riri format
                 let x1 = unsafe { I::read(cur1) };
@@ -351,17 +314,17 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel3<T> {
                 // apply twiddle factor
                 let x2 = x1;
                 let y2 = if pre_twiddle {
-                    avx_f32x8_complex_mul_riri_inner(y1, twiddle_1a, twiddle_1b)
+                    avx_f32x8_complex_mul_riri(y1, twiddle_1)
                 } else {
                     y1
                 };
                 let z2 = if pre_twiddle {
-                    avx_f32x8_complex_mul_riri_inner(z1, twiddle_2a, twiddle_2b)
+                    avx_f32x8_complex_mul_riri(z1, twiddle_2)
                 } else {
                     z1
                 };
                 let w2 = if pre_twiddle {
-                    avx_f32x8_complex_mul_riri_inner(w1, twiddle_3a, twiddle_3b)
+                    avx_f32x8_complex_mul_riri(w1, twiddle_3)
                 } else {
                     w1
                 };
@@ -387,17 +350,17 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel3<T> {
                 // apply twiddle factor
                 let x5 = x4;
                 let y5 = if post_twiddle {
-                    avx_f32x8_complex_mul_riri_inner(y4, twiddle_1a, twiddle_1b)
+                    avx_f32x8_complex_mul_riri(y4, twiddle_1)
                 } else {
                     y4
                 };
                 let z5 = if post_twiddle {
-                    avx_f32x8_complex_mul_riri_inner(z4, twiddle_2a, twiddle_2b)
+                    avx_f32x8_complex_mul_riri(z4, twiddle_2)
                 } else {
                     z4
                 };
                 let w5 = if post_twiddle {
-                    avx_f32x8_complex_mul_riri_inner(w4, twiddle_3a, twiddle_3b)
+                    avx_f32x8_complex_mul_riri(w4, twiddle_3)
                 } else {
                     w4
                 };
