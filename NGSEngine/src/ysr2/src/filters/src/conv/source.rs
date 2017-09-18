@@ -91,15 +91,20 @@ impl Source {
         let min_bs = self.groups[0].next_block.buffer.len() / 2;
         assert_eq!(range.start & !(min_bs - 1), (range.end - 1) & !(min_bs - 1));
 
-        let is_active = gen.is_active();
+        if !gen.is_active() {
+            // Untouched zone of the buffer must have been zero-filled
+            gen.skip(range.len());
+            return;
+        }
 
         // Generate on the largest `next_block`
         let (last, rest) = self.groups.split_last_mut().unwrap();
         let last_bs = last.next_block.buffer.len() / 2;
         let last_range = range.start & (last_bs - 1)..((range.end - 1) & (last_bs - 1)) + 1;
+
         gen.render(&mut [&mut last.next_block.buffer[..]], last_range.clone());
 
-        if is_active && !last.next_block.active {
+        if !last.next_block.active {
             last.next_block.active = true;
             last.num_active_blocks += 1;
         }
@@ -113,7 +118,7 @@ impl Source {
                     [last_range.clone()],
             );
 
-            if is_active && !partition.next_block.active {
+            if !partition.next_block.active {
                 partition.next_block.active = true;
                 partition.num_active_blocks += 1;
             }

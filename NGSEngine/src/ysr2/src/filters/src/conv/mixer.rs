@@ -351,17 +351,17 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                 if self.setup.group(i).use_tdr_on_source {
                     for &mut (_, ref mut source) in &mut sources[source_i_start[i]..source_i_end] {
                         let ref mut src_group = source.source.groups[i];
-                        for x in src_group.fresh_block.buffer.iter_mut() {
-                            *x = 0.0;
+                        if src_group.fresh_block.active {
+                            for x in src_group.fresh_block.buffer.iter_mut() {
+                                *x = 0.0;
+                            }
+                            src_group.fresh_block.active = false;
                         }
-                        self.env.fft_envs[i][0].transform(
-                            src_group
-                                .blocks
-                                .front_mut()
-                                .unwrap()
-                                .buffer
-                                .as_mut_slice(),
-                        );
+
+                        let first_block = src_group.blocks.front_mut().unwrap();
+                        if first_block.active {
+                            self.env.fft_envs[i][0].transform(first_block.buffer.as_mut_slice());
+                        }
                     }
                 }
                 if self.setup.group(i).use_tdr_on_mapping {
@@ -422,7 +422,6 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                     if tmp.active {
                         src_group.num_active_blocks -= 1;
                     }
-                    tmp.active = false;
 
                     if group_info.use_tdr_on_source {
                         // Let TDR routine do the (expensive) zero-fill
@@ -435,6 +434,7 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                                 .buffer
                                 .as_mut_slice(),
                         );
+                        tmp.active = false;
                         for x in tmp.buffer.iter_mut() {
                             *x = 0.0;
                         }
