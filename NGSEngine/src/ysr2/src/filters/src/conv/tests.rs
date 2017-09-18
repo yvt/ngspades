@@ -16,6 +16,7 @@ use conv::{IrSpectrum, MultiConvolver, ConvParams, ConvSetup};
 
 use utils::assert_num_slice_approx_eq;
 
+#[derive(Debug)]
 struct Player<T> {
     data: T,
     offset: usize,
@@ -85,7 +86,7 @@ fn naive_conv(out: &mut [f32], x: &[f32], y: &[f32]) {
     }
 }
 
-fn test_solo_with_patterns(setup: &ConvSetup, pat1: &[f32], pat2: &[f32]) {
+fn test_solo_with_patterns(setup: &ConvSetup, pat1: &[f32], pat2: &[f32], blk_size: usize) {
     let ir = IrSpectrum::from_ir(pat2, setup);
     let mut conv = MultiConvolver::new(setup, 1, SerialQueue);
     let src = conv.insert_source(Player::new(pat1));
@@ -102,7 +103,12 @@ fn test_solo_with_patterns(setup: &ConvSetup, pat1: &[f32], pat2: &[f32]) {
 
     naive_conv(&mut ref_buf[latency..], pat1, pat2);
 
-    conv.render(&mut [&mut out_buf[..]], 0..ref_buf.len());
+    let mut i = 0;
+    while i < ref_buf.len() {
+        let n = min(ref_buf.len() - i, blk_size);
+        conv.render(&mut [&mut out_buf[..]], i..i + n);
+        i += n;
+    }
 
     assert_num_slice_approx_eq(&out_buf, &ref_buf, 1.0e-5);
 }
@@ -116,7 +122,8 @@ fn test_solo_with_params(params: &ConvParams) {
 
     for pat1 in patterns.iter() {
         for pat2 in patterns.iter() {
-            test_solo_with_patterns(&setup, pat1, pat2);
+            test_solo_with_patterns(&setup, pat1, pat2, 16);
+            test_solo_with_patterns(&setup, pat1, pat2, 2);
         }
     }
 }

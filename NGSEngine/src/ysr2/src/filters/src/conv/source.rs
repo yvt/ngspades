@@ -22,6 +22,9 @@ pub struct SourceBlockGroup {
     pub blocks: VecDeque<SourceBlock>,
     pub next_block: SourceBlock,
 
+    /// The number of non-zero blocks in `blocks` and `next_block`.
+    pub num_active_blocks: usize,
+
     /// Used only if TDR is enabled
     pub fresh_block: SourceBlock,
 }
@@ -30,6 +33,8 @@ pub struct SourceBlockGroup {
 pub struct SourceBlock {
     /// `Vec` of the length twice as large as the block size.
     pub buffer: Vec<f32>,
+
+    pub active: bool,
 }
 
 impl Source {
@@ -45,9 +50,17 @@ impl Source {
                     let delay = setup.group(i).input_fdl_delay;
                     SourceBlockGroup {
                         blocks: (0..(num_blocks + delay))
-                            .map(|_| SourceBlock { buffer: vec![0.0; size2] })
+                            .map(|_| {
+                                SourceBlock {
+                                    buffer: vec![0.0; size2],
+                                    active: false,
+                                }
+                            })
                             .collect(),
-                        next_block: SourceBlock { buffer: vec![0.0; size2] },
+                        next_block: SourceBlock {
+                            buffer: vec![0.0; size2],
+                            active: false,
+                        },
                         fresh_block: SourceBlock {
                             buffer: vec![
                                 0.0;
@@ -57,7 +70,9 @@ impl Source {
                                     0
                                 }
                             ],
+                            active: false,
                         },
+                        num_active_blocks: 0,
                     }
                 })
                 .collect(),
@@ -76,11 +91,18 @@ impl Source {
         let min_bs = self.groups[0].next_block.buffer.len() / 2;
         assert_eq!(range.start & !(min_bs - 1), (range.end - 1) & !(min_bs - 1));
 
+        let is_active = gen.is_active();
+
         // Generate on the largest `next_block`
         let (last, rest) = self.groups.split_last_mut().unwrap();
         let last_bs = last.next_block.buffer.len() / 2;
         let last_range = range.start & (last_bs - 1)..((range.end - 1) & (last_bs - 1)) + 1;
         gen.render(&mut [&mut last.next_block.buffer[..]], last_range.clone());
+
+        if is_active && !last.next_block.active {
+            last.next_block.active = true;
+            last.num_active_blocks += 1;
+        }
 
         // And then copy the result to smaller ones
         for partition in rest.iter_mut() {
@@ -90,6 +112,11 @@ impl Source {
                 &last.next_block.buffer
                     [last_range.clone()],
             );
+
+            if is_active && !partition.next_block.active {
+                partition.next_block.active = true;
+                partition.num_active_blocks += 1;
+            }
         }
     }
 }

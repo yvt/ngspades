@@ -35,6 +35,7 @@ pub unsafe trait Queue: Send + Sync {
 }
 
 /// Serial implementation of `Queue`.
+#[derive(Clone, Copy, Debug)]
 pub struct SerialQueue;
 
 unsafe impl Queue for SerialQueue {

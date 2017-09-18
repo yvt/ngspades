@@ -21,11 +21,20 @@ use conv::source::Source;
 ///
 /// # Concepts
 ///
-/// - **Sources** are signal sources. Duh.
-/// - Each **mapping** represents a convolution of a source and `IrSpectrum`,
-///   and also contains a channel index to write its output to.
+///  - **Sources** are signal sources. Duh.
+///  - Each **mapping** represents a convolution of a source and `IrSpectrum`,
+///    and also contains a channel index to write its output to.
 ///
-/// # Time-Distributing Register: A Method for Uniform Execution Time Scheduling on Large Partitions
+/// # Optimizations
+///
+/// This implementation makes use of the following performance optimizations:
+///
+///  - A time distribution scheme (described below) is employed to uniform the
+///    execution time of each call to `render`.
+///  - Inactive sources (i.e. those with `Generator::is_active() == false`) and
+///    mappings are excluded from the computation.
+///
+/// ## Time-Distributing Register: A Method for Uniform Execution Time Scheduling on Large Partitions
 ///
 /// This convolution engine attempts to amortize the cost of large partitions by
 /// employing the time-distribution scheme described below.
@@ -219,7 +228,7 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> MultiConvolver<T, I, Q> {
     /// Remove a source and return the `Generator`.
     ///
     /// All mappings associated with the source must be removed before
-    /// the following call to `render` or it'll panic.
+    /// the following call to `render`.
     pub fn remove_source(&mut self, source_id: &SourceId) -> Option<T> {
         self.sources.remove(source_id).map(|x| x.generator)
     }
@@ -249,8 +258,29 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
         let max_block_size = 1usize << setup.params().blocks.last().unwrap().0;
 
         // Ordered by `SourceId.0` or `MappingId.0`
-        let mut sources: Vec<_> = self.sources.iter_mut().collect();
-        let mut mappings: Vec<_> = self.mappings.iter_mut().collect();
+        let mut sources: Vec<_> = self.sources
+            .iter_mut()
+            .filter_map(|(source_id, source)| {
+                let is_active = source.generator.is_active() ||
+                    source.source.groups.iter().any(|g| g.num_active_blocks > 0);
+                if is_active {
+                    Some((source_id, source))
+                } else {
+                    source.generator.skip(range.len());
+                    None
+                }
+            })
+            .collect();
+        let mut mappings: Vec<_> = self.mappings
+            .iter_mut()
+            .filter_map(|(mapping_id, mapping)| {
+                // Choose only the mappings with active sources
+                sources
+                    .binary_search_by(|probe| probe.0.cmp(&mapping.source_id))
+                    .ok()
+                    .map(|i| (mapping_id, mapping, i))
+            })
+            .collect();
 
         let mut source_i_start: Vec<_> = group_states
             .iter()
@@ -323,7 +353,7 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                     }
                 }
                 if self.setup.group(i).use_tdr_on_mapping {
-                    for &mut (_, ref mut mapping) in
+                    for &mut (_, ref mut mapping, _) in
                         &mut mappings[mapping_i_start[i]..mapping_i_end]
                     {
                         // TODO
@@ -376,6 +406,12 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                 for &mut (_, ref mut source) in sources.iter_mut() {
                     let ref mut src_group = source.source.groups[i];
                     let mut tmp = src_group.blocks.pop_back().unwrap();
+
+                    if tmp.active {
+                        src_group.num_active_blocks -= 1;
+                    }
+                    tmp.active = false;
+
                     if group_info.use_tdr_on_source {
                         // Let TDR routine do the (expensive) zero-fill
                         swap(&mut tmp, &mut src_group.fresh_block);
@@ -402,16 +438,18 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                         *x = 0.0;
                     }
                 }
-                for &mut (_, ref mut mapping) in mappings.iter_mut() {
-                    let source_i = sources
-                        .binary_search_by(|probe| probe.0.cmp(&mapping.source_id))
-                        .unwrap();
+                for &mut (_, ref mut mapping, source_i) in mappings.iter_mut() {
                     let ref source: Source = sources[source_i].1.source;
                     let ir: &IrSpectrum = mapping.ir.borrow();
                     for k in 0..ir.num_blocks_for_size(i) {
+                        let ref block = source.groups[i].blocks[k + group_info.input_fdl_delay];
+                        if !block.active {
+                            continue;
+                        }
+
                         spectrum_convolve_additive(
                             preoutput_buffers[mapping.output].as_mut_slice(),
-                            &source.groups[i].blocks[k + group_info.input_fdl_delay].buffer,
+                            &block.buffer,
                             ir.get(i, k),
                         );
                     }
@@ -511,4 +549,3 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
 fn mul_usize_x(x: usize, y: usize, fract: u32) -> usize {
     ((x as u64).checked_mul(y as u64).unwrap() >> fract) as usize
 }
-
