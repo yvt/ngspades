@@ -12,6 +12,9 @@ bin
 obj
 NGSEngine/target
 
+# But not source code for executables!
+!NGSEngine/src/yfft/src/bin
+
 # Cache files
 *.pyc
 
