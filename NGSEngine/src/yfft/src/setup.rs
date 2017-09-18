@@ -154,6 +154,7 @@ pub fn factorize(mut x: usize) -> Vec<usize> {
         x /= radix;
     }
 
+    vec.reverse();
     vec
 }
 
