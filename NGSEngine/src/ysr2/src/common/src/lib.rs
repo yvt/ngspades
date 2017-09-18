@@ -12,4 +12,5 @@ extern crate cgmath;
 pub mod dispatch;
 pub mod slicezip;
 pub mod stream;
+pub mod utils;
 pub mod values;

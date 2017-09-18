@@ -15,6 +15,7 @@ use yfft;
 use ysr2_common::stream::Generator;
 use ysr2_common::dispatch::Queue;
 use ysr2_common::values::DynamicSlerpVector3;
+use ysr2_common::utils::spectrum_convolve_inplace;
 use ysr2_kemar_data::{Sample, KEMAR_DATA};
 
 use Panner;
@@ -560,20 +561,20 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
                             let ref bin_info: BinInfo = bin_table.bins[active_bins[i]];
 
                             if bin_info.reversed {
-                                spectrum_convolve(
+                                spectrum_convolve_inplace(
                                     &mut bin.buffer[0],
                                     &bin_info.sample.ir_fft_hc[1],
                                 );
-                                spectrum_convolve(
+                                spectrum_convolve_inplace(
                                     &mut bin.buffer[1],
                                     &bin_info.sample.ir_fft_hc[0],
                                 );
                             } else {
-                                spectrum_convolve(
+                                spectrum_convolve_inplace(
                                     &mut bin.buffer[0],
                                     &bin_info.sample.ir_fft_hc[0],
                                 );
-                                spectrum_convolve(
+                                spectrum_convolve_inplace(
                                     &mut bin.buffer[1],
                                     &bin_info.sample.ir_fft_hc[1],
                                 );
@@ -729,17 +730,3 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
     }
 }
 
-/// Perform convolution given two data serieses in the half complex format in
-/// the frequency domain.
-fn spectrum_convolve(buffer: &mut [f32; 256], ir_fq: &[f32; 256]) {
-    // A (cyclic) convolution in the time domain can be accomplished by the
-    // pointwise product in the frequency domain.
-    buffer[0] *= ir_fq[0];
-    buffer[1] *= ir_fq[1];
-    for i in 1..128 {
-        let (r1, i1) = (buffer[i * 2], buffer[i * 2 + 1]);
-        let (r2, i2) = (ir_fq[i * 2], ir_fq[i * 2 + 1]);
-        buffer[i * 2] = r1 * r2 - i1 * i2;
-        buffer[i * 2 + 1] = r1 * i2 + r2 * i1;
-    }
-}
