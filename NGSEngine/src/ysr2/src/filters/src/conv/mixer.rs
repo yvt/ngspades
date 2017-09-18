@@ -225,6 +225,18 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> MultiConvolver<T, I, Q> {
         Ok(id)
     }
 
+    pub fn get_source_generator(&self, source_id: &SourceId) -> Option<&T> {
+        self.sources.get(source_id).map(|x| &x.generator)
+    }
+
+    pub fn get_source_generator_mut(&mut self, source_id: &SourceId) -> Option<&mut T> {
+        self.sources.get_mut(source_id).map(|x| &mut x.generator)
+    }
+
+    pub fn get_mapping_ir(&self, mapping_id: &MappingId) -> Option<&I> {
+        self.mappings.get(mapping_id).map(|x| &x.ir)
+    }
+
     /// Remove a source and return the `Generator`.
     ///
     /// All mappings associated with the source must be removed before
