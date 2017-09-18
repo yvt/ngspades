@@ -44,7 +44,8 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     {
 
         match cparams.unit {
-            unit if unit % 8 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
+            // heuristics
+            unit if unit % 8 == 0 && cparams.size <= 2048 => Some(Box::new(AlignReqKernelWrapper::new(
                 AvxRadix4Kernel4::new(cparams, sparams),
             ))),
             unit if unit % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
