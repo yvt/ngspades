@@ -179,7 +179,7 @@ pub unsafe fn new_x86_avx_radix4_bit_reversal_kernel<T>(indices: &Vec<usize>) ->
 where
     T: Num,
 {
-    if indices.len() < 16 || indices.len() % 16 != 0 {
+    if indices.len() < 32 || indices.len() % 32 != 0 {
         // doesn't benefit much / requires an unaligned access
         return None;
     }
@@ -208,41 +208,43 @@ impl<T: Num> AlignReqKernel<T> for AvxDWordRadix4BitReversalKernel {
         let mut wa = unsafe { SliceAccessor::new(&mut params.work_area[0..size * 8]) };
         wa.copy_from_slice(*data);
         let mut i = 0;
-        while i + 3 < size {
-            let index1 = indices[i];
-            let index2 = indices[i + 1];
-            let index3 = indices[i + 2];
-            let index4 = indices[i + 3];
+        while i + 7 < size {
+            for _ in 0..2 {
+                let index1 = indices[i];
+                let index2 = indices[i + 1];
+                let index3 = indices[i + 2];
+                let index4 = indices[i + 3];
 
-            let src1 = unsafe { ptr::read_unaligned(&wa[index1 * 2] as *const T as *const u64x4) };
-            let src2 = unsafe { ptr::read_unaligned(&wa[index2 * 2] as *const T as *const u64x4) };
-            let src3 = unsafe { ptr::read_unaligned(&wa[index3 * 2] as *const T as *const u64x4) };
-            let src4 = unsafe { ptr::read_unaligned(&wa[index4 * 2] as *const T as *const u64x4) };
+                let src1 = unsafe { ptr::read_unaligned(&wa[index1 * 2] as *const T as *const u64x4) };
+                let src2 = unsafe { ptr::read_unaligned(&wa[index2 * 2] as *const T as *const u64x4) };
+                let src3 = unsafe { ptr::read_unaligned(&wa[index3 * 2] as *const T as *const u64x4) };
+                let src4 = unsafe { ptr::read_unaligned(&wa[index4 * 2] as *const T as *const u64x4) };
 
-            let t1a = u64x4_shuffle!(src1, src2, [0, 4, 2, 6]); // unpcklpd
-            let t2a = u64x4_shuffle!(src3, src4, [0, 4, 2, 6]); // unpcklpd
+                let t1a = u64x4_shuffle!(src1, src2, [0, 4, 2, 6]); // unpcklpd
+                let t2a = u64x4_shuffle!(src3, src4, [0, 4, 2, 6]); // unpcklpd
 
-            let t1b = u64x4_shuffle!(src1, src2, [1, 5, 3, 7]); // unpckhpd
-            let t2b = u64x4_shuffle!(src3, src4, [1, 5, 3, 7]); // unpckhpd
+                let t1b = u64x4_shuffle!(src1, src2, [1, 5, 3, 7]); // unpckhpd
+                let t2b = u64x4_shuffle!(src3, src4, [1, 5, 3, 7]); // unpckhpd
 
-            let out1: u64x4 = u64x4_shuffle!(t1a, t2a, [0, 1, 4, 5]); // inserti128/perm2f128
-            let out2: u64x4 = u64x4_shuffle!(t1b, t2b, [0, 1, 4, 5]); // inserti128/perm2f128
-            let out3: u64x4 = u64x4_shuffle!(t1a, t2a, [2, 3, 6, 7]); // inserti128/perm2f128
-            let out4: u64x4 = u64x4_shuffle!(t1b, t2b, [2, 3, 6, 7]); // inserti128/perm2f128
+                let out1: u64x4 = u64x4_shuffle!(t1a, t2a, [0, 1, 4, 5]); // inserti128/perm2f128
+                let out2: u64x4 = u64x4_shuffle!(t1b, t2b, [0, 1, 4, 5]); // inserti128/perm2f128
+                let out3: u64x4 = u64x4_shuffle!(t1a, t2a, [2, 3, 6, 7]); // inserti128/perm2f128
+                let out4: u64x4 = u64x4_shuffle!(t1b, t2b, [2, 3, 6, 7]); // inserti128/perm2f128
 
-            let dest1: *mut u64x4 = &mut data[i * 2] as *mut T as *mut u64x4;
-            let dest2: *mut u64x4 = &mut data[(i + size) * 2] as *mut T as *mut u64x4;
-            let dest3: *mut u64x4 = &mut data[(i + size * 2) * 2] as *mut T as *mut u64x4;
-            let dest4: *mut u64x4 = &mut data[(i + size * 3) * 2] as *mut T as *mut u64x4;
+                let dest1: *mut u64x4 = &mut data[i * 2] as *mut T as *mut u64x4;
+                let dest2: *mut u64x4 = &mut data[(i + size) * 2] as *mut T as *mut u64x4;
+                let dest3: *mut u64x4 = &mut data[(i + size * 2) * 2] as *mut T as *mut u64x4;
+                let dest4: *mut u64x4 = &mut data[(i + size * 3) * 2] as *mut T as *mut u64x4;
 
-            unsafe {
-                I::write(dest1, out1);
-                I::write(dest2, out2);
-                I::write(dest3, out3);
-                I::write(dest4, out4);
+                unsafe {
+                    I::write(dest1, out1);
+                    I::write(dest2, out2);
+                    I::write(dest3, out3);
+                    I::write(dest4, out4);
+                }
+
+                i += 4;
             }
-
-            i += 4;
         }
         while i < size {
             let index = indices[i];

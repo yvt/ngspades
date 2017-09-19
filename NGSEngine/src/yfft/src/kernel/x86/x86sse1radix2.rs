@@ -136,6 +136,8 @@ impl<T: StaticParams> SseRadix2Kernel2<T> {
 
 impl<T: StaticParams> AlignReqKernel<f32> for SseRadix2Kernel2<T> {
     fn transform<I: AlignInfo>(&self, params: &mut KernelParams<f32>) {
+        // TODO: SSE3 version of this kernel
+        // (SSE3 can perform complex multiplication in the RIRI format efficiently)
         let cparams = &self.cparams;
         let sparams = &self.sparams;
         let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
