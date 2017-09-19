@@ -16,7 +16,7 @@
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
 use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
                    AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
-use super::super::super::simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri};
+use simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri, avx_fma_f32x8_fmadd, avx_fma_f32x8_fmsub};
 
 use num_complex::Complex;
 use num_iter::range_step;
@@ -576,32 +576,32 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel4<T> {
                 let x3r = x2r;
                 let x3i = x2i;
                 let y3r = if pre_twiddle {
-                    y2r * twiddle1_r - y2i * twiddle1_i
+                    avx_fma_f32x8_fmsub(y2r, twiddle1_r, y2i * twiddle1_i)
                 } else {
                     y2r
                 };
                 let y3i = if pre_twiddle {
-                    y2r * twiddle1_i + y2i * twiddle1_r
+                    avx_fma_f32x8_fmadd(y2r, twiddle1_i, y2i * twiddle1_r)
                 } else {
                     y2i
                 };
                 let z3r = if pre_twiddle {
-                    z2r * twiddle2_r - z2i * twiddle2_i
+                    avx_fma_f32x8_fmsub(z2r, twiddle2_r, z2i * twiddle2_i)
                 } else {
                     z2r
                 };
                 let z3i = if pre_twiddle {
-                    z2r * twiddle2_i + z2i * twiddle2_r
+                    avx_fma_f32x8_fmadd(z2r, twiddle2_i, z2i * twiddle2_r)
                 } else {
                     z2i
                 };
                 let w3r = if pre_twiddle {
-                    w2r * twiddle3_r - w2i * twiddle3_i
+                    avx_fma_f32x8_fmsub(w2r, twiddle3_r, w2i * twiddle3_i)
                 } else {
                     w2r
                 };
                 let w3i = if pre_twiddle {
-                    w2r * twiddle3_i + w2i * twiddle3_r
+                    avx_fma_f32x8_fmadd(w2r, twiddle3_i, w2i * twiddle3_r)
                 } else {
                     w2i
                 };
@@ -630,32 +630,32 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel4<T> {
                 let x6r = x5r;
                 let x6i = x5i;
                 let y6r = if post_twiddle {
-                    y5r * twiddle1_r - y5i * twiddle1_i
+                    avx_fma_f32x8_fmsub(y5r, twiddle1_r, y5i * twiddle1_i)
                 } else {
                     y5r
                 };
                 let y6i = if post_twiddle {
-                    y5r * twiddle1_i + y5i * twiddle1_r
+                    avx_fma_f32x8_fmadd(y5r, twiddle1_i, y5i * twiddle1_r)
                 } else {
                     y5i
                 };
                 let z6r = if post_twiddle {
-                    z5r * twiddle2_r - z5i * twiddle2_i
+                    avx_fma_f32x8_fmsub(z5r, twiddle2_r, z5i * twiddle2_i)
                 } else {
                     z5r
                 };
                 let z6i = if post_twiddle {
-                    z5r * twiddle2_i + z5i * twiddle2_r
+                    avx_fma_f32x8_fmadd(z5r, twiddle2_i, z5i * twiddle2_r)
                 } else {
                     z5i
                 };
                 let w6r = if post_twiddle {
-                    w5r * twiddle3_r - w5i * twiddle3_i
+                    avx_fma_f32x8_fmsub(w5r, twiddle3_r, w5i * twiddle3_i)
                 } else {
                     w5r
                 };
                 let w6i = if post_twiddle {
-                    w5r * twiddle3_i + w5i * twiddle3_r
+                    avx_fma_f32x8_fmadd(w5r, twiddle3_i, w5i * twiddle3_r)
                 } else {
                     w5i
                 };

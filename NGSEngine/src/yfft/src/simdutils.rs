@@ -8,6 +8,7 @@ pub use simd::{Simd, f32x4, i32x4, u32x4};
 #[cfg(target_feature = "sse2")]
 pub use simd::x86::sse2::{f64x2, u64x2};
 #[cfg(target_feature = "sse3")]
+#[allow(unused_imports)]
 use simd::x86::sse3::Sse3F32x4;
 #[cfg(target_feature = "avx")]
 pub use simd::x86::avx::{i32x8, f32x8, u32x8, AvxF32x8, u64x4};
@@ -61,6 +62,14 @@ extern "platform-intrinsic" {
     pub fn simd_shuffle4<T: Simd, U: Simd<Elem = T::Elem>>(x: T, y: T, idx: [u32; 4]) -> U;
     pub fn simd_shuffle8<T: Simd, U: Simd<Elem = T::Elem>>(x: T, y: T, idx: [u32; 8]) -> U;
     pub fn simd_shuffle16<T: Simd, U: Simd<Elem = T::Elem>>(x: T, y: T, idx: [u32; 16]) -> U;
+    #[cfg(all(target_feature = "fma"))]
+    pub fn x86_mm_fmaddsub_ps(x: f32x4, y: f32x4, z: f32x4) -> f32x4;
+    #[cfg(all(target_feature = "fma", target_feature = "avx"))]
+    pub fn x86_mm256_fmadd_ps(x: f32x8, y: f32x8, z: f32x8) -> f32x8;
+    #[cfg(all(target_feature = "fma", target_feature = "avx"))]
+    pub fn x86_mm256_fmsub_ps(x: f32x8, y: f32x8, z: f32x8) -> f32x8;
+    #[cfg(all(target_feature = "fma", target_feature = "avx"))]
+    pub fn x86_mm256_fmaddsub_ps(x: f32x8, y: f32x8, z: f32x8) -> f32x8;
 }
 
 #[test]
@@ -140,6 +149,20 @@ fn test_f32x4_complex_mul_rrii() {
     assert_eq!(f32x4_to_array(z), [d1.re, d2.re, d1.im, d2.im]);
 }
 
+#[cfg(all(target_feature = "sse3", not(target_feature = "fma")))]
+#[allow(dead_code)]
+pub fn sse3_fma_f32x4_fmaddsub(x: f32x4, y: f32x4, z: f32x4) -> f32x4 {
+    (x * y).addsub(z)
+}
+
+#[cfg(all(target_feature = "sse3", target_feature = "fma"))]
+#[allow(dead_code)]
+pub fn sse3_fma_f32x4_fmaddsub(x: f32x4, y: f32x4, z: f32x4) -> f32x4 {
+    unsafe {
+        x86_mm_fmaddsub_ps(x, y, z)
+    }
+}
+
 #[cfg(target_feature = "sse3")]
 #[inline]
 #[allow(dead_code)]
@@ -150,7 +173,7 @@ pub fn sse3_f32x4_complex_mul_riri(x: f32x4, y: f32x4) -> f32x4 {
     let x2 = f32x4_shuffle!(x, x, [1, 1, 3, 3]); // movshdup
     let y1 = y;
     let y2 = f32x4_shuffle!(y, y, [1, 0, 3, 2]); // shufps
-    let z = (x1 * y1).addsub(x2 * y2); // vaddsubps
+    let z = sse3_fma_f32x4_fmaddsub(x1, y1, x2 * y2); // vaddsubps/vfmaddsubXXXps
     return z;
 }
 
@@ -173,6 +196,48 @@ fn test_sse3_f32x4_complex_mul_riri() {
     assert_eq!(f32x4_to_array(z), [d1.re, d1.im, d2.re, d2.im]);
 }
 
+#[cfg(all(target_feature = "avx", not(target_feature = "fma")))]
+#[allow(dead_code)]
+pub fn avx_fma_f32x8_fmadd(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
+    x * y + z
+}
+
+#[cfg(all(target_feature = "avx", target_feature = "fma"))]
+#[allow(dead_code)]
+pub fn avx_fma_f32x8_fmadd(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
+    unsafe {
+        x86_mm256_fmadd_ps(x, y, z)
+    }
+}
+
+#[cfg(all(target_feature = "avx", not(target_feature = "fma")))]
+#[allow(dead_code)]
+pub fn avx_fma_f32x8_fmsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
+    x * y - z
+}
+
+#[cfg(all(target_feature = "avx", target_feature = "fma"))]
+#[allow(dead_code)]
+pub fn avx_fma_f32x8_fmsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
+    unsafe {
+        x86_mm256_fmsub_ps(x, y, z)
+    }
+}
+
+#[cfg(all(target_feature = "avx", not(target_feature = "fma")))]
+#[allow(dead_code)]
+pub fn avx_fma_f32x8_fmaddsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
+    (x * y).addsub(z)
+}
+
+#[cfg(all(target_feature = "avx", target_feature = "fma"))]
+#[allow(dead_code)]
+pub fn avx_fma_f32x8_fmaddsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
+    unsafe {
+        x86_mm256_fmaddsub_ps(x, y, z)
+    }
+}
+
 #[cfg(target_feature = "avx")]
 #[inline]
 #[allow(dead_code)]
@@ -183,7 +248,7 @@ pub fn avx_f32x8_complex_mul_riri(x: f32x8, y: f32x8) -> f32x8 {
     let x2 = f32x8_shuffle!(x, x, [1, 1, 3, 3, 5, 5, 7, 7]); // vmovshdup
     let y1 = y;
     let y2 = f32x8_shuffle!(y, y, [1, 0, 3, 2, 5, 4, 7, 6]); // vpermilps
-    let z = (x1 * y1).addsub(x2 * y2); // vaddsubps
+    let z = avx_fma_f32x8_fmaddsub(x1, y1, x2 * y2); // vaddsubps/vfmaddsubXXXps
     return z;
 }
 
