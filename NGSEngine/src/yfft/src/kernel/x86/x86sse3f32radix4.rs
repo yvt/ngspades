@@ -20,7 +20,7 @@
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
 use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
                    AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
-use super::super::super::simdutils::{f32x4_bitxor, sse3_f32x4_complex_mul_riri_inner};
+use super::super::super::simdutils::{f32x4_bitxor, sse3_f32x4_complex_mul_riri};
 
 use num_complex::Complex;
 use num_iter::range_step;
@@ -87,19 +87,16 @@ impl<T: StaticParams> Sse3Radix4Kernel2<T> {
                 full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
                     f32::consts::PI,
             ).exp();
-            // riri format, modified for sse3_f32x4_complex_mul_riri_inner
-            twiddles.push(f32x4::new(c1.re, -c1.im, c2.re, -c2.im));
-            twiddles.push(f32x4::new(c1.im, c1.re, c2.im, c2.re));
+            // riri format
+            twiddles.push(f32x4::new(c1.re, c1.im, c2.re, c2.im));
 
             let c12 = c1 * c1;
             let c22 = c2 * c2;
-            twiddles.push(f32x4::new(c12.re, -c12.im, c22.re, -c22.im));
-            twiddles.push(f32x4::new(c12.im, c12.re, c22.im, c22.re));
+            twiddles.push(f32x4::new(c12.re, c12.im, c22.re, c22.im));
 
             let c13 = c12 * c1;
             let c23 = c22 * c2;
-            twiddles.push(f32x4::new(c13.re, -c13.im, c23.re, -c23.im));
-            twiddles.push(f32x4::new(c13.im, c13.re, c23.im, c23.re));
+            twiddles.push(f32x4::new(c13.re, c13.im, c23.re, c23.im));
         }
 
         Self {
@@ -132,12 +129,9 @@ impl<T: StaticParams> AlignReqKernel<f32> for Sse3Radix4Kernel2<T> {
                 let cur4 = &mut data[x + y * 4 + cparams.unit * 6] as *mut f32 as *mut f32x4;
 
                 // riri format
-                let twiddle_1a = twiddles[y * 6];
-                let twiddle_1b = twiddles[y * 6 + 1];
-                let twiddle_2a = twiddles[y * 6 + 2];
-                let twiddle_2b = twiddles[y * 6 + 3];
-                let twiddle_3a = twiddles[y * 6 + 4];
-                let twiddle_3b = twiddles[y * 6 + 5];
+                let twiddle_1 = twiddles[y * 3];
+                let twiddle_2 = twiddles[y * 3 + 1];
+                let twiddle_3 = twiddles[y * 3 + 2];
 
                 // riri format
                 let x1 = unsafe { I::read(cur1) };
@@ -148,17 +142,17 @@ impl<T: StaticParams> AlignReqKernel<f32> for Sse3Radix4Kernel2<T> {
                 // apply twiddle factor
                 let x2 = x1;
                 let y2 = if pre_twiddle {
-                    sse3_f32x4_complex_mul_riri_inner(y1, twiddle_1a, twiddle_1b)
+                    sse3_f32x4_complex_mul_riri(y1, twiddle_1)
                 } else {
                     y1
                 };
                 let z2 = if pre_twiddle {
-                    sse3_f32x4_complex_mul_riri_inner(z1, twiddle_2a, twiddle_2b)
+                    sse3_f32x4_complex_mul_riri(z1, twiddle_2)
                 } else {
                     z1
                 };
                 let w2 = if pre_twiddle {
-                    sse3_f32x4_complex_mul_riri_inner(w1, twiddle_3a, twiddle_3b)
+                    sse3_f32x4_complex_mul_riri(w1, twiddle_3)
                 } else {
                     w1
                 };
@@ -181,17 +175,17 @@ impl<T: StaticParams> AlignReqKernel<f32> for Sse3Radix4Kernel2<T> {
                 // apply twiddle factor
                 let x5 = x4;
                 let y5 = if post_twiddle {
-                    sse3_f32x4_complex_mul_riri_inner(y4, twiddle_1a, twiddle_1b)
+                    sse3_f32x4_complex_mul_riri(y4, twiddle_1)
                 } else {
                     y4
                 };
                 let z5 = if post_twiddle {
-                    sse3_f32x4_complex_mul_riri_inner(z4, twiddle_2a, twiddle_2b)
+                    sse3_f32x4_complex_mul_riri(z4, twiddle_2)
                 } else {
                     z4
                 };
                 let w5 = if post_twiddle {
-                    sse3_f32x4_complex_mul_riri_inner(w4, twiddle_3a, twiddle_3b)
+                    sse3_f32x4_complex_mul_riri(w4, twiddle_3)
                 } else {
                     w4
                 };

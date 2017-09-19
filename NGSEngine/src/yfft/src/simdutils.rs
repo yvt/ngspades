@@ -140,25 +140,6 @@ fn test_f32x4_complex_mul_rrii() {
     assert_eq!(f32x4_to_array(z), [d1.re, d2.re, d1.im, d2.im]);
 }
 
-/// See `sse3_f32x4_complex_mul_riri` for usage.
-#[cfg(target_feature = "sse3")]
-#[inline]
-pub fn sse3_f32x4_complex_mul_riri_inner(x: f32x4, y1: f32x4, y2: f32x4) -> f32x4 {
-    // (r1, i1, ...) * (r3, i3, ...)
-    //   --> (r1 * r3 - i1 * i3, r1 * i3 + i1 * r3, ...)
-
-    // (r1 * r3, -i1 * i3, ...)
-    let t1 = x * y1;
-
-    // (r1 * i3, i1 * r3, ...)
-    let t2 = x * y2;
-
-    // (r1 * r3 - i1 * i3, ..., r1 * i3 + i1 * r3, ...)
-    let t3 = t1.hadd(t2);
-
-    f32x4_shuffle!(t3, t3, [0, 2, 5, 7])
-}
-
 #[cfg(target_feature = "sse3")]
 #[inline]
 #[allow(dead_code)]
