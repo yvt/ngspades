@@ -131,6 +131,22 @@ pub struct SourceId(u64);
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Clone)]
 pub struct MappingId(u64);
 
+#[derive(Debug)]
+pub struct SourceBuilder<'a, T: 'a, I: 'a, Q: 'a> {
+    parent: &'a mut MultiConvolver<T, I, Q>,
+    generator: T,
+    num_channels: usize,
+}
+
+#[derive(Debug)]
+pub struct MappingBuilder<'a, T: 'a, I: 'a, Q: 'a> {
+    parent: &'a mut MultiConvolver<T, I, Q>,
+    source_id: SourceId,
+    ir: I,
+    in_channel: usize,
+    out_channel: usize,
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum MultiConvolverMappingError {
     InvalidSourceId,
@@ -190,62 +206,47 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> MultiConvolver<T, I, Q> {
         }
     }
 
-    pub fn insert_source(&mut self, generator: T) -> SourceId {
-        let id = SourceId(self.next_source_id);
-        self.next_source_id = self.next_source_id.checked_add(1).unwrap();
-        assert!(
-            self.sources
-                .insert(
-                    id,
-                    McSource {
-                        source: Source::new(&self.setup),
-                        generator,
-                    },
-                )
-                .is_none()
-        );
-        id
-    }
-
-    pub fn insert_mapping(
-        &mut self,
-        source_id: &SourceId,
-        ir: I,
-        out_channel: usize,
-    ) -> Result<MappingId, MultiConvolverMappingError> {
-        if self.sources.get(source_id).is_none() {
-            return Err(MultiConvolverMappingError::InvalidSourceId);
+    /// Constructs `SourceBuilder` to be used to insert a source into this
+    /// `MultiConvolver`.
+    pub fn build_source(&mut self, generator: T) -> SourceBuilder<T, I, Q> {
+        SourceBuilder {
+            parent: self,
+            generator,
+            num_channels: 1,
         }
-
-        // TODO: check setup?
-
-        let id = MappingId(self.next_mapping_id);
-        self.next_mapping_id = self.next_mapping_id.checked_add(1).unwrap();
-        self.mappings.insert(
-            id,
-            Mapping {
-                ir,
-                source_id: *source_id,
-                output: out_channel,
-            },
-        );
-
-        Ok(id)
     }
 
+    /// Constructs `SourceBuilder` to be used to insert a mapping into this
+    /// `MultiConvolver`.
+    pub fn build_mapping(&mut self, source_id: &SourceId, ir: I) -> MappingBuilder<T, I, Q> {
+        MappingBuilder {
+            parent: self,
+            source_id: *source_id,
+            ir,
+            in_channel: 0,
+            out_channel: 0,
+        }
+    }
+
+    /// Retrieve a reference to the generator associated with the specified
+    /// source.
     pub fn get_source_generator(&self, source_id: &SourceId) -> Option<&T> {
         self.sources.get(source_id).map(|x| &x.generator)
     }
 
+    /// Retrieve a mutable reference to the generator associated with the
+    /// specified source.
     pub fn get_source_generator_mut(&mut self, source_id: &SourceId) -> Option<&mut T> {
         self.sources.get_mut(source_id).map(|x| &mut x.generator)
     }
 
+    /// Retrieve a reference to the `I` (used to borrow a `IrSpectrum`)
+    /// associated with the specified mapping.
     pub fn get_mapping_ir(&self, mapping_id: &MappingId) -> Option<&I> {
         self.mappings.get(mapping_id).map(|x| &x.ir)
     }
 
-    /// Remove a source and return the `Generator`.
+    /// Remove a source and return the associated `Generator`.
     ///
     /// All mappings associated with the source must be removed before
     /// the following call to `render`.
@@ -253,7 +254,7 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> MultiConvolver<T, I, Q> {
         self.sources.remove(source_id).map(|x| x.generator)
     }
 
-    /// Remove a mapping and return the `IrSpectrum`.
+    /// Remove a mapping and return the associated `IrSpectrum`.
     ///
     /// Mathematically, this behaves like a multiplication on the *result* of
     /// the convolution with the function `1 - step(t - T)`. Therefore, an
@@ -261,6 +262,91 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> MultiConvolver<T, I, Q> {
     /// was removed when it is still active.
     pub fn remove_mapping(&mut self, mapping_id: &MappingId) -> Option<I> {
         self.mappings.remove(mapping_id).map(|x| x.ir)
+    }
+}
+
+impl<'a, T: 'a, I: 'a, Q: 'a> SourceBuilder<'a, T, I, Q> {
+    /// Set the number of input channels.
+    ///
+    /// Currently, the number of input channels must be exactly `1`.
+    pub fn num_channels(mut self, num_channels: usize) -> Self {
+        if num_channels != 1 {
+            unimplemented!();
+        }
+        self.num_channels = num_channels;
+        self
+    }
+
+    /// Insert a source to the `MultiConvolver` this `SourceBuilder` was
+    /// created from.
+    pub fn insert(self) -> SourceId {
+        let mc = self.parent;
+        let id = SourceId(mc.next_source_id);
+        mc.next_source_id = mc.next_source_id.checked_add(1).unwrap();
+        assert!(
+            mc.sources
+                .insert(
+                    id,
+                    McSource {
+                        source: Source::new(&mc.setup),
+                        generator: self.generator,
+                    },
+                )
+                .is_none()
+        );
+        id
+    }
+}
+
+impl<'a, T: 'a, I: 'a, Q: 'a> MappingBuilder<'a, T, I, Q> {
+    /// Set the input (source) channel index. Defaults to `0`.
+    ///
+    /// The input channel index must be less than the number of input channels,
+    /// which is specified by `SourceBuilder::num_channels`.
+    pub fn in_channel(mut self, channel_index: usize) -> Self {
+        if channel_index != 0 {
+            unimplemented!();
+        }
+        self.in_channel = channel_index;
+        self
+    }
+
+    /// Set the output channel index. Defaults to `0`.
+    ///
+    /// The output channel index must be less than the number of output
+    /// channels.
+    pub fn out_channel(mut self, channel_index: usize) -> Self {
+        assert!(
+            channel_index < self.parent.num_outputs,
+            "channel index out of bounds"
+        );
+        self.in_channel = channel_index;
+        self
+    }
+
+    /// Insert a mapping to the `MultiConvolver` this `MappingBuilder` was
+    /// created from.
+    pub fn insert(self) -> Result<MappingId, MultiConvolverMappingError> {
+        let mc = self.parent;
+        if mc.sources.get(&self.source_id).is_none() {
+            return Err(MultiConvolverMappingError::InvalidSourceId);
+        }
+
+        // TODO: check setup?
+
+        let id = MappingId(mc.next_mapping_id);
+        mc.next_mapping_id = mc.next_mapping_id.checked_add(1).unwrap();
+        mc.mappings.insert(
+            id,
+            Mapping {
+                ir: self.ir,
+                source_id: self.source_id,
+                // TODO: in_channel
+                output: self.out_channel,
+            },
+        );
+
+        Ok(id)
     }
 }
 

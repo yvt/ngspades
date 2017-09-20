@@ -89,8 +89,8 @@ fn naive_conv(out: &mut [f32], x: &[f32], y: &[f32]) {
 fn test_solo_with_patterns(setup: &ConvSetup, pat1: &[f32], pat2: &[f32], blk_size: usize) {
     let ir = IrSpectrum::from_ir(pat2, setup);
     let mut conv = MultiConvolver::new(setup, 1, SerialQueue);
-    let src = conv.insert_source(Player::new(pat1));
-    conv.insert_mapping(&src, &ir, 0).unwrap();
+    let src = conv.build_source(Player::new(pat1)).insert();
+    conv.build_mapping(&src, &ir).insert().unwrap();
 
     let latency = setup.params().latency;
     let mut out_buf = vec![0.0; (pat1.len() + pat2.len() + latency) * 2];
@@ -289,10 +289,10 @@ fn conv_bench(b: &mut Bencher, len: usize, block_size: usize, num_src: usize) {
     let ir = IrSpectrum::from_ir(&vec![0.0; len], &setup);
     let mut conv = MultiConvolver::new(&setup, 1, SerialQueue);
     let src: Vec<_> = (0..num_src)
-        .map(|_| conv.insert_source(MyZeroGenerator))
+        .map(|_| conv.build_source(MyZeroGenerator).insert())
         .collect();
     for src in src.iter() {
-        conv.insert_mapping(src, &ir, 0).unwrap();
+        conv.build_mapping(src, &ir).insert().unwrap();
     }
 
     b.iter(move || {

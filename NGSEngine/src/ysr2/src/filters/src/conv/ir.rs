@@ -62,7 +62,7 @@ impl IrSpectrum {
     ///
     /// `size_index` specifies an index into `ConvParams::blocks`. The returned
     /// value is bounded by `blocks[size_index].1` except for the largest blocks.
-    pub fn num_blocks_for_size(&self, size_index: usize) -> usize {
+    pub(super) fn num_blocks_for_size(&self, size_index: usize) -> usize {
         self.blocks[size_index].len()
     }
 
@@ -70,7 +70,7 @@ impl IrSpectrum {
     ///
     /// For a `IrSpectrum` created with a `ConvSetup` created with a `ConvParams`
     /// `params`, this returns a slice of the length `2 << params.blocks[size_index].0`.
-    pub fn get(&self, size_index: usize, index: usize) -> &[f32] {
+    pub(super) fn get(&self, size_index: usize, index: usize) -> &[f32] {
         &self.blocks[size_index][index][..]
     }
 }
