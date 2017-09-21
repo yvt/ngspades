@@ -21,9 +21,38 @@ use conv::source::Source;
 ///
 /// # Concepts
 ///
-///  - **Sources** are signal sources. Duh.
+///  - **Sources** are input sources. Duh. Denoted by a time series
+///    representation like `source[t]`. `source[t]` is assumed to be zero for
+///    `t` earlier than the time point at which the source was inserted into
+///    the `MultiConvolver`.
+///
+///    The API is designed to accept sources with multiple channels, but they
+///    are in reality not supported yet.
+///
 ///  - Each **mapping** represents a convolution of a source and `IrSpectrum`,
 ///    and also contains a channel index to write its output to.
+///
+///    The final output is a sum of the output of all mappings, each of which
+///    can be (ideally) expressed as the following:
+///
+///    ```text
+///    mapping.out[t] = (mapping.source * mapping.ir * latency_fn)[t]
+///                      ・step(t - mapping.start)
+///                      ・step(mapping.end - t)
+///                      ・mapping.gain[t]
+///    ```
+///
+///    where `latency_fn[t] = delta[t - latency]`, and `mapping.start` and
+///    `mapping.end` are the time points at which the mapping was inserted and
+///    removed, respectively. `*` denotes a convolution operator.
+///
+///    Note the word "ideally". Due to the nature of the block based processing
+///    and the restrictions imposed by the FDL scheme, mappings inserted or
+///    removed in a middle of a block are not handled very well.
+///    As a general rule, you must avoid inserting a mapping with a non-zero
+///    gain which is associated with a previously inserted source, or removing
+///    a mapping whose future output values are not zero (which we call still
+///    "active").
 ///
 /// # Optimizations
 ///
