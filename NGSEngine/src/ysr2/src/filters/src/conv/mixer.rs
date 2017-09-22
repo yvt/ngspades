@@ -39,7 +39,6 @@ use conv::source::Source;
 ///    mapping.out[t] = (mapping.source * mapping.ir * latency_fn)[t]
 ///                      ・step(t - mapping.start)
 ///                      ・step(mapping.end - t)
-///                      ・mapping.gain[t]
 ///    ```
 ///
 ///    where `latency_fn[t] = delta[t - latency]`, and `mapping.start` and
@@ -49,10 +48,9 @@ use conv::source::Source;
 ///    Note the word "ideally". Due to the nature of the block based processing
 ///    and the restrictions imposed by the FDL scheme, mappings inserted or
 ///    removed in a middle of a block are not handled very well.
-///    As a general rule, you must avoid inserting a mapping with a non-zero
-///    gain which is associated with a previously inserted source, or removing
-///    a mapping whose future output values are not zero (which we call still
-///    "active").
+///    As a general rule, you must avoid inserting a mapping which is associated
+///    with a previously inserted source, or removing a mapping whose future
+///    output values are not zero (which we call still "active").
 ///
 /// # Optimizations
 ///
@@ -131,14 +129,6 @@ use conv::source::Source;
 ///
 /// [`ConvParams`]: struct.ConvParams.html
 ///
-/// # Hot-swapping Impulse Responses
-///
-/// This engine supports hot-swapping impulse responses i.e. replacing an IR of
-/// a mapping without introducing audible noises by using the cross-fade
-/// technique.
-///
-/// TODO: implement this feature
-///
 #[derive(Debug)]
 pub struct MultiConvolver<T, I, Q> {
     queue: Q,
@@ -174,7 +164,6 @@ pub struct MappingBuilder<'a, T: 'a, I: 'a, Q: 'a> {
     ir: I,
     in_channel: usize,
     out_channel: usize,
-    gain: f32,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -188,7 +177,6 @@ struct Mapping<I> {
     ir: I,
     source_id: SourceId,
     output: usize,
-    gain: f32,
 }
 
 #[derive(Debug)]
@@ -256,7 +244,6 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> MultiConvolver<T, I, Q> {
             ir,
             in_channel: 0,
             out_channel: 0,
-            gain: 1.0,
         }
     }
 
@@ -356,12 +343,6 @@ impl<'a, T: 'a, I: 'a, Q: 'a> MappingBuilder<'a, T, I, Q> {
         self
     }
 
-    /// Set the gain. Defaults to `1.0`.
-    pub fn gain(mut self, gain: f32) -> Self {
-        self.gain = gain;
-        self
-    }
-
     /// Insert a mapping to the `MultiConvolver` this `MappingBuilder` was
     /// created from.
     pub fn insert(self) -> Result<MappingId, MultiConvolverMappingError> {
@@ -381,7 +362,6 @@ impl<'a, T: 'a, I: 'a, Q: 'a> MappingBuilder<'a, T, I, Q> {
                 source_id: self.source_id,
                 // TODO: in_channel
                 output: self.out_channel,
-                gain: self.gain,
             },
         );
 
@@ -517,7 +497,7 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                                 preoutput_buffers[mapping.output].as_mut_slice(),
                                 &block.buffer,
                                 ir.get(i, k),
-                                mapping.gain,
+                                1.0,
                             );
                         }
                     }
@@ -610,7 +590,7 @@ impl<T: Generator, I: Borrow<IrSpectrum>, Q: Queue> Generator for MultiConvolver
                                 preoutput_buffers[mapping.output].as_mut_slice(),
                                 &block.buffer,
                                 ir.get(i, k),
-                                mapping.gain,
+                                1.0,
                             );
                         }
                     }
