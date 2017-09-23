@@ -8,6 +8,7 @@ ysr2_common = { path = "src/common" }
 ysr2_filters = { path = "src/filters" }
 ysr2_localizer = { path = "src/localizer" }
 ysr2_mixer = { path = "src/mixer" }
+ysr2_spatializer = { path = "src/spatializer" }
 
 [dev-dependencies]
 portaudio = "0.7.0"

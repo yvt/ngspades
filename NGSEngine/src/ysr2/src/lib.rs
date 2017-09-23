@@ -57,3 +57,4 @@ pub extern crate ysr2_common as common;
 pub extern crate ysr2_filters as filters;
 pub extern crate ysr2_localizer as localizer;
 pub extern crate ysr2_mixer as mixer;
+pub extern crate ysr2_spatializer as spatializer;

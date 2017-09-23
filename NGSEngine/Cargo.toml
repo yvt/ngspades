@@ -24,6 +24,7 @@ members = [
     "src/ysr2/src/localizer",
     "src/ysr2/src/localizer/kemar_data",
     "src/ysr2/src/mixer",
+    "src/ysr2/src/spatializer",
     "src/xdispatch",
 ]
 
