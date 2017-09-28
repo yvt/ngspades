@@ -7,6 +7,7 @@ extern crate ngsterrain;
 extern crate sdl2;
 extern crate clap;
 extern crate rand;
+extern crate xdispatch;
 
 use std::fs::File;
 use rand::Rng;
@@ -80,7 +81,7 @@ impl State {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Sampler {
     rng: rand::XorShiftRng,
 }
@@ -88,6 +89,15 @@ struct Sampler {
 impl Sampler {
     fn new() -> Self {
         Self { rng: rand::XorShiftRng::new_unseeded() }
+    }
+
+    fn gaussian(&mut self) -> f32 {
+        (self.rng.next_f32() + self.rng.next_f32() + self.rng.next_f32() + self.rng.next_f32() -
+            2.0)
+    }
+
+    fn reconstruction_filter(&mut self) -> Vector2<f32> {
+        Vector2::new(self.gaussian(), self.gaussian())
     }
 
     fn sample_diffuse(&mut self) -> Vector3<f32> {
@@ -111,9 +121,13 @@ struct RenderParams {
 }
 
 impl RenderParams {
-    fn primary_ray(&self, mut v: Vector2<f32>) -> Vector3<f32> {
+    fn primary_ray(&self, mut v: Vector2<f32>) -> [Vector3<f32>; 3] {
         v *= self.fov;
-        self.axis[2] + self.axis[0] * v.x + self.axis[1] * v.y
+        [
+            self.axis[2] + self.axis[0] * v.x + self.axis[1] * v.y,
+            self.axis[0] * self.fov,
+            self.axis[1] * self.fov,
+        ]
     }
 }
 
@@ -161,7 +175,7 @@ impl Renderer {
                 let tangent = vec3(normal.z, normal.x, normal.y);
                 let binormal = vec3(tangent.z, tangent.x, tangent.y);
 
-                let albedo = vec3(color[0], color[1], color[2]).cast() * (0.8 / 255.0);
+                let albedo = vec3(color[0], color[1], color[2]).cast() * (1.0 / 255.0);
 
                 // 2.0 gamma
                 let albedo = albedo.mul_element_wise(albedo);
@@ -174,14 +188,19 @@ impl Renderer {
                     albedo,
                 }
             }
-            _ => Material::Sky(vec3(1.0, 1.0, 1.0)),
+            _ => Material::Sky(vec3(1.0 + dir.x * 0.7, 1.0, 0.8 - dir.x * 0.7)),
         }
     }
 
-    fn pathtrace(&mut self, mut start: Vector3<f32>, mut dir: Vector3<f32>) -> Vector3<f32> {
+    fn pathtrace(
+        &self,
+        mut start: Vector3<f32>,
+        mut dir: Vector3<f32>,
+        sampler: &mut Sampler,
+    ) -> Vector3<f32> {
         let mut coef: Vector3<f32> = vec3(1.0, 1.0, 1.0);
 
-        let mut dist = 64.0;
+        let mut dist = 256.0;
 
         for _ in 0..3 {
             let mat = self.raytrace(start, dir, dist);
@@ -195,7 +214,7 @@ impl Renderer {
                 } => {
                     coef.mul_assign_element_wise(albedo);
 
-                    let r = self.sampler.sample_diffuse();
+                    let r = sampler.sample_diffuse();
                     start = position + normal * 0.001;
                     dir = normal * r.z + tangent * r.x + binormal * r.y;
                 }
@@ -219,30 +238,84 @@ impl Renderer {
         let ((width, height), pitch) = (surf.size(), surf.pitch());
         let pixels = surf.without_lock_mut().unwrap();
 
-        for y in 0..height {
-            for x in 0..width {
-                let centered_pos = vec2(x, y).cast::<i32>() -
-                    vec2(width / 2, height / 2).cast::<i32>();
-                let mut norm_pos = centered_pos.cast::<f32>() * (2.0 / width as f32);
-                norm_pos.y = -norm_pos.y;
-                let dir = params.primary_ray(norm_pos).normalize();
+        const UNDERSAMPLE: u32 = 2;
+        const SAMPLES_PER_PIXEL: usize = 2;
 
-                let mut color = self.pathtrace(params.eye, dir);
+        assert!(width % UNDERSAMPLE == 0 && height % UNDERSAMPLE == 0);
 
-                color.x = color.x.max(0.0).min(1.0).sqrt();
-                color.y = color.y.max(0.0).min(1.0).sqrt();
-                color.z = color.z.max(0.0).min(1.0).sqrt();
-                color *= 255.0;
-
-                let color_i: Vector3<u32> = color.cast();
-
-                let pixel = unsafe { pixels.as_mut_ptr().offset((x * 4 + y * pitch) as isize) } as
-                    *mut u32;
-                unsafe {
-                    *pixel = 0xff000000 | color_i.x | (color_i.y << 8) | (color_i.z << 16);
-                };
-            }
+        // Introduce a temporal incoherency
+        for _ in 0..4 {
+            self.sampler.rng.next_u32();
         }
+
+        struct SendPtr<T>(*mut T);
+
+        unsafe impl<T> Sync for SendPtr<T> {}
+        unsafe impl<T> Send for SendPtr<T> {}
+
+        let pixels_p = SendPtr(pixels.as_mut_ptr());
+
+        let factor = 2.0 / width as f32;
+
+        xdispatch::Queue::global(xdispatch::QueuePriority::Default)
+            .apply((height / UNDERSAMPLE) as usize, |y| {
+                let y = y as u32;
+                let mut sampler = self.sampler.clone();
+
+                use rand::SeedableRng;
+                let x = sampler.rng.next_u32();
+                sampler.rng.reseed([x ^ y, x ^ y ^ 1, x ^ y ^ 2, x ^ y ^ 4]);
+
+                for x in 0..width / UNDERSAMPLE {
+                    let centered_pos = vec2(x * UNDERSAMPLE, y * UNDERSAMPLE).cast::<i32>() -
+                        vec2(width / 2, height / 2).cast::<i32>();
+                    let mut norm_pos = centered_pos.cast::<f32>() * factor;
+                    norm_pos.y = -norm_pos.y;
+                    let dir = params.primary_ray(norm_pos);
+
+                    let mut color = Vector3::zero();
+
+                    for _ in 0..SAMPLES_PER_PIXEL {
+                        let mut aa_dir = dir[0];
+
+                        // Apply reconstruction filter
+                        let rf = sampler.reconstruction_filter() * (factor * UNDERSAMPLE as f32);
+                        aa_dir += dir[1] * rf.x;
+                        aa_dir += dir[2] * rf.y;
+
+                        // Perform a path tracing
+                        color += self.pathtrace(params.eye, aa_dir.normalize(), &mut sampler);
+                    }
+
+                    color *= 1.0 / SAMPLES_PER_PIXEL as f32;
+
+                    fn aces_film(x: f32) -> f32 {
+                        let (a, b, c, d, e) = (2.51, 0.03, 2.43, 0.59, 0.14);
+                        ((x * (a * x + b)) / (x * (c * x + d) + e)).min(1.0)
+                    }
+
+                    // Apply ACES tone curve & gamma correction
+                    color.x = aces_film(color.x).sqrt();
+                    color.y = aces_film(color.y).sqrt();
+                    color.z = aces_film(color.z).sqrt();
+                    color *= 255.0;
+
+                    let color_i: Vector3<u32> = color.cast();
+
+                    let color_raw = 0xff000000 | color_i.x | (color_i.y << 8) | (color_i.z << 16);
+
+                    for sy in 0..UNDERSAMPLE {
+                        for sx in 0..UNDERSAMPLE {
+                            unsafe {
+                                *(pixels_p.0.offset(
+                                    ((x * UNDERSAMPLE + sx) * 4 + (y * UNDERSAMPLE + sy) * pitch) as
+                                        isize,
+                                ) as *mut u32) = color_raw
+                            };
+                        }
+                    }
+                }
+            });
     }
 }
 
@@ -251,7 +324,7 @@ fn main() {
     // Use `clap` to parse command-line arguments
     let matches = App::new("pathtracer")
         .author("yvt <i@yvt.jp>")
-        .about("interractive pathtracer for voxel terrain data")
+        .about("interractive viewer for voxel terrain data using the path tracing algorithm")
         .arg(
             Arg::with_name("INPUT")
                 .help("file to display; the Voxlap VXL format is supported")
@@ -273,7 +346,7 @@ fn main() {
     let video = sdl_context.video().unwrap();
 
     let window = video
-        .window("pathtracer", 360, 240)
+        .window("pathtracer", 720, 480)
         .position_centered()
         .build()
         .unwrap();
