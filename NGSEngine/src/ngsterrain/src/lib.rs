@@ -19,6 +19,7 @@ pub extern crate cgmath;
 #[cfg(test)]
 mod benchmark;
 
+pub mod io;
 mod geom;
 pub mod heightmap;
 pub mod raytrace;
