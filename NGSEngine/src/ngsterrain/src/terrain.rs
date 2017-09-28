@@ -72,7 +72,7 @@ impl Terrain {
 
     pub fn get_voxel(&self, pos: Vector3<usize>) -> Option<SolidVoxel<&[u8; 4]>> {
         self.get_row(pos.truncate()).and_then(
-            |row| row.get_voxel(pos.z),
+            |row| row.get_voxel(pos.z).unwrap_or(None),
         )
     }
 

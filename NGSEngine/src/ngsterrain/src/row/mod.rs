@@ -3,9 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::borrow::Borrow;
-use std::io::{Cursor, SeekFrom, Seek};
-use byteorder::{LittleEndian, ReadBytesExt};
+use std::borrow::{Borrow, BorrowMut};
+use std::io::Cursor;
+use std::mem;
+use byteorder::{LE, ReadBytesExt};
 
 use {RowSolidVoxels, SolidVoxel};
 
@@ -95,7 +96,12 @@ pub type RowValidationError = &'static str;
 
 impl<'a, T: Borrow<[u8]>> Row<&'a T> {
     /// Retrieve `SolidVoxel` at the specified location in the row.
-    pub fn get_voxel(&self, z: usize) -> Option<SolidVoxel<&'a [u8; 4]>> {
+    ///
+    ///  - `None` - `z` is out of range.
+    ///  - `Some(None)` - the voxel is free.
+    ///  - `Some(Some(_))` - the voxel is occupied.
+    ///
+    pub fn get_voxel(&self, z: usize) -> Option<Option<SolidVoxel<&'a [u8; 4]>>> {
         if z >= self.0 {
             None
         } else {
@@ -103,18 +109,18 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
             while let Some(chunk) = chunks.next() {
                 for (voxels_z, voxels) in chunk {
                     if voxels_z > z {
-                        return None;
+                        return Some(None);
                     } else if voxels_z + voxels.num_voxels() > z {
-                        return match voxels {
-                            RowSolidVoxels::Colored(voxels) => Some(SolidVoxel::Colored(
+                        return Some(Some(match voxels {
+                            RowSolidVoxels::Colored(voxels) => SolidVoxel::Colored(
                                 voxels.get(z - voxels_z).unwrap(),
-                            )),
-                            RowSolidVoxels::Uncolored(_) => Some(SolidVoxel::Uncolored),
-                        };
+                            ),
+                            RowSolidVoxels::Uncolored(_) => SolidVoxel::Uncolored,
+                        }));
                     }
                 }
             }
-            None
+            Some(None)
         }
     }
 
@@ -127,7 +133,7 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
         while (cursor.position() as usize) < cursor.get_ref().len() {
             // Check this chunk
             // <empty-voxels>
-            let num_voxels = cursor.read_u16::<LittleEndian>().or(Err(
+            let num_voxels = cursor.read_u16::<LE>().or(Err(
                 "Encountered EOF while reading <empty-voxels>",
             ))?;
             z += num_voxels as usize;
@@ -136,7 +142,7 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
             }
 
             // First <colored-voxels>
-            let num_voxels = cursor.read_u16::<LittleEndian>().or(Err(
+            let num_voxels = cursor.read_u16::<LE>().or(Err(
                 "Encountered EOF while reading U16 of <colored-voxels>",
             ))?;
             if num_voxels == 0 {
@@ -148,15 +154,15 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
             }
 
             // Skip color values
-            cursor
-                .seek(SeekFrom::Current(num_voxels as i64 * 4))
-                .or(Err(
+            for _ in 0..num_voxels {
+                cursor.read_u32::<LE>().or(Err(
                     "Encountered EOF while reading color values of <colored-voxels>",
                 ))?;
+            }
 
             loop {
                 // <uncolored-voxels>
-                let num_voxels = cursor.read_u16::<LittleEndian>().or(Err(
+                let num_voxels = cursor.read_u16::<LE>().or(Err(
                     "Encountered EOF while reading <uncolored-voxels>",
                 ))?;
                 if num_voxels == 0 {
@@ -168,7 +174,7 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
                 }
 
                 // <colored-voxels>
-                let num_voxels = cursor.read_u16::<LittleEndian>().or(Err(
+                let num_voxels = cursor.read_u16::<LE>().or(Err(
                     "Encountered EOF while reading U16 of <colored-voxels>",
                 ))?;
                 if num_voxels == 0 {
@@ -180,11 +186,11 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
                 }
 
                 // Skip color values
-                cursor
-                    .seek(SeekFrom::Current(num_voxels as i64 * 4))
-                    .or(Err(
+                for _ in 0..num_voxels {
+                    cursor.read_u32::<LE>().or(Err(
                         "Encountered EOF while reading color values of <colored-voxels>",
                     ))?;
+                }
             }
         }
         Ok(())

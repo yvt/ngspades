@@ -4,27 +4,13 @@
 // This source code is a part of Nightingales.
 //
 //! Naïve ray tracer for `Terrain`.
-use cgmath::{Vector3, BaseNum, vec3};
+use cgmath::{Vector3, vec3};
 use cgmath::prelude::*;
-use std::ops::Neg;
 use std::cmp;
 use std::borrow::Borrow;
 
 use {Terrain, Row, CubeFace};
 use geom;
-
-impl CubeFace {
-    pub fn as_vector3<S: BaseNum + Neg<Output = S>>(&self) -> Vector3<S> {
-        match self {
-            &CubeFace::PositiveX => Vector3::unit_x(),
-            &CubeFace::NegativeX => -Vector3::unit_x(),
-            &CubeFace::PositiveY => Vector3::unit_y(),
-            &CubeFace::NegativeY => -Vector3::unit_y(),
-            &CubeFace::PositiveZ => Vector3::unit_z(),
-            &CubeFace::NegativeZ => -Vector3::unit_z(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RaytraceHit {

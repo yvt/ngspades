@@ -46,10 +46,10 @@ impl<'a> Iterator for RowChunkRangeIter<'a> {
             loop {
                 // Uncolored
                 let num_voxels = unsafe { utils::load_u16_le(s, self.1) } as usize;
+                self.1 += 2;
                 if num_voxels == 0 {
                     break;
                 }
-                self.1 += 2;
                 total_num_voxels += num_voxels;
 
                 // Colored

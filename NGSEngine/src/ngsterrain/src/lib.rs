@@ -33,6 +33,9 @@ pub use self::terrain::*;
 pub use self::voxel::*;
 pub use self::voxels::*;
 
+use cgmath::{Vector3, BaseNum};
+use std::ops::Neg;
+
 /// Specifies a face of cube.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CubeFace {
@@ -42,4 +45,17 @@ pub enum CubeFace {
     NegativeY,
     PositiveZ,
     NegativeZ,
+}
+
+impl CubeFace {
+    pub fn as_vector3<S: BaseNum + Neg<Output = S>>(&self) -> Vector3<S> {
+        match self {
+            &CubeFace::PositiveX => Vector3::unit_x(),
+            &CubeFace::NegativeX => -Vector3::unit_x(),
+            &CubeFace::PositiveY => Vector3::unit_y(),
+            &CubeFace::NegativeY => -Vector3::unit_y(),
+            &CubeFace::PositiveZ => Vector3::unit_z(),
+            &CubeFace::NegativeZ => -Vector3::unit_z(),
+        }
+    }
 }
