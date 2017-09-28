@@ -56,11 +56,11 @@ impl<T> RowChunkIter<T> {
 
 impl<'a> RowChunkIter<&'a [u8]> {
     pub fn next(&mut self) -> Option<RowChunkSolidVoxelsIter<&'a [u8]>> {
-        for _ in RowChunkSolidVoxelsIter(self) {}
-
         // Skip the terminator
         if self.1 > 0 && self.1 < self.0.len() {
+            for _ in RowChunkSolidVoxelsIter(self) {}
             self.1 += 2;
+            self.2 = IterState::Colored;
         }
 
         // do we have more chunks?

@@ -32,7 +32,15 @@ fn random() {
     let mut v = Vec::new();
     let mut row = Row::new(voxels.len(), &mut v);
     row.update_with(voxels.iter().map(Clone::clone)).unwrap();
-    println!("{:?}", row);
+    println!("row: {:?}", row);
+    println!("chunks:");
+    {
+        let mut chunks = row.chunks();
+        while let Some(chunk) = chunks.next() {
+            println!("    - {:?}", &chunk.collect::<Vec<_>>());
+        }
+    }
+    row.validate().unwrap();
     for (i, voxel) in voxels.iter().enumerate() {
         assert_eq!(
             row.get_voxel(i).unwrap().map(|sv| sv.into_owned()),
