@@ -32,6 +32,14 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
     }
 }
 
+impl<'a, T: Borrow<[u8]>> Row<&'a mut T> {
+    /// Get an iterator over the chunks in the row.
+    pub fn chunks(&self) -> RowChunkIter<&[u8]> {
+        let inner = (self.1 as &T).borrow();
+        RowChunkIter(inner, 0, IterState::Colored, 0)
+    }
+}
+
 impl<T> RowChunkIter<T> {
     pub fn offset(&self) -> usize {
         self.1

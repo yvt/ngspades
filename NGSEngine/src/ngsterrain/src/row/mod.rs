@@ -197,6 +197,37 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
     }
 }
 
+impl<'a, T: Borrow<[u8]>> Row<&'a mut T> {
+    /// Retrieve `SolidVoxel` at the specified location in the row.
+    ///
+    ///  - `None` - `z` is out of range.
+    ///  - `Some(None)` - the voxel is free.
+    ///  - `Some(Some(_))` - the voxel is occupied.
+    ///
+    pub fn get_voxel(&self, z: usize) -> Option<Option<SolidVoxel<&[u8; 4]>>> {
+        if z >= self.0 {
+            None
+        } else {
+            let mut chunks = self.chunks();
+            while let Some(chunk) = chunks.next() {
+                for (voxels_z, voxels) in chunk {
+                    if voxels_z > z {
+                        return Some(None);
+                    } else if voxels_z + voxels.num_voxels() > z {
+                        return Some(Some(match voxels {
+                            RowSolidVoxels::Colored(voxels) => SolidVoxel::Colored(
+                                voxels.get(z - voxels_z).unwrap(),
+                            ),
+                            RowSolidVoxels::Uncolored(_) => SolidVoxel::Uncolored,
+                        }));
+                    }
+                }
+            }
+            Some(None)
+        }
+    }
+}
+
 /// The error type for `Row` encoding operations.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum RowEncodingError {
