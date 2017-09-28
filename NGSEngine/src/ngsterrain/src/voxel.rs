@@ -131,3 +131,13 @@ pub enum SolidVoxel<T> {
     /// A solid voxel without color/material data.
     Uncolored,
 }
+
+impl<T: AsRef<[u8]>> SolidVoxel<T> {
+    /// Create a owned `SolidVoxel` by cloning the underlying data.
+    pub fn into_owned(&self) -> SolidVoxel<[u8; 4]> {
+        match self {
+            &SolidVoxel::Colored(ref cv) => SolidVoxel::Colored(cv.into_owned()),
+            &SolidVoxel::Uncolored => SolidVoxel::Uncolored
+        }
+    }
+}
