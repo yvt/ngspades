@@ -196,3 +196,112 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
         Ok(())
     }
 }
+
+/// The error type for `Row` encoding operations.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum RowEncodingError {
+    /// The input is too short.
+    UnexpectedEof,
+
+    UncoloredVoxelOnSurface,
+}
+
+impl<'a, T: BorrowMut<Vec<u8>>> Row<&'a mut T> {
+    /// Replace the current contents with the new one supplied by a given iterator.
+    ///
+    /// The length of the input series must be greater than or equal to
+    /// `self.depth()`.
+    pub fn update_with<I>(&mut self, mut data: I) -> Result<(), RowEncodingError>
+    where
+        I: Iterator<Item = Option<SolidVoxel<[u8; 4]>>>,
+    {
+        let depth = self.depth();
+
+        let target: &mut Vec<u8> = self.1.borrow_mut();
+        let mut vc = mem::replace(target, Vec::new());
+
+        fn push_u16(v: &mut Vec<u8>, x: u16) {
+            v.push(x as u8);
+            v.push((x >> 8) as u8);
+        }
+
+        let mut v = data.next().ok_or(RowEncodingError::UnexpectedEof)?;
+
+        let mut z = 0;
+        while z != depth {
+            let mut num = 0usize;
+            while v.is_none() {
+                z += 1;
+                num += 1;
+                if z == depth {
+                    break;
+                }
+                v = data.next().ok_or(RowEncodingError::UnexpectedEof)?;
+            }
+            if z == depth {
+                break;
+            }
+
+            push_u16(&mut vc, num as u16);
+
+            num = 0;
+            let count_pos = vc.len();
+            push_u16(&mut vc, 0); // placeholder
+            while let Some(SolidVoxel::Colored(color)) = v {
+                vc.extend(color.get_inner_ref().iter());
+                z += 1;
+                num += 1;
+                if z == depth {
+                    break;
+                }
+                v = data.next().ok_or(RowEncodingError::UnexpectedEof)?;
+            }
+            if num == 0 {
+                return Err(RowEncodingError::UncoloredVoxelOnSurface);
+            }
+            vc[count_pos] = num as u8;
+            vc[count_pos + 1] = (num >> 8) as u8;
+
+            while z != depth {
+                if v != Some(SolidVoxel::Uncolored) {
+                    break;
+                }
+
+                // uncolored sequence
+                num = 0;
+                while v == Some(SolidVoxel::Uncolored) {
+                    z += 1;
+                    num += 1;
+                    if z == depth {
+                        break;
+                    }
+                    v = data.next().ok_or(RowEncodingError::UnexpectedEof)?;
+                }
+                push_u16(&mut vc, num as u16);
+
+                num = 0;
+                let count_pos = vc.len();
+                push_u16(&mut vc, 0); // placeholder
+                while let Some(SolidVoxel::Colored(color)) = v {
+                    vc.extend(color.get_inner_ref().iter());
+                    z += 1;
+                    num += 1;
+                    if z == depth {
+                        break;
+                    }
+                    v = data.next().ok_or(RowEncodingError::UnexpectedEof)?;
+                }
+                if num == 0 {
+                    return Err(RowEncodingError::UncoloredVoxelOnSurface);
+                }
+                vc[count_pos] = num as u8;
+                vc[count_pos + 1] = (num >> 8) as u8;
+            }
+
+            push_u16(&mut vc, 0); // chunk terminator
+        }
+
+        *target = vc;
+        Ok(())
+    }
+}
