@@ -28,7 +28,7 @@ impl heightmap::Heightmap for TestHeightmap {
 
 #[bench]
 fn bench_raytrace(b: &mut Bencher) {
-    let t = heightmap::build_terrain_from_heightmap(&TestHeightmap);
+    let t = heightmap::HeightmapToTerrain::new(&TestHeightmap).build();
 
     b.iter(move || {
         raytrace::raytrace(

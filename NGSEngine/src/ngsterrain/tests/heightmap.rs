@@ -30,7 +30,7 @@ impl Heightmap for TestHeightmap {
 #[test]
 fn create_from_heightmap() {
     let hm = TestHeightmap;
-    let t = heightmap::build_terrain_from_heightmap(&hm);
+    let t = heightmap::HeightmapToTerrain::new(&hm).build();
     if let Err((coord, err)) = t.validate() {
         panic!("At row {:?}: {}", (coord, t.get_row(coord)), err);
     }
@@ -59,7 +59,7 @@ fn create_from_heightmap() {
 #[test]
 fn raytrace_on_heightmap() {
     let hm = TestHeightmap;
-    let t = heightmap::build_terrain_from_heightmap(&hm);
+    let t = heightmap::HeightmapToTerrain::new(&hm).build();
     for (coord, row) in t.rows() {
         match raytrace::raytrace(
             &t,
