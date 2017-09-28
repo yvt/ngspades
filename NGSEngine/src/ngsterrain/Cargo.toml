@@ -1,0 +1,9 @@
+[package]
+name = "ngsterrain"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+cgmath = "0.14.1"
+arrayref = "0.3.4"
+byteorder = "1.1.0"
