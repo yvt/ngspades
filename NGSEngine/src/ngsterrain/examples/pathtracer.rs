@@ -50,21 +50,20 @@ impl State {
         use sdl2::keyboard::Scancode;
         let state = sdl2::keyboard::KeyboardState::new(event_pump);
         if state.is_scancode_pressed(Scancode::A) {
-            self.velocity -= rp.axis[0] * (dt * 8.0);
+            self.velocity -= rp.axis[0] * (dt * 16.0);
         } else if state.is_scancode_pressed(Scancode::D) {
-            self.velocity += rp.axis[0] * (dt * 8.0);
+            self.velocity += rp.axis[0] * (dt * 16.0);
         }
         if state.is_scancode_pressed(Scancode::W) {
-            self.velocity += rp.axis[2] * (dt * 8.0);
+            self.velocity += rp.axis[2] * (dt * 16.0);
         } else if state.is_scancode_pressed(Scancode::S) {
-            self.velocity -= rp.axis[2] * (dt * 8.0);
+            self.velocity -= rp.axis[2] * (dt * 16.0);
         }
     }
 
     fn render_params(&self) -> RenderParams {
         use cgmath::{Basis3, Rad};
-        let basis =
-            Basis3::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)) *
+        let basis = Basis3::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)) *
             Basis3::from_angle_y(Rad(self.angle.z)) *
             Basis3::from_angle_x(Rad(self.angle.x)) *
             Basis3::from_angle_z(Rad(self.angle.y));
@@ -88,9 +87,7 @@ struct Sampler {
 
 impl Sampler {
     fn new() -> Self {
-        Self {
-            rng: rand::XorShiftRng::new_unseeded(),
-        }
+        Self { rng: rand::XorShiftRng::new_unseeded() }
     }
 
     fn sample_diffuse(&mut self) -> Vector3<f32> {
@@ -146,12 +143,13 @@ impl Renderer {
         }
     }
 
-    fn raytrace(&self, start: Vector3<f32>, dir: Vector3<f32>) -> Material {
+    fn raytrace(&self, start: Vector3<f32>, dir: Vector3<f32>, max_dist: f32) -> Material {
         use ngsterrain::{raytrace, SolidVoxel, ColoredVoxel};
 
-        match raytrace::raytrace(&self.terrain, start, start + dir * 128.0) {
+        match raytrace::raytrace(&self.terrain, start, start + dir * max_dist) {
             raytrace::RaytraceResult::Hit(hit) => {
-                let voxel = self.terrain.get_voxel(hit.voxel)
+                let voxel = self.terrain
+                    .get_voxel(hit.voxel)
                     .and_then(|sv| match sv {
                         SolidVoxel::Colored(colored) => Some(colored.into_owned()),
                         SolidVoxel::Uncolored => None,
@@ -163,12 +161,17 @@ impl Renderer {
                 let tangent = vec3(normal.z, normal.x, normal.y);
                 let binormal = vec3(tangent.z, tangent.x, tangent.y);
 
+                let albedo = vec3(color[0], color[1], color[2]).cast() * (0.8 / 255.0);
+
+                // 2.0 gamma
+                let albedo = albedo.mul_element_wise(albedo);
+
                 Material::Object {
                     position: hit.position,
                     normal,
                     tangent,
                     binormal,
-                    albedo: vec3(color[0], color[1], color[2]).cast() * (0.8 / 255.0),
+                    albedo,
                 }
             }
             _ => Material::Sky(vec3(1.0, 1.0, 1.0)),
@@ -178,51 +181,63 @@ impl Renderer {
     fn pathtrace(&mut self, mut start: Vector3<f32>, mut dir: Vector3<f32>) -> Vector3<f32> {
         let mut coef: Vector3<f32> = vec3(1.0, 1.0, 1.0);
 
-        for _ in 0..2 {
-            let mat = self.raytrace(start, dir);
+        let mut dist = 64.0;
+
+        for _ in 0..3 {
+            let mat = self.raytrace(start, dir, dist);
             match mat {
-                Material::Object { position, normal, tangent, binormal, albedo } => {
+                Material::Object {
+                    position,
+                    normal,
+                    tangent,
+                    binormal,
+                    albedo,
+                } => {
                     coef.mul_assign_element_wise(albedo);
 
                     let r = self.sampler.sample_diffuse();
-                    start = position;
+                    start = position + normal * 0.001;
                     dir = normal * r.z + tangent * r.x + binormal * r.y;
                 }
                 Material::Sky(color) => {
                     return color.mul_element_wise(coef);
                 }
             }
+
+            // Limit the clip distance of secondary rays (for performance)
+            dist = 32.0;
         }
 
         Vector3::zero()
     }
 
     fn render_to(&mut self, surf: &mut sdl2::surface::SurfaceRef, params: &RenderParams) {
-        assert_eq!(surf.pixel_format_enum(), sdl2::pixels::PixelFormatEnum::ARGB8888);
+        assert_eq!(
+            surf.pixel_format_enum(),
+            sdl2::pixels::PixelFormatEnum::ARGB8888
+        );
         let ((width, height), pitch) = (surf.size(), surf.pitch());
         let pixels = surf.without_lock_mut().unwrap();
 
-        println!("{:?}", params);
-
         for y in 0..height {
             for x in 0..width {
-                let centered_pos = vec2(x, y).cast::<i32>()
-                    - vec2(width / 2, height / 2).cast::<i32>();
-                let mut norm_pos = centered_pos.cast::<f32>()
-                    * (2.0 / width as f32);
+                let centered_pos = vec2(x, y).cast::<i32>() -
+                    vec2(width / 2, height / 2).cast::<i32>();
+                let mut norm_pos = centered_pos.cast::<f32>() * (2.0 / width as f32);
                 norm_pos.y = -norm_pos.y;
                 let dir = params.primary_ray(norm_pos).normalize();
 
                 let mut color = self.pathtrace(params.eye, dir);
 
-                color.x = color.x.max(0.0).min(1.0);
-                color.y = color.y.max(0.0).min(1.0);
-                color.z = color.z.max(0.0).min(1.0);
+                color.x = color.x.max(0.0).min(1.0).sqrt();
+                color.y = color.y.max(0.0).min(1.0).sqrt();
+                color.z = color.z.max(0.0).min(1.0).sqrt();
                 color *= 255.0;
 
                 let color_i: Vector3<u32> = color.cast();
 
-                let pixel = unsafe { pixels.as_mut_ptr().offset((x * 4 + y * pitch) as isize) } as *mut u32;
+                let pixel = unsafe { pixels.as_mut_ptr().offset((x * 4 + y * pitch) as isize) } as
+                    *mut u32;
                 unsafe {
                     *pixel = 0xff000000 | color_i.x | (color_i.y << 8) | (color_i.z << 16);
                 };
@@ -257,7 +272,7 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
     let video = sdl_context.video().unwrap();
 
-    let mut window = video
+    let window = video
         .window("pathtracer", 360, 240)
         .position_centered()
         .build()
@@ -268,7 +283,7 @@ fn main() {
         let surf = sdl2::surface::Surface::new(
             window_surface.width(),
             window_surface.height(),
-            sdl2::pixels::PixelFormatEnum::ARGB8888
+            sdl2::pixels::PixelFormatEnum::ARGB8888,
         );
         surf.unwrap()
     };
@@ -284,16 +299,15 @@ fn main() {
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    break 'running
-                },
+                Event::Quit { .. } |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
                 Event::MouseButtonDown { .. } => {
                     sdl_context.mouse().show_cursor(false);
                     sdl_context.mouse().set_relative_mouse_mode(true);
                 }
                 e => {
                     state.handle_event(&e);
-                },
+                }
             }
         }
 

@@ -242,14 +242,15 @@ fn raytrace_inner_2(
     let dir_minor_abs = dir[minor_i].abs();
     debug_assert!(dir_minor_abs <= 1.0, "dir = {:?}", dir);
 
-    let recip_dir_minor_abs = dir_minor_abs.abs();
+    let recip_dir_minor_abs = dir_minor_abs.recip();
 
     let mut residue_minor =
-        ((cur_pos[minor_i] + if positive[minor_i] { 1 } else { 0 }) as f32 - start.y).abs();
+        ((cur_pos[minor_i] + if positive[minor_i] { 1 } else { 0 }) as f32 - start[minor_i]).abs();
 
     {
-        let residue_major =
-            ((cur_pos[major_i] + if positive[major_i] { 1 } else { 0 }) as f32 - start.x).abs();
+        let residue_major = ((cur_pos[major_i] + if positive[major_i] { 1 } else { 0 }) as f32 -
+                                 start[major_i])
+            .abs();
 
         // Check the first slice
         if residue_major != 0.0 {
@@ -314,7 +315,8 @@ fn raytrace_inner_2(
                 cur_z >= size.z as f32
             } else {
                 cur_z < 0.0
-            } {
+            }
+            {
                 return None;
             }
         }
@@ -394,7 +396,8 @@ fn raytrace_inner_2(
             cur_z >= size.z as f32
         } else {
             cur_z < 0.0
-        } {
+        }
+        {
             return None;
         }
     }
