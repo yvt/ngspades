@@ -10,6 +10,8 @@ extern crate rand;
 extern crate xdispatch;
 
 use std::fs::File;
+use std::io::BufReader;
+use std::time::Instant;
 use rand::Rng;
 use ngsterrain::cgmath;
 use self::cgmath::{Vector3, Vector2, vec3, vec2};
@@ -121,6 +123,39 @@ impl Sampler {
 }
 
 #[derive(Debug)]
+struct PerfCounter {
+    last_measure: Instant,
+    count: f64,
+    last_rate: f64,
+}
+
+impl PerfCounter {
+    fn new() -> Self {
+        Self {
+            last_measure: Instant::now(),
+            count: 0.0,
+            last_rate: 0.0,
+        }
+    }
+
+    fn log(&mut self, value: f64) {
+        self.count += value;
+
+        let dt = self.last_measure.elapsed();
+        let dt = dt.subsec_nanos() as f64 * 1.0e-9 + dt.as_secs() as f64;
+        if dt >= 0.2 {
+            self.last_rate = self.count / dt;
+            self.count = 0.0;
+            self.last_measure = Instant::now();
+        }
+    }
+
+    fn rate(&self) -> f64 {
+        self.last_rate
+    }
+}
+
+#[derive(Debug)]
 struct RenderParams {
     eye: Vector3<f32>,
     axis: [Vector3<f32>; 3],
@@ -142,6 +177,10 @@ impl RenderParams {
 struct Renderer {
     terrain: ngsterrain::Terrain,
     sampler: Sampler,
+    sun_dir: Vector3<f32>,
+
+    samples_counter: PerfCounter,
+    fps_counter: PerfCounter,
 }
 
 #[derive(Debug)]
@@ -161,6 +200,10 @@ impl Renderer {
         Self {
             terrain,
             sampler: Sampler::new(),
+            sun_dir: vec3(1.0, 0.5, 1.0).normalize(),
+
+            samples_counter: PerfCounter::new(),
+            fps_counter: PerfCounter::new(),
         }
     }
 
@@ -195,7 +238,10 @@ impl Renderer {
                     albedo,
                 }
             }
-            _ => Material::Sky(vec3(1.0 + dir.x * 0.7, 1.0, 0.8 - dir.x * 0.7)),
+            _ => Material::Sky(
+                vec3(0.8 + dir.x * 0.3, 1.0, 1.0 - dir.x * 0.7) +
+                    vec3(1.0, 0.9, 0.8) * (500.0 * (dir.dot(self.sun_dir) - 0.95).max(0.0)),
+            ),
         }
     }
 
@@ -207,7 +253,7 @@ impl Renderer {
     ) -> Vector3<f32> {
         let mut coef: Vector3<f32> = vec3(1.0, 1.0, 1.0);
 
-        let mut dist = 256.0;
+        let mut dist = 128.0;
 
         for _ in 0..3 {
             let mat = self.raytrace(start, dir, dist);
@@ -246,11 +292,11 @@ impl Renderer {
         let pixels = surf.without_lock_mut().unwrap();
 
         const UNDERSAMPLE: u32 = 8;
-        const SAMPLES_PER_PIXEL: usize = 16;
+        const SAMPLES_PER_PIXEL: u32 = 32;
 
         assert!(width % UNDERSAMPLE == 0 && height % UNDERSAMPLE == 0);
 
-        // Introduce a temporal incoherency
+        // temporal dithering
         for _ in 0..4 {
             self.sampler.rng.next_u32();
         }
@@ -323,6 +369,11 @@ impl Renderer {
                     }
                 }
             });
+
+        self.samples_counter.log(
+            (width * height / UNDERSAMPLE / UNDERSAMPLE * SAMPLES_PER_PIXEL) as f64,
+        );
+        self.fps_counter.log(1.0);
     }
 }
 
@@ -345,8 +396,9 @@ fn main() {
     // Load the input vox file
     println!("Loading the input file");
     let input_path = matches.value_of_os("INPUT").unwrap();
-    let mut file = File::open(input_path).unwrap();
-    let terrain = ngsterrain::io::from_voxlap_vxl(Vector3::new(512, 512, 64), &mut file).unwrap();
+    let file = File::open(input_path).unwrap();
+    let mut reader = BufReader::new(file);
+    let terrain = ngsterrain::io::from_voxlap_vxl(vec3(512, 512, 64), &mut reader).unwrap();
     terrain.validate().unwrap();
     let mut renderer = Renderer::new(terrain);
 
@@ -354,7 +406,7 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
     let video = sdl_context.video().unwrap();
 
-    let window = video
+    let mut window = video
         .window("pathtracer", 720, 480)
         .position_centered()
         .build()
@@ -374,7 +426,6 @@ fn main() {
 
     use sdl2::keyboard::Keycode;
     use sdl2::event::Event;
-    use std::time::Instant;
 
     let mut last_time = Instant::now();
 
@@ -402,8 +453,18 @@ fn main() {
 
         renderer.render_to(&mut surface, &state.render_params());
 
-        let mut window_surface = window.surface(&event_pump).unwrap();
-        surface.blit(None, &mut window_surface, None).unwrap();
-        window_surface.update_window().unwrap();
+        {
+            let mut window_surface = window.surface(&event_pump).unwrap();
+            surface.blit(None, &mut window_surface, None).unwrap();
+            window_surface.update_window().unwrap();
+        }
+
+        let title =
+            format!(
+            "pathtracer [{:.2} sps, {:.2} fps]",
+            renderer.samples_counter.rate(),
+            renderer.fps_counter.rate(),
+        );
+        window.set_title(&title).unwrap();
     }
 }
