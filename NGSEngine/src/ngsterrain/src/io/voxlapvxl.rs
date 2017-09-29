@@ -10,7 +10,7 @@ use {Terrain, SolidVoxel, ColoredVoxel};
 
 /// Load a `Terrain` from a [Voxlap] VXL-encoded data.
 ///
-/// [Voxlap](http://advsys.net/ken/voxlap.htm)
+/// [Voxlap]: http://advsys.net/ken/voxlap.htm
 pub fn from_voxlap_vxl<T: Read>(size: Vector3<usize>, reader: &mut T) -> Result<Terrain> {
     let mut t = Terrain::new(size);
     let mut row_data = vec![None; size.z];
@@ -19,7 +19,7 @@ pub fn from_voxlap_vxl<T: Read>(size: Vector3<usize>, reader: &mut T) -> Result<
     fn read_color<T: Read>(reader: &mut T) -> Result<ColoredVoxel<[u8; 4]>> {
         let mut buf = [0; 4];
         reader.read_exact(&mut buf)?;
-        Ok(ColoredVoxel::from_values([buf[0], buf[1], buf[2]], 1))
+        Ok(ColoredVoxel::from_values([buf[2], buf[1], buf[0]], 1))
     }
 
     for y in 0..size.y {
@@ -75,9 +75,9 @@ pub fn from_voxlap_vxl<T: Read>(size: Vector3<usize>, reader: &mut T) -> Result<
                 }
             }
             if *row_data.last().unwrap() == Some(SolidVoxel::Uncolored) {
-                *row_data.last_mut().unwrap() = Some(SolidVoxel::Colored(ColoredVoxel::default(
-                    row_pos.extend(0),
-                )));
+                *row_data.last_mut().unwrap() = Some(SolidVoxel::Colored(
+                    ColoredVoxel::default(row_pos.extend(0)),
+                ));
             }
 
             // Flip in the Z direction to match our coordinate system

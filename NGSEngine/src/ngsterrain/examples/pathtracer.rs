@@ -25,9 +25,10 @@ struct State {
 }
 
 impl State {
-    fn new() -> State {
+    fn new(terrain: &ngsterrain::Terrain) -> State {
+        let size = terrain.size().cast::<f32>();
         State {
-            eye: vec3(256.0, 256.0, 64.0),
+            eye: vec3(size.x * 0.5, size.y * 0.5, size.z),
             velocity: Vector3::zero(),
             angle: vec3(-0.1, 0.0, 0.0),
         }
@@ -355,7 +356,7 @@ impl Renderer {
 
                     let color_i: Vector3<u32> = color.cast();
 
-                    let color_raw = 0xff000000 | color_i.x | (color_i.y << 8) | (color_i.z << 16);
+                    let color_raw = 0xff000000 | color_i.z | (color_i.y << 8) | (color_i.x << 16);
 
                     for sy in 0..UNDERSAMPLE {
                         for sx in 0..UNDERSAMPLE {
@@ -387,7 +388,7 @@ fn main() {
         )
         .arg(
             Arg::with_name("INPUT")
-                .help("file to display; the Voxlap VXL format is supported")
+                .help("file to display; .vxl and .vox format is supported")
                 .required(true)
                 .index(1),
         )
@@ -395,11 +396,17 @@ fn main() {
 
     // Load the input vox file
     println!("Loading the input file");
+    let input_low = matches.value_of("INPUT").unwrap().to_lowercase();
     let input_path = matches.value_of_os("INPUT").unwrap();
     let file = File::open(input_path).unwrap();
     let mut reader = BufReader::new(file);
-    let terrain = ngsterrain::io::from_voxlap_vxl(vec3(512, 512, 64), &mut reader).unwrap();
+    let terrain = if input_low.ends_with(".vxl") {
+        ngsterrain::io::from_voxlap_vxl(vec3(512, 512, 64), &mut reader).unwrap()
+    } else {
+        ngsterrain::io::from_magicavoxel(&mut reader).unwrap()
+    };
     terrain.validate().unwrap();
+
     let mut renderer = Renderer::new(terrain);
 
     let sdl_context = sdl2::init().unwrap();
@@ -422,7 +429,7 @@ fn main() {
         surf.unwrap()
     };
 
-    let mut state = State::new();
+    let mut state = State::new(&renderer.terrain);
 
     use sdl2::keyboard::Keycode;
     use sdl2::event::Event;
