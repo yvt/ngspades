@@ -66,14 +66,21 @@ impl ColoredVoxel<[u8; 4]> {
         let mut c = position.x as u32 ^ ((position.y as u32) << 8) ^ ((position.z as u32) << 16);
 
         // randomize
-        c ^= c << 13;
-        c ^= c >> 17;
-        c ^= c << 5;
-        c ^= c << 13;
-        c ^= c >> 17;
-        c ^= c << 5;
+        for _ in 0..5 {
+            c = c.wrapping_mul(0b100010101011);
+            c ^= c << 13;
+            c ^= c >> 17;
+            c ^= c << 5;
+        }
 
-        Self::from_values([c as u8, (c >> 8) as u8, (c >> 16) as u8], 0)
+        Self::from_values(
+            [
+                (c as u8 & 0x7) + 0x28,
+                ((c >> 8) as u8 & 0x7) + 0x40,
+                ((c >> 16) as u8 & 0x7) + 0x67,
+            ],
+            0,
+        )
     }
 }
 
@@ -137,7 +144,7 @@ impl<T: AsRef<[u8]>> SolidVoxel<T> {
     pub fn into_owned(&self) -> SolidVoxel<[u8; 4]> {
         match self {
             &SolidVoxel::Colored(ref cv) => SolidVoxel::Colored(cv.into_owned()),
-            &SolidVoxel::Uncolored => SolidVoxel::Uncolored
+            &SolidVoxel::Uncolored => SolidVoxel::Uncolored,
         }
     }
 }

@@ -19,7 +19,7 @@ pub fn from_voxlap_vxl<T: Read>(size: Vector3<usize>, reader: &mut T) -> Result<
     fn read_color<T: Read>(reader: &mut T) -> Result<ColoredVoxel<[u8; 4]>> {
         let mut buf = [0; 4];
         reader.read_exact(&mut buf)?;
-        Ok(ColoredVoxel::from_values([buf[0], buf[1], buf[2]], 0))
+        Ok(ColoredVoxel::from_values([buf[0], buf[1], buf[2]], 1))
     }
 
     for y in 0..size.y {
@@ -66,21 +66,22 @@ pub fn from_voxlap_vxl<T: Read>(size: Vector3<usize>, reader: &mut T) -> Result<
             }
 
             // The bottom must be capped with a colored voxel
-            let mut last_color = row_data[0];
+            let row_pos = Vector2::new(x, y);
             for i in 1..row_data.len() {
                 if row_data[i - 1] == Some(SolidVoxel::Uncolored) && row_data[i].is_none() {
-                    row_data[i - 1] = last_color;
-                }
-                if let Some(SolidVoxel::Colored(_)) = row_data[i] {
-                    last_color = row_data[i];
+                    row_data[i - 1] = Some(SolidVoxel::Colored(ColoredVoxel::default(
+                        row_pos.extend(row_data.len() - 1 - i),
+                    )));
                 }
             }
             if *row_data.last().unwrap() == Some(SolidVoxel::Uncolored) {
-                *row_data.last_mut().unwrap() = last_color;
+                *row_data.last_mut().unwrap() = Some(SolidVoxel::Colored(ColoredVoxel::default(
+                    row_pos.extend(0),
+                )));
             }
 
             // Flip in the Z direction to match our coordinate system
-            t.get_row_mut(Vector2::new(x, y))
+            t.get_row_mut(row_pos)
                 .unwrap()
                 .update_with(row_data.iter().rev().map(Clone::clone))
                 .unwrap();
