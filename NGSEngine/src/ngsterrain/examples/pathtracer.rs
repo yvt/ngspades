@@ -50,15 +50,22 @@ impl State {
 
         use sdl2::keyboard::Scancode;
         let state = sdl2::keyboard::KeyboardState::new(event_pump);
+        let speed = if state.is_scancode_pressed(Scancode::LShift) ||
+            state.is_scancode_pressed(Scancode::RShift)
+        {
+            48.0
+        } else {
+            16.0
+        };
         if state.is_scancode_pressed(Scancode::A) {
-            self.velocity -= rp.axis[0] * (dt * 16.0);
+            self.velocity -= rp.axis[0] * (dt * speed);
         } else if state.is_scancode_pressed(Scancode::D) {
-            self.velocity += rp.axis[0] * (dt * 16.0);
+            self.velocity += rp.axis[0] * (dt * speed);
         }
         if state.is_scancode_pressed(Scancode::W) {
-            self.velocity += rp.axis[2] * (dt * 16.0);
+            self.velocity += rp.axis[2] * (dt * speed);
         } else if state.is_scancode_pressed(Scancode::S) {
-            self.velocity -= rp.axis[2] * (dt * 16.0);
+            self.velocity -= rp.axis[2] * (dt * speed);
         }
     }
 
@@ -76,7 +83,7 @@ impl State {
                 mat * Vector3::unit_y(),
                 mat * Vector3::unit_z(),
             ],
-            fov: 0.5,
+            fov: 0.8,
         }
     }
 }
@@ -238,8 +245,8 @@ impl Renderer {
         let ((width, height), pitch) = (surf.size(), surf.pitch());
         let pixels = surf.without_lock_mut().unwrap();
 
-        const UNDERSAMPLE: u32 = 2;
-        const SAMPLES_PER_PIXEL: usize = 2;
+        const UNDERSAMPLE: u32 = 8;
+        const SAMPLES_PER_PIXEL: usize = 16;
 
         assert!(width % UNDERSAMPLE == 0 && height % UNDERSAMPLE == 0);
 
@@ -324,7 +331,9 @@ fn main() {
     // Use `clap` to parse command-line arguments
     let matches = App::new("pathtracer")
         .author("yvt <i@yvt.jp>")
-        .about("interractive viewer for voxel terrain data using the path tracing algorithm")
+        .about(
+            "interractive viewer for voxel terrain data using the path tracing algorithm",
+        )
         .arg(
             Arg::with_name("INPUT")
                 .help("file to display; the Voxlap VXL format is supported")
