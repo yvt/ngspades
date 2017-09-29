@@ -388,7 +388,7 @@ fn main() {
         )
         .arg(
             Arg::with_name("INPUT")
-                .help("file to display; .vxl and .vox format is supported")
+                .help("file to display; .vxl and .vox formats are supported")
                 .required(true)
                 .index(1),
         )

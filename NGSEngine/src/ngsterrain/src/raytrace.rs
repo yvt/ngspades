@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-//! Naïve ray tracer for `Terrain`.
+//! A naïve ray tracer for `Terrain`.
 use cgmath::{Vector3, vec3};
 use cgmath::prelude::*;
 use std::cmp;
