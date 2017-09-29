@@ -90,12 +90,12 @@ pub fn raytrace(terrain: &Terrain, start: Vector3<f32>, to: Vector3<f32>) -> Ray
         }
     }
 
-    let start = if start_inside {
-        start
+    let (entering_face, start) = if start_inside {
+        (None, start)
     } else {
         // Find the point where the ray enters the AABB of the terrain
-        if let Some((_, start)) = geom::clip_ray_start_by_aabb(start, to, Vector3::zero(), size_f) {
-            start
+        if let Some(x) = geom::clip_ray_start_by_aabb(start, to, Vector3::zero(), size_f) {
+            x
         } else {
             return RaytraceResult::NoHit;
         }
@@ -108,17 +108,55 @@ pub fn raytrace(terrain: &Terrain, start: Vector3<f32>, to: Vector3<f32>) -> Ray
     let dir = to - start;
     let y_major = dir.y.abs() > dir.x.abs();
 
+    let entering_face = if let Some(face) = entering_face {
+        match face {
+            CubeFace::PositiveX | CubeFace::NegativeX => HitFace::X,
+            CubeFace::PositiveY | CubeFace::NegativeY => HitFace::Y,
+            CubeFace::PositiveZ | CubeFace::NegativeZ => HitFace::Z,
+        }
+    } else {
+        if y_major { HitFace::Y } else { HitFace::X }
+    };
+
     if y_major {
         if z_pos {
-            raytrace_inner(terrain, start, to, vec3(x_pos, y_pos, true), true)
+            raytrace_inner(
+                terrain,
+                start,
+                to,
+                vec3(x_pos, y_pos, true),
+                true,
+                entering_face,
+            )
         } else {
-            raytrace_inner(terrain, start, to, vec3(x_pos, y_pos, false), true)
+            raytrace_inner(
+                terrain,
+                start,
+                to,
+                vec3(x_pos, y_pos, false),
+                true,
+                entering_face,
+            )
         }
     } else {
         if z_pos {
-            raytrace_inner(terrain, start, to, vec3(x_pos, y_pos, true), false)
+            raytrace_inner(
+                terrain,
+                start,
+                to,
+                vec3(x_pos, y_pos, true),
+                false,
+                entering_face,
+            )
         } else {
-            raytrace_inner(terrain, start, to, vec3(x_pos, y_pos, false), false)
+            raytrace_inner(
+                terrain,
+                start,
+                to,
+                vec3(x_pos, y_pos, false),
+                false,
+                entering_face,
+            )
         }
     }
 }
@@ -136,8 +174,9 @@ fn raytrace_inner(
     to: Vector3<f32>,
     positive: Vector3<bool>,
     y_major: bool,
+    entering_face: HitFace,
 ) -> RaytraceResult {
-    match raytrace_inner_2(terrain, start, to, positive, y_major) {
+    match raytrace_inner_2(terrain, start, to, positive, y_major, entering_face) {
         Some((voxel, HitFace::X)) => {
             let hit_x_f = if positive.x { voxel.x } else { voxel.x + 1 } as f32;
             let t = (hit_x_f - start.x) / (to.x - start.x);
@@ -206,6 +245,7 @@ fn raytrace_inner_2(
     to: Vector3<f32>,
     positive: Vector3<bool>,
     y_major: bool,
+    entering_face: HitFace,
 ) -> Option<(Vector3<usize>, HitFace)> {
     let size = terrain.size();
 
@@ -263,7 +303,14 @@ fn raytrace_inner_2(
 
                 let row = terrain.get_row(cur_pos.truncate()).unwrap();
                 if let Some(z) = cast_row(&row, cur_pos.z, new_z, positive.z) {
-                    return Some((cur_pos.truncate().extend(z), HitFace::Z));
+                    return Some((
+                        cur_pos.truncate().extend(z),
+                        if z == cur_pos.z {
+                            entering_face
+                        } else {
+                            HitFace::Z
+                        },
+                    ));
                 }
                 cur_pos.z = new_z;
 
@@ -300,7 +347,14 @@ fn raytrace_inner_2(
 
                 let row = terrain.get_row(cur_pos.truncate()).unwrap();
                 if let Some(z) = cast_row(&row, cur_pos.z, new_z, positive.z) {
-                    return Some((cur_pos.truncate().extend(z), HitFace::Z));
+                    return Some((
+                        cur_pos.truncate().extend(z),
+                        if z == cur_pos.z {
+                            entering_face
+                        } else {
+                            HitFace::Z
+                        },
+                    ));
                 }
                 cur_pos.z = new_z;
             }
