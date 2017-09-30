@@ -31,6 +31,48 @@ pub trait SisoFilter: Filter {
     }
 }
 
+/// SISO filter that outputs a signal identical to the input.
+pub struct IdentityFilter;
+
+impl Filter for IdentityFilter {
+    fn render(
+        &mut self,
+        to: &mut [&mut [f32]],
+        range: Range<usize>,
+        from: Option<(&[&[f32]], Range<usize>)>,
+    ) {
+        if let Some((input, ref in_range)) = from {
+            assert_eq!(range.len(), in_range.len());
+            assert_eq!(input.len(), to.len());
+            for (to, from) in to.iter_mut().zip(input.iter()) {
+                to[range.clone()].copy_from_slice(&from[in_range.clone()]);
+            }
+        }
+    }
+
+    fn is_active(&self) -> bool {
+        false
+    }
+
+    fn num_input_channels(&self) -> Option<usize> {
+        None
+    }
+
+    fn num_output_channels(&self) -> Option<usize> {
+        None
+    }
+
+    fn skip(&mut self, _: usize) {}
+
+    fn reset(&mut self) {}
+}
+
+impl SisoFilter for IdentityFilter {
+    fn num_channels(&self) -> Option<usize> {
+        None
+    }
+}
+
 /// SISO filter that applies multiple `SisoFilter`s in a serial fashion.
 pub struct CascadedSisoFilter<T>(Vec<T>);
 
