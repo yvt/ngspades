@@ -3,8 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
+use std::fmt::Debug;
 use std::ops::Range;
 use std::borrow::BorrowMut;
+use std::any::Any;
+use nodes::{Node, NodeInspector, NodeRenderContext};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct StreamProperties {
@@ -40,7 +43,9 @@ pub trait Generator {
 
     /// Determine whether a following call to `render` has a possibility to
     /// produce non-zero audio data or not.
-    fn is_active(&self) -> bool { true }
+    fn is_active(&self) -> bool {
+        true
+    }
 }
 
 impl<T: Generator> Generator for BorrowMut<T> {
@@ -73,4 +78,65 @@ impl Generator for ZeroGenerator {
     fn is_active(&self) -> bool {
         false
     }
+}
+
+/// `Node` wrapper for `Generator`.
+#[derive(Debug)]
+pub struct GeneratorNode<T> {
+    generator: T,
+    num_outputs: usize,
+}
+
+impl<T> GeneratorNode<T> {
+    /// Constructs a `GeneratorNode`.
+    ///
+    /// `num_outputs` must not be zero.
+    pub fn new(x: T, num_outputs: usize) -> Self {
+        assert_ne!(num_outputs, 0);
+        Self {
+            generator: x,
+            num_outputs,
+        }
+    }
+
+    /// Get a reference to the underlying generator.
+    pub fn get_ref(&self) -> &T {
+        &self.generator
+    }
+
+    /// Get a mutable reference to the underlying generator.
+    pub fn get_ref_mut(&mut self) -> &mut T {
+        &mut self.generator
+    }
+
+    /// Unwrap this `GeneratorNode`, returning the underlying generator.
+    pub fn into_inner(self) -> T {
+        self.generator
+    }
+}
+
+impl<T> Node for GeneratorNode<T>
+where
+    T: Generator + Debug + Sync + Send + 'static,
+{
+    fn num_outputs(&self) -> usize {
+        self.num_outputs
+    }
+
+    fn inspect(&mut self, _: &mut NodeInspector) {}
+
+    fn render(&mut self, to: &mut [&mut [f32]], _: &NodeRenderContext) -> bool {
+        let num_samples = to[0].len();
+        if self.generator.is_active() {
+            self.generator.render(to, 0..num_samples);
+            true
+        } else {
+            self.generator.skip(num_samples);
+            false
+        }
+    }
+
+    fn as_any(&self) -> &Any { self }
+
+    fn as_any_mut(&mut self) -> &mut Any { self }
 }

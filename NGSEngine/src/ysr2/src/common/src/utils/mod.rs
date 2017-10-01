@@ -6,6 +6,8 @@
 //! Common utilities. Not intended for a public use.
 #![doc(hidden)]
 
+mod pool;
 mod sconv;
 
+pub use self::pool::*;
 pub use self::sconv::*;

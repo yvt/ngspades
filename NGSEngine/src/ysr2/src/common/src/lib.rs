@@ -11,8 +11,11 @@ extern crate xdispatch;
 extern crate num_cpus;
 extern crate cgmath;
 extern crate simd;
+extern crate atomic_refcell;
+extern crate arrayvec;
 
 pub mod dispatch;
+pub mod nodes;
 mod simdutils;
 pub mod slicezip;
 pub mod stream;

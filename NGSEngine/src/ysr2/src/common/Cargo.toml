@@ -8,3 +8,5 @@ xdispatch = { path = "../../../xdispatch", optional = true }
 num_cpus = "1.0"
 cgmath = "0.14.1"
 simd = "0.2.0"
+atomic_refcell = "0.1.0"
+arrayvec = "0.4.1"

@@ -1254,6 +1254,8 @@ dependencies = [
 name = "ysr2_common"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "atomic_refcell 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "simd 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
