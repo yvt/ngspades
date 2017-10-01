@@ -5,7 +5,6 @@
 //
 //! Defines a trait for a single-input and single-output causal filter.
 use std::ops::Range;
-use std::borrow::BorrowMut;
 use Filter;
 
 /// A single-input and single-output causal filter.
@@ -32,6 +31,7 @@ pub trait SisoFilter: Filter {
 }
 
 /// SISO filter that outputs a signal identical to the input.
+#[derive(Debug, Clone, Copy)]
 pub struct IdentityFilter;
 
 impl Filter for IdentityFilter {
@@ -73,60 +73,167 @@ impl SisoFilter for IdentityFilter {
     }
 }
 
-/// SISO filter that applies multiple `SisoFilter`s in a serial fashion.
-pub struct CascadedSisoFilter<T>(Vec<T>);
+/// A series of zero or more `SisoFilter`s to be consumed by a
+/// `CascadedSisoFilter`.
+pub trait SisoFilters {
+    fn for_each<F: FnMut(&SisoFilter)>(&self, f: F);
+    fn for_each_mut<F: FnMut(&mut SisoFilter)>(&mut self, f: F);
+}
 
-impl<T> CascadedSisoFilter<T>
-where
-    T: BorrowMut<SisoFilter>,
-{
+impl<T: AsRef<SisoFilter> + AsMut<SisoFilter>> SisoFilters for Vec<T> {
+    fn for_each<F: FnMut(&SisoFilter)>(&self, mut f: F) {
+        for filter in self.iter() {
+            f(filter.as_ref());
+        }
+    }
+
+    fn for_each_mut<F: FnMut(&mut SisoFilter)>(&mut self, mut f: F) {
+        for filter in self.iter_mut() {
+            f(filter.as_mut());
+        }
+    }
+}
+
+macro_rules! impl_tuple_siso_filters {
+    ( $(($idx:tt, $name:ident)),* ) => {
+        impl<$($name),*> SisoFilters for ($($name,)*)
+        where
+            $($name: SisoFilter),* {
+            fn for_each<F: FnMut(&SisoFilter)>(&self, mut f: F) {
+                $(
+                    f(&self.$idx);
+                )*
+            }
+
+            fn for_each_mut<F: FnMut(&mut SisoFilter)>(&mut self, mut f: F) {
+                $(
+                    f(&mut self.$idx);
+                )*
+            }
+        }
+    }
+}
+
+impl_tuple_siso_filters! {
+    (0, T1)
+}
+impl_tuple_siso_filters! {
+    (0, T1), (1, T2)
+}
+impl_tuple_siso_filters! {
+    (0, T1), (1, T2), (2, T3)
+}
+impl_tuple_siso_filters! {
+    (0, T1), (1, T2), (2, T3), (3, T4)
+}
+impl_tuple_siso_filters! {
+    (0, T1), (1, T2), (2, T3), (3, T4), (4, T5)
+}
+impl_tuple_siso_filters! {
+    (0, T1), (1, T2), (2, T3), (3, T4), (4, T5), (5, T6)
+}
+impl_tuple_siso_filters! {
+    (0, T1), (1, T2), (2, T3), (3, T4), (4, T5), (5, T6), (6, T7)
+}
+impl_tuple_siso_filters! {
+    (0, T1), (1, T2), (2, T3), (3, T4), (4, T5), (5, T6), (6, T7), (7, T8)
+}
+
+/// SISO filter that applies multiple `SisoFilter`s in a serial fashion.
+///
+/// # Examples
+///
+/// Thw following code shows how to create a `CascadedSisoFilter` from multiple
+/// `SisoFilter`s.
+///
+///     # use ysr2_filters::siso::{IdentityFilter, SisoFilter, CascadedSisoFilter};
+///     # use ysr2_filters::biquad::{BiquadCoefs, SimpleBiquadKernel};
+///     # let coef = BiquadCoefs::identity();
+///     CascadedSisoFilter::new(vec![
+///         Box::new(IdentityFilter) as Box<SisoFilter>,
+///         Box::new(SimpleBiquadKernel::new(&coef, 1)) as Box<SisoFilter>,
+///     ]);
+///
+/// Or you could use a tuple instead for more efficiency:
+///
+///     # use ysr2_filters::siso::{IdentityFilter, SisoFilter, CascadedSisoFilter};
+///     # use ysr2_filters::biquad::{BiquadCoefs, SimpleBiquadKernel};
+///     # let coef = BiquadCoefs::identity();
+///     CascadedSisoFilter::new((
+///         IdentityFilter,
+///         SimpleBiquadKernel::new(&coef, 1),
+///     ));
+///
+pub struct CascadedSisoFilter<T>(T);
+
+impl<T: SisoFilters> CascadedSisoFilter<T> {
     /// Construct a `CascadedSisoFilter`.
     ///
     /// The number of channels of every element of `filters` must match.
-    pub fn new(filters: Vec<T>) -> Self {
-        if filters.len() > 0 {
-            let mut num_channels = None;
-            for filter in filters.iter() {
-                let filter = filter.borrow();
-                let flt_num_channels = filter.num_channels();
-                num_channels = num_channels.or(flt_num_channels);
-                assert_eq!(num_channels, flt_num_channels.or(num_channels));
-            }
-        }
-
+    pub fn new(filters: T) -> Self {
+        let mut num_channels = None;
+        filters.for_each(|filter| {
+            let flt_num_channels = filter.num_channels();
+            num_channels = num_channels.or(flt_num_channels);
+            assert_eq!(num_channels, flt_num_channels.or(num_channels));
+        });
         CascadedSisoFilter(filters)
     }
 }
 
-impl<T> SisoFilter for CascadedSisoFilter<T>
-where
-    T: BorrowMut<SisoFilter>,
-{
-    fn num_channels(&self) -> Option<usize> {
+impl<T> CascadedSisoFilter<T> {
+    /// Get a reference to the contained `SisoFilters`.
+    pub fn get_ref(&self) -> &T {
+        &self.0
+    }
+
+    /// Get a mutable reference to the contained `SisoFilters`.
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
+
+    /// Consume this `CascadedSisoFilter` and return the contained `SisoFilters`.
+    pub fn into_inner(self) -> T {
         self.0
-            .iter()
-            .filter_map(|f| f.borrow().num_channels())
-            .nth(0)
     }
 }
 
-impl<T> Filter for CascadedSisoFilter<T>
-where
-    T: BorrowMut<SisoFilter>,
-{
+impl<T: SisoFilters> SisoFilter for CascadedSisoFilter<T> {
+    fn num_channels(&self) -> Option<usize> {
+        let mut num_channels = None;
+        self.0.for_each(|filter| if num_channels.is_none() {
+            num_channels = filter.num_channels();
+        });
+        num_channels
+    }
+}
+
+impl<T: SisoFilters> Filter for CascadedSisoFilter<T> {
     fn render(
         &mut self,
         to: &mut [&mut [f32]],
         range: Range<usize>,
         mut from: Option<(&[&[f32]], Range<usize>)>,
     ) {
-        for filter in self.0.iter_mut() {
-            filter.borrow_mut().render(to, range.clone(), from.take());
+        self.0.for_each_mut(|filter| {
+            filter.render(to, range.clone(), from.take());
+        });
+
+        if let Some((input, ref in_range)) = from {
+            assert_eq!(range.len(), in_range.len());
+            assert_eq!(input.len(), to.len());
+            for (to, from) in to.iter_mut().zip(input.iter()) {
+                to[range.clone()].copy_from_slice(&from[in_range.clone()]);
+            }
         }
     }
 
     fn is_active(&self) -> bool {
-        self.0.iter().any(|f| f.borrow().is_active())
+        let mut is_active = false;
+        self.0.for_each(|filter| if filter.is_active() {
+            is_active = true;
+        });
+        is_active
     }
 
     fn num_input_channels(&self) -> Option<usize> {
@@ -139,48 +246,31 @@ where
 
     fn skip(&mut self, num_samples: usize) {
         let num_channels = self.num_channels().unwrap();
-        let mut iter = self.0.iter_mut();
         let mut buffer: Vec<Vec<f32>> = Vec::new();
+        let mut found_active = false;
 
-        let mut cur = iter.next();
-
-        // Try to use fast path as far as we can go
-        while let Some(filter) = cur.take() {
-            if filter.borrow().is_active() {
-                // Can't use `skip`; we might have to take the slow path
-                cur = Some(filter);
-                break;
-            }
-
-            let filter = filter.borrow_mut();
-            filter.skip(num_samples);
-
-            cur = iter.next();
-        }
-
-        // If there are active filters in the middle, we need a temporary buffer
-        while let Some(filter) = cur.take() {
-            let filter = filter.borrow_mut();
-            if iter.len() == 0 && buffer.len() == 0 {
-                // If this is the last one then we don't care it's output
-                filter.skip(num_samples);
-            } else {
-                if buffer.len() != num_channels {
-                    // Allocate a temporary buffer
-                    buffer = vec![vec![0.0; num_samples]; num_channels];
+        self.0.for_each_mut(|filter| {
+            if !found_active {
+                // Try to use fast path as far as we can go
+                if !filter.is_active() {
+                    filter.skip(num_samples);
+                    return;
                 }
-
-                let mut buffer_refs: Vec<_> = buffer.iter_mut().map(Vec::as_mut_slice).collect();
-                filter.render_inplace(buffer_refs.as_mut_slice(), 0..num_samples);
+                found_active = false;
             }
 
-            cur = iter.next();
-        }
+            // If there are active filters in the middle, we need a temporary buffer
+            if buffer.len() != num_channels {
+                // Allocate a temporary buffer
+                buffer = vec![vec![0.0; num_samples]; num_channels];
+            }
+
+            let mut buffer_refs: Vec<_> = buffer.iter_mut().map(Vec::as_mut_slice).collect();
+            filter.render_inplace(buffer_refs.as_mut_slice(), 0..num_samples);
+        });
     }
 
     fn reset(&mut self) {
-        for x in self.0.iter_mut() {
-            x.borrow_mut().reset();
-        }
+        self.0.for_each_mut(|filter| { filter.reset(); });
     }
 }
