@@ -81,7 +81,7 @@ impl Generator for ZeroGenerator {
 }
 
 /// `Node` wrapper for `Generator`.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GeneratorNode<T> {
     generator: T,
     num_outputs: usize,

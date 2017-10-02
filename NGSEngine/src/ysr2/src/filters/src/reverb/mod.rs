@@ -6,7 +6,9 @@
 //! Reverb filters.
 
 mod matrix;
+mod node;
 pub use self::matrix::*;
+pub use self::node::*;
 
 #[cfg(test)]
 mod tests;

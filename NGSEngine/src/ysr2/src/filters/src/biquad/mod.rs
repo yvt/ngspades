@@ -7,8 +7,10 @@
 
 mod simple;
 mod filter;
+mod node;
 pub use self::simple::*;
 pub use self::filter::*;
+pub use self::node::*;
 
 #[cfg(test)]
 mod tests;
