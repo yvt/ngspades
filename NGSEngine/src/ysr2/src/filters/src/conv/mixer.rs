@@ -339,7 +339,7 @@ impl<'a, T: 'a, I: 'a, Q: 'a> MappingBuilder<'a, T, I, Q> {
             channel_index < self.parent.num_outputs,
             "channel index out of bounds"
         );
-        self.in_channel = channel_index;
+        self.out_channel = channel_index;
         self
     }
 
