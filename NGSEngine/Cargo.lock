@@ -1258,6 +1258,7 @@ dependencies = [
  "atomic_refcell 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "simd 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "xdispatch 0.1.0",
 ]

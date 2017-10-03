@@ -13,6 +13,7 @@ extern crate cgmath;
 extern crate simd;
 extern crate atomic_refcell;
 extern crate arrayvec;
+extern crate parking_lot;
 
 pub mod dispatch;
 pub mod nodes;

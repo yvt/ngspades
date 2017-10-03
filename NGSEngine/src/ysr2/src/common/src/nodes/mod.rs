@@ -7,7 +7,9 @@
 mod context;
 mod node;
 mod nodes;
+mod generator;
 
 pub use self::context::*;
 pub use self::node::*;
 pub use self::nodes::*;
+pub use self::generator::*;
