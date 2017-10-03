@@ -73,6 +73,10 @@ impl DynamicValue {
         self.goal = new;
     }
 
+    pub fn is_stationary(&self) -> bool {
+        self.change_rate != 0.0
+    }
+
     pub fn set_slow(&mut self, new: f64, duration: f64) {
         assert!(new.is_finite());
         assert!(duration.is_finite());
