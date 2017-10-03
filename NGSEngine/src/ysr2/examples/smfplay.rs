@@ -14,15 +14,19 @@ extern crate portaudio;
 extern crate cgmath;
 
 use std::path::Path;
+use std::fmt;
 use std::cmp;
 use std::collections::BinaryHeap;
 use std::cell::RefCell;
+use std::marker::PhantomData;
 
 use ysr2::common::dispatch::SerialQueue;
-use ysr2::common::stream::{StreamProperties, ChannelConfig};
+use ysr2::common::stream::{StreamProperties, ChannelConfig, GeneratorNode};
+use ysr2::common::nodes::{Context, NodeId, NodeInputGenerator, OutputNode};
 use ysr2::mixer::clip::Clip;
 use ysr2::mixer::clipmixer::{ClipMixer, NoteId};
 use ysr2::localizer::{self, Panner};
+use ysr2::localizer::nodes::{PannerNode, SourceId};
 
 fn make_wave() -> Clip {
     let period: usize = 64;
@@ -66,17 +70,23 @@ fn make_wave() -> Clip {
 }
 
 #[derive(Debug)]
-struct SmfPlayer<T: Panner<ClipMixer>> {
+struct SmfPlayer<T: Panner<NodeInputGenerator>> {
     smf: rimd::SMF,
-    clip: Clip,
-    next_events: BinaryHeap<NextEvent>,
-    panner: RefCell<T>,
     output_prop: StreamProperties,
+    clip: Clip,
+
+    context: RefCell<Context>,
+    panner_id: NodeId,
+    output_id: NodeId,
+
+    next_events: BinaryHeap<NextEvent>,
     notes: RefCell<Vec<Note>>,
-    channels: Vec<MidiChannelState<T::SourceId>>,
+    channels: Vec<MidiChannelState>,
+
     /// samples per tick
     tempo: f64,
     time: f64,
+    _phantom: PhantomData<T>,
 }
 
 #[derive(Debug)]
@@ -87,9 +97,10 @@ struct NextEvent {
 }
 
 #[derive(Debug)]
-struct MidiChannelState<TSourceId> {
+struct MidiChannelState {
     program: u8,
-    source_id: TSourceId,
+    source_id: SourceId,
+    mixer_id: NodeId,
 }
 
 #[derive(Debug)]
@@ -116,8 +127,11 @@ impl PartialEq for NextEvent {
 }
 impl Eq for NextEvent {}
 
-impl<T: Panner<ClipMixer>> SmfPlayer<T> {
-    fn new(smf: rimd::SMF, mut panner: T, output_prop: &StreamProperties) -> Self {
+impl<T> SmfPlayer<T>
+where
+    T: Panner<NodeInputGenerator> + fmt::Debug + Send + Sync + 'static,
+{
+    fn new(smf: rimd::SMF, panner: T, output_prop: &StreamProperties) -> Self {
         let mut next_events = BinaryHeap::new();
         for (i, track) in smf.tracks.iter().enumerate() {
             if let Some(e) = track.events.iter().nth(0) {
@@ -131,30 +145,55 @@ impl<T: Panner<ClipMixer>> SmfPlayer<T> {
 
         let tempo = output_prop.sampling_rate as f64 * 0.5 / smf.division as f64;
 
-        // Each channel produces a monaural audio stream
+        // Construct audio nodes
+        let mut context = Context::new();
+        let mut panner_node = PannerNode::new(panner, output_prop.num_channels);
+
+        // Each channel produces a monaural audio stream which is routed to
+        // the panner
         let channels = (0..16)
             .map(|_| {
+                let mixer = ClipMixer::new(&StreamProperties {
+                    num_channels: 1,
+                    channel_config: ChannelConfig::Monaural,
+                    ..output_prop.clone()
+                });
+                let mixer_id = context.insert(Box::new(GeneratorNode::new(mixer, 1)));
                 MidiChannelState {
                     program: 0,
-                    source_id: panner.insert(ClipMixer::new(&StreamProperties {
-                        num_channels: 1,
-                        channel_config: ChannelConfig::Monaural,
-                        ..output_prop.clone()
-                    })),
+                    source_id: panner_node.insert((mixer_id, 0)),
+                    mixer_id,
                 }
             })
             .collect();
 
+        // Insert the panner node
+        let panner_id = context.insert(Box::new(panner_node));
+
+        // Insert the output node
+        let mut output = OutputNode::new(output_prop.num_channels);
+        for i in 0..output_prop.num_channels {
+            *output.input_source_mut(i).unwrap() = Some((panner_id, i));
+        }
+        let output_id = context.insert(Box::new(output));
+
         Self {
             smf,
             clip: make_wave(),
-            next_events,
-            panner: RefCell::new(panner),
             output_prop: output_prop.clone(),
+
+            context: RefCell::new(context),
+            panner_id,
+            output_id,
+
             notes: RefCell::new(Vec::new()),
             channels,
+            next_events,
+
             tempo,
             time: 0.0,
+
+            _phantom: PhantomData,
         }
     }
 
@@ -163,10 +202,11 @@ impl<T: Panner<ClipMixer>> SmfPlayer<T> {
             |note| if note.note == note_no &&
                 note.channel == chan
             {
-                let mut panner = self.panner.borrow_mut();
-                let mixer = panner
-                    .generator_mut(&self.channels[chan as usize].source_id)
-                    .unwrap();
+                let mut context = self.context.borrow_mut();
+                let mixer = context
+                    .get_mut_as::<GeneratorNode<ClipMixer>>(&self.channels[chan as usize].mixer_id)
+                    .unwrap()
+                    .get_ref_mut();
                 mixer
                     .set_gain(
                         delay,
@@ -194,10 +234,28 @@ trait Player {
     fn render(&mut self, buffer: &mut [f32]);
 }
 
-impl<T: Panner<ClipMixer>> Player for SmfPlayer<T> {
+impl<T> Player for SmfPlayer<T>
+where
+    T: Panner<NodeInputGenerator> + fmt::Debug + Send + Sync + 'static,
+{
     fn is_done(&self) -> bool {
-        self.next_events.is_empty() && self.notes.borrow().is_empty() &&
-            !self.panner.borrow().is_active()
+        if self.next_events.is_empty() && self.notes.borrow().is_empty() {
+            use ysr2::common::stream::Generator;
+            let context = self.context.borrow();
+            for channel in self.channels.iter() {
+                if context
+                    .get_as::<GeneratorNode<ClipMixer>>(&channel.mixer_id)
+                    .unwrap()
+                    .get_ref()
+                    .is_active()
+                {
+                    return false;
+                }
+            }
+            true
+        } else {
+            false
+        }
     }
 
     fn render(&mut self, buffer: &mut [f32]) {
@@ -236,10 +294,13 @@ impl<T: Panner<ClipMixer>> Player for SmfPlayer<T> {
                                     // ignore the rhythm channel and SFXs
                                     let pitch = ((note_no as f64 - 69.0) / 12.0).exp2();
 
-                                    let note_id = self.panner
+                                    let mixer_id = self.channels[chan as usize].mixer_id;
+
+                                    let note_id = self.context
                                         .borrow_mut()
-                                        .generator_mut(&self.channels[chan as usize].source_id)
+                                        .get_mut_as::<GeneratorNode<ClipMixer>>(&mixer_id)
                                         .unwrap()
+                                        .get_ref_mut()
                                         .build_note(&self.clip)
                                         .pitch(pitch)
                                         .gain(vel * vel * 0.05)
@@ -273,8 +334,10 @@ impl<T: Panner<ClipMixer>> Player for SmfPlayer<T> {
                                         let dir =
                                             cgmath::Vector3::new(azimuth.sin(), 0.0, azimuth.cos());
                                         let ref source_id = self.channels[chan as usize].source_id;
-                                        self.panner
+                                        self.context
                                             .borrow_mut()
+                                            .get_mut_as::<PannerNode<T>>(&self.panner_id)
+                                            .unwrap()
                                             .direction_mut(source_id)
                                             .unwrap()
                                             .set_slow(dir, self.output_prop.sampling_rate * 0.01);
@@ -326,17 +389,27 @@ impl<T: Panner<ClipMixer>> Player for SmfPlayer<T> {
 
         self.time += (num_samples as f64 - sample_offs) / self.tempo;
 
-        let mut buf1 = vec![0.0; num_samples];
-        let mut buf2 = vec![0.0; num_samples];
-        self.panner.borrow_mut().render(
-            &mut [&mut buf1, &mut buf2],
-            0..num_samples,
-        );
+        // Request a next frame
+        let mut context = self.context.borrow_mut();
+        {
+            let output = context.get_mut_as::<OutputNode>(&self.output_id).unwrap();
+            output.request_frame(num_samples);
+        }
 
-        // Convert to the interleaved stereo format
-        for i in 0..num_samples {
-            buffer[i * 2] = buf1[i];
-            buffer[i * 2 + 1] = buf2[i];
+        // Process the frame
+        context.render().unwrap();
+
+        // Read the output
+        {
+            let output = context.get_as::<OutputNode>(&self.output_id).unwrap();
+            let buf1 = output.get_samples(0).unwrap();
+            let buf2 = output.get_samples(1).unwrap();
+
+            // Convert to the interleaved stereo format
+            for i in 0..num_samples {
+                buffer[i * 2] = buf1[i];
+                buffer[i * 2 + 1] = buf2[i];
+            }
         }
     }
 }
