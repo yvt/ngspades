@@ -76,8 +76,13 @@ impl NodeInputGeneratorHost {
     /// read samples from a `NodeInput` obtained from the `NodeRenderContext`.
     /// Every call to `with` resets the read position to `0`.
     pub fn with<F: FnOnce() -> R, R>(&mut self, context: &NodeRenderContext, f: F) -> R {
-        let _ = Activator::new(self, context);
-        f()
+        use std::mem::drop;
+
+        let activator = Activator::new(self, context);
+        let returned_value = f();
+        drop(activator);
+
+        returned_value
     }
 }
 
@@ -88,7 +93,7 @@ impl<'a> Activator<'a> {
         {
             let mut state = parent.state.write();
             state.current_frame = state.current_frame.checked_add(1).unwrap();
-            state.context = unsafe { mem::transmute(context) };;
+            state.context = unsafe { mem::transmute(context) };
         }
 
         Activator(parent)

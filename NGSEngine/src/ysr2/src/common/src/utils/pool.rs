@@ -229,36 +229,33 @@ impl<T> IterablePool<T> {
         }
     }
     pub fn allocate(&mut self, x: T) -> PoolPtr {
-        match self.first_free {
-            None => {
-                let i = self.storage.len();
-                let neighbors = if let Some(first_used) = self.first_used {
-                    (
-                        first_used,
-                        self.storage[first_used].next_previous_used_index().1,
-                    )
-                } else {
-                    (i, i)
-                };
-                self.storage.push(ItEntry::Used(x, neighbors));
-                PoolPtr(i)
-            }
-            Some(i) => {
-                let next_free = self.storage[i].next_free_index();
-                self.first_free = next_free;
-                let neighbors = if let Some(first_used) = self.first_used {
-                    (
-                        first_used,
-                        self.storage[first_used].next_previous_used_index().1,
-                    )
-                } else {
-                    (i, i)
-                };
-                self.storage[i] = ItEntry::Used(x, neighbors);
-                self.first_used = Some(i);
-                PoolPtr(i)
-            }
+        use std::mem::replace;
+
+        if self.first_free.is_none() {
+            self.storage.push(ItEntry::Free(None));
+            self.first_free = Some(self.storage.len() - 1);
         }
+
+        let i = self.first_free.unwrap();
+
+        let next_prev = if let Some(first_used) = self.first_used {
+            // Insert after the `self.first_used`
+            let next = {
+                let next_prev = self.storage[first_used].next_previous_used_index_mut();
+                replace(&mut next_prev.0, i)
+            };
+            self.storage[next].next_previous_used_index_mut().1 = i;
+
+            (next, first_used)
+        } else {
+            (i, i)
+        };
+
+        self.first_free = self.storage[i].next_free_index();
+        self.storage[i] = ItEntry::Used(x, next_prev);
+        self.first_used = Some(i);
+
+        PoolPtr(i)
     }
     pub fn deallocate<S: Into<PoolPtr>>(&mut self, i: S) -> Option<T> {
         let i = i.into().0;
@@ -266,6 +263,7 @@ impl<T> IterablePool<T> {
             ItEntry::Used(x, (next, prev)) => {
                 if next == i {
                     assert_eq!(self.first_used, Some(i));
+                    assert_eq!(next, prev);
                     self.first_used = None;
                 } else {
                     if self.first_used == Some(i) {
