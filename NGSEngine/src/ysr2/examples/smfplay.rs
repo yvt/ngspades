@@ -27,6 +27,9 @@ use ysr2::mixer::clip::Clip;
 use ysr2::mixer::clipmixer::{ClipMixer, NoteId};
 use ysr2::localizer::{self, Panner};
 use ysr2::localizer::nodes::{PannerNode, SourceId};
+use ysr2::filters::mixer;
+use ysr2::filters::reverb::{MatrixReverbNode, MatrixReverbParams};
+use ysr2::filters::delay::DelayNode;
 
 fn make_wave() -> Clip {
     let period: usize = 64;
@@ -78,6 +81,7 @@ struct SmfPlayer<T: Panner<NodeInputGenerator>> {
     context: RefCell<Context>,
     panner_id: NodeId,
     output_id: NodeId,
+    reverb_mixer_id: NodeId,
 
     next_events: BinaryHeap<NextEvent>,
     notes: RefCell<Vec<Note>>,
@@ -98,8 +102,16 @@ struct NextEvent {
 
 #[derive(Debug)]
 struct MidiChannelState {
+    /// The current MIDI program number.
     program: u8,
-    source_id: SourceId,
+
+    /// Panner's source ID.
+    p_source_id: SourceId,
+
+    /// Source ID used for reverb bus mixer.
+    m_source_id: mixer::SourceId,
+
+    /// Node ID of `ClipMixer` that produces audio for this channel.
     mixer_id: NodeId,
 }
 
@@ -148,9 +160,10 @@ where
         // Construct audio nodes
         let mut context = Context::new();
         let mut panner_node = PannerNode::new(panner, output_prop.num_channels);
+        let mut reverb_mixer_node = mixer::MixerNode::new();
 
         // Each channel produces a monaural audio stream which is routed to
-        // the panner
+        // the panner and the reverb bus
         let channels = (0..16)
             .map(|_| {
                 let mixer = ClipMixer::new(&StreamProperties {
@@ -161,19 +174,86 @@ where
                 let mixer_id = context.insert(GeneratorNode::new(mixer, 1));
                 MidiChannelState {
                     program: 0,
-                    source_id: panner_node.insert((mixer_id, 0)),
+                    p_source_id: panner_node.insert((mixer_id, 0)),
+                    m_source_id: reverb_mixer_node.insert_with_gain((mixer_id, 0), 0.3),
                     mixer_id,
                 }
             })
             .collect();
 
+        // Panner might have an intrinsic latency
+        let panner_latency = panner_node.latency();
+
         // Insert the panner node
         let panner_id = context.insert(panner_node);
 
+        // Insert the reverb bus mixer node
+        let reverb_mixer_id = context.insert(reverb_mixer_node);
+
+        // Insert a delay node to match the latency
+        let reverb_compensated_id = if panner_latency > 0 {
+            let mut delay = DelayNode::new(panner_latency);
+            *delay.input_source_mut() = Some((reverb_mixer_id, 0));
+            context.insert(delay)
+        } else {
+            reverb_mixer_id
+        };
+
+        // Insert the early reflections node
+        let mut er = MatrixReverbNode::new(
+            &MatrixReverbParams {
+                reverb_time: 0.3 * output_prop.sampling_rate,
+                mean_delay_time: 0.1 * output_prop.sampling_rate,
+                diffusion: 0.6,
+                reverb_time_hf_ratio: 0.9,
+                high_frequency_ref: 5000.0 / output_prop.sampling_rate,
+            },
+            output_prop.num_channels,
+        );
+        *er.input_source_mut() = Some((reverb_compensated_id, 0));
+        let er_id = context.insert(er);
+
+        // Insert the late reverb node
+        let late_reverb_delay_id = {
+            let mut delay = DelayNode::new((0.08 * output_prop.sampling_rate) as usize);
+            *delay.input_source_mut() = Some((reverb_compensated_id, 0));
+            context.insert(delay)
+        };
+        let mut reverb = MatrixReverbNode::new(
+            &MatrixReverbParams {
+                reverb_time: 4.0 * output_prop.sampling_rate,
+                mean_delay_time: 0.06 * output_prop.sampling_rate,
+                diffusion: 1.0,
+                reverb_time_hf_ratio: 0.5,
+                high_frequency_ref: 5000.0 / output_prop.sampling_rate,
+            },
+            output_prop.num_channels,
+        );
+        *reverb.input_source_mut() = Some((late_reverb_delay_id, 0));
+        let reverb_id = context.insert(reverb);
+
+        // Mix the output of the panner and the reverb
+        let final_mixer_outputs: Vec<_> = (0..output_prop.num_channels)
+            .map(|i| {
+                let mut final_mixer = mixer::MixerNode::new();
+                final_mixer.insert((panner_id, i));
+
+                static XF_AMOUNT: f64 = 0.2;
+                final_mixer.insert_with_gain((reverb_id, i), 1.0 * (1.0 - XF_AMOUNT));
+                final_mixer.insert_with_gain((er_id, i), 4.0 * (1.0 - XF_AMOUNT));
+
+                final_mixer.insert_with_gain((reverb_id, 1 - i), 1.0 * XF_AMOUNT);
+                final_mixer.insert_with_gain((er_id, 1 - i), 4.0 * XF_AMOUNT);
+
+                let final_mixer_id = context.insert(final_mixer);
+                (final_mixer_id, 0)
+            })
+            .collect();
+
         // Insert the output node
         let mut output = OutputNode::new(output_prop.num_channels);
-        for i in 0..output_prop.num_channels {
-            *output.input_source_mut(i).unwrap() = Some((panner_id, i));
+        for (i, fm_output) in final_mixer_outputs.iter().enumerate() {
+            *output.input_source_mut(i).unwrap() = Some(*fm_output);
         }
         let output_id = context.insert(output);
 
@@ -185,6 +265,7 @@ where
             context: RefCell::new(context),
             panner_id,
             output_id,
+            reverb_mixer_id,
 
             notes: RefCell::new(Vec::new()),
             channels,
@@ -328,19 +409,31 @@ where
                                 let value = data[2];
                                 match control {
                                     0x0a => {
-                                        // pan
+                                        // Pan
                                         let azimuth = (value as f64 / 128.0 - 0.5) *
                                             std::f64::consts::PI;
                                         let dir =
                                             cgmath::Vector3::new(azimuth.sin(), 0.0, azimuth.cos());
-                                        let ref source_id = self.channels[chan as usize].source_id;
+                                        let p_source_id = self.channels[chan as usize].p_source_id;
                                         self.context
                                             .borrow_mut()
                                             .get_mut_as::<PannerNode<T>>(&self.panner_id)
                                             .unwrap()
-                                            .direction_mut(source_id)
+                                            .direction_mut(&p_source_id)
                                             .unwrap()
                                             .set_slow(dir, self.output_prop.sampling_rate * 0.01);
+                                    }
+                                    0x5b => {
+                                        // Effect 1 (reverb send)
+                                        let gain = value as f64 / 127.0;
+                                        let m_source_id = self.channels[chan as usize].m_source_id;
+                                        self.context
+                                            .borrow_mut()
+                                            .get_mut_as::<mixer::MixerNode>(&self.reverb_mixer_id)
+                                            .unwrap()
+                                            .gain_mut(&m_source_id)
+                                            .unwrap()
+                                            .set_slow(gain, self.output_prop.sampling_rate * 0.01);
                                     }
                                     _ => {}
                                 }
