@@ -17,6 +17,7 @@ use ysr2_common::nodes::{Node, NodeInspector, NodeRenderContext, NodeId, OutputI
 
 pub mod biquad;
 pub mod conv;
+pub mod delay;
 pub mod gain;
 pub mod mixer;
 pub mod reverb;
