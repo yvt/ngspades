@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 use std::any::Any;
 use ysr2_common::nodes::{Node, NodeInspector, NodeRenderContext, NodeId, OutputId,
-    NodeInputGenerator, NodeInputGeneratorHost};
+                         NodeInputGenerator, NodeInputGeneratorHost};
 use ysr2_common::utils::{IterablePool, PoolPtr};
 use ysr2_common::values::DynamicSlerpVector3;
 use Panner;
@@ -73,36 +73,40 @@ impl<T: Panner<NodeInputGenerator>> PannerNode<T> {
     }
 
     pub fn remove(&mut self, id: &SourceId) -> Option<Option<(NodeId, OutputId)>> {
-        self.sources.deallocate(id.0)
+        self.sources
+            .deallocate(id.0)
             .map(|source| self.panner.remove(&source.inner_id).unwrap())
             .map(|gen| *gen.input_source(0).unwrap())
     }
 
     pub fn direction(&self, id: &SourceId) -> Option<&DynamicSlerpVector3> {
         let ref panner = self.panner;
-        self.sources.get(id.0).map(move |src| panner.direction(&src.inner_id).unwrap())
+        self.sources.get(id.0).map(move |src| {
+            panner.direction(&src.inner_id).unwrap()
+        })
     }
 
     pub fn direction_mut(&mut self, id: &SourceId) -> Option<&mut DynamicSlerpVector3> {
         let ref mut panner = self.panner;
-        self.sources.get(id.0).map(move |src| panner.direction_mut(&src.inner_id).unwrap())
+        self.sources.get(id.0).map(move |src| {
+            panner.direction_mut(&src.inner_id).unwrap()
+        })
     }
 
     /// Get a reference to the source of the specified source.
     pub fn input_source(&self, id: &SourceId) -> Option<&Option<(NodeId, OutputId)>> {
         let ref panner = self.panner;
-        self.sources.get(id.0)
+        self.sources
+            .get(id.0)
             .map(move |src| panner.generator(&src.inner_id).unwrap())
             .map(|gen| gen.input_source(0).unwrap())
     }
 
     /// Get a mutable reference to the source of the specified source.
-    pub fn input_source_mut(
-        &mut self,
-        id: &SourceId,
-    ) -> Option<&mut Option<(NodeId, OutputId)>> {
+    pub fn input_source_mut(&mut self, id: &SourceId) -> Option<&mut Option<(NodeId, OutputId)>> {
         let ref mut panner = self.panner;
-        self.sources.get(id.0)
+        self.sources
+            .get(id.0)
             .map(move |src| panner.generator_mut(&src.inner_id).unwrap())
             .map(|gen| gen.input_source_mut(0).unwrap())
     }
@@ -137,14 +141,12 @@ where
 
     fn render(&mut self, to: &mut [&mut [f32]], context: &NodeRenderContext) -> bool {
         let ref mut panner = self.panner;
-        self.host.with(context, || {
-            if panner.is_active() {
-                let num_samples = to[0].len();
-                panner.render(to, 0..num_samples);
-                true
-            } else {
-                false
-            }
+        self.host.with(context, || if panner.is_active() {
+            let num_samples = to[0].len();
+            panner.render(to, 0..num_samples);
+            true
+        } else {
+            false
         })
     }
 
