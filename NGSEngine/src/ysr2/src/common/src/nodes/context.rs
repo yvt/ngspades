@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use atomic_refcell::{AtomicRefCell, AtomicRefMut};
 use arrayvec::ArrayVec;
 use nodes::{Node, IntoNodeBox};
@@ -262,7 +262,7 @@ impl Context {
 #[derive(Debug)]
 struct SchedInfo {
     activated_nodes: Vec<NodeId>,
-    activation_stack: Vec<NodeId>,
+    activation_queue: VecDeque<NodeId>,
     /// Indexed by `NodeId.0`
     node_sched_infos: Vec<NodeSchedInfo>,
     buffer_sched_info: BuffersSchedInfo,
@@ -302,7 +302,7 @@ impl SchedInfo {
     fn new() -> Self {
         Self {
             activated_nodes: Vec::new(),
-            activation_stack: Vec::new(),
+            activation_queue: VecDeque::new(),
             node_sched_infos: Vec::new(),
             buffer_sched_info: BuffersSchedInfo::new(),
         }
@@ -312,12 +312,12 @@ impl SchedInfo {
     where
         S: Iterator<Item = NodeId>,
     {
-        assert!(self.activation_stack.is_empty());
+        assert!(self.activation_queue.is_empty());
         assert!(self.activated_nodes.is_empty());
 
         // We will traverse the graph in backward, with cycle detection
         for node_id in sinks {
-            self.activation_stack.push(node_id);
+            self.activation_queue.push_back(node_id);
 
             let ref mut nsi = self.node_sched_infos[(node_id.0).0];
             nsi.num_output_samples = None;
@@ -326,7 +326,7 @@ impl SchedInfo {
 
         self.buffer_sched_info.reset();
 
-        while let Some(node_id) = self.activation_stack.pop() {
+        while let Some(node_id) = self.activation_queue.pop_front() {
             // Mark the node as visited
             self.activated_nodes.push(node_id);
             {
@@ -378,7 +378,7 @@ impl SchedInfo {
     }
 
     fn cleanup(&mut self) {
-        for node_id in self.activation_stack.drain(..) {
+        for node_id in self.activation_queue.drain(..) {
             let ref mut nsi = self.node_sched_infos[(node_id.0).0];
             nsi.state = NodeState::Inactive;
         }
@@ -505,7 +505,7 @@ impl<'a: 'b, 'b> NodeInputDecl<'a, 'b> {
 
         if source_node.state == NodeState::Inactive {
             // Traverse from this node later
-            sched_info.activation_stack.push(self.source.0);
+            sched_info.activation_queue.push_back(self.source.0);
             source_node.state = NodeState::Found;
         }
     }
