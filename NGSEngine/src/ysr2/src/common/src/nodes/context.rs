@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::collections::{HashSet, VecDeque};
-use atomic_refcell::{AtomicRefCell, AtomicRefMut};
+use std::collections::{HashSet, BinaryHeap};
+use parking_lot::{RwLock, RwLockReadGuard};
 use arrayvec::ArrayVec;
 use nodes::{Node, IntoNodeBox};
 use utils::{Pool, PoolPtr};
@@ -63,7 +63,7 @@ pub struct Context {
     sinks: HashSet<NodeId>,
 
     /// Indexed by `BufferId`
-    buffers: Vec<AtomicRefCell<Buffer>>,
+    buffers: Vec<RwLock<Buffer>>,
     sched_info: SchedInfo,
 }
 
@@ -79,6 +79,9 @@ pub enum ContextError {
 
     /// A feedback loop was detected.
     FeedbackLoop,
+
+    /// A panic during a prior execution.
+    Poisoned,
 }
 
 /// Identifies a `Node` in a `Context`.
@@ -150,7 +153,13 @@ impl Context {
         sched_info.node_sched_infos[index] = NodeSchedInfo {
             num_output_samples: None,
             state: NodeState::Inactive,
-            outputs: vec![ContextNodeOutput { buffer_index: None }; num_outputs],
+            outputs: vec![
+                ContextNodeOutput {
+                    buffer_index: None,
+                    last_use: None,
+                };
+                num_outputs
+            ],
         };
 
         id
@@ -201,16 +210,12 @@ impl Context {
         // Allocate buffers as needed
         {
             let ref buffer_sched_infos = sched_info.buffer_sched_info.buffer_sched_infos;
-            if buffer_sched_infos.len() > self.buffers.len() {
-                self.buffers.resize(
-                    buffer_sched_infos.len(),
-                    Default::default(),
-                );
+            while buffer_sched_infos.len() > self.buffers.len() {
+                self.buffers.push(Default::default());
             }
 
-            for (bsi, buffer) in buffer_sched_infos.iter().zip(self.buffers.iter()) {
-                // `AtomicRefCell` does not have `get_mut`, unfortunately
-                let mut buffer = buffer.borrow_mut();
+            for (bsi, buffer) in buffer_sched_infos.iter().zip(self.buffers.iter_mut()) {
+                let buffer = buffer.get_mut();
                 if bsi.max_size > buffer.data.len() {
                     let extra = bsi.max_size - buffer.data.len();
                     buffer.data.reserve(extra);
@@ -218,15 +223,15 @@ impl Context {
             }
         }
 
-        // Execute each node in a scheduled order
+        // Execute each node in the scheduled order
         let ref buffers = self.buffers;
-        for &node_id in sched_info.activated_nodes.iter().rev() {
+        for &node_id in sched_info.activated_nodes.iter() {
             let ref nsi = sched_info.node_sched_infos[(node_id.0).0];
             let n_samples = nsi.num_output_samples;
             let mut out_refs: ArrayVec<[_; 64]> = nsi.outputs
                 .iter()
                 .map(|output| {
-                    let mut buffer = buffers[output.buffer_index.unwrap()].borrow_mut();
+                    let mut buffer = buffers[output.buffer_index.unwrap()].write();
                     buffer.data.resize(n_samples.unwrap(), 0.0);
                     buffer.state = BufferState::Active;
                     buffer
@@ -262,10 +267,17 @@ impl Context {
 #[derive(Debug)]
 struct SchedInfo {
     activated_nodes: Vec<NodeId>,
-    activation_queue: VecDeque<NodeId>,
+    activation_stack: Vec<StackEntry>,
+    buffer_release_queue: BinaryHeap<(usize, BufferId)>,
     /// Indexed by `NodeId.0`
     node_sched_infos: Vec<NodeSchedInfo>,
     buffer_sched_info: BuffersSchedInfo,
+}
+
+#[derive(Debug)]
+enum StackEntry {
+    Enter(NodeId),
+    Leave(NodeId),
 }
 
 #[derive(Debug, Clone)]
@@ -289,12 +301,14 @@ impl Default for NodeSchedInfo {
 #[derive(Debug, Clone)]
 struct ContextNodeOutput {
     buffer_index: Option<BufferId>,
+    last_use: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum NodeState {
     Inactive,
     Found,
+    Backedge,
     Active,
 }
 
@@ -302,7 +316,8 @@ impl SchedInfo {
     fn new() -> Self {
         Self {
             activated_nodes: Vec::new(),
-            activation_queue: VecDeque::new(),
+            activation_stack: Vec::new(),
+            buffer_release_queue: BinaryHeap::new(),
             node_sched_infos: Vec::new(),
             buffer_sched_info: BuffersSchedInfo::new(),
         }
@@ -312,12 +327,15 @@ impl SchedInfo {
     where
         S: Iterator<Item = NodeId>,
     {
-        assert!(self.activation_queue.is_empty());
-        assert!(self.activated_nodes.is_empty());
+        if !self.activation_stack.is_empty() || !self.activated_nodes.is_empty() ||
+            !self.buffer_release_queue.is_empty()
+        {
+            return Err(ContextError::Poisoned);
+        }
 
         // We will traverse the graph in backward, with cycle detection
         for node_id in sinks {
-            self.activation_queue.push_back(node_id);
+            self.activation_stack.push(StackEntry::Enter(node_id));
 
             let ref mut nsi = self.node_sched_infos[(node_id.0).0];
             nsi.num_output_samples = None;
@@ -326,61 +344,129 @@ impl SchedInfo {
 
         self.buffer_sched_info.reset();
 
-        while let Some(node_id) = self.activation_queue.pop_front() {
-            // Mark the node as visited
-            self.activated_nodes.push(node_id);
-            {
-                let ref mut nsi = self.node_sched_infos[(node_id.0).0];
-                debug_assert_eq!(nsi.state, NodeState::Found);
-                nsi.state = NodeState::Active;
-            }
+        while let Some(entry) = self.activation_stack.pop() {
+            match entry {
+                StackEntry::Enter(node_id) => {
+                    // Mark the node as visited
+                    if let Err(err) = {
+                        let ref mut nsi = self.node_sched_infos[(node_id.0).0];
+                        match nsi.state {
+                            NodeState::Inactive => unreachable!(),
+                            NodeState::Backedge => {
+                                nsi.state = NodeState::Inactive;
+                                Err(ContextError::FeedbackLoop)
+                            }
+                            NodeState::Active => {
+                                continue;
+                            }
+                            NodeState::Found => {
+                                nsi.state = NodeState::Backedge;
+                                Ok(())
+                            }
+                        }
+                    }
+                    {
+                        self.cleanup();
+                        return Err(err);
+                    }
+                    self.activation_stack.push(StackEntry::Leave(node_id));
 
-            // Traverse via each edge in backward
-            let ctx_node: &mut ContextNode = nodes.get_mut(node_id.0).unwrap();
-            {
-                let mut scanner = NodeInspector {
-                    sched_info: self,
-                    node_id,
-                    error: None,
-                };
-                ctx_node.node.inspect(&mut scanner);
-                if let Some(error) = scanner.error {
-                    scanner.sched_info.cleanup();
-                    return Err(error);
+                    // Traverse via each edge in backward and discover more
+                    // nodes
+                    let ctx_node: &mut ContextNode = nodes.get_mut(node_id.0).unwrap();
+                    {
+                        let mut scanner = NodeInspector {
+                            sched_info: self,
+                            node_id,
+                            phase: InspectorPhase::Enter,
+                            error: None,
+                        };
+                        ctx_node.node.inspect(&mut scanner);
+                        if let Some(error) = scanner.error {
+                            scanner.sched_info.cleanup();
+                            return Err(error);
+                        }
+                    }
                 }
-            }
+                StackEntry::Leave(node_id) => {
+                    {
+                        let ref mut nsi = self.node_sched_infos[(node_id.0).0];
+                        debug_assert_eq!(nsi.state, NodeState::Backedge);
+                        nsi.state = NodeState::Active;
+                    }
 
-            {
-                // Allocate scratch buffers
-                // (buffers for these outputs are not allocated yet because no node
-                //  actually uses them, but we still have to provide valid output
-                //  buffers to the render method)
-                let ref mut nsi: NodeSchedInfo = self.node_sched_infos[(node_id.0).0];
-                if nsi.outputs.len() > 0 {
-                    let n_samples = nsi.num_output_samples.unwrap();
-                    for output in nsi.outputs.iter_mut() {
-                        if output.buffer_index.is_none() {
-                            output.buffer_index = Some(self.buffer_sched_info.allocate(n_samples));
+                    // Update the buffer's lifetime
+                    let ctx_node: &mut ContextNode = nodes.get_mut(node_id.0).unwrap();
+                    {
+                        let mut scanner = NodeInspector {
+                            sched_info: self,
+                            node_id,
+                            phase: InspectorPhase::Leave,
+                            error: None,
+                        };
+                        ctx_node.node.inspect(&mut scanner);
+                        if let Some(error) = scanner.error {
+                            scanner.sched_info.cleanup();
+                            return Err(error);
                         }
                     }
 
-                    // Release the output buffer
-                    for output in nsi.outputs.iter_mut() {
-                        self.buffer_sched_info.deallocate(
-                            output.buffer_index.unwrap(),
-                        );
-                    }
+                    // Schedule the execution
+                    self.activated_nodes.push(node_id);
                 }
             }
         }
+
+        // Allocate buffers
+        for (i, node_id) in self.activated_nodes.iter().enumerate() {
+            let ref mut nsi: NodeSchedInfo = self.node_sched_infos[(node_id.0).0];
+            if nsi.outputs.len() > 0 {
+                // Allocate buffers
+                let num_samples = nsi.num_output_samples.unwrap();
+                for x in nsi.outputs.iter_mut() {
+                    x.buffer_index = Some(self.buffer_sched_info.allocate(num_samples));
+                }
+
+                // Check the buffer's lifetime
+                for x in nsi.outputs.iter_mut() {
+                    if let Some(last_use) = x.last_use {
+                        // Be careful; `BinaryHeap` is max-heap, so we have to negate the index
+                        self.buffer_release_queue.push((
+                            !last_use,
+                            x.buffer_index.unwrap(),
+                        ));
+                    } else {
+                        // Scratch buffer — released immediately
+                        self.buffer_sched_info.deallocate(x.buffer_index.unwrap());
+                    }
+                }
+            }
+
+            // Release buffers
+            while let Some(&(last_use_neg, buffer_index)) = self.buffer_release_queue.peek() {
+                let last_use = !last_use_neg;
+                if last_use > i {
+                    break;
+                }
+                self.buffer_sched_info.deallocate(buffer_index);
+                self.buffer_release_queue.pop();
+            }
+        }
+
+        assert!(self.buffer_release_queue.is_empty());
 
         Ok(())
     }
 
     fn cleanup(&mut self) {
-        for node_id in self.activation_queue.drain(..) {
-            let ref mut nsi = self.node_sched_infos[(node_id.0).0];
-            nsi.state = NodeState::Inactive;
+        for entry in self.activation_stack.drain(..) {
+            match entry {
+                StackEntry::Enter(node_id) |
+                StackEntry::Leave(node_id) => {
+                    let ref mut nsi = self.node_sched_infos[(node_id.0).0];
+                    nsi.state = NodeState::Inactive;
+                }
+            }
         }
         for node_id in self.activated_nodes.drain(..) {
             let ref mut nsi = self.node_sched_infos[(node_id.0).0];
@@ -395,7 +481,14 @@ impl SchedInfo {
 pub struct NodeInspector<'a> {
     sched_info: &'a mut SchedInfo,
     node_id: NodeId,
+    phase: InspectorPhase,
     error: Option<ContextError>,
+}
+
+#[derive(Debug)]
+enum InspectorPhase {
+    Enter,
+    Leave,
 }
 
 impl<'a> NodeInspector<'a> {
@@ -465,49 +558,47 @@ impl<'a: 'b, 'b> NodeInputDecl<'a, 'b> {
             return;
         };
 
-        // Check cycle
-        if source_node.state == NodeState::Active {
-            self.scanner.error = Some(ContextError::FeedbackLoop);
-            return;
-        }
+        match self.scanner.phase {
+            InspectorPhase::Enter => {
+                // Reset the state if the node was found for the first time during this
+                // frame
+                if source_node.state == NodeState::Inactive {
+                    for x in source_node.outputs.iter_mut() {
+                        x.last_use = None;
+                    }
+                }
 
-        // Reset the state if the node was found for the first time during this
-        // frame
-        if source_node.state == NodeState::Inactive {
-            for x in source_node.outputs.iter_mut() {
-                x.buffer_index = None;
+                // Check and update the number of sample
+                if let Some(num_output_samples) = source_node.num_output_samples {
+                    if num_output_samples != num_samples {
+                        self.scanner.error = Some(ContextError::SampleCountMismatch);
+                        return;
+                    }
+                } else {
+                    source_node.num_output_samples = Some(num_samples);
+                }
+
+                if source_node.state != NodeState::Active {
+                    // Traverse from this node later
+                    sched_info.activation_stack.push(
+                        StackEntry::Enter(self.source.0),
+                    );
+                    source_node.state = NodeState::Found;
+                }
+            }
+            InspectorPhase::Leave => {
+                let output: &mut ContextNodeOutput =
+                    if let Some(x) = source_node.outputs.get_mut(self.source.1) {
+                        x
+                    } else {
+                        self.scanner.error = Some(ContextError::InvalidConnection);
+                        return;
+                    };
+
+                output.last_use = Some(sched_info.activated_nodes.len());
             }
         }
 
-        // Check and update the number of sample
-        if let Some(num_output_samples) = source_node.num_output_samples {
-            if num_output_samples != num_samples {
-                self.scanner.error = Some(ContextError::SampleCountMismatch);
-                return;
-            }
-        } else {
-            source_node.num_output_samples = Some(num_samples);
-        }
-
-        // Find the source output
-        let output: &mut ContextNodeOutput =
-            if let Some(x) = source_node.outputs.get_mut(self.source.1) {
-                x
-            } else {
-                self.scanner.error = Some(ContextError::InvalidConnection);
-                return;
-            };
-
-        if output.buffer_index.is_none() {
-            // Allocate the buffer for it
-            output.buffer_index = Some(sched_info.buffer_sched_info.allocate(num_samples));
-        }
-
-        if source_node.state == NodeState::Inactive {
-            // Traverse from this node later
-            sched_info.activation_queue.push_back(self.source.0);
-            source_node.state = NodeState::Found;
-        }
     }
 }
 
@@ -578,13 +669,13 @@ impl BuffersSchedInfo {
 #[derive(Debug)]
 pub struct NodeRenderContext<'a> {
     node_sched_infos: &'a Vec<NodeSchedInfo>,
-    buffers: &'a Vec<AtomicRefCell<Buffer>>,
+    buffers: &'a Vec<RwLock<Buffer>>,
 }
 
 /// Node input information returned by `NodeRenderContext::get_input`.
-#[derive(Debug)]
 pub struct NodeInput<'a> {
-    buffer: AtomicRefMut<'a, Buffer>,
+    rwlock: &'a RwLock<Buffer>,
+    buffer: Option<RwLockReadGuard<'a, Buffer>>,
 }
 
 impl<'a> NodeRenderContext<'a> {
@@ -597,7 +688,10 @@ impl<'a> NodeRenderContext<'a> {
             .and_then(|nsi| nsi.outputs.get(target.1))
             .and_then(|cno| cno.buffer_index)
             .map(|index| {
-                NodeInput { buffer: self.buffers[index].borrow_mut() }
+                NodeInput {
+                    rwlock: &self.buffers[index],
+                    buffer: Some(self.buffers[index].read()),
+                }
             })
     }
 }
@@ -609,18 +703,27 @@ impl<'a> NodeInput<'a> {
     /// a zero-fill operation. You can avoid this by checking if it is inactive
     /// by calling `is_active()` beforehand.
     pub fn samples(&mut self) -> &[f32] {
-        if self.buffer.state == BufferState::InactiveDirty {
-            for x in self.buffer.data.iter_mut() {
+        if self.buffer.as_ref().unwrap().state == BufferState::InactiveDirty {
+            // Drop the read lock
+            self.buffer.take();
+
+            // Acquire a write lock
+            let mut buffer = self.rwlock.write();
+            for x in buffer.data.iter_mut() {
                 *x = 0.0;
             }
-            self.buffer.state = BufferState::Inactive;
+            buffer.state = BufferState::Inactive;
+
+
+            // Downgrade to the read lock
+            self.buffer = Some(buffer.downgrade());
         }
-        self.buffer.data.as_slice()
+        self.buffer.as_ref().unwrap().data.as_slice()
     }
 
     /// Check if the input is active or not (or in other words, `samples()` has
     /// at least one significant sample).
     pub fn is_active(&mut self) -> bool {
-        self.buffer.state == BufferState::Active
+        self.buffer.as_ref().unwrap().state == BufferState::Active
     }
 }

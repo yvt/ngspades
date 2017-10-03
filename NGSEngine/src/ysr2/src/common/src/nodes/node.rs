@@ -36,6 +36,9 @@ pub trait Node: Any + Send + Sync + Debug {
     ///
     /// The implementor must report the existence of every input by calling
     /// `NodeInspector::declare_input`.
+    ///
+    /// The result must be consistent throughout multiple invocations to `inspect`
+    /// within a single frame.
     fn inspect(&mut self, scanner: &mut NodeInspector);
 
     /// Produce audio data.
