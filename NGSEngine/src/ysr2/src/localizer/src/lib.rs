@@ -17,9 +17,10 @@ use ysr2_common::values::DynamicSlerpVector3;
 
 pub mod equalpower;
 pub mod hrtf;
+pub mod nodes;
 
 pub trait Panner<T: Generator>: Generator {
-    type SourceId: fmt::Debug + Eq + PartialEq + hash::Hash + Clone;
+    type SourceId: fmt::Debug + Eq + PartialEq + hash::Hash + Clone + Sync + Send;
 
     fn insert(&mut self, generator: T) -> Self::SourceId;
 
