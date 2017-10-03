@@ -6,7 +6,7 @@
 use std::collections::HashSet;
 use atomic_refcell::{AtomicRefCell, AtomicRefMut};
 use arrayvec::ArrayVec;
-use nodes::Node;
+use nodes::{Node, IntoNodeBox};
 use utils::{Pool, PoolPtr};
 
 /// Encapsulates the audio node system's context.
@@ -23,12 +23,12 @@ use utils::{Pool, PoolPtr};
 ///     let mut context = Context::new();
 ///
 ///     // Create a source
-///     let source_id = context.insert(Box::new(ZeroNode));
+///     let source_id = context.insert(ZeroNode);
 ///
 ///     // Create a sink and connect it to the source
 ///     let mut sink = OutputNode::new(1);
 ///     *sink.input_source_mut(0).unwrap() = Some((source_id, 0));
-///     let sink_id = context.insert(Box::new(sink));
+///     let sink_id = context.insert(sink);
 ///
 ///     # (source_id, sink_id);
 ///
@@ -37,10 +37,10 @@ use utils::{Pool, PoolPtr};
 ///
 ///     # use ysr2_common::nodes::*;
 ///     # let mut context = Context::new();
-///     # let source_id = context.insert(Box::new(ZeroNode));
+///     # let source_id = context.insert(ZeroNode);
 ///     # let mut sink = OutputNode::new(1);
 ///     # *sink.input_source_mut(0).unwrap() = Some((source_id, 0));
-///     # let sink_id = context.insert(Box::new(sink));
+///     # let sink_id = context.insert(sink);
 ///     // Request a next frame
 ///     {
 ///         let sink = context.get_mut_as::<OutputNode>(&sink_id).unwrap();
@@ -129,7 +129,8 @@ impl Context {
     }
 
     /// Insert a node into the context.
-    pub fn insert(&mut self, node: Box<Node>) -> NodeId {
+    pub fn insert<T: IntoNodeBox>(&mut self, node: T) -> NodeId {
+        let node = node.into_box();
         let num_outputs = node.num_outputs();
 
         let id = NodeId(self.nodes.allocate(ContextNode { node }));

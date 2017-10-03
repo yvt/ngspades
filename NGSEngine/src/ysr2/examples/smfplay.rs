@@ -158,7 +158,7 @@ where
                     channel_config: ChannelConfig::Monaural,
                     ..output_prop.clone()
                 });
-                let mixer_id = context.insert(Box::new(GeneratorNode::new(mixer, 1)));
+                let mixer_id = context.insert(GeneratorNode::new(mixer, 1));
                 MidiChannelState {
                     program: 0,
                     source_id: panner_node.insert((mixer_id, 0)),
@@ -168,14 +168,14 @@ where
             .collect();
 
         // Insert the panner node
-        let panner_id = context.insert(Box::new(panner_node));
+        let panner_id = context.insert(panner_node);
 
         // Insert the output node
         let mut output = OutputNode::new(output_prop.num_channels);
         for i in 0..output_prop.num_channels {
             *output.input_source_mut(i).unwrap() = Some((panner_id, i));
         }
-        let output_id = context.insert(Box::new(output));
+        let output_id = context.insert(output);
 
         Self {
             smf,

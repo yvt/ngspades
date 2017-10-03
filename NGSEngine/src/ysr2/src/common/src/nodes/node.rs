@@ -73,3 +73,31 @@ pub trait Node: Any + Send + Sync + Debug {
     /// ```
     fn as_any_mut(&mut self) -> &mut Any;
 }
+
+/// Types that can be converted to `Box<Node>`, or are already `Box<Node>`.
+///
+/// Provided for ergonomic reason. See the following example:
+///
+///     use ysr2_common::nodes::{Node, ZeroNode, IntoNodeBox};
+///
+///     fn without_into_node_box(_: Box<Node>) {}
+///     fn with_into_node_box<T: IntoNodeBox>(_: T) {}
+///
+///     without_into_node_box(Box::new(ZeroNode));
+///
+///     with_into_node_box(ZeroNode);
+pub trait IntoNodeBox {
+    fn into_box(self) -> Box<Node>;
+}
+
+impl IntoNodeBox for Box<Node> {
+    fn into_box(self) -> Box<Node> {
+        self
+    }
+}
+
+impl<T: Node> IntoNodeBox for T {
+    fn into_box(self) -> Box<Node> {
+        Box::new(self)
+    }
+}
