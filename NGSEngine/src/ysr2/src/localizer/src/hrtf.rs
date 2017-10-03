@@ -312,6 +312,10 @@ impl<T: Generator + Send + Sync, Q: Queue> Panner<T> for HrtfPanner<T, Q> {
     fn remove(&mut self, id: &SourceId) -> Option<T> {
         self.sources.remove(id).map(|source| source.generator)
     }
+
+    fn latency(&self) -> usize {
+        192
+    }
 }
 
 impl PannerBinTable {
@@ -729,4 +733,3 @@ impl<T: Generator + Send + Sync, Q: Queue> Generator for HrtfPanner<T, Q> {
         self.bins.active_bins.len() > 0 || self.carry_active || self.output_active
     }
 }
-

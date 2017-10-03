@@ -111,6 +111,11 @@ impl<T: Panner<NodeInputGenerator>> PannerNode<T> {
     pub fn num_outputs(&self) -> usize {
         self.num_outputs
     }
+
+    /// Retrieve the intrinsic latency (measured in samples) of this panner.
+    pub fn latency(&self) -> usize {
+        self.get_ref().latency()
+    }
 }
 
 impl<T> Node for PannerNode<T>

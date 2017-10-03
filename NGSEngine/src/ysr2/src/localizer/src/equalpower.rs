@@ -114,6 +114,10 @@ impl<T: Generator + Send + Sync, Q: Queue> Panner<T> for EqualPowerPanner<T, Q> 
     fn remove(&mut self, id: &SourceId) -> Option<T> {
         self.sources.remove(id).map(|source| source.generator)
     }
+
+    fn latency(&self) -> usize {
+        0
+    }
 }
 
 impl<T: Generator + Send + Sync, Q: Queue> Generator for EqualPowerPanner<T, Q> {

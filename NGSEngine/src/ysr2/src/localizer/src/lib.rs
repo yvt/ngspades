@@ -31,5 +31,8 @@ pub trait Panner<T: Generator>: Generator {
 
     fn remove(&mut self, id: &Self::SourceId) -> Option<T>;
 
+    /// Retrieve the intrinsic latency (measured in samples) of this panner.
+    fn latency(&self) -> usize;
+
     // TODO: add method to update the listener orientation?
 }
