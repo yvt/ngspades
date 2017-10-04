@@ -12,6 +12,8 @@ use ysr2_common::stream::StreamProperties;
 pub(crate) const WAVE_PAD_LEN: usize = 4;
 
 /// A chunk of audio data.
+///
+/// Cloned `Clip`s share the same underlying sample storage.
 #[derive(Debug, Clone)]
 pub struct Clip(Arc<ClipData>);
 
