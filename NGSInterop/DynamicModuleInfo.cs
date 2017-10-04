@@ -66,12 +66,12 @@ namespace Ngs.Interop
 
 				var invokeMethod = delegateType.DefineMethod(
 					"Invoke", MethodAttributes.HideBySig | MethodAttributes.Virtual | MethodAttributes.Public,
-					delegateType.AsType(), new Type[] {});
+					delegateType, new Type[] {});
 				invokeMethod.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
 
 				var testMethod = delegateType.DefineMethod(
 					"Test", MethodAttributes.Public | MethodAttributes.Static,
-					delegateType.AsType(), new Type[] {});
+					delegateType, new Type[] {});
 				
 				var gen = testMethod.GetILGenerator();
 				gen.Emit(OpCodes.Ldnull);

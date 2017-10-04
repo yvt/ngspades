@@ -56,7 +56,7 @@ namespace Ngs.Interop.Marshaller
 
 		static void DefineCcwClass(InterfaceInfo interfaceInfo, TypeBuilder typeBuilder)
 		{
-			var type = typeBuilder.AsType();
+			var type = typeBuilder;
 
 			var uniqifier = new Utils.UniqueNameGenerator();
 			uniqifier.Uniquify("Create"); // reserve
@@ -82,7 +82,7 @@ namespace Ngs.Interop.Marshaller
 
 		static MethodBuilder CreateCcwFactoryMethod(TypeBuilder typeBuilder, CcwMethodInfo[] vtable, Utils.UniqueNameGenerator uniqifier)
 		{
-			var nativeObjectType = typeof(INativeObject<>).GetTypeInfo().MakeGenericType(typeBuilder.AsType());
+			var nativeObjectType = typeof(INativeObject<>).GetTypeInfo().MakeGenericType(typeBuilder);
 			var methodBuilder = typeBuilder.DefineMethod("Create",
 			                                             MethodAttributes.Static | MethodAttributes.Public | MethodAttributes.HideBySig,
 														 CallingConventions.Standard,

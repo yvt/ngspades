@@ -133,7 +133,7 @@ namespace Ngs.Interop.Marshaller
 
 		static void DefineRcwClass(InterfaceInfo interfaceInfo, TypeBuilder typeBuilder)
 		{
-			var type = typeBuilder.AsType();
+			var type = typeBuilder;
 
 			var nativeObjectType = typeof(INativeObject<>).GetTypeInfo().MakeGenericType(type);
 			var nativeObjectTypeInfo = nativeObjectType.GetTypeInfo();
@@ -234,7 +234,7 @@ namespace Ngs.Interop.Marshaller
 
 		static MethodBuilder CreateRcwFactoryMethod(TypeBuilder typeBuilder, ConstructorBuilder ctorInfo)
 		{
-			var nativeObjectType = typeof(INativeObject<>).GetTypeInfo().MakeGenericType(typeBuilder.AsType());
+			var nativeObjectType = typeof(INativeObject<>).GetTypeInfo().MakeGenericType(typeBuilder);
 			var methodBuilder = typeBuilder.DefineMethod("Create",
 			                                             MethodAttributes.Static | MethodAttributes.Public | MethodAttributes.HideBySig,
 														 CallingConventions.Standard,
@@ -279,7 +279,7 @@ namespace Ngs.Interop.Marshaller
 			var methodBuilder = typeBuilder.DefineMethod(methodName,
 														 MethodAttributes.Virtual | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
 														 CallingConventions.Standard,
-														 typeBuilder.AsType(),
+														 typeBuilder,
 														 new Type[] { });
 			typeBuilder.DefineMethodOverride(methodBuilder, getterMethodInfo);
 
