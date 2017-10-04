@@ -4,6 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Node-based audio processing framework.
+//!
+//! Reexported by `ysr2` as `ysr2::nodes`.
 mod context;
 mod node;
 mod nodes;

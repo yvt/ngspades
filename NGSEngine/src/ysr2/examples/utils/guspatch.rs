@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Result, Error, ErrorKind};
 use self::ysr2::common::stream::{StreamProperties, ChannelConfig};
-use self::ysr2::mixer::clip::Clip;
+use self::ysr2::clip::Clip;
 use self::byteorder::{LE, ReadBytesExt};
 
 #[derive(Debug, Clone)]

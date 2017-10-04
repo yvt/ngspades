@@ -4,10 +4,10 @@
 // This source code is a part of Nightingales.
 //
 extern crate ysr2_common;
-extern crate ysr2_mixer;
+extern crate ysr2_clip;
 use ysr2_common::stream::{StreamProperties, ChannelConfig};
-use ysr2_mixer::clip::Clip;
-use ysr2_mixer::clipplayer::ClipPlayer;
+use ysr2_clip::Clip;
+use ysr2_clip::ClipPlayer;
 
 #[test]
 fn bit_exact() {

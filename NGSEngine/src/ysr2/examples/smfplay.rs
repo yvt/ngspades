@@ -25,8 +25,8 @@ use std::marker::PhantomData;
 
 use ysr2::common::dispatch::SerialQueue;
 use ysr2::common::stream::{StreamProperties, ChannelConfig, GeneratorNode};
-use ysr2::common::nodes::{Context, NodeId, NodeInputGenerator, OutputNode};
-use ysr2::mixer::clipmixer::{ClipMixer, NoteId, NoteError};
+use ysr2::nodes::{Context, NodeId, NodeInputGenerator, OutputNode};
+use ysr2::clip::{ClipMixer, NoteId, NoteError};
 use ysr2::localizer::{self, Panner};
 use ysr2::localizer::nodes::{PannerNode, SourceId};
 use ysr2::filters::mixer;

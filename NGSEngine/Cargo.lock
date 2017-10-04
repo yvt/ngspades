@@ -1244,11 +1244,19 @@ dependencies = [
  "hound 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "portaudio 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rimd 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ysr2_clip 0.1.0",
  "ysr2_common 0.1.0",
  "ysr2_filters 0.1.0",
  "ysr2_localizer 0.1.0",
- "ysr2_mixer 0.1.0",
  "ysr2_spatializer 0.1.0",
+]
+
+[[package]]
+name = "ysr2_clip"
+version = "0.1.0"
+dependencies = [
+ "parking_lot 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ysr2_common 0.1.0",
 ]
 
 [[package]]
@@ -1290,14 +1298,6 @@ dependencies = [
  "yfft 0.1.0",
  "ysr2_common 0.1.0",
  "ysr2_kemar_data 0.1.0",
-]
-
-[[package]]
-name = "ysr2_mixer"
-version = "0.1.0"
-dependencies = [
- "parking_lot 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "ysr2_common 0.1.0",
 ]
 
 [metadata]

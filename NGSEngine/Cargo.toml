@@ -20,11 +20,11 @@ members = [
     "src/ngsterrain",
     "src/yfft",
     "src/ysr2",
+    "src/ysr2/src/clip",
     "src/ysr2/src/common",
     "src/ysr2/src/filters",
     "src/ysr2/src/localizer",
     "src/ysr2/src/localizer/kemar_data",
-    "src/ysr2/src/mixer",
     "src/ysr2/src/spatializer",
     "src/xdispatch",
 ]

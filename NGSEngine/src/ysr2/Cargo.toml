@@ -7,7 +7,7 @@ authors = ["yvt <i@yvt.jp>"]
 ysr2_common = { path = "src/common" }
 ysr2_filters = { path = "src/filters" }
 ysr2_localizer = { path = "src/localizer" }
-ysr2_mixer = { path = "src/mixer" }
+ysr2_clip = { path = "src/clip" }
 ysr2_spatializer = { path = "src/spatializer" }
 
 [dev-dependencies]
