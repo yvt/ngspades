@@ -27,12 +27,14 @@ pub struct GusWaveform {
 
     /// The maximum frequency of the node for which this waveform is applicable.
     pub max_freq: f64,
+
+    pub root_freq: f64,
 }
 
 #[derive(Debug, Clone)]
 pub struct GusPatch {
-    description: String,
-    waveforms: Vec<GusWaveform>,
+    pub description: String,
+    pub waveforms: Vec<GusWaveform>,
 }
 
 fn nul_terminate(s: &str) -> &str {
@@ -204,6 +206,7 @@ impl GusPatch {
                 clip,
                 min_freq: low_freq as f64 / 1000.0,
                 max_freq: high_freq as f64 / 1000.0,
+                root_freq: root_freq as f64 / 1000.0,
             });
         }
 
@@ -352,6 +355,7 @@ impl GusLoader {
             clip: make_wave(),
             min_freq: 1.0,
             max_freq: 99999.0,
+            root_freq: 440.0,
         };
         let patch = GusPatch {
             description: "default".to_owned(),

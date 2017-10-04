@@ -26,7 +26,7 @@ use std::marker::PhantomData;
 use ysr2::common::dispatch::SerialQueue;
 use ysr2::common::stream::{StreamProperties, ChannelConfig, GeneratorNode};
 use ysr2::common::nodes::{Context, NodeId, NodeInputGenerator, OutputNode};
-use ysr2::mixer::clipmixer::{ClipMixer, NoteId};
+use ysr2::mixer::clipmixer::{ClipMixer, NoteId, NoteError};
 use ysr2::localizer::{self, Panner};
 use ysr2::localizer::nodes::{PannerNode, SourceId};
 use ysr2::filters::mixer;
@@ -128,7 +128,15 @@ where
                 match e.event {
                     rimd::Event::Midi(ref msg) => {
                         let ref data = msg.data;
+                        let chan = data[0] & 0xf;
                         match data[0] & 0xf0 {
+                            0x90 => {
+                                // note on
+                                let note_no = data[1];
+                                if chan == 9 {
+                                    loader.get_patch_for_drumset(0, note_no);
+                                }
+                            }
                             0xc0 => {
                                 // program change
                                 loader.get_patch_for_instrument(0, data[1]);
@@ -188,9 +196,9 @@ where
         // Insert the early reflections node
         let mut er = MatrixReverbNode::new(
             &MatrixReverbParams {
-                reverb_time: 0.3 * output_prop.sampling_rate,
-                mean_delay_time: 0.1 * output_prop.sampling_rate,
-                diffusion: 0.6,
+                reverb_time: 0.6 * output_prop.sampling_rate,
+                mean_delay_time: 0.05 * output_prop.sampling_rate,
+                diffusion: 1.0,
                 reverb_time_hf_ratio: 0.9,
                 high_frequency_ref: 5000.0 / output_prop.sampling_rate,
             },
@@ -208,7 +216,7 @@ where
         let mut reverb = MatrixReverbNode::new(
             &MatrixReverbParams {
                 reverb_time: 4.0 * output_prop.sampling_rate,
-                mean_delay_time: 0.06 * output_prop.sampling_rate,
+                mean_delay_time: 0.03 * output_prop.sampling_rate,
                 diffusion: 1.0,
                 reverb_time_hf_ratio: 0.5,
                 high_frequency_ref: 5000.0 / output_prop.sampling_rate,
@@ -224,7 +232,7 @@ where
                 let mut final_mixer = mixer::MixerNode::new();
                 final_mixer.insert((panner_id, i));
 
-                static ER_GAIN: f64 = 10.0;
+                static ER_GAIN: f64 = 4.0;
                 static LATE_GAIN: f64 = 2.0;
                 static XF_AMOUNT: f64 = 0.2;
                 final_mixer.insert_with_gain((reverb_id, i), LATE_GAIN * (1.0 - XF_AMOUNT));
@@ -276,20 +284,24 @@ where
                     .get_mut_as::<GeneratorNode<ClipMixer>>(&self.channels[chan as usize].mixer_id)
                     .unwrap()
                     .get_ref_mut();
-                mixer
-                    .set_gain(
+                match (|| {
+                    mixer.set_gain(
                         delay,
                         note.note_id,
                         0.0,
                         self.output_prop.sampling_rate * 0.25,
-                    )
-                    .unwrap();
-                mixer
-                    .stop(
+                    )?;
+                    mixer.stop(
                         delay + (self.output_prop.sampling_rate * 0.5) as u64,
                         note.note_id,
-                    )
-                    .unwrap();
+                    )?;
+                    Ok(())
+                })() {
+                    Ok(()) => {}
+
+                    // Some instruments doesn't have loop
+                    Err(NoteError::UnknownId) => {}
+                }
                 false
             } else {
                 true
@@ -360,7 +372,7 @@ where
                                     // 0 velocity note on is note off
                                     self.note_off(evt_sample_offs_i, note_no, chan);
                                 } else if chan != 9 {
-                                    // ignore the rhythm channel (for now)
+                                    // melodic channel
                                     let pitch = 440.0 * ((note_no as f64 - 69.0) / 12.0).exp2();
 
                                     let ref channel = self.channels[chan as usize];
@@ -385,6 +397,33 @@ where
                                         note: note_no,
                                         note_id,
                                     });
+                                } else {
+                                    // rhythm channel
+                                    let ref channel = self.channels[chan as usize];
+                                    let mixer_id = channel.mixer_id;
+
+                                    if let Some(patch) = self.loader.get_patch_for_drumset(
+                                        channel.program,
+                                        note_no,
+                                    )
+                                    {
+                                        let ref waveform = patch.waveforms[0];
+                                        let note_id = self.context
+                                            .borrow_mut()
+                                            .get_mut_as::<GeneratorNode<ClipMixer>>(&mixer_id)
+                                            .unwrap()
+                                            .get_ref_mut()
+                                            .build_note(&waveform.clip)
+                                            .pitch(waveform.root_freq)
+                                            .gain(vel * vel * 0.05)
+                                            .start(evt_sample_offs_i);
+
+                                        self.notes.borrow_mut().push(Note {
+                                            channel: chan,
+                                            note: note_no,
+                                            note_id,
+                                        });
+                                    }
                                 }
                             }
                             0x80 => {
