@@ -6,7 +6,7 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 xdispatch = { path = "../../../xdispatch", optional = true }
 num_cpus = "1.0"
-cgmath = "0.14.1"
+cgmath = "0.15.0"
 simd = "0.2.0"
 arrayvec = "0.4.1"
 parking_lot = "0.4.4"
