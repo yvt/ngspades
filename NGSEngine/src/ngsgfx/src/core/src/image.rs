@@ -6,7 +6,7 @@
 use std::clone::Clone;
 use std::hash::Hash;
 use std::fmt::Debug;
-use std::cmp::{Eq, PartialEq};
+use std::cmp::{Eq, PartialEq, max};
 use std::any::Any;
 
 use enumflags::BitFlags;
@@ -325,7 +325,8 @@ impl Validate for ImageDescription {
             callback(ImageDescriptionValidationError::InvalidExtentForImageType);
         }
 
-        let log2floor = 31 - self.extent.max().leading_zeros();
+        let extent_max = max(max(self.extent.x, self.extent.y), self.extent.z);
+        let log2floor = 31 - extent_max.leading_zeros();
         if self.num_mip_levels > log2floor + 1 {
             callback(ImageDescriptionValidationError::TooManyMipLevels);
         }
@@ -357,7 +358,7 @@ impl Validate for ImageDescription {
         match cap {
             Some(cap) => {
                 let limits = cap.limits();
-                if self.extent.max() >
+                if extent_max >
                     match self.image_type {
                         ImageType::OneD => limits.max_image_extent_1d,
                         ImageType::TwoD | ImageType::Cube | ImageType::TwoDArray |
@@ -372,8 +373,7 @@ impl Validate for ImageDescription {
                          (ImageUsage::ColorAttachment | ImageUsage::DepthStencilAttachment |
                               ImageUsage::InputAttachment |
                               ImageUsage::TransientAttachment))
-                    .is_empty() &&
-                    self.extent.max() > limits.max_framebuffer_extent
+                    .is_empty() && extent_max > limits.max_framebuffer_extent
                 {
                     callback(
                         ImageDescriptionValidationError::ExtentTooLargeForFramebuffer,

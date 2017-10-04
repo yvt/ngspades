@@ -6,5 +6,5 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 enumflags = "*"
 enumflags_derive = "*"
-cgmath = "0.14.1"
+cgmath = "0.15.0"
 lazy_static = "0.2"

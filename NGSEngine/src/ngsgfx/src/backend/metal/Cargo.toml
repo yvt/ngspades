@@ -8,7 +8,7 @@ ngsgfx_core = { path = "../../core" }
 ngsgfx_metal-rs = { path = "src/metal-rs"}
 ngsgfx_common = { path = "../../common" }
 spirv-cross = { path = "src/spirv-cross" }
-cgmath = "0.14.1"
+cgmath = "0.15.0"
 atomic_refcell = "0.1.0"
 block = "0.1.5"
 rspirv = "0.4.0"

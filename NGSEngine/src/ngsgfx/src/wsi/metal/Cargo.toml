@@ -6,7 +6,7 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 cocoa = "0.9"
 objc = "0.2"
-cgmath = "0.14.1"
+cgmath = "0.15.0"
 ngsgfx_core = { path = "../../core" }
 ngsgfx_metal = { path = "../../backend/metal"}
 ngsgfx_wsi_core = { path = "../../wsi_core" }
