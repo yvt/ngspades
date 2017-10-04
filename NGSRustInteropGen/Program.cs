@@ -17,7 +17,6 @@ namespace Ngs.Interop.Shell
             commandLineApplication.HelpOption("-? | -h | --help");
             commandLineApplication.OnExecute(() =>
             {
-                // var asm = System.Runtime.Loader.AssemblyLoadContext.Default.LoadFromAssemblyPath(args[0]);
                 var asm = typeof(Ngs.Engine.IEngine).GetTypeInfo().Assembly;
                 var ifTypes = asm.GetTypes().Where((type) =>
                     type.GetTypeInfo().IsPublic &&
