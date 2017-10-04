@@ -1238,6 +1238,7 @@ dependencies = [
 name = "ysr2"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hound 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",

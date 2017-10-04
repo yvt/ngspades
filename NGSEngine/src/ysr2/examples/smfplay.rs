@@ -13,6 +13,9 @@ extern crate clap;
 extern crate portaudio;
 extern crate cgmath;
 
+mod utils;
+use self::utils::guspatch;
+
 use std::path::Path;
 use std::fmt;
 use std::cmp;
@@ -23,7 +26,6 @@ use std::marker::PhantomData;
 use ysr2::common::dispatch::SerialQueue;
 use ysr2::common::stream::{StreamProperties, ChannelConfig, GeneratorNode};
 use ysr2::common::nodes::{Context, NodeId, NodeInputGenerator, OutputNode};
-use ysr2::mixer::clip::Clip;
 use ysr2::mixer::clipmixer::{ClipMixer, NoteId};
 use ysr2::localizer::{self, Panner};
 use ysr2::localizer::nodes::{PannerNode, SourceId};
@@ -31,52 +33,11 @@ use ysr2::filters::mixer;
 use ysr2::filters::reverb::{MatrixReverbNode, MatrixReverbParams};
 use ysr2::filters::delay::DelayNode;
 
-fn make_wave() -> Clip {
-    let period: usize = 64;
-    let cycles: usize = 4096;
-    let prop = StreamProperties {
-        sampling_rate: 440.0 * (period as f64),
-        num_channels: 1,
-        channel_config: ChannelConfig::Monaural,
-    };
-    let clip = Clip::new(period * cycles, Some(period * (cycles - 1)), &prop);
-    {
-        let mut writer = clip.write_samples();
-        let chan = writer.get_channel_mut(0);
-        let rho = std::f32::consts::PI * 2.0 / period as f32;
-        for i in 0..chan.len() {
-            let mut s = 0f32;
-            let damp_time = if i < period * (cycles - 1) {
-                i as f32
-            } else {
-                // looping part
-                period as f32 * (cycles - 1) as f32
-            };
-            for k in 1..32 {
-                // higher order harmonics decay faster than lower ones
-                let mut gain = (-damp_time * (k as f32 * 0.5 + 1.0) * 0.0001).exp2();
-
-                // colorize our tone in arbitrary way
-                if k > 1 {
-                    gain *= (k as f32 * (1.0 + damp_time / period as f32 * 0.005)).cos();
-                    gain *= (k as f32 * -0.05).exp2();
-                    gain *= 1.0 - k as f32 / 32.0;
-                }
-
-                s += (k as f32 * i as f32 * rho).cos() * gain;
-            }
-
-            chan[i] = s;
-        }
-    }
-    clip
-}
-
 #[derive(Debug)]
 struct SmfPlayer<T: Panner<NodeInputGenerator>> {
     smf: rimd::SMF,
     output_prop: StreamProperties,
-    clip: Clip,
+    loader: guspatch::GusLoader,
 
     context: RefCell<Context>,
     panner_id: NodeId,
@@ -143,7 +104,12 @@ impl<T> SmfPlayer<T>
 where
     T: Panner<NodeInputGenerator> + fmt::Debug + Send + Sync + 'static,
 {
-    fn new(smf: rimd::SMF, panner: T, output_prop: &StreamProperties) -> Self {
+    fn new(
+        smf: rimd::SMF,
+        panner: T,
+        output_prop: &StreamProperties,
+        mut loader: guspatch::GusLoader,
+    ) -> Self {
         let mut next_events = BinaryHeap::new();
         for (i, track) in smf.tracks.iter().enumerate() {
             if let Some(e) = track.events.iter().nth(0) {
@@ -152,6 +118,26 @@ where
                     track: i,
                     index: 0,
                 });
+            }
+        }
+
+        // Try to preload instruments (loading during a playback would cause an
+        // interruption)
+        for track in smf.tracks.iter() {
+            for e in track.events.iter() {
+                match e.event {
+                    rimd::Event::Midi(ref msg) => {
+                        let ref data = msg.data;
+                        match data[0] & 0xf0 {
+                            0xc0 => {
+                                // program change
+                                loader.get_patch_for_instrument(0, data[1]);
+                            }
+                            _ => {}
+                        }
+                    }
+                    rimd::Event::Meta(_) => {}
+                }
             }
         }
 
@@ -215,7 +201,7 @@ where
 
         // Insert the late reverb node
         let late_reverb_delay_id = {
-            let mut delay = DelayNode::new((0.08 * output_prop.sampling_rate) as usize);
+            let mut delay = DelayNode::new((0.06 * output_prop.sampling_rate) as usize);
             *delay.input_source_mut() = Some((reverb_compensated_id, 0));
             context.insert(delay)
         };
@@ -238,12 +224,14 @@ where
                 let mut final_mixer = mixer::MixerNode::new();
                 final_mixer.insert((panner_id, i));
 
+                static ER_GAIN: f64 = 10.0;
+                static LATE_GAIN: f64 = 2.0;
                 static XF_AMOUNT: f64 = 0.2;
-                final_mixer.insert_with_gain((reverb_id, i), 1.0 * (1.0 - XF_AMOUNT));
-                final_mixer.insert_with_gain((er_id, i), 4.0 * (1.0 - XF_AMOUNT));
+                final_mixer.insert_with_gain((reverb_id, i), LATE_GAIN * (1.0 - XF_AMOUNT));
+                final_mixer.insert_with_gain((er_id, i), ER_GAIN * (1.0 - XF_AMOUNT));
 
-                final_mixer.insert_with_gain((reverb_id, 1 - i), 1.0 * XF_AMOUNT);
-                final_mixer.insert_with_gain((er_id, 1 - i), 4.0 * XF_AMOUNT);
+                final_mixer.insert_with_gain((reverb_id, 1 - i), LATE_GAIN * XF_AMOUNT);
+                final_mixer.insert_with_gain((er_id, 1 - i), ER_GAIN * XF_AMOUNT);
 
                 let final_mixer_id = context.insert(final_mixer);
                 (final_mixer_id, 0)
@@ -259,7 +247,7 @@ where
 
         Self {
             smf,
-            clip: make_wave(),
+            loader,
             output_prop: output_prop.clone(),
 
             context: RefCell::new(context),
@@ -293,7 +281,7 @@ where
                         delay,
                         note.note_id,
                         0.0,
-                        self.output_prop.sampling_rate * 0.5,
+                        self.output_prop.sampling_rate * 0.25,
                     )
                     .unwrap();
                 mixer
@@ -371,18 +359,23 @@ where
                                 if vel == 0.0 {
                                     // 0 velocity note on is note off
                                     self.note_off(evt_sample_offs_i, note_no, chan);
-                                } else if chan != 9 && self.channels[chan as usize].program < 120 {
-                                    // ignore the rhythm channel and SFXs
-                                    let pitch = ((note_no as f64 - 69.0) / 12.0).exp2();
+                                } else if chan != 9 {
+                                    // ignore the rhythm channel (for now)
+                                    let pitch = 440.0 * ((note_no as f64 - 69.0) / 12.0).exp2();
 
-                                    let mixer_id = self.channels[chan as usize].mixer_id;
+                                    let ref channel = self.channels[chan as usize];
+                                    let mixer_id = channel.mixer_id;
+
+                                    let patch =
+                                        self.loader.get_patch_for_instrument(0, channel.program);
+                                    let waveform = patch.choose_waveform(pitch);
 
                                     let note_id = self.context
                                         .borrow_mut()
                                         .get_mut_as::<GeneratorNode<ClipMixer>>(&mixer_id)
                                         .unwrap()
                                         .get_ref_mut()
-                                        .build_note(&self.clip)
+                                        .build_note(&waveform.clip)
                                         .pitch(pitch)
                                         .gain(vel * vel * 0.05)
                                         .start(evt_sample_offs_i);
@@ -520,6 +513,16 @@ fn main() {
                 .index(1),
         )
         .arg(
+            Arg::with_name("gusconfig")
+                .short("c")
+                .long("cfg")
+                .value_name("GUSCFG")
+                .help(
+                    "Specifies the path to a GUS (Gravis Ultrasound) configuration file",
+                )
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("panner")
                 .short("p")
                 .long("panner")
@@ -545,6 +548,14 @@ fn main() {
     let input_path = matches.value_of("INPUT").unwrap();
     let smf = rimd::SMF::from_file(Path::new(input_path)).unwrap();
 
+    // Load the GUS patch data
+    let gus_loader = if let Some(cfg_path) = matches.value_of_os("gusconfig") {
+        println!("Loading the GUS config file");
+        guspatch::GusLoader::from_config_path(&Path::new(cfg_path)).unwrap()
+    } else {
+        guspatch::GusLoader::default()
+    };
+
     // Initialize the player
     println!("Initializing the player");
     let prop = StreamProperties {
@@ -556,10 +567,10 @@ fn main() {
     let panner_name = matches.value_of("panner").unwrap();
     let mut player: Box<Player> = if panner_name == "equalpower" {
         let panner = localizer::equalpower::EqualPowerPanner::new(SerialQueue);
-        Box::new(SmfPlayer::new(smf, panner, &prop))
+        Box::new(SmfPlayer::new(smf, panner, &prop, gus_loader))
     } else if panner_name == "hrtf" {
         let panner = localizer::hrtf::HrtfPanner::new(SerialQueue);
-        Box::new(SmfPlayer::new(smf, panner, &prop))
+        Box::new(SmfPlayer::new(smf, panner, &prop, gus_loader))
     } else {
         unreachable!()
     };
