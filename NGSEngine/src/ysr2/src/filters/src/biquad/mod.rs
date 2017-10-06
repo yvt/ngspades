@@ -12,6 +12,8 @@ pub use self::simple::*;
 pub use self::filter::*;
 pub use self::node::*;
 
+pub mod eq;
+
 #[cfg(test)]
 mod tests;
 
@@ -25,6 +27,8 @@ mod tests;
 /// Y/X = -----------------------
 ///        1 + a1^(-z) + a2^(-2z)
 /// ```
+///
+///
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BiquadCoefs {
     pub b0: f64,
