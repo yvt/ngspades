@@ -5,9 +5,8 @@
 //
 //! Merges multi-band audio samples (e.g., `[FdQuant<[f32; 8]>]` to `[f32]`).
 use std::marker::PhantomData;
-use std::ops::Neg;
 use ysr2_filters::biquad::{BiquadKernelState, BiquadCoefs, eq};
-use {FdQuant, BaseFdQuant, BaseNum};
+use {FdQuant, BaseFdQuant, BaseNum, Float};
 
 /// Merges multi-band audio samples.
 pub trait BandMerger {
@@ -93,7 +92,7 @@ impl Lr4BandMerger<FdQuant<[f32; 8]>> {
 
 impl<T> BandMerger for Lr4BandMerger<FdQuant<[T; 8]>>
 where
-    T: BaseNum + Neg<Output = T>,
+    T: BaseNum + Float,
 {
     type Quantity = FdQuant<[T; 8]>;
 

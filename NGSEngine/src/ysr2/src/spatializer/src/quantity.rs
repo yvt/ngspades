@@ -6,11 +6,12 @@
 use std::fmt::Debug;
 use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign, Neg};
 use std::default::Default;
-use cgmath::num_traits::Zero;
+use cgmath::num_traits::{Zero, One};
+pub use cgmath::num_traits::Float;
 pub use cgmath::BaseNum;
 
 /// Frequency-dependent quantity, defined for each frequency band.
-pub trait BaseFdQuant: Debug + Clone + Copy + Sized + Zero + Default
+pub trait BaseFdQuant: Debug + Clone + Copy + Sized + Zero + One + Default
 where
     Self: Add<Output = Self>,
     Self: Sub<Output = Self>,
@@ -24,14 +25,20 @@ where
     Self: DivAssign<<Self as BaseFdQuant>::Scalar>,
     Self: Neg<Output = Self>,
 {
-    type Scalar: BaseNum;
+    type Scalar: BaseNum + Float;
 
-/// The number of frequency bands, or `None` if it depends on the value.
+    /// The number of frequency bands, or `None` if it depends on the value.
     const BANDS: Option<usize> = None;
+
+    fn exp(self) -> Self;
 }
 
-impl<T: BaseNum + Neg<Output = Self> + Default> BaseFdQuant for T {
+impl<T: BaseNum + Float + Default> BaseFdQuant for T {
     type Scalar = Self;
+
+    fn exp(self) -> Self {
+        Float::exp(self)
+    }
 }
 
 /// Frequency-dependent quantity, defined for each frequency band.
@@ -70,14 +77,18 @@ impl<T: AsMut<U>, U: ?Sized> AsMut<U> for FdQuant<T> {
 
 macro_rules! fdq_impl {
     ($num:expr; ($($idx:expr),*)) => (
-        impl<T: BaseNum + Neg<Output = T>> BaseFdQuant for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> BaseFdQuant for FdQuant<[T; $num]> {
             type Scalar = T;
 
             const BANDS: Option<usize> = Some($num);
+
+            fn exp(self) -> Self {
+                FdQuant([$(self.0[$idx].exp()),*])
+            }
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Zero for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> Zero for FdQuant<[T; $num]> {
             fn zero() -> Self {
                 FdQuant([Zero::zero(); $num])
             }
@@ -88,14 +99,21 @@ macro_rules! fdq_impl {
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Default for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> One for FdQuant<[T; $num]> {
+            fn one() -> Self {
+                FdQuant([One::one(); $num])
+            }
+        }
+
+        #[doc(hidden)]
+        impl<T: BaseNum + Float> Default for FdQuant<[T; $num]> {
             fn default() -> Self {
                 Self::zero()
             }
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Neg for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> Neg for FdQuant<[T; $num]> {
             type Output = Self;
             fn neg(self) -> Self::Output {
                 FdQuant([$(-self.0[$idx]),*])
@@ -103,7 +121,7 @@ macro_rules! fdq_impl {
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Add for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> Add for FdQuant<[T; $num]> {
             type Output = Self;
             fn add(self, rhs: Self) -> Self::Output {
                 FdQuant([$(self.0[$idx] + rhs.0[$idx]),*])
@@ -111,7 +129,7 @@ macro_rules! fdq_impl {
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Sub for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> Sub for FdQuant<[T; $num]> {
             type Output = Self;
             fn sub(self, rhs: Self) -> Self::Output {
                 FdQuant([$(self.0[$idx] - rhs.0[$idx]),*])
@@ -119,7 +137,7 @@ macro_rules! fdq_impl {
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Mul for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> Mul for FdQuant<[T; $num]> {
             type Output = Self;
             fn mul(self, rhs: Self) -> Self::Output {
                 FdQuant([$(self.0[$idx] * rhs.0[$idx]),*])
@@ -127,7 +145,7 @@ macro_rules! fdq_impl {
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Mul<T> for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> Mul<T> for FdQuant<[T; $num]> {
             type Output = Self;
             fn mul(self, rhs: T) -> Self::Output {
                 FdQuant([$(self.0[$idx] * rhs),*])
@@ -135,7 +153,7 @@ macro_rules! fdq_impl {
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> Div<T> for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> Div<T> for FdQuant<[T; $num]> {
             type Output = Self;
             fn div(self, rhs: T) -> Self::Output {
                 FdQuant([$(self.0[$idx] / rhs),*])
@@ -143,34 +161,34 @@ macro_rules! fdq_impl {
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> AddAssign for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> AddAssign for FdQuant<[T; $num]> {
             fn add_assign(&mut self, rhs: Self) {
                 $(self.0[$idx] += rhs.0[$idx];)*
             }
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> SubAssign for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> SubAssign for FdQuant<[T; $num]> {
             fn sub_assign(&mut self, rhs: Self) {
                 $(self.0[$idx] -= rhs.0[$idx];)*
             }
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> MulAssign for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> MulAssign for FdQuant<[T; $num]> {
             fn mul_assign(&mut self, rhs: Self) {
                 $(self.0[$idx] *= rhs.0[$idx];)*
             }
         }
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> MulAssign<T> for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> MulAssign<T> for FdQuant<[T; $num]> {
             fn mul_assign(&mut self, rhs: T) {
                 $(self.0[$idx] *= rhs;)*
             }
         }
 
         #[doc(hidden)]
-        impl<T: BaseNum + Neg<Output = T>> DivAssign<T> for FdQuant<[T; $num]> {
+        impl<T: BaseNum + Float> DivAssign<T> for FdQuant<[T; $num]> {
             fn div_assign(&mut self, rhs: T) {
                 $(self.0[$idx] /= rhs;)*
             }
