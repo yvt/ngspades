@@ -51,7 +51,7 @@ impl<T> Lr4BandMerger<T> {
 impl Lr4BandMerger<FdQuant<[f32; 8]>> {
     /// Construct a `Lr4BandMerger` with given crossover frequencies (normalized).
     ///
-    /// `crossover_freqs.len()` must be 7.
+    /// `crossover_freqs.len()` must be 7 and in an ascending order.
     pub fn new(crossover_freqs: &[f64]) -> Self {
         assert_eq!(crossover_freqs.len(), 7);
 
@@ -73,7 +73,7 @@ impl Lr4BandMerger<FdQuant<[f32; 8]>> {
             } else {
                 eq::low_pass_filter(fqs[1], FRAC_1_SQRT_2)
             });
-            coefs.push(if (i & 2) != 0 {
+            coefs.push(if (i & 1) != 0 {
                 eq::high_pass_filter(fqs[2], FRAC_1_SQRT_2)
             } else {
                 eq::low_pass_filter(fqs[2], FRAC_1_SQRT_2)
@@ -112,6 +112,8 @@ where
                 for k in 0..3 {
                     let index = i * 3 + k;
                     let ref coef = coefs[index];
+
+                    // Apply two second-order Butterworth LPF/HPF
                     band = states[index * 2].apply_to_sample(band, coef);
                     band = states[index * 2 + 1].apply_to_sample(band, coef);
                 }
