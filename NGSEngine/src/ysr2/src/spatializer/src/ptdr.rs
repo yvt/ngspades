@@ -65,8 +65,13 @@ where
         if tracer.trace_finite(result.position, listener_pos).is_none() {
             let final_distance = traveled_distance + (result.position - listener_pos).magnitude();
             let mut final_energy = energy * result.material.scatter;
+
+            // Atmosphere absorption
             let fd_qs = <Q::Scalar as NumCast>::from(-final_distance).unwrap();
             final_energy *= (world.absorption * fd_qs).exp();
+
+            // Distance attenuation
+            final_energy *= <Q::Scalar as NumCast>::from(1.0 / (final_distance * final_distance)).unwrap();
 
             flattener.record_imp_dir(
                 final_distance * sos_recip,
@@ -80,6 +85,8 @@ where
             let scatter_prob_qs = result.material.scatter.average();
             let scatter_prob = scatter_prob_qs.to_f32().unwrap();
             let dice = <f32>::rand(rng);
+
+            energy = -energy;
 
             if dice < scatter_prob {
                 energy *= result.material.scatter / scatter_prob_qs;
