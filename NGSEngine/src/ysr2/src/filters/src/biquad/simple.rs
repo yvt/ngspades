@@ -10,17 +10,51 @@ use super::BiquadCoefs;
 use siso::SisoFilter;
 use utils::apply_by_sample;
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BiquadKernelState(f64, f64);
+
+impl BiquadKernelState {
+    pub fn new() -> Self {
+        BiquadKernelState(0.0, 0.0)
+    }
+
+    pub fn reset(&mut self) {
+        self.0 = 0.0;
+        self.1 = 0.0;
+    }
+
+    pub fn apply_to_sample(&mut self, x: f64, coefs: &BiquadCoefs) -> f64 {
+        // Direct form 2 implementation
+        let t = x - self.0 * coefs.a1 - self.1 * coefs.a2;
+        let y = t * coefs.b0 + self.0 * coefs.b1 + self.1 * coefs.b2;
+        self.1 = self.0;
+        self.0 = t;
+        y
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.0.abs().max(self.1.abs()) > 1.0e-10
+    }
+
+    pub fn skip(&mut self, num_samples: usize, coefs: &BiquadCoefs) {
+        // FIXME: there should be a O(1) method for this
+        for _ in 0..num_samples {
+            self.apply_to_sample(0.0, coefs);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SimpleBiquadKernel {
     coefs: BiquadCoefs,
-    states: Vec<(f64, f64)>,
+    states: Vec<BiquadKernelState>,
 }
 
 impl SimpleBiquadKernel {
     pub fn new(coefs: &BiquadCoefs, num_channels: usize) -> Self {
         Self {
             coefs: coefs.clone(),
-            states: vec![(0.0, 0.0); num_channels],
+            states: vec![BiquadKernelState::new(); num_channels],
         }
     }
 }
@@ -45,20 +79,17 @@ impl Filter for SimpleBiquadKernel {
         }
         assert_eq!(self.states.len(), to.len());
 
-
         for i in 0..to.len() {
-            let coefs = self.coefs.clone();
             let ref mut state = self.states[i];
+            let ref coefs = self.coefs;
             apply_by_sample(
                 &mut to[i][range.clone()],
                 from.as_ref().map(|&(ref inputs, ref in_range)| &inputs[i][in_range.clone()]),
                 move |iter| {
                     let mut st = *state;
+                    let coefs = coefs.clone();
                     for x in iter {
-                        // Direct form 2 implementation
-                        let t = *x as f64 - st.0 * coefs.a1 - st.1 * coefs.a2;
-                        *x = (t * coefs.b0 + st.0 * coefs.b1 + st.1 * coefs.b2) as f32;
-                        st = (t, st.0);
+                        *x = st.apply_to_sample(*x as f64, &coefs) as f32;
                     }
                     *state = st;
                 },
@@ -67,12 +98,7 @@ impl Filter for SimpleBiquadKernel {
     }
 
     fn is_active(&self) -> bool {
-        for x in self.states.iter() {
-            if x.0.abs().max(x.1.abs()) > 1.0e-10 {
-                return true;
-            }
-        }
-        false
+        self.states.iter().any(BiquadKernelState::is_active)
     }
 
     fn num_input_channels(&self) -> Option<usize> {
@@ -84,19 +110,14 @@ impl Filter for SimpleBiquadKernel {
     }
 
     fn skip(&mut self, num_samples: usize) {
-        // FIXME: there should be a O(1) method for this
-        let ref coefs = self.coefs;
-        for state in self.states.iter_mut() {
-            for _ in 0..num_samples {
-                let t = -state.0 * coefs.a1 - state.1 * coefs.a2;
-                *state = (t, state.0);
-            }
+        for x in self.states.iter_mut() {
+            x.skip(num_samples, &self.coefs);
         }
     }
 
     fn reset(&mut self) {
         for x in self.states.iter_mut() {
-            *x = (0.0, 0.0);
+            x.reset();
         }
     }
 }
