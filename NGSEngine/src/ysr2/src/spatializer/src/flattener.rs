@@ -11,6 +11,10 @@ use {BaseNum, BaseFdQuant};
 /// direction) and generates audio samples.
 pub trait Flattener {
     type Quantity: BaseFdQuant;
+
+    /// Record a directional impulse.
+    ///
+    /// `direction` does not have to be normalized. It must not be a zero vector.
     fn record_imp_dir(&mut self, time: f32, amplitude: Self::Quantity, direction: Vector3<f32>);
 }
 

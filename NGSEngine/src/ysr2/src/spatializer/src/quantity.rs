@@ -31,6 +31,7 @@ where
     const BANDS: Option<usize> = None;
 
     fn exp(self) -> Self;
+    fn average(self) -> Self::Scalar;
 }
 
 impl<T: BaseNum + Float + Default> BaseFdQuant for T {
@@ -38,6 +39,10 @@ impl<T: BaseNum + Float + Default> BaseFdQuant for T {
 
     fn exp(self) -> Self {
         Float::exp(self)
+    }
+
+    fn average(self) -> Self::Scalar {
+        self
     }
 }
 
@@ -84,6 +89,14 @@ macro_rules! fdq_impl {
 
             fn exp(self) -> Self {
                 FdQuant([$(self.0[$idx].exp()),*])
+            }
+
+            fn average(self) -> Self::Scalar {
+                let mut sum = T::zero();
+                for &x in self.0.iter() {
+                    sum += x;
+                }
+                sum * T::from(1.0 / self.0.len() as f64).unwrap()
             }
         }
 

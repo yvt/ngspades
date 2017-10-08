@@ -8,8 +8,22 @@ use cgmath::prelude::*;
 use rand::{Rng, Rand};
 use std::f32::consts::FRAC_1_PI;
 
-/// Acoustic properties of a surface.
+/// Acoustic properties of an environment.
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct World<Q> {
+    /// Absorption coefficients of the atmosphere (per unit distance).
+    pub absorption: Q,
+
+    /// Speed of sound, measured in unit distance per audio sample.
+    ///
+    /// For example, this value would be `7.78e-3` on a common setup where the
+    /// sampling frequency is 44100 [Hz], the distance is measured in meters,
+    /// and the standard Earth condition at 20 °C applies.
+    pub speed_of_sound: f32,
+}
+
+/// Acoustic properties of a surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Material<Q> {
     /// Scattering coefficients (as defined by ISO 17497-1) for each frequency
     /// band.

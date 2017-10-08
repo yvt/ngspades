@@ -14,9 +14,11 @@ extern crate ysr2_filters;
 pub mod bandmerger;
 mod env;
 pub mod flattener;
+mod ptdr;
 mod quantity;
 
 pub use self::env::*;
+pub use self::ptdr::*;
 pub use self::quantity::*;
 
 #[cfg(feature = "ngsterrain")]
