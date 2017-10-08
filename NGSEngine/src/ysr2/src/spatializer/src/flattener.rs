@@ -3,11 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-//! Flattens a series of directional impulses and generates audio samples.
+//! Generates audio samples from a series of directional impulses.
 use cgmath::{Vector3, Zero};
 use {BaseNum, BaseFdQuant};
 
-/// Flattens a series of directional impulses and generates audio samples.
+/// Flattens a series of directional impulses (triples of time, amplitude, and
+/// direction) and generates audio samples.
 pub trait Flattener {
     type Quantity: BaseFdQuant;
     fn record_imp_dir(&mut self, time: f32, amplitude: Self::Quantity, direction: Vector3<f32>);
