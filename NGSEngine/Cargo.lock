@@ -6,6 +6,7 @@ dependencies = [
  "ngsterrain 0.1.0",
  "rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "ysr2_common 0.1.0",
+ "ysr2_filters 0.1.0",
 ]
 
 [[package]]
