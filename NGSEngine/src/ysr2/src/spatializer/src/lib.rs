@@ -8,7 +8,7 @@
 //!
 //! Physically based audio propagation simulation engine.
 pub extern crate cgmath;
-extern crate rand;
+pub extern crate rand;
 extern crate ysr2_filters;
 
 pub mod bandmerger;

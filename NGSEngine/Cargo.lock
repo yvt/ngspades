@@ -1259,6 +1259,7 @@ dependencies = [
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hound 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsterrain 0.1.0",
  "portaudio 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rimd 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ysr2_clip 0.1.0",
