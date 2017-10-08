@@ -3,5 +3,11 @@ name = "ysr2_spatializer"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
+[features]
+default = ["ngsterrain"]
+
 [dependencies]
 ysr2_common = { path = "../common" }
+ngsterrain = { path = "../../../ngsterrain", optional = true }
+cgmath = "0.15.0"
+rand = "0.3.16"

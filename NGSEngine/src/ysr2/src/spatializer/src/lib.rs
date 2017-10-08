@@ -3,4 +3,22 @@
 //
 // This source code is a part of Nightingales.
 //
-// TODO
+//! YSR2 Spatializer
+//! ================
+//!
+//! Physically based audio propagation simulation engine.
+pub extern crate cgmath;
+extern crate rand;
+
+mod env;
+pub mod flattener;
+mod quantity;
+
+pub use self::env::*;
+pub use self::quantity::*;
+
+#[cfg(feature = "ngsterrain")]
+extern crate ngsterrain;
+#[cfg(feature = "ngsterrain")]
+pub mod ngster;
+
