@@ -44,7 +44,11 @@ pub fn raytrace(terrain: &Terrain, start: Vector3<f32>, to: Vector3<f32>) -> Ray
         start.x < size_f.x && start.y < size_f.y && start.z < size_f.z;
 
     if start_inside {
-        let start_i = start.cast();
+        let start_i = Vector3::new(
+            truncate_toward(start.x, to.x >= start.x),
+            truncate_toward(start.y, to.y >= start.y),
+            truncate_toward(start.z, to.z >= start.z),
+        );
         if terrain.get_voxel(start_i).is_some() {
             return RaytraceResult::Inside(start_i);
         }

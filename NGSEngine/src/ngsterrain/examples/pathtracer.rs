@@ -269,7 +269,7 @@ impl Renderer {
                     coef.mul_assign_element_wise(albedo);
 
                     let r = sampler.sample_diffuse();
-                    start = position + normal * 0.001;
+                    start = position;
                     dir = normal * r.z + tangent * r.x + binormal * r.y;
                 }
                 Material::Sky(color) => {
