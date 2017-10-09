@@ -15,80 +15,78 @@
 //     modified, or distributed except according to those terms.
 //
 
-/**
-Macro for generating COM interface definitions.
-
-# Usage
-```
-#[macro_use]
-extern crate ngscom;
-use ngscom::{IUnknown, IUnknownTrait};
-
-com_iid!(IID_IFOO =
-    [0x12345678, 0x90AB, 0xCDEF, [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF]]);
-
-com_interface! {
-    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
-        iid: IID_IFOO,
-        vtable: IFooVtbl,
-        thunk: IFooThunk,
-
-        fn foo() -> bool;
-    }
-}
-# fn main() { }
-```
-
-This example defines an interface called `IFoo`. In this case, the base type is
-IUnknown, the root COM type. The IID for the interface must also be defined,
-along with the name of the vtable type, `IFooVtbl`. This isn't publicly exposed,
-but there is currently no way to generate an ident within a macro so the callee
-must define one instead.
-
-The trait `Foo` defines the methods available for the interface, in this case
-a single method named `foo`. Note that any methods that return no value
-(e.g. the `void` type in C/C++) should return the unit type `()`.
-
-## Inheritance
-To define interfaces with a deeper hierarchy, add additional parent identifiers
-to the type definitions. e.g:
-
-```
-# #[macro_use]
-# extern crate ngscom;
-# use ngscom::{IUnknown, IUnknownTrait};
-# com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
-# com_interface! {
-#    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
-#        iid: IID_IFOO,
-#        vtable: IFooVtbl,
-#        thunk: IFooThunk,
-#
-#        fn foo() -> bool;
-#    }
-# }
-com_iid!(IID_IBAR =
-    [0x12345678, 0x90AB, 0xCDEF, [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF]]);
-com_interface! {
-    interface (IBar, IBarTrait): (IFoo, IFooTrait), IUnknown {
-        iid: IID_IBAR,
-        vtable: IBarVtbl,
-        thunk: IBarThunk,
-
-        fn bar(baz: i32) -> ();
-    }
-}
-# fn main() { }
-```
-
-This example defines an interface called `IBar` which extends `IFoo` from the
-previous example. Note that it is necessary to specify the parent types
-for both the interface and trait declarations.
-
-The interface hierarchy automates pointer conversion using the `AsComPtr` trait,
-and the trait hierarchy automatically implements the parent methods for the
-child interface.
-*/
+/// Macro for generating COM interface definitions.
+///
+/// # Usage
+/// ```
+/// #[macro_use]
+/// extern crate ngscom;
+/// use ngscom::{IUnknown, IUnknownTrait};
+///
+/// com_iid!(IID_IFOO =
+///     [0x12345678, 0x90AB, 0xCDEF, [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF]]);
+///
+/// com_interface! {
+///     interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
+///         iid: IID_IFOO,
+///         vtable: IFooVtbl,
+///         thunk: IFooThunk,
+///
+///         fn foo() -> bool;
+///     }
+/// }
+/// # fn main() { }
+/// ```
+///
+/// This example defines an interface called `IFoo`. In this case, the base type is
+/// IUnknown, the root COM type. The IID for the interface must also be defined,
+/// along with the name of the vtable type, `IFooVtbl`. This isn't publicly exposed,
+/// but there is currently no way to generate an ident within a macro so the callee
+/// must define one instead.
+///
+/// The trait `Foo` defines the methods available for the interface, in this case
+/// a single method named `foo`. Note that any methods that return no value
+/// (e.g. the `void` type in C/C++) should return the unit type `()`.
+///
+/// ## Inheritance
+/// To define interfaces with a deeper hierarchy, add additional parent identifiers
+/// to the type definitions. e.g:
+///
+/// ```
+/// # #[macro_use]
+/// # extern crate ngscom;
+/// # use ngscom::{IUnknown, IUnknownTrait};
+/// # com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
+/// # com_interface! {
+/// #    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
+/// #        iid: IID_IFOO,
+/// #        vtable: IFooVtbl,
+/// #        thunk: IFooThunk,
+/// #
+/// #        fn foo() -> bool;
+/// #    }
+/// # }
+/// com_iid!(IID_IBAR =
+///     [0x12345678, 0x90AB, 0xCDEF, [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF]]);
+/// com_interface! {
+///     interface (IBar, IBarTrait): (IFoo, IFooTrait), IUnknown {
+///         iid: IID_IBAR,
+///         vtable: IBarVtbl,
+///         thunk: IBarThunk,
+///
+///         fn bar(baz: i32) -> ();
+///     }
+/// }
+/// # fn main() { }
+/// ```
+///
+/// This example defines an interface called `IBar` which extends `IFoo` from the
+/// previous example. Note that it is necessary to specify the parent types
+/// for both the interface and trait declarations.
+///
+/// The interface hierarchy automates pointer conversion using the `AsComPtr` trait,
+/// and the trait hierarchy automatically implements the parent methods for the
+/// child interface.
 #[macro_export]
 macro_rules! com_interface {
     (
@@ -206,29 +204,26 @@ macro_rules! com_interface {
     )
 }
 
-/**
-Helper macro for defining [`IID`](struct.IID.html) constants.
-
-# Usage
-```
-# #[macro_use]
-# extern crate ngscom;
-com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
-# fn main() {}
-```
-
-IIDs are private by default as they are only supposed to be exposed by the
-`ComPtr::iid` method. If you want to make them public, just add the `pub`
-keyword before the identifier.
-
-```
-# #[macro_use]
-# extern crate ngscom;
-com_iid!(pub IID_IBAR = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
-# fn main() {}
-```
-
-*/
+/// Helper macro for defining [`IID`](struct.IID.html) constants.
+///
+/// # Usage
+/// ```
+/// # #[macro_use]
+/// # extern crate ngscom;
+/// com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
+/// # fn main() {}
+/// ```
+///
+/// IIDs are private by default as they are only supposed to be exposed by the
+/// `ComPtr::iid` method. If you want to make them public, just add the `pub`
+/// keyword before the identifier.
+///
+/// ```
+/// # #[macro_use]
+/// # extern crate ngscom;
+/// com_iid!(pub IID_IBAR = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
+/// # fn main() {}
+/// ```
 #[macro_export]
 macro_rules! com_iid {
     ($(#[$iid_attr:meta])*

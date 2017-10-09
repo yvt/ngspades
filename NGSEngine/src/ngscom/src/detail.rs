@@ -3,10 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-
-/*
- * Helper functions for macros
- */
+//! Helper functions for macros
 
 use std::mem;
 use super::StaticOffset;
@@ -25,12 +22,15 @@ pub unsafe fn delete_obj_raw<T>(x: &T) {
 }
 
 #[doc(hidden)]
-pub unsafe fn resolve_parent_object<'a, TOffset, TInterface, TClass>(this: *mut TInterface)
-                                                                     -> &'a TClass
-    where TOffset: StaticOffset
+pub unsafe fn resolve_parent_object<'a, TOffset, TInterface, TClass>(
+    this: *mut TInterface,
+) -> &'a TClass
+where
+    TOffset: StaticOffset,
 {
     let addr: isize = mem::transmute(this);
     mem::transmute(addr + TOffset::offset())
 }
 
+#[doc(hidden)]
 pub use std::sync::atomic::{AtomicIsize, Ordering, fence};

@@ -26,7 +26,10 @@ impl<'a, T: ComInterface + 'a> UnownedComPtr<'a, T> {
         }
     }
 
-    pub fn from_ref(x: &'a T) -> Self where T : AsComPtr<T> {
+    pub fn from_ref(x: &'a T) -> Self
+    where
+        T: AsComPtr<T>,
+    {
         let mut cp = ComPtr::<T>::new();
         *cp.as_mut_ptr() = x as *const T as *mut T;
         UnownedComPtr {
@@ -35,7 +38,10 @@ impl<'a, T: ComInterface + 'a> UnownedComPtr<'a, T> {
         }
     }
 
-    pub fn from_comptr(x: &'a ComPtr<T>) -> Self where T : AsComPtr<T> {
+    pub fn from_comptr(x: &'a ComPtr<T>) -> Self
+    where
+        T: AsComPtr<T>,
+    {
         let mut cp = ComPtr::<T>::new();
         *cp.as_mut_ptr() = x.as_ptr::<T>();
         UnownedComPtr {

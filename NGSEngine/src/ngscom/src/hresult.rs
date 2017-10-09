@@ -99,34 +99,32 @@ impl Into<HResult> for ComError {
 pub mod hresults {
     use super::HResult;
 
-    pub const E_OK: HResult             = HResult(0);
-    pub const E_NOTIMPL: HResult        = HResult(0x80004001u32 as i32);
-    pub const E_NOINTERFACE: HResult    = HResult(0x80004002u32 as i32);
-    pub const E_POINTER: HResult        = HResult(0x80004003u32 as i32);
-    pub const E_INVALIDARG: HResult     = HResult(0x80070057u32 as i32);
+    pub const E_OK: HResult = HResult(0);
+    pub const E_NOTIMPL: HResult = HResult(0x80004001u32 as i32);
+    pub const E_NOINTERFACE: HResult = HResult(0x80004002u32 as i32);
+    pub const E_POINTER: HResult = HResult(0x80004003u32 as i32);
+    pub const E_INVALIDARG: HResult = HResult(0x80070057u32 as i32);
 }
 
-/**
-`HResult` counterpart of the standard library's `try!` macro.
-
-# Usage
-```
-#[macro_use]
-extern crate ngscom;
-use ngscom::{HResult, hresults};
-
-fn my_little_function() -> HResult {
-    hresults::E_OK
-}
-
-fn my_greater_function() -> HResult {
-    com_try!(my_little_function());
-    hresults::E_OK
-}
-
-# fn main() { my_greater_function().unwrap(); }
-```
-*/
+/// `HResult` counterpart of the standard library's `try!` macro.
+///
+/// # Usage
+/// ```
+/// #[macro_use]
+/// extern crate ngscom;
+/// use ngscom::{HResult, hresults};
+///
+/// fn my_little_function() -> HResult {
+///     hresults::E_OK
+/// }
+///
+/// fn my_greater_function() -> HResult {
+///     com_try!(my_little_function());
+///     hresults::E_OK
+/// }
+///
+/// # fn main() { my_greater_function().unwrap(); }
+/// ```
 #[macro_export]
 macro_rules! com_try {
     ($x:expr) => (

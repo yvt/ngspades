@@ -34,9 +34,7 @@ unsafe extern "C" fn free_bstring(this: *mut BString) {
     libc::free(mem::transmute(this));
 }
 
-static BSTR_VTABLE: BStringVtable = BStringVtable {
-    destruct: free_bstring,
-};
+static BSTR_VTABLE: BStringVtable = BStringVtable { destruct: free_bstring };
 
 impl BString {
     /// Creates a new instance of `BString` without initializing the contents.
@@ -47,7 +45,7 @@ impl BString {
         let bstr: *mut BString = mem::transmute(libc::malloc(bstr_size));
         assert!(bstr != ptr::null_mut()); // handle memory allocation failure
 
-        (*bstr).header = BStringHeader{
+        (*bstr).header = BStringHeader {
             vtable: mem::transmute(&BSTR_VTABLE),
             length: len,
         };
@@ -66,12 +64,12 @@ impl BString {
 
     /// Extracts a slice of the underlying raw data.
     pub fn data(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(mem::transmute(&self.raw_data), self.len())}
+        unsafe { slice::from_raw_parts(mem::transmute(&self.raw_data), self.len()) }
     }
 
     /// Extracts a mutable slice of the underlying raw data.
     pub fn data_mut(&mut self) -> &mut [u8] {
-        unsafe { slice::from_raw_parts_mut(mem::transmute(&self.raw_data), self.len())}
+        unsafe { slice::from_raw_parts_mut(mem::transmute(&self.raw_data), self.len()) }
     }
 
     /// Extracts a slice of the underlying string.
@@ -85,7 +83,9 @@ impl BString {
     }
 
     /// Returns the length of the given `BString`, measured in bytes.
-    pub fn len(&self) -> usize { self.header.length }
+    pub fn len(&self) -> usize {
+        self.header.length
+    }
 }
 
 impl fmt::Display for BString {
@@ -96,8 +96,12 @@ impl fmt::Display for BString {
 
 impl fmt::Debug for BString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "BString {{ header: {:?}, data: {:?} }}",
-            self.header, self.as_str())
+        write!(
+            f,
+            "BString {{ header: {:?}, data: {:?} }}",
+            self.header,
+            self.as_str()
+        )
     }
 }
 

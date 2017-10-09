@@ -23,32 +23,34 @@ use super::detail::resolve_parent_object;
 ///
 /// None of the methods on this struct should be called directly,
 /// use [`ComPtr`](struct.ComPtr.html) instead.
-
 #[derive(Debug)]
 #[repr(C)]
 pub struct IUnknown {
-    vtable: *const IUnknownVtbl
+    vtable: *const IUnknownVtbl,
 }
 
 #[allow(missing_debug_implementations)]
 #[repr(C)]
 #[doc(hidden)]
 pub struct IUnknownVtbl {
-    query_interface: extern "C" fn(
-        *mut IUnknown, &IID, *mut *mut c_void) -> HResult,
+    query_interface: extern "C" fn(*mut IUnknown, &IID, *mut *mut c_void) -> HResult,
     add_ref: extern "C" fn(*mut IUnknown) -> u32,
-    release: extern "C" fn(*mut IUnknown) -> u32
+    release: extern "C" fn(*mut IUnknown) -> u32,
 }
 
-com_iid!(IID_IUNKNOWN = [
-    0x00000000, 0x0000, 0x0000, [0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46]
-]);
+com_iid!(
+    IID_IUNKNOWN = [
+        0x00000000,
+        0x0000,
+        0x0000,
+        [0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+    ]
+);
 
 impl IUnknown {
     /// Retrieves pointers to the supported interfaces on an object.
     /// Use [`ComPtr::from`](struct.ComPtr.html#method.from) instead.
-    pub fn query_interface(&self, iid: &IID, object: *mut *mut c_void)
-                                  -> HResult {
+    pub fn query_interface(&self, iid: &IID, object: *mut *mut c_void) -> HResult {
         unsafe { ((*self.vtable).query_interface)(self as *const Self as *mut Self, iid, object) }
     }
 
@@ -69,7 +71,10 @@ impl IUnknown {
     }
 
     pub fn fill_vtable<T, S>() -> IUnknownVtbl
-        where T: IUnknownTrait, S: StaticOffset {
+    where
+        T: IUnknownTrait,
+        S: StaticOffset,
+    {
         IUnknownVtbl {
             query_interface: IUnknownThunk::query_interface::<T, S>,
             add_ref: IUnknownThunk::add_ref::<T, S>,
@@ -85,7 +90,11 @@ impl IUnknown {
 struct IUnknownThunk();
 
 impl IUnknownThunk {
-    extern "C" fn query_interface<T: IUnknownTrait, S: StaticOffset>(this: *mut IUnknown, iid: &IID, object: *mut *mut c_void) -> HResult {
+    extern "C" fn query_interface<T: IUnknownTrait, S: StaticOffset>(
+        this: *mut IUnknown,
+        iid: &IID,
+        object: *mut *mut c_void,
+    ) -> HResult {
         unsafe { T::query_interface(resolve_parent_object::<S, IUnknown, T>(this), iid, object) }
     }
     extern "C" fn add_ref<T: IUnknownTrait, S: StaticOffset>(this: *mut IUnknown) -> u32 {
@@ -97,18 +106,25 @@ impl IUnknownThunk {
 }
 
 pub trait IUnknownTrait: Sync + Send {
-    fn query_interface(&self, iid: &IID, object: *mut *mut c_void)
-                                  -> HResult where Self: Sized;
-    fn add_ref(&self) -> u32 where Self: Sized;
-    unsafe fn release(&self) -> u32 where Self: Sized;
+    fn query_interface(&self, iid: &IID, object: *mut *mut c_void) -> HResult
+    where
+        Self: Sized;
+    fn add_ref(&self) -> u32
+    where
+        Self: Sized;
+    unsafe fn release(&self) -> u32
+    where
+        Self: Sized;
 }
 
-unsafe impl AsComPtr<IUnknown> for IUnknown { }
+unsafe impl AsComPtr<IUnknown> for IUnknown {}
 
 unsafe impl ::ComInterface for IUnknown {
     #[doc(hidden)]
     type Vtable = IUnknownVtbl;
     #[doc(hidden)]
     type Trait = IUnknownTrait;
-    fn iid() -> ::IID { IID_IUNKNOWN }
+    fn iid() -> ::IID {
+        IID_IUNKNOWN
+    }
 }
