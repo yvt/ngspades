@@ -92,6 +92,41 @@ impl Lr4BandMerger<FdQuant<[f32; 8]>> {
     }
 }
 
+macro_rules! loop_8 {
+    (
+        for $i:ident in 0..8 $x:expr
+    ) => (
+        { let $i = 0; $x; }
+        { let $i = 1; $x; }
+        { let $i = 2; $x; }
+        { let $i = 3; $x; }
+        { let $i = 4; $x; }
+        { let $i = 5; $x; }
+        { let $i = 6; $x; }
+        { let $i = 7; $x; }
+    )
+}
+
+macro_rules! loop_4 {
+    (
+        for $i:ident in 0..4 $x:expr
+    ) => (
+        { let $i = 0; $x; }
+        { let $i = 1; $x; }
+        { let $i = 2; $x; }
+        { let $i = 3; $x; }
+    )
+}
+
+macro_rules! loop_2 {
+    (
+        for $i:ident in 0..2 $x:expr
+    ) => (
+        { let $i = 0; $x; }
+        { let $i = 1; $x; }
+    )
+}
+
 impl<T> BandMerger for Lr4BandMerger<FdQuant<[T; 8]>>
 where
     T: BaseNum + Float,
@@ -101,101 +136,117 @@ where
     fn merge(&mut self, output: &mut [T], input: &[FdQuant<[T; 8]>]) {
         assert_eq!(output.len(), input.len());
 
-        let ref coefs = self.coefs[0..14];
-        let ref mut states = self.states[0..68];
+        let coefs = {
+            let mut x = [Default::default(); 14];
+            x.clone_from_slice(&self.coefs[..]);
+            x
+        };
+        let mut states = {
+            let mut x = [Default::default(); 68];
+            x.clone_from_slice(&self.states[..]);
+            x
+        };
 
         for (y, x) in output.iter_mut().zip(input.iter()) {
             let bands = *x.get_ref();
 
             let mut tmp = [0f64; 8];
 
-            for i in 0..8 {
-                let mut x = bands[i].to_f64().unwrap();
+            loop_8! {
+                for i in 0..8 {
+                    let mut x = bands[i].to_f64().unwrap();
 
-                let ref coef = coefs[i];
+                    let ref coef = coefs[i];
 
-                // Two second-order Butterworth LPF/HPF
-                let index = i * 2;
-                x = states[index].apply_to_sample(x, coef);
-                x = states[index + 1].apply_to_sample(x, coef);
+                    // Two second-order Butterworth LPF/HPF
+                    let index = i * 2;
+                    x = states[index].apply_to_sample(x, coef);
+                    x = states[index + 1].apply_to_sample(x, coef);
 
-                tmp[i] = x;
+                    tmp[i] = x;
+                }
             }
 
-            for i in 0..4 {
-                let x = tmp[i * 2] + tmp[i * 2 + 1];
+            loop_4! {
+                for i in 0..4 {
+                    let x = tmp[i * 2] + tmp[i * 2 + 1];
 
-                // All-pass filters
-                let mut x = {
-                    let index = 28 + i * 4;
-                    let ref coef1 = coefs[(i * 2) ^ 2];
-                    let ref coef2 = coefs[(i * 2 + 1) ^ 2];
-                    let mut x1 = states[index].apply_to_sample(x, coef1);
-                    let mut x2 = states[index + 1].apply_to_sample(x, coef2);
-                    x1 = states[index + 2].apply_to_sample(x1, coef1);
-                    x2 = states[index + 3].apply_to_sample(x2, coef2);
-                    x1 + x2
-                };
+                    // All-pass filters
+                    let mut x = {
+                        let index = 28 + i * 4;
+                        let ref coef1 = coefs[(i * 2) ^ 2];
+                        let ref coef2 = coefs[(i * 2 + 1) ^ 2];
+                        let mut x1 = states[index].apply_to_sample(x, coef1);
+                        let mut x2 = states[index + 1].apply_to_sample(x, coef2);
+                        x1 = states[index + 2].apply_to_sample(x1, coef1);
+                        x2 = states[index + 3].apply_to_sample(x2, coef2);
+                        x1 + x2
+                    };
 
-                // Two second-order Butterworth LPF/HPF
-                let ref coef = coefs[i + 8];
-                let index = (i + 8) * 2;
-                x = states[index].apply_to_sample(x, coef);
-                x = states[index + 1].apply_to_sample(x, coef);
+                    // Two second-order Butterworth LPF/HPF
+                    let ref coef = coefs[i + 8];
+                    let index = (i + 8) * 2;
+                    x = states[index].apply_to_sample(x, coef);
+                    x = states[index + 1].apply_to_sample(x, coef);
 
-                tmp[i * 2] = x;
+                    tmp[i * 2] = x;
+                }
             }
 
-            for i in 0..2 {
-                let x = tmp[i * 4] + tmp[i * 4 + 2];
+            loop_2! {
+                for i in 0..2 {
+                    let x = tmp[i * 4] + tmp[i * 4 + 2];
 
-                // All-pass filters
-                let x = {
-                    let index = 44 + i * 4;
-                    let ref coef1 = coefs[(i * 4) ^ 4];
-                    let ref coef2 = coefs[(i * 4 + 1) ^ 4];
-                    let mut x1 = states[index].apply_to_sample(x, coef1);
-                    let mut x2 = states[index + 1].apply_to_sample(x, coef2);
-                    x1 = states[index + 2].apply_to_sample(x1, coef1);
-                    x2 = states[index + 3].apply_to_sample(x2, coef2);
-                    x1 + x2
-                };
+                    // All-pass filters
+                    let x = {
+                        let index = 44 + i * 4;
+                        let ref coef1 = coefs[(i * 4) ^ 4];
+                        let ref coef2 = coefs[(i * 4 + 1) ^ 4];
+                        let mut x1 = states[index].apply_to_sample(x, coef1);
+                        let mut x2 = states[index + 1].apply_to_sample(x, coef2);
+                        x1 = states[index + 2].apply_to_sample(x1, coef1);
+                        x2 = states[index + 3].apply_to_sample(x2, coef2);
+                        x1 + x2
+                    };
 
-                let x = {
-                    let index = 44 + 8 + i * 4;
-                    let ref coef1 = coefs[(i * 4 + 2) ^ 4];
-                    let ref coef2 = coefs[(i * 4 + 3) ^ 4];
-                    let mut x1 = states[index].apply_to_sample(x, coef1);
-                    let mut x2 = states[index + 1].apply_to_sample(x, coef2);
-                    x1 = states[index + 2].apply_to_sample(x1, coef1);
-                    x2 = states[index + 3].apply_to_sample(x2, coef2);
-                    x1 + x2
-                };
+                    let x = {
+                        let index = 44 + 8 + i * 4;
+                        let ref coef1 = coefs[(i * 4 + 2) ^ 4];
+                        let ref coef2 = coefs[(i * 4 + 3) ^ 4];
+                        let mut x1 = states[index].apply_to_sample(x, coef1);
+                        let mut x2 = states[index + 1].apply_to_sample(x, coef2);
+                        x1 = states[index + 2].apply_to_sample(x1, coef1);
+                        x2 = states[index + 3].apply_to_sample(x2, coef2);
+                        x1 + x2
+                    };
 
-                let mut x = {
-                    let index = 44 + 8 * 2 + i * 4;
-                    let ref coef1 = coefs[(i * 2 + 8) ^ 2];
-                    let ref coef2 = coefs[(i * 2 + 9) ^ 2];
-                    let mut x1 = states[index].apply_to_sample(x, coef1);
-                    let mut x2 = states[index + 1].apply_to_sample(x, coef2);
-                    x1 = states[index + 2].apply_to_sample(x1, coef1);
-                    x2 = states[index + 3].apply_to_sample(x2, coef2);
-                    x1 + x2
-                };
+                    let mut x = {
+                        let index = 44 + 8 * 2 + i * 4;
+                        let ref coef1 = coefs[(i * 2 + 8) ^ 2];
+                        let ref coef2 = coefs[(i * 2 + 9) ^ 2];
+                        let mut x1 = states[index].apply_to_sample(x, coef1);
+                        let mut x2 = states[index + 1].apply_to_sample(x, coef2);
+                        x1 = states[index + 2].apply_to_sample(x1, coef1);
+                        x2 = states[index + 3].apply_to_sample(x2, coef2);
+                        x1 + x2
+                    };
 
-                // Two second-order Butterworth LPF/HPF
-                let ref coef = coefs[i + 12];
-                let index = (i + 12) * 2;
-                x = states[index].apply_to_sample(x, coef);
-                x = states[index + 1].apply_to_sample(x, coef);
+                    // Two second-order Butterworth LPF/HPF
+                    let ref coef = coefs[i + 12];
+                    let index = (i + 12) * 2;
+                    x = states[index].apply_to_sample(x, coef);
+                    x = states[index + 1].apply_to_sample(x, coef);
 
-                tmp[i * 4] = x;
+                    tmp[i * 4] = x;
+                }
             }
 
             let output = tmp[0] + tmp[4];
 
             *y = T::from(output).unwrap();
         }
+
+        self.states.clone_from_slice(&states);
     }
 
     fn reset(&mut self) {
