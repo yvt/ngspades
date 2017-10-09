@@ -25,8 +25,8 @@ impl BiquadKernelState {
 
     pub fn apply_to_sample(&mut self, x: f64, coefs: &BiquadCoefs) -> f64 {
         // Direct form 2 implementation
-        let t = x - self.0 * coefs.a1 - self.1 * coefs.a2;
-        let y = t * coefs.b0 + self.0 * coefs.b1 + self.1 * coefs.b2;
+        let t = x - self.0.mul_add(coefs.a1, self.1 * coefs.a2);
+        let y = t.mul_add(coefs.b0, self.0.mul_add(coefs.b1, self.1 * coefs.b2));
         self.1 = self.0;
         self.0 = t;
         y
