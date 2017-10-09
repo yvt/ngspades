@@ -234,9 +234,9 @@ namespace Ngs.Interop.CodeGen
 
             var iidIdt = "IID_" + upperSnakeCaseName;
             var iid = info.ComGuid.ToByteArray();
-            stringBuilder.AppendLine($"com_iid!({iidIdt} = {ByteArrayToIntegerConstant(iid, 0, 4, false)}, " +
+            stringBuilder.AppendLine($"com_iid!({iidIdt} = [{ByteArrayToIntegerConstant(iid, 0, 4, false)}, " +
                 $"{ByteArrayToIntegerConstant(iid, 4, 2, false)}, {ByteArrayToIntegerConstant(iid, 6, 2, false)}, " +
-                $"{ByteArrayToIntegerConstant(iid, 8, 8, true)});");
+                $"[{ByteArrayToIntegerConstant(iid, 8, 8, true)}]]);");
 
             var baseTypes = new List<Type>();
             var indirectlyBaseTypes = new HashSet<Type>();

@@ -25,7 +25,7 @@ extern crate ngscom;
 use ngscom::{IUnknown, IUnknownTrait};
 
 com_iid!(IID_IFOO =
-    0x12345678, 0x90AB, 0xCDEF, 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF);
+    [0x12345678, 0x90AB, 0xCDEF, [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF]]);
 
 com_interface! {
     interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
@@ -57,7 +57,7 @@ to the type definitions. e.g:
 # #[macro_use]
 # extern crate ngscom;
 # use ngscom::{IUnknown, IUnknownTrait};
-# com_iid!(IID_IFOO = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+# com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
 # com_interface! {
 #    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
 #        iid: IID_IFOO,
@@ -68,7 +68,7 @@ to the type definitions. e.g:
 #    }
 # }
 com_iid!(IID_IBAR =
-    0x12345678, 0x90AB, 0xCDEF, 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF);
+    [0x12345678, 0x90AB, 0xCDEF, [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF]]);
 com_interface! {
     interface (IBar, IBarTrait): (IFoo, IFooTrait), IUnknown {
         iid: IID_IBAR,
@@ -213,7 +213,7 @@ Helper macro for defining [`IID`](struct.IID.html) constants.
 ```
 # #[macro_use]
 # extern crate ngscom;
-com_iid!(IID_IFOO = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
 # fn main() {}
 ```
 
@@ -224,7 +224,7 @@ keyword before the identifier.
 ```
 # #[macro_use]
 # extern crate ngscom;
-com_iid!(pub IID_IBAR = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+com_iid!(pub IID_IBAR = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
 # fn main() {}
 ```
 
@@ -232,23 +232,23 @@ com_iid!(pub IID_IBAR = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #[macro_export]
 macro_rules! com_iid {
     ($(#[$iid_attr:meta])*
-    $name:ident = $d1:expr, $d2:expr, $d3:expr, $($d4:expr),*) => (
+    $name:ident = [$d1:expr, $d2:expr, $d3:expr, $d4:expr $(,)*]) => (
         $(#[$iid_attr])*
         static $name: $crate::IID = $crate::IID {
             data1: $d1,
             data2: $d2,
             data3: $d3,
-            data4: [$($d4),*],
+            data4: $d4,
         };
     );
     ($(#[$iid_attr:meta])*
-    pub $name:ident = $d1:expr, $d2:expr, $d3:expr, $($d4:expr),*) => (
+    pub $name:ident = [$d1:expr, $d2:expr, $d3:expr, $d4:expr $(,)*]) => (
         $(#[$iid_attr])*
         pub static $name: $crate::IID = $crate::IID {
             data1: $d1,
             data2: $d2,
             data3: $d3,
-            data4: [$($d4),*],
+            data4: $d4,
         };
     );
 }

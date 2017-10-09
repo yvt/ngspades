@@ -35,9 +35,11 @@ impl ITestInterfaceTrait for TestClass {
     fn hello(&self, value: Option<&BString>, retval: &mut BStringRef) -> HResult {
         println!("Hello! (got {:?})", value.unwrap());
         unsafe {
-            println!("BString addr: {:x}, data: {:x}",
-                     mem::transmute::<_, usize>(value),
-                     mem::transmute::<_, usize>(&value.unwrap().data()[0]));
+            println!(
+                "BString addr: {:x}, data: {:x}",
+                mem::transmute::<_, usize>(value),
+                mem::transmute::<_, usize>(&value.unwrap().data()[0])
+            );
         }
         *retval = BStringRef::new("hOI! \0(null character here)");
         println!("Returning {:?}", retval);
@@ -51,18 +53,28 @@ impl ITestInterfaceTrait for TestClass {
             return hresults::E_POINTER;
         }
         let mut hello_ret = BStringRef::null();
-        target.hello(Some(&BStringRef::new("hello from do_callback")), &mut hello_ret).unwrap();
-        println!("do_callback -> {:?}", target.do_callback(UnownedComPtr::null()));
+        target
+            .hello(
+                Some(&BStringRef::new("hello from do_callback")),
+                &mut hello_ret,
+            )
+            .unwrap();
+        println!(
+            "do_callback -> {:?}",
+            target.do_callback(UnownedComPtr::null())
+        );
         hresults::E_OK
     }
 }
 
 impl TestClass {
     fn new() -> ComPtr<ITestInterface> {
-        ComPtr::from(&TestClass::alloc(TestClass {
-            com_private: Self::new_private(),
-            stored_str: Mutex::new("stored_str is not set yet!".to_owned()),
-        }).0)
+        ComPtr::from(
+            &TestClass::alloc(TestClass {
+                com_private: Self::new_private(),
+                stored_str: Mutex::new("stored_str is not set yet!".to_owned()),
+            }).0,
+        )
     }
 }
 
