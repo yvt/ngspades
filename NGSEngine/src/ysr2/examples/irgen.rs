@@ -279,9 +279,11 @@ fn main() {
             }
 
             fn map(&self, direction: Vector3<f32>, out: &mut [f32]) {
+                // equal-power panning
                 let dir = direction.normalize();
-                out[0] = (-dir.x).max(0.0);
-                out[1] = dir.x.max(0.0);
+                let x = dir.x * 0.5;
+                out[0] = (0.5 - x).sqrt();
+                out[1] = (0.5 + x).sqrt();
             }
         }
         let world = spatializer::World {
