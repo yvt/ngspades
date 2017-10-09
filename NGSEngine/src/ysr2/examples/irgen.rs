@@ -100,11 +100,23 @@ fn main() {
                         .default_value("128"),
                 )
                 .arg(
+                    Arg::with_name("skip_bandmerge")
+                        .long("skip-bandmerge")
+                        .help("Skip the band merging (and outputs IR for each individual frequency band)"),
+                )
+                .arg(
                     Arg::with_name("OUTPUT")
                         .help("Output file name")
                         .required(true)
                         .index(1),
                 ),
+        )
+        .arg(
+            Arg::with_name("direct")
+                .short("d")
+                .long("direct")
+                .help("Include the direct path in the output")
+                .global(true),
         )
         .arg(
             Arg::with_name("sampling_rate")
@@ -136,6 +148,8 @@ fn main() {
     if num_channels < 1 || num_channels > 8 {
         panic!("The specified number of channels is out of range.");
     }
+
+    let include_direct = matches.is_present("direct");
 
     let mut output: Vec<Vec<f32>> = vec![Vec::new(); num_channels];
 
@@ -192,12 +206,19 @@ fn main() {
             remaining_samples -= num_samples as u64;
         }
 
+        if include_direct {
+            for output in output.iter_mut() {
+                output[0] += 1.0;
+            }
+        }
+
         matches
     } else if let Some(matches) = matches.subcommand_matches("simulate") {
         use ysr2::spatializer;
-        use ysr2::spatializer::{FdQuant, ngster, flattener, rand};
+        use ysr2::spatializer::{FdQuant, Raytracer, ngster, flattener, rand};
         use ysr2::spatializer::cgmath::{vec3, Vector3};
         use ysr2::spatializer::cgmath::prelude::*;
+        use ysr2::spatializer::flattener::Flattener;
 
         // Load the geometry
         use std::fs::File;
@@ -315,25 +336,59 @@ fn main() {
             unreachable!()
         }
 
+        if include_direct {
+            let direct_reachable = tracer.trace_finite(source_pos, listener_pos).is_none();
+            if direct_reachable {
+                println!("The source is visible from the listener = Yes");
+            } else {
+                println!("The source is visible from the listener = No");
+                println!("Adding the direct path impulse anyway.");
+            }
+
+            println!("Tracing the direct path...");
+            let distance = (source_pos - listener_pos).magnitude();
+            flt.record_imp_dir(
+                distance / world.speed_of_sound,
+                FdQuant::new([1.0; 8]) / (distance * distance),
+                source_pos - listener_pos,
+            );
+        }
+
         // Merge bands
-        println!("Merging bands...");
-        use ysr2::spatializer::bandmerger::{BandMerger, Lr4BandMerger};
-        let mut output_buffer = vec![0.0; num_samples];
+        if matches.is_present("skip_bandmerge") {
+            println!("Rearranging bands...");
+            output.clear();
+            for i in 0..num_channels {
+                for k in 0..8 {
+                    output.push(
+                        flt.get_channel_samples(i)
+                            .unwrap()
+                            .iter()
+                            .map(|e| e.get_ref()[k])
+                            .collect(),
+                    );
+                }
+            }
+        } else {
+            println!("Merging bands...");
+            use ysr2::spatializer::bandmerger::{BandMerger, Lr4BandMerger};
+            let mut output_buffer = vec![0.0; num_samples];
 
-        for i in 0..num_channels {
-            Lr4BandMerger::new(
-                &[
-                    200.0 / sampling_rate,
-                    400.0 / sampling_rate,
-                    800.0 / sampling_rate,
-                    1600.0 / sampling_rate,
-                    3200.0 / sampling_rate,
-                    6400.0 / sampling_rate,
-                    12000.0 / sampling_rate,
-                ],
-            ).merge(&mut output_buffer, flt.get_channel_samples(i).unwrap());
+            for i in 0..num_channels {
+                Lr4BandMerger::new(
+                    &[
+                        200.0 / sampling_rate,
+                        400.0 / sampling_rate,
+                        800.0 / sampling_rate,
+                        1600.0 / sampling_rate,
+                        3200.0 / sampling_rate,
+                        6400.0 / sampling_rate,
+                        12000.0 / sampling_rate,
+                    ],
+                ).merge(&mut output_buffer, flt.get_channel_samples(i).unwrap());
 
-            output[i].extend(output_buffer.iter());
+                output[i].extend(output_buffer.iter());
+            }
         }
 
         matches
@@ -356,7 +411,7 @@ fn main() {
 
     println!("Writing the output...");
     let spec = hound::WavSpec {
-        channels: num_channels as u16,
+        channels: output.len() as u16,
         sample_rate: sampling_rate as u32,
         bits_per_sample: 32,
         sample_format: hound::SampleFormat::Float,
