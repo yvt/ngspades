@@ -12,3 +12,8 @@ ysr2_filters = { path = "../filters" }
 ngsterrain = { path = "../../../ngsterrain", optional = true }
 cgmath = "0.15.0"
 rand = "0.3.16"
+
+[dev-dependencies]
+rimd = "0.0.1"
+clap = "2.26.0"
+hound = "3.1.0"
