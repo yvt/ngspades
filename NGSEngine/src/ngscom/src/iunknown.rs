@@ -14,7 +14,6 @@
 //     option. All files in the project carrying such notice may not be copied,
 //     modified, or distributed except according to those terms.
 //
-
 use std::os::raw::c_void;
 
 use super::{AsComPtr, HResult, IID, StaticOffset};
@@ -95,7 +94,7 @@ impl IUnknownThunk {
     }
 }
 
-pub trait IUnknownTrait : ::std::marker::Sync {
+pub trait IUnknownTrait: Sync + Send {
     fn query_interface(&self, iid: &IID, object: *mut *mut c_void)
                                   -> HResult where Self: Sized;
     fn add_ref(&self) -> u32 where Self: Sized;

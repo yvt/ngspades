@@ -3,9 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-
-
 use std::mem;
+use std::sync::Mutex;
 use ngscom::{BString, BStringRef, HResult, ComPtr, hresults, UnownedComPtr};
 use ngsbase::{ITestInterface, ITestInterfaceTrait, ITestInterfaceVtbl};
 
@@ -14,16 +13,23 @@ com_impl! {
     class TestClass {
         com_private: TestClassPrivate;
         itestinterface: (ITestInterface, ITestInterfaceVtbl, TESTCLASS_VTABLE);
+        stored_str: Mutex<String>,
     }
 }
 
 impl ITestInterfaceTrait for TestClass {
     fn get_hoge_attr(&self, retval: &mut BStringRef) -> HResult {
-        *retval = BStringRef::new("You successfully GetHogeAttr'd!");
+        *retval = {
+            let lock = self.stored_str.lock().unwrap();
+            BStringRef::new(&format!("Stored str = {:?}", &*lock))
+        };
         hresults::E_OK
     }
     fn set_hoge_attr(&self, value: Option<&BString>) -> HResult {
-        println!("SetHogeAttr: I'm getting this: {:?}", value.unwrap());
+        println!("SetHogeAttr: I'm receiving this: {:?}", value.unwrap());
+        if let Some(value) = value {
+            *self.stored_str.lock().unwrap() = value.as_str().to_owned();
+        }
         hresults::E_OK
     }
     fn hello(&self, value: Option<&BString>, retval: &mut BStringRef) -> HResult {
@@ -53,7 +59,10 @@ impl ITestInterfaceTrait for TestClass {
 
 impl TestClass {
     fn new() -> ComPtr<ITestInterface> {
-        ComPtr::from(&TestClass::alloc(TestClass { com_private: Self::new_private() }).0)
+        ComPtr::from(&TestClass::alloc(TestClass {
+            com_private: Self::new_private(),
+            stored_str: Mutex::new("stored_str is not set yet!".to_owned()),
+        }).0)
     }
 }
 
