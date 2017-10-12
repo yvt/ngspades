@@ -25,7 +25,7 @@ fn bit_exact() {
 
     let mut player = ClipPlayer::new(&clip, &prop);
     let mut buffer = vec![0f32; 128];
-    player.render(&mut [&mut buffer]);
+    player.render_additive(&mut [&mut buffer], 0..128);
     println!("clip: {:?}", data);
     println!("rendered: {:?}", buffer);
     for (i, &value) in data.iter().enumerate() {

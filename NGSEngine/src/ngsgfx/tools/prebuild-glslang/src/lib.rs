@@ -10,7 +10,7 @@
 //!
 //! # Examples
 //!
-//! ```no_run
+//! ```ignore
 //! extern crate prebuild_glslang;
 //!
 //! fn main() {
@@ -22,7 +22,7 @@
 //!
 //! The generated SPIR-V code can be included like this:
 //!
-//! ```no_run
+//! ```ignore
 //! #[macro_use]
 //! extern crate include_data;
 //!

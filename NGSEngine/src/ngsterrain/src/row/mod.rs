@@ -123,10 +123,12 @@ impl<'a, T: Borrow<[u8]>> Row<&'a T> {
             Some(None)
         }
     }
+}
 
+impl<T: AsRef<[u8]>> Row<T> {
     /// Validate the conformity of the row format.
     pub fn validate(&self) -> Result<(), RowValidationError> {
-        let mut cursor = Cursor::new(self.1.borrow());
+        let mut cursor = Cursor::new(self.1.as_ref());
         let mut z = 0usize;
         let depth = self.0;
 
