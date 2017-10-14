@@ -11,12 +11,12 @@
 extern crate ngsgfx;
 
 extern crate cgmath;
-extern crate snowflake;
 
 mod arclock;
 mod context;
 pub mod layer;
 mod refeq;
 mod tokenlock;
+mod uniqueid;
 
 pub use self::context::*;

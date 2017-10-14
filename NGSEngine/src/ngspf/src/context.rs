@@ -7,7 +7,7 @@ use std::any::Any;
 use std::sync::{Arc, Mutex};
 use std::{ops, fmt};
 use std::collections::{HashMap, hash_map};
-use snowflake::ProcessUniqueId;
+use uniqueid::ProcessUniqueId;
 use arclock::{ArcLock, ArcLockGuard};
 use tokenlock::{TokenLock, TokenRef, Token};
 
@@ -79,7 +79,7 @@ impl Context {
 
         let mut changelog = self.changelog.lock().unwrap();
 
-        let mut changeset = HashMap::new();
+        let mut changeset = HashMap::with_capacity(frame.changeset.len() * 2);
         swap(&mut changeset, &mut frame.changeset);
         changelog.changesets.push(changeset);
 
