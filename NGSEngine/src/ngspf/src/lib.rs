@@ -17,6 +17,5 @@ mod context;
 pub mod layer;
 mod refeq;
 mod tokenlock;
-mod uniqueid;
 
 pub use self::context::*;

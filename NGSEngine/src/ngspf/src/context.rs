@@ -6,8 +6,6 @@
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 use std::{ops, fmt};
-use std::collections::{HashMap, hash_map};
-use uniqueid::ProcessUniqueId;
 use arclock::{ArcLock, ArcLockGuard};
 use tokenlock::{TokenLock, TokenRef, Token};
 
@@ -39,7 +37,8 @@ impl Context {
             producer_token_ref: TokenRef::from(&producer_token),
             presenter_token_ref: TokenRef::from(&presenter_token),
             producer_frame: ArcLock::new(ProducerFrameInner {
-                changeset: HashMap::new(),
+                changeset: Vec::new(),
+                frame_id: 0,
                 producer_token,
             }),
             presenter_frame: ArcLock::new(PresenterFrameInner { presenter_token }),
@@ -70,6 +69,9 @@ impl Context {
     /// dropping `ProducerFrame`). It does not wait until it is unlocked because
     /// doing so has a possibility of a deadlock, which only can happen as a
     /// result of a programming error.
+    ///
+    /// **Panics** if too many frames were generated (> `2^64`) during the
+    /// lifetime of the `Context`.
     pub fn commit(&self) -> Result<(), ContextError> {
         use std::mem::swap;
         let mut frame: ArcLockGuard<ProducerFrameInner> =
@@ -77,9 +79,11 @@ impl Context {
                 |_| ContextError::LockFailed,
             )?;
 
+        frame.frame_id = frame.frame_id.checked_add(1).expect("frame ID overflow");
+
         let mut changelog = self.changelog.lock().unwrap();
 
-        let mut changeset = HashMap::with_capacity(frame.changeset.len() * 2);
+        let mut changeset = Vec::with_capacity(frame.changeset.len() * 2);
         swap(&mut changeset, &mut frame.changeset);
         changelog.changesets.push(changeset);
 
@@ -106,7 +110,7 @@ impl Context {
         let mut changelog = self.changelog.lock().unwrap();
 
         for mut changeset in changelog.changesets.drain(..) {
-            for (_, mut update) in changeset.drain() {
+            for mut update in changeset.drain(..) {
                 update.apply(&mut frame);
             }
         }
@@ -123,8 +127,9 @@ pub struct PresenterFrame(ArcLockGuard<PresenterFrameInner>);
 
 #[derive(Debug)]
 struct ProducerFrameInner {
-    changeset: HashMap<PropInstId, Box<Update>>,
+    changeset: Vec<Box<Update>>,
     producer_token: Token,
+    frame_id: u64,
 }
 
 #[derive(Debug)]
@@ -134,7 +139,7 @@ struct PresenterFrameInner {
 
 #[derive(Debug, Default)]
 struct Changelog {
-    changesets: Vec<HashMap<PropInstId, Box<Update>>>,
+    changesets: Vec<Vec<Box<Update>>>,
 }
 
 /// Reference to a node.
@@ -186,15 +191,20 @@ pub fn for_each_node<T: FnMut(&NodeRef)>(root: &NodeRef, mut cb: T) {
     inner(root, &mut cb);
 }
 
-/// Property instance ID.
-///
-/// Must be unique for every *instance* of a property.
+/// Update ID.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub struct PropInstId(ProcessUniqueId);
+pub struct UpdateId {
+    frame_id: u64,
+    changeset_index: usize,
+}
 
-impl PropInstId {
+impl UpdateId {
+    /// Construct a `UpdateId` that does not correspond to any actual update.
     pub fn new() -> Self {
-        PropInstId(ProcessUniqueId::new())
+        Self {
+            frame_id: <u64>::max_value(),
+            changeset_index: 0,
+        }
     }
 }
 
@@ -204,25 +214,35 @@ trait Update: Send + Sync + fmt::Debug {
 }
 
 impl ProducerFrame {
-    pub fn record_keyed_update<T, F, FF>(&mut self, prop_id: PropInstId, value: T, trans_fn: FF)
+    pub fn record_keyed_update<T, F, FF>(
+        &mut self,
+        last_update: UpdateId,
+        value: T,
+        trans_fn: FF,
+    ) -> UpdateId
     where
         T: Sync + Send + 'static,
         FF: FnOnce() -> F,
         F: FnOnce(&mut PresenterFrame, T) + 'static + Sync + Send,
     {
-        match self.0.changeset.entry(prop_id) {
-            hash_map::Entry::Occupied(mut e) => {
-                if let Some(updater) = Any::downcast_mut::<KeyedUpdate<T, F>>(
-                    e.get_mut().as_any_mut(),
-                )
-                {
-                    updater.0.as_mut().unwrap().0 = value;
-                    return;
-                }
-                e.insert(Box::new(KeyedUpdate(Some((value, trans_fn())))));
+        if self.0.frame_id == last_update.frame_id {
+            let ref mut ent = self.0.changeset[last_update.changeset_index];
+
+            if let Some(updater) = Any::downcast_mut::<KeyedUpdate<T, F>>(ent.as_any_mut()) {
+                updater.0.as_mut().unwrap().0 = value;
+                return last_update;
             }
-            hash_map::Entry::Vacant(e) => {
-                e.insert(Box::new(KeyedUpdate(Some((value, trans_fn())))));
+
+            *ent = Box::new(KeyedUpdate(Some((value, trans_fn()))));
+            last_update
+        } else {
+            self.0.changeset.push(Box::new(
+                KeyedUpdate(Some((value, trans_fn()))),
+            ));
+
+            UpdateId {
+                frame_id: self.0.frame_id,
+                changeset_index: self.0.changeset.len() - 1,
             }
         }
     }
@@ -310,30 +330,42 @@ impl<T: Clone> ops::Deref for Property<T> {
     }
 }
 
-/// `Property` with an unique property instance ID (`PropInstId`).
+/// `Property` with an internally managed `UpdateId`.
 #[derive(Debug)]
 pub struct KeyedProperty<T> {
-    id: PropInstId,
-    property: Property<T>,
+    // Merge `TokenLock<T>` and `TokenLock<UpdateId>` for performance boost
+    producer_data: TokenLock<(T, UpdateId)>,
+    property: WoProperty<T>,
 }
 
 impl<T: Clone> KeyedProperty<T> {
     pub fn new(context: &Context, x: T) -> Self {
         Self {
-            id: PropInstId::new(),
-            property: Property::new(context, x),
+            producer_data: TokenLock::new(context.producer_token_ref.clone(), (
+                x.clone(),
+                UpdateId::new(),
+            )),
+            property: WoProperty::new(context, x),
         }
     }
-}
 
-impl<T> KeyedProperty<T> {
-    pub fn id(&self) -> PropInstId {
-        self.id
+    pub fn write_producer(&self, frame: &mut ProducerFrame) -> Result<&mut T, PropertyError> {
+        self.producer_data
+            .write(&mut frame.0.producer_token)
+            .ok_or(PropertyError::InvalidContext)
+            .map(|d| &mut d.0)
+    }
+
+    pub fn read_producer(&self, frame: &ProducerFrame) -> Result<&T, PropertyError> {
+        self.producer_data
+            .read(&frame.0.producer_token)
+            .ok_or(PropertyError::InvalidContext)
+            .map(|d| &d.0)
     }
 }
 
 impl<T> ops::Deref for KeyedProperty<T> {
-    type Target = Property<T>;
+    type Target = WoProperty<T>;
 
     fn deref(&self) -> &Self::Target {
         &self.property
@@ -415,15 +447,20 @@ where
     }
 
     fn set(&self, frame: &mut ProducerFrame, new_value: T) -> Result<(), PropertyError> {
-        *(self.selector)(self.container).write_producer(frame)? = new_value.clone();
+        let prop = (self.selector)(self.container);
+        *prop.write_producer(frame)? = new_value.clone();
 
-        frame.record_keyed_update((self.selector)(self.container).id(), new_value, move || {
+        let ref mut update_id =
+            prop.producer_data.write(&mut frame.0.producer_token).unwrap().1;
+
+        let new_id = frame.record_keyed_update(*update_id, new_value, || {
             let c = self.container.clone();
             let s = self.selector.clone();
             move |frame, value| {
                 *s(&c).write_presenter(frame).unwrap() = value;
             }
         });
+        *update_id = new_id;
 
         Ok(())
     }
