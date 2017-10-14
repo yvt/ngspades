@@ -4,3 +4,6 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
+ngsgfx = { path = "../ngsgfx" }
+snowflake = "1.3.0"
+cgmath = "0.15.0"

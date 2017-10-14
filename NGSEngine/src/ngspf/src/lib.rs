@@ -6,8 +6,17 @@
 //! Nightingales Presentation Framework (NgsPF)
 //! ===========================================
 //!
+//! todo
+#![feature(conservative_impl_trait)]
+extern crate ngsgfx;
 
+extern crate cgmath;
+extern crate snowflake;
 
 mod arclock;
+mod context;
+pub mod layer;
 mod refeq;
 mod tokenlock;
+
+pub use self::context::*;
