@@ -6,6 +6,7 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 ngsgfx_core = { path = "../../core" }
 ngsgfx_common = { path = "../../common" }
+tokenlock = { path = "../../../../support/tokenlock" }
 cgmath = "0.15.0"
 ash = "0.17.0"
 smallvec = "0.4.1"

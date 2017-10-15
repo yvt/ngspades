@@ -9,10 +9,10 @@ use std::ptr;
 use ash::vk;
 use ash::version::DeviceV1_0;
 use ngsgfx_common::int::BinaryInteger;
+use tokenlock::{TokenLock, Token};
 
 use {RefEqArc, DeviceRef, AshDevice, translate_generic_error_unwrap};
 use imp;
-use super::tokenlock::{TokenLock, Token};
 use super::mutex::ResourceMutex;
 use super::event::LlFence;
 

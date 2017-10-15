@@ -10,13 +10,13 @@ use ash::version::DeviceV1_0;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::ops::Range;
 use std::ptr;
+use tokenlock::{Token, TokenRef};
 use ngsgfx_common::int::BinaryInteger;
 
 use {DeviceRef, Backend, AshDevice, translate_generic_error_unwrap};
 use imp::{CommandBuffer, Event, Fence, DeviceData, DeviceConfig, MAX_NUM_QUEUES};
 use utils::{translate_pipeline_stage_flags, translate_access_type_flags};
 use super::encoder::EncoderState;
-use super::tokenlock::{Token, TokenRef};
 use super::queuesched::QueueScheduler;
 use super::event::{CommandDependencyTable, LlFence};
 use super::fence::{FenceQueueData, FenceWaitState};

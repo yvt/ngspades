@@ -18,7 +18,6 @@ mod queuesched;
 mod recycler;
 mod render;
 mod secondary;
-mod tokenlock;
 
 pub use self::buffer::*;
 pub use self::queue::*;
