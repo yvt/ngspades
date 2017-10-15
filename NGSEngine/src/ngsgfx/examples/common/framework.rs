@@ -62,7 +62,7 @@ impl<W: Window> Runner<W> {
     fn run(mut self, events_loop: &mut winit::EventsLoop) {
         let mut running = true;
 
-        DefaultBackend::autorelease_pool_scope(|mut arp| while running {
+        DefaultBackend::autorelease_pool_scope(|arp| while running {
             events_loop.poll_events(|event| {
                 if self.app.handle_event(&event) {
                     return;

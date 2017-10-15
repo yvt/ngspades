@@ -129,7 +129,7 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
             return;
         }
 
-        let mut ap = self.expect_action_pass_mut();
+        let ap = self.expect_action_pass_mut();
 
         fence.expect_waitable_by_iq(ap.internal_queue_index);
 

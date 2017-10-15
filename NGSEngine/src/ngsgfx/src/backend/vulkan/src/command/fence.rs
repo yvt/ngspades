@@ -309,7 +309,7 @@ impl<'a, T: DeviceRef> FenceLockGuard<'a, T> {
     pub unsafe fn signal_internal_queue_semaphore(&mut self, dest_iq: usize) {
         assert!(dest_iq < self.0.data.num_iqs);
 
-        let mut fqd: &mut FenceQueueData<_> = self.fqd();
+        let fqd: &mut FenceQueueData<_> = self.fqd();
         fqd.mutex.get_host_read().semaphores[dest_iq].unwrap();
 
         match fqd.wait_states[dest_iq] {
@@ -331,7 +331,7 @@ impl<'a, T: DeviceRef> FenceLockGuard<'a, T> {
     pub unsafe fn signal_external_semaphore(&mut self, ex: usize) {
         let i = ex + self.0.data.num_iqs;
 
-        let mut fqd: &mut FenceQueueData<_> = self.fqd();
+        let fqd: &mut FenceQueueData<_> = self.fqd();
         fqd.mutex.get_host_read().semaphores[i].unwrap();
 
         match fqd.wait_states[i] {
@@ -359,7 +359,7 @@ impl<'a, T: DeviceRef> FenceLockGuard<'a, T> {
     pub unsafe fn unsignal_external_semaphore(&mut self, ex: usize) {
         let i = ex + self.0.data.num_iqs;
 
-        let mut fqd: &mut FenceQueueData<_> = self.fqd();
+        let fqd: &mut FenceQueueData<_> = self.fqd();
         fqd.mutex.get_host_read().semaphores[i].unwrap();
 
         match fqd.wait_states[i] {

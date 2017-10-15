@@ -55,7 +55,7 @@ unsafe impl<T> PtrSized for ::barc::BArc<T> {
         ::barc::BArc::from_raw(ptr)
     }
 }
-unsafe impl<T> RcLike for ::barc::BArc<T>  {}
+unsafe impl<T> RcLike for ::barc::BArc<T> {}
 
 /// An atomic `Option<Arc<T>>` storage that can be safely shared between threads.
 pub struct AtomicArc<T: PtrSized> {
@@ -107,7 +107,7 @@ impl<T: PtrSized> AtomicArc<T> {
     }
 
     pub fn load(&mut self) -> Option<T> {
-        let mut p = self.ptr.get_mut();
+        let p = self.ptr.get_mut();
         if let Some(arc) = unsafe { option_arc_from_raw::<T>(*p) } {
             let ret = T::clone(&arc);
             *p = T::into_raw(arc) as *mut _;

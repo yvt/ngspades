@@ -43,13 +43,13 @@ impl wsi_core::Drawable for Drawable {
     fn finalize(
         &self,
         command_buffer: &mut <Self::Backend as core::Backend>::CommandBuffer,
-        stage: core::PipelineStageFlags,
-        access: core::AccessTypeFlags,
-        layout: core::ImageLayout,
+        _stage: core::PipelineStageFlags,
+        _access: core::AccessTypeFlags,
+        _layout: core::ImageLayout,
     ) {
         // TODO: layout transition and queue family ownership transtiion
-        let ref cfg: &SwapchainConfig = self.data.cfg.as_ref().unwrap();
-        let vk_cb = command_buffer.active_command_buffer().unwrap();
+        let ref _cfg: &SwapchainConfig = self.data.cfg.as_ref().unwrap();
+        let _vk_cb = command_buffer.active_command_buffer().unwrap();
     }
     fn present(&self) {
         use core::Device;
@@ -150,7 +150,7 @@ impl Swapchain {
     }
 
     fn ensure_image_unique_ownership(&mut self) -> bool {
-        if let Some(mut data) = Arc::get_mut(&mut self.data) {
+        if let Some(data) = Arc::get_mut(&mut self.data) {
             data.ensure_image_unique_ownership()
         } else {
             false

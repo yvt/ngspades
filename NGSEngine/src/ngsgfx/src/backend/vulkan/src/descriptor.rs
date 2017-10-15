@@ -48,7 +48,10 @@ impl<T: DeviceRef> Drop for DescriptorSetLayoutData<T> {
     fn drop(&mut self) {
         let device: &AshDevice = self.device_ref.device();
         unsafe {
-            device.destroy_descriptor_set_layout(self.handle, self.device_ref.allocation_callbacks())
+            device.destroy_descriptor_set_layout(
+                self.handle,
+                self.device_ref.allocation_callbacks(),
+            )
         };
     }
 }
@@ -142,7 +145,7 @@ struct PipelineLayoutData<T: DeviceRef> {
 }
 
 #[derive(Debug)]
-pub(crate)struct PipelineLayoutLockData<T: DeviceRef> {
+pub(crate) struct PipelineLayoutLockData<T: DeviceRef> {
     device_ref: T,
     handle: vk::PipelineLayout,
 }
@@ -206,7 +209,9 @@ impl<T: DeviceRef> PipelineLayout<T> {
         self.data.mutex.get_host_read().handle
     }
 
-    pub(crate) fn lock_device(&self) -> ResourceMutexDeviceRef<LlFence<T>, PipelineLayoutLockData<T>> {
+    pub(crate) fn lock_device(
+        &self,
+    ) -> ResourceMutexDeviceRef<LlFence<T>, PipelineLayoutLockData<T>> {
         self.data.mutex.expect_device_access().0
     }
 }
@@ -350,7 +355,7 @@ impl<T: DeviceRef> Drop for DescriptorSetLockData<T> {
 impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
     fn update(&self, writes: &[core::WriteDescriptorSet<Backend<T>>]) {
         let mut locked = self.data.mutex.lock();
-        let mut lock_data: &mut DescriptorSetLockData<T> = locked.lock_host_write();
+        let lock_data: &mut DescriptorSetLockData<T> = locked.lock_host_write();
 
         // Update internal slots
         let ref layout = *lock_data.layout.data;
@@ -367,12 +372,12 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
                 StorageImage(desc_images) |
                 SampledImage(desc_images) |
                 InputAttachment(desc_images) => {
-                    for (mut slot, di) in slots.zip(desc_images) {
+                    for (slot, di) in slots.zip(desc_images) {
                         *slot = Some(DescriptorSlot::ImageView(di.image_view.clone()));
                     }
                 }
                 Sampler(samplers) => {
-                    for (mut slot, s) in slots.zip(samplers) {
+                    for (slot, s) in slots.zip(samplers) {
                         *slot = Some(DescriptorSlot::Sampler((*s).clone()));
                     }
                 }
@@ -380,7 +385,7 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
                     for (ref mut slot, &(ref di, ref s)) in slots.zip(iss) {
                         **slot = Some(DescriptorSlot::CombinedImageSampler(
                             di.image_view.clone(),
-                            (*s).clone()
+                            (*s).clone(),
                         ));
                     }
                 }
@@ -388,7 +393,7 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
                 StorageBuffer(desc_buffers) |
                 DynamicConstantBuffer(desc_buffers) |
                 DynamicStorageBuffer(desc_buffers) => {
-                    for (mut slot, db) in slots.zip(desc_buffers) {
+                    for (slot, db) in slots.zip(desc_buffers) {
                         *slot = Some(DescriptorSlot::Buffer(db.buffer.clone()));
                     }
                 }
@@ -476,7 +481,7 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
 
     fn copy_from(&self, copies: &[core::CopyDescriptorSet<Self>]) {
         let mut locked = self.data.mutex.lock();
-        let mut lock_data: &mut DescriptorSetLockData<T> = locked.lock_host_write();
+        let lock_data: &mut DescriptorSetLockData<T> = locked.lock_host_write();
 
         // To access the source contents, we have to lock `Mutex`, but if there
         // were multiple elements in `copies` with the same `DescriptorSet`, a
@@ -511,37 +516,38 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
         let mut lock_copy_refs: SmallVec<[(Option<usize>, _); 32]> = SmallVec::new();
         let mut last_source = None;
 
-        let flush = |
-            mut dst_slots: &mut Vec<_>,
-            locks: &SmallVec<[MutexGuard<ResourceMutex<_, DescriptorSetLockData<T>>>; 32]>,
-            lock_copy_refs: &SmallVec<[(Option<usize>, &core::CopyDescriptorSet<Self>); 32]>
-        | {
-            // this closure will never panic
-            for &(lock_ref, cds) in lock_copy_refs.iter() {
-                let src_lock = lock_ref.map(|i| &locks[i]);
-                let src_lock_data = src_lock.map(|l| l.get_host_read());
-                let src_layout = if let Some(src_lock_data) = src_lock_data {
-                    // cds.source != self
-                    &src_lock_data.layout.data
-                } else {
-                    // cds.source == self
-                    layout
-                };
+        let flush =
+            |dst_slots: &mut Vec<_>,
+             locks: &SmallVec<[MutexGuard<ResourceMutex<_, DescriptorSetLockData<T>>>; 32]>,
+             lock_copy_refs: &SmallVec<[(Option<usize>, &core::CopyDescriptorSet<Self>); 32]>| {
+                // this closure will never panic
+                for &(lock_ref, cds) in lock_copy_refs.iter() {
+                    let src_lock = lock_ref.map(|i| &locks[i]);
+                    let src_lock_data = src_lock.map(|l| l.get_host_read());
+                    let src_layout = if let Some(src_lock_data) = src_lock_data {
+                        // cds.source != self
+                        &src_lock_data.layout.data
+                    } else {
+                        // cds.source == self
+                        layout
+                    };
 
-                let dst_offset = layout.binding_offsets[cds.destination_binding] + cds.destination_index;
-                let src_offset = src_layout.binding_offsets[cds.source_binding] + cds.source_index;
+                    let dst_offset = layout.binding_offsets[cds.destination_binding] +
+                        cds.destination_index;
+                    let src_offset = src_layout.binding_offsets[cds.source_binding] +
+                        cds.source_index;
 
-                if let Some(src_lock_data) = src_lock_data {
-                    for i in 0 .. cds.num_elements {
-                        dst_slots[dst_offset + i] = src_lock_data.slots[src_offset + i].clone();
-                    }
-                } else {
-                    for i in 0 .. cds.num_elements {
-                        dst_slots[dst_offset + i] = dst_slots[src_offset + i].clone();
+                    if let Some(src_lock_data) = src_lock_data {
+                        for i in 0..cds.num_elements {
+                            dst_slots[dst_offset + i] = src_lock_data.slots[src_offset + i].clone();
+                        }
+                    } else {
+                        for i in 0..cds.num_elements {
+                            dst_slots[dst_offset + i] = dst_slots[src_offset + i].clone();
+                        }
                     }
                 }
-            }
-        };
+            };
 
         let mut i = 0;
         while i < copies.len() {
@@ -580,10 +586,12 @@ impl<T: DeviceRef> core::DescriptorSet<Backend<T>> for DescriptorSet<T> {
                     };
                     let ref src_layout = src_lock_data.layout.data;
 
-                    let dst_offset = layout.binding_offsets[cds.destination_binding] + cds.destination_index;
+                    let dst_offset = layout.binding_offsets[cds.destination_binding] +
+                        cds.destination_index;
                     let _ = lock_data.slots[dst_offset..dst_offset + cds.num_elements];
 
-                    let src_offset = src_layout.binding_offsets[cds.source_binding] + cds.source_index;
+                    let src_offset = src_layout.binding_offsets[cds.source_binding] +
+                        cds.source_index;
                     let _ = src_lock_data.slots[src_offset..src_offset + cds.num_elements];
                 }
 

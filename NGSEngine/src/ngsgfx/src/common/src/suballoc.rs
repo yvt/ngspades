@@ -730,7 +730,7 @@ impl<T: BinaryUInteger> TlsfL1<T> {
             self.bitmap.set_bit(l1);
 
             // Link the given block to the list
-            let mut head = &mut l2t.l2[l2 as usize];
+            let head = &mut l2t.l2[l2 as usize];
 
             {
                 let ref mut block = blocks[block_ptr];
