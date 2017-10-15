@@ -28,6 +28,10 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "arclock"
+version = "0.1.0"
+
+[[package]]
 name = "arrayref"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -526,8 +530,11 @@ dependencies = [
 name = "ngspf"
 version = "0.1.0"
 dependencies = [
+ "arclock 0.1.0",
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsgfx 0.1.0",
+ "refeq 0.1.0",
+ "tokenlock 0.1.0",
 ]
 
 [[package]]
@@ -825,6 +832,10 @@ version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "refeq"
+version = "0.1.0"
+
+[[package]]
 name = "rimd"
 version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1060,6 +1071,13 @@ dependencies = [
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tokenlock"
+version = "0.1.0"
+dependencies = [
+ "refeq 0.1.0",
 ]
 
 [[package]]

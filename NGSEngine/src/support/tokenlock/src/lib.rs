@@ -3,11 +3,68 @@
 //
 // This source code is a part of Nightingales.
 //
-// (based on `ngsgfx/src/backend/vulkan/command/tokenlock.rs`)
-use refeq::RefEqArc;
-use std::mem;
+//! Cell type whose contents can be accessed only via an inforgeable token.
+//!
+//! # Examples
+//!
+//! ```
+//! # use tokenlock::*;
+//! let mut token = Token::new();
+//!
+//! let lock = TokenLock::new(&token, 1);
+//! assert_eq!(*lock.read(&token).unwrap(), 1);
+//!
+//! let mut guard = lock.write(&mut token).unwrap();
+//! assert_eq!(*guard, 1);
+//! *guard = 2;
+//! ```
+//!
+//! The lifetime of the returned reference is limited by both of the `TokenLock`
+//! and `Token`.
+//!
+//! ```compile_fail
+//! # use tokenlock::*;
+//! # use std::mem::drop;
+//! # let mut token = Token::new();
+//! # let lock = TokenLock::new(&token, 1);
+//! # let guard = lock.write(&mut token).unwrap();
+//! drop(lock); // `RefMut` cannot outlive `TokenLock`
+//! ```
+//!
+//! ```compile_fail
+//! # use tokenlock::*;
+//! # use std::mem::drop;
+//! # let mut token = Token::new();
+//! # let lock = TokenLock::new(&token, 1);
+//! # let guard = lock.write(&mut token).unwrap();
+//! drop(token); // `RefMut` cannot outlive `Token`
+//! ```
+//!
+//! This also prevents from forming a reference to the contained value when
+//! there already is a mutable reference to it:
+//!
+//! ```compile_fail
+//! # use tokenlock::*;
+//! # let mut token = Token::new();
+//! # let lock = TokenLock::new(&token, 1);
+//! let write_guard = lock.write(&mut token).unwrap();
+//! let read_guard = lock.read(&token).unwrap(); // compile error
+//! ```
+//!
+//! While allowing multiple immutable references:
+//!
+//! ```
+//! # use tokenlock::*;
+//! # let mut token = Token::new();
+//! # let lock = TokenLock::new(&token, 1);
+//! let read_guard1 = lock.read(&token).unwrap();
+//! let read_guard2 = lock.read(&token).unwrap();
+//! ```
+extern crate refeq;
+
+use std::{mem, fmt};
 use std::cell::UnsafeCell;
-use std::fmt;
+use refeq::RefEqArc;
 
 /// An inforgeable token used to access the contents of a `TokenLock`.
 ///
@@ -68,7 +125,7 @@ impl<T: ?Sized> TokenLock<T> {
 
     #[inline]
     #[allow(dead_code)]
-    pub fn read<'a: 'b, 'b>(&'a self, token: &'b Token) -> Option<&'a T> {
+    pub fn read<'a>(&'a self, token: &'a Token) -> Option<&'a T> {
         if token.0 == self.keyhole {
             Some(unsafe { &*self.data.get() })
         } else {
@@ -77,7 +134,7 @@ impl<T: ?Sized> TokenLock<T> {
     }
 
     #[inline]
-    pub fn write<'a: 'b, 'b>(&'a self, token: &'b mut Token) -> Option<&'a mut T> {
+    pub fn write<'a>(&'a self, token: &'a mut Token) -> Option<&'a mut T> {
         if token.0 == self.keyhole {
             Some(unsafe { &mut *self.data.get() })
         } else {
@@ -97,8 +154,5 @@ mod tests {
 
         let guard = lock.write(&mut token).unwrap();
         assert_eq!(*guard, 1);
-
-        // compilation should fail on the following line:
-        // lock.read(&token)
     }
 }

@@ -3,24 +3,13 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Provides container types that provide implementations for `PartialEq` and
+//! `Eq` based on a referential equality.
 // (copied from `ngsgfx/src/common/src/refeq.rs`)
 use std::hash::Hasher;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::ptr;
-
-/// Checks the referential equality on references.
-///
-/// This was added by a design oversight and behaves almost exactly the same as
-/// `std::ptr::eq` does. In fact, the current implementation just calls
-/// `std::ptr::eq`.
-/// At least, its existence provides some consistency considering that in the
-/// same module, there is a function named `ref_hash` that computes a hash value
-/// based on the referential equality.
-#[allow(dead_code)]
-pub fn ref_eq<T: ?Sized>(a: &T, b: &T) -> bool {
-    ptr::eq(a, b)
-}
 
 /// Compute a hash value based on the referential equality on references.
 ///
@@ -35,7 +24,7 @@ pub struct RefEqBox<T: ?Sized>(Box<T>);
 
 impl<T: ?Sized> PartialEq for RefEqBox<T> {
     fn eq(&self, other: &Self) -> bool {
-        ::std::ptr::eq(&*self.0, &*other.0)
+        ptr::eq(&*self.0, &*other.0)
     }
 }
 impl<T: ?Sized> Eq for RefEqBox<T> {}

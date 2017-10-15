@@ -3,6 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Provides a container type `ArcLock` similar to `Mutex` but whose lock guard
+//! type is `'static`.
 use std::fmt;
 use std::mem::transmute;
 use std::ops::{Deref, DerefMut};

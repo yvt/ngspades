@@ -9,13 +9,12 @@
 //! todo
 #![feature(conservative_impl_trait)]
 extern crate ngsgfx;
-
+extern crate arclock;
+extern crate refeq;
+extern crate tokenlock;
 extern crate cgmath;
 
-mod arclock;
 mod context;
 pub mod layer;
-mod refeq;
-mod tokenlock;
 
 pub use self::context::*;

@@ -5,4 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 ngsgfx = { path = "../ngsgfx" }
+arclock = { path = "../support/arclock" }
+refeq = { path = "../support/refeq" }
+tokenlock = { path = "../support/tokenlock" }
 cgmath = "0.15.0"

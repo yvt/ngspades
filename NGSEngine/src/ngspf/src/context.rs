@@ -288,13 +288,16 @@ impl<T> WoProperty<T> {
         Self { presenter_data: TokenLock::new(context.presenter_token_ref.clone(), x) }
     }
 
-    pub fn write_presenter(&self, frame: &mut PresenterFrame) -> Result<&mut T, PropertyError> {
+    pub fn write_presenter<'a>(
+        &'a self,
+        frame: &'a mut PresenterFrame,
+    ) -> Result<&'a mut T, PropertyError> {
         self.presenter_data
             .write(&mut frame.0.presenter_token)
             .ok_or(PropertyError::InvalidContext)
     }
 
-    pub fn read_presenter(&self, frame: &PresenterFrame) -> Result<&T, PropertyError> {
+    pub fn read_presenter<'a>(&'a self, frame: &'a PresenterFrame) -> Result<&'a T, PropertyError> {
         self.presenter_data.read(&frame.0.presenter_token).ok_or(
             PropertyError::InvalidContext,
         )
@@ -309,13 +312,16 @@ impl<T: Clone> Property<T> {
         }
     }
 
-    pub fn write_producer(&self, frame: &mut ProducerFrame) -> Result<&mut T, PropertyError> {
+    pub fn write_producer<'a>(
+        &'a self,
+        frame: &'a mut ProducerFrame,
+    ) -> Result<&'a mut T, PropertyError> {
         self.producer_data
             .write(&mut frame.0.producer_token)
             .ok_or(PropertyError::InvalidContext)
     }
 
-    pub fn read_producer(&self, frame: &ProducerFrame) -> Result<&T, PropertyError> {
+    pub fn read_producer<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError> {
         self.producer_data.read(&frame.0.producer_token).ok_or(
             PropertyError::InvalidContext,
         )
@@ -349,14 +355,17 @@ impl<T: Clone> KeyedProperty<T> {
         }
     }
 
-    pub fn write_producer(&self, frame: &mut ProducerFrame) -> Result<&mut T, PropertyError> {
+    pub fn write_producer<'a>(
+        &'a self,
+        frame: &'a mut ProducerFrame,
+    ) -> Result<&'a mut T, PropertyError> {
         self.producer_data
             .write(&mut frame.0.producer_token)
             .ok_or(PropertyError::InvalidContext)
             .map(|d| &mut d.0)
     }
 
-    pub fn read_producer(&self, frame: &ProducerFrame) -> Result<&T, PropertyError> {
+    pub fn read_producer<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError> {
         self.producer_data
             .read(&frame.0.producer_token)
             .ok_or(PropertyError::InvalidContext)
@@ -388,7 +397,7 @@ pub trait PropertyAccessor<T> {
     {
         self.get_ref(frame).map(T::clone)
     }
-    fn get_ref(&self, frame: &ProducerFrame) -> Result<&T, PropertyError>;
+    fn get_ref<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError>;
     fn set(&self, frame: &mut ProducerFrame, new_value: T) -> Result<(), PropertyError>;
 }
 
@@ -442,7 +451,7 @@ where
     F: 'static + Clone + Sync + Send + for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
     T: 'static + Clone + Send + Sync,
 {
-    fn get_ref(&self, frame: &ProducerFrame) -> Result<&T, PropertyError> {
+    fn get_ref<'b>(&'b self, frame: &'b ProducerFrame) -> Result<&'b T, PropertyError> {
         (self.selector)(self.container).read_producer(frame)
     }
 
@@ -450,17 +459,17 @@ where
         let prop = (self.selector)(self.container);
         *prop.write_producer(frame)? = new_value.clone();
 
-        let ref mut update_id =
-            prop.producer_data.write(&mut frame.0.producer_token).unwrap().1;
+        let update_id = prop.producer_data.read(&frame.0.producer_token).unwrap().1;
 
-        let new_id = frame.record_keyed_update(*update_id, new_value, || {
+        let new_id = frame.record_keyed_update(update_id, new_value, || {
             let c = self.container.clone();
             let s = self.selector.clone();
             move |frame, value| {
                 *s(&c).write_presenter(frame).unwrap() = value;
             }
         });
-        *update_id = new_id;
+
+        prop.producer_data.write(&mut frame.0.producer_token).unwrap().1 = new_id;
 
         Ok(())
     }
