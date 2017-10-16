@@ -25,6 +25,7 @@ extern crate tokenlock;
 extern crate cgmath;
 
 mod context;
+pub mod image;
 pub mod layer;
 
 pub use self::context::*;

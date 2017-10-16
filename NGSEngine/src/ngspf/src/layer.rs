@@ -8,6 +8,7 @@ use std::sync::Arc;
 use cgmath::Matrix4;
 use cgmath::prelude::*;
 use {Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
+use image::ImageRef;
 
 /// Factory type of `LayerRef`.
 #[derive(Debug, Clone)]
@@ -72,12 +73,11 @@ struct Layer {
 pub enum LayerContents {
     /// The layer does not have contents by itself.
     Empty,
-    /// TODO
-    Image(()),
-    /// TODO
-    Generated(()),
-    /// TODO
-    BackDrop,
+    /// Specifies to use a given `Image` as the layer contents.
+    Image(ImageRef),
+    // TODO
+    // Generated(()),
+    // BackDrop,
 }
 
 /// Reference to a layer node.
