@@ -5,7 +5,7 @@
 //
 use std::any::Any;
 use std::sync::{Arc, Mutex};
-use std::{ops, fmt};
+use std::{ops, fmt, borrow};
 use arclock::{ArcLock, ArcLockGuard};
 use tokenlock::{TokenLock, TokenRef, Token};
 
@@ -311,7 +311,9 @@ impl<T: Clone> Property<T> {
             producer_data: TokenLock::new(context.producer_token_ref.clone(), x),
         }
     }
+}
 
+impl<T> Property<T> {
     pub fn write_producer<'a>(
         &'a self,
         frame: &'a mut ProducerFrame,
@@ -354,7 +356,9 @@ impl<T: Clone> KeyedProperty<T> {
             property: WoProperty::new(context, x),
         }
     }
+}
 
+impl<T> KeyedProperty<T> {
     pub fn write_producer<'a>(
         &'a self,
         frame: &'a mut ProducerFrame,
@@ -381,16 +385,8 @@ impl<T> ops::Deref for KeyedProperty<T> {
     }
 }
 
-/// Dynamic property accessor.
-///
-/// Property accessors provide an easy way to access and modify properties of
-/// nodes. They record a changeset to the frame automatically when updating a
-/// property value.
-///
-/// See the documentation of [`KeyedPropertyAccessor`] for the usage.
-///
-/// [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
-pub trait PropertyAccessor<T> {
+/// Dynamic property accessor for read access by the producer.
+pub trait PropertyProducerRead<T> {
     fn get(&self, frame: &ProducerFrame) -> Result<T, PropertyError>
     where
         T: Clone,
@@ -398,16 +394,42 @@ pub trait PropertyAccessor<T> {
         self.get_ref(frame).map(T::clone)
     }
     fn get_ref<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError>;
+}
+
+/// Dynamic property accessor for write access by the producer.
+pub trait PropertyProducerWrite<T> {
     fn set(&self, frame: &mut ProducerFrame, new_value: T) -> Result<(), PropertyError>;
 }
 
-/// Dynamic property accessor to a `KeyedProperty`.
+/// Dynamic property accessor for read access by the presenter.
+pub trait PropertyPresenterRead<T> {
+    fn get_presenter(&self, frame: &PresenterFrame) -> Result<T, PropertyError>
+    where
+        T: Clone,
+    {
+        self.get_presenter_ref(frame).map(T::clone)
+    }
+    fn get_presenter_ref<'a>(&'a self, frame: &'a PresenterFrame) -> Result<&'a T, PropertyError>;
+}
+
+/// Dynamic property accessor traits.
+pub trait PropertyAccessor<T>
+    : PropertyProducerRead<T> + PropertyProducerWrite<T> + PropertyPresenterRead<T>
+    {
+}
+
+/// Read-only dynamic property accessor traits.
+pub trait RoPropertyAccessor<T>
+    : PropertyProducerRead<T> + PropertyPresenterRead<T> {
+}
+
+/// Dynamic property accessor for `KeyedProperty`.
 ///
 /// # Examples
 ///
 ///     #![feature(conservative_impl_trait)]
-///     use ngspf::{PropertyAccessor, KeyedPropertyAccessor, KeyedProperty,
-///         ProducerFrame};
+///     use ngspf::{KeyedPropertyAccessor, KeyedProperty, ProducerFrame};
+///     use ngspf::{PropertyAccessor, PropertyProducerWrite};
 ///     use std::sync::Arc;
 ///
 ///     struct Pegasus {
@@ -445,16 +467,30 @@ impl<'a, C: 'static, F: 'static> KeyedPropertyAccessor<'a, C, F> {
     }
 }
 
-impl<'a, T, C, F> PropertyAccessor<T> for KeyedPropertyAccessor<'a, C, F>
+impl<'a, T, C, F> PropertyProducerRead<T> for KeyedPropertyAccessor<'a, C, F>
 where
-    C: 'static + Clone + Sync + Send,
-    F: 'static + Clone + Sync + Send + for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
-    T: 'static + Clone + Send + Sync,
+    F: for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
 {
     fn get_ref<'b>(&'b self, frame: &'b ProducerFrame) -> Result<&'b T, PropertyError> {
         (self.selector)(self.container).read_producer(frame)
     }
+}
 
+impl<'a, T, C, F> PropertyPresenterRead<T> for KeyedPropertyAccessor<'a, C, F>
+where
+    F: for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
+{
+    fn get_presenter_ref<'b>(&'b self, frame: &'b PresenterFrame) -> Result<&'b T, PropertyError> {
+        (self.selector)(self.container).read_presenter(frame)
+    }
+}
+
+impl<'a, T, C, F> PropertyProducerWrite<T> for KeyedPropertyAccessor<'a, C, F>
+where
+    C: 'static + Clone + Sync + Send,
+    F: 'static + Clone + Sync + Send + for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
+    T: 'static + Clone + Sync + Send,
+{
     fn set(&self, frame: &mut ProducerFrame, new_value: T) -> Result<(), PropertyError> {
         let prop = (self.selector)(self.container);
         *prop.write_producer(frame)? = new_value.clone();
@@ -473,4 +509,77 @@ where
 
         Ok(())
     }
+}
+
+impl<'a, T, C, F> RoPropertyAccessor<T> for KeyedPropertyAccessor<'a, C, F>
+where
+    F: for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
+{}
+
+impl<'a, T, C, F> PropertyAccessor<T> for KeyedPropertyAccessor<'a, C, F>
+where
+    C: 'static + Clone + Sync + Send,
+    F: 'static + Clone + Sync + Send + for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
+    T: 'static + Clone + Sync + Send
+{}
+
+/// Dynamic property accessor for read-only properties.
+///
+/// This type implements the same traits except `PropertyProducerWrite` as
+/// `KeyedPropertyAccessor` does.
+///
+/// # Examples
+///
+///     #![feature(conservative_impl_trait)]
+///     use ngspf::{RefPropertyAccessor, ProducerFrame};
+///     use ngspf::{RoPropertyAccessor, PropertyProducerRead};
+///     use std::sync::Arc;
+///
+///     struct Pegasus {
+///         derp: f32,
+///     }
+///
+///     struct PegasusRef(Arc<Pegasus>);
+///
+///     impl PegasusRef {
+///         pub fn derp<'a>(&'a self) -> impl RoPropertyAccessor<f32> + 'a {
+///             RefPropertyAccessor::new(&self.0.derp)
+///         }
+///     }
+///
+///     fn foo(frame: &ProducerFrame, pegasus: &PegasusRef) -> f32 {
+///         pegasus.derp().get(frame).unwrap()
+///     }
+///
+#[derive(Debug, Clone, Copy)]
+pub struct RefPropertyAccessor<T>(T);
+
+impl<T> RefPropertyAccessor<T> {
+    pub fn new(x: T) -> Self {
+        RefPropertyAccessor(x)
+    }
+}
+
+impl<T, S> PropertyProducerRead<S> for RefPropertyAccessor<T>
+where
+    T: borrow::Borrow<S>,
+{
+    fn get_ref<'b>(&'b self, _frame: &'b ProducerFrame) -> Result<&'b S, PropertyError> {
+        Ok(self.0.borrow())
+    }
+}
+
+impl<T, S> PropertyPresenterRead<S> for RefPropertyAccessor<T>
+where
+    T: borrow::Borrow<S>,
+{
+    fn get_presenter_ref<'b>(&'b self, _frame: &'b PresenterFrame) -> Result<&'b S, PropertyError> {
+        Ok(self.0.borrow())
+    }
+}
+
+impl<T, S> RoPropertyAccessor<S> for RefPropertyAccessor<T>
+where
+    T: borrow::Borrow<S>,
+{
 }
