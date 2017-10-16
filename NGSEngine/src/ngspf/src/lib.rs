@@ -27,6 +27,7 @@ extern crate cgmath;
 mod context;
 pub mod image;
 pub mod layer;
+pub mod window;
 
 pub use self::context::*;
 
