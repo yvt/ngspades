@@ -3,9 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::{Arc, RwLock, Mutex};
-use std::any::{Any, TypeId};
-use std::{fmt, hash};
+use std::sync::Arc;
+use std::any::Any;
 use std::collections::{HashMap, HashSet};
 
 use winit::{self, EventsLoop};
@@ -18,7 +17,7 @@ use gfx::prelude::*;
 
 use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor,
               for_each_node};
-use super::{Window, WindowFlagsBit};
+use super::{Window, WindowFlagsBit, WorkspaceDevice};
 use prelude::*;
 
 pub struct Workspace {
@@ -32,7 +31,7 @@ pub struct Workspace {
 #[derive(Debug)]
 struct WorkspaceWindow {
     gfx_window: DefaultWindow,
-    device: Arc<Device>,
+    device: Arc<WorkspaceDevice<DefaultBackend>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -139,8 +138,8 @@ impl Workspace {
 
                         // TODO: handle the creation error gracefully
                         use gfx::wsi::Window;
-                        let device = Device::new(Arc::clone(gfx_window.device())).expect(
-                            "failed to create `Device`",
+                        let device = WorkspaceDevice::new(Arc::clone(gfx_window.device())).expect(
+                            "failed to create `WorkspaceDevice`",
                         );
 
                         WorkspaceWindow {
@@ -178,7 +177,7 @@ fn reconcile_window_set<F>(
         for_each_node(windows, |node_ref_ref| { nodes.insert(node_ref_ref); });
     }
 
-    // TODO: reuse existing `Device`
+    // TODO: reuse existing `WorkspaceDevice`
 
     // Insert new windows
     for new_node in nodes.iter() {
@@ -197,102 +196,3 @@ fn reconcile_window_set<F>(
     ww_map.retain(|k, _| nodes.contains(k));
 }
 
-#[derive(Debug)]
-pub struct Device {
-    libraries: RwLock<LibraryMap>,
-    objects: Arc<DeviceObjects>,
-}
-
-impl Device {
-    fn new(
-        gfx_device: Arc<<DefaultBackend as Backend>::Device>,
-    ) -> Result<Self, gfx::core::GenericError> {
-        use gfx::core::Device;
-        let objects = DeviceObjects {
-            heap: Arc::new(Mutex::new(gfx_device.factory().make_universal_heap()?)),
-            gfx_device,
-        };
-        Ok(Self {
-            libraries: RwLock::new(LibraryMap::new()),
-            objects: Arc::new(objects),
-        })
-    }
-
-    pub fn get_library<T: Library>(&self, library: &T) -> Arc<T::Instance> {
-        if let Some(inst) = self.libraries.read().unwrap().get(library).cloned() {
-            return inst;
-        }
-
-        self.libraries
-            .write()
-            .unwrap()
-            .get_or_create(library, || library.make_instance(&self.objects))
-            .clone()
-    }
-}
-
-/// Dictionary of `Library::Instance`s.
-///
-/// Each entry contains the type ID of `T: Library` as its key and a boxed
-/// `HashMap<T::LibraryId, Arc<T:Instance>>` as its value.
-#[derive(Debug)]
-struct LibraryMap(HashMap<TypeId, Box<Any>>);
-
-impl LibraryMap {
-    fn new() -> Self {
-        LibraryMap(HashMap::new())
-    }
-
-    fn get<T: Library>(&self, library: &T) -> Option<&Arc<T::Instance>> {
-        let type_id = TypeId::of::<T>();
-        self.0.get(&type_id).and_then(|boxed_tlm| {
-            let tlm: &HashMap<T::LibraryId, Arc<T::Instance>> = boxed_tlm.downcast_ref().unwrap();
-            tlm.get(&library.id())
-        })
-    }
-
-    fn get_or_create<T: Library, F>(&mut self, library: &T, factory: F) -> &Arc<T::Instance>
-    where
-        F: FnOnce() -> T::Instance,
-    {
-        let type_id = TypeId::of::<T>();
-        let boxed_tlm = self.0.entry(type_id).or_insert_with(|| {
-            Box::new(HashMap::<T::LibraryId, Arc<T::Instance>>::new())
-        });
-        let tlm: &mut HashMap<T::LibraryId, Arc<T::Instance>> = boxed_tlm.downcast_mut().unwrap();
-        tlm.entry(library.id()).or_insert_with(
-            || Arc::new(factory()),
-        )
-    }
-}
-
-/// NgsGFX objects associated with a certain NgsGFX device.
-#[derive(Debug)]
-pub struct DeviceObjects {
-    gfx_device: Arc<<DefaultBackend as Backend>::Device>,
-    heap: Arc<Mutex<<DefaultBackend as Backend>::UniversalHeap>>,
-}
-
-impl DeviceObjects {
-    pub fn gfx_device(&self) -> &Arc<<DefaultBackend as Backend>::Device> {
-        &self.gfx_device
-    }
-
-    pub fn heap(&self) -> &Arc<Mutex<<DefaultBackend as Backend>::UniversalHeap>> {
-        &self.heap
-    }
-}
-
-pub trait Library: Any + fmt::Debug {
-    /// Identifier used to distingish multiple instances of this `Library`.
-    type LibraryId: 'static + hash::Hash + Eq + fmt::Debug;
-
-    /// Runtime data type associated with a specific `Device` and `Library`.
-    type Instance: 'static + fmt::Debug;
-
-    /// Get the `LibraryId` of the `Library`.
-    fn id(&self) -> Self::LibraryId;
-
-    /// Construct a `Instance` for a specific `Device`.
-    fn make_instance(&self, device_objects: &Arc<DeviceObjects>) -> Self::Instance;
-}

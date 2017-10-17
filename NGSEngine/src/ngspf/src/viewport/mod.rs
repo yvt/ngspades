@@ -4,11 +4,13 @@
 // This source code is a part of Nightingales.
 //
 //! Viewport API.
+mod device;
 mod image;
 mod layer;
 mod window;
 mod workspace;
 
+pub use self::device::*;
 pub use self::image::*;
 pub use self::layer::*;
 pub use self::window::*;
