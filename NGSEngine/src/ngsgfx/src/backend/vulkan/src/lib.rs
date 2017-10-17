@@ -151,6 +151,7 @@ pub mod imp {
         ImageView<T>,
     >;
 
+    #[derive(Debug)]
     pub struct ManagedEnvironment;
     impl core::Environment for ManagedEnvironment {
         type Backend = ManagedBackend;
@@ -161,6 +162,8 @@ pub mod imp {
     }
 
     pub type ManagedBackend = Backend<super::ManagedDeviceRef>;
+
+    #[derive(Debug)]
     pub struct Backend<T: ::DeviceRef>(PhantomData<T>);
     impl<T: super::DeviceRef> core::Backend for Backend<T> {
         type Buffer = Buffer<T>;

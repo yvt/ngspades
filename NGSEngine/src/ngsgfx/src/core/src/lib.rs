@@ -136,7 +136,7 @@ pub type DescriptorBindingElementIndex = usize;
 /// Represents a device memory size and offset value.
 pub type DeviceSize = u64;
 
-pub trait Environment: Sized + 'static {
+pub trait Environment: Sized + Debug + 'static {
     type Backend: Backend;
 
     type DeviceBuilder: DeviceBuilder<Self>;
@@ -145,7 +145,7 @@ pub trait Environment: Sized + 'static {
 }
 
 /// Aggregates types specific to a backend.
-pub trait Backend: Sized + 'static {
+pub trait Backend: Sized + Debug + 'static {
     type Buffer: Buffer;
     type CommandBuffer: CommandBuffer<Self>;
     type CommandQueue: CommandQueue<Self>;

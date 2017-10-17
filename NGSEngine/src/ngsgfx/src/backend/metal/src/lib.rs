@@ -134,6 +134,7 @@ pub mod imp {
 
     pub type StencilStateDescription<'a> = core::StencilStateDescription<'a, GraphicsPipeline>;
 
+    #[derive(Debug)]
     pub struct Environment;
     impl core::Environment for Environment {
         type Backend = Backend;
@@ -143,6 +144,7 @@ pub mod imp {
         type InstanceBuilder = InstanceBuilder;
     }
 
+    #[derive(Debug)]
     pub struct Backend;
     impl core::Backend for Backend {
         type Buffer = Buffer;
