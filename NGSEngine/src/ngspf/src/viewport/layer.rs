@@ -5,15 +5,30 @@
 //
 //! Layer node.
 use std::sync::Arc;
+use enumflags::BitFlags;
 use cgmath::Matrix4;
 use cgmath::prelude::*;
 use refeq::RefEqArc;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
 use super::ImageRef;
 
+// prevent `InnerXXX` from being exported
+mod flags {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
+    #[repr(u8)]
+    pub enum LayerFlagsBit {
+        FlattenContents = 0b1,
+    }
+}
+
+pub use self::flags::LayerFlagsBit;
+
+pub type LayerFlags = BitFlags<LayerFlagsBit>;
+
 /// Factory type of `LayerRef`.
 #[derive(Debug, Clone)]
 pub struct LayerBuilder {
+    flags: LayerFlags,
     transform: Matrix4<f32>,
     opacity: f32,
     contents: LayerContents,
@@ -23,11 +38,16 @@ pub struct LayerBuilder {
 impl LayerBuilder {
     pub fn new() -> Self {
         Self {
+            flags: LayerFlags::empty(),
             transform: Matrix4::identity(),
             opacity: 1.0,
             contents: LayerContents::Empty,
             child: None,
         }
+    }
+
+    pub fn flags(self, flags: LayerFlags) -> Self {
+        Self { flags, ..self }
     }
 
     pub fn transform(self, transform: Matrix4<f32>) -> Self {
@@ -48,6 +68,7 @@ impl LayerBuilder {
 
     pub fn build(self, context: &Context) -> LayerRef {
         LayerRef(Arc::new(Layer {
+            flags: KeyedProperty::new(context, self.flags),
             transform: KeyedProperty::new(context, self.transform),
             opacity: KeyedProperty::new(context, self.opacity),
             contents: KeyedProperty::new(context, self.contents),
@@ -64,6 +85,7 @@ impl Default for LayerBuilder {
 
 #[derive(Debug)]
 pub(super) struct Layer {
+    pub flags: KeyedProperty<LayerFlags>,
     pub transform: KeyedProperty<Matrix4<f32>>,
     pub opacity: KeyedProperty<f32>,
     pub contents: KeyedProperty<LayerContents>,
@@ -88,6 +110,13 @@ pub struct LayerRef(Arc<Layer>);
 impl LayerRef {
     pub fn into_node_ref(self) -> NodeRef {
         NodeRef(RefEqArc::from_arc(self.0))
+    }
+
+    pub fn flags<'a>(&'a self) -> impl PropertyAccessor<LayerFlags> + 'a {
+        fn select(this: &Arc<Layer>) -> &KeyedProperty<LayerFlags> {
+            &this.flags
+        }
+        KeyedPropertyAccessor::new(&self.0, select)
     }
 
     pub fn transform<'a>(&'a self) -> impl PropertyAccessor<Matrix4<f32>> + 'a {

@@ -10,3 +10,5 @@ refeq = { path = "../support/refeq" }
 tokenlock = { path = "../support/tokenlock" }
 cgmath = "0.15.0"
 winit = "0.7"
+enumflags = "*"
+enumflags_derive = "*"

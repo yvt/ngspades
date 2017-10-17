@@ -15,6 +15,9 @@ extern crate refeq;
 extern crate tokenlock;
 extern crate cgmath;
 extern crate winit;
+extern crate enumflags;
+#[macro_use]
+extern crate enumflags_derive;
 
 pub mod context;
 pub mod viewport;
