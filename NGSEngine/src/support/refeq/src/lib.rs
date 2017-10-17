@@ -6,8 +6,10 @@
 //! Provides container types that provide implementations for `PartialEq` and
 //! `Eq` based on a referential equality.
 // (copied from `ngsgfx/src/common/src/refeq.rs`)
+#![feature(unsize, coerce_unsized)]
 use std::hash::Hasher;
-use std::ops::Deref;
+use std::marker::Unsize;
+use std::ops::{Deref, CoerceUnsized};
 use std::sync::Arc;
 use std::ptr;
 
@@ -87,6 +89,18 @@ impl<T> RefEqArc<T> {
         }
     }
 }
+
+impl<T: ?Sized> RefEqArc<T> {
+    pub fn from_arc(arc: Arc<T>) -> Self {
+        RefEqArc(arc)
+    }
+
+    pub fn into_arc(this: Self) -> Arc<T> {
+        this.0
+    }
+}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefEqArc<U>> for RefEqArc<T> {}
 
 impl<T: ?Sized> Clone for RefEqArc<T> {
     fn clone(&self) -> Self {

@@ -9,3 +9,4 @@ arclock = { path = "../support/arclock" }
 refeq = { path = "../support/refeq" }
 tokenlock = { path = "../support/tokenlock" }
 cgmath = "0.15.0"
+winit = "0.7"

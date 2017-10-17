@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Window node.
-use std::sync::Arc;
+use refeq::RefEqArc;
 use cgmath::Vector2;
 use {Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
 
@@ -32,7 +32,7 @@ impl WindowBuilder {
     }
 
     pub fn build(self, context: &Context) -> WindowRef {
-        WindowRef(Arc::new(Window {
+        WindowRef(RefEqArc::new(Window {
             size: KeyedProperty::new(context, self.size),
             child: KeyedProperty::new(context, self.child),
         }))
@@ -46,14 +46,14 @@ impl Default for WindowBuilder {
 }
 
 #[derive(Debug)]
-struct Window {
-    size: KeyedProperty<Vector2<f32>>,
-    child: KeyedProperty<Option<NodeRef>>,
+pub(crate) struct Window {
+    pub size: KeyedProperty<Vector2<f32>>,
+    pub child: KeyedProperty<Option<NodeRef>>,
 }
 
 /// Reference to a window node.
-#[derive(Debug, Clone)]
-pub struct WindowRef(Arc<Window>);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct WindowRef(RefEqArc<Window>);
 
 impl WindowRef {
     pub fn into_node_ref(self) -> NodeRef {
@@ -61,14 +61,14 @@ impl WindowRef {
     }
 
     pub fn size<'a>(&'a self) -> impl PropertyAccessor<Vector2<f32>> + 'a {
-        fn select(this: &Arc<Window>) -> &KeyedProperty<Vector2<f32>> {
+        fn select(this: &RefEqArc<Window>) -> &KeyedProperty<Vector2<f32>> {
             &this.size
         }
         KeyedPropertyAccessor::new(&self.0, select)
     }
 
     pub fn child<'a>(&'a self) -> impl PropertyAccessor<Option<NodeRef>> + 'a {
-        fn select(this: &Arc<Window>) -> &KeyedProperty<Option<NodeRef>> {
+        fn select(this: &RefEqArc<Window>) -> &KeyedProperty<Option<NodeRef>> {
             &this.child
         }
         KeyedPropertyAccessor::new(&self.0, select)

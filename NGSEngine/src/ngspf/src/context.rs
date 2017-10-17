@@ -5,7 +5,8 @@
 //
 use std::any::Any;
 use std::sync::{Arc, Mutex};
-use std::{ops, fmt, borrow};
+use std::{ops, fmt, borrow, hash};
+use refeq::RefEqArc;
 use arclock::{ArcLock, ArcLockGuard};
 use tokenlock::{TokenLock, TokenRef, Token};
 
@@ -144,11 +145,27 @@ struct Changelog {
 
 /// Reference to a node.
 #[derive(Clone)]
-pub struct NodeRef(pub Arc<Any + Sync + Send>);
+pub struct NodeRef(pub RefEqArc<Any + Sync + Send>);
 
 impl fmt::Debug for NodeRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("NodeRef").finish()
+    }
+}
+
+// implementing them using `derive` results in error messages which are
+// confusing beyond comprehension
+impl PartialEq for NodeRef {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+
+impl Eq for NodeRef {}
+
+impl hash::Hash for NodeRef {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
     }
 }
 
@@ -173,13 +190,13 @@ impl GroupRef {
     }
 
     pub fn into_node_ref(self) -> NodeRef {
-        NodeRef(self.0)
+        NodeRef(RefEqArc::from_arc(self.0))
     }
 }
 
 /// Iterate through non-group nodes reachable from a given root node.
-pub fn for_each_node<T: FnMut(&NodeRef)>(root: &NodeRef, mut cb: T) {
-    fn inner<T: FnMut(&NodeRef)>(root: &NodeRef, cb: &mut T) {
+pub fn for_each_node<'a, T: FnMut(&'a NodeRef)>(root: &'a NodeRef, mut cb: T) {
+    fn inner<'a, T: FnMut(&'a NodeRef)>(root: &'a NodeRef, cb: &mut T) {
         if let Some(group) = Any::downcast_ref::<Group>(root) {
             for node in group.nodes.iter() {
                 inner(node, cb)

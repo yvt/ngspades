@@ -537,6 +537,7 @@ dependencies = [
  "ngsgfx 0.1.0",
  "refeq 0.1.0",
  "tokenlock 0.1.0",
+ "winit 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

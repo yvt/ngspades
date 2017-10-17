@@ -18,16 +18,18 @@
 //!
 //! [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
 #![feature(conservative_impl_trait)]
-extern crate ngsgfx;
+extern crate ngsgfx as gfx;
 extern crate arclock;
 extern crate refeq;
 extern crate tokenlock;
 extern crate cgmath;
+extern crate winit;
 
 mod context;
 pub mod image;
 pub mod layer;
 pub mod window;
+pub mod workspace;
 
 pub use self::context::*;
 

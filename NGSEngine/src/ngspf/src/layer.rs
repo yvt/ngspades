@@ -7,6 +7,7 @@
 use std::sync::Arc;
 use cgmath::Matrix4;
 use cgmath::prelude::*;
+use refeq::RefEqArc;
 use {Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
 use image::ImageRef;
 
@@ -86,7 +87,7 @@ pub struct LayerRef(Arc<Layer>);
 
 impl LayerRef {
     pub fn into_node_ref(self) -> NodeRef {
-        NodeRef(self.0)
+        NodeRef(RefEqArc::from_arc(self.0))
     }
 
     pub fn transform<'a>(&'a self) -> impl PropertyAccessor<Matrix4<f32>> + 'a {
