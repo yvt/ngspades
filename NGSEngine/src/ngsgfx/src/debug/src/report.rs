@@ -153,7 +153,7 @@ impl<T: term::Terminal + Send + ?Sized> core::DebugReportHandler for TermDebugRe
         use chrono::prelude::*;
         use core::DebugReportType;
 
-        if let Some(mut t) = self.t.lock().unwrap().as_mut() {
+        if let Some(t) = self.t.lock().unwrap().as_mut() {
             let dt = Local::now();
             write!(t, "{} ", dt.format("%Y-%m-%d %H:%M:%S")).unwrap();
             match report.typ {

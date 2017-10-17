@@ -11,7 +11,6 @@ use std::any::Any;
 
 use enumflags::BitFlags;
 
-use cgmath::prelude::*;
 use cgmath::Vector3;
 
 use {ImageFormat, Signedness, Normalizedness, Validate, DeviceCapabilities, Marker, StorageMode};
