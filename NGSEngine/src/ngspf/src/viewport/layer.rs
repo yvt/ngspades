@@ -8,8 +8,8 @@ use std::sync::Arc;
 use cgmath::Matrix4;
 use cgmath::prelude::*;
 use refeq::RefEqArc;
-use {Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
-use image::ImageRef;
+use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
+use super::ImageRef;
 
 /// Factory type of `LayerRef`.
 #[derive(Debug, Clone)]
@@ -63,11 +63,11 @@ impl Default for LayerBuilder {
 }
 
 #[derive(Debug)]
-struct Layer {
-    transform: KeyedProperty<Matrix4<f32>>,
-    opacity: KeyedProperty<f32>,
-    contents: KeyedProperty<LayerContents>,
-    child: KeyedProperty<Option<NodeRef>>,
+pub(super) struct Layer {
+    pub transform: KeyedProperty<Matrix4<f32>>,
+    pub opacity: KeyedProperty<f32>,
+    pub contents: KeyedProperty<LayerContents>,
+    pub child: KeyedProperty<Option<NodeRef>>,
 }
 
 #[derive(Debug, Clone)]

@@ -7,8 +7,7 @@ extern crate ngspf;
 
 use std::sync::Arc;
 
-use ngspf::workspace::Workspace;
-use ngspf::window::WindowBuilder;
+use ngspf::viewport::{Workspace, WindowBuilder};
 use ngspf::prelude::*;
 
 fn main() {

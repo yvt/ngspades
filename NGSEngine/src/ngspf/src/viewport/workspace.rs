@@ -16,8 +16,9 @@ use gfx::wsi::{DefaultWindow, NewWindow};
 use gfx::core::{Environment, InstanceBuilder};
 use gfx::prelude::*;
 
-use {Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor, for_each_node};
-use window::Window;
+use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor,
+              for_each_node};
+use super::Window;
 use prelude::*;
 
 pub struct Workspace {
@@ -282,6 +283,6 @@ pub trait Library: Any + fmt::Debug {
     /// Get the `LibraryId` of the `Library`.
     fn id(&self) -> Self::LibraryId;
 
-    /// Construct a `Instance` for a given `Device`.
+    /// Construct a `Instance` for a specific `Device`.
     fn make_instance(&self, device_objects: &Arc<DeviceObjects>) -> Self::Instance;
 }

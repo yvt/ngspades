@@ -6,7 +6,7 @@
 //! Window node.
 use refeq::RefEqArc;
 use cgmath::Vector2;
-use {Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
+use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
 
 /// Factory type of `WindowRef`.
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ impl Default for WindowBuilder {
 }
 
 #[derive(Debug)]
-pub(crate) struct Window {
+pub(super) struct Window {
     pub size: KeyedProperty<Vector2<f32>>,
     pub child: KeyedProperty<Option<NodeRef>>,
 }

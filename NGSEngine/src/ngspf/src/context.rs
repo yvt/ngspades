@@ -3,6 +3,18 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Context API providing a basic infrastructure for the producer-presenter
+//! communication.
+//!
+//! ## Property Accessor
+//!
+//! Property accessors provide an easy way to access and modify properties of
+//! nodes. They record a changeset to the frame automatically when updating a
+//! property value.
+//!
+//! See the documentation of [`KeyedPropertyAccessor`] for the usage.
+//!
+//! [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 use std::{ops, fmt, borrow, hash};
@@ -10,6 +22,7 @@ use refeq::RefEqArc;
 use arclock::{ArcLock, ArcLockGuard};
 use tokenlock::{TokenLock, TokenRef, Token};
 
+/// Maintains a single timeline of node property modifications.
 #[derive(Debug)]
 pub struct Context {
     producer_frame: ArcLock<ProducerFrameInner>,
@@ -31,6 +44,7 @@ pub enum PropertyError {
 }
 
 impl Context {
+    /// Construct a `Context`.
     pub fn new() -> Self {
         let producer_token = Token::new();
         let presenter_token = Token::new();

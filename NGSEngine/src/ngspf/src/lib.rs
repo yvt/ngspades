@@ -8,15 +8,6 @@
 //!
 //! todo
 //!
-//! ## Property Accessor
-//!
-//! Property accessors provide an easy way to access and modify properties of
-//! nodes. They record a changeset to the frame automatically when updating a
-//! property value.
-//!
-//! See the documentation of [`KeyedPropertyAccessor`] for the usage.
-//!
-//! [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
 #![feature(conservative_impl_trait)]
 extern crate ngsgfx as gfx;
 extern crate arclock;
@@ -25,15 +16,11 @@ extern crate tokenlock;
 extern crate cgmath;
 extern crate winit;
 
-mod context;
-pub mod image;
-pub mod layer;
-pub mod window;
-pub mod workspace;
+pub mod context;
+pub mod viewport;
 
-pub use self::context::*;
-
+/// The NgsPF prelude.
 pub mod prelude {
-    pub use {PropertyProducerWrite, PropertyProducerRead, PropertyPresenterRead, PropertyAccessor,
-             RoPropertyAccessor};
+    pub use context::{PropertyProducerWrite, PropertyProducerRead, PropertyPresenterRead,
+                      PropertyAccessor, RoPropertyAccessor};
 }

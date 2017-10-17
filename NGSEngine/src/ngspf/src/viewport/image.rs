@@ -5,7 +5,7 @@
 //
 use std::sync::Arc;
 use cgmath::Vector2;
-use {RefPropertyAccessor, RoPropertyAccessor};
+use context::{RefPropertyAccessor, RoPropertyAccessor};
 
 /// Owned raster image data.
 #[derive(Debug, Clone)]
