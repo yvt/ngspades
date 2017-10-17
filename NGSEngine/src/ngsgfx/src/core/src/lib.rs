@@ -58,7 +58,8 @@
 //! For every enumerated type for which such parameters exist, a type alias to
 //! `BitFlags<T>` is defined with its name suffixed with `Flags` (e.g., `AccessTypeFlags`).
 //!
-//! There are some exceptions including `ImageFlag` and `ImageFlags`.
+//! There are some exceptions including `ImageFlags`, which is a type alias of
+//! `BitFlags<ImageFlagsBit>`.
 //!
 //! The following example shows how to provide a `BitFlags<T>` value with an arbitrary
 //! number of `T` values:

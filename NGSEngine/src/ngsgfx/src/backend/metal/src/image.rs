@@ -49,8 +49,8 @@ impl Image {
             unsafe { OCPtr::from_raw(metal::MTLTextureDescriptor::alloc().init()).unwrap() };
 
         let can_make_views = desc.flags.intersects(
-            core::ImageFlag::MutableType | core::ImageFlag::MutableFormat |
-                core::ImageFlag::SubrangeViewCompatible,
+            core::ImageFlagsBit::MutableType | core::ImageFlagsBit::MutableFormat |
+                core::ImageFlagsBit::SubrangeViewCompatible,
         );
 
         let texture_type = match desc.image_type {
@@ -111,8 +111,8 @@ impl Image {
         metal_desc.set_array_length(desc.num_array_layers as u64);
 
         // TODO: handle allocation failure
-        let metal_texture =
-            unsafe { OCPtr::from_raw(metal_device.new_texture(*metal_desc)) }.expect("texture creation failed");
+        let metal_texture = unsafe { OCPtr::from_raw(metal_device.new_texture(*metal_desc)) }
+            .expect("texture creation failed");
 
         Ok(Image {
             data: RefEqArc::new(ImageData {
@@ -157,8 +157,8 @@ impl Image {
 
         let desc = core::ImageDescription {
             flags: if can_make_views {
-                core::ImageFlag::MutableFormat | core::ImageFlag::SubrangeViewCompatible |
-                    core::ImageFlag::MutableType
+                core::ImageFlagsBit::MutableFormat | core::ImageFlagsBit::SubrangeViewCompatible |
+                    core::ImageFlagsBit::MutableType
             } else {
                 core::ImageFlags::empty()
             },
@@ -336,7 +336,7 @@ impl ImageView {
     /// ======
     ///
     /// Might panic if the image view does not specify the all mip levels
-    /// and all array layers, and `ImageFlag::SubrangeViewCompatible` was not specified
+    /// and all array layers, and `ImageFlagsBit::SubrangeViewCompatible` was not specified
     /// when the image was created (in which case a flag necessary to create
     /// texture views is not specified when the original `MTLTexture` is created, so
     /// `ImageView` cannot return a `MTLTexture` that only contains the range

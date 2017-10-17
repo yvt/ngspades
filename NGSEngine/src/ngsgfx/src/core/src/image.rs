@@ -81,7 +81,7 @@ pub enum ImageTiling {
 pub struct ImageViewDescription<'a, TImage: Image> {
     /// Specifies the arrangement of the image view.
     ///
-    /// If the image was not created with `ImageFlag::MutableType`, this must
+    /// If the image was not created with `ImageFlagsBit::MutableType`, this must
     /// be equal to the one used to create the image.
     ///
     /// Only the following combinations of the original image's `ImageType` and
@@ -100,14 +100,14 @@ pub struct ImageViewDescription<'a, TImage: Image> {
 
     /// Specifies the image format.
     ///
-    /// If the image was not created with `ImageFlag::MutableFormat`, this must
+    /// If the image was not created with `ImageFlagsBit::MutableFormat`, this must
     /// be equal to the one used to create the image.
     pub format: ImageFormat,
 
     /// Specifies the ranges of slices and mip levels that are visible via the
     /// image view.
     ///
-    /// If the image was not created with `ImageFlag::SubrangeViewCompatible`,
+    /// If the image was not created with `ImageFlagsBit::SubrangeViewCompatible`,
     /// the following restriction applies if this does not specify entire the
     /// image:
     ///
@@ -183,7 +183,7 @@ mod flags {
 
     #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
     #[repr(u32)]
-    pub enum ImageFlag {
+    pub enum ImageFlagsBit {
         /// Indicates `ImageView` can created from the image with a `ImageFormat` different
         /// from the one used to create the image.
         MutableFormat = 0b001,
@@ -202,9 +202,9 @@ mod flags {
     }
 }
 
-pub use self::flags::{ImageUsage, ImageFlag, ImageAspect};
+pub use self::flags::{ImageUsage, ImageFlagsBit, ImageAspect};
 
-pub type ImageFlags = BitFlags<ImageFlag>;
+pub type ImageFlags = BitFlags<ImageFlagsBit>;
 pub type ImageUsageFlags = BitFlags<ImageUsage>;
 pub type ImageAspectFlags = BitFlags<ImageAspect>;
 
@@ -515,7 +515,7 @@ pub enum CombinedImageAndImageViewDescriptionValidationError {
     /// (Vulkan 1.0, "11.5. Image Views" Table 8)
     InvalidArrayLayersForCubeArray,
     /// `format` is different from the one that was used to create the image, and
-    /// `ImageFlag::MutableFormat` was not specified.
+    /// `ImageFlagsBit::MutableFormat` was not specified.
     DifferentFormat,
 
     // TODO: image format compatibility
@@ -553,7 +553,7 @@ impl<'a, TImage: Image> Validate for CombinedImageAndImageViewDescription<'a, TI
         }
 
         if view_desc.format != image_desc.format &&
-            (image_desc.flags & ImageFlag::MutableFormat).is_empty()
+            (image_desc.flags & ImageFlagsBit::MutableFormat).is_empty()
         {
             callback(
                 CombinedImageAndImageViewDescriptionValidationError::DifferentFormat,

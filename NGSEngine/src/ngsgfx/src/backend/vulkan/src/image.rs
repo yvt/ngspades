@@ -51,7 +51,7 @@ pub(crate) struct UnassociatedImage<'a, T: DeviceRef> {
 impl<'a, T: DeviceRef> UnassociatedImage<'a, T> {
     pub(crate) fn new(device_ref: &'a T, desc: &core::ImageDescription) -> core::Result<Self> {
         let mut flags = vk::ImageCreateFlags::empty();
-        if desc.flags.contains(core::ImageFlag::MutableFormat) {
+        if desc.flags.contains(core::ImageFlagsBit::MutableFormat) {
             flags |= vk::IMAGE_CREATE_MUTABLE_FORMAT_BIT;
         }
         if desc.image_type == core::ImageType::Cube ||
