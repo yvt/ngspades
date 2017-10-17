@@ -167,6 +167,12 @@ impl fmt::Debug for NodeRef {
     }
 }
 
+impl NodeRef {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        Any::downcast_ref(&*self.0)
+    }
+}
+
 // implementing them using `derive` results in error messages which are
 // confusing beyond comprehension
 impl PartialEq for NodeRef {

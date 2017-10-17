@@ -11,24 +11,14 @@ use std::{fmt, hash};
 use gfx;
 use gfx::prelude::*;
 
+#[derive(Debug)]
 pub struct WorkspaceDevice<B: Backend> {
     libraries: RwLock<LibraryMap>,
     objects: DeviceObjects<B>,
 }
 
-impl<B: Backend> fmt::Debug for WorkspaceDevice<B> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("WorkspaceDevice")
-            .field("libraries", &self.libraries)
-            .field("objects", &self.objects)
-            .finish()
-    }
-}
-
 impl<B: Backend> WorkspaceDevice<B> {
-    pub(super) fn new(
-        gfx_device: Arc<B::Device>,
-    ) -> Result<Self, gfx::core::GenericError> {
+    pub(super) fn new(gfx_device: Arc<B::Device>) -> Result<Self, gfx::core::GenericError> {
         let objects = DeviceObjects {
             heap: Arc::new(Mutex::new(gfx_device.factory().make_universal_heap()?)),
             gfx_device,
@@ -43,14 +33,14 @@ impl<B: Backend> WorkspaceDevice<B> {
         &self.objects
     }
 
-    pub fn get_library<T: Library<B>>(this: &Arc<Self>, library: &T) -> Arc<T::Instance> {
-        if let Some(inst) = this.libraries.read().unwrap().get(library).cloned() {
+    pub fn get_library<T: Library<B>>(&self, library: &T) -> Arc<T::Instance> {
+        if let Some(inst) = self.libraries.read().unwrap().get(library).cloned() {
             return inst;
         }
 
-        let inst = library.make_instance(this);
+        let inst = library.make_instance(self);
 
-        this.libraries
+        self.libraries
             .write()
             .unwrap()
             .get_or_create(library, || inst)
@@ -73,7 +63,7 @@ impl LibraryMap {
     fn get<B, T>(&self, library: &T) -> Option<&Arc<T::Instance>>
     where
         B: Backend,
-        T: Library<B>
+        T: Library<B>,
     {
         let type_id = TypeId::of::<T>();
         self.0.get(&type_id).and_then(|boxed_tlm| {
@@ -100,18 +90,10 @@ impl LibraryMap {
 }
 
 /// NgsGFX objects associated with a certain NgsGFX device.
+#[derive(Debug)]
 pub struct DeviceObjects<B: Backend> {
     gfx_device: Arc<B::Device>,
     heap: Arc<Mutex<B::UniversalHeap>>,
-}
-
-impl<B: Backend> fmt::Debug for DeviceObjects<B> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("DeviceObjects")
-            .field("gfx_device", &self.gfx_device)
-            .field("heap", &self.heap)
-            .finish()
-    }
 }
 
 impl<B: Backend> DeviceObjects<B> {
@@ -135,5 +117,5 @@ pub trait Library<B: Backend>: Any + fmt::Debug {
     fn id(&self) -> Self::LibraryId;
 
     /// Construct a `Instance` for a specific `Device`.
-    fn make_instance(&self, device: &Arc<WorkspaceDevice<B>>) -> Self::Instance;
+    fn make_instance(&self, device: &WorkspaceDevice<B>) -> Self::Instance;
 }

@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Viewport API.
+mod compositor;
 mod device;
 mod image;
 mod layer;
