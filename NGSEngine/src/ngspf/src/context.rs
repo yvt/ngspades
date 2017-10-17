@@ -459,8 +459,8 @@ pub trait RoPropertyAccessor<T>
 /// # Examples
 ///
 ///     #![feature(conservative_impl_trait)]
-///     use ngspf::{KeyedPropertyAccessor, KeyedProperty, ProducerFrame};
-///     use ngspf::{PropertyAccessor, PropertyProducerWrite};
+///     use ngspf::context::{KeyedPropertyAccessor, KeyedProperty, ProducerFrame};
+///     use ngspf::context::{PropertyAccessor, PropertyProducerWrite};
 ///     use std::sync::Arc;
 ///
 ///     struct Pegasus {
@@ -562,8 +562,8 @@ where
 /// # Examples
 ///
 ///     #![feature(conservative_impl_trait)]
-///     use ngspf::{RefPropertyAccessor, ProducerFrame};
-///     use ngspf::{RoPropertyAccessor, PropertyProducerRead};
+///     use ngspf::context::{RefPropertyAccessor, ProducerFrame};
+///     use ngspf::context::{RoPropertyAccessor, PropertyProducerRead};
 ///     use std::sync::Arc;
 ///
 ///     struct Pegasus {
