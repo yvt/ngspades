@@ -18,7 +18,7 @@ use gfx::prelude::*;
 
 use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor,
               for_each_node};
-use super::Window;
+use super::{Window, WindowFlagsBit};
 use prelude::*;
 
 pub struct Workspace {
@@ -106,6 +106,10 @@ impl Workspace {
                         use gfx::core::{ImageFormat, ImageUsage};
                         use gfx::wsi::ColorSpace;
 
+                        let flags = window.flags;
+                        let size = window.size.read_presenter(&frame).unwrap().cast::<u32>();
+                        let title = window.title.read_presenter(&frame).unwrap().to_owned();
+
                         let desired_formats = [
                             (
                                 Some(ImageFormat::SrgbBgra8),
@@ -121,11 +125,17 @@ impl Workspace {
                             desired_formats: &desired_formats,
                             image_usage: ImageUsage::ColorAttachment.into(),
                         };
-                        let builder = winit::WindowBuilder::new();
+                        let mut builder = winit::WindowBuilder::new()
+                            .with_transparency(flags.contains(WindowFlagsBit::Transparent))
+                            .with_decorations(!flags.contains(WindowFlagsBit::Borderless))
+                            .with_dimensions(size.x, size.y)
+                            .with_title(title);
+                        if !flags.contains(WindowFlagsBit::Resizable) {
+                            builder = builder.with_max_dimensions(size.x, size.y);
+                            builder = builder.with_min_dimensions(size.x, size.y);
+                        }
                         let gfx_window =
                             DefaultWindow::new(builder, events_loop, instance, &sc_desc).unwrap();
-
-                        let _size = *window.size.read_presenter(&frame).unwrap();
 
                         // TODO: handle the creation error gracefully
                         use gfx::wsi::Window;

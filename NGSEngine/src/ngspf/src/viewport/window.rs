@@ -7,14 +7,17 @@
 use refeq::RefEqArc;
 use enumflags::BitFlags;
 use cgmath::Vector2;
-use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
+use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor,
+              RoPropertyAccessor, RefPropertyAccessor};
 
 // prevent `InnerXXX` from being exported
 mod flags {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
     #[repr(u8)]
     pub enum WindowFlagsBit {
-        Resizable = 0b1,
+        Resizable = 0b01,
+        Borderless = 0b10,
+        Transparent = 0b100,
     }
 }
 
@@ -54,11 +57,15 @@ impl WindowBuilder {
     }
 
     pub fn title<T: Into<String>>(self, title: T) -> Self {
-        Self { title: title.into(), ..self }
+        Self {
+            title: title.into(),
+            ..self
+        }
     }
 
     pub fn build(self, context: &Context) -> WindowRef {
         WindowRef(RefEqArc::new(Window {
+            flags: self.flags,
             size: KeyedProperty::new(context, self.size),
             child: KeyedProperty::new(context, self.child),
             title: KeyedProperty::new(context, self.title),
@@ -74,6 +81,7 @@ impl Default for WindowBuilder {
 
 #[derive(Debug)]
 pub(super) struct Window {
+    pub flags: WindowFlags,
     pub size: KeyedProperty<Vector2<f32>>,
     pub child: KeyedProperty<Option<NodeRef>>,
     pub title: KeyedProperty<String>,
@@ -86,6 +94,10 @@ pub struct WindowRef(RefEqArc<Window>);
 impl WindowRef {
     pub fn into_node_ref(self) -> NodeRef {
         NodeRef(self.0)
+    }
+
+    pub fn flags<'a>(&'a self) -> impl RoPropertyAccessor<WindowFlags> + 'a {
+        RefPropertyAccessor::new(&self.0.flags)
     }
 
     pub fn size<'a>(&'a self) -> impl PropertyAccessor<Vector2<f32>> + 'a {
