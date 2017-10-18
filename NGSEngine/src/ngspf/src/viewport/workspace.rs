@@ -289,7 +289,15 @@ impl<W: Window> DeviceAndWindows<W> {
             // TODO: use `schedule_next_frame` to reduce CPU load
         }
 
-        let mut command_buffers_ref: Vec<_> = context.command_buffers.iter_mut().collect();
+        let mut command_buffers_borrowed: Vec<_> = context
+            .command_buffers
+            .iter()
+            .map(|cb_cell| cb_cell.borrow_mut())
+            .collect();
+        let mut command_buffers_ref: Vec<_> = command_buffers_borrowed
+            .iter_mut()
+            .map(|borrowed| &mut **borrowed)
+            .collect();
         self.device
             .objects()
             .gfx_device()

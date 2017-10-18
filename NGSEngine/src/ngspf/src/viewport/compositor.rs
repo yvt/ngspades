@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::sync::{Arc, Mutex};
+use atomic_refcell::AtomicRefCell;
 use gfx;
 use gfx::core::Backend;
 use gfx::prelude::*;
@@ -58,6 +59,7 @@ const RENDER_PASS_BIT_USAGE_TRANSFER: usize = 0b10 << 1;
 #[derive(Debug)]
 pub struct CompositorWindow<B: Backend> {
     compositor: Arc<CompositorInstance<B>>,
+    command_buffer: Arc<AtomicRefCell<B::CommandBuffer>>,
 }
 
 #[derive(Debug)]
@@ -65,12 +67,23 @@ pub struct CompositeContext<'a, B: Backend> {
     pub workspace_device: &'a WorkspaceDevice<B>,
     pub schedule_next_frame: bool,
     /// Command buffers to be submitted to the device (after calls to `composite` are done).
-    pub command_buffers: Vec<B::CommandBuffer>,
+    pub command_buffers: Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
 }
 
 impl<B: Backend> CompositorWindow<B> {
     pub fn new(compositor: Arc<CompositorInstance<B>>) -> Self {
-        Self { compositor }
+        let command_buffer;
+        {
+            let ref device = compositor.device;
+            command_buffer = device.main_queue().make_command_buffer().expect(
+                "failed to create a command buffer",
+            );
+            command_buffer.set_label(Some("compositor main command buffer"));
+        }
+        Self {
+            compositor,
+            command_buffer: Arc::new(AtomicRefCell::new(command_buffer)),
+        }
     }
 
     pub fn frame_description(&self) -> gfx::wsi::FrameDescription {
@@ -127,11 +140,11 @@ impl<B: Backend> CompositorWindow<B> {
             })
             .unwrap();
 
-        let mut cb = device.main_queue().make_command_buffer().unwrap();
-        cb.set_label(Some("compositor main command buffer"));
-
-        cb.begin_encoding();
+        let cb_cell = Arc::clone(&self.command_buffer);
         {
+            let mut cb = cb_cell.borrow_mut();
+            cb.wait_completion().unwrap();
+            cb.begin_encoding();
             cb.begin_render_pass(&framebuffer, gfx::core::DeviceEngine::Universal);
             {
                 cb.begin_render_subpass(gfx::core::RenderPassContents::Inline);
@@ -160,10 +173,10 @@ impl<B: Backend> CompositorWindow<B> {
                 gfx::core::ImageLayout::Present,
             );
             cb.end_pass();
+            cb.end_encoding().expect("command buffer encoding failed");
         }
-        cb.end_encoding().expect("command buffer encoding failed");
 
-        context.command_buffers.push(cb);
+        context.command_buffers.push(cb_cell);
     }
 }
 

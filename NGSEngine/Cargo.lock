@@ -533,6 +533,7 @@ name = "ngspf"
 version = "0.1.0"
 dependencies = [
  "arclock 0.1.0",
+ "atomic_refcell 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "enumflags 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "enumflags_derive 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
