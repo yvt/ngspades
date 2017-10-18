@@ -22,17 +22,17 @@ impl<B: Backend> Library<B> for Compositor {
         ()
     }
 
-    fn make_instance(&self, ws_device: &WorkspaceDevice<B>) -> Self::Instance {
-        CompositorInstance {
+    fn make_instance(&self, ws_device: &WorkspaceDevice<B>) -> gfx::core::Result<Self::Instance> {
+        Ok(CompositorInstance {
             heap: Arc::clone(ws_device.objects().heap()),
             device: Arc::clone(ws_device.objects().gfx_device()),
             statesets: vec![
                 Stateset::new(
                     &**ws_device.objects().gfx_device(),
                     gfx::core::ImageFormat::SrgbBgra8
-                ).expect("Stateset creation failed"),
+                )?,
             ],
-        }
+        })
     }
 }
 
@@ -71,19 +71,17 @@ pub struct CompositeContext<'a, B: Backend> {
 }
 
 impl<B: Backend> CompositorWindow<B> {
-    pub fn new(compositor: Arc<CompositorInstance<B>>) -> Self {
+    pub fn new(compositor: Arc<CompositorInstance<B>>) -> gfx::core::Result<Self> {
         let command_buffer;
         {
             let ref device = compositor.device;
-            command_buffer = device.main_queue().make_command_buffer().expect(
-                "failed to create a command buffer",
-            );
+            command_buffer = device.main_queue().make_command_buffer()?;
             command_buffer.set_label(Some("compositor main command buffer"));
         }
-        Self {
+        Ok(Self {
             compositor,
             command_buffer: Arc::new(AtomicRefCell::new(command_buffer)),
-        }
+        })
     }
 
     pub fn frame_description(&self) -> gfx::wsi::FrameDescription {
@@ -100,19 +98,19 @@ impl<B: Backend> CompositorWindow<B> {
         _frame: &PresenterFrame,
         drawable: &D,
         drawable_info: &gfx::wsi::DrawableInfo,
-    ) where
+    ) -> gfx::core::Result<()>
+    where
         D: gfx::wsi::Drawable<Backend = B>,
     {
         let device: &B::Device = context.workspace_device.objects().gfx_device();
-        let image_view = device
-            .factory()
-            .make_image_view(&gfx::core::ImageViewDescription {
+        let image_view = device.factory().make_image_view(
+            &gfx::core::ImageViewDescription {
                 image_type: gfx::core::ImageType::TwoD,
                 image: drawable.image(),
                 format: drawable_info.format,
                 range: gfx::core::ImageSubresourceRange::default(),
-            })
-            .unwrap();
+            },
+        )?;
 
         let viewport = gfx::core::Viewport {
             x: 0f32,
@@ -123,9 +121,8 @@ impl<B: Backend> CompositorWindow<B> {
             max_depth: 1f32,
         };
 
-        let framebuffer = device
-            .factory()
-            .make_framebuffer(&gfx::core::FramebufferDescription {
+        let framebuffer = device.factory().make_framebuffer(
+            &gfx::core::FramebufferDescription {
                 render_pass: &self.compositor.statesets[0].render_passes
                     [RENDER_PASS_BIT_CLEAR + RENDER_PASS_BIT_USAGE_PRESENT],
                 attachments: &[
@@ -137,13 +134,13 @@ impl<B: Backend> CompositorWindow<B> {
                 width: drawable_info.extents.x,
                 height: drawable_info.extents.y,
                 num_layers: 1,
-            })
-            .unwrap();
+            },
+        )?;
 
         let cb_cell = Arc::clone(&self.command_buffer);
         {
             let mut cb = cb_cell.borrow_mut();
-            cb.wait_completion().unwrap();
+            cb.wait_completion()?;
             cb.begin_encoding();
             cb.begin_render_pass(&framebuffer, gfx::core::DeviceEngine::Universal);
             {
@@ -173,10 +170,12 @@ impl<B: Backend> CompositorWindow<B> {
                 gfx::core::ImageLayout::Present,
             );
             cb.end_pass();
-            cb.end_encoding().expect("command buffer encoding failed");
+            cb.end_encoding()?;
         }
 
         context.command_buffers.push(cb_cell);
+
+        Ok(())
     }
 }
 

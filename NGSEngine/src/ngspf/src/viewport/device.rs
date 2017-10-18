@@ -18,7 +18,7 @@ pub struct WorkspaceDevice<B: Backend> {
 }
 
 impl<B: Backend> WorkspaceDevice<B> {
-    pub(super) fn new(gfx_device: Arc<B::Device>) -> Result<Self, gfx::core::GenericError> {
+    pub(super) fn new(gfx_device: Arc<B::Device>) -> gfx::core::Result<Self> {
         let objects = DeviceObjects {
             heap: Arc::new(Mutex::new(gfx_device.factory().make_universal_heap()?)),
             gfx_device,
@@ -33,18 +33,20 @@ impl<B: Backend> WorkspaceDevice<B> {
         &self.objects
     }
 
-    pub fn get_library<T: Library<B>>(&self, library: &T) -> Arc<T::Instance> {
+    pub fn get_library<T: Library<B>>(&self, library: &T) -> gfx::core::Result<Arc<T::Instance>> {
         if let Some(inst) = self.libraries.read().unwrap().get(library).cloned() {
-            return inst;
+            return Ok(inst);
         }
 
-        let inst = library.make_instance(self);
+        let inst = library.make_instance(self)?;
 
-        self.libraries
-            .write()
-            .unwrap()
-            .get_or_create(library, || inst)
-            .clone()
+        Ok(
+            self.libraries
+                .write()
+                .unwrap()
+                .get_or_create(library, || inst)
+                .clone(),
+        )
     }
 }
 
@@ -117,5 +119,5 @@ pub trait Library<B: Backend>: Any + fmt::Debug {
     fn id(&self) -> Self::LibraryId;
 
     /// Construct a `Instance` for a specific `Device`.
-    fn make_instance(&self, device: &WorkspaceDevice<B>) -> Self::Instance;
+    fn make_instance(&self, device: &WorkspaceDevice<B>) -> gfx::core::Result<Self::Instance>;
 }

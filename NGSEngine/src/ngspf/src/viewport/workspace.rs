@@ -101,7 +101,7 @@ impl Workspace {
 
                 {
                     let frame = self.context.lock_presenter_frame().expect(
-                        "failed to acquire a presenter frame",
+                        "failed to acquire a presenter frame (locked by an external entity?)",
                     );
 
                     let windows = self.root.windows();
@@ -211,13 +211,17 @@ impl WorkspaceWindowSet {
             // TODO: handle the creation error gracefully
             use gfx::wsi::Window;
             let device = WorkspaceDevice::new(Arc::clone(gfx_window.device()))
-                .expect("failed to create `WorkspaceDevice`");
+                .expect("failed to create WorkspaceDevice");
 
-            let comp = device.get_library(&Compositor);
+            let comp = device.get_library(&Compositor).expect(
+                "failed to create Compositor",
+            );
 
             let ww = WorkspaceWindow {
                 gfx_window,
-                compositor_window: CompositorWindow::new(Arc::clone(&comp)),
+                compositor_window: CompositorWindow::new(Arc::clone(&comp)).expect(
+                    "failed to create `CompositorWindow`",
+                ),
             };
 
             let mut dws = DeviceAndWindows {
@@ -243,13 +247,15 @@ impl WorkspaceWindowSet {
 
     fn update(&mut self, frame: &PresenterFrame) {
         for device_windows in self.device_windows.iter_mut() {
-            device_windows.update(frame);
+            device_windows.update(frame).expect(
+                "failed to update a device",
+            );
         }
     }
 }
 
 impl<W: Window> DeviceAndWindows<W> {
-    fn update(&mut self, frame: &PresenterFrame) {
+    fn update(&mut self, frame: &PresenterFrame) -> gfx::core::Result<()> {
         let mut context = CompositeContext {
             workspace_device: &self.device,
             schedule_next_frame: false,
@@ -276,7 +282,7 @@ impl<W: Window> DeviceAndWindows<W> {
                                 frame,
                                 &drawable,
                                 &swapchain.drawable_info(),
-                            );
+                            )?;
                             drawables.push(drawable);
                             break;
                         }
@@ -293,7 +299,7 @@ impl<W: Window> DeviceAndWindows<W> {
 
                 // We have to wait for the completion because we have to ensure all uses of
                 // swapchain images are completed before updating the swapchain.
-                self.events.wait_idle().expect("wait_idle failed");
+                self.events.wait_idle()?;
                 gfx_window.update_swapchain();
             }
 
@@ -309,17 +315,18 @@ impl<W: Window> DeviceAndWindows<W> {
             .iter_mut()
             .map(|borrowed| &mut **borrowed)
             .collect();
-        let event = self.events.get().expect("EventRing::get failed");
+        let event = self.events.get()?;
         self.device
             .objects()
             .gfx_device()
             .main_queue()
-            .submit_commands(&mut command_buffers_ref[..], Some(event))
-            .expect("Command submission failed");
+            .submit_commands(&mut command_buffers_ref[..], Some(event))?;
 
         for drawable in drawables {
             drawable.present();
         }
+
+        Ok(())
     }
 }
 
