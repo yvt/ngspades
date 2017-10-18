@@ -112,8 +112,26 @@ impl<T: DeviceRef> LlFence<T> {
         &self.fences
     }
 
-    fn wait(&self, _: Duration) -> core::Result<bool> {
-        unimplemented!()
+    fn wait(&self, duration: Duration) -> core::Result<bool> {
+        let mut data = self.data.as_ref().unwrap().lock();
+        if data.state == LlFenceState::Signaled {
+            return Ok(true);
+        }
+
+        let nsecs = duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64;
+        match unsafe { data.device_ref.device().wait_for_fences(self.fences.as_slice(), true, nsecs) } {
+            Ok(()) => {
+                // Release dep table etc.
+                data.check_fence(false, Some(self));
+                Ok(true)
+            }
+            Err(vk::Result::Timeout) => {
+                Ok(false)
+            }
+            Err(e) => {
+                Err(translate_generic_error_unwrap(e))
+            }
+        }
     }
 
     fn reset(&self) -> core::Result<()> {
