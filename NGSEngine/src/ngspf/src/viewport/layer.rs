@@ -10,7 +10,7 @@ use cgmath::Matrix4;
 use cgmath::prelude::*;
 use refeq::RefEqArc;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
-use super::ImageRef;
+use super::{ImageRef, Port};
 
 // prevent `InnerXXX` from being exported
 mod flags {
@@ -98,8 +98,9 @@ pub enum LayerContents {
     Empty,
     /// Specifies to use a given `Image` as the layer contents.
     Image(ImageRef),
+    /// Specifies to use a given `Port` to generate the layer contents.
+    Port(Arc<Port>),
     // TODO
-    // Generated(()),
     // BackDrop,
 }
 

@@ -9,7 +9,7 @@
 //! todo
 //!
 #![feature(conservative_impl_trait)]
-extern crate ngsgfx as gfx;
+pub extern crate ngsgfx as gfx;
 extern crate arclock;
 extern crate refeq;
 extern crate tokenlock;
