@@ -39,6 +39,16 @@ struct DeviceAndWindows<W: Window> {
     device: Arc<WorkspaceDevice<W::Backend>>,
     windows: HashMap<NodeRef, WorkspaceWindow<W>>,
     compositor: Arc<CompositorInstance<W::Backend>>,
+    events: EventRing<W::Backend>,
+}
+
+/// Set of NgsGFX `Event`s. Used to wait for the device to become idle when
+/// updating a swapchain. (`CommandQueue::wait_idle` is insufficient for this
+/// use case)
+#[derive(Debug)]
+struct EventRing<B: Backend> {
+    events: Vec<B::Event>,
+    next: usize,
 }
 
 #[derive(Debug)]
@@ -211,6 +221,8 @@ impl WorkspaceWindowSet {
             };
 
             let mut dws = DeviceAndWindows {
+                events: EventRing::<DefaultBackend>::new(device.objects().gfx_device())
+                    .expect("failed to create EventRing"),
                 device: Arc::new(device),
                 windows: HashMap::new(),
                 compositor: comp,
@@ -281,8 +293,7 @@ impl<W: Window> DeviceAndWindows<W> {
 
                 // We have to wait for the completion because we have to ensure all uses of
                 // swapchain images are completed before updating the swapchain.
-                // TODO: wait command buffer execution completion
-                //       note: `Device::wait_idle` is insufficient!
+                self.events.wait_idle().expect("wait_idle failed");
                 gfx_window.update_swapchain();
             }
 
@@ -298,15 +309,49 @@ impl<W: Window> DeviceAndWindows<W> {
             .iter_mut()
             .map(|borrowed| &mut **borrowed)
             .collect();
+        let event = self.events.get().expect("EventRing::get failed");
         self.device
             .objects()
             .gfx_device()
             .main_queue()
-            .submit_commands(&mut command_buffers_ref[..], None)
+            .submit_commands(&mut command_buffers_ref[..], Some(event))
             .expect("Command submission failed");
 
         for drawable in drawables {
             drawable.present();
         }
+    }
+}
+
+impl<B: Backend> EventRing<B> {
+    fn new(device: &B::Device) -> gfx::core::Result<Self> {
+        Ok(Self {
+            events: (0..16)
+                .map(|_| {
+                    device.factory().make_event(&gfx::core::EventDescription {
+                        signaled: true,
+                    })
+                })
+                .collect::<Result<_, _>>()?,
+            next: 0,
+        })
+    }
+
+    fn get(&mut self) -> gfx::core::Result<&B::Event> {
+        use std::time::Duration;
+        self.next += 1;
+        if self.next >= self.events.len() {
+            self.next = 0;
+        }
+        let ref e = self.events[self.next];
+        while !e.wait(Duration::from_secs(1))? {}
+        e.reset()?;
+        Ok(e)
+    }
+
+    fn wait_idle(&self) -> gfx::core::Result<()> {
+        use std::time::Duration;
+        while !Event::wait_all(&self.events, Duration::from_secs(1))? {}
+        Ok(())
     }
 }
