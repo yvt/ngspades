@@ -240,6 +240,9 @@ impl WorkspaceWindowSet {
         // Remove old windows
         for device_windows in self.device_windows.iter_mut() {
             device_windows.windows.retain(|k, _| nodes.contains(k));
+            if device_windows.windows.len() == 0 {
+                device_windows.wait_idle();
+            }
         }
         self.device_windows.retain(|dw| dw.windows.len() > 0);
         self.windows.retain(|w| nodes.contains(w));
@@ -327,6 +330,10 @@ impl<W: Window> DeviceAndWindows<W> {
         }
 
         Ok(())
+    }
+
+    fn wait_idle(&self) {
+        let _ = self.events.wait_idle();
     }
 }
 
