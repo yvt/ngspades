@@ -248,19 +248,20 @@ impl<W: Window> DeviceAndWindows<W> {
         for (node, ww) in self.windows.iter_mut() {
             let window: &super::Window = node.downcast_ref().unwrap();
             let ref mut gfx_window = ww.gfx_window;
-            let root = Option::clone(window.child.read_presenter(&frame).unwrap());
+            let root = Option::clone(window.child.read_presenter(frame).unwrap());
 
             loop {
                 {
                     let swapchain = gfx_window.swapchain();
-                    let frame = ww.compositor_window.frame_description();
-                    let drawable = swapchain.next_drawable(&frame);
+                    let gfx_frame = ww.compositor_window.frame_description();
+                    let drawable = swapchain.next_drawable(&gfx_frame);
 
                     match drawable {
                         Ok(drawable) => {
                             ww.compositor_window.composite(
                                 &mut context,
                                 &root,
+                                frame,
                                 &drawable,
                                 &swapchain.drawable_info(),
                             );
