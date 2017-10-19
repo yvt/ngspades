@@ -76,6 +76,9 @@ use refeq::RefEqArc;
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Token(RefEqArc<()>);
 
+unsafe impl Send for Token {}
+unsafe impl Sync for Token {}
+
 impl Token {
     pub fn new() -> Self {
         Token(RefEqArc::new(()))
@@ -88,6 +91,29 @@ impl Token {
 /// See the [module-level documentation] for more details.
 ///
 /// [module-level documentation]: index.html
+///
+/// # Examples
+///
+/// The parameter of `TokenLock::new` accepts `Into<TokenRef>`, so the following
+/// codes are equivalent:
+///
+/// ```
+/// # use tokenlock::*;
+/// # let mut token = Token::new();
+/// TokenLock::new(&token, 1);
+/// TokenLock::new(TokenRef::from(&token), 1);
+/// ```
+///
+/// `TokenRef` can be cloned while `Token` cannot:
+///
+/// ```
+/// # use tokenlock::*;
+/// let mut token = Token::new();
+/// let token_ref = TokenRef::from(&token);
+/// let lock1 = TokenLock::new(token_ref.clone(), 1);
+/// let lock2 = TokenLock::new(token_ref.clone(), 2);
+/// ```
+///
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TokenRef(RefEqArc<()>);
 

@@ -5,7 +5,6 @@
 //
 //! Provides container types that provide implementations for `PartialEq` and
 //! `Eq` based on a referential equality.
-// (copied from `ngsgfx/src/common/src/refeq.rs`)
 #![feature(unsize, coerce_unsized)]
 use std::hash::Hasher;
 use std::marker::Unsize;
