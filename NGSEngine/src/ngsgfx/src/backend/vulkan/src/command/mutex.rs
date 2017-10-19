@@ -279,7 +279,8 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
                 if BArc::strong_count(&data_arc) > 1 {
                     // Try `ResourceFence::check_fence` first to make a fence relinquish the ownership
                     if let Some(accessor) = self.1.as_ref() {
-                        if let Some(fence) = accessor.fence.lock().clone() {
+                        let fence = accessor.fence.lock().clone();
+                        if let Some(fence) = fence {
                             fence.check_fence(wait);
                         }
                     }
@@ -313,7 +314,8 @@ impl<F: ResourceFence, T> ResourceMutex<F, T> {
                 if BArc::strong_count(data_arc) > 1 {
                     // Try `ResourceFence::check_fence` first to make a fence relinquish the ownership
                     if let Some(accessor) = self.1.as_ref() {
-                        if let Some(fence) = accessor.fence.lock().clone() {
+                        let fence = accessor.fence.lock().clone();
+                        if let Some(fence) = fence {
                             fence.check_fence(false);
                         }
                     }
