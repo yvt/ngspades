@@ -6,7 +6,7 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 ngsgfx = { path = "../ngsgfx" }
 arclock = { path = "../support/arclock" }
-refeq = { path = "../support/refeq" }
+refeq = { path = "../support/refeq", features = ["nightly"] }
 tokenlock = { path = "../support/tokenlock" }
 iterpool = { path = "../support/iterpool" }
 cgmath = "0.15.0"

@@ -5,10 +5,19 @@
 //
 //! Provides container types that provide implementations for `PartialEq` and
 //! `Eq` based on a referential equality.
-#![feature(unsize, coerce_unsized)]
+//!
+//! # Nightly Rust
+//!
+//! The `nightly` feature enables the implementations of `CoerceUnsized` on
+//! `RefEqArc` and `RefEqBox`, thus allowing unsizing these containers (e.g.,
+//! `RefEqArc<u32>` to `RefEqArc<Any>`). This requires a nightly Rust compiler.
+#![cfg_attr(feature = "nightly", feature(unsize, coerce_unsized))]
 use std::hash::Hasher;
+#[cfg(feature = "nightly")]
 use std::marker::Unsize;
-use std::ops::{Deref, CoerceUnsized};
+use std::ops::Deref;
+#[cfg(feature = "nightly")]
+use std::ops::CoerceUnsized;
 use std::sync::Arc;
 use std::ptr;
 
@@ -99,6 +108,10 @@ impl<T: ?Sized> RefEqArc<T> {
     }
 }
 
+#[cfg(feature = "nightly")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefEqBox<U>> for RefEqBox<T> {}
+
+#[cfg(feature = "nightly")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefEqArc<U>> for RefEqArc<T> {}
 
 impl<T: ?Sized> Clone for RefEqArc<T> {
