@@ -9,35 +9,10 @@ use gfx;
 use gfx::core::Backend;
 use gfx::prelude::*;
 use context::{NodeRef, PresenterFrame};
-use super::{WorkspaceDevice, Library};
+use super::WorkspaceDevice;
 
 #[derive(Debug)]
-pub struct Compositor;
-
-impl<B: Backend> Library<B> for Compositor {
-    type LibraryId = ();
-    type Instance = CompositorInstance<B>;
-
-    fn id(&self) -> Self::LibraryId {
-        ()
-    }
-
-    fn make_instance(&self, ws_device: &WorkspaceDevice<B>) -> gfx::core::Result<Self::Instance> {
-        Ok(CompositorInstance {
-            heap: Arc::clone(ws_device.objects().heap()),
-            device: Arc::clone(ws_device.objects().gfx_device()),
-            statesets: vec![
-                Stateset::new(
-                    &**ws_device.objects().gfx_device(),
-                    gfx::core::ImageFormat::SrgbBgra8
-                )?,
-            ],
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct CompositorInstance<B: Backend> {
+pub struct Compositor<B: Backend> {
     device: Arc<B::Device>,
     heap: Arc<Mutex<B::UniversalHeap>>,
     statesets: Vec<Stateset<B>>,
@@ -58,7 +33,7 @@ const RENDER_PASS_BIT_USAGE_TRANSFER: usize = 0b10 << 1;
 
 #[derive(Debug)]
 pub struct CompositorWindow<B: Backend> {
-    compositor: Arc<CompositorInstance<B>>,
+    compositor: Arc<Compositor<B>>,
     command_buffer: Arc<AtomicRefCell<B::CommandBuffer>>,
 }
 
@@ -70,8 +45,23 @@ pub struct CompositeContext<'a, B: Backend> {
     pub command_buffers: Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
 }
 
+impl<B: Backend> Compositor<B> {
+    pub fn new(ws_device: &WorkspaceDevice<B>) -> gfx::core::Result<Self> {
+        Ok(Self {
+            heap: Arc::clone(ws_device.objects().heap()),
+            device: Arc::clone(ws_device.objects().gfx_device()),
+            statesets: vec![
+                Stateset::new(
+                    &**ws_device.objects().gfx_device(),
+                    gfx::core::ImageFormat::SrgbBgra8
+                )?,
+            ],
+        })
+    }
+}
+
 impl<B: Backend> CompositorWindow<B> {
-    pub fn new(compositor: Arc<CompositorInstance<B>>) -> gfx::core::Result<Self> {
+    pub fn new(compositor: Arc<Compositor<B>>) -> gfx::core::Result<Self> {
         let command_buffer;
         {
             let ref device = compositor.device;

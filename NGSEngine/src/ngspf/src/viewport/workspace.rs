@@ -17,7 +17,7 @@ use gfx::prelude::*;
 use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor,
               for_each_node, PresenterFrame};
 use super::{WindowFlagsBit, WorkspaceDevice};
-use super::compositor::{Compositor, CompositorInstance, CompositeContext, CompositorWindow};
+use super::compositor::{Compositor, CompositeContext, CompositorWindow};
 use prelude::*;
 
 pub struct Workspace {
@@ -38,7 +38,7 @@ struct WorkspaceWindowSet {
 struct DeviceAndWindows<W: Window> {
     device: Arc<WorkspaceDevice<W::Backend>>,
     windows: HashMap<NodeRef, WorkspaceWindow<W>>,
-    compositor: Arc<CompositorInstance<W::Backend>>,
+    compositor: Arc<Compositor<W::Backend>>,
     events: EventRing<W::Backend>,
 }
 
@@ -213,9 +213,9 @@ impl WorkspaceWindowSet {
             let device = WorkspaceDevice::new(Arc::clone(gfx_window.device()))
                 .expect("failed to create WorkspaceDevice");
 
-            let comp = device.get_library(&Compositor).expect(
+            let comp = Arc::new(Compositor::new(&device).expect(
                 "failed to create Compositor",
-            );
+            ));
 
             let ww = WorkspaceWindow {
                 gfx_window,
