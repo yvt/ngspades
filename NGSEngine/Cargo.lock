@@ -1088,9 +1088,6 @@ dependencies = [
 [[package]]
 name = "tokenlock"
 version = "0.1.0"
-dependencies = [
- "refeq 0.1.0",
-]
 
 [[package]]
 name = "unicode-segmentation"

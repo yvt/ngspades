@@ -60,11 +60,9 @@
 //! let read_guard1 = lock.read(&token).unwrap();
 //! let read_guard2 = lock.read(&token).unwrap();
 //! ```
-extern crate refeq;
-
 use std::{mem, fmt};
 use std::cell::UnsafeCell;
-use refeq::RefEqArc;
+use std::sync::Arc;
 
 /// An inforgeable token used to access the contents of a `TokenLock`.
 ///
@@ -74,14 +72,14 @@ use refeq::RefEqArc;
 ///
 /// [module-level documentation]: index.html
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Token(RefEqArc<()>);
+pub struct Token(UniqueId);
 
 unsafe impl Send for Token {}
 unsafe impl Sync for Token {}
 
 impl Token {
     pub fn new() -> Self {
-        Token(RefEqArc::new(()))
+        Token(UniqueId::new())
     }
 }
 
@@ -115,7 +113,7 @@ impl Token {
 /// ```
 ///
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TokenRef(RefEqArc<()>);
+pub struct TokenRef(UniqueId);
 
 impl<'a> From<&'a Token> for TokenRef {
     fn from(x: &'a Token) -> TokenRef {
@@ -130,7 +128,7 @@ impl<'a> From<&'a Token> for TokenRef {
 ///
 /// [module-level documentation]: index.html
 pub struct TokenLock<T: ?Sized> {
-    keyhole: RefEqArc<()>,
+    keyhole: UniqueId,
     data: UnsafeCell<T>,
 }
 
@@ -181,16 +179,41 @@ impl<T: ?Sized> TokenLock<T> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test1() {
-        let mut token = Token::new();
-        let lock = TokenLock::new(&token, 1);
-        assert_eq!(*lock.read(&token).unwrap(), 1);
+#[derive(Debug, Clone, Hash)]
+pub struct UniqueId(Arc<usize>);
 
-        let guard = lock.write(&mut token).unwrap();
-        assert_eq!(*guard, 1);
+impl PartialEq for UniqueId {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
     }
+}
+impl Eq for UniqueId {}
+
+impl UniqueId {
+    pub fn new() -> Self {
+        // This guarantees consistent hash generation even if Rust would
+        // implement a moving GC in future
+        let mut arc = Arc::new(0);
+        let id = &*arc as *const usize as usize;
+        *Arc::get_mut(&mut arc).unwrap() = id;
+        UniqueId(arc)
+    }
+}
+
+#[test]
+fn basic() {
+    let mut token = Token::new();
+    let lock = TokenLock::new(&token, 1);
+    assert_eq!(*lock.read(&token).unwrap(), 1);
+
+    let guard = lock.write(&mut token).unwrap();
+    assert_eq!(*guard, 1);
+}
+
+#[test]
+fn bad_token() {
+    let token1 = Token::new();
+    let mut token2 = Token::new();
+    let lock = TokenLock::new(&token1, 1);
+    assert!(lock.write(&mut token2).is_none());
 }
