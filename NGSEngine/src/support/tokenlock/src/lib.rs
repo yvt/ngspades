@@ -28,7 +28,7 @@
 //! # let mut token = Token::new();
 //! # let lock = TokenLock::new(&token, 1);
 //! # let guard = lock.write(&mut token).unwrap();
-//! drop(lock); // `RefMut` cannot outlive `TokenLock`
+//! drop(lock); // compile error: cannot outlive `TokenLock`
 //! ```
 //!
 //! ```compile_fail
@@ -37,7 +37,7 @@
 //! # let mut token = Token::new();
 //! # let lock = TokenLock::new(&token, 1);
 //! # let guard = lock.write(&mut token).unwrap();
-//! drop(token); // `RefMut` cannot outlive `Token`
+//! drop(token); // compile error: cannot outlive `Token`
 //! ```
 //!
 //! This also prevents from forming a reference to the contained value when
@@ -69,6 +69,10 @@ use refeq::RefEqArc;
 /// An inforgeable token used to access the contents of a `TokenLock`.
 ///
 /// This type is not `Clone` to ensure an exclusive access to `TokenLock`.
+///
+/// See the [module-level documentation] for more details.
+///
+/// [module-level documentation]: index.html
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Token(RefEqArc<()>);
 
@@ -78,8 +82,12 @@ impl Token {
     }
 }
 
-/// A reference to `Token`. Cannot be used to access the contents of a
-/// `TokenLock`, but can be used to create a new `TokenLock`.
+/// Token that cannot be used to access the contents of a `TokenLock`, but can
+/// be used to create a new `TokenLock`.
+///
+/// See the [module-level documentation] for more details.
+///
+/// [module-level documentation]: index.html
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TokenRef(RefEqArc<()>);
 
@@ -91,13 +99,17 @@ impl<'a> From<&'a Token> for TokenRef {
 
 /// A mutual exclusive primitive that can be accessed using a `Token`
 /// with a very low over-head.
+///
+/// See the [module-level documentation] for more details.
+///
+/// [module-level documentation]: index.html
 pub struct TokenLock<T: ?Sized> {
     keyhole: RefEqArc<()>,
     data: UnsafeCell<T>,
 }
 
-unsafe impl<T: ?Sized + Send> Send for TokenLock<T> {}
-unsafe impl<T: ?Sized + Send> Sync for TokenLock<T> {}
+unsafe impl<T: ?Sized + Send + Sync> Send for TokenLock<T> {}
+unsafe impl<T: ?Sized + Send + Sync> Sync for TokenLock<T> {}
 
 impl<T: ?Sized> fmt::Debug for TokenLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
