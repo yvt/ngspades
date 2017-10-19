@@ -11,6 +11,6 @@ spirv-cross = { path = "src/spirv-cross" }
 cgmath = "0.15.0"
 atomic_refcell = "0.1.0"
 block = "0.1.5"
-rspirv = "0.4.0"
+rspirv = "0.5.1"
 spirv_headers = "1.1.5"
 cocoa = "0.9"

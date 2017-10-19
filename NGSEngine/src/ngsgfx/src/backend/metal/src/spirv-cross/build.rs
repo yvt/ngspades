@@ -7,7 +7,7 @@ extern crate gcc;
 extern crate prebuild_glslang;
 
 fn main() {
-    gcc::Config::new()
+    gcc::Build::new()
         .cpp(true)
         .flag("-std=c++11") // TODO: support MSVC!
         .file("libspirvcross/spirv_cfg.cpp")
