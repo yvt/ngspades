@@ -172,7 +172,8 @@ impl<T: DeviceRef> core::MappableHeap for UniversalHeap<T> {
             }
         };
 
-        let ptr = device.map_memory(buffer, offset, size, vk::MemoryMapFlags::empty())
+        let ptr = device
+            .map_memory(buffer, offset, size, vk::MemoryMapFlags::empty())
             .map_err(translate_map_memory_error_unwrap)?;
 
         Ok((
