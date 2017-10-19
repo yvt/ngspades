@@ -18,6 +18,7 @@ use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAc
               for_each_node, PresenterFrame};
 use super::{WindowFlagsBit, WorkspaceDevice};
 use super::compositor::{Compositor, CompositeContext, CompositorWindow};
+use super::uploader::Uploader;
 use prelude::*;
 
 pub struct Workspace {
@@ -39,6 +40,7 @@ struct DeviceAndWindows<W: Window> {
     device: Arc<WorkspaceDevice<W::Backend>>,
     windows: HashMap<NodeRef, WorkspaceWindow<W>>,
     compositor: Arc<Compositor<W::Backend>>,
+    uploader: Uploader<W::Backend>,
     events: EventRing<W::Backend>,
 }
 
@@ -217,6 +219,8 @@ impl WorkspaceWindowSet {
                 "failed to create Compositor",
             ));
 
+            let uploader = Uploader::new(&device).expect("failed to create Uploader");
+
             let ww = WorkspaceWindow {
                 gfx_window,
                 compositor_window: CompositorWindow::new(Arc::clone(&comp)).expect(
@@ -228,6 +232,7 @@ impl WorkspaceWindowSet {
                 events: EventRing::<DefaultBackend>::new(device.objects().gfx_device())
                     .expect("failed to create EventRing"),
                 device: Arc::new(device),
+                uploader,
                 windows: HashMap::new(),
                 compositor: comp,
             };
@@ -266,6 +271,14 @@ impl<W: Window> DeviceAndWindows<W> {
         };
         let mut drawables = Vec::new();
 
+        // Upload images
+        self.uploader.clear_image_uses();
+        for (node, _) in self.windows.iter_mut() {
+            self.uploader.scan_nodes(node, frame);
+        }
+        context.command_buffers = self.uploader.upload(frame)?;
+
+        // Composite windows
         for (node, ww) in self.windows.iter_mut() {
             let window: &super::Window = node.downcast_ref().unwrap();
             let ref mut gfx_window = ww.gfx_window;

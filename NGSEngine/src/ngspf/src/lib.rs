@@ -19,6 +19,7 @@ extern crate enumflags;
 #[macro_use]
 extern crate enumflags_derive;
 pub extern crate atomic_refcell;
+extern crate iterpool;
 
 pub mod context;
 pub mod viewport;

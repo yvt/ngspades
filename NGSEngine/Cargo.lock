@@ -542,6 +542,7 @@ dependencies = [
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "enumflags 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "enumflags_derive 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "iterpool 0.1.0",
  "ngsgfx 0.1.0",
  "refeq 0.1.0",
  "tokenlock 0.1.0",

@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::Arc;
+use refeq::RefEqArc;
 use cgmath::Vector2;
 use context::{RefPropertyAccessor, RoPropertyAccessor};
 
@@ -19,7 +19,7 @@ pub struct ImageData {
 pub enum ImageFormat {
     /// Represents a pixel format with a 8-bit red/green/blue/alpha channels in
     /// the sRGB encoding and in BGRA order.
-    SrgbBgra8,
+    SrgbRgba8,
 }
 
 impl ImageData {
@@ -51,12 +51,12 @@ impl ImageData {
 }
 
 /// Reference to an immutable raster image.
-#[derive(Debug, Clone)]
-pub struct ImageRef(Arc<ImageData>);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ImageRef(RefEqArc<ImageData>);
 
 impl ImageRef {
     pub fn new_immutable(data: ImageData) -> Self {
-        ImageRef(Arc::new(data))
+        ImageRef(RefEqArc::new(data))
     }
 
     pub fn image_data<'a>(&'a self) -> impl RoPropertyAccessor<ImageData> + 'a {

@@ -9,6 +9,7 @@ mod device;
 mod image;
 mod layer;
 mod port;
+mod uploader;
 mod window;
 mod workspace;
 
