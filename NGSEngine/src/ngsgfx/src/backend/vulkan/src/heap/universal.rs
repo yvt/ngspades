@@ -9,7 +9,7 @@ use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
 use std::ptr;
-use ngsgfx_common::pool::{Pool, PoolFreePtr};
+use ngsgfx_common::pool::{Pool, PoolPtr};
 
 use {RefEqArc, RefEqBox, DeviceRef, Backend, AshDevice, translate_map_memory_error_unwrap,
      translate_generic_error_unwrap};
@@ -44,7 +44,7 @@ enum UniversalHeapAllocationSource<T: DeviceRef> {
         /// Specifies `SmallHeap::s_heap_id` and a region in `SmallHeap::sa`
         id: (RefEqArc<RefEqArc<()>>, SuballocatorRegion),
         memory_type: u8,
-        small_heap_ptr: PoolFreePtr,
+        small_heap_ptr: PoolPtr,
     },
     Dedicated {
         heap_id: RefEqArc<()>,
@@ -300,8 +300,8 @@ impl<T: DeviceRef> UniversalHeapData<T> {
                 hunk: Arc::new(hunk),
                 sa: Suballocator::new(strategy.small_zone_size),
                 num_allocs: 0,
-                prev_ptr: PoolFreePtr::uninitialized(),
-                next_ptr: PoolFreePtr::uninitialized(),
+                prev_ptr: PoolPtr::uninitialized(),
+                next_ptr: PoolPtr::uninitialized(),
             };
             let ptr = pool.pool.allocate(sh);
             pool.list.link_front(&mut pool.pool, ptr);
@@ -394,7 +394,7 @@ struct SmallHeapPool<T: DeviceRef> {
 /// Circular list of `SmallHeap`s
 #[derive(Debug)]
 struct SmallHeapList {
-    first_ptr: Option<PoolFreePtr>,
+    first_ptr: Option<PoolPtr>,
 }
 
 #[derive(Debug)]
@@ -404,8 +404,8 @@ struct SmallHeap<T: DeviceRef> {
     sa: Suballocator,
     num_allocs: usize,
 
-    prev_ptr: PoolFreePtr,
-    next_ptr: PoolFreePtr,
+    prev_ptr: PoolPtr,
+    next_ptr: PoolPtr,
 }
 
 impl<T: DeviceRef> SmallHeapPool<T> {
@@ -418,7 +418,7 @@ impl<T: DeviceRef> SmallHeapPool<T> {
 }
 
 impl SmallHeapList {
-    fn link_front<T: DeviceRef>(&mut self, pool: &mut Pool<SmallHeap<T>>, heap_ptr: PoolFreePtr) {
+    fn link_front<T: DeviceRef>(&mut self, pool: &mut Pool<SmallHeap<T>>, heap_ptr: PoolPtr) {
         if let Some(ref mut first_ptr) = self.first_ptr {
             let prev_ptr = pool[*first_ptr].prev_ptr;
             {
@@ -435,7 +435,7 @@ impl SmallHeapList {
         }
         self.first_ptr = Some(heap_ptr);
     }
-    fn unlink<T: DeviceRef>(&mut self, pool: &mut Pool<SmallHeap<T>>, heap_ptr: PoolFreePtr) {
+    fn unlink<T: DeviceRef>(&mut self, pool: &mut Pool<SmallHeap<T>>, heap_ptr: PoolPtr) {
         let SmallHeap { prev_ptr, next_ptr, .. } = pool[heap_ptr];
         if Some(heap_ptr) == self.first_ptr {
             if next_ptr == heap_ptr {

@@ -6,8 +6,8 @@
 //! Common utilities. Not intended for a public use.
 #![doc(hidden)]
 
-mod pool;
+extern crate iterpool;
 mod sconv;
 
-pub use self::pool::*;
+pub use self::iterpool::*;
 pub use self::sconv::*;

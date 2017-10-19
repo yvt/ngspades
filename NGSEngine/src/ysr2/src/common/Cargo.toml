@@ -5,6 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 xdispatch = { path = "../../../xdispatch", optional = true }
+iterpool = { path = "../../../support/iterpool" }
 num_cpus = "1.0"
 cgmath = "0.15.0"
 simd = "0.2.0"

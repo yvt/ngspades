@@ -6,7 +6,7 @@
 //! Provides a dynamic external memory suballocator.
 use int::{BinaryInteger, BinaryUInteger};
 use num_traits::{Zero, One};
-use pool::{PoolFreePtr, Pool};
+use pool::{PoolPtr, Pool};
 
 type TlsfL2Bitmap = u16;
 const LOG2_L2_SIZE: u32 = 4; // must be <= log2(sizeof(TlsfL2Bitmap)*8)
@@ -50,15 +50,15 @@ pub struct TlsfSuballoc<T: BinaryUInteger> {
 /// a `TlsfSuballocRegion` is deallocation, which essentially invalidates the
 /// given region handle. `Clone`-ing is allowed but is unlikely to make a sense.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TlsfSuballocRegion(PoolFreePtr);
+pub struct TlsfSuballocRegion(PoolPtr);
 
 #[derive(Debug)]
 struct TlsfBlock<T: BinaryUInteger> {
     /// Points the previous (in terms of the external memory address) block.
-    prev: Option<PoolFreePtr>,
+    prev: Option<PoolPtr>,
 
     /// Points the next (in terms of the external memory address) block.
-    next: Option<PoolFreePtr>,
+    next: Option<PoolPtr>,
 
     /// The external memory address.
     address: T,
@@ -72,10 +72,10 @@ struct TlsfBlock<T: BinaryUInteger> {
 enum TlsfBlockState {
     Free {
         /// The previous free block in the same free space list.
-        prev_free: Option<PoolFreePtr>,
+        prev_free: Option<PoolPtr>,
 
         /// The next free block in the same free space list.
-        next_free: Option<PoolFreePtr>,
+        next_free: Option<PoolPtr>,
     },
     Used,
 }
@@ -111,7 +111,7 @@ struct TlsfL1<T: BinaryUInteger> {
     /// Points the free block that fills entire the available space
     /// (used only if the pool size is a power of two and no
     /// segregated list entry is available for it)
-    entire: Option<PoolFreePtr>,
+    entire: Option<PoolPtr>,
 }
 
 /// Second level table.
@@ -125,7 +125,7 @@ struct TlsfL2 {
     ///
     /// Points blocks stored in `TlsfSuballoc::blocks`. The validity of each
     /// element is indicated by the corresponding bit of `bitmap`.
-    l2: [PoolFreePtr; L2_SIZE as usize],
+    l2: [PoolPtr; L2_SIZE as usize],
 }
 
 impl<T: BinaryUInteger> TlsfSuballoc<T> {
@@ -467,7 +467,7 @@ impl<T: BinaryUInteger> TlsfL1<T> {
             l1: vec![
                 TlsfL2 {
                     bitmap: Zero::zero(),
-                    l2: [PoolFreePtr::uninitialized(); L2_SIZE as usize],
+                    l2: [PoolPtr::uninitialized(); L2_SIZE as usize],
                 };
                 num_l2s as usize
             ],
@@ -501,7 +501,7 @@ impl<T: BinaryUInteger> TlsfL1<T> {
         blocks: &mut Pool<TlsfBlock<T>>,
         size: &T,
         align_bits: u32,
-    ) -> Option<(Option<(u32, u32)>, PoolFreePtr, T)> {
+    ) -> Option<(Option<(u32, u32)>, PoolPtr, T)> {
         if let Some(entire) = self.entire {
             return Some((None, entire, Zero::zero()));
         }
@@ -599,7 +599,7 @@ impl<T: BinaryUInteger> TlsfL1<T> {
     }
 
     /// Remove the given block from the free space list.
-    fn unlink(&mut self, blocks: &mut Pool<TlsfBlock<T>>, block_ptr: PoolFreePtr) {
+    fn unlink(&mut self, blocks: &mut Pool<TlsfBlock<T>>, block_ptr: PoolPtr) {
         let (l1, l2) = self.map_size(&blocks[block_ptr].size);
         if l1 == self.l1.len() as u32 {
             debug_assert_eq!(Some(block_ptr), self.entire);
@@ -663,7 +663,7 @@ impl<T: BinaryUInteger> TlsfL1<T> {
     fn unlink_head(
         &mut self,
         blocks: &mut Pool<TlsfBlock<T>>,
-        block_ptr: PoolFreePtr,
+        block_ptr: PoolPtr,
         position: Option<(u32, u32)>,
     ) {
         if let Some((l1, l2)) = position {
@@ -717,7 +717,7 @@ impl<T: BinaryUInteger> TlsfL1<T> {
     /// `block_ptr` must point a valid `TlsfBlock` in `blocks`.
     /// The given block's `TlsfBlock::state` will be overwritten with a new
     /// `TlsfBlockState::Free` value.
-    fn link(&mut self, blocks: &mut Pool<TlsfBlock<T>>, block_ptr: PoolFreePtr) {
+    fn link(&mut self, blocks: &mut Pool<TlsfBlock<T>>, block_ptr: PoolPtr) {
         let (l1, l2) = self.map_size(&blocks[block_ptr].size);
         if l1 == self.l1.len() as u32 {
             self.entire = Some(block_ptr);

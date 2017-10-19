@@ -20,6 +20,7 @@ members = [
     "src/ngspf",
     "src/ngsterrain",
     "src/support/arclock",
+    "src/support/iterpool",
     "src/support/refeq",
     "src/support/tokenlock",
     "src/yfft",

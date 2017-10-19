@@ -306,6 +306,10 @@ name = "include_data"
 version = "0.1.0"
 
 [[package]]
+name = "iterpool"
+version = "0.1.0"
+
+[[package]]
 name = "itoa"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -427,6 +431,7 @@ dependencies = [
 name = "ngsgfx_common"
 version = "0.1.0"
 dependencies = [
+ "iterpool 0.1.0",
  "num-integer 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
@@ -1318,6 +1323,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "iterpool 0.1.0",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "simd 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",

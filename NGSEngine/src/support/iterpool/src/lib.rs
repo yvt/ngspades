@@ -3,13 +3,24 @@
 //
 // This source code is a part of Nightingales.
 //
-// (copied and modified from NgsGFX)
-//! High-performance non-thread safe object pool.
+//! High-performance non-thread safe object pool (with an optional iteration
+//! functionality).
 //!
 //! It also provides a type akin to pointers so you can realize linked list
 //! data structures on it within the "safe" Rust. Memory safety is guaranteed by
 //! runtime checks.
-use std::mem;
+//!
+//! Allocation Performance
+//! ----------------------
+//!
+//! `Pool` outperformed Rust's default allocator (jemalloc) by at least twice
+//! if each thread was given an exclusive access to an individual `Pool`.
+//! It is expected that it will exhibit slightly better performance characteristics
+//! on the real world use due to an improved spatial locality.
+//!
+//! It also comes with a sacrifice. It is impossible to return a free space to
+//! the global heap without destroying entire the pool.
+use std::{mem, ops};
 
 /// High-performance non-thread safe object pool.
 #[derive(Debug, Clone)]
@@ -299,6 +310,34 @@ impl<T> IterablePool<T> {
     }
 }
 
+impl<T> ops::Index<PoolPtr> for Pool<T> {
+    type Output = T;
+
+    fn index(&self, index: PoolPtr) -> &Self::Output {
+        self.get(index).expect("dangling ptr")
+    }
+}
+
+impl<T> ops::IndexMut<PoolPtr> for Pool<T> {
+    fn index_mut(&mut self, index: PoolPtr) -> &mut Self::Output {
+        self.get_mut(index).expect("dangling ptr")
+    }
+}
+
+impl<T> ops::Index<PoolPtr> for IterablePool<T> {
+    type Output = T;
+
+    fn index(&self, index: PoolPtr) -> &Self::Output {
+        self.get(index).expect("dangling ptr")
+    }
+}
+
+impl<T> ops::IndexMut<PoolPtr> for IterablePool<T> {
+    fn index_mut(&mut self, index: PoolPtr) -> &mut Self::Output {
+        self.get_mut(index).expect("dangling ptr")
+    }
+}
+
 /// An iterator over the elements of a `IterablePool`.
 #[derive(Debug, Clone)]
 pub struct Iter<'a, T: 'a> {
@@ -349,4 +388,22 @@ impl<'a, T: 'a> Iterator for IterMut<'a, T> {
             None
         }
     }
+}
+
+#[test]
+fn test() {
+    let mut pool = Pool::new();
+    let ptr1 = pool.allocate(1);
+    let ptr2 = pool.allocate(2);
+    assert_eq!(pool[ptr1], 1);
+    assert_eq!(pool[ptr2], 2);
+}
+
+#[test]
+#[should_panic]
+fn dangling_ptr() {
+    let mut pool = Pool::new();
+    let ptr = pool.allocate(1);
+    pool.deallocate(ptr);
+    pool[ptr];
 }
