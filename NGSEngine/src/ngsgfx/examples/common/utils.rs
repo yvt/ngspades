@@ -159,10 +159,10 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
                 },
             );
             cb.resource_barrier(
+                core::PipelineStage::TopOfPipe.into(),
+                core::AccessTypeFlags::empty(),
                 core::PipelineStage::Transfer.into(),
                 core::AccessType::TransferWrite.into(),
-                first_pipeline_stage,
-                first_access_mask,
                 &core::SubresourceWithLayout::Image {
                     image: &image,
                     range: Default::default(),

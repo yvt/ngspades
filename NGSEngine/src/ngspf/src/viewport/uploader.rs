@@ -395,7 +395,7 @@ impl<B: Backend> Uploader<B> {
             // TODO: creation of image objects should be moved out; this is ridiculous
             let (allocation, image) = self.heap.lock().unwrap().make_image(&desc)?.unwrap();
             cb.resource_barrier(
-                gfx::core::PipelineStageFlags::empty(),
+                gfx::core::PipelineStage::TopOfPipe.into(),
                 gfx::core::AccessTypeFlags::empty(),
                 gfx::core::PipelineStage::FragmentShader.into(),
                 gfx::core::AccessType::ShaderRead.into(),
