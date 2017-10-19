@@ -274,7 +274,11 @@ impl<W: Window> DeviceAndWindows<W> {
         // Upload images
         self.uploader.clear_image_uses();
         for (node, _) in self.windows.iter_mut() {
-            self.uploader.scan_nodes(node, frame);
+            let window: &super::Window = node.downcast_ref().unwrap();
+            let root = Option::clone(window.child.read_presenter(frame).unwrap());
+            if let Some(ref root) = root {
+                self.uploader.scan_nodes(root, frame);
+            }
         }
         context.command_buffers = self.uploader.upload(frame)?;
 

@@ -474,6 +474,7 @@ impl<B: Backend> Uploader<B> {
             fence,
             bytes: size,
         });
+        self.ongoing_bytes += size;
         Ok(())
     }
 
