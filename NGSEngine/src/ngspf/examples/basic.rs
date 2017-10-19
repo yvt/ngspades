@@ -11,7 +11,7 @@ use std::sync::Arc;
 use cgmath::Vector2;
 
 use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, ImageRef, ImageData, ImageFormat,
-                      LayerContents};
+                      LayerContents, WindowFlagsBit};
 use ngspf::prelude::*;
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
@@ -36,6 +36,7 @@ fn main() {
             .build(&context);
 
         let window = WindowBuilder::new()
+            .flags(WindowFlagsBit::Resizable.into())
             .child(Some(layer.into_node_ref()))
             .build(&context);
 
