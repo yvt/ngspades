@@ -150,6 +150,7 @@ pub struct VulkanWindow<S: VulkanSurface> {
     surface_loader: Surface,
     surface: vk::SurfaceKHR,
     swapchain: Option<Swapchain>,
+    transparent: bool,
 
     scd_desired_formats: Vec<(Option<core::ImageFormat>, Option<wsi_core::ColorSpace>)>,
     scd_image_usage: core::ImageUsageFlags,
@@ -189,6 +190,7 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
         use backend_vulkan::DeviceRef;
         use ash::version::DeviceV1_0;
 
+        let transparent = wb.window.transparent;
         let winit_window = wb.build(events_loop).unwrap();
 
         let vk_entry = instance.entry();
@@ -240,6 +242,7 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
             &surface_loader,
             surface,
             &winit_window,
+            transparent,
         )?;
 
         let swapchain = unsafe {
@@ -275,6 +278,7 @@ impl<S: VulkanSurface> wsi_core::NewWindow for VulkanWindow<S> {
             phys_device: adap.physical_device(),
             surface_loader,
             surface,
+            transparent,
             swapchain: Some(wsi_swapchain),
             scd_desired_formats: sc_desc.desired_formats.iter().map(Clone::clone).collect(),
             scd_image_usage: sc_desc.image_usage,
@@ -293,6 +297,7 @@ fn make_swapchain_create_info(
     surface_loader: &Surface,
     surface: vk::SurfaceKHR,
     winit_window: &winit::Window,
+    transparent: bool,
 ) -> Result<vk::SwapchainCreateInfoKHR, InitializationError> {
     let surface_formats = surface_loader
         .get_physical_device_surface_formats_khr(phys_device, surface)
@@ -331,6 +336,20 @@ fn make_swapchain_create_info(
         "specified image usage is not supported"
     ); // TODO: fall-back or something
 
+    let composite_alpha = if transparent {
+        if surface_cap.supported_composite_alpha.intersects(
+            vk::COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+        )
+        {
+            vk::COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR
+        } else {
+            // fall-back
+            vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+        }
+    } else {
+        vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+    };
+
     // `Fifo` is always supported
     let present_mode = vk::PresentModeKHR::Fifo;
 
@@ -349,7 +368,7 @@ fn make_swapchain_create_info(
         p_queue_family_indices: ptr::null(), // ignored for `Exclusive`
         queue_family_index_count: 0,
         pre_transform,
-        composite_alpha: vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // TODO: is this required?
+        composite_alpha,
         present_mode,
         clipped: vk::VK_TRUE,
         old_swapchain: vk::SwapchainKHR::null(),
@@ -390,6 +409,7 @@ impl<S: VulkanSurface> wsi_core::Window for VulkanWindow<S> {
             &self.surface_loader,
             self.surface,
             &self.window,
+            self.transparent,
         ).unwrap();
         let sc_cfg = self.swapchain().config().clone();
         new_info.old_swapchain = sc_cfg.swapchain;

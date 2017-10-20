@@ -296,6 +296,12 @@ impl CAMetalLayer {
         }
     }
 
+    pub fn set_opaque(&self, opaque: bool) {
+        unsafe {
+            msg_send![self.0, setOpaque:opaque]
+        }
+    }
+
     pub fn remove_all_animations(&self) {
         unsafe {
             msg_send![self.0, removeAllAnimations];

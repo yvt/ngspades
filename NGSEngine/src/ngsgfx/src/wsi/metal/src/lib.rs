@@ -223,6 +223,7 @@ impl wsi_core::NewWindow for MetalWindow {
             wsi_core::ColorSpace::SrgbNonlinear => "kCGColorSpaceSRGB",
         };
 
+        let transparent = wb.window.transparent;
         let winit_window = wb.build(events_loop).unwrap();
 
         unsafe {
@@ -236,6 +237,7 @@ impl wsi_core::NewWindow for MetalWindow {
 
             layer.set_edge_antialiasing_mask(0);
             layer.set_masks_to_bounds(true);
+            layer.set_opaque(!transparent);
             layer.set_colorspace(mem::transmute(colorspace));
             CGColorSpaceRelease(colorspace);
             // layer.set_magnification_filter(kCAFilterNearest);
