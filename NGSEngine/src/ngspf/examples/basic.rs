@@ -41,7 +41,7 @@ fn main() {
             .build(&context);
 
         window = WindowBuilder::new()
-            .flags(WindowFlagsBit::Resizable.into())
+            .flags(WindowFlagsBit::Resizable)
             .child(Some(layer.clone().into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop

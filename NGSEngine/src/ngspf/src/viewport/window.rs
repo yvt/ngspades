@@ -65,8 +65,11 @@ impl WindowBuilder {
         }
     }
 
-    pub fn flags(self, flags: WindowFlags) -> Self {
-        Self { flags, ..self }
+    pub fn flags<T: Into<WindowFlags>>(self, flags: T) -> Self {
+        Self {
+            flags: flags.into(),
+            ..self
+        }
     }
 
     pub fn size(self, size: Vector2<f32>) -> Self {
