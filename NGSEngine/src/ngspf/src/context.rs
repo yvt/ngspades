@@ -251,14 +251,23 @@ trait Update: Send + Sync + fmt::Debug {
 }
 
 impl ProducerFrame {
-    pub fn record_keyed_update<T, F, FF>(
+    /// Record a update to the frame's changeset and return the identifier of
+    /// the update.
+    ///
+    /// If the given update ID (`last_update`) points a update in the changeset
+    /// of the same frame, it will overwrite the previous update and return the
+    /// same update ID (and avoid the insertion cost of a update).
+    ///
+    /// TODO: elaborate
+    pub fn record_keyed_update<T, TF, F, FF>(
         &mut self,
         last_update: UpdateId,
-        value: T,
-        trans_fn: FF,
+        trans_fn: TF,
+        update_fn_fac: FF,
     ) -> UpdateId
     where
         T: Sync + Send + 'static,
+        TF: FnOnce(Option<T>) -> T,
         FF: FnOnce() -> F,
         F: FnOnce(&mut PresenterFrame, T) + 'static + Sync + Send,
     {
@@ -266,15 +275,16 @@ impl ProducerFrame {
             let ref mut ent = self.0.changeset[last_update.changeset_index];
 
             if let Some(updater) = Any::downcast_mut::<KeyedUpdate<T, F>>(ent.as_any_mut()) {
-                updater.0.as_mut().unwrap().0 = value;
+                let (old_value, update_fn) = updater.0.take().unwrap();
+                updater.0 = Some((trans_fn(Some(old_value)), update_fn));
                 return last_update;
             }
 
-            *ent = Box::new(KeyedUpdate(Some((value, trans_fn()))));
+            *ent = Box::new(KeyedUpdate(Some((trans_fn(None), update_fn_fac()))));
             last_update
         } else {
             self.0.changeset.push(Box::new(
-                KeyedUpdate(Some((value, trans_fn()))),
+                KeyedUpdate(Some((trans_fn(None), update_fn_fac()))),
             ));
 
             UpdateId {
@@ -314,10 +324,12 @@ pub struct WoProperty<T> {
 }
 
 /// Dynamic property of a node with read/write access by the producer.
+///
+/// This is equivalent to `ProducerDataCell` combined with `WoProperty`.
 #[derive(Debug)]
 pub struct Property<T> {
     presenter_data: WoProperty<T>,
-    producer_data: TokenLock<T>,
+    producer_data: ProducerDataCell<T>,
 }
 
 impl<T> WoProperty<T> {
@@ -345,7 +357,7 @@ impl<T: Clone> Property<T> {
     pub fn new(context: &Context, x: T) -> Self {
         Self {
             presenter_data: WoProperty::new(context, x.clone()),
-            producer_data: TokenLock::new(context.producer_token_ref.clone(), x),
+            producer_data: ProducerDataCell::new(context, x),
         }
     }
 }
@@ -355,15 +367,11 @@ impl<T> Property<T> {
         &'a self,
         frame: &'a mut ProducerFrame,
     ) -> Result<&'a mut T, PropertyError> {
-        self.producer_data
-            .write(&mut frame.0.producer_token)
-            .ok_or(PropertyError::InvalidContext)
+        self.producer_data.write_producer(frame)
     }
 
     pub fn read_producer<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError> {
-        self.producer_data.read(&frame.0.producer_token).ok_or(
-            PropertyError::InvalidContext,
-        )
+        self.producer_data.read_producer(frame)
     }
 }
 
@@ -375,21 +383,48 @@ impl<T: Clone> ops::Deref for Property<T> {
     }
 }
 
+/// Cell whose contents only can be manipulated by the producer.
+#[derive(Debug)]
+pub struct ProducerDataCell<T> {
+    data: TokenLock<T>,
+}
+
+impl<T> ProducerDataCell<T> {
+    pub fn new(context: &Context, x: T) -> Self {
+        Self { data: TokenLock::new(context.producer_token_ref.clone(), x) }
+    }
+
+    pub fn write_producer<'a>(
+        &'a self,
+        frame: &'a mut ProducerFrame,
+    ) -> Result<&'a mut T, PropertyError> {
+        self.data.write(&mut frame.0.producer_token).ok_or(
+            PropertyError::InvalidContext,
+        )
+    }
+
+    pub fn read_producer<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError> {
+        self.data.read(&frame.0.producer_token).ok_or(
+            PropertyError::InvalidContext,
+        )
+    }
+}
+
 /// `Property` with an internally managed `UpdateId`.
+///
+/// This is equivalent to `ProducerDataCell<UpdateId>` combined with `Property<T>`
+/// but adds some space/performance optimization.
 #[derive(Debug)]
 pub struct KeyedProperty<T> {
     // Merge `TokenLock<T>` and `TokenLock<UpdateId>` for performance boost
-    producer_data: TokenLock<(T, UpdateId)>,
+    producer_data: ProducerDataCell<(T, UpdateId)>,
     property: WoProperty<T>,
 }
 
 impl<T: Clone> KeyedProperty<T> {
     pub fn new(context: &Context, x: T) -> Self {
         Self {
-            producer_data: TokenLock::new(context.producer_token_ref.clone(), (
-                x.clone(),
-                UpdateId::new(),
-            )),
+            producer_data: ProducerDataCell::new(context, (x.clone(), UpdateId::new())),
             property: WoProperty::new(context, x),
         }
     }
@@ -400,17 +435,11 @@ impl<T> KeyedProperty<T> {
         &'a self,
         frame: &'a mut ProducerFrame,
     ) -> Result<&'a mut T, PropertyError> {
-        self.producer_data
-            .write(&mut frame.0.producer_token)
-            .ok_or(PropertyError::InvalidContext)
-            .map(|d| &mut d.0)
+        self.producer_data.write_producer(frame).map(|d| &mut d.0)
     }
 
     pub fn read_producer<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError> {
-        self.producer_data
-            .read(&frame.0.producer_token)
-            .ok_or(PropertyError::InvalidContext)
-            .map(|d| &d.0)
+        self.producer_data.read_producer(frame).map(|d| &d.0)
     }
 }
 
@@ -532,9 +561,9 @@ where
         let prop = (self.selector)(self.container);
         *prop.write_producer(frame)? = new_value.clone();
 
-        let update_id = prop.producer_data.read(&frame.0.producer_token).unwrap().1;
+        let update_id = prop.producer_data.read_producer(frame)?.1;
 
-        let new_id = frame.record_keyed_update(update_id, new_value, || {
+        let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
             let c = self.container.clone();
             let s = self.selector.clone();
             move |frame, value| {
@@ -542,7 +571,7 @@ where
             }
         });
 
-        prop.producer_data.write(&mut frame.0.producer_token).unwrap().1 = new_id;
+        prop.producer_data.write_producer(frame)?.1 = new_id;
 
         Ok(())
     }

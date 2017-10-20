@@ -6,12 +6,13 @@
 extern crate cgmath;
 extern crate ngspf;
 
-use std::sync::Arc;
+use std::thread;
+use std::sync::{Arc, mpsc, Mutex};
 
 use cgmath::Vector2;
 
 use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, ImageRef, ImageData, ImageFormat,
-                      LayerContents, WindowFlagsBit};
+                      LayerContents, WindowFlagsBit, WindowRef, WindowEvent, RootRef};
 use ngspf::prelude::*;
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
@@ -19,8 +20,12 @@ static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
 fn main() {
     let mut ws = Workspace::new().expect("failed to create a workspace");
     let context = Arc::clone(ws.context());
+    let (tx, rx) = mpsc::channel();
+    let tx = Mutex::new(tx);
 
     // Produce the first frame
+    let root = RootRef::clone(ws.root());
+    let window: WindowRef;
     {
         let mut image_data = ImageData::new(Vector2::new(128, 128), ImageFormat::SrgbRgba8);
         for i in 0..128 * 128 {
@@ -35,9 +40,13 @@ fn main() {
             .contents(LayerContents::Image(image_ref))
             .build(&context);
 
-        let window = WindowBuilder::new()
+        window = WindowBuilder::new()
             .flags(WindowFlagsBit::Resizable.into())
-            .child(Some(layer.into_node_ref()))
+            .child(Some(layer.clone().into_node_ref()))
+            .listener(Some(Box::new(move |event| {
+                // Send the event to the producer loop
+                let _ = tx.lock().unwrap().send(event.clone());
+            })))
             .build(&context);
 
         let mut frame = context.lock_producer_frame().expect(
@@ -45,10 +54,49 @@ fn main() {
         );
         ws.root()
             .windows()
-            .set(&mut frame, Some(window.into_node_ref()))
+            .set(&mut frame, Some(window.clone().into_node_ref()))
             .expect("failed to set the value of proeprty 'windows'");
     }
     context.commit().expect("failed to commit a frame");
+
+    // Start the producer loop
+    thread::Builder::new()
+        .spawn(move || {
+            use std::time::Duration;
+            let mut i = 0;
+            let mut exit = false;
+            while !exit {
+                i += 1;
+
+                // Process window events
+                for event in rx.try_iter() {
+                    match event {
+                        WindowEvent::Close => {
+                            exit = true;
+                        }
+                        _ => {}
+                    }
+                }
+
+                {
+                    let mut frame = context.lock_producer_frame().expect(
+                        "failed to acquire a producer frame",
+                    );
+
+                    window
+                        .title()
+                        .set(&mut frame, format!("frame = {}", i))
+                        .unwrap();
+
+                    if exit {
+                        root.exit_loop(&mut frame).unwrap();
+                    }
+                }
+                context.commit().expect("failed to commit a frame");
+                thread::sleep(Duration::from_millis(15));
+            }
+        })
+        .unwrap();
 
     // Start the main loop
     ws.enter_main_loop().expect(

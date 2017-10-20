@@ -8,16 +8,29 @@ use refeq::RefEqArc;
 use enumflags::BitFlags;
 use cgmath::Vector2;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor,
-              RoPropertyAccessor, RefPropertyAccessor};
+              RoPropertyAccessor, RefPropertyAccessor, WoProperty, ProducerDataCell, UpdateId,
+              ProducerFrame, PropertyError, PropertyProducerWrite};
 
 // prevent `InnerXXX` from being exported
 mod flags {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
     #[repr(u8)]
     pub enum WindowFlagsBit {
-        Resizable = 0b01,
-        Borderless = 0b10,
-        Transparent = 0b100,
+        /// Specifies that the window can be resized by the user.
+        ///
+        /// FIXME: Fixed-sized window does not work well
+        Resizable = 0b0001,
+
+        /// Hides the window's decoration (title bar, border, etc.).
+        Borderless = 0b0010,
+
+        /// Makes the background of the window transparent.
+        Transparent = 0b0100,
+
+        /// Disables the default behavior of the window's close button.
+        ///
+        /// FIXME: implement this
+        DenyUserClose = 0b1000,
     }
 }
 
@@ -25,13 +38,20 @@ pub use self::flags::WindowFlagsBit;
 
 pub type WindowFlags = BitFlags<WindowFlagsBit>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
+#[repr(u8)]
+pub(super) enum WindowActionBit {
+    ChangeSize = 0b1,
+    ChangeTitle = 0b10,
+}
+
 /// Factory type of `WindowRef`.
-#[derive(Debug, Clone)]
 pub struct WindowBuilder {
     flags: WindowFlags,
     size: Vector2<f32>,
     child: Option<NodeRef>,
     title: String,
+    listener: Option<WindowListener>,
 }
 
 impl WindowBuilder {
@@ -41,6 +61,7 @@ impl WindowBuilder {
             size: Vector2::new(640f32, 480f32),
             child: None,
             title: "NgsPF Window".to_owned(),
+            listener: None,
         }
     }
 
@@ -63,12 +84,28 @@ impl WindowBuilder {
         }
     }
 
+    pub fn listener(self, listener: Option<WindowListener>) -> Self {
+        Self { listener, ..self }
+    }
+
     pub fn build(self, context: &Context) -> WindowRef {
         WindowRef(RefEqArc::new(Window {
+            action: WoProperty::new(context, BitFlags::empty()),
+
             flags: self.flags,
-            size: KeyedProperty::new(context, self.size),
+
+            size: WoProperty::new(context, self.size),
+            size_update_id: ProducerDataCell::new(context, UpdateId::new()),
+
             child: KeyedProperty::new(context, self.child),
-            title: KeyedProperty::new(context, self.title),
+
+            title: WoProperty::new(context, self.title),
+            title_update_id: ProducerDataCell::new(context, UpdateId::new()),
+
+            listener: WoProperty::new(context, self.listener),
+            listener_update_id: ProducerDataCell::new(context, UpdateId::new()),
+
+            mouse_pos: WoProperty::new(context, None),
         }))
     }
 }
@@ -79,16 +116,28 @@ impl Default for WindowBuilder {
     }
 }
 
-#[derive(Debug)]
 pub(super) struct Window {
+    pub action: WoProperty<BitFlags<WindowActionBit>>,
+
     pub flags: WindowFlags,
-    pub size: KeyedProperty<Vector2<f32>>,
+
+    pub size: WoProperty<Vector2<f32>>,
+    pub size_update_id: ProducerDataCell<UpdateId>,
+
     pub child: KeyedProperty<Option<NodeRef>>,
-    pub title: KeyedProperty<String>,
+
+    pub title: WoProperty<String>,
+    pub title_update_id: ProducerDataCell<UpdateId>,
+
+    pub listener: WoProperty<Option<WindowListener>>,
+    pub listener_update_id: ProducerDataCell<UpdateId>,
+
+    // only used by presenter (not exposed to the application)
+    pub mouse_pos: WoProperty<Option<MousePosition>>,
 }
 
 /// Reference to a window node.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct WindowRef(RefEqArc<Window>);
 
 impl WindowRef {
@@ -100,11 +149,31 @@ impl WindowRef {
         RefPropertyAccessor::new(&self.0.flags)
     }
 
-    pub fn size<'a>(&'a self) -> impl PropertyAccessor<Vector2<f32>> + 'a {
-        fn select(this: &RefEqArc<Window>) -> &KeyedProperty<Vector2<f32>> {
-            &this.size
+    pub fn size<'a>(&'a self) -> impl PropertyProducerWrite<Vector2<f32>> + 'a {
+        struct Accessor<'a>(&'a WindowRef);
+        impl<'a> PropertyProducerWrite<Vector2<f32>> for Accessor<'a> {
+            fn set(
+                &self,
+                frame: &mut ProducerFrame,
+                new_value: Vector2<f32>,
+            ) -> Result<(), PropertyError> {
+                let update_id = *(self.0).0.size_update_id.read_producer(frame)?;
+
+                let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
+                    let c = RefEqArc::clone(&(self.0).0);
+                    move |frame, value| {
+                        *c.size.write_presenter(frame).unwrap() = value;
+                        let a = c.action.write_presenter(frame).unwrap();
+                        *a = *a | WindowActionBit::ChangeSize;
+                    }
+                });
+
+                *(self.0).0.size_update_id.write_producer(frame)? = new_id;
+
+                Ok(())
+            }
         }
-        KeyedPropertyAccessor::new(&self.0, select)
+        Accessor(self)
     }
 
     pub fn child<'a>(&'a self) -> impl PropertyAccessor<Option<NodeRef>> + 'a {
@@ -114,10 +183,94 @@ impl WindowRef {
         KeyedPropertyAccessor::new(&self.0, select)
     }
 
-    pub fn title<'a>(&'a self) -> impl PropertyAccessor<String> + 'a {
-        fn select(this: &RefEqArc<Window>) -> &KeyedProperty<String> {
-            &this.title
+    pub fn title<'a>(&'a self) -> impl PropertyProducerWrite<String> + 'a {
+        struct Accessor<'a>(&'a WindowRef);
+        impl<'a> PropertyProducerWrite<String> for Accessor<'a> {
+            fn set(
+                &self,
+                frame: &mut ProducerFrame,
+                new_value: String,
+            ) -> Result<(), PropertyError> {
+                let update_id = *(self.0).0.title_update_id.read_producer(frame)?;
+
+                let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
+                    let c = RefEqArc::clone(&(self.0).0);
+                    move |frame, value| {
+                        *c.title.write_presenter(frame).unwrap() = value;
+                        let a = c.action.write_presenter(frame).unwrap();
+                        *a = *a | WindowActionBit::ChangeTitle;
+                    }
+                });
+
+                *(self.0).0.title_update_id.write_producer(frame)? = new_id;
+
+                Ok(())
+            }
         }
-        KeyedPropertyAccessor::new(&self.0, select)
+        Accessor(self)
     }
+
+    pub fn listener<'a>(&'a self) -> impl PropertyProducerWrite<Option<WindowListener>> + 'a {
+        struct Accessor<'a>(&'a WindowRef);
+        impl<'a> PropertyProducerWrite<Option<WindowListener>> for Accessor<'a> {
+            fn set(
+                &self,
+                frame: &mut ProducerFrame,
+                new_value: Option<WindowListener>,
+            ) -> Result<(), PropertyError> {
+                let update_id = *(self.0).0.listener_update_id.read_producer(frame)?;
+
+                let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
+                    let c = RefEqArc::clone(&(self.0).0);
+                    move |frame, value| { *c.listener.write_presenter(frame).unwrap() = value; }
+                });
+
+                *(self.0).0.listener_update_id.write_producer(frame)? = new_id;
+
+                Ok(())
+            }
+        }
+        Accessor(self)
+    }
+}
+
+pub type WindowListener = Box<Fn(&WindowEvent) + Send + Sync>;
+
+#[derive(Debug, Clone, Copy)]
+pub enum WindowEvent {
+    Resized(Vector2<f32>),
+    Moved(Vector2<f32>),
+    Close,
+
+    /// The window gained (`true`) or lost (`false`) focus.
+    Focused(bool),
+
+    /// A mouse button was pressed or released.
+    ///
+    /// The third parameter indicates whether the button was pressed (`true`)
+    /// or released (`false`).
+    MouseButton(MousePosition, MouseButton, bool),
+
+    /// The mouse cursor has moved on the window, or just left the window's
+    /// client region (in which case the position is `None`).
+    MouseMotion(Option<MousePosition>),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MousePosition {
+    /// The mouse cursor's position in device independent pixels relative to
+    /// the top-left corner of the window's client region.
+    pub client: Vector2<f32>,
+
+    /// The mouse cursor's position in device independent pixels relative to
+    /// a point independent to the window's position.
+    pub global: Vector2<f32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MouseButton {
+    Left,
+    Right,
+    Middle,
+    Other(u8),
 }

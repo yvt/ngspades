@@ -7,6 +7,8 @@ use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
 
 use winit::{self, EventsLoop};
+use enumflags::BitFlags;
+use cgmath::Vector2;
 
 use gfx;
 use gfx::backends::{DefaultBackend, DefaultEnvironment};
@@ -15,8 +17,9 @@ use gfx::core::{Environment, InstanceBuilder};
 use gfx::prelude::*;
 
 use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor,
-              for_each_node, PresenterFrame};
-use super::{WindowFlagsBit, WorkspaceDevice};
+              for_each_node, PresenterFrame, WoProperty, UpdateId, ProducerDataCell,
+              ProducerFrame, PropertyError};
+use super::{WindowFlagsBit, WorkspaceDevice, WindowActionBit};
 use super::compositor::{Compositor, CompositeContext, CompositorWindow};
 use super::uploader::Uploader;
 use prelude::*;
@@ -67,15 +70,22 @@ pub enum WorkspaceError {
 #[derive(Debug)]
 struct Root {
     windows: KeyedProperty<Option<NodeRef>>,
+    exit_loop: WoProperty<bool>,
+    exit_loop_update_id: ProducerDataCell<UpdateId>,
 }
 
+#[derive(Debug, Clone)]
 pub struct RootRef(Arc<Root>);
 
 impl Workspace {
     pub fn new() -> Result<Self, WorkspaceError> {
         let events_loop = EventsLoop::new();
         let context = Arc::new(Context::new());
-        let root = Root { windows: KeyedProperty::new(&context, None) };
+        let root = Root {
+            windows: KeyedProperty::new(&context, None),
+            exit_loop: WoProperty::new(&context, false),
+            exit_loop_update_id: ProducerDataCell::new(&context, UpdateId::new()),
+        };
 
         Ok(Self {
             events_loop,
@@ -94,26 +104,42 @@ impl Workspace {
     }
 
     pub fn enter_main_loop(&mut self) -> Result<(), WorkspaceError> {
-        DefaultBackend::autorelease_pool_scope(|arp| {
-            loop {
-                let ref mut events_loop = self.events_loop;
-                events_loop.poll_events(|_| {
-                    // TODO
-                });
+        DefaultBackend::autorelease_pool_scope(|arp| loop {
+            let ref mut events_loop = self.events_loop;
+
+            {
+                let mut frame = self.context.lock_presenter_frame().expect(
+                    "failed to acquire a presenter frame (locked by an external entity?)",
+                );
 
                 {
-                    let frame = self.context.lock_presenter_frame().expect(
-                        "failed to acquire a presenter frame (locked by an external entity?)",
-                    );
+                    let ref windows = self.windows;
+                    events_loop.poll_events(|e| match e {
+                        winit::Event::WindowEvent { window_id, event } => {
+                            windows.handle_window_event(window_id, event, &mut frame);
+                        }
+                        _ => {}
+                    });
+                }
 
+                use std::mem::replace;
+                if replace(
+                    self.root.0.exit_loop.write_presenter(&mut frame).unwrap(),
+                    false,
+                )
+                {
+                    return Ok(());
+                }
+
+                {
                     let windows = self.root.windows();
                     let windows = windows.get_presenter_ref(&frame).unwrap().as_ref();
                     self.windows.reconcile(windows, &frame, events_loop);
-                    self.windows.update(&frame);
                 }
-
-                arp.drain();
+                self.windows.update(&mut frame);
             }
+
+            arp.drain();
         })
     }
 }
@@ -124,6 +150,19 @@ impl RootRef {
             &this.windows
         }
         KeyedPropertyAccessor::new(&self.0, select)
+    }
+
+    pub fn exit_loop(&self, frame: &mut ProducerFrame) -> Result<(), PropertyError> {
+        let update_id = *self.0.exit_loop_update_id.read_producer(frame)?;
+
+        let new_id = frame.record_keyed_update(update_id, |_| true, || {
+            let c = Arc::clone(&self.0);
+            move |frame, value| { *c.exit_loop.write_presenter(frame).unwrap() = value; }
+        });
+
+        *self.0.exit_loop_update_id.write_producer(frame)? = new_id;
+
+        Ok(())
     }
 }
 
@@ -150,6 +189,82 @@ impl WorkspaceWindowSet {
             device_windows: Vec::new(),
             gfx_instance,
         }
+    }
+
+    fn handle_window_event(
+        &self,
+        win_id: winit::WindowId,
+        winit_event: winit::WindowEvent,
+        frame: &mut PresenterFrame,
+    ) {
+        use super::{Window, WindowEvent, MouseButton, MousePosition};
+
+        if let Some((node_ref, winit_win)) = self.node_ref_and_winit_win_with_window_id(win_id) {
+            let win: &Window = node_ref.downcast_ref().unwrap();
+
+            // Translate it to our `WindowEvent`
+            let event = match winit_event {
+                winit::WindowEvent::Resized(w, h) => {
+                    Some(WindowEvent::Resized(Vector2::new(w, h).cast()))
+                }
+                winit::WindowEvent::Moved(x, y) => {
+                    Some(WindowEvent::Moved(Vector2::new(x, y).cast()))
+                }
+                winit::WindowEvent::Closed => Some(WindowEvent::Close),
+                winit::WindowEvent::MouseInput { state, button, .. } => {
+                    win.mouse_pos.read_presenter(frame).unwrap().map(|pos| {
+                        let button = match button {
+                            winit::MouseButton::Left => MouseButton::Left,
+                            winit::MouseButton::Right => MouseButton::Right,
+                            winit::MouseButton::Middle => MouseButton::Middle,
+                            winit::MouseButton::Other(x) => MouseButton::Other(x),
+                        };
+                        let pressed = state == winit::ElementState::Pressed;
+                        WindowEvent::MouseButton(pos, button, pressed)
+                    })
+                }
+                winit::WindowEvent::MouseMoved { position: (x, y), .. } => {
+                    // Translate the coordinate to `MousePosition`
+                    let client = Vector2::new(x, y).cast();
+                    let (wx, wy) = winit_win.get_position().unwrap_or((0, 0));
+                    let global = client + Vector2::new(wx, wy).cast();
+                    let pos = Some(MousePosition { client, global });
+
+                    // Update the internal cursor location
+                    // (used to handle mouse press/release events)
+                    *win.mouse_pos.write_presenter(frame).unwrap() = pos;
+
+                    Some(WindowEvent::MouseMotion(pos))
+                }
+                winit::WindowEvent::MouseLeft { .. } => {
+                    *win.mouse_pos.write_presenter(frame).unwrap() = None;
+                    Some(WindowEvent::MouseMotion(None))
+                }
+                _ => None,
+            };
+
+            if let Some(ref listener) = *win.listener.read_presenter(frame).unwrap() {
+                if let Some(ref event) = event {
+                    listener(event);
+                }
+            }
+        }
+    }
+
+    fn node_ref_and_winit_win_with_window_id(
+        &self,
+        id: winit::WindowId,
+    ) -> Option<(&NodeRef, &winit::Window)> {
+        for device_windows in self.device_windows.iter() {
+            for (node, ww) in device_windows.windows.iter() {
+                let ref gfx_window = ww.gfx_window;
+                if gfx_window.winit_window().id() == id {
+                    return Some((node, gfx_window.winit_window()));
+                }
+            }
+        }
+
+        None
     }
 
     fn reconcile(
@@ -253,7 +368,32 @@ impl WorkspaceWindowSet {
         self.windows.retain(|w| nodes.contains(w));
     }
 
-    fn update(&mut self, frame: &PresenterFrame) {
+    fn update(&mut self, frame: &mut PresenterFrame) {
+        // Update window properties
+        for device_windows in self.device_windows.iter_mut() {
+            for (node, ww) in device_windows.windows.iter_mut() {
+                let window: &super::Window = node.downcast_ref().unwrap();
+                let ref mut gfx_window = ww.gfx_window;
+
+                use std::mem::replace;
+                let action = replace(
+                    window.action.write_presenter(frame).unwrap(),
+                    BitFlags::empty(),
+                );
+                if action.contains(WindowActionBit::ChangeSize) {
+                    let new_value = window.size.read_presenter(frame).unwrap().cast::<u32>();
+                    gfx_window.winit_window().set_inner_size(
+                        new_value.x,
+                        new_value.y,
+                    );
+                }
+                if action.contains(WindowActionBit::ChangeTitle) {
+                    let new_value = window.title.read_presenter(frame).unwrap();
+                    gfx_window.winit_window().set_title(new_value);
+                }
+            }
+        }
+
         for device_windows in self.device_windows.iter_mut() {
             device_windows.update(frame).expect(
                 "failed to update a device",
@@ -282,7 +422,7 @@ impl<W: Window> DeviceAndWindows<W> {
         }
         context.command_buffers = self.uploader.upload(frame)?;
 
-        // Composite windows
+        // Composite the windows
         for (node, ww) in self.windows.iter_mut() {
             let window: &super::Window = node.downcast_ref().unwrap();
             let ref mut gfx_window = ww.gfx_window;
