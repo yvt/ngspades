@@ -154,14 +154,14 @@ fn drop_arclock() {
 #[should_panic]
 fn lock_fail1() {
     let t = ArcLock::new(());
-    let guard = t.lock().unwrap();
+    let _guard = t.lock().unwrap();
     t.try_lock().unwrap();
 }
 
 #[test]
 fn lock_fail2() {
     let mut t = ArcLock::new(());
-    let guard = t.lock().unwrap();
+    let _guard = t.lock().unwrap();
     assert!(t.try_get_mut().is_none());
 }
 
