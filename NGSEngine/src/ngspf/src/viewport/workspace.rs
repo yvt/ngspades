@@ -494,6 +494,12 @@ impl<W: Window> DeviceAndWindows<W> {
     }
 }
 
+impl<W: Window> Drop for DeviceAndWindows<W> {
+    fn drop(&mut self) {
+        self.wait_idle();
+    }
+}
+
 impl<B: Backend> EventRing<B> {
     fn new(device: &B::Device) -> gfx::core::Result<Self> {
         Ok(Self {
