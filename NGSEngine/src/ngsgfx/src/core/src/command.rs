@@ -192,6 +192,14 @@ pub trait CommandEncoder<B: Backend>
     /// The existing contents will be cleared (if any).
     ///
     /// The command buffer must be in the `Initial`, `Executable`, `Completed`, or `Error` state.
+    ///
+    /// # Platform Specific Issues
+    ///
+    /// - On the Metal backend, there is a limit on the number of command buffers
+    ///   waiting to be submitted to the device. Once this limit is reached,
+    ///   this method will block until at least one of pending command buffers is
+    ///   submitted to the device. The exaxt value appears to be around 64
+    ///   command buffers.
     fn begin_encoding(&mut self);
 
     /// End recording a command buffer. After this function is called,
