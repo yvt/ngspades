@@ -91,11 +91,13 @@ impl<T: BaseNum> AxisAlignedBox<T> for Box2<T> {
 
     #[inline]
     fn is_valid(&self) -> bool {
-        self.size().min() >= T::zero()
+        let size = self.size();
+        size.x >= T::zero() && size.y >= T::zero()
     }
     #[inline]
     fn is_empty(&self) -> bool {
-        self.size().min() <= T::zero()
+        let size = self.size();
+        size.x <= T::zero() && size.y <= T::zero()
     }
 
     #[inline]
@@ -118,11 +120,13 @@ impl<T: BaseNum> AxisAlignedBox<T> for Box3<T> {
 
     #[inline]
     fn is_valid(&self) -> bool {
-        self.size().min() >= T::zero()
+        let size = self.size();
+        size.x >= T::zero() && size.y >= T::zero() && size.z >= T::zero()
     }
     #[inline]
     fn is_empty(&self) -> bool {
-        self.size().min() <= T::zero()
+        let size = self.size();
+        size.x <= T::zero() && size.y <= T::zero() && size.z <= T::zero()
     }
 
     #[inline]

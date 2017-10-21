@@ -19,3 +19,8 @@ mod geom;
 pub use interop::*;
 pub use geom::*;
 
+pub mod prelude {
+    pub use geom::AxisAlignedBox;
+    pub use geom::ElementWiseOp;
+    pub use geom::ElementWisePartialOrd;
+}

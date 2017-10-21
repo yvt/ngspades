@@ -5,7 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 ngscom = { path = "../ngscom", version = "0.1" }
-cgmath = "0.13.0"
+cgmath = "0.15.0"
 num-traits = "0.1.37"
 
 [build-dependencies]
