@@ -5,10 +5,14 @@
 //
 //! Layer node.
 use std::sync::Arc;
+
 use enumflags::BitFlags;
-use cgmath::Matrix4;
+use cgmath::{Matrix4, Point2};
 use cgmath::prelude::*;
 use refeq::RefEqArc;
+
+use ngsbase::Box2;
+use ngsbase::prelude::*;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
 use super::{ImageRef, Port};
 
@@ -17,6 +21,18 @@ mod flags {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
     #[repr(u8)]
     pub enum LayerFlagsBit {
+        /// Instructs to rasterize the contents of the layer.
+        ///
+        /// When this flag is specified, the contents (including its children)
+        /// of the layer is rendered as a raster image and then composied to
+        /// the parent image. This flag is required to enable the following
+        /// composition features:
+        ///
+        ///  - Filters (TODO)
+        ///  - Layer mask (`mask` property)
+        ///
+        /// The bounding rectangle of the rasterized image is defined by the
+        /// `bounds` property.
         FlattenContents = 0b1,
     }
 }
@@ -32,7 +48,9 @@ pub struct LayerBuilder {
     transform: Matrix4<f32>,
     opacity: f32,
     contents: LayerContents,
+    bounds: Box2<f32>,
     child: Option<NodeRef>,
+    mask: Option<NodeRef>,
 }
 
 impl LayerBuilder {
@@ -42,7 +60,9 @@ impl LayerBuilder {
             transform: Matrix4::identity(),
             opacity: 1.0,
             contents: LayerContents::Empty,
+            bounds: Box2::new(Point2::origin(), Point2::origin()),
             child: None,
+            mask: None,
         }
     }
 
@@ -62,8 +82,16 @@ impl LayerBuilder {
         Self { contents, ..self }
     }
 
+    pub fn bounds(self, bounds: Box2<f32>) -> Self {
+        Self { bounds, ..self }
+    }
+
     pub fn child(self, child: Option<NodeRef>) -> Self {
         Self { child, ..self }
+    }
+
+    pub fn mask(self, mask: Option<NodeRef>) -> Self {
+        Self { mask, ..self }
     }
 
     pub fn build(self, context: &Context) -> LayerRef {
@@ -72,7 +100,9 @@ impl LayerBuilder {
             transform: KeyedProperty::new(context, self.transform),
             opacity: KeyedProperty::new(context, self.opacity),
             contents: KeyedProperty::new(context, self.contents),
+            bounds: KeyedProperty::new(context, self.bounds),
             child: KeyedProperty::new(context, self.child),
+            mask: KeyedProperty::new(context, self.mask),
         }))
     }
 }
@@ -89,19 +119,37 @@ pub(super) struct Layer {
     pub transform: KeyedProperty<Matrix4<f32>>,
     pub opacity: KeyedProperty<f32>,
     pub contents: KeyedProperty<LayerContents>,
+    pub bounds: KeyedProperty<Box2<f32>>,
     pub child: KeyedProperty<Option<NodeRef>>,
+    pub mask: KeyedProperty<Option<NodeRef>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum LayerContents {
     /// The layer does not have contents by itself.
     Empty,
+
     /// Specifies to use a given `Image` as the layer contents.
-    Image(ImageRef),
+    Image {
+        image: ImageRef,
+        source: Box2<f32>,
+        wrap_mode: ImageWrapMode,
+    },
+
     /// Specifies to use a given `Port` to generate the layer contents.
     Port(Arc<Port>),
-    // TODO
-    // BackDrop,
+
+    /// Copies contents from the contents of layers with lower Z order in the
+    /// nearest rasterization context (root or a layer with `FlattenContents`).
+    ///
+    /// This layer must have the `FlattenContents` attribute.
+    BackDrop,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ImageWrapMode {
+    Repeat,
+    Clamp,
 }
 
 /// Reference to a layer node.
@@ -134,6 +182,7 @@ impl LayerRef {
         KeyedPropertyAccessor::new(&self.0, select)
     }
 
+    /// Set or retrieve the contents of the layer.
     pub fn contents<'a>(&'a self) -> impl PropertyAccessor<LayerContents> + 'a {
         fn select(this: &Arc<Layer>) -> &KeyedProperty<LayerContents> {
             &this.contents
@@ -141,9 +190,30 @@ impl LayerRef {
         KeyedPropertyAccessor::new(&self.0, select)
     }
 
+    /// Set or retrieve the bounding rectangle of the contents or an intermediate
+    /// raster image (if `FlattenContents` is set).
+    pub fn bounds<'a>(&'a self) -> impl PropertyAccessor<Box2<f32>> + 'a {
+        fn select(this: &Arc<Layer>) -> &KeyedProperty<Box2<f32>> {
+            &this.bounds
+        }
+        KeyedPropertyAccessor::new(&self.0, select)
+    }
+
+    /// Set or retrieve the child layer(s) of the layer.
     pub fn child<'a>(&'a self) -> impl PropertyAccessor<Option<NodeRef>> + 'a {
         fn select(this: &Arc<Layer>) -> &KeyedProperty<Option<NodeRef>> {
             &this.child
+        }
+        KeyedPropertyAccessor::new(&self.0, select)
+    }
+
+    /// Set or retrieve the mask image for this layer.
+    ///
+    /// To enable the mask, both of this layer and the mask have the
+    /// `FlattenContents` attribute.
+    pub fn mask<'a>(&'a self) -> impl PropertyAccessor<Option<NodeRef>> + 'a {
+        fn select(this: &Arc<Layer>) -> &KeyedProperty<Option<NodeRef>> {
+            &this.mask
         }
         KeyedPropertyAccessor::new(&self.0, select)
     }

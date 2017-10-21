@@ -10,6 +10,7 @@
 //!
 #![feature(conservative_impl_trait)]
 pub extern crate ngsgfx as gfx;
+pub extern crate ngsbase;
 extern crate arclock;
 extern crate refeq;
 extern crate tokenlock;

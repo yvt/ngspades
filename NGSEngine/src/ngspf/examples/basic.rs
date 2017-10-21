@@ -9,11 +9,15 @@ extern crate ngspf;
 use std::thread;
 use std::sync::{Arc, mpsc, Mutex};
 
-use cgmath::Vector2;
+use cgmath::{Vector2, Point2};
+use cgmath::prelude::*;
 
 use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, ImageRef, ImageData, ImageFormat,
-                      LayerContents, WindowFlagsBit, WindowRef, WindowEvent, RootRef};
+                      LayerContents, WindowFlagsBit, WindowRef, WindowEvent, RootRef,
+                      ImageWrapMode};
 use ngspf::prelude::*;
+use ngspf::ngsbase::Box2;
+use ngspf::ngsbase::prelude::*;
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
 
@@ -37,7 +41,12 @@ fn main() {
         let image_ref = ImageRef::new_immutable(image_data);
 
         let layer = LayerBuilder::new()
-            .contents(LayerContents::Image(image_ref))
+            .contents(LayerContents::Image {
+                image: image_ref,
+                source: Box2::new(Point2::origin(), Point2::new(128.0, 128.0)),
+                wrap_mode: ImageWrapMode::Repeat,
+            })
+            .bounds(Box2::new(Point2::origin(), Point2::new(128.0, 128.0)))
             .build(&context);
 
         window = WindowBuilder::new()

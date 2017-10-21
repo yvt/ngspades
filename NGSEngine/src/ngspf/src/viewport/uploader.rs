@@ -187,7 +187,7 @@ impl<B: Backend> Uploader<B> {
 
                 // Check the layer contents
                 match layer.contents.read_presenter(frame).unwrap() {
-                    &LayerContents::Image(ref image_ref) => {
+                    &LayerContents::Image { image: ref image_ref, .. } => {
                         if self.image_uses.contains(image_ref) {
                             return;
                         }
