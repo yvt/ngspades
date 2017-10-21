@@ -104,6 +104,8 @@ struct ResidentImageData<B: Backend> {
     // Linked to `unused_image_list` iff `ref_count == 0`
     unused_image_link: Option<intrusive_list::Link>,
 
+    unused_frames: usize,
+
     /// Indicates whether the `Universal` engine has the ownership of this
     /// resource.
     ownership_transfer_required: bool,
@@ -197,6 +199,7 @@ impl<B: Backend> Uploader<B> {
                             // The image is resident
                             let new_ref_count = {
                                 let ref mut image = self.images[image_ptr];
+                                image.unused_frames = 0;
                                 image.ref_count += 1;
                                 image.ref_count
                             };
@@ -234,16 +237,34 @@ impl<B: Backend> Uploader<B> {
             let mut heap = None;
 
             // Unload unused images first
-            // TODO: should wait until the device uses of images are done
-            while let Some(i) = self.unused_image_list
-                .accessor_mut(&mut self.images, |i| &mut i.unused_image_link)
-                .pop_front()
             {
-                if heap.is_none() {
-                    heap = Some(self.heap.lock().unwrap());
+                let mut ptr = self.unused_image_list.first;
+                while let Some(p) = ptr {
+                    let unused_frames = {
+                        let r_im = self.images.get_mut(p).unwrap();
+                        r_im.unused_frames += 1;
+                        ptr = Some(r_im.unused_image_link.unwrap().next);
+                        if ptr == self.unused_image_list.first {
+                            ptr = None;
+                        }
+                        r_im.unused_frames
+                    };
+
+                    // A crude way to wait until all device uses of the image is done
+                    // (Workspace enforces the device-host synchronization after
+                    // 16 frames using EventRing)
+                    if unused_frames > 20 {
+                        self.unused_image_list
+                            .accessor_mut(&mut self.images, |i| &mut i.unused_image_link)
+                            .remove(p);
+                        let im = self.images.deallocate(p);
+
+                        if heap.is_none() {
+                            heap = Some(self.heap.lock().unwrap());
+                        }
+                        heap.as_mut().unwrap().deallocate(im.unwrap().allocation);
+                    }
                 }
-                let r_im = self.images.deallocate(i);
-                heap.as_mut().unwrap().deallocate(r_im.unwrap().allocation);
             }
 
             // Check retirement of the ongoing sessions
@@ -425,11 +446,14 @@ impl<B: Backend> Uploader<B> {
                 desc.extent,
             );
             cb.end_debug_group();
+
+            // Make the memory region available to all write access types to
+            // prevent write-after-write hazards after the region was freed
             cb.resource_barrier(
                 gfx::core::PipelineStage::Transfer.into(),
                 gfx::core::AccessType::TransferWrite.into(),
                 gfx::core::PipelineStage::FragmentShader.into(),
-                gfx::core::AccessType::ShaderRead.into(),
+                gfx::core::AccessType::ShaderRead | gfx::core::AccessType::MemoryWrite,
                 &gfx::core::SubresourceWithLayout::Image {
                     image: &image,
                     range: Default::default(),
@@ -454,6 +478,7 @@ impl<B: Backend> Uploader<B> {
                 session_id,
                 ref_count: 1,
                 unused_image_link: None,
+                unused_frames: 0,
                 ownership_transfer_required: false,
             });
             self.image_map.insert(image_ref, image_ptr);
