@@ -19,7 +19,8 @@ pub trait AxisAlignedBox<T>: Sized {
 
     #[inline]
     fn contains_point(&self, point: &Self::Point) -> bool
-        where T: PartialOrd
+    where
+        T: PartialOrd,
     {
         point.element_wise_ge(&self.min()).all() && point.element_wise_lt(&self.max()).all()
     }
@@ -29,32 +30,40 @@ pub trait AxisAlignedBox<T>: Sized {
 
     #[inline]
     fn size(&self) -> <Self::Point as EuclideanSpace>::Diff
-        where T: BaseNum
+    where
+        T: BaseNum,
     {
         self.max() - self.min()
     }
 
     #[inline]
     fn union(&self, other: &Self) -> Self
-        where T: BaseNum
+    where
+        T: BaseNum,
     {
-        Self::new(self.min().element_wise_min(&other.min()),
-                  self.max().element_wise_max(&other.max()))
+        Self::new(
+            self.min().element_wise_min(&other.min()),
+            self.max().element_wise_max(&other.max()),
+        )
     }
 
     #[inline]
     fn union_assign(&mut self, other: &Self)
-        where T: BaseNum
+    where
+        T: BaseNum,
     {
         *self = self.union(other);
     }
 
     #[inline]
     fn intersection(&self, other: &Self) -> Option<Self>
-        where T: BaseNum
+    where
+        T: BaseNum,
     {
-        let s = Self::new(self.min().element_wise_max(&other.min()),
-                          self.max().element_wise_min(&other.max()));
+        let s = Self::new(
+            self.min().element_wise_max(&other.min()),
+            self.max().element_wise_min(&other.max()),
+        );
         if s.is_empty() { None } else { Some(s) }
     }
 }

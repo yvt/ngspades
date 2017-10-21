@@ -56,14 +56,18 @@ impl<T: BaseNum> ElementWiseOp for Point2<T> {
 
 impl<T: BaseNum> ElementWiseOp for Point3<T> {
     fn element_wise_min(&self, rhs: &Self) -> Self {
-        Self::new(num_min(self.x, rhs.x),
-                  num_min(self.y, rhs.y),
-                  num_min(self.z, rhs.z))
+        Self::new(
+            num_min(self.x, rhs.x),
+            num_min(self.y, rhs.y),
+            num_min(self.z, rhs.z),
+        )
     }
     fn element_wise_max(&self, rhs: &Self) -> Self {
-        Self::new(num_max(self.x, rhs.x),
-                  num_max(self.y, rhs.y),
-                  num_max(self.z, rhs.z))
+        Self::new(
+            num_max(self.x, rhs.x),
+            num_max(self.y, rhs.y),
+            num_max(self.z, rhs.z),
+        )
     }
 }
 
