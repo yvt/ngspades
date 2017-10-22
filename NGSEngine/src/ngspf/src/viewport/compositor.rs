@@ -10,6 +10,7 @@ use gfx::core::Backend;
 use gfx::prelude::*;
 use context::{NodeRef, PresenterFrame};
 use super::WorkspaceDevice;
+use super::temprespool::{TempResPool, TempImage};
 
 #[derive(Debug)]
 pub struct Compositor<B: Backend> {
@@ -34,7 +35,9 @@ const RENDER_PASS_BIT_USAGE_TRANSFER: usize = 0b10 << 1;
 #[derive(Debug)]
 pub struct CompositorWindow<B: Backend> {
     compositor: Arc<Compositor<B>>,
-    command_buffer: Arc<AtomicRefCell<B::CommandBuffer>>,
+    command_buffers: Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
+    command_buffer_index: usize,
+    temp_res_pool: TempResPool<B>,
 }
 
 #[derive(Debug)]
@@ -62,15 +65,27 @@ impl<B: Backend> Compositor<B> {
 
 impl<B: Backend> CompositorWindow<B> {
     pub fn new(compositor: Arc<Compositor<B>>) -> gfx::core::Result<Self> {
-        let command_buffer;
+        let command_buffers;
+        let temp_res_pool;
         {
             let ref device = compositor.device;
-            command_buffer = device.main_queue().make_command_buffer()?;
-            command_buffer.set_label(Some("compositor main command buffer"));
+
+            command_buffers = (0..2)
+                .map(|_| {
+                    let cb = device.main_queue().make_command_buffer()?;
+                    cb.set_label(Some("compositor main command buffer"));
+                    Ok(Arc::new(AtomicRefCell::new(cb)))
+                })
+                .collect::<Result<_, _>>()?;
+
+            temp_res_pool =
+                TempResPool::new(Arc::clone(&compositor.device), Arc::clone(&compositor.heap))?;
         }
         Ok(Self {
             compositor,
-            command_buffer: Arc::new(AtomicRefCell::new(command_buffer)),
+            command_buffers,
+            command_buffer_index: 0,
+            temp_res_pool,
         })
     }
 
@@ -127,10 +142,15 @@ impl<B: Backend> CompositorWindow<B> {
             },
         )?;
 
-        let cb_cell = Arc::clone(&self.command_buffer);
+        self.command_buffer_index = (self.command_buffer_index + 1) % self.command_buffers.len();
+        let cb_cell = Arc::clone(&self.command_buffers[self.command_buffer_index]);
+        let cb_cell_2 = Arc::clone(&cb_cell);
+
+        cb_cell.borrow().wait_completion()?;
+        self.temp_res_pool.retire_old_frames();
+
         {
             let mut cb = cb_cell.borrow_mut();
-            cb.wait_completion()?;
             cb.begin_encoding();
             cb.begin_render_pass(&framebuffer, gfx::core::DeviceEngine::Universal);
             {
@@ -159,6 +179,7 @@ impl<B: Backend> CompositorWindow<B> {
                 gfx::core::AccessType::ColorAttachmentWrite.into(),
                 gfx::core::ImageLayout::Present,
             );
+            self.temp_res_pool.finalize_frame(cb_cell_2, &mut cb);
             cb.end_pass();
             cb.end_encoding()?;
         }
