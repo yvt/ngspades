@@ -122,7 +122,7 @@ impl<'a, B: core::Backend> DeviceUtils<'a, B> {
             size,
             storage_mode: core::StorageMode::Shared,
         };
-        desc.usage = desc.usage | core::ImageUsage::TransferDestination;
+        desc.usage |= core::ImageUsage::TransferDestination;
 
         // Create a staging heap/buffer
         let (mut staging_alloc, staging_buffer) =

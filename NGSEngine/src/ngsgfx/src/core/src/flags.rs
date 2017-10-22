@@ -3,10 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 
 /// Specifies a pipeline stage.
-#[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PipelineStage {
     TopOfPipe = 0b00000000000001,
@@ -28,7 +28,7 @@ pub enum PipelineStage {
 pub type PipelineStageFlags = BitFlags<PipelineStage>;
 
 /// Specifies a type of memory access.
-#[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum AccessType {
     IndirectCommandRead = 0b00000000000000001,

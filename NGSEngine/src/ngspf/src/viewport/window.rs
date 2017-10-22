@@ -5,40 +5,35 @@
 //
 //! Window node.
 use refeq::RefEqArc;
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 use cgmath::Vector2;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor,
               RoPropertyAccessor, RefPropertyAccessor, WoProperty, ProducerDataCell, UpdateId,
               ProducerFrame, PropertyError, PropertyProducerWrite};
 
-// prevent `InnerXXX` from being exported
-mod flags {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
-    #[repr(u8)]
-    pub enum WindowFlagsBit {
-        /// Specifies that the window can be resized by the user.
-        ///
-        /// FIXME: Fixed-sized window does not work well
-        Resizable = 0b0001,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
+#[repr(u8)]
+pub enum WindowFlagsBit {
+    /// Specifies that the window can be resized by the user.
+    ///
+    /// FIXME: Fixed-sized window does not work well
+    Resizable = 0b0001,
 
-        /// Hides the window's decoration (title bar, border, etc.).
-        Borderless = 0b0010,
+    /// Hides the window's decoration (title bar, border, etc.).
+    Borderless = 0b0010,
 
-        /// Makes the background of the window transparent.
-        Transparent = 0b0100,
+    /// Makes the background of the window transparent.
+    Transparent = 0b0100,
 
-        /// Disables the default behavior of the window's close button.
-        ///
-        /// FIXME: implement this
-        DenyUserClose = 0b1000,
-    }
+    /// Disables the default behavior of the window's close button.
+    ///
+    /// FIXME: implement this
+    DenyUserClose = 0b1000,
 }
-
-pub use self::flags::WindowFlagsBit;
 
 pub type WindowFlags = BitFlags<WindowFlagsBit>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]
 pub(super) enum WindowActionBit {
     ChangeSize = 0b1,

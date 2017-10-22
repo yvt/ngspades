@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 
 use {Validate, DeviceCapabilities, Marker, DeviceSize, StorageMode};
 
@@ -20,7 +20,7 @@ pub trait Buffer
     : Hash + Debug + Clone + Eq + PartialEq + Send + Sync + Any + Marker {
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BufferDescription {
     pub usage: BufferUsageFlags,
     pub size: DeviceSize,
@@ -31,22 +31,17 @@ pub struct BufferDescription {
     pub storage_mode: StorageMode,
 }
 
-// prevent `InnerXXX` from being exported
-mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    #[repr(u32)]
-    pub enum BufferUsage {
-        TransferSource = 0b0000001,
-        TransferDestination = 0b0000010,
-        UniformBuffer = 0b0000100,
-        StorageBuffer = 0b0001000,
-        IndexBuffer = 0b0010000,
-        VertexBuffer = 0b0100000,
-        IndirectBuffer = 0b1000000,
-    }
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum BufferUsage {
+    TransferSource = 0b0000001,
+    TransferDestination = 0b0000010,
+    UniformBuffer = 0b0000100,
+    StorageBuffer = 0b0001000,
+    IndexBuffer = 0b0010000,
+    VertexBuffer = 0b0100000,
+    IndirectBuffer = 0b1000000,
 }
-
-pub use self::flags::BufferUsage;
 
 pub type BufferUsageFlags = BitFlags<BufferUsage>;
 

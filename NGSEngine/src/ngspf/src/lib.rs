@@ -16,9 +16,9 @@ extern crate refeq;
 extern crate tokenlock;
 extern crate cgmath;
 extern crate winit;
-extern crate enumflags;
+extern crate ngsenumflags;
 #[macro_use]
-extern crate enumflags_derive;
+extern crate ngsenumflags_derive;
 pub extern crate atomic_refcell;
 extern crate iterpool;
 

@@ -72,7 +72,7 @@ use std::fmt::Debug;
 use std::any::Any;
 use std::ops::Range;
 
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 
 use {Backend, PipelineStageFlags, DepthBias, DepthBounds, Viewport, Rect2D, Result, Marker,
      ImageSubresourceRange, IndexFormat, ImageLayout, AccessTypeFlags, DebugMarker,
@@ -631,25 +631,21 @@ pub trait DebugCommandEncoder: Debug + Send + Any {
     fn insert_debug_marker(&mut self, marker: &DebugMarker);
 }
 
-// prevent `InnerXXX` from being exported
-mod flags {
-    /// Specifies a type of hardware to execute the commands.
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    #[repr(u32)]
-    pub enum DeviceEngine {
-        /// Generic engine supporting all kinds of commands.
-        Universal = 0b0001,
+/// Specifies a type of hardware to execute the commands.
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum DeviceEngine {
+    /// Generic engine supporting all kinds of commands.
+    Universal = 0b0001,
 
-        /// Compute engine supporting compute and copy commands.
-        Compute = 0b0010,
+    /// Compute engine supporting compute and copy commands.
+    Compute = 0b0010,
 
-        /// Copy engine supporting only copy commands.
-        Copy = 0b0100,
+    /// Copy engine supporting only copy commands.
+    Copy = 0b0100,
 
-        /// The host.
-        Host = 0b1000,
-    }
+    /// The host.
+    Host = 0b1000,
 }
 
-pub use self::flags::DeviceEngine;
 pub type DeviceEngineFlags = BitFlags<DeviceEngine>;

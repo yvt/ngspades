@@ -1,0 +1,8 @@
+[package]
+name = "ngsenumflags"
+version = "0.1.2"
+authors = ["maik klein <maikklein@googlemail.com>", "yvt <i@yvt.jp>"]
+description = "Bitflags (based on 'enumflags')"
+
+[dev-dependencies]
+ngsenumflags_derive = { path = "./ngsenumflags_derive" }

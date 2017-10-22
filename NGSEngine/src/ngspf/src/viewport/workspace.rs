@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
 
 use winit::{self, EventsLoop};
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 use cgmath::Vector2;
 
 use gfx;

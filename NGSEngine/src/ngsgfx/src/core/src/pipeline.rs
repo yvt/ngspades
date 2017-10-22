@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 use cgmath::Vector2;
 
 use {VertexBindingLocation, VertexAttributeLocation, VertexFormat, RenderPass, Rect2D,
@@ -430,26 +430,21 @@ pub struct DepthBounds {
     pub max: f32,
 }
 
-// prevent `InnerXXX` from being exported
-mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash)]
-    #[repr(u32)]
-    pub enum ColorWriteMask {
-        Red = 0b0001,
-        Green = 0b0010,
-        Blue = 0b0100,
-        Alpha = 0b1000,
-    }
-
-    impl ColorWriteMask {
-        pub fn all() -> super::BitFlags<ColorWriteMask> {
-            ColorWriteMask::Red | ColorWriteMask::Green | ColorWriteMask::Blue |
-                ColorWriteMask::Alpha
-        }
-    }
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash)]
+#[repr(u32)]
+pub enum ColorWriteMask {
+    Red = 0b0001,
+    Green = 0b0010,
+    Blue = 0b0100,
+    Alpha = 0b1000,
 }
 
-pub use self::flags::ColorWriteMask;
+impl ColorWriteMask {
+    pub fn all() -> BitFlags<ColorWriteMask> {
+        ColorWriteMask::Red | ColorWriteMask::Green | ColorWriteMask::Blue |
+            ColorWriteMask::Alpha
+    }
+}
 
 /// Validation errors for [`ComputePipelineDescription`](struct.ComputePipelineDescription.html).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

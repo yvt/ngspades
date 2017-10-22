@@ -54,7 +54,7 @@
 //! -----
 //!
 //! Parameters that accept multiple flags are defined as `BitFlags<T>` (provided by
-//! the `enumflags` crate) where `T` is an enumerated type (e.g., `AccessType`).
+//! the `ngsenumflags` crate) where `T` is an enumerated type (e.g., `AccessType`).
 //! For every enumerated type for which such parameters exist, a type alias to
 //! `BitFlags<T>` is defined with its name suffixed with `Flags` (e.g., `AccessTypeFlags`).
 //!
@@ -87,9 +87,9 @@
 //!
 
 extern crate cgmath;
-extern crate enumflags;
+extern crate ngsenumflags;
 #[macro_use]
-extern crate enumflags_derive;
+extern crate ngsenumflags_derive;
 #[macro_use]
 extern crate lazy_static;
 
@@ -219,15 +219,13 @@ impl AutoreleasePool for NullAutoreleasePool {
     fn drain(&mut self) {}
 }
 
-// flags are indivdually reexported because "enumflags_derive" generates a struct named "InnerXXX" for each
-// enumration type and we do not want it exported
 pub use buffer::*;
 pub use command::*;
 pub use debug::*;
 pub use descriptor::*;
 pub use error::*;
 pub use factory::*;
-pub use flags::{AccessTypeFlags, PipelineStageFlags, AccessType, PipelineStage};
+pub use flags::*;
 pub use formats::*;
 pub use framebuffer::*;
 pub use geom::*;

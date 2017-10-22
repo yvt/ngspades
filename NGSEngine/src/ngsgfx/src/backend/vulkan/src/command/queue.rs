@@ -245,16 +245,16 @@ impl<T: DeviceRef> CommandSender<T> {
                         } => {
                             // (or-ing both kind of dependency flags is a little bit over-conservative,
                             // but now we only need one pipeline barrier command)
-                            intra_stage_src = intra_stage_src | src_scope.0;
-                            intra_access_src = intra_access_src | src_scope.1;
-                            intra_stage_dep = intra_stage_dep | !(fence.1 & !dst_scope.0);
-                            intra_access_dep = intra_access_dep | !(fence.2 & !dst_scope.1);
+                            intra_stage_src |= src_scope.0;
+                            intra_access_src |= src_scope.1;
+                            intra_stage_dep |= !(fence.1 & !dst_scope.0);
+                            intra_access_dep |= !(fence.2 & !dst_scope.1);
 
-                            intra_stage_dst = intra_stage_dst | fence.1;
-                            intra_access_dst = intra_access_dst | fence.2;
+                            intra_stage_dst |= fence.1;
+                            intra_access_dst |= fence.2;
 
-                            dst_scope.0 = dst_scope.0 | fence.1;
-                            dst_scope.1 = dst_scope.1 | fence.2;
+                            dst_scope.0 |= fence.1;
+                            dst_scope.1 |= fence.2;
                         }
                         Semaphore { signalled_by } => {
                             if let Some(signalled_by) = signalled_by {

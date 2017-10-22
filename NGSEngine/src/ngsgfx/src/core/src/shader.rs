@@ -10,7 +10,7 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq};
 use std::any::Any;
 
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 
 use {Marker, Validate, DeviceCapabilities};
 
@@ -28,18 +28,14 @@ pub struct ShaderModuleDescription<'a> {
     pub spirv_code: &'a [u32],
 }
 
-// prevent `InnerXXX` from being exported
-mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    #[repr(u8)]
-    pub enum ShaderStage {
-        Vertex = 0b001,
-        Fragment = 0b010,
-        Compute = 0b100,
-    }
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ShaderStage {
+    Vertex = 0b001,
+    Fragment = 0b010,
+    Compute = 0b100,
 }
 
-pub use self::flags::ShaderStage;
 pub type ShaderStageFlags = BitFlags<ShaderStage>;
 
 /// Validation errors for [`ShaderModuleDescription`](struct.ShaderModuleDescription.html).

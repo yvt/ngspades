@@ -255,33 +255,33 @@ fn translate_image_format_feature_flags(
 ) -> core::ImageFormatFeatureFlags {
     let mut ret = core::ImageFormatFeatureFlags::empty();
     if value.intersects(vk::FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
-        ret = ret | core::ImageFormatFeature::Sampled;
+        ret |= core::ImageFormatFeature::Sampled;
     }
     if value.intersects(vk::FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
-        ret = ret | core::ImageFormatFeature::Storage;
+        ret |= core::ImageFormatFeature::Storage;
     }
     if value.intersects(vk::FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT) {
-        ret = ret | core::ImageFormatFeature::StorageAtomic;
+        ret |= core::ImageFormatFeature::StorageAtomic;
     }
     if value.intersects(vk::FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
-        ret = ret | core::ImageFormatFeature::ColorAttachment;
+        ret |= core::ImageFormatFeature::ColorAttachment;
     }
     if value.intersects(vk::FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT) {
-        ret = ret | core::ImageFormatFeature::ColorAttachmentBlend;
+        ret |= core::ImageFormatFeature::ColorAttachmentBlend;
     }
     if value.intersects(vk::FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-        ret = ret | core::ImageFormatFeature::DepthStencilAttachment;
+        ret |= core::ImageFormatFeature::DepthStencilAttachment;
     }
     if value.intersects(vk::FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) {
-        ret = ret | core::ImageFormatFeature::SampledFilterLinear;
+        ret |= core::ImageFormatFeature::SampledFilterLinear;
     }
     // Without the extension `VK_KHR_maintenance1`, any othet flags imply that
     // transfer is possible
     if value.is_empty() {
         // TODO: `FORMAT_FEATURE_TRANSFER_{SRC,DST}_BIT_KHR`
     } else {
-        ret = ret | core::ImageFormatFeature::TransferSource;
-        ret = ret | core::ImageFormatFeature::TransferDestination;
+        ret |= core::ImageFormatFeature::TransferSource;
+        ret |= core::ImageFormatFeature::TransferDestination;
     }
     ret
 }
@@ -291,7 +291,7 @@ fn translate_vertex_format_feature_flags(
 ) -> core::VertexFormatFeatureFlags {
     let mut ret = core::VertexFormatFeatureFlags::empty();
     if value.intersects(vk::FORMAT_FEATURE_VERTEX_BUFFER_BIT) {
-        ret = ret | core::VertexFormatFeature::VertexBuffer;
+        ret |= core::VertexFormatFeature::VertexBuffer;
     }
     ret
 }

@@ -6,7 +6,7 @@
 //! Layer node.
 use std::sync::Arc;
 
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 use cgmath::{Matrix4, Point2};
 use cgmath::prelude::*;
 use refeq::RefEqArc;
@@ -16,28 +16,23 @@ use ngsbase::prelude::*;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
 use super::{ImageRef, Port};
 
-// prevent `InnerXXX` from being exported
-mod flags {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumFlags)]
-    #[repr(u8)]
-    pub enum LayerFlagsBit {
-        /// Instructs to rasterize the contents of the layer.
-        ///
-        /// When this flag is specified, the contents (including its children)
-        /// of the layer is rendered as a raster image and then composied to
-        /// the parent image. This flag is required to enable the following
-        /// composition features:
-        ///
-        ///  - Filters (TODO)
-        ///  - Layer mask (`mask` property)
-        ///
-        /// The bounding rectangle of the rasterized image is defined by the
-        /// `bounds` property.
-        FlattenContents = 0b1,
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
+#[repr(u8)]
+pub enum LayerFlagsBit {
+    /// Instructs to rasterize the contents of the layer.
+    ///
+    /// When this flag is specified, the contents (including its children)
+    /// of the layer is rendered as a raster image and then composied to
+    /// the parent image. This flag is required to enable the following
+    /// composition features:
+    ///
+    ///  - Filters (TODO)
+    ///  - Layer mask (`mask` property)
+    ///
+    /// The bounding rectangle of the rasterized image is defined by the
+    /// `bounds` property.
+    FlattenContents = 0b1,
 }
-
-pub use self::flags::LayerFlagsBit;
 
 pub type LayerFlags = BitFlags<LayerFlagsBit>;
 

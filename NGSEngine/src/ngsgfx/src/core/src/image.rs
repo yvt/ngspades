@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::cmp::{Eq, PartialEq, max};
 use std::any::Any;
 
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 
 use cgmath::Vector3;
 
@@ -29,7 +29,7 @@ pub trait ImageView
 /// Image description.
 ///
 /// See [`ImageDescriptionValidationError`](enum.ImageDescriptionValidationError.html) for the valid usage.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImageDescription {
     pub flags: ImageFlags,
     pub usage: ImageUsageFlags,
@@ -156,52 +156,46 @@ pub enum ImageLayout {
     Present,
 }
 
-
-// prevent `InnerXXX` from being exported
-mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    #[repr(u32)]
-    pub enum ImageUsage {
-        TransferSource = 0b00000001,
-        TransferDestination = 0b00000010,
-        Sampled = 0b00000100,
-        Storage = 0b00001000,
-        ColorAttachment = 0b00010000,
-        DepthStencilAttachment = 0b00100000,
-        InputAttachment = 0b01000000,
-        TransientAttachment = 0b10000000,
-    }
-
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    #[repr(u32)]
-    pub enum ImageAspect {
-        Color = 0b001,
-        Depth = 0b010,
-        Stencil = 0b100,
-    }
-
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    #[repr(u32)]
-    pub enum ImageFlagsBit {
-        /// Indicates `ImageView` can created from the image with a `ImageFormat` different
-        /// from the one used to create the image.
-        MutableFormat = 0b001,
-
-        /// Indicates `ImageView` created from the image with a `ImageSubresourceRange` that
-        /// does not specify entire the image (e.g., `base_mip_level` is not zero) can be used
-        /// as an element of a descriptor set.
-        ///
-        /// Even without this flag, such `ImageView`s can be used for other purposes.
-        SubrangeViewCompatible = 0b010,
-
-        /// Indicates `ImageView` created from the image with a `ImageType` different
-        /// from the one used to create the image can be used as an element of
-        /// a descriptor set.
-        MutableType = 0b100,
-    }
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ImageUsage {
+    TransferSource = 0b00000001,
+    TransferDestination = 0b00000010,
+    Sampled = 0b00000100,
+    Storage = 0b00001000,
+    ColorAttachment = 0b00010000,
+    DepthStencilAttachment = 0b00100000,
+    InputAttachment = 0b01000000,
+    TransientAttachment = 0b10000000,
 }
 
-pub use self::flags::{ImageUsage, ImageFlagsBit, ImageAspect};
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ImageAspect {
+    Color = 0b001,
+    Depth = 0b010,
+    Stencil = 0b100,
+}
+
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ImageFlagsBit {
+    /// Indicates `ImageView` can created from the image with a `ImageFormat` different
+    /// from the one used to create the image.
+    MutableFormat = 0b001,
+
+    /// Indicates `ImageView` created from the image with a `ImageSubresourceRange` that
+    /// does not specify entire the image (e.g., `base_mip_level` is not zero) can be used
+    /// as an element of a descriptor set.
+    ///
+    /// Even without this flag, such `ImageView`s can be used for other purposes.
+    SubrangeViewCompatible = 0b010,
+
+    /// Indicates `ImageView` created from the image with a `ImageType` different
+    /// from the one used to create the image can be used as an element of
+    /// a descriptor set.
+    MutableType = 0b100,
+}
 
 pub type ImageFlags = BitFlags<ImageFlagsBit>;
 pub type ImageUsageFlags = BitFlags<ImageUsage>;

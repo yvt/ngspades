@@ -21,6 +21,8 @@ members = [
     "src/ngsterrain",
     "src/support/arclock",
     "src/support/iterpool",
+    "src/support/ngsenumflags",
+    "src/support/ngsenumflags/ngsenumflags_derive",
     "src/support/refeq",
     "src/support/tokenlock",
     "src/yfft",

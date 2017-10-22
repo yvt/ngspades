@@ -10,8 +10,8 @@ arclock = { path = "../support/arclock" }
 refeq = { path = "../support/refeq", features = ["nightly"] }
 tokenlock = { path = "../support/tokenlock" }
 iterpool = { path = "../support/iterpool" }
+ngsenumflags = { path = "../support/ngsenumflags" }
+ngsenumflags_derive = { path = "../support/ngsenumflags/ngsenumflags_derive" }
 cgmath = "0.15.0"
 winit = "0.7"
-enumflags = "*"
-enumflags_derive = "*"
 atomic_refcell = "0.1.0"

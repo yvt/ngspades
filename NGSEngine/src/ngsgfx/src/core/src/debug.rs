@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use cgmath::Vector3;
-use enumflags::BitFlags;
+use ngsenumflags::BitFlags;
 
 pub trait Marker {
     /// Specifiy a name to identify this object, or entity if this is a handle
@@ -57,28 +57,24 @@ pub trait DebugReportHandler: Send + Sync {
     fn log(&self, report: &DebugReport);
 }
 
-// prevent `InnerXXX` from being exported
-mod flags {
-    #[derive(EnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    #[repr(u32)]
-    pub enum DebugReportType {
-        /// Informational messages that may be handy when debugging an
-        /// application.
-        Information = 0b00001,
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum DebugReportType {
+    /// Informational messages that may be handy when debugging an
+    /// application.
+    Information = 0b00001,
 
-        /// Reports for potentially wrong, but not immediately harmful API usages.
-        Warning = 0b00010,
+    /// Reports for potentially wrong, but not immediately harmful API usages.
+    Warning = 0b00010,
 
-        /// Reports for non-optimal API usages.
-        PerformanceWarning = 0b00100,
+    /// Reports for non-optimal API usages.
+    PerformanceWarning = 0b00100,
 
-        /// Reports for usages that may cause undefined results.
-        Error = 0b01000,
+    /// Reports for usages that may cause undefined results.
+    Error = 0b01000,
 
-        /// Diagnostic informations.
-        Debug = 0b10000,
-    }
+    /// Diagnostic informations.
+    Debug = 0b10000,
 }
 
-pub use self::flags::DebugReportType;
 pub type DebugReportTypeFlags = BitFlags<DebugReportType>;

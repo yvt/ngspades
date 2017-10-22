@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-enumflags = "*"
-enumflags_derive = "*"
+ngsenumflags = { path = "../../../support/ngsenumflags" }
+ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_derive" }
 cgmath = "0.15.0"
 lazy_static = "0.2"
