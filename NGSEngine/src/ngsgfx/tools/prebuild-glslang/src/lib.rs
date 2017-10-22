@@ -26,7 +26,9 @@
 //! #[macro_use]
 //! extern crate include_data;
 //!
-//! static MY_SPIRV_CODE: include_data::DataView = include_data!(concat!(env!("OUT_DIR"), "/twilight-horn-frag.frag.spv"))
+//! static MY_SPIRV_CODE: include_data::DataView = include_data!(
+//!     concat!(env!("OUT_DIR"), "/twilight-horn-frag.frag.spv")
+//! );
 //!
 //! fn main() {
 //!     let code: &'static [u32] = MY_SPIRV_CODE.as_u32_slice();
