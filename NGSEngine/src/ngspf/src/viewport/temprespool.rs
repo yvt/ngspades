@@ -106,6 +106,10 @@ impl<B: Backend> TempBuffer<B> {
     pub fn buffer(&self) -> &B::Buffer {
         &self.1
     }
+
+    pub fn into_buffer(self) -> B::Buffer {
+        self.1
+    }
 }
 
 pub struct TempResOp<'a, B: Backend>(&'a mut TempResPool<B>, PoolPtr);
@@ -224,7 +228,11 @@ impl<B: Backend> TempResPool<B> {
     /// Encode resource barriers required to release the allocated memory region
     /// correctly. Also mark the end of the current frame which is used as a
     /// granularity of the lifetime tracking.
-    pub fn finalize_frame(&mut self, cb_cell: Arc<AtomicRefCell<B::CommandBuffer>>, cb: &mut B::CommandBuffer) {
+    pub fn finalize_frame(
+        &mut self,
+        cb_cell: Arc<AtomicRefCell<B::CommandBuffer>>,
+        cb: &mut B::CommandBuffer,
+    ) {
         {
             let mut ptr = self.unfinished_res_list.first;
             while let Some(p) = ptr {
@@ -352,6 +360,10 @@ impl<'a, B: Backend> TempResOp<'a, B> {
     /// as free on the end of each frame.
     pub fn deallocate(&mut self) {
         self.0.deallocate(self.1);
+    }
+
+    pub fn allocation_mut(&mut self) -> &mut <B::UniversalHeap as MappableHeap>::Allocation {
+        &mut self.0.pool[self.1].alloc
     }
 
     pub fn stage_access_type_mut(

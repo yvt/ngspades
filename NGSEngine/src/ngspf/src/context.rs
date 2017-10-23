@@ -16,7 +16,7 @@
 //!
 //! [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
 use std::any::Any;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::{ops, fmt, borrow, hash};
 use refeq::RefEqArc;
 use arclock::{ArcLock, ArcLockGuard};
@@ -177,28 +177,63 @@ impl NodeRef {
 
     /// Iterate through non-group nodes reachable from a given root node via
     /// zero or more group nodes.
-    pub fn for_each_node<'a, T: FnMut(&'a NodeRef)>(&'a self, cb: T) {
-        fn inner<'a, T: FnMut(&'a NodeRef)>(root: &'a NodeRef, cb: &mut T) {
+    ///
+    /// This method returns `Err(x)` as soon as the callback function `cb`
+    /// returns `Err(x)`.
+    pub fn for_each_node_r<'a, T: FnMut(&'a NodeRef) -> Result<(), E>, E>(
+        &'a self,
+        mut cb: T,
+    ) -> Result<(), E> {
+        fn inner<'a, T: FnMut(&'a NodeRef) -> Result<(), E>, E>(
+            root: &'a NodeRef,
+            cb: &mut T,
+        ) -> Result<(), E> {
             if let Some(group) = root.downcast_ref::<Group>() {
                 for node in group.nodes.iter() {
-                    inner(node, cb)
+                    inner(node, cb)?;
                 }
+                Ok(())
             } else {
-                cb(root);
+                cb(root)
             }
         }
-        inner(self, &mut cb);
+        inner(self, &mut cb)
+    }
+
+    /// Iterate through non-group nodes reachable from a given root node via
+    /// zero or more group nodes.
+    pub fn for_each_node<'a, T: FnMut(&'a NodeRef)>(&'a self, mut cb: T) {
+        self.for_each_node_r::<_, ()>(move |node| {
+            cb(node);
+            Ok(())
+        }).unwrap()
+    }
+
+    /// Iterate through nodes of a specific concrete type reachable from a given
+    /// root node via zero or more group nodes.
+    ///
+    /// This method returns `Err(x)` as soon as the callback function `cb`
+    /// returns `Err(x)`.
+    pub fn for_each_node_of_r<'a, T: Node, F: FnMut(&'a T) -> Result<(), E>, E>(
+        &'a self,
+        mut cb: F,
+    ) -> Result<(), E> {
+        self.for_each_node_r(move |node_ref| if let Some(node) = node_ref
+            .downcast_ref()
+        {
+            cb(node)
+        } else {
+            Ok(())
+        })
     }
 
     /// Iterate through nodes of a specific concrete type reachable from a given
     /// root node via zero or more group nodes.
     pub fn for_each_node_of<'a, T: Node, F: FnMut(&'a T)>(&'a self, mut cb: F) {
-        self.for_each_node(
-            self,
-            |node_ref| if let Some(node) = node_ref.downcast_ref() {
-                cb(node);
-            },
-        )
+        self.for_each_node_of_r::<_, _, ()>(move |node| {
+            cb(node);
+            Ok(())
+        }).unwrap()
     }
 }
 

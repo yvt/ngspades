@@ -12,6 +12,10 @@ tokenlock = { path = "../support/tokenlock" }
 iterpool = { path = "../support/iterpool" }
 ngsenumflags = { path = "../support/ngsenumflags" }
 ngsenumflags_derive = { path = "../support/ngsenumflags/ngsenumflags_derive" }
+include_data = { path = "../ngsgfx/tools/include_data" }
 cgmath = "0.15.0"
 winit = "0.7"
 atomic_refcell = "0.1.0"
+
+[build-dependencies]
+prebuild-glslang = { path = "../ngsgfx/tools/prebuild-glslang" }

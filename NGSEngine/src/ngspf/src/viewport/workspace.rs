@@ -17,8 +17,7 @@ use gfx::core::{Environment, InstanceBuilder};
 use gfx::prelude::*;
 
 use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor,
-              PresenterFrame, WoProperty, UpdateId, ProducerDataCell,
-              ProducerFrame, PropertyError};
+              PresenterFrame, WoProperty, UpdateId, ProducerDataCell, ProducerFrame, PropertyError};
 use super::{WindowFlagsBit, WorkspaceDevice, WindowActionBit};
 use super::compositor::{Compositor, CompositeContext, CompositorWindow};
 use super::uploader::Uploader;
@@ -405,12 +404,6 @@ impl WorkspaceWindowSet {
 
 impl<W: Window> DeviceAndWindows<W> {
     fn update(&mut self, frame: &PresenterFrame) -> gfx::core::Result<()> {
-        let mut context = CompositeContext {
-            workspace_device: &self.device,
-            schedule_next_frame: false,
-            command_buffers: Vec::new(),
-            pixel_ratio: 1.0, // TODO
-        };
         let mut drawables = Vec::new();
 
         // Upload images
@@ -422,13 +415,23 @@ impl<W: Window> DeviceAndWindows<W> {
                 self.uploader.scan_nodes(root, frame);
             }
         }
-        context.command_buffers = self.uploader.upload(frame)?;
+        let cbs = self.uploader.upload(frame)?;
+
+        let mut context = CompositeContext {
+            workspace_device: &self.device,
+            schedule_next_frame: false,
+            command_buffers: cbs,
+            pixel_ratio: 1.0, // set later
+            uploader: &self.uploader,
+        };
 
         // Composite the windows
         for (node, ww) in self.windows.iter_mut() {
             let window: &super::Window = node.downcast_ref().unwrap();
             let ref mut gfx_window = ww.gfx_window;
             let root = Option::clone(window.child.read_presenter(frame).unwrap());
+
+            context.pixel_ratio = gfx_window.winit_window().hidpi_factor();
 
             loop {
                 {

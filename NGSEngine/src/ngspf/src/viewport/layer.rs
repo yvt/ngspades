@@ -139,7 +139,7 @@ pub enum LayerContents {
     /// Copies contents from the contents of layers with lower Z order in the
     /// nearest rasterization context (root or a layer with `FlattenContents`).
     ///
-    /// This layer must have the `FlattenContents` attribute.
+    /// The layer with this flag must have the `FlattenContents` attribute.
     BackDrop,
 }
 
@@ -206,8 +206,9 @@ impl LayerRef {
 
     /// Set or retrieve the mask image for this layer.
     ///
-    /// To enable the mask, both of this layer and the mask have the
-    /// `FlattenContents` attribute.
+    /// To enable the mask, this layer must have the `FlattenContents` attribute.
+    ///
+    /// Root nodes cannot have a mask enabled.
     pub fn mask<'a>(&'a self) -> impl PropertyAccessor<Option<NodeRef>> + 'a {
         fn select(this: &Arc<Layer>) -> &KeyedProperty<Option<NodeRef>> {
             &this.mask

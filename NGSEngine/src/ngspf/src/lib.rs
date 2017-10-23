@@ -21,9 +21,12 @@ extern crate ngsenumflags;
 extern crate ngsenumflags_derive;
 pub extern crate atomic_refcell;
 extern crate iterpool;
+#[macro_use]
+extern crate include_data;
 
 pub mod context;
 pub mod viewport;
+mod gfxutils;
 
 /// The NgsPF prelude.
 pub mod prelude {
