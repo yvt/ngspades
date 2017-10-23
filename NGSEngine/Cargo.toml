@@ -38,6 +38,8 @@ members = [
 
 [profile.release]
 lto = true
+debug = true
 
 [profile.bench]
 lto = true
+debug = true
