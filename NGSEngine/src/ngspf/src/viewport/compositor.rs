@@ -1082,7 +1082,19 @@ impl<B: Backend> Stateset<B> {
             })
             .collect::<Result<_>>()?;
 
-        let color_attachments = &[Default::default()];
+        let color_attachments = &[
+            GraphicsPipelineColorAttachmentDescription {
+                blending: Some(BlendStateDescription {
+                    source_alpha_factor: BlendFactor::One,
+                    source_rgb_factor: BlendFactor::One,
+                    destination_alpha_factor: BlendFactor::OneMinusSourceAlpha,
+                    destination_rgb_factor: BlendFactor::OneMinusSourceAlpha,
+                    rgb_blend_operation: BlendOperation::Add,
+                    alpha_blend_operation: BlendOperation::Add,
+                }),
+                ..Default::default()
+            },
+        ];
         let composite_pipeline = device.factory().make_graphics_pipeline(
             &GraphicsPipelineDescription {
                 label: Some("Composite"),
