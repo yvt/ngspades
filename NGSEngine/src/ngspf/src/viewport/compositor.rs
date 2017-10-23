@@ -114,6 +114,12 @@ pub struct CompositorWindow<B: Backend> {
     command_buffers: Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
     command_buffer_index: usize,
     temp_res_pool: TempResPool<B>,
+
+    // used as a hint to pre-allocate `Vec`s in `LocalContext`
+    num_sprites: usize,
+    num_contents: usize,
+    num_cmds: usize,
+    num_rts: usize,
 }
 
 #[derive(Debug)]
@@ -281,6 +287,11 @@ impl<B: Backend> CompositorWindow<B> {
             )?,
 
             compositor,
+
+            num_sprites: 0,
+            num_contents: 0,
+            num_cmds: 0,
+            num_rts: 0,
         })
     }
 
@@ -702,23 +713,21 @@ impl<B: Backend> CompositorWindow<B> {
         let mut c = LocalContext {
             frame,
             device,
-            sprites: Vec::new(),
-            contents: Vec::new(),
-            cmds: vec![
-                vec![
-                    Cmd::BeginPass {
-                        pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_PRESENT,
-                        rt_i: 0,
-                    },
-                ],
-            ],
-            rts: vec![
-                RenderTarget {
-                    image_view: image_view.clone(),
-                    extents: drawable_info.extents.truncate(),
-                },
-            ],
+            sprites: Vec::with_capacity(self.num_sprites * 2),
+            contents: Vec::with_capacity(self.num_contents * 2),
+            cmds: Vec::with_capacity(self.num_cmds * 2),
+            rts: Vec::with_capacity(self.num_rts * 2),
         };
+        c.cmds.push(vec![
+            Cmd::BeginPass {
+                pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_PRESENT,
+                rt_i: 0,
+            },
+        ]);
+        c.rts.push(RenderTarget {
+            image_view: image_view.clone(),
+            extents: drawable_info.extents.truncate(),
+        });
         if let &Some(ref root) = root {
             let root_matrix = Matrix4::from_translation(Vector3::new(-1.0, -1.0, 0.5)) *
                 Matrix4::from_nonuniform_scale(2.0 / dpi_width, 2.0 / dpi_height, 0.0);
@@ -732,6 +741,11 @@ impl<B: Backend> CompositorWindow<B> {
             })?;
         }
         c.cmds[0].push(Cmd::EndPassForPresentation);
+
+        self.num_sprites = c.sprites.len();
+        self.num_contents = c.contents.len();
+        self.num_cmds = c.cmds.len();
+        self.num_rts = c.rts.len();
 
         // Collect various data
         struct RtData<B: Backend> {
