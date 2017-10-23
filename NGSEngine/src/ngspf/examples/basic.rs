@@ -15,7 +15,7 @@ use cgmath::prelude::*;
 use ngspf::context::GroupRef;
 use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, ImageRef, ImageData, ImageFormat,
                       LayerContents, WindowFlagsBit, WindowRef, WindowEvent, RootRef,
-                      ImageWrapMode, LayerRef};
+                      ImageWrapMode, LayerRef, VirtualKeyCode};
 use ngspf::prelude::*;
 use ngspf::ngsbase::Box2;
 use ngspf::ngsbase::prelude::*;
@@ -101,6 +101,11 @@ fn main() {
                     match event {
                         WindowEvent::Close => {
                             exit = true;
+                        }
+                        WindowEvent::KeyboardInput(vk, pressed, _) => {
+                            if pressed && vk == VirtualKeyCode::Escape {
+                                exit = true;
+                            }
                         }
                         _ => {}
                     }

@@ -254,6 +254,12 @@ pub enum WindowEvent {
     /// The mouse cursor has moved on the window, or just left the window's
     /// client region (in which case the position is `None`).
     MouseMotion(Option<MousePosition>),
+
+    /// A key was pressed or released.
+    ///
+    /// The second parameter indicates whether the key was pressed (`true`)
+    /// or released (`false`).
+    KeyboardInput(VirtualKeyCode, bool, KeyModifierFlags),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -274,3 +280,16 @@ pub enum MouseButton {
     Middle,
     Other(u8),
 }
+
+pub use winit::VirtualKeyCode;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
+#[repr(u8)]
+pub enum KeyModifier {
+    Shift = 0b0001,
+    Control = 0b0010,
+    Alt = 0b0100,
+    Meta = 0b1000,
+}
+
+pub type KeyModifierFlags = BitFlags<KeyModifier>;

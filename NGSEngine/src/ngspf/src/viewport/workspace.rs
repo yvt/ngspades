@@ -196,7 +196,7 @@ impl WorkspaceWindowSet {
         winit_event: winit::WindowEvent,
         frame: &mut PresenterFrame,
     ) {
-        use super::{Window, WindowEvent, MouseButton, MousePosition};
+        use super::{Window, WindowEvent, MouseButton, MousePosition, KeyModifierFlags, KeyModifier};
 
         if let Some((node_ref, winit_win)) = self.node_ref_and_winit_win_with_window_id(win_id) {
             let win: &Window = node_ref.downcast_ref().unwrap();
@@ -238,6 +238,26 @@ impl WorkspaceWindowSet {
                 winit::WindowEvent::MouseLeft { .. } => {
                     *win.mouse_pos.write_presenter(frame).unwrap() = None;
                     Some(WindowEvent::MouseMotion(None))
+                }
+                winit::WindowEvent::KeyboardInput { input, .. } => {
+                    input.virtual_keycode.map(|vk| {
+                        let mut keymod = KeyModifierFlags::empty();
+                        if input.modifiers.shift {
+                            keymod |= KeyModifier::Shift;
+                        }
+                        if input.modifiers.ctrl {
+                            keymod |= KeyModifier::Control;
+                        }
+                        if input.modifiers.alt {
+                            keymod |= KeyModifier::Alt;
+                        }
+                        if input.modifiers.logo {
+                            keymod |= KeyModifier::Meta;
+                        }
+
+                        let pressed = input.state == winit::ElementState::Pressed;
+                        WindowEvent::KeyboardInput(vk, pressed, keymod)
+                    })
                 }
                 _ => None,
             };
