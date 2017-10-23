@@ -232,25 +232,35 @@ impl<'a> MTLDevice {
 
     }
 
-    pub fn new_render_pipeline_state(&self, descriptor: MTLRenderPipelineDescriptor) -> Result<MTLRenderPipelineState, ()> {
+    pub fn new_render_pipeline_state(&self, descriptor: MTLRenderPipelineDescriptor) -> Result<MTLRenderPipelineState, String> {
         unsafe {
+            let mut err = nil;
             let pipeline_state: MTLRenderPipelineState = msg_send![self.0, newRenderPipelineStateWithDescriptor:descriptor.0
-                                                                                                          error:nil];
+                                                                                                          error:&mut err];
 
             match pipeline_state.is_null() {
-                true => Err(()),
+                true => {
+                    let desc: id = msg_send![err.0, localizedDescription];
+                    let compile_error: *const libc::c_char = msg_send![desc.0, UTF8String];
+                    Err(CStr::from_ptr(compile_error).to_string_lossy().into_owned())
+                }
                 false => Ok(pipeline_state)
             }
         }
     }
 
-    pub fn new_compute_pipeline_state(&self, descriptor: MTLComputePipelineDescriptor) -> Result<MTLComputePipelineState, ()> {
+    pub fn new_compute_pipeline_state(&self, descriptor: MTLComputePipelineDescriptor) -> Result<MTLComputePipelineState, String> {
         unsafe {
+            let mut err = nil;
             let pipeline_state: MTLComputePipelineState = msg_send![self.0, newComputePipelineStateWithDescriptor:descriptor.0
-                                                                                                            error:nil];
+                                                                                                            error:&mut err];
 
             match pipeline_state.is_null() {
-                true => Err(()),
+                true => {
+                    let desc: id = msg_send![err.0, localizedDescription];
+                    let compile_error: *const libc::c_char = msg_send![desc.0, UTF8String];
+                    Err(CStr::from_ptr(compile_error).to_string_lossy().into_owned())
+                }
                 false => Ok(pipeline_state)
             }
         }
