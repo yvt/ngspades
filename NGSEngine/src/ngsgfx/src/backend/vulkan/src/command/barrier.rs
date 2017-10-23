@@ -176,7 +176,7 @@ impl<T: DeviceRef> core::BarrierCommandEncoder<Backend<T>> for CommandBuffer<T> 
             }
         }
 
-        let &mut CommandPass { buffer, .. } = self.expect_action_pass_mut();
+        let &mut CommandPass { buffer, .. } = self.expect_outside_render_pass_mut();
         let device: &AshDevice = self.data.device_ref.device();
 
         resource_barrier(

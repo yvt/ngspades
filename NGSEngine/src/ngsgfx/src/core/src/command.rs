@@ -334,7 +334,7 @@ pub trait BarrierCommandEncoder<B: Backend>
     /// Insert a resource barrier.
     ///
     /// There must be an active pass of any type.
-    /// During a render pass, there must be an active subpass.
+    /// During a render pass, there must not be an active subpass.
     ///
     /// FIXME: when is this required in place of `Fence`?
     fn resource_barrier(

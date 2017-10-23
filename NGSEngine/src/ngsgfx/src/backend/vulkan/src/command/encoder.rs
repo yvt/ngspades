@@ -123,6 +123,16 @@ impl<T: DeviceRef> CommandBuffer<T> {
         }
     }
 
+    pub(super) fn expect_outside_render_pass_mut(&mut self) -> &mut CommandPass<T> {
+        match self.data.encoder_state {
+            EncoderState::RenderEpilogue |
+            EncoderState::RenderPrologue { .. } |
+            EncoderState::Compute |
+            EncoderState::Copy => self.expect_pass_mut(),
+            _ => panic!("bad state"),
+        }
+    }
+
     pub(super) fn expect_render_subpass_inline(&self) -> &CommandPass<T> {
         match self.data.encoder_state {
             EncoderState::RenderSubpassInline { .. } => self.expect_pass(),
