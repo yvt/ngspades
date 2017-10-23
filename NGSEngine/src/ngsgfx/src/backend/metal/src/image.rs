@@ -63,18 +63,18 @@ impl Image {
         };
         metal_desc.set_texture_type(texture_type);
 
-        let mut usage = metal::MTLTextureUsageUnknown;
-        if desc.usage.contains(
+        let mut usage = metal::MTLTextureUsage::empty();
+        if desc.usage.intersects(
             core::ImageUsage::InputAttachment | core::ImageUsage::Sampled |
                 core::ImageUsage::Storage,
         )
         {
             usage |= metal::MTLTextureUsageShaderRead;
         }
-        if desc.usage.contains(core::ImageUsage::Storage) {
+        if desc.usage.intersects(core::ImageUsage::Storage) {
             usage |= metal::MTLTextureUsageShaderWrite;
         }
-        if desc.usage.contains(
+        if desc.usage.intersects(
             core::ImageUsage::ColorAttachment | core::ImageUsage::DepthStencilAttachment,
         )
         {
