@@ -321,7 +321,7 @@ impl<B: Backend> TempResPool<B> {
         let mut heap = None;
 
         // Retire frames
-        while self.frames.len() > 0 {
+        while self.frames.len() > 1 {
             use gfx::core::CommandBufferState::*;
             let state = self.frames[0].cb.borrow().state();
             match state {
