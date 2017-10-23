@@ -538,6 +538,7 @@ dependencies = [
  "ngsenumflags_derive 0.2.2",
  "ngsgfx 0.1.0",
  "prebuild-glslang 0.1.0",
+ "rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
  "rgb 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",

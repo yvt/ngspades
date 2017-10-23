@@ -20,3 +20,6 @@ rgb = "0.7.2"
 
 [build-dependencies]
 prebuild-glslang = { path = "../ngsgfx/tools/prebuild-glslang" }
+
+[dev-dependencies]
+rand = "0.3.16"

@@ -271,6 +271,10 @@ impl fmt::Debug for Group {
 pub struct GroupRef(RefEqArc<Group>);
 
 impl GroupRef {
+    pub fn empty() -> Self {
+        Self::new(::std::iter::empty())
+    }
+
     pub fn new<T: IntoIterator<Item = NodeRef>>(nodes: T) -> Self {
         GroupRef(RefEqArc::new(Group { nodes: nodes.into_iter().collect() }))
     }
