@@ -9,7 +9,7 @@ use ngsenumflags::BitFlags;
 use cgmath::Vector2;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor,
               RoPropertyAccessor, RefPropertyAccessor, WoProperty, ProducerDataCell, UpdateId,
-              ProducerFrame, PropertyError, PropertyProducerWrite};
+              ProducerFrame, PropertyError, PropertyProducerWrite, Node};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]
@@ -133,6 +133,8 @@ pub(super) struct Window {
     // only used by presenter (not exposed to the application)
     pub mouse_pos: WoProperty<Option<MousePosition>>,
 }
+
+impl Node for Window {}
 
 /// Reference to a window node.
 #[derive(Clone, PartialEq, Eq, Hash)]

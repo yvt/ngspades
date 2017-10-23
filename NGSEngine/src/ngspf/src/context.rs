@@ -157,6 +157,9 @@ struct Changelog {
     changesets: Vec<Vec<Box<Update>>>,
 }
 
+/// Marker trait for nodes.
+pub trait Node: Any + Sync + Send {}
+
 /// Reference to a node.
 #[derive(Clone)]
 pub struct NodeRef(pub RefEqArc<Any + Sync + Send>);
@@ -168,8 +171,34 @@ impl fmt::Debug for NodeRef {
 }
 
 impl NodeRef {
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    pub fn downcast_ref<T: Node>(&self) -> Option<&T> {
         Any::downcast_ref(&*self.0)
+    }
+
+    /// Iterate through non-group nodes reachable from a given root node via
+    /// zero or more group nodes.
+    pub fn for_each_node<'a, T: FnMut(&'a NodeRef)>(&'a self, cb: T) {
+        fn inner<'a, T: FnMut(&'a NodeRef)>(root: &'a NodeRef, cb: &mut T) {
+            if let Some(group) = root.downcast_ref::<Group>() {
+                for node in group.nodes.iter() {
+                    inner(node, cb)
+                }
+            } else {
+                cb(root);
+            }
+        }
+        inner(self, &mut cb);
+    }
+
+    /// Iterate through nodes of a specific concrete type reachable from a given
+    /// root node via zero or more group nodes.
+    pub fn for_each_node_of<'a, T: Node, F: FnMut(&'a T)>(&'a self, mut cb: F) {
+        self.for_each_node(
+            self,
+            |node_ref| if let Some(node) = node_ref.downcast_ref() {
+                cb(node);
+            },
+        )
     }
 }
 
@@ -194,6 +223,8 @@ struct Group {
     nodes: Vec<NodeRef>,
 }
 
+impl Node for Group {}
+
 impl fmt::Debug for Group {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Group").finish()
@@ -201,31 +232,17 @@ impl fmt::Debug for Group {
 }
 
 /// Reference to a group node, which represents an immutable set of nodes.
-#[derive(Debug, Clone)]
-pub struct GroupRef(Arc<Group>);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GroupRef(RefEqArc<Group>);
 
 impl GroupRef {
     pub fn new<T: IntoIterator<Item = NodeRef>>(nodes: T) -> Self {
-        GroupRef(Arc::new(Group { nodes: nodes.into_iter().collect() }))
+        GroupRef(RefEqArc::new(Group { nodes: nodes.into_iter().collect() }))
     }
 
     pub fn into_node_ref(self) -> NodeRef {
-        NodeRef(RefEqArc::from_arc(self.0))
+        NodeRef(self.0)
     }
-}
-
-/// Iterate through non-group nodes reachable from a given root node.
-pub fn for_each_node<'a, T: FnMut(&'a NodeRef)>(root: &'a NodeRef, mut cb: T) {
-    fn inner<'a, T: FnMut(&'a NodeRef)>(root: &'a NodeRef, cb: &mut T) {
-        if let Some(group) = Any::downcast_ref::<Group>(root) {
-            for node in group.nodes.iter() {
-                inner(node, cb)
-            }
-        } else {
-            cb(root);
-        }
-    }
-    inner(root, &mut cb);
 }
 
 /// Update ID.

@@ -17,7 +17,7 @@ use gfx::core::{Environment, InstanceBuilder};
 use gfx::prelude::*;
 
 use context::{Context, KeyedProperty, NodeRef, KeyedPropertyAccessor, PropertyAccessor,
-              for_each_node, PresenterFrame, WoProperty, UpdateId, ProducerDataCell,
+              PresenterFrame, WoProperty, UpdateId, ProducerDataCell,
               ProducerFrame, PropertyError};
 use super::{WindowFlagsBit, WorkspaceDevice, WindowActionBit};
 use super::compositor::{Compositor, CompositeContext, CompositorWindow};
@@ -276,7 +276,7 @@ impl WorkspaceWindowSet {
         // Enumerate all window nodes
         let mut nodes = HashSet::new();
         if let Some(windows) = windows {
-            for_each_node(windows, |node_ref_ref| { nodes.insert(node_ref_ref); });
+            windows.for_each_node(|node_ref_ref| { nodes.insert(node_ref_ref); });
         }
 
         // Insert new windows
@@ -310,7 +310,8 @@ impl WorkspaceWindowSet {
             ];
             let sc_desc = gfx::wsi::SwapchainDescription {
                 desired_formats: &desired_formats,
-                image_usage: ImageUsage::ColorAttachment.into(),
+                image_usage: ImageUsage::ColorAttachment | ImageUsage::Sampled |
+                    ImageUsage::TransferSource,
             };
             let mut builder = winit::WindowBuilder::new()
                 .with_transparency(flags.contains(WindowFlagsBit::Transparent))
@@ -408,6 +409,7 @@ impl<W: Window> DeviceAndWindows<W> {
             workspace_device: &self.device,
             schedule_next_frame: false,
             command_buffers: Vec::new(),
+            pixel_ratio: 1.0, // TODO
         };
         let mut drawables = Vec::new();
 

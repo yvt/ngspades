@@ -13,7 +13,7 @@ use refeq::RefEqArc;
 
 use ngsbase::Box2;
 use ngsbase::prelude::*;
-use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor};
+use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor, Node};
 use super::{ImageRef, Port};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
@@ -118,6 +118,8 @@ pub(super) struct Layer {
     pub child: KeyedProperty<Option<NodeRef>>,
     pub mask: KeyedProperty<Option<NodeRef>>,
 }
+
+impl Node for Layer {}
 
 #[derive(Debug, Clone)]
 pub enum LayerContents {

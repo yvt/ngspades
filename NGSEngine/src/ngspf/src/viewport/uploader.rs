@@ -14,7 +14,7 @@ use gfx;
 use gfx::prelude::*;
 
 use super::{ImageRef, ImageData, WorkspaceDevice, Layer, LayerContents};
-use context::{NodeRef, PresenterFrame, for_each_node};
+use context::{NodeRef, PresenterFrame};
 use prelude::*;
 
 /// Manages residency of `ImageRef` on a NgsGFX device.
@@ -180,7 +180,7 @@ impl<B: Backend> Uploader<B> {
     ///    them from `unused_image_list`.
     ///
     pub fn scan_nodes(&mut self, root: &NodeRef, frame: &PresenterFrame) {
-        for_each_node(root, |node| {
+        root.for_each_node(|node| {
             if let Some(layer) = node.downcast_ref::<Layer>() {
                 // Scan recursively
                 if let &Some(ref child) = layer.child.read_presenter(frame).unwrap() {
