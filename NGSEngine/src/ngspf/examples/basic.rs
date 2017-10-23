@@ -9,15 +9,17 @@ extern crate ngspf;
 use std::thread;
 use std::sync::{Arc, mpsc, Mutex};
 
-use cgmath::{Vector2, Point2};
+use cgmath::{Vector2, Point2, Matrix4, vec3};
 use cgmath::prelude::*;
 
+use ngspf::context::GroupRef;
 use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, ImageRef, ImageData, ImageFormat,
                       LayerContents, WindowFlagsBit, WindowRef, WindowEvent, RootRef,
-                      ImageWrapMode};
+                      ImageWrapMode, LayerRef};
 use ngspf::prelude::*;
 use ngspf::ngsbase::Box2;
 use ngspf::ngsbase::prelude::*;
+use ngspf::rgb::RGBA;
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
 
@@ -40,18 +42,35 @@ fn main() {
         }
         let image_ref = ImageRef::new_immutable(image_data);
 
-        let layer = LayerBuilder::new()
+        let image = LayerBuilder::new()
             .contents(LayerContents::Image {
                 image: image_ref,
                 source: Box2::new(Point2::origin(), Point2::new(128.0, 128.0)),
                 wrap_mode: ImageWrapMode::Repeat,
             })
             .bounds(Box2::new(Point2::origin(), Point2::new(128.0, 128.0)))
+            .transform(Matrix4::from_translation(vec3(10.0, 10.0, 0.0)))
             .build(&context);
+
+        let mut layers: Vec<_> = (1..8u8)
+            .map(|i| {
+                let c = RGBA::new((i & 1) as f32, (i >> 1 & 1) as f32, (i >> 2) as f32, 1.0);
+                let p = vec3((i - 1) as f32 * 50.0 + 10.0, 150.0, 0.0);
+                LayerBuilder::new()
+                    .contents(LayerContents::Solid(c))
+                    .bounds(Box2::new(Point2::origin(), Point2::new(32.0, 32.0)))
+                    .transform(Matrix4::from_translation(p))
+                    .build(&context)
+            })
+            .collect();
+
+        layers.push(image);
+
+        let group = GroupRef::new(layers.into_iter().map(LayerRef::into_node_ref));
 
         window = WindowBuilder::new()
             .flags(WindowFlagsBit::Resizable)
-            .child(Some(layer.clone().into_node_ref()))
+            .child(Some(group.into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop
                 let _ = tx.lock().unwrap().send(event.clone());

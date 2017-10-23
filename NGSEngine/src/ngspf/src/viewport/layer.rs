@@ -10,6 +10,7 @@ use ngsenumflags::BitFlags;
 use cgmath::{Matrix4, Point2};
 use cgmath::prelude::*;
 use refeq::RefEqArc;
+use rgb::RGBA;
 
 use ngsbase::Box2;
 use ngsbase::prelude::*;
@@ -141,6 +142,9 @@ pub enum LayerContents {
     ///
     /// The layer with this flag must have the `FlattenContents` attribute.
     BackDrop,
+
+    /// Specifies to use a solid color image.
+    Solid(RGBA<f32>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

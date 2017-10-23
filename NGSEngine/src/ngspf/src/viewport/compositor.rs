@@ -405,6 +405,19 @@ impl<B: Backend> CompositorWindow<B> {
                         (ri.image_view().clone(), sampler),
                         uv_matrix,
                         composite::SpriteFlagsBit::StraightAlpha.into(),
+                        Vector4::new(1.0, 1.0, 1.0, opacity),
+                    ))
+                }
+                &Solid(rgba) => {
+                    Some((
+                        (
+                            this.compositor.white_image_view.clone(),
+                            this.compositor.sampler_clamp.clone(),
+                        ),
+                        Matrix4::identity(),
+                        composite::SpriteFlags::empty(),
+                        Vector4::new(rgba.r, rgba.g, rgba.b, 1.0) *
+                            (opacity * rgba.a),
                     ))
                 }
                 &Port(_) => unimplemented!(),
@@ -414,11 +427,12 @@ impl<B: Backend> CompositorWindow<B> {
                         (backdrop.image_view, this.compositor.sampler_clamp.clone()),
                         backdrop.uv_matrix,
                         composite::SpriteFlags::empty(),
+                        Vector4::new(1.0, 1.0, 1.0, opacity),
                     ))
                 }
             };
 
-            if let Some((image_view, uv_matrix, flags)) = sprite_info {
+            if let Some((image_view, uv_matrix, flags, color)) = sprite_info {
                 let instance_i = c.sprites.len();
                 let contents_i = c.contents.len();
                 c.contents.push(
@@ -433,7 +447,7 @@ impl<B: Backend> CompositorWindow<B> {
                 c.sprites.push(composite::Sprite {
                     matrix: model_matrix,
                     uv_matrix,
-                    color: Vector4::new(1.0, 1.0, 1.0, opacity),
+                    color,
                     flags,
                     _pad: [0; 3],
                 });

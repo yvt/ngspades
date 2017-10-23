@@ -16,6 +16,7 @@ include_data = { path = "../ngsgfx/tools/include_data" }
 cgmath = "0.15.0"
 winit = "0.7"
 atomic_refcell = "0.1.0"
+rgb = "0.7.2"
 
 [build-dependencies]
 prebuild-glslang = { path = "../ngsgfx/tools/prebuild-glslang" }
