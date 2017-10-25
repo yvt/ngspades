@@ -851,6 +851,13 @@ name = "refeq"
 version = "0.1.0"
 
 [[package]]
+name = "retire"
+version = "0.1.0"
+dependencies = [
+ "tokenlock 0.1.4",
+]
+
+[[package]]
 name = "rgb"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
