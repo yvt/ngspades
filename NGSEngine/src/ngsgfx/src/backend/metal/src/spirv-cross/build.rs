@@ -3,11 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate gcc;
+extern crate cc;
 extern crate prebuild_glslang;
 
 fn main() {
-    gcc::Build::new()
+    cc::Build::new()
         .cpp(true)
         .flag("-std=c++11") // TODO: support MSVC!
         .file("libspirvcross/spirv_cfg.cpp")

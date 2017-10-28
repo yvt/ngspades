@@ -1,4 +1,4 @@
-extern crate gcc;
+extern crate cc;
 
 use std::env;
 
@@ -8,7 +8,7 @@ fn main() {
 
     if !has_native_dispatch {
         // TODO: check if this works on other platforms
-        gcc::Build::new()
+        cc::Build::new()
             .file("lib/libpthread_workqueue/posix/manager.c")
             .file("lib/libpthread_workqueue/posix/thread_info.c")
             .file("lib/libpthread_workqueue/posix/thread_rt.c")
@@ -17,7 +17,7 @@ fn main() {
             .include("lib/include")
             .include("lib/libpthread_workqueue")
             .compile("libxdispatch.a");
-        gcc::Build::new()
+        cc::Build::new()
             .file("lib/libkqueue/linux/platform.c")
             .file("lib/libkqueue/linux/proc.c")
             .file("lib/libkqueue/linux/read.c")
@@ -28,7 +28,7 @@ fn main() {
             .file("lib/libkqueue/linux/write.c")
             .include("lib/include")
             .compile("libkqueue.a");
-        gcc::Build::new()
+        cc::Build::new()
             .file("lib/xdispatch/src/apply.c")
             .file("lib/xdispatch/src/benchmark.c")
             .file("lib/xdispatch/src/blocks.c")

@@ -6,4 +6,4 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 
 [build-dependencies]
-gcc = "0.3"
+cc = "1.0.3"

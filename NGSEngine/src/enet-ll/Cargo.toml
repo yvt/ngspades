@@ -8,4 +8,4 @@ libc = "0.2.7"
 unsafe_unions = "0.0.2"
 
 [build-dependencies]
-gcc = "0.3"
+cc = "1.0.3"

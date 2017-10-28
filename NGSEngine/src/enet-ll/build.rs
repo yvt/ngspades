@@ -1,7 +1,7 @@
-extern crate gcc;
+extern crate cc;
 
 fn main() {
-    gcc::Build::new()
+    cc::Build::new()
         .file("libenet/callbacks.c")
         .file("libenet/compress.c")
         .file("libenet/host.c")
