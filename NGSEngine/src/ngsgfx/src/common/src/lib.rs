@@ -17,4 +17,3 @@ pub extern crate iterpool as pool;
 pub mod atom2;
 pub mod barc;
 pub mod int;
-pub mod suballoc;

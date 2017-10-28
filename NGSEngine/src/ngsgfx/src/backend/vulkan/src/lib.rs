@@ -79,6 +79,7 @@ extern crate smallvec;
 extern crate atomic_refcell;
 extern crate parking_lot;
 extern crate tokenlock;
+extern crate xalloc;
 pub extern crate ash;
 
 #[macro_use]

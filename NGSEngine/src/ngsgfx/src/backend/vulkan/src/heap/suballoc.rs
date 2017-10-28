@@ -3,13 +3,13 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngsgfx_common::suballoc::{TlsfSuballoc, TlsfSuballocRegion};
+use xalloc::{SysTlsf, SysTlsfRegion};
 
 #[derive(Debug)]
-pub struct Suballocator(TlsfSuballoc<u64>);
+pub struct Suballocator(SysTlsf<u64>);
 
 #[derive(Debug)]
-pub struct SuballocatorRegion(Option<TlsfSuballocRegion>, u64, u64);
+pub struct SuballocatorRegion(Option<SysTlsfRegion>, u64, u64);
 
 impl PartialEq for SuballocatorRegion {
     fn eq(&self, other: &Self) -> bool {
@@ -19,14 +19,12 @@ impl PartialEq for SuballocatorRegion {
 
 impl Suballocator {
     pub fn new(size: u64) -> Self {
-        Suballocator(TlsfSuballoc::new(size))
+        Suballocator(SysTlsf::new(size))
     }
     pub fn allocate(&mut self, size: u64, align: u64) -> Option<SuballocatorRegion> {
-        self.0.allocate_aligned(size, align).map(
-            |(handle, offset)| {
-                SuballocatorRegion(Some(handle), offset, size)
-            },
-        )
+        self.0.alloc_aligned(size, align).map(|(handle, offset)| {
+            SuballocatorRegion(Some(handle), offset, size)
+        })
     }
 
     /// Deallocate a region. `region` must have been allocated from the
@@ -37,7 +35,7 @@ impl Suballocator {
 
     pub fn make_aliasable(&mut self, region: &mut SuballocatorRegion) {
         if let Some(r) = region.0.take() {
-            self.0.deallocate(r);
+            self.0.dealloc(r).unwrap();
         }
     }
 }
