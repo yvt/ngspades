@@ -6,13 +6,13 @@
 use std::mem;
 use std::sync::Mutex;
 use ngscom::{BString, BStringRef, HResult, ComPtr, hresults, UnownedComPtr};
-use ngsbase::{ITestInterface, ITestInterfaceTrait, ITestInterfaceVtbl};
+use ngsbase::{ITestInterface, ITestInterfaceTrait};
 
 com_impl! {
     #[derive(Debug)]
     class TestClass {
-        itestinterface: (ITestInterface, ITestInterfaceVtbl);
-        data: TestClassData;
+        itestinterface: ITestInterface;
+        @data: TestClassData;
     }
 }
 

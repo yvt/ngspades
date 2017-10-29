@@ -11,7 +11,7 @@ extern crate ngscom;
 #[macro_use]
 extern crate lazy_static;
 
-use ngscom::{IUnknown, IUnknownTrait, ComPtr, HResult, hresults, IAny, IAnyVTable};
+use ngscom::{IUnknown, IUnknownTrait, ComPtr, HResult, hresults, IAny};
 use std::sync::Mutex;
 
 com_iid!(IID_ITESTINTERFACE =
@@ -30,9 +30,9 @@ com_interface! {
 com_impl! {
     #[derive(Debug)]
     class TestClass {
-        itestinterface: (ITestInterface, ITestInterfaceVTable),
-        iany: (IAny, IAnyVTable);
-        data: TestClassData;
+        itestinterface: ITestInterface;
+        iany: IAny;
+        @data: TestClassData;
     }
 }
 

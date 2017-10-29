@@ -315,8 +315,8 @@ namespace Ngs.Interop.CodeGen
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("com_impl! {");
             stringBuilder.AppendLine("\tclass MyClassName {");
-            stringBuilder.AppendLine($"\t\t{lowerSnakeCaseName}: ({name}, {name}Vtbl);");
-            stringBuilder.AppendLine("\t\tdata: MyClassNameData;");
+            stringBuilder.AppendLine($"\t\t{lowerSnakeCaseName}: {name};");
+            stringBuilder.AppendLine("\t\t@data: MyClassNameData;");
             stringBuilder.AppendLine("\t}");
             stringBuilder.AppendLine("}");
             stringBuilder.AppendLine();

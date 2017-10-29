@@ -9,8 +9,8 @@ use com::{INodeGroup, IWindow, ILayer, IWindowListener};
 
 com_impl! {
     class NodeGroup {
-        inode_group: (INodeGroup, ngsbase::INodeGroupVtbl);
-        data: ();
+        inode_group: INodeGroup;
+        @data: ();
     }
 }
 
@@ -28,8 +28,8 @@ impl ngsbase::INodeGroupTrait for NodeGroup {
 
 com_impl! {
     class Layer {
-        ilayer: (ILayer, ngsbase::ILayerVtbl);
-        data: ();
+        ilayer: ILayer;
+        @data: ();
     }
 }
 
@@ -59,8 +59,8 @@ impl ngsbase::ILayerTrait for Layer {
 
 com_impl! {
     class Window {
-        iwindow: (IWindow, ngsbase::IWindowVtbl);
-        data: ();
+        iwindow: IWindow;
+        @data: ();
     }
 }
 

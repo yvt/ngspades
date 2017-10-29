@@ -43,9 +43,9 @@ com_interface! {
 com_impl! {
     #[derive(Debug)]
     class TestClass {
-        itestinterface1: (ITestInterface1, ITestInterface1VTable),
-        itestinterface2: (ITestInterface2, ITestInterface2VTable);
-        data: TestClassData;
+        itestinterface1: ITestInterface1;
+        itestinterface2: ITestInterface2;
+        @data: TestClassData;
     }
 }
 

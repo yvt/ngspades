@@ -37,10 +37,10 @@ macro_rules! com_impl {
         $(#[$cls_attr:meta])*
         class $cls_type:ident {
             $(
-                $interface_ident:ident : ($interface_type:ty, $vtable_type:ty)
-            ),* ;
+                $interface_ident:ident : $interface_type:ty;
+            )*
             $(#[$data_attr:meta])*
-            data: $data:ty;
+            @data: $data:ty;
         }
     ) => (
         $(#[$cls_attr])*
@@ -58,7 +58,7 @@ macro_rules! com_impl {
                     $(
                         $interface_ident: <$interface_type>::from_vtable({
                             com_vtable!(
-                                VTABLE, $vtable_type, $interface_type, $cls_type,
+                                VTABLE, <$interface_type as $crate::ComInterface>::Vtable, $interface_type, $cls_type,
                                 {
                                     // offset from `$interface_ident` to `Self`
                                     let p: *const $cls_type = ::std::ptr::null();
@@ -69,7 +69,7 @@ macro_rules! com_impl {
                             );
 
                             &*VTABLE
-                        } as *const $vtable_type),
+                        } as *const _),
                     )*
                     ref_count: $crate::detail::AtomicIsize::new(1),
                     data: x,

@@ -19,8 +19,8 @@ pub fn get_entry() -> &'static ComPtr<IPresentationFramework> {
 
 com_impl! {
     class Entry {
-        ipresentation_framework: (IPresentationFramework, ngsbase::IPresentationFrameworkVtbl);
-        data: ();
+        ipresentation_framework: IPresentationFramework;
+        @data: ();
     }
 }
 
