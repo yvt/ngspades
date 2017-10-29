@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\NGSInterop\NGSInterop.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Numerics.Vectors" Version="4.4.0" />
   </ItemGroup>
 </Project>
