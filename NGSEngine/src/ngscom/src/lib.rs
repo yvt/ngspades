@@ -87,6 +87,7 @@ use std::fmt;
 pub use comptr::{AsComPtr, ComInterface, ComPtr};
 pub use unownedcomptr::UnownedComPtr;
 pub use iunknown::{IUnknown, IUnknownTrait};
+pub use iany::{IAny, IAnyTrait, IAnyVTable};
 
 /// An interface identifier.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -153,6 +154,7 @@ mod ifacemacros;
 mod comptr;
 mod iunknown;
 mod unownedcomptr;
+mod iany;
 
 // Utility functions for macros
 #[doc(hidden)]

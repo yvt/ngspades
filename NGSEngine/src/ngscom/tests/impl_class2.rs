@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Tests an interface with a two-level inheritance hierarchy
 
 #[macro_use]
 extern crate ngscom;
