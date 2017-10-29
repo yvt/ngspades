@@ -20,7 +20,7 @@ pub fn get_entry() -> &'static ComPtr<IPresentationFramework> {
 com_impl! {
     class Entry {
         com_private: EntryPrivate;
-        ipresentation_framework: (IPresentationFramework, ngsbase::IPresentationFrameworkVtbl, ENTRY_VTBL);
+        ipresentation_framework: (IPresentationFramework, ngsbase::IPresentationFrameworkVtbl);
     }
 }
 

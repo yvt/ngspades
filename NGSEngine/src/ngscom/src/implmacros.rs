@@ -14,6 +14,7 @@
  */
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! com_vtable {
     ( $vtable:ident, $vtable_type: ty, $interface_type:ty, $obj_type:ty ) => (
         lazy_static! {
@@ -30,16 +31,11 @@ macro_rules! com_impl {
         class $obj_type:ident {
             com_private: $private_type:ident;
             $(
-                $interface_ident:ident : ($interface_type:ty, $vtable_type:ty, $vtable:ident)
+                $interface_ident:ident : ($interface_type:ty, $vtable_type:ty)
             ),* ;
             $($rest:tt)*
         }
     ) => (
-        $(
-            // TODO: support non-zero offset for thunk functions
-            // (currently, we cannot have more than one base interface)
-            com_vtable!($vtable, $vtable_type, $interface_type, $obj_type);
-        )*
         #[derive(Debug)]
         #[doc(hidden)]
         struct $private_type {
@@ -63,12 +59,18 @@ macro_rules! com_impl {
             fn new_private() -> $private_type {
                 $private_type {
                     $(
-                    $interface_ident: <$interface_type>::from_vtable(&*$vtable as *const $vtable_type),
+                        $interface_ident: <$interface_type>::from_vtable({
+                            // TODO: support non-zero offset for thunk functions
+                            // (currently, we cannot have more than one base interface)
+                            com_vtable!(VTABLE, $vtable_type, $interface_type, $obj_type);
+                            &*VTABLE
+                        } as *const $vtable_type),
                     )*
                     ref_count: $crate::detail::AtomicIsize::new(1)
                 }
             }
         }
+
         // It's safe to implement Sync/Send because the contents of vtable
         // doesn't actually change
         unsafe impl ::std::marker::Sync for $private_type {}
@@ -78,6 +80,7 @@ macro_rules! com_impl {
                 $obj_type::new_private()
             }
         }
+
         impl $crate::IUnknownTrait for $obj_type {
             fn query_interface(&self, iid: &$crate::IID, object: *mut *mut ::std::os::raw::c_void) -> $crate::HResult {
                 $(

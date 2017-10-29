@@ -21,7 +21,6 @@ com_interface! {
     interface (ITestInterface, ITestInterfaceTrait): (IUnknown, IUnknownTrait) {
         iid: IID_ITESTINTERFACE,
         vtable: ITestInterfaceVTable,
-        thunk: ITestInterfaceThunk,
 
         fn get_hoge_attr(retval: &mut ComPtr<ITestInterface>) -> HResult;
         fn set_hoge_attr(value: UnownedComPtr<ITestInterface>) -> HResult;
@@ -32,7 +31,7 @@ com_impl! {
     #[derive(Debug)]
     class TestClass {
         com_private: TestClassPrivate;
-        itestinterface: (ITestInterface, ITestInterfaceVTable, TESTCLASS_VTABLE);
+        itestinterface: (ITestInterface, ITestInterfaceVTable);
         test_field: Mutex<ComPtr<ITestInterface>>,
         state: Arc<Mutex<bool>>,
     }

@@ -12,7 +12,7 @@ com_impl! {
     #[derive(Debug)]
     class TestClass {
         com_private: TestClassPrivate;
-        itestinterface: (ITestInterface, ITestInterfaceVtbl, TESTCLASS_VTABLE);
+        itestinterface: (ITestInterface, ITestInterfaceVtbl);
         stored_str: Mutex<String>,
     }
 }

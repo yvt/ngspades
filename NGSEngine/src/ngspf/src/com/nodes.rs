@@ -10,7 +10,7 @@ use com::{INodeGroup, IWindow, ILayer, IWindowListener};
 com_impl! {
     class NodeGroup {
         com_private: NodeGroupPrivate;
-        inode_group: (INodeGroup, ngsbase::INodeGroupVtbl, NODE_GROUP_VTBL);
+        inode_group: (INodeGroup, ngsbase::INodeGroupVtbl);
         // add custom fields here
     }
 }
@@ -32,7 +32,7 @@ impl ngsbase::INodeGroupTrait for NodeGroup {
 com_impl! {
     class Layer {
         com_private: LayerPrivate;
-        ilayer: (ILayer, ngsbase::ILayerVtbl, LAYER_VTBL);
+        ilayer: (ILayer, ngsbase::ILayerVtbl);
         // add custom fields here
     }
 }
@@ -64,7 +64,7 @@ impl ngsbase::ILayerTrait for Layer {
 com_impl! {
     class Window {
         com_private: WindowPrivate;
-        iwindow: (IWindow, ngsbase::IWindowVtbl, WINDOW_VTBL);
+        iwindow: (IWindow, ngsbase::IWindowVtbl);
         // add custom fields here
     }
 }

@@ -21,7 +21,6 @@ com_interface! {
     interface (ITestInterface1, ITestInterface1Trait): (IUnknown, IUnknownTrait) {
         iid: IID_ITESTINTERFACE1,
         vtable: ITestInterface1VTable,
-        thunk: ITestInterface1Thunk,
 
         fn get_hoge_attr1() -> i32;
         fn set_hoge_attr1(value: i32) -> ();
@@ -35,7 +34,6 @@ com_interface! {
     interface (ITestInterface2, ITestInterface2Trait): (ITestInterface1, ITestInterface1Trait), IUnknown {
         iid: IID_ITESTINTERFACE2,
         vtable: ITestInterface2VTable,
-        thunk: ITestInterface2Thunk,
 
         fn get_hoge_attr2() -> i32;
         fn set_hoge_attr2(value: i32) -> ();
@@ -46,7 +44,7 @@ com_impl! {
     #[derive(Debug)]
     class TestClass {
         com_private: TestClassPrivate;
-        itestinterface2: (ITestInterface2, ITestInterface2VTable, TESTCLASS_VTABLE);
+        itestinterface2: (ITestInterface2, ITestInterface2VTable);
         test_field1: Mutex<i32>,
         test_field2: Mutex<i32>,
     }

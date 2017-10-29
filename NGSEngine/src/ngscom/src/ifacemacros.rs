@@ -30,7 +30,6 @@
 ///     interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
 ///         iid: IID_IFOO,
 ///         vtable: IFooVtbl,
-///         thunk: IFooThunk,
 ///
 ///         fn foo() -> bool;
 ///     }
@@ -61,7 +60,6 @@
 /// #    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
 /// #        iid: IID_IFOO,
 /// #        vtable: IFooVtbl,
-/// #        thunk: IFooThunk,
 /// #
 /// #        fn foo() -> bool;
 /// #    }
@@ -72,7 +70,6 @@
 ///     interface (IBar, IBarTrait): (IFoo, IFooTrait), IUnknown {
 ///         iid: IID_IBAR,
 ///         vtable: IBarVtbl,
-///         thunk: IBarThunk,
 ///
 ///         fn bar(baz: i32) -> ();
 ///     }
@@ -94,7 +91,6 @@ macro_rules! com_interface {
         interface ($iface:ident, $trait_ident:ident): ($base_iface:ty, $base_trait:path) {
             iid: $iid:ident,
             vtable: $vtable:ident,
-            thunk: $thunk:ident,
             $(
                 $(#[$fn_attr:meta])*
                 fn $func:ident($($i:ident: $t:ty),*) -> $rt:ty;
@@ -116,14 +112,6 @@ macro_rules! com_interface {
             vtable: *const $vtable
         }
 
-        struct $thunk();
-
-        impl $thunk {
-            $(extern "C" fn $func<T: $trait_ident, S: $crate::StaticOffset>(this: *mut $iface $(, $i: $t)*) -> $rt {
-                unsafe { T::$func($crate::detail::resolve_parent_object::<S, $iface, T>(this), $($i),*) }
-            })*
-        }
-
         impl $iface {
             $($(#[$fn_attr])*
             pub fn $func(&self $(, $i: $t)*) -> $rt {
@@ -137,10 +125,22 @@ macro_rules! com_interface {
 
             #[doc(hidden)]
             pub fn fill_vtable<T, S>() -> $vtable
-                where T: $trait_ident, S: $crate::StaticOffset {
+            where
+                T: $trait_ident,
+                S: $crate::StaticOffset,
+            {
+
+                struct Thunks;
+
+                impl Thunks {
+                    $(extern "C" fn $func<T: $trait_ident, S: $crate::StaticOffset>(this: *mut $iface $(, $i: $t)*) -> $rt {
+                        unsafe { T::$func($crate::detail::resolve_parent_object::<S, $iface, T>(this), $($i),*) }
+                    })*
+                }
+
                 $vtable {
                     base: <$base_iface>::fill_vtable::<T, S>(),
-                    $($func: $thunk::$func::<T, S>,)*
+                    $($func: Thunks::$func::<T, S>,)*
                 }
             }
 
@@ -183,7 +183,6 @@ macro_rules! com_interface {
         interface ($iface:ident, $trait_ident:ident): ($base_iface:ty, $base_trait:path), $($extra_base:ty),+ {
             iid: $iid:ident,
             vtable: $vtable:ident,
-            thunk: $thunk:ident,
             $(
                 $(#[$fn_attr:meta])*
                 fn $func:ident($($i:ident: $t:ty),*) -> $rt:ty;
@@ -195,7 +194,6 @@ macro_rules! com_interface {
             interface ($iface, $trait_ident): ($base_iface, $base_trait) {
                 iid: $iid,
                 vtable: $vtable,
-                thunk: $thunk,
                 $($(#[$fn_attr])* fn $func($($i: $t),*) -> $rt;)*
             }
         }

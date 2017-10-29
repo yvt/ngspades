@@ -294,7 +294,6 @@ namespace Ngs.Interop.CodeGen
             stringBuilder.AppendLine($"\tinterface ({name}, {name}Trait): {string.Join(", ", baseDeclarations)} {{");
             stringBuilder.AppendLine($"\t\tiid: {iidIdt},");
             stringBuilder.AppendLine($"\t\tvtable: {name}Vtbl,");
-            stringBuilder.AppendLine($"\t\tthunk: {name}Thunk,");
             stringBuilder.AppendLine();
 
             var methods = info.ComMethodInfos
@@ -317,7 +316,7 @@ namespace Ngs.Interop.CodeGen
             stringBuilder.AppendLine("com_impl! {");
             stringBuilder.AppendLine("\tclass MyClassName {");
             stringBuilder.AppendLine("\t\tcom_private: MyClassNamePrivate;");
-            stringBuilder.AppendLine($"\t\t{lowerSnakeCaseName}: ({name}, {name}Vtbl, MY_CLASS_NAME_VTBL);");
+            stringBuilder.AppendLine($"\t\t{lowerSnakeCaseName}: ({name}, {name}Vtbl);");
             stringBuilder.AppendLine("\t\t// add custom fields here");
             stringBuilder.AppendLine("\t}");
             stringBuilder.AppendLine("}");
