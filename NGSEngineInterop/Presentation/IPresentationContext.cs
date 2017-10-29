@@ -4,11 +4,11 @@ using Ngs.Interop;
 
 namespace Ngs.Engine.Presentation
 {
-	[Guid("a1bada5d-c290-49b2-9807-6adb46fe545b")]
-	public interface IPresentationFramework : IUnknown
-	{
+    [Guid("c2a47959-0d5d-46b4-ba83-68c9b69bee56")]
+    public interface IPresentationContext : IUnknown
+    {
         INodeGroup CreateNodeGroup();
         IWindow CreateWindow();
         ILayer CreateLayer();
-	}
+    }
 }
