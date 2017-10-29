@@ -315,9 +315,8 @@ namespace Ngs.Interop.CodeGen
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("com_impl! {");
             stringBuilder.AppendLine("\tclass MyClassName {");
-            stringBuilder.AppendLine("\t\tcom_private: MyClassNamePrivate;");
             stringBuilder.AppendLine($"\t\t{lowerSnakeCaseName}: ({name}, {name}Vtbl);");
-            stringBuilder.AppendLine("\t\t// add custom fields here");
+            stringBuilder.AppendLine("\t\tdata: MyClassNameData;");
             stringBuilder.AppendLine("\t}");
             stringBuilder.AppendLine("}");
             stringBuilder.AppendLine();

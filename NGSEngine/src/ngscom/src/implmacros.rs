@@ -16,10 +16,10 @@
 #[macro_export]
 #[doc(hidden)]
 macro_rules! com_vtable {
-    ( $vtable:ident, $vtable_type: ty, $interface_type:ty, $obj_type:ty ) => (
+    ( $vtable:ident, $vtable_type: ty, $interface_type:ty, $cls_type:ty ) => (
         lazy_static! {
             static ref $vtable: $vtable_type =
-                <$interface_type>::fill_vtable::<$obj_type, $crate::StaticZeroOffset>();
+                <$interface_type>::fill_vtable::<$cls_type, $crate::StaticZeroOffset>();
         }
     )
 }
@@ -27,67 +27,51 @@ macro_rules! com_vtable {
 #[macro_export]
 macro_rules! com_impl {
     (
-        $(#[$iface_attr:meta])*
-        class $obj_type:ident {
-            com_private: $private_type:ident;
+        $(#[$cls_attr:meta])*
+        class $cls_type:ident {
             $(
                 $interface_ident:ident : ($interface_type:ty, $vtable_type:ty)
             ),* ;
-            $($rest:tt)*
+            $(#[$data_attr:meta])*
+            data: $data:ty;
         }
     ) => (
-        #[derive(Debug)]
-        #[doc(hidden)]
-        struct $private_type {
+        $(#[$cls_attr])*
+        pub struct $cls_type {
+            _com_class_header: $crate::detail::ComClassHeader,
             $( $interface_ident: $interface_type, )*
             ref_count: $crate::detail::AtomicIsize,
+            $(#[$data_attr])*
+            data: $data,
         }
-        $(#[$iface_attr])*
-        pub struct $obj_type {
-            com_private: $private_type,
-            $($rest)*
-        }
-        impl $obj_type {
-            fn alloc(x: $obj_type) -> ($crate::ComPtr<$crate::IUnknown>, *mut Self) {
-                let ptr = $crate::detail::new_obj_raw(x);
-                let mut comptr: $crate::ComPtr<$crate::IUnknown> = ComPtr::new();
-                (*comptr.as_mut_ptr()) = ptr as *mut $crate::IUnknown;
-                ( comptr, ptr )
-            }
-
-            #[doc(hidden)]
-            fn new_private() -> $private_type {
-                $private_type {
+        impl $cls_type {
+            fn alloc(x: $data) -> $crate::ComPtr<$crate::IUnknown> {
+                let ptr = $crate::detail::new_obj_raw(Self {
+                    _com_class_header: unsafe { $crate::detail::ComClassHeader::new() },
                     $(
                         $interface_ident: <$interface_type>::from_vtable({
                             // TODO: support non-zero offset for thunk functions
                             // (currently, we cannot have more than one base interface)
-                            com_vtable!(VTABLE, $vtable_type, $interface_type, $obj_type);
+                            com_vtable!(VTABLE, $vtable_type, $interface_type, $cls_type);
                             &*VTABLE
                         } as *const $vtable_type),
                     )*
-                    ref_count: $crate::detail::AtomicIsize::new(1)
-                }
+                    ref_count: $crate::detail::AtomicIsize::new(1),
+                    data: x,
+                });
+                let mut comptr: $crate::ComPtr<$crate::IUnknown> = ComPtr::new();
+                (*comptr.as_mut_ptr()) = ptr as *mut $crate::IUnknown;
+                comptr
             }
         }
 
-        // It's safe to implement Sync/Send because the contents of vtable
-        // doesn't actually change
-        unsafe impl ::std::marker::Sync for $private_type {}
-        unsafe impl ::std::marker::Send for $private_type {}
-        impl ::std::default::Default for $private_type {
-            fn default() -> Self {
-                $obj_type::new_private()
-            }
-        }
-
-        impl $crate::IUnknownTrait for $obj_type {
+        impl $crate::IUnknownTrait for $cls_type {
             fn query_interface(&self, iid: &$crate::IID, object: *mut *mut ::std::os::raw::c_void) -> $crate::HResult {
                 $(
                     if <$interface_type>::scan_iid(iid) {
                         unsafe {
                             $crate::IUnknownTrait::add_ref(self);
-                            *object = &self.com_private.$interface_ident
+                            *object = &self.$interface_ident
                                 as *const $interface_type as *mut $interface_type
                                 as *mut ::std::os::raw::c_void;
                         }
@@ -98,7 +82,7 @@ macro_rules! com_impl {
                 }
             }
             fn add_ref(&self) -> u32 {
-                let orig_ref_count = self.com_private.ref_count.fetch_add(1, $crate::detail::Ordering::Relaxed);
+                let orig_ref_count = self.ref_count.fetch_add(1, $crate::detail::Ordering::Relaxed);
                 if orig_ref_count == ::std::isize::MAX {
                     // FIXME: poison the object?
                     panic!("ref count overflowed");
@@ -106,7 +90,7 @@ macro_rules! com_impl {
                 (orig_ref_count + 1) as u32
             }
             unsafe fn release(&self) -> u32 {
-                let orig_ref_count = self.com_private.ref_count.fetch_sub(1, $crate::detail::Ordering::Release);
+                let orig_ref_count = self.ref_count.fetch_sub(1, $crate::detail::Ordering::Release);
                 assert!(orig_ref_count > 0);
                 if orig_ref_count == 1 {
                     $crate::detail::fence($crate::detail::Ordering::Acquire);

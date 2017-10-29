@@ -11,16 +11,20 @@ use ngsbase::{ITestInterface, ITestInterfaceTrait, ITestInterfaceVtbl};
 com_impl! {
     #[derive(Debug)]
     class TestClass {
-        com_private: TestClassPrivate;
         itestinterface: (ITestInterface, ITestInterfaceVtbl);
-        stored_str: Mutex<String>,
+        data: TestClassData;
     }
+}
+
+#[derive(Debug)]
+struct TestClassData {
+    stored_str: Mutex<String>,
 }
 
 impl ITestInterfaceTrait for TestClass {
     fn get_hoge_attr(&self, retval: &mut BStringRef) -> HResult {
         *retval = {
-            let lock = self.stored_str.lock().unwrap();
+            let lock = self.data.stored_str.lock().unwrap();
             BStringRef::new(&format!("Stored str = {:?}", &*lock))
         };
         hresults::E_OK
@@ -28,7 +32,7 @@ impl ITestInterfaceTrait for TestClass {
     fn set_hoge_attr(&self, value: Option<&BString>) -> HResult {
         println!("SetHogeAttr: I'm receiving this: {:?}", value.unwrap());
         if let Some(value) = value {
-            *self.stored_str.lock().unwrap() = value.as_str().to_owned();
+            *self.data.stored_str.lock().unwrap() = value.as_str().to_owned();
         }
         hresults::E_OK
     }
@@ -69,12 +73,9 @@ impl ITestInterfaceTrait for TestClass {
 
 impl TestClass {
     fn new() -> ComPtr<ITestInterface> {
-        ComPtr::from(
-            &TestClass::alloc(TestClass {
-                com_private: Self::new_private(),
-                stored_str: Mutex::new("stored_str is not set yet!".to_owned()),
-            }).0,
-        )
+        ComPtr::from(&Self::alloc(TestClassData {
+            stored_str: Mutex::new("stored_str is not set yet!".to_owned()),
+        }))
     }
 }
 

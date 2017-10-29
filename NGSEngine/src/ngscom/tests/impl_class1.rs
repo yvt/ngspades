@@ -12,7 +12,6 @@ extern crate lazy_static;
 
 use ngscom::{IUnknown, IUnknownTrait, ComPtr};
 use std::sync::Mutex;
-use std::default::Default;
 
 com_iid!(IID_ITESTINTERFACE =
     [0x35edff15, 0x0b38, 0x47d8, [0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d]]);
@@ -30,29 +29,32 @@ com_interface! {
 com_impl! {
     #[derive(Debug)]
     class TestClass {
-        com_private: TestClassPrivate;
         itestinterface: (ITestInterface, ITestInterfaceVTable);
-        test_field: Mutex<i32>
+        data: TestClassData;
     }
+}
+
+#[derive(Debug)]
+struct TestClassData {
+    test_field: Mutex<i32>,
 }
 
 impl ITestInterfaceTrait for TestClass {
     fn get_hoge_attr(&self) -> i32 {
-        let field = self.test_field.lock().unwrap();
+        let field = self.data.test_field.lock().unwrap();
         *field
     }
     fn set_hoge_attr(&self, value: i32) {
-        let mut field = self.test_field.lock().unwrap();
+        let mut field = self.data.test_field.lock().unwrap();
         *field = value;
     }
 }
 
 impl TestClass {
     fn new(num: i32) -> ComPtr<ITestInterface> {
-        ComPtr::from(&TestClass::alloc(TestClass{
-            com_private: Default::default(),
+        ComPtr::from(&Self::alloc(TestClassData{
             test_field: Mutex::new(num),
-        }).0)
+        }))
     }
 }
 

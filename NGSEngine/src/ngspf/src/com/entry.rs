@@ -19,14 +19,14 @@ pub fn get_entry() -> &'static ComPtr<IPresentationFramework> {
 
 com_impl! {
     class Entry {
-        com_private: EntryPrivate;
         ipresentation_framework: (IPresentationFramework, ngsbase::IPresentationFrameworkVtbl);
+        data: ();
     }
 }
 
 impl Entry {
     fn new() -> ComPtr<IPresentationFramework> {
-        ComPtr::from(&Entry::alloc(Entry { com_private: Self::new_private() }).0)
+        ComPtr::from(&Self::alloc(()))
     }
 }
 

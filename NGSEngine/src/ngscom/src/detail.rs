@@ -32,5 +32,20 @@ where
     mem::transmute(addr + TOffset::offset())
 }
 
+/// Zero-sized type used to prohibit the on-stack construction of COM class header data.
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct ComClassHeader(());
+
+impl ComClassHeader {
+    pub unsafe fn new() -> Self {
+        ComClassHeader(())
+    }
+}
+
 #[doc(hidden)]
 pub use std::sync::atomic::{AtomicIsize, Ordering, fence};
+
+/// Enforces `Send` and `Sync` on class data.
+#[doc(hidden)]
+pub trait SyncAndSend: Sync + Send {}

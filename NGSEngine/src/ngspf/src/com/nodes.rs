@@ -9,17 +9,14 @@ use com::{INodeGroup, IWindow, ILayer, IWindowListener};
 
 com_impl! {
     class NodeGroup {
-        com_private: NodeGroupPrivate;
         inode_group: (INodeGroup, ngsbase::INodeGroupVtbl);
-        // add custom fields here
+        data: ();
     }
 }
 
 impl NodeGroup {
     pub fn new() -> ComPtr<INodeGroup> {
-        ComPtr::from(
-            &NodeGroup::alloc(NodeGroup { com_private: Self::new_private() }).0,
-        )
+        ComPtr::from(&NodeGroup::alloc(()))
     }
 }
 
@@ -31,15 +28,14 @@ impl ngsbase::INodeGroupTrait for NodeGroup {
 
 com_impl! {
     class Layer {
-        com_private: LayerPrivate;
         ilayer: (ILayer, ngsbase::ILayerVtbl);
-        // add custom fields here
+        data: ();
     }
 }
 
 impl Layer {
     pub fn new() -> ComPtr<ILayer> {
-        ComPtr::from(&Layer::alloc(Layer { com_private: Self::new_private() }).0)
+        ComPtr::from(&Layer::alloc(()))
     }
 }
 
@@ -63,17 +59,14 @@ impl ngsbase::ILayerTrait for Layer {
 
 com_impl! {
     class Window {
-        com_private: WindowPrivate;
         iwindow: (IWindow, ngsbase::IWindowVtbl);
-        // add custom fields here
+        data: ();
     }
 }
 
 impl Window {
     pub fn new() -> ComPtr<IWindow> {
-        ComPtr::from(
-            &Window::alloc(Window { com_private: Self::new_private() }).0,
-        )
+        ComPtr::from(&Window::alloc(()))
     }
 }
 

@@ -112,6 +112,11 @@ macro_rules! com_interface {
             vtable: *const $vtable
         }
 
+        // It's safe to implement Sync/Send because the contents of vtable
+        // doesn't actually change
+        unsafe impl ::std::marker::Sync for $iface {}
+        unsafe impl ::std::marker::Send for $iface {}
+
         impl $iface {
             $($(#[$fn_attr])*
             pub fn $func(&self $(, $i: $t)*) -> $rt {
@@ -155,7 +160,7 @@ macro_rules! com_interface {
         }
 
         pub trait $trait_ident: $base_trait {
-            $(fn $func(&self, $($i: $t),*) -> $rt where Self: Sized;)*
+            $(fn $func(&self, $($i: $t),*) -> $rt;)*
         }
 
         impl ::std::ops::Deref for $iface {
