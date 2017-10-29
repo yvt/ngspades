@@ -22,5 +22,9 @@ namespace Ngs.Interop.CodeGen
         };
 
         public string NgscomCratePath { get; set; } = "::ngscom";
+
+        public string EnumFlagsDeriveName { get; set; } = "NgsEnumFlags";
+
+        public string EnumFlagsCratePath { get; set; } = "::ngsenumflags";
     }
 }

@@ -12,6 +12,9 @@
 #[macro_use] extern crate ngscom;
 extern crate cgmath;
 extern crate num_traits;
+extern crate ngsenumflags;
+#[macro_use]
+extern crate ngsenumflags_derive;
 
 mod interop;
 mod geom;

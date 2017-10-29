@@ -371,9 +371,17 @@ namespace Ngs.Interop.CodeGen
         void GenerateEnum(Type type)
         {
             var ut = structUnderlyingTypeMap[Enum.GetUnderlyingType(type)];
+            bool isFlags = type.GetCustomAttribute(typeof(FlagsAttribute)) != null;
             stringBuilder.AppendLine($"#[repr({ut})]");
-            stringBuilder.AppendLine("#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]");
-            stringBuilder.AppendLine($"pub enum {type.Name} {{");
+            if (isFlags)
+            {
+                stringBuilder.AppendLine($"#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, {options.EnumFlagsDeriveName})]");
+            }
+            else
+            {
+                stringBuilder.AppendLine("#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]");
+            }
+            stringBuilder.AppendLine($"pub enum {type.Name}Item {{");
             foreach (object field in Enum.GetValues(type))
             {
                 var name = Enum.GetName(type, field);
@@ -382,6 +390,40 @@ namespace Ngs.Interop.CodeGen
             }
             stringBuilder.AppendLine("}");
             stringBuilder.AppendLine();
+
+            if (isFlags)
+            {
+                // TODO: Maybe remove the bit validity guarantee from ngsenumflags::BitFlags?
+                stringBuilder.AppendLine($"pub type {type.Name} = {options.EnumFlagsCratePath}::BitFlags<{type.Name}Item>;");
+                stringBuilder.AppendLine();
+            }
+            else
+            {
+                stringBuilder.AppendLine("#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]");
+                stringBuilder.AppendLine($"pub struct {type.Name}(pub {ut});");
+                stringBuilder.AppendLine($"impl {type.Name} {{");
+                stringBuilder.AppendLine($"\t/// Return a value of `{type.Name}Item` if it contains a valid value of `{type.Name}Item`,");
+                stringBuilder.AppendLine($"\t/// or `None` otherwise.");
+                stringBuilder.AppendLine($"\tpub fn get(&self) -> Option<{type.Name}Item> {{");
+                foreach (object field in Enum.GetValues(type))
+                {
+                    var name = Enum.GetName(type, field);
+                    var value = Convert.ToInt32(field);
+                    stringBuilder.AppendLine($"\t\tif self.0 = {value} {{");
+                    stringBuilder.AppendLine($"\t\t\treturn Some({type.Name}Item::{name});");
+                    stringBuilder.AppendLine("\t\t}");
+                }
+                stringBuilder.AppendLine("\t\tNone");
+                stringBuilder.AppendLine("\t}");
+                stringBuilder.AppendLine("}");
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine($"impl From<{type.Name}Item> for {type.Name} {{");
+                stringBuilder.AppendLine($"\tfn from(x: {type.Name}Item) -> Self {{");
+                stringBuilder.AppendLine($"\t\t{type.Name}(x as {ut})");
+                stringBuilder.AppendLine("\t}");
+                stringBuilder.AppendLine("}");
+                stringBuilder.AppendLine();
+            }
         }
 
         bool NativeTypeNeedsLifeTimeParameter(Type type, bool isByRefParam)
