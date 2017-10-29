@@ -1,4 +1,9 @@
-﻿using System.Numerics;
+﻿//
+// Copyright 2017 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace Ngs.Utils
