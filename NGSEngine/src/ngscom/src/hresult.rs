@@ -9,7 +9,7 @@ use std::convert::Into;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[must_use]
-pub struct HResult(i32);
+pub struct HResult(pub i32);
 
 impl HResult {
     pub fn new(code: i32) -> Self {
