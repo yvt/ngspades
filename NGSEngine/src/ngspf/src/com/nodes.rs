@@ -308,9 +308,34 @@ impl ComWindow {
 }
 
 impl ngsbase::IWindowTrait for ComWindow {
-    fn set_flags(&self, _value: ngsbase::WindowFlags) -> HResult {
-        // TODO: [Flags] are not supported by NGSInterop yet
-        hresults::E_NOTIMPL
+    fn set_flags(&self, flags: ngsbase::WindowFlags) -> HResult {
+        let mut value = viewport::WindowFlags::empty();
+        if flags.contains(ngsbase::WindowFlagsItem::Resizable) {
+            value |= viewport::WindowFlagsBit::Resizable;
+        }
+        if flags.contains(ngsbase::WindowFlagsItem::Borderless) {
+            value |= viewport::WindowFlagsBit::Borderless;
+        }
+        if flags.contains(ngsbase::WindowFlagsItem::Transparent) {
+            value |= viewport::WindowFlagsBit::Transparent;
+        }
+        if flags.contains(ngsbase::WindowFlagsItem::DenyUserClose) {
+            value |= viewport::WindowFlagsBit::DenyUserClose;
+        }
+
+        let ref context: context::Context = *self.data.0;
+        self.data
+            .1
+            .with_mut(|s| match s {
+                NodeDataState::Partial(builder) => {
+                    let b: viewport::WindowBuilder = builder.take().unwrap();
+                    *builder = Some(b.flags(value));
+                    Ok(())
+                }
+                NodeDataState::Materialized(window) => Err(E_PF_NODE_MATERIALIZED),
+            })
+            .err()
+            .unwrap_or(hresults::E_OK)
     }
 
     fn set_size(&self, value: cgmath::Vector2<f32>) -> HResult {
@@ -428,11 +453,23 @@ impl ngsbase::IWindowTrait for ComWindow {
                     }
                     &MouseMotion(None) => listener.mouse_leave(),
                     &KeyboardInput(vkc, pressed, modifiers) => {
-                        // TODO: [Flags] are not supported by NGSInterop yet
+                        let mut flags = ngsbase::KeyModifierFlags::empty();
+                        if modifiers.contains(viewport::KeyModifier::Shift) {
+                            flags |= ngsbase::KeyModifierFlagsItem::Shift;
+                        }
+                        if modifiers.contains(viewport::KeyModifier::Control) {
+                            flags |= ngsbase::KeyModifierFlagsItem::Control;
+                        }
+                        if modifiers.contains(viewport::KeyModifier::Alt) {
+                            flags |= ngsbase::KeyModifierFlagsItem::Alt;
+                        }
+                        if modifiers.contains(viewport::KeyModifier::Meta) {
+                            flags |= ngsbase::KeyModifierFlagsItem::Meta;
+                        }
                         listener.keyboard_input(
                             Some(&*BStringRef::new(&format!("{:?}", vkc))),
                             pressed,
-                            ngsbase::KeyModifierFlags::Shift,
+                            flags,
                         )
                     }
                 };
