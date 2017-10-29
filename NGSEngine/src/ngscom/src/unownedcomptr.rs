@@ -26,6 +26,10 @@ impl<'a, T: ComInterface + 'a> UnownedComPtr<'a, T> {
         }
     }
 
+    pub fn to_owned(&self) -> ComPtr<T> {
+        ComPtr::clone(&self.comptr)
+    }
+
     pub fn from_ref(x: &'a T) -> Self
     where
         T: AsComPtr<T>,
@@ -65,3 +69,11 @@ impl<'a, T: ComInterface + 'a> AsRef<ComPtr<T>> for UnownedComPtr<'a, T> {
     }
 }
 
+impl<'a, T: ComInterface + 'a> From<&'a ComPtr<T>> for UnownedComPtr<'a, T>
+where
+    T: AsComPtr<T>,
+{
+    fn from(x: &'a ComPtr<T>) -> Self {
+        Self::from_comptr(x)
+    }
+}
