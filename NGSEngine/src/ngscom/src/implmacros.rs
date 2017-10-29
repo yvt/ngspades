@@ -16,10 +16,17 @@
 #[macro_export]
 #[doc(hidden)]
 macro_rules! com_vtable {
-    ( $vtable:ident, $vtable_type: ty, $interface_type:ty, $cls_type:ty ) => (
+    ( $vtable:ident, $vtable_type: ty, $interface_type:ty, $cls_type:ty, $offs:expr ) => (
         lazy_static! {
-            static ref $vtable: $vtable_type =
-                <$interface_type>::fill_vtable::<$cls_type, $crate::StaticZeroOffset>();
+            static ref $vtable: $vtable_type = {
+                struct Offset;
+                impl $crate::StaticOffset for Offset {
+                    fn offset() -> isize {
+                        $offs
+                    }
+                }
+                <$interface_type>::fill_vtable::<$cls_type, Offset>()
+            };
         }
     )
 }
@@ -50,9 +57,17 @@ macro_rules! com_impl {
                     _com_class_header: unsafe { $crate::detail::ComClassHeader::new() },
                     $(
                         $interface_ident: <$interface_type>::from_vtable({
-                            // TODO: support non-zero offset for thunk functions
-                            // (currently, we cannot have more than one base interface)
-                            com_vtable!(VTABLE, $vtable_type, $interface_type, $cls_type);
+                            com_vtable!(
+                                VTABLE, $vtable_type, $interface_type, $cls_type,
+                                {
+                                    // offset from `$interface_ident` to `Self`
+                                    let p: *const $cls_type = ::std::ptr::null();
+                                    unsafe {
+                                        (p as isize).wrapping_sub(&(*p).$interface_ident as *const _ as isize)
+                                    }
+                                }
+                            );
+
                             &*VTABLE
                         } as *const $vtable_type),
                     )*
