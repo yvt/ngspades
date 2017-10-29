@@ -358,7 +358,7 @@ namespace Ngs.Interop.CodeGen
         void GenerateStruct(Type type)
         {
             stringBuilder.AppendLine("#[repr(C)]");
-            stringBuilder.AppendLine("#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]");
+            stringBuilder.AppendLine("#[derive(Debug, Clone, Copy)]");
             stringBuilder.AppendLine($"pub struct {type.Name} {{");
             foreach (var field in type.GetRuntimeFields())
             {

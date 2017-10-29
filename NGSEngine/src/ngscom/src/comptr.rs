@@ -108,7 +108,8 @@ pub unsafe trait ComInterface: AsComPtr<IUnknown> {
 /// returned by `as_ptr`/`as_mut_ptr`.
 pub unsafe trait AsComPtr<T> {}
 
-unsafe impl<T: ComInterface> ::std::marker::Send for ComPtr<T> {}
+unsafe impl<T: ComInterface> Send for ComPtr<T> {}
+unsafe impl<T: ComInterface> Sync for ComPtr<T> {}
 
 impl<T: ComInterface> ComPtr<T> {
     /// Deprecated. Use `null()`.

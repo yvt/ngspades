@@ -11,6 +11,8 @@
 #![feature(conservative_impl_trait)]
 pub extern crate ngsgfx as gfx;
 pub extern crate ngsbase;
+#[macro_use]
+extern crate ngscom;
 extern crate arclock;
 extern crate refeq;
 extern crate tokenlock;
@@ -23,8 +25,11 @@ pub extern crate atomic_refcell;
 extern crate iterpool;
 #[macro_use]
 extern crate include_data;
+#[macro_use]
+extern crate lazy_static;
 pub extern crate rgb;
 
+pub mod com;
 pub mod context;
 pub mod viewport;
 mod gfxutils;
