@@ -11,6 +11,7 @@ DerivedFiles
 bin
 obj
 NGSEngine/target
+/Derived
 
 # But not source code for executables!
 !NGSEngine/src/yfft/src/bin

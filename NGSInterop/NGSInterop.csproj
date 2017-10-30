@@ -3,6 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Ngs.Interop</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
