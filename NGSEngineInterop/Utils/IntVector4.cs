@@ -6,41 +6,45 @@
 using System.Runtime.InteropServices;
 namespace Ngs.Utils
 {
+    /// <summary>
+    /// Represents a vector with four integer values.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct IntVector4
     {
-        private int x, y, z, w;
+        /// <summary>
+        /// The X component of the vector.
+        /// </summary>
+        public int X;
 
+        /// <summary>
+        /// The Y component of the vector.
+        /// </summary>
+        public int Y;
+
+        /// <summary>
+        /// The Z component of the vector.
+        /// </summary>
+        public int Z;
+
+        /// <summary>
+        /// The W component of the vector.
+        /// </summary>
+        public int W;
+
+        /// <summary>
+        /// Creates a <see cref="IntVector4" /> with the specified component values.
+        /// </summary>
+        /// <param name="x">The value to assign to the <see cref="X" /> field.</param>
+        /// <param name="y">The value to assign to the <see cref="Y" /> field.</param>
+        /// <param name="z">The value to assign to the <see cref="Z" /> field.</param>
+        /// <param name="w">The value to assign to the <see cref="W" /> field.</param>
         public IntVector4(int x, int y, int z, int w)
         {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.w = w;
-        }
-
-        public int X
-        {
-            get { return this.x; }
-            set { this.x = value; }
-        }
-
-        public int Y
-        {
-            get { return this.y; }
-            set { this.y = value; }
-        }
-
-        public int Z
-        {
-            get { return this.z; }
-            set { this.z = value; }
-        }
-
-        public int W
-        {
-            get { return this.w; }
-            set { this.w = value; }
+            X = x;
+            Y = y;
+            Z = z;
+            W = w;
         }
     }
 }

@@ -4,7 +4,8 @@ namespace Ngs.Interop.CodeGen
 {
     public sealed class RustCodeGenOptions
     {
-        public Dictionary<Type, string> TypeMapping { get; } = new Dictionary<Type, string> {
+        public Dictionary<Type, string> TypeMapping { get; } = new Dictionary<Type, string>
+        {
             [typeof(sbyte)] = "i8",
             [typeof(short)] = "i16",
             [typeof(int)] = "i32",

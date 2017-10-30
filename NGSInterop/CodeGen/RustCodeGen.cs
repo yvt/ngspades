@@ -85,13 +85,17 @@ namespace Ngs.Interop.CodeGen
             if (typeInfo.IsInterface)
             {
                 GenerateInterface(type);
-            } else if (typeInfo.IsSubclassOf(typeof(Enum)))
+            }
+            else if (typeInfo.IsSubclassOf(typeof(Enum)))
             {
                 GenerateEnum(type);
-            } else if (typeInfo.IsValueType)
+            }
+            else if (typeInfo.IsValueType)
             {
                 GenerateStruct(type);
-            } else {
+            }
+            else
+            {
                 throw new NotSupportedException($"Cannot emit a Rust interop code for the type {typeInfo.FullName}.");
             }
         }
@@ -163,14 +167,18 @@ namespace Ngs.Interop.CodeGen
                 if (name.StartsWith("get_") || name.StartsWith("set_"))
                 {
                     NativeName = name.Substring(0, 4) + SnakeCaseConverter.Join(DotNetPascalCaseConverter.Split(name.Substring(4))).ToLowerInvariant();
-                } else {
+                }
+                else
+                {
                     NativeName = SnakeCaseConverter.Join(DotNetPascalCaseConverter.Split(name)).ToLowerInvariant();
                 }
 
                 if (cmi.ReturnsHresult)
                 {
                     NativeReturnTypeName = $"{gen.options.NgscomCratePath}::HResult";
-                } else {
+                }
+                else
+                {
                     if (RustCodeGen.NativeTypeNeedsLifeTimeParameter(cmi.NativeReturnType, false))
                     {
                         throw new NotSupportedException($"Method {cmi.MethodInfo.Name} cannot return a reference type (which requires a lifetime parameter)");
@@ -203,7 +211,8 @@ namespace Ngs.Interop.CodeGen
                 }
                 sb.Append("(");
 
-                var paramDecl = ParameterInfos.Select((rpi) => {
+                var paramDecl = ParameterInfos.Select((rpi) =>
+                {
                     return $"{rpi.NativeName}: {(isInterfaceDeclaration ? rpi.NativeTypeNameWithoutLifeTimeParameter : rpi.NativeTypeName)}";
                 }).ToList();
                 if (!isInterfaceDeclaration)
@@ -470,9 +479,12 @@ namespace Ngs.Interop.CodeGen
             }
             else if (type.GetTypeInfo().IsInterface)
             {
-                if (lt.Length == 0) {
+                if (lt.Length == 0)
+                {
                     return $"{options.NgscomCratePath}::UnownedComPtr<" + GetOutputIdentifier(type) + ">";
-                } else {
+                }
+                else
+                {
                     return $"{options.NgscomCratePath}::UnownedComPtr<" + lt + ", " + GetOutputIdentifier(type) + ">";
                 }
             }
@@ -484,7 +496,8 @@ namespace Ngs.Interop.CodeGen
 
         string GetOutputIdentifier(Type type)
         {
-            if (type == typeof(IUnknown)) {
+            if (type == typeof(IUnknown))
+            {
                 return $"{options.NgscomCratePath}::IUnknown";
             }
             string idt;

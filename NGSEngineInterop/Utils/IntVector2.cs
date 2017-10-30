@@ -7,27 +7,31 @@ using System.Runtime.InteropServices;
 
 namespace Ngs.Utils
 {
+    /// <summary>
+    /// Represents a vector with two integer values.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct IntVector2
     {
-        private int x, y;
+        /// <summary>
+        /// The X component of the vector.
+        /// </summary>
+        public int X;
 
+        /// <summary>
+        /// The Y component of the vector.
+        /// </summary>
+        public int Y;
+
+        /// <summary>
+        /// Creates a <see cref="IntVector2" /> with the specified component values.
+        /// </summary>
+        /// <param name="x">The value to assign to the <see cref="X" /> field.</param>
+        /// <param name="y">The value to assign to the <see cref="Y" /> field.</param>
         public IntVector2(int x, int y)
         {
-            this.x = x;
-            this.y = y;
-        }
-
-        public int X
-        {
-            get { return this.x; }
-            set { this.x = value; }
-        }
-
-        public int Y
-        {
-            get { return this.y; }
-            set { this.y = value; }
+            X = x;
+            Y = y;
         }
     }
 }
