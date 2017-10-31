@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSEngineInterop", "NGSEngi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSRustInteropGen", "NGSRustInteropGen\NGSRustInteropGen.csproj", "{62DCB741-9DFA-4476-8DDE-C070F334D406}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSInterop.Tests", "NGSInterop.Tests\NGSInterop.Tests.csproj", "{821D0D12-E801-4409-B243-320F87E77E2B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -72,5 +74,17 @@ Global
 		{62DCB741-9DFA-4476-8DDE-C070F334D406}.Release|x64.Build.0 = Release|x64
 		{62DCB741-9DFA-4476-8DDE-C070F334D406}.Release|x86.ActiveCfg = Release|x86
 		{62DCB741-9DFA-4476-8DDE-C070F334D406}.Release|x86.Build.0 = Release|x86
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Debug|x64.ActiveCfg = Debug|x64
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Debug|x64.Build.0 = Debug|x64
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Debug|x86.ActiveCfg = Debug|x86
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Debug|x86.Build.0 = Debug|x86
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|x64.ActiveCfg = Release|x64
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|x64.Build.0 = Release|x64
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|x86.ActiveCfg = Release|x86
+		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 EndGlobal
