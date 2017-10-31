@@ -204,6 +204,55 @@ impl ngsbase::ILayerTrait for ComLayer {
             .unwrap_or(hresults::E_OK)
     }
 
+    fn set_transform(&self, value: cgmath::Matrix4<f32>) -> HResult {
+        let ref context: context::Context = *self.data.0;
+        self.data
+            .1
+            .with_mut(|s| match s {
+                NodeDataState::Partial(builder) => {
+                    let b: viewport::LayerBuilder = builder.take().unwrap();
+                    *builder = Some(b.transform(value));
+                    Ok(())
+                }
+                NodeDataState::Materialized(layer) => {
+                    let mut frame = context.lock_producer_frame().map_err(
+                        translate_context_error,
+                    )?;
+                    layer.transform().set(&mut frame, value).unwrap();
+                    Ok(())
+                }
+            })
+            .err()
+            .unwrap_or(hresults::E_OK)
+    }
+
+    fn set_flags(&self, flags: ngsbase::LayerFlags) -> HResult {
+        let mut value = viewport::LayerFlags::empty();
+        if flags.contains(ngsbase::LayerFlagsItem::FlattenContents) {
+            value |= viewport::LayerFlagsBit::FlattenContents;
+        }
+
+        let ref context: context::Context = *self.data.0;
+        self.data
+            .1
+            .with_mut(|s| match s {
+                NodeDataState::Partial(builder) => {
+                    let b: viewport::LayerBuilder = builder.take().unwrap();
+                    *builder = Some(b.flags(value));
+                    Ok(())
+                }
+                NodeDataState::Materialized(layer) => {
+                    let mut frame = context.lock_producer_frame().map_err(
+                        translate_context_error,
+                    )?;
+                    layer.flags().set(&mut frame, value).unwrap();
+                    Ok(())
+                }
+            })
+            .err()
+            .unwrap_or(hresults::E_OK)
+    }
+
     fn set_bounds(&self, value: ngsbase::Box2<f32>) -> HResult {
         let ref context: context::Context = *self.data.0;
         self.data

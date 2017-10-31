@@ -27,8 +27,18 @@ namespace Ngs.Engine.Presentation
         float Opacity { set; }
 
         // TODO: contents
-        // TODO: transform
-        // TODO: flags
+
+        /// <summary>
+        /// Sets the transformation matrix of the layer.
+        /// </summary>
+        /// <returns>The transformation matrix.</returns>
+        Matrix4 Transform { set; }
+
+        /// <summary>
+        /// Sets the flags specifying the properties of the layer.
+        /// </summary>
+        /// <returns>The flags specifying the properties of the layer.</returns>
+        LayerFlags Flags { set; }
 
         /// <summary>
         /// Sets the bounding rectangle of the contents or an intermediate raster
