@@ -19,6 +19,22 @@ namespace Ngs.Interop
     }
     */
 
+    /// <summary>
+    /// A base class of NgsCOM-visible classes, initialized using a runtime
+    /// reflection.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This class automatically provides an implementation of
+    /// <see cref="IUnknown" /> and exposes all NgsCOM-compatible interfaces
+    /// implemented by a derived class.
+    /// </para>
+    /// <para>
+    /// Please consider deriving from <see cref="ComClass&lt;T&gt;" /> instead
+    /// of deriving directly from this class. <see cref="ComClass&lt;T&gt;" />
+    /// provides a better creation performance.
+    /// </para>
+    /// </remarks>
     public abstract class ComClass : IUnknown
     {
         IntPtr[] headers;
@@ -29,6 +45,9 @@ namespace Ngs.Interop
         /** COM reference count - defaults to zero. */
         int refCount;
 
+        /// <summary>
+        /// Creates an instance of <see cref="ComClass" />.
+        /// </summary>
         public ComClass()
         {
             Initialize(new ComClassRuntimeInfo(GetType()));
@@ -52,12 +71,20 @@ namespace Ngs.Interop
 
             headersHandle = GCHandle.Alloc(headers, GCHandleType.Pinned);
         }
-
+        /// <summary>
+        /// Releases all the resources used by the <see cref="ComClass" /> class.
+        /// </summary>
         ~ComClass()
         {
             headersHandle.Free();
         }
 
+        /// <summary>
+        /// Implements <see cref="IUnknown.QueryNativeInterface(ref Guid)" />.
+        /// </summary>
+        /// <returns>
+        /// The pointer to the requested interface.
+        /// </returns>
         [SecurityCritical]
         public unsafe IntPtr QueryNativeInterface([In] ref Guid guid)
         {
@@ -75,6 +102,10 @@ namespace Ngs.Interop
             throw new COMException("The specified interface is not available.", E_NOINTERFACE);
         }
 
+        /// <summary>
+        /// Implements <see cref="IUnknown.AddRef" />.
+        /// </summary>
+        /// <returns>The new reference count.</returns>
         [SecurityCritical]
         public uint AddRef()
         {
@@ -94,6 +125,10 @@ namespace Ngs.Interop
             return (uint)newCount;
         }
 
+        /// <summary>
+        /// Implements <see cref="IUnknown.Release" />.
+        /// </summary>
+        /// <returns>The new reference count.</returns>
         [SecurityCritical]
         public uint Release()
         {
@@ -114,8 +149,23 @@ namespace Ngs.Interop
         }
     }
 
+    /// <summary>
+    /// A base class of NgsCOM-visible classes, initialized using a generic
+    /// class.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This class automatically provides an implementation of
+    /// <see cref="IUnknown" /> and exposes all NgsCOM-compatible interfaces
+    /// implemented by a derived class.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="T">The type of the derived class.</typeparam>
     public abstract class ComClass<T> : ComClass where T : ComClass
     {
+        /// <summary>
+        /// Creates an instance of <see cref="ComClass&lt;T&gt;" />.
+        /// </summary>
         public ComClass() : base(ComClassRuntimeInfo<T>.Instance) { }
     }
 }

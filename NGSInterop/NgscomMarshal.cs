@@ -6,6 +6,10 @@
 using System;
 namespace Ngs.Interop
 {
+    /// <summary>
+    /// Provides a collection of method for interacting unmanaged code based on
+    /// the NgsCOM ABI.
+    /// </summary>
     public static partial class NgscomMarshal
     {
         [System.Security.SecurityCritical]
