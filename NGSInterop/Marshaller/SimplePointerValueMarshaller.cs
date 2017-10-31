@@ -21,30 +21,30 @@ namespace Ngs.Interop.Marshaller
                 outputStorage.EmitStore();
             }
 
-        	public override void EmitDestructNativeValue(Storage nativeStorage)
-			{
-			}
+            public override void EmitDestructNativeValue(Storage nativeStorage)
+            {
+            }
         }
 
-		private sealed class ToRuntimeGenerator : ValueToRuntimeMarshallerGenerator
-		{
-			ILGenerator generator;
+        private sealed class ToRuntimeGenerator : ValueToRuntimeMarshallerGenerator
+        {
+            ILGenerator generator;
 
-			public ToRuntimeGenerator(ILGenerator generator)
-			{
-				this.generator = generator;
-			}
+            public ToRuntimeGenerator(ILGenerator generator)
+            {
+                this.generator = generator;
+            }
 
-			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
-			{
-				inputStorage.EmitLoad();
-				outputStorage.EmitStore();
-			}
+            public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
+            {
+                inputStorage.EmitLoad();
+                outputStorage.EmitStore();
+            }
 
-        	public override void EmitDestructNativeValue(Storage nativeStorage)
-			{
-			}
-		}
+            public override void EmitDestructNativeValue(Storage nativeStorage)
+            {
+            }
+        }
 
         Type type;
 
@@ -56,12 +56,12 @@ namespace Ngs.Interop.Marshaller
         public override ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator)
         {
             return new ToNativeGenerator(generator);
-		}
+        }
 
-		public override ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator)
-		{
-			return new ToRuntimeGenerator(generator);
-		}
+        public override ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator)
+        {
+            return new ToRuntimeGenerator(generator);
+        }
 
         public override Type NativeParameterType
         {

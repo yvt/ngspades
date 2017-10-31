@@ -8,18 +8,20 @@ namespace Ngs.Interop
 {
     class CcwVtableCache
     {
-		public IntPtr[] Vtable { get; }
+        public IntPtr[] Vtable { get; }
 
         public CcwVtableCache(Type baseInterface)
         {
             var factory = DynamicModuleInfo.Instance.CcwGenerator.CreateCcwFactory(baseInterface).FactoryDelegate;
 
             // debug
-            if (false) {
+            if (false)
+            {
                 var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
-                var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] {typeof(string)});
-                if (saveMethod != null) {
-                    saveMethod.Invoke(asm, new object[] {"DebugOutput.dll"});
+                var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] { typeof(string) });
+                if (saveMethod != null)
+                {
+                    saveMethod.Invoke(asm, new object[] { "DebugOutput.dll" });
                     throw new Exception("abort!!!");
                 }
             }
@@ -44,9 +46,9 @@ namespace Ngs.Interop
 
         public ComClassHeaderInfo(Type baseInterface)
         {
-            var cacheType = typeof(CcwVtableCache<>).MakeGenericType(new [] {baseInterface});
+            var cacheType = typeof(CcwVtableCache<>).MakeGenericType(new[] { baseInterface });
             var instanceField = cacheType.GetRuntimeField("Instance");
-            var cache = (CcwVtableCache) instanceField.GetValue(null);
+            var cache = (CcwVtableCache)instanceField.GetValue(null);
             IntPtr[] vtable = cache.Vtable;
             vtableHandle = GCHandle.Alloc(vtable, GCHandleType.Pinned);
 

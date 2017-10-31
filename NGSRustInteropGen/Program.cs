@@ -43,9 +43,12 @@ namespace Ngs.Interop.Shell
 
                 var code = codegen.GenerateInterfaceDefinitions(ifTypes);
 
-                if (outputFile.HasValue()) {
+                if (outputFile.HasValue())
+                {
                     System.IO.File.WriteAllText(outputFile.Value(), code);
-                } else {
+                }
+                else
+                {
                     Console.Out.Write(code);
                 }
 

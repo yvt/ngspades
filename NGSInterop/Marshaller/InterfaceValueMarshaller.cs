@@ -4,135 +4,138 @@ using System.Reflection.Emit;
 
 namespace Ngs.Interop.Marshaller
 {
-	sealed class InterfaceValueMarshaller : ValueMarshaller
-	{
-		static void EmitDestruct(ILGenerator generator, Storage nativeStorage)
-		{
-			var ptrIsNullLabel = generator.DefineLabel();
+    sealed class InterfaceValueMarshaller : ValueMarshaller
+    {
+        static void EmitDestruct(ILGenerator generator, Storage nativeStorage)
+        {
+            var ptrIsNullLabel = generator.DefineLabel();
 
-			// is the interface pointer null?
-			nativeStorage.EmitLoad();
-			generator.Emit(OpCodes.Ldc_I4_0);
-			generator.Emit(OpCodes.Conv_I);
-			generator.Emit(OpCodes.Beq, ptrIsNullLabel);
-			
-			// get the interface pointer for arg #1
-			nativeStorage.EmitLoad();
+            // is the interface pointer null?
+            nativeStorage.EmitLoad();
+            generator.Emit(OpCodes.Ldc_I4_0);
+            generator.Emit(OpCodes.Conv_I);
+            generator.Emit(OpCodes.Beq, ptrIsNullLabel);
 
-			// get the interface pointer for vtable entry fetch
-			nativeStorage.EmitLoad();
+            // get the interface pointer for arg #1
+            nativeStorage.EmitLoad();
 
-			// get vtable
-			generator.Emit(OpCodes.Ldind_I);
+            // get the interface pointer for vtable entry fetch
+            nativeStorage.EmitLoad();
 
-			// load the vtable element "IUnknown::Release"
-			int vtableIndex = 2;
-			generator.Emit(OpCodes.Sizeof, typeof(IntPtr));
-			generator.Emit(OpCodes.Ldc_I4, vtableIndex);
-			generator.Emit(OpCodes.Mul);
-			generator.Emit(OpCodes.Conv_I);
-			generator.Emit(OpCodes.Add);
-			generator.Emit(OpCodes.Ldind_I);
+            // get vtable
+            generator.Emit(OpCodes.Ldind_I);
 
-			generator.EmitCalli(OpCodes.Calli, CallingConventions.Standard, typeof(uint),
-				new [] {typeof(IntPtr)}, null);
-			
-			generator.Emit(OpCodes.Pop);
+            // load the vtable element "IUnknown::Release"
+            int vtableIndex = 2;
+            generator.Emit(OpCodes.Sizeof, typeof(IntPtr));
+            generator.Emit(OpCodes.Ldc_I4, vtableIndex);
+            generator.Emit(OpCodes.Mul);
+            generator.Emit(OpCodes.Conv_I);
+            generator.Emit(OpCodes.Add);
+            generator.Emit(OpCodes.Ldind_I);
 
-			generator.MarkLabel(ptrIsNullLabel);
-		}
+            generator.EmitCalli(OpCodes.Calli, CallingConventions.Standard, typeof(uint),
+                new[] { typeof(IntPtr) }, null);
 
-		private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
-		{
-			InterfaceValueMarshaller parent;
-			ILGenerator generator;
+            generator.Emit(OpCodes.Pop);
 
-			public ToNativeGenerator(ILGenerator generator, InterfaceValueMarshaller parent)
-			{
-				this.generator = generator;
-				this.parent = parent;
-			}
+            generator.MarkLabel(ptrIsNullLabel);
+        }
 
-			static MethodInfo getCcwForInterfaceMethodGeneric = typeof(NgscomMarshal)
-				.GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetCcwForInterface));
+        private sealed class ToNativeGenerator : ValueToNativeMarshallerGenerator
+        {
+            InterfaceValueMarshaller parent;
+            ILGenerator generator;
 
-			public override void EmitToNative(Storage inputStorage, Storage outputStorage)
-			{
-				var getCcwForInterfacePtrMethod = getCcwForInterfaceMethodGeneric.MakeGenericMethod(parent.type);
+            public ToNativeGenerator(ILGenerator generator, InterfaceValueMarshaller parent)
+            {
+                this.generator = generator;
+                this.parent = parent;
+            }
 
-				inputStorage.EmitLoad();
+            static MethodInfo getCcwForInterfaceMethodGeneric = typeof(NgscomMarshal)
+                .GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetCcwForInterface));
 
-				generator.EmitCall(OpCodes.Call, getCcwForInterfacePtrMethod, null);
+            public override void EmitToNative(Storage inputStorage, Storage outputStorage)
+            {
+                var getCcwForInterfacePtrMethod = getCcwForInterfaceMethodGeneric.MakeGenericMethod(parent.type);
 
-				outputStorage.EmitStore();
-			}
+                inputStorage.EmitLoad();
 
-        	public override void EmitDestructNativeValue(Storage nativeStorage)
-			{
-				EmitDestruct(generator, nativeStorage);
-			}
-		}
+                generator.EmitCall(OpCodes.Call, getCcwForInterfacePtrMethod, null);
 
-		private sealed class ToRuntimeGenerator : ValueToRuntimeMarshallerGenerator
-		{
-			InterfaceValueMarshaller parent;
-			ILGenerator generator;
+                outputStorage.EmitStore();
+            }
 
-			public ToRuntimeGenerator(ILGenerator generator, InterfaceValueMarshaller parent)
-			{
-				this.generator = generator;
-				this.parent = parent;
-			}
+            public override void EmitDestructNativeValue(Storage nativeStorage)
+            {
+                EmitDestruct(generator, nativeStorage);
+            }
+        }
 
-			static MethodInfo getRcwForInterfacePtrMethodGeneric = typeof(NgscomMarshal)
-				.GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetRcwForInterfacePtr));
+        private sealed class ToRuntimeGenerator : ValueToRuntimeMarshallerGenerator
+        {
+            InterfaceValueMarshaller parent;
+            ILGenerator generator;
 
-			public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
-			{
-				var getRcwForInterfacePtrMethod = getRcwForInterfacePtrMethodGeneric.MakeGenericMethod(parent.type);
+            public ToRuntimeGenerator(ILGenerator generator, InterfaceValueMarshaller parent)
+            {
+                this.generator = generator;
+                this.parent = parent;
+            }
 
-				inputStorage.EmitLoad();
-				if (move) {
-					generator.Emit(OpCodes.Ldc_I4_0); // addRef = false; interface pointer's ownership is transferred to RCW
-				} else {
-					generator.Emit(OpCodes.Ldc_I4_1); // addRef = true; interface pointer's cloned
-				}
+            static MethodInfo getRcwForInterfacePtrMethodGeneric = typeof(NgscomMarshal)
+                .GetTypeInfo().GetDeclaredMethod(nameof(NgscomMarshal.GetRcwForInterfacePtr));
 
-				generator.EmitCall(OpCodes.Call, getRcwForInterfacePtrMethod, null);
+            public override void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move)
+            {
+                var getRcwForInterfacePtrMethod = getRcwForInterfacePtrMethodGeneric.MakeGenericMethod(parent.type);
 
-				outputStorage.EmitStore();
-			}
+                inputStorage.EmitLoad();
+                if (move)
+                {
+                    generator.Emit(OpCodes.Ldc_I4_0); // addRef = false; interface pointer's ownership is transferred to RCW
+                }
+                else
+                {
+                    generator.Emit(OpCodes.Ldc_I4_1); // addRef = true; interface pointer's cloned
+                }
 
-        	public override void EmitDestructNativeValue(Storage nativeStorage)
-			{
-				EmitDestruct(generator, nativeStorage);
-			}
-		}
+                generator.EmitCall(OpCodes.Call, getRcwForInterfacePtrMethod, null);
 
-		Type type;
+                outputStorage.EmitStore();
+            }
 
-		public InterfaceValueMarshaller(Type type)
-		{
-			if (!type.GetTypeInfo().IsInterface)
-			{
-				throw new InvalidOperationException();
-			}
-			this.type = type;
-		}
+            public override void EmitDestructNativeValue(Storage nativeStorage)
+            {
+                EmitDestruct(generator, nativeStorage);
+            }
+        }
 
-		public override ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator)
-		{
-			return new ToNativeGenerator(generator, this);
-		}
+        Type type;
 
-		public override ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator)
-		{
-			return new ToRuntimeGenerator(generator, this);
-		}
+        public InterfaceValueMarshaller(Type type)
+        {
+            if (!type.GetTypeInfo().IsInterface)
+            {
+                throw new InvalidOperationException();
+            }
+            this.type = type;
+        }
 
-		public override Type NativeParameterType
-		{
-			get { return typeof(IntPtr); }
-		}
-	}
+        public override ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator)
+        {
+            return new ToNativeGenerator(generator, this);
+        }
+
+        public override ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator)
+        {
+            return new ToRuntimeGenerator(generator, this);
+        }
+
+        public override Type NativeParameterType
+        {
+            get { return typeof(IntPtr); }
+        }
+    }
 }

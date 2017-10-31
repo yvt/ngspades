@@ -18,45 +18,48 @@ namespace Ngs.Interop.Marshaller
             {typeof(ulong), new SimpleValueMarshaller(typeof(ulong))},
             {typeof(float), new SimpleValueMarshaller(typeof(float))},
             {typeof(double), new SimpleValueMarshaller(typeof(double))},
-			{typeof(string), new StringValueMarshaller()},
+            {typeof(string), new StringValueMarshaller()},
         };
 
         public static ValueMarshaller GetMarshaller(Type type)
         {
             ValueMarshaller marshaller = null;
 
-            lock (marshallers) {
-                if (marshallers.ContainsKey(type)) {
+            lock (marshallers)
+            {
+                if (marshallers.ContainsKey(type))
+                {
                     return marshallers[type];
                 }
 
-				var typeInfo = type.GetTypeInfo();
+                var typeInfo = type.GetTypeInfo();
 
-				if (typeInfo.IsSubclassOf(typeof(ValueType))) {
+                if (typeInfo.IsSubclassOf(typeof(ValueType)))
+                {
                     marshaller = new SimpleValueMarshaller(type);
                 }
 
-				if (typeInfo.IsInterface &&
+                if (typeInfo.IsInterface &&
                     typeof(IUnknown).GetTypeInfo().IsAssignableFrom(typeInfo))
-				{
-					marshaller = new InterfaceValueMarshaller(type);
-				}
+                {
+                    marshaller = new InterfaceValueMarshaller(type);
+                }
 
-				if (marshaller != null)
-				{
-					marshallers.Add(type, marshaller);
-				}
-				else
-				{
-					throw new InvalidOperationException($"Don't know how to marshal {type.FullName}");
-				}
+                if (marshaller != null)
+                {
+                    marshallers.Add(type, marshaller);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Don't know how to marshal {type.FullName}");
+                }
             }
 
             return marshaller;
         }
 
-		public abstract ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator);
-		public abstract ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator);
+        public abstract ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator);
+        public abstract ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator);
 
         public abstract Type NativeParameterType { get; }
     }

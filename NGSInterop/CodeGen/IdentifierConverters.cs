@@ -35,7 +35,8 @@ namespace Ngs.Interop.CodeGen
         {
             var list = new List<string>();
             var first = firstWordRegex.Match(text);
-            if (first.Success) {
+            if (first.Success)
+            {
                 list.Add(first.Value);
                 text = text.Substring(first.Value.Length);
             }
@@ -49,7 +50,7 @@ namespace Ngs.Interop.CodeGen
 
         public static string Join(string[] parts)
         {
-            return string.Join("", parts.Select((s, i) => 
+            return string.Join("", parts.Select((s, i) =>
                 i == 0 ? s.ToLowerInvariant() :
                 s.Substring(0, 1).ToUpperInvariant() + s.Substring(1).ToLowerInvariant()));
         }

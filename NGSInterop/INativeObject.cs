@@ -2,11 +2,11 @@ using System;
 
 namespace Ngs.Interop
 {
-	public interface INativeObject<out T> : IUnknown where T : class, IUnknown
-	{
-		IntPtr NativeInterfacePtr { get; }
+    public interface INativeObject<out T> : IUnknown where T : class, IUnknown
+    {
+        IntPtr NativeInterfacePtr { get; }
         IntPtr NativeIUnknownPtr { get; }
 
-		T Interface { get; }
+        T Interface { get; }
     }
 }

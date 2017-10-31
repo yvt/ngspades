@@ -13,9 +13,9 @@ namespace Ngs.Interop
         public GCHandle<ComClass> handle;
     }
     */
-    
+
     public abstract class ComClass : IUnknown
-    {   
+    {
         IntPtr[] headers;
         GCHandle headersHandle;
 
@@ -38,7 +38,8 @@ namespace Ngs.Interop
         {
             headerInfos = info.Headers;
             headers = new IntPtr[headerInfos.Length * 2];
-            for (int i = 0; i < headerInfos.Length; ++i) {
+            for (int i = 0; i < headerInfos.Length; ++i)
+            {
                 var headerInfo = headerInfos[i];
                 headers[i * 2] = headerInfo.VTablePtr; // vtable
                 headers[i * 2 + 1] = IntPtr.Zero; // handle to this
@@ -52,27 +53,28 @@ namespace Ngs.Interop
             headersHandle.Free();
         }
 
-		[SecurityCritical]
-		public unsafe IntPtr QueryNativeInterface([In] ref Guid guid)
+        [SecurityCritical]
+        public unsafe IntPtr QueryNativeInterface([In] ref Guid guid)
         {
             var theGuid = guid;
             for (int i = 0; i < headerInfos.Length; ++i)
             {
                 var guids = headerInfos[i].Guids;
-                if (Array.IndexOf(guids, theGuid) >= 0) {
+                if (Array.IndexOf(guids, theGuid) >= 0)
+                {
                     AddRef();
                     return IntPtr.Add(headersHandle.AddrOfPinnedObject(), IntPtr.Size * 2 * i);
                 }
             }
-			const int E_NOINTERFACE = unchecked((int)0x80004002);
+            const int E_NOINTERFACE = unchecked((int)0x80004002);
             throw new COMException("The specified interface is not available.", E_NOINTERFACE);
         }
 
-		[SecurityCritical]
-		public uint AddRef()
+        [SecurityCritical]
+        public uint AddRef()
         {
             int newCount = Interlocked.Increment(ref refCount);
-            if (newCount == 1) 
+            if (newCount == 1)
             {
                 for (int i = 1; i < headers.Length; i += 2)
                 {
@@ -87,8 +89,8 @@ namespace Ngs.Interop
             return (uint)newCount;
         }
 
-		[SecurityCritical]
-		public uint Release()
+        [SecurityCritical]
+        public uint Release()
         {
             int newCount = Interlocked.Decrement(ref refCount);
             if (newCount == 0)
@@ -109,6 +111,6 @@ namespace Ngs.Interop
 
     public abstract class ComClass<T> : ComClass where T : ComClass
     {
-        public ComClass(): base(ComClassRuntimeInfo<T>.Instance) {}
+        public ComClass() : base(ComClassRuntimeInfo<T>.Instance) { }
     }
 }

@@ -2,27 +2,27 @@
 
 namespace Ngs.Interop.Utils
 {
-	sealed class UniqueNameGenerator
-	{
-		Dictionary<string, int> generatedNames = new Dictionary<string, int>();
+    sealed class UniqueNameGenerator
+    {
+        Dictionary<string, int> generatedNames = new Dictionary<string, int>();
 
-		public UniqueNameGenerator()
-		{
-		}
+        public UniqueNameGenerator()
+        {
+        }
 
-		public string Uniquify(string template)
-		{
-			int lastIndex;
-			if (generatedNames.TryGetValue(template, out lastIndex))
-			{
-				++lastIndex;
-				generatedNames[template] = lastIndex;
+        public string Uniquify(string template)
+        {
+            int lastIndex;
+            if (generatedNames.TryGetValue(template, out lastIndex))
+            {
+                ++lastIndex;
+                generatedNames[template] = lastIndex;
 
-				return $"{template}<{lastIndex}>";
-			}
+                return $"{template}<{lastIndex}>";
+            }
 
-			generatedNames[template] = 0;
-			return template;
-		}
-	}
+            generatedNames[template] = 0;
+            return template;
+        }
+    }
 }

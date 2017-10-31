@@ -2,13 +2,14 @@ using System;
 using System.Reflection;
 namespace Ngs.Interop
 {
-	public static class DelegateRuntimeInfo<T> where T : class
-	{
+    public static class DelegateRuntimeInfo<T> where T : class
+    {
         static T rcfpw;
 
         static DelegateRuntimeInfo()
         {
-            if (typeof(T).GetTypeInfo().BaseType != typeof(MulticastDelegate)) {
+            if (typeof(T).GetTypeInfo().BaseType != typeof(MulticastDelegate))
+            {
                 throw new InvalidOperationException($"Type {typeof(T).FullName} is not a delegate.");
             }
         }
@@ -22,14 +23,16 @@ namespace Ngs.Interop
                 T ret = rcfpw ?? (rcfpw = DynamicModuleInfo.Instance.RcwGenerator.CreateRcfpw<T>().Delegate);
 
                 // debug
-                if (false && ov != rcfpw) {
+                if (false && ov != rcfpw)
+                {
                     var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
-                    var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] {typeof(string)});
-                    if (saveMethod != null) {
-                        saveMethod.Invoke(asm, new object[] {"DebugOutput.dll"});
+                    var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] { typeof(string) });
+                    if (saveMethod != null)
+                    {
+                        saveMethod.Invoke(asm, new object[] { "DebugOutput.dll" });
                     }
                 }
-                
+
                 return ret;
             }
         }

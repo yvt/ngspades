@@ -29,7 +29,7 @@ namespace Ngs.Shell
             Guid guid = new Guid("35edff15-0b38-47d8-9b7c-e00fa2acdf9d");
             Marshal.QueryInterface(unk, ref guid, out iface); */
 
-            IntPtr** ifacePtr = (IntPtr**) iface.ToPointer();
+            IntPtr** ifacePtr = (IntPtr**)iface.ToPointer();
             IntPtr* vtable = ifacePtr[0];
 
             // FIXME: Doesn't work with .NET Core
@@ -56,7 +56,8 @@ namespace Ngs.Shell
         public void SimpleMethod()
         {
             int result = simpleMethodImpl(self);
-            if (result < 0) {
+            if (result < 0)
+            {
                 Marshal.ThrowExceptionForHR(result);
             }
         }
@@ -64,7 +65,7 @@ namespace Ngs.Shell
 
     sealed class TestClass : ComClass, Engine.ITestInterface
     {
-		public string HogeAttr
+        public string HogeAttr
         {
             get
             {
@@ -75,16 +76,16 @@ namespace Ngs.Shell
                 Console.WriteLine($"managed: HogeAttr <- \"{value}\"");
             }
         }
-		public string Hello(string str)
+        public string Hello(string str)
         {
             Console.WriteLine($"managed: Hello(\"{str}\")");
             return "Reply from managed code";
         }
-		public void SimpleMethod()
+        public void SimpleMethod()
         {
             Console.WriteLine("SimpleMethod was called");
         }
-		public void DoCallback(Engine.ITestInterface target)
+        public void DoCallback(Engine.ITestInterface target)
         {
             target.Hello("Called from DoCallback");
             target.SimpleMethod();
@@ -124,7 +125,7 @@ namespace Ngs.Shell
             Console.WriteLine("Creating obj");
             NativeMethods.create_test_instance(out obj);
 
-			var rcw = NgscomMarshal.GetRcwForInterfacePtr<Ngs.Engine.ITestInterface>(obj, false);
+            var rcw = NgscomMarshal.GetRcwForInterfacePtr<Ngs.Engine.ITestInterface>(obj, false);
             Console.WriteLine("Entering obj.Hello()");
             string ret = rcw.Hello("Message from managed code");
             Console.WriteLine("Leaving obj.Hello()");
@@ -137,17 +138,21 @@ namespace Ngs.Shell
 
             Console.WriteLine("Benchmarking IHoge.Hoge()");
             var ihoge = (IHoge)(new HogeClass());
-			Benchmark((count) => {
+            Benchmark((count) =>
+            {
                 var theObject = ihoge;
-                for (int i = 0; i < count; ++i) {
+                for (int i = 0; i < count; ++i)
+                {
                     theObject.Hoge();
                 }
             });
 
-			Console.WriteLine("Benchmarking obj.SimpleMethod()");
-			Benchmark((count) => {
+            Console.WriteLine("Benchmarking obj.SimpleMethod()");
+            Benchmark((count) =>
+            {
                 var theObject = rcw;
-                for (int i = 0; i < count; ++i) {
+                for (int i = 0; i < count; ++i)
+                {
                     theObject.SimpleMethod();
                 }
             });
@@ -166,9 +171,11 @@ namespace Ngs.Shell
             //Console.WriteLine($"Got: \"{ret}\" (length = {ret.Length})");
 
             Console.WriteLine("Benchmarking obj.SimpleMethod()");
-			Benchmark((count) => {
+            Benchmark((count) =>
+            {
                 var theObject = rcw2;
-                for (int i = 0; i < count; ++i) {
+                for (int i = 0; i < count; ++i)
+                {
                     theObject.SimpleMethod();
                 }
             });
