@@ -1,3 +1,8 @@
+//
+// Copyright 2017 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;

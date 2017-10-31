@@ -1,4 +1,9 @@
-﻿using System.Collections.Generic;
+﻿//
+// Copyright 2017 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
+using System.Collections.Generic;
 
 namespace Ngs.Interop.Utils
 {
