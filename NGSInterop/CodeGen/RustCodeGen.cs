@@ -161,6 +161,7 @@ namespace Ngs.Interop.CodeGen
             public string NativeName { get; }
             public string NativeReturnTypeName { get; }
             public string[] LifeTimeParameterNames { get; }
+            public RustdocEntry? RustdocEntry { get; }
 
             public RustInterfaceMethodInfo(RustCodeGen gen, Marshaller.ComMethodInfo cmi)
             {
@@ -176,6 +177,24 @@ namespace Ngs.Interop.CodeGen
                 else
                 {
                     NativeName = SnakeCaseConverter.Join(DotNetPascalCaseConverter.Split(name)).ToLowerInvariant();
+                }
+
+                // Retrieve the documentation entry
+                if (gen.options.RustdocEntrySource != null)
+                {
+                    if (name.StartsWith("get_") || name.StartsWith("set_"))
+                    {
+                        var prop = cmi.MethodInfo.DeclaringType.GetProperty(name.Substring(4));
+                        if (prop != null)
+                        {
+                            RustdocEntry = gen.options.RustdocEntrySource.GetEntryForProperty(prop,
+                                name.StartsWith("set_"));
+                        }
+                    }
+                    else
+                    {
+                        RustdocEntry = gen.options.RustdocEntrySource.GetEntryForMethod(cmi.MethodInfo);
+                    }
                 }
 
                 if (cmi.ReturnsHresult)
@@ -305,6 +324,10 @@ namespace Ngs.Interop.CodeGen
             }
 
             stringBuilder.AppendLine("com_interface! {");
+
+            var doc = options.RustdocEntrySource?.GetEntryForType(type);
+            GenerateDocComment(doc, "\t");
+
             stringBuilder.AppendLine($"\tinterface ({name}, {name}Trait): {string.Join(", ", baseDeclarations)} {{");
             stringBuilder.AppendLine($"\t\tiid: {iidIdt},");
             stringBuilder.AppendLine($"\t\tvtable: {name}Vtbl,");
@@ -315,6 +338,8 @@ namespace Ngs.Interop.CodeGen
                 .Select((cmi) => new RustInterfaceMethodInfo(this, cmi)).ToArray();
             foreach (var rimi in methods)
             {
+                GenerateDocComment(rimi.RustdocEntry, "\t\t");
+
                 stringBuilder.AppendLine($"\t\t{rimi.GetSignature(true)};");
             }
 
@@ -369,11 +394,17 @@ namespace Ngs.Interop.CodeGen
 
         void GenerateStruct(Type type)
         {
+            var doc = options.RustdocEntrySource?.GetEntryForType(type);
+            GenerateDocComment(doc, "");
+
             stringBuilder.AppendLine("#[repr(C)]");
             stringBuilder.AppendLine("#[derive(Debug, Clone, Copy)]");
             stringBuilder.AppendLine($"pub struct {type.Name} {{");
             foreach (var field in type.GetRuntimeFields())
             {
+                doc = options.RustdocEntrySource?.GetEntryForField(field);
+                GenerateDocComment(doc, "\t");
+
                 var nativeName = SnakeCaseConverter.Join(DotNetCamelCaseConverter.Split(field.Name));
                 var nativeType = TranslateNativeType(field.FieldType, false, null, false);
                 stringBuilder.AppendLine($"\tpub {nativeName}: {nativeType},");
@@ -386,6 +417,8 @@ namespace Ngs.Interop.CodeGen
         {
             var ut = structUnderlyingTypeMap[Enum.GetUnderlyingType(type)];
             bool isFlags = type.GetCustomAttribute(typeof(FlagsAttribute)) != null;
+
+            stringBuilder.AppendLine($"/// Valid values for `{type.Name}`.");
             stringBuilder.AppendLine($"#[repr({ut})]");
             if (isFlags)
             {
@@ -400,10 +433,17 @@ namespace Ngs.Interop.CodeGen
             {
                 var name = Enum.GetName(type, field);
                 var value = Convert.ToInt32(field);
+
+                var fdoc = options.RustdocEntrySource?.GetEntryForField(type.GetField(name));
+                GenerateDocComment(fdoc, "\t");
+
                 stringBuilder.AppendLine($"\t{name} = {value},");
             }
             stringBuilder.AppendLine("}");
             stringBuilder.AppendLine();
+
+            var doc = options.RustdocEntrySource?.GetEntryForType(type);
+            GenerateDocComment(doc, "");
 
             if (isFlags)
             {
@@ -437,6 +477,18 @@ namespace Ngs.Interop.CodeGen
                 stringBuilder.AppendLine("\t}");
                 stringBuilder.AppendLine("}");
                 stringBuilder.AppendLine();
+            }
+        }
+
+        void GenerateDocComment(RustdocEntry? ent, string indent)
+        {
+            if (!ent.HasValue)
+            {
+                return;
+            }
+            foreach (var line in ent.Value.Text.Trim().Split('\n'))
+            {
+                stringBuilder.AppendLine(indent + "/// " + line);
             }
         }
 

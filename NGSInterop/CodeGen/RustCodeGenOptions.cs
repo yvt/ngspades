@@ -32,5 +32,7 @@ namespace Ngs.Interop.CodeGen
         public string EnumFlagsDeriveName { get; set; } = "NgsEnumFlags";
 
         public string EnumFlagsCratePath { get; set; } = "::ngsenumflags";
+
+        public IRustdocEntrySource RustdocEntrySource { get; set; }
     }
 }

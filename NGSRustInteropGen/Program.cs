@@ -30,6 +30,10 @@ namespace Ngs.Interop.Shell
                     typeof(Ngs.Interop.IUnknown).IsAssignableFrom(type));
                 var options = new Ngs.Interop.CodeGen.RustCodeGenOptions();
 
+                options.RustdocEntrySource = new Ngs.Interop.CodeGen.MsXmlRustdocEntrySource(
+                    new Ngs.Interop.CodeGen.MsXmlDocumentationReader()
+                );
+
                 // Register geometry types.
                 // Vector types in `Ngs.Utils` can represent both of displacements (`VectorX`) and
                 // locations (`PointX`). We just pick the former as they can be converted
