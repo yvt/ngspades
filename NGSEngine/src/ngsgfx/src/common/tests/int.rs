@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 extern crate ngsgfx_common;
-use ngsgfx_common::int::{BinaryInteger, BinaryUInteger};
+use ngsgfx_common::int::BinaryUInteger;
 
 #[test]
 fn is_power_of_two() {

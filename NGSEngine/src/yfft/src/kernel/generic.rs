@@ -87,11 +87,11 @@ where
                     wa[z * 2] = data[(x + y + z * cparams.unit) * 2];
                     wa[z * 2 + 1] = data[(x + y + z * cparams.unit) * 2 + 1];
                 }
-                let mut coef_1 = Complex::one();
+                let mut coef_1: Complex<T> = Complex::one();
                 for z in 0..cparams.radix {
                     let mut c: Complex<T> = Complex::zero();
-                    let mut coef_2 = Complex::one();
-                    let coef_1_tw = coef_1 * twiddle_1;
+                    let mut coef_2: Complex<T> = Complex::one();
+                    let coef_1_tw: Complex<T> = coef_1 * twiddle_1;
                     for w in 0..cparams.radix {
                         c = c + coef_2 * complex_from_slice(&wa[w * 2..]);
                         coef_2 = coef_2 * coef_1_tw;
@@ -129,8 +129,8 @@ where
                     wa[z * 2] = data[(x + y + z * cparams.unit) * 2];
                     wa[z * 2 + 1] = data[(x + y + z * cparams.unit) * 2 + 1];
                 }
-                let mut twiddle_2 = Complex::one();
-                let mut coef_1 = Complex::one();
+                let mut twiddle_2: Complex<T> = Complex::one();
+                let mut coef_1: Complex<T> = Complex::one();
                 for z in 0..cparams.radix {
                     let mut c: Complex<T> = Complex::zero();
                     let mut coef_2 = twiddle_2;
