@@ -19,7 +19,6 @@
 //! MIT Media Lab Machine Listening Group
 //! May 18, 1994
 //! ```
-#![feature(repr_align)]
 #![feature(attr_literals)]
 use std::fmt;
 
