@@ -27,10 +27,11 @@
 //! [![The Sound of Silence](https://derpicdn.net/img/2016/10/7/1266994/large.png)](https://derpibooru.org/1266994)
 //!
 //! [^fn1]: Michael A. Cohen, Todd S. Horowitz, and Jeremy M. Wolfe,
-//!     "[Auditory recognition memory is inferior to visual recognition memory]
-//!     (http://www.pnas.org/content/106/14/6008.full), "
+//!     "[Auditory recognition memory is inferior to visual recognition memory],"
 //!     PNAS 2009 106 (14) 6008-6010; published ahead of print March 23, 2009,
 //!     doi:10.1073/pnas.0811884106
+//!
+//! [Auditory recognition memory is inferior to visual recognition memory]: http://www.pnas.org/content/106/14/6008.full
 //!
 //! Building
 //! --------
