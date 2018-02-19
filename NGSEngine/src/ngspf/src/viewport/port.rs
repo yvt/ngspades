@@ -13,7 +13,7 @@ use gfx::core::Backend;
 use context::PresenterFrame;
 use super::WorkspaceDevice;
 
-/// Trait for rendering custom contents to a layer's backing store.
+/// Trait for creating `PortInstance` for a specific NgsGFX backend.
 pub trait Port: fmt::Debug + Send + Sync + 'static {
     /// Create a port instance for a specific NgsGFX backend.
     ///
@@ -90,6 +90,7 @@ pub struct PortRenderContext<'a, B: Backend> {
     pub command_buffers: &'a mut Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
 }
 
+/// Trait for rendering custom contents as layer contents.
 pub trait PortInstance<B: Backend>: fmt::Debug + Send + Sync + 'static {
     fn render(
         &mut self,
