@@ -23,7 +23,7 @@ use super::uploader::Uploader;
 ///
 /// # Notes Regarding Memory Management
 ///
-/// `Compositor` does not free device allocations on drop.
+/// `Compositor` does not free device allocations when dropped.
 #[derive(Debug)]
 pub struct Compositor<B: Backend> {
     device: Arc<B::Device>,

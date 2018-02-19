@@ -9,8 +9,8 @@
 //! ## Property Accessor
 //!
 //! Property accessors provide an easy way to access and modify properties of
-//! nodes. They record a changeset to the frame automatically when updating a
-//! property value.
+//! nodes. They automatically record a changeset to the frame whenever a
+//! property value is updated.
 //!
 //! See the documentation of [`KeyedPropertyAccessor`] for the usage.
 //!
