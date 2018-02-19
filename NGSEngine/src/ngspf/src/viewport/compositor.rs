@@ -18,6 +18,7 @@ use context::{NodeRef, PresenterFrame};
 use super::{WorkspaceDevice, Layer};
 use super::temprespool::TempResPool;
 use super::uploader::Uploader;
+use super::port::{PortManager, PortRenderContext};
 
 /// Compositor.
 ///
@@ -114,6 +115,8 @@ pub struct CompositorWindow<B: Backend> {
     command_buffers: Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
     command_buffer_index: usize,
     temp_res_pool: TempResPool<B>,
+
+    port_manager: PortManager<B>,
 
     // used as a hint to pre-allocate `Vec`s in `LocalContext`
     num_sprites: usize,
@@ -286,6 +289,8 @@ impl<B: Backend> CompositorWindow<B> {
                 Arc::clone(&compositor.heap),
             )?,
 
+            port_manager: PortManager::new(),
+
             compositor,
 
             num_sprites: 0,
@@ -322,6 +327,8 @@ impl<B: Backend> CompositorWindow<B> {
                 range: gfx::core::ImageSubresourceRange::default(),
             },
         )?;
+
+        self.port_manager.prepare_frame();
 
         use std::mem::size_of;
         use std::ptr::copy;
@@ -431,7 +438,24 @@ impl<B: Backend> CompositorWindow<B> {
                             (opacity * rgba.a),
                     ))
                 }
-                &Port(_) => unimplemented!(),
+                &Port(ref port) => {
+                    this.port_manager.get(port, cc.workspace_device)
+                        .map(|port_instance| {
+                            port_instance.render(&mut PortRenderContext{
+                                workspace_device: cc.workspace_device,
+                                // FIXME: We need a way to retrieve this value
+                                //        (after modified by the callee)
+                                schedule_next_frame: false,
+                                command_buffers: &mut cc.command_buffers,
+                            }, c.frame)
+                        })
+                        .map(|image_view| (
+                            (image_view, this.compositor.sampler_clamp.clone()),
+                            Matrix4::identity(),
+                            composite::SpriteFlags::empty(),
+                            Vector4::new(1.0, 1.0, 1.0, opacity),
+                        ))
+                },
                 &BackDrop => {
                     let backdrop = backdrop.expect("BackDrop used without FlattenContents");
                     Some((

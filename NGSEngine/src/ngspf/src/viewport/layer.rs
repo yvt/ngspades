@@ -135,7 +135,7 @@ pub enum LayerContents {
     },
 
     /// Specifies to use a given `Port` to generate the layer contents.
-    Port(Arc<Port>),
+    Port(RefEqArc<Port>),
 
     /// Copies contents from the contents of layers with lower Z order in the
     /// nearest rasterization context (root or a layer with `FlattenContents`).
