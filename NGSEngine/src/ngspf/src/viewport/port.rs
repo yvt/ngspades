@@ -17,47 +17,57 @@ pub trait Port: fmt::Debug + Send + Sync + 'static {
     /// Create a port instance for a specific NgsGFX backend.
     ///
     /// The callee must find an appropriate implementation for the actual
-    /// backend by calling `PortCreateContext::downcast_mut` with a known set
+    /// backend by calling `PortMountContext::downcast_mut` with a known set
     /// of backends.
     ///
-    ///     use ngspf::viewport::{Port, PortCreateContext};
+    ///     use ngspf::viewport::{Port, PortMountContext};
     ///     use ngspf::gfx::backends::DefaultBackend;
     ///     #[derive(Debug)]
     ///     struct MyPort;
     ///
     ///     impl Port for MyPort {
-    ///         fn make_instance(&self, context: &mut PortCreateContext) {
-    ///             if let Some(context) = context.downcast_mut::<DefaultBackend>() {
-    ///                 *context.result = Some(panic!("provide instance here"));
+    ///         fn mount(&self, context: &mut PortMountContext) {
+    ///             if let Some(mut context) = context.downcast_mut::<DefaultBackend>() {
+    ///                 context.set_instance(panic!("provide instance here"));
     ///             }
     ///         }
     ///     }
     ///
-    fn make_instance(&self, context: &mut PortCreateContext);
+    fn mount(&self, context: &mut PortMountContext);
 }
 
 #[derive(Debug)]
-pub struct PortCreateContext<'a> {
+pub struct PortMountContext<'a> {
     pub(super) workspace_device: &'a any::Any,
-    pub(super) result: &'a mut any::Any,
+    pub(super) result_instance: &'a mut any::Any,
 }
 
 #[derive(Debug)]
-pub struct PortCreateContextWithBackend<'a, B: Backend> {
-    pub workspace_device: &'a WorkspaceDevice<B>,
-    pub result: &'a mut Option<Arc<PortInstance<B>>>,
+pub struct PortMountContextWithBackend<'a, B: Backend> {
+    pub(super) workspace_device: &'a WorkspaceDevice<B>,
+    pub(super) result_instance: &'a mut Option<Box<PortInstance<B>>>,
 }
 
-impl<'a> PortCreateContext<'a> {
-    pub fn downcast_mut<B: Backend>(&mut self) -> Option<PortCreateContextWithBackend<B>> {
-        if let Some(result) = self.result.downcast_mut() {
-            Some(PortCreateContextWithBackend {
+impl<'a> PortMountContext<'a> {
+    pub fn downcast_mut<B: Backend>(&mut self) -> Option<PortMountContextWithBackend<B>> {
+        if let Some(result_instance) = self.result_instance.downcast_mut() {
+            Some(PortMountContextWithBackend {
                 workspace_device: self.workspace_device.downcast_ref().unwrap(),
-                result,
+                result_instance,
             })
         } else {
             None
         }
+    }
+}
+
+impl<'a, B: Backend> PortMountContextWithBackend<'a, B> {
+    pub fn workspace_device(&self) -> &'a WorkspaceDevice<B> {
+        self.workspace_device
+    }
+
+    pub fn set_instance(&mut self, instance: Box<PortInstance<B>>) {
+        *self.result_instance = Some(instance);
     }
 }
 
