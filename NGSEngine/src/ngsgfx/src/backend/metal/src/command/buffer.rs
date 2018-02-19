@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use {core, metal, OCPtr};
-use std::cell::RefCell;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::mem::replace;
 
@@ -19,8 +19,10 @@ pub struct CommandBuffer {
     pub(crate) buffer: Option<OCPtr<metal::MTLCommandBuffer>>,
     pub(crate) encoder: EncoderState,
     pub(crate) submitted: AtomicBool,
-    label: RefCell<Option<String>>,
+    label: Mutex<Option<String>>,
 }
+
+unsafe impl Sync for CommandBuffer {}
 
 #[derive(Debug)]
 pub(crate) enum EncoderState {
@@ -59,7 +61,7 @@ impl CommandBuffer {
             buffer: None,
             encoder: EncoderState::NotRecording,
             submitted: AtomicBool::new(false),
-            label: RefCell::new(None),
+            label: Mutex::new(None),
         }
     }
 
@@ -129,7 +131,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn update_label(&self) {
-        if let (Some(buffer), Some(label)) = (self.buffer.as_ref(), self.label.borrow().as_ref()) {
+        if let (Some(buffer), Some(label)) = (self.buffer.as_ref(), self.label.lock().unwrap().as_ref()) {
             buffer.set_label(label);
         }
     }
@@ -137,7 +139,7 @@ impl CommandBuffer {
 
 impl core::Marker for CommandBuffer {
     fn set_label(&self, label: Option<&str>) {
-        *self.label.borrow_mut() = Some(label.map(String::from).unwrap_or_else(String::new));
+        *self.label.lock().unwrap() = Some(label.map(String::from).unwrap_or_else(String::new));
 
         self.update_label();
     }

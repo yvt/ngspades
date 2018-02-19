@@ -23,6 +23,9 @@ pub(crate) struct DeviceData {
     main_queue: imp::CommandQueue,
 }
 
+unsafe impl Sync for DeviceData {}
+unsafe impl Send for DeviceData {}
+
 impl core::Device<imp::Backend> for Device {
     fn main_queue(&self) -> &imp::CommandQueue {
         &self.data.main_queue

@@ -123,7 +123,7 @@ pub trait CommandQueue<B: Backend>: Debug + Send + Any + Marker {
 ///
 /// [module-level documentation]: ../command/
 pub trait CommandBuffer<B: Backend>
-    : Debug + Send + Any + CommandEncoder<B> + Marker {
+    : Debug + Send + Sync + Any + CommandEncoder<B> + Marker {
     fn state(&self) -> CommandBufferState;
 
     /// Stall the current thread until the execution of the command buffer

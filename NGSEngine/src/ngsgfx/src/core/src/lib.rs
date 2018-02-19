@@ -242,7 +242,7 @@ pub use sync::*;
 pub use validation::*;
 
 /// Represents a physical device.
-pub trait Device<B: Backend>: Debug + Sized {
+pub trait Device<B: Backend>: Debug + Sized + Sync + Send {
     fn main_queue(&self) -> &B::CommandQueue;
     fn factory(&self) -> &B::Factory;
     fn capabilities(&self) -> &B::DeviceCapabilities;
