@@ -372,7 +372,6 @@ impl ngsbase::IWindowTrait for ComWindow {
             value |= viewport::WindowFlagsBit::DenyUserClose;
         }
 
-        let ref context: context::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -381,7 +380,7 @@ impl ngsbase::IWindowTrait for ComWindow {
                     *builder = Some(b.flags(value));
                     Ok(())
                 }
-                NodeDataState::Materialized(window) => Err(E_PF_NODE_MATERIALIZED),
+                NodeDataState::Materialized(_window) => Err(E_PF_NODE_MATERIALIZED),
             })
             .err()
             .unwrap_or(hresults::E_OK)
