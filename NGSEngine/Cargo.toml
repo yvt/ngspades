@@ -4,6 +4,7 @@ members = [
     "src/ngsbase",
     "src/ngscom",
     "src/ngsengine",
+    "src/ngsgamegfx",
     "src/ngsgfx",
     "src/ngsgfx/tools/include_data",
     "src/ngsgfx/tools/prebuild-glslang",

@@ -397,6 +397,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ngsgamegfx"
+version = "0.1.0"
+dependencies = [
+ "ngsgfx 0.1.0",
+ "ngspf 0.1.0",
+]
+
+[[package]]
 name = "ngsgfx"
 version = "0.1.0"
 dependencies = [

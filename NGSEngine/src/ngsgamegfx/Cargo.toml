@@ -1,0 +1,8 @@
+[package]
+name = "ngsgamegfx"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+ngsgfx = { path = "../ngsgfx" }
+ngspf = { path = "../ngspf" }
