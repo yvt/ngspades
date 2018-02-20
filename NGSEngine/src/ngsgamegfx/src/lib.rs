@@ -7,4 +7,5 @@
 extern crate ngsgfx;
 extern crate ngspf;
 
+mod passman;
 pub mod port;
