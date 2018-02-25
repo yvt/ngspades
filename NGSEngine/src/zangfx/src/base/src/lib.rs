@@ -35,6 +35,9 @@ pub mod sync;
 /// Represents a device memory size and offset value.
 pub type DeviceSize = u64;
 
+/// Represents a queue family index of a specific device.
+pub type QueueFamily = u32;
+
 /// Represents a memory type index of a specific device.
 pub type MemoryType = u32;
 

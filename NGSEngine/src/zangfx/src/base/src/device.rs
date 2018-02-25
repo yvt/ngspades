@@ -17,6 +17,9 @@ use {arg, command, handles, heap, limits, pass, pipeline, resources, sampler, sh
 pub trait Device: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     fn caps(&self) -> &limits::DeviceCaps;
 
+    /// Create a `CmdQueueBuilder` associated with this device.
+    fn build_cmd_queue(&self) -> Box<command::CmdQueueBuilder>;
+
     /// Create a `HeapBuilder` associated with this device.
     fn build_heap(&self) -> Box<heap::HeapBuilder>;
 
@@ -59,8 +62,6 @@ pub trait Device: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     // TODO: image view
 
     // TODO: render pipeline
-
-    // TODO: command queue/buffers
 
     /// Create a `ComputePipelineBuilder` associated with this device.
     fn build_compute_pipeline(&self) -> Box<pipeline::ComputePipelineBuilder>;

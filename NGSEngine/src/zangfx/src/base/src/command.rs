@@ -10,7 +10,44 @@ use std::fmt::Debug;
 
 use common::Result;
 use {handles, heap, resources};
-use {DeviceSize, StageFlags};
+use {DeviceSize, QueueFamily, StageFlags};
+
+/// Trait for building command queue objects.
+///
+/// # Valid Usage
+///
+///  - No instance of `CmdQueueBuilder` may outlive the originating `Device`.
+///
+/// # Examples
+///
+///     # use zangfx_base::device::Device;
+///     # fn test(device: &Device) {
+///     let cmd_queue = device.build_cmd_queue()
+///         .queue_family(0)
+///         .build()
+///         .expect("Failed to create a command queue.");
+///     # }
+///
+pub trait CmdQueueBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+    /// Set the queue family index.
+    ///
+    /// This property is mandatory.
+    fn queue_family(&mut self, v: QueueFamily) -> &mut CmdQueueBuilder;
+
+    /// Build a `CmdQueue`.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All mandatory properties must have their values set before this method
+    ///   is called.
+    /// - For each queue family, the number of command queues created from
+    ///   a device (including those already dropped) must be less than or equal
+    ///   to [`QueueFamilyInfo::count`].
+    ///
+    /// [`QueueFamilyInfo::count`]: QueueFamilyInfo::count
+    ///
+    fn build(&mut self) -> Result<Box<CmdQueue>>;
+}
 
 /// Trait for command queues.
 ///

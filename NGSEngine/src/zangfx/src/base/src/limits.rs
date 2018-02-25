@@ -111,6 +111,27 @@ pub struct MemoryRegionInfo {
     pub size: DeviceSize,
 }
 
+/// Indicates a capability of a specific queue family of a device.
+///
+/// See Vulkan 1.0 Specification "4.1. Physical Devices" for details and usage.
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum QueueFamilyCaps {
+    Render = 0b001,
+    Compute = 0b010,
+    Copy = 0b100,
+}
+
+/// Indicates a set of capabilities of a specific queue family of a device.
+pub type QueueFamilyCapsFlags = BitFlags<QueueFamilyCaps>;
+
+/// Describes the properties of a specific queue family of a device.
+#[derive(Debug, Clone, Copy)]
+pub struct QueueFamilyInfo {
+    pub caps: QueueFamilyCapsFlags,
+    pub count: usize,
+}
+
 /// Describes the properties and capabilities of a device.
 pub trait DeviceCaps: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     fn limits(&self) -> &DeviceLimits;
@@ -118,4 +139,5 @@ pub trait DeviceCaps: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     fn vertex_format_caps(&self, format: VertexFormat) -> VertexFormatCapsFlags;
     fn memory_types(&self) -> &[MemoryTypeInfo];
     fn memory_regions(&self) -> &[MemoryRegionInfo];
+    fn queue_families(&self) -> &[QueueFamilyInfo];
 }
