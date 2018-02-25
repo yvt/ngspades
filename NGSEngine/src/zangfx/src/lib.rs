@@ -48,6 +48,8 @@
 //! | render pass              | (part of RPS)          | render pass           | (part of GPS)           |
 //! | render target            | attachment             | attachment            | render target view      |
 //! | render target table      | render pass descriptor | framebuffer           | render target views     |
+//! | memory type              | storage mode           | memory type           | ?                       |
+//! | memory region            | ?                      | memory heap           | ?                       |
 //!
 //! Note: The mappings shown in this table are very rough. In most cases, a
 //! concept from one API does not translate well to another API.
@@ -105,4 +107,5 @@ pub extern crate zangfx_common as common;
 #[doc(no_inline)]
 pub mod prelude {
     pub use base::prelude::*;
+    pub use common::{BinaryInteger, BinaryUInteger};
 }

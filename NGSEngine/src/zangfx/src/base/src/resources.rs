@@ -206,4 +206,22 @@ pub struct MemoryReq {
 
     /// The required alignment of the resource (measured in bytes).
     pub align: DeviceSize,
+
+    /// The set of memory types supported by the resource. Each bit corresponds
+    /// to a single memory type.
+    ///
+    /// # Examples
+    ///
+    ///     # extern crate zangfx_base;
+    ///     # extern crate zangfx_common;
+    ///     # fn main() {
+    ///     # use zangfx_base::resources::MemoryReq;
+    ///     use zangfx_base::MemoryType;
+    ///     fn supports_memory_type(req: &MemoryReq, ty: MemoryType) -> bool {
+    ///         use zangfx_common::BinaryInteger;
+    ///         req.memory_types.get_bit(ty)
+    ///     }
+    ///     # }
+    ///
+    pub memory_types: u32,
 }

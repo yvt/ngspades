@@ -36,7 +36,10 @@ pub mod sync;
 pub type DeviceSize = u64;
 
 /// Represents a memory type index of a specific device.
-pub type MemoryType = u8;
+pub type MemoryType = u32;
+
+/// Represents a memory region index of a specific device.
+pub type MemoryRegionIndex = u32;
 
 /// Represents an index to a subpass in a render pass.
 pub type SubpassIndex = usize;

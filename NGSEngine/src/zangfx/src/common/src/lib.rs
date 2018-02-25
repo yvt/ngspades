@@ -7,8 +7,12 @@
 #![feature(raw)]
 #![feature(unsize)]
 pub extern crate cgmath;
+pub extern crate num_integer;
+pub extern crate num_traits;
 
 mod error;
+mod int;
 mod smallbox;
 pub use self::error::*;
+pub use self::int::*;
 pub use self::smallbox::*;
