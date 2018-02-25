@@ -1,0 +1,8 @@
+[package]
+name = "zangfx"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+zangfx_base = { path = "src/base" }
+zangfx_common = { path = "src/common" }
