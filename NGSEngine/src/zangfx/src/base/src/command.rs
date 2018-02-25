@@ -10,7 +10,7 @@ use std::fmt::Debug;
 
 use common::Result;
 use {handles, heap, resources};
-use {DeviceSize, QueueFamily, StageFlags};
+use {ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
 
 /// Trait for building command queue objects.
 ///
@@ -101,7 +101,16 @@ pub trait RenderCmdEncoder
 
 pub trait ComputeCmdEncoder
     : Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> + CmdEncoder {
-    // TODO: compute commands
+    /// Set the current `ComputePipeline` object.
+    fn bind_pipeline(&mut self, pipeline: &handles::ComputePipeline);
+
+    /// Bind zero or more `ArgTable`s.
+    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&handles::ArgTable]);
+
+    /// Provoke work in a compute pipeline.
+    ///
+    /// `workgroup_count` is an array with up to 3 elements.
+    fn dispatch(&mut self, workgroup_count: &[u32]);
 }
 
 pub trait CopyCmdEncoder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
