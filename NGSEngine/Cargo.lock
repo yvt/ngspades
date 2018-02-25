@@ -1443,6 +1443,7 @@ version = "0.1.0"
 dependencies = [
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
+ "zangfx_metal 0.1.0",
 ]
 
 [[package]]
@@ -1462,6 +1463,14 @@ dependencies = [
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-integer 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "zangfx_metal"
+version = "0.1.0"
+dependencies = [
+ "zangfx_base 0.1.0",
+ "zangfx_common 0.1.0",
 ]
 
 [metadata]

@@ -89,12 +89,12 @@
 //! number of `T` values:
 //!
 //! ```
-//! use zangfx_base::{AccessType, AccessTypeFlags};
+//! use zangfx::base::{AccessType, AccessTypeFlags};
 //!
 //! let no_access1: AccessTypeFlags = AccessTypeFlags::empty();
 //! let no_access2: AccessTypeFlags = AccessType::empty_bitflag();
 //!
-//! let oneway_access: AccessTypeFlags = AccessType::TransferRead.into();
+//! let oneway_access: AccessTypeFlags = AccessType::CopyRead.into();
 //!
 //! let twoway_access: AccessTypeFlags =
 //!     AccessType::CopyRead |
@@ -102,6 +102,14 @@
 //! ```
 pub extern crate zangfx_base as base;
 pub extern crate zangfx_common as common;
+
+/// Includes a backend for each target API.
+pub mod backends {
+    #[cfg(target_os = "macos")]
+    pub extern crate zangfx_metal as metal;
+
+    // TODO: pub extern crate zangfx_vulkan as vulkan;
+}
 
 /// The ZanGFX prelude.
 #[doc(no_inline)]

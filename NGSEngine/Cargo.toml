@@ -37,6 +37,7 @@ members = [
     "src/ysr2/src/spatializer",
     "src/xdispatch",
     "src/zangfx",
+    "src/zangfx/src/backend/metal",
     "src/zangfx/src/common",
     "src/zangfx/src/base",
 ]
