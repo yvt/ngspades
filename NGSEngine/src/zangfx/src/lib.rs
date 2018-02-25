@@ -39,7 +39,7 @@
 //! | root signature           | ?                      | pipeline layout       | root signature          |
 //! | command queue            | command queue          | queue                 | ?                       |
 //! | command buffer           | command buffer         | command buffer        | ?                       |
-//! | event                    | (CB callbacks)         | fence                 | ?                       |
+//! | completion handler       | completed handler      | (fence)               | ?                       |
 //! | fence                    | fence                  | event                 | ?                       |
 //! | library                  | library                | shader module         | ?                       |
 //! | heap                     | heap                   | device memory         | resource heap           |

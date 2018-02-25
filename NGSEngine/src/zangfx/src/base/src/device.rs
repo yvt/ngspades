@@ -26,12 +26,6 @@ pub trait Device: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     /// fence.
     fn build_fence(&self) -> Box<sync::FenceBuilder>;
 
-    /// Create an `EventBuilder` associated with this device.
-    ///
-    /// [`DeviceExt`](DeviceExt) provides a shorthand method for creating an
-    /// event.
-    fn build_event(&self) -> Box<sync::EventBuilder>;
-
     /// Create an `BarrierBuilder` associated with this device.
     fn build_barrier(&self) -> Box<sync::BarrierBuilder>;
 
@@ -89,11 +83,6 @@ pub trait DeviceExt: Device {
     /// Shorthand method for creating a `Fence` associated with this device.
     fn new_fence(&self) -> Result<handles::Fence> {
         self.build_fence().build()
-    }
-
-    /// Shorthand method for creating an `Event` associated with this device.
-    fn new_event(&self, signaled: bool) -> Result<handles::Event> {
-        self.build_event().signaled(signaled).build()
     }
 }
 

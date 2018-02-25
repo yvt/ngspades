@@ -50,6 +50,9 @@ pub trait CmdBuffer: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     fn encode_compute(&mut self) -> &mut ComputeCmdEncoder;
     fn encode_copy(&mut self) -> &mut CopyCmdEncoder;
 
+    /// Register a completion handler. Must not be called after calling `commit`.
+    fn on_complete(&mut self, cb: Box<FnMut()>);
+
     // TODO: semaphores
 }
 

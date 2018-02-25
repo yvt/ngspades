@@ -8,7 +8,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Range;
 use common::Result;
-use handles::{Barrier, Buffer, Event, Fence, Image};
+use handles::{Barrier, Buffer, Fence, Image};
 use {AccessTypeFlags, DeviceSize};
 use resources::{ImageLayout, ImageSubRange};
 
@@ -36,38 +36,6 @@ pub trait FenceBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     /// All mandatory properties must have their values set before this method
     /// is called.
     fn build(&mut self) -> Result<Fence>;
-}
-
-/// Trait for building events.
-///
-/// # Valid Usage
-///
-///  - No instance of `EventBuilder` may outlive the originating `Device`.
-///
-/// # Examples
-///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::sync::EventBuilder;
-///     # fn test(device: &Device) {
-///     let image = device.build_event()
-///         .signaled(true)
-///         .build()
-///         .expect("Failed to create a fence.");
-///     # }
-///
-pub trait EventBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
-    /// Set the initial state of the event.
-    ///
-    /// Defaults to `false`.
-    fn signaled(&mut self, v: bool) -> &mut EventBuilder;
-
-    /// Build an `Event`.
-    ///
-    /// # Valid Usage
-    ///
-    /// All mandatory properties must have their values set before this method
-    /// is called.
-    fn build(&mut self) -> Result<Event>;
 }
 
 /// Trait for building barriers.

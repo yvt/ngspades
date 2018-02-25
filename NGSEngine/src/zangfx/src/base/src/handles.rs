@@ -182,22 +182,11 @@ define_handle! {
 define_handle! {
     /// Fence handle.
     ///
-    /// Events are used for intra-queue synchronization.
+    /// Fences are used for intra-queue synchronization.
     ///
     /// See [the module-level documentation](index.html) for the generic usage
     /// of handles.
     Fence
-}
-
-// TODO: remove events in favor of CB callbacks?
-define_handle! {
-    /// Event handle.
-    ///
-    /// Events are used for device-to-host synchronization.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Event
 }
 
 define_handle! {
