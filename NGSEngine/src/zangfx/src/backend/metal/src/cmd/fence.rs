@@ -12,33 +12,6 @@ use utils::{nil_error, OCPtr};
 
 // TODO: recycle fences after use
 
-/// Implementation of `FenceBuilder` for Metal.
-#[derive(Debug, Clone)]
-pub struct FenceBuilder {
-    metal_device: MTLDevice,
-}
-
-zangfx_impl_object! { FenceBuilder }
-
-unsafe impl Send for FenceBuilder {}
-unsafe impl Sync for FenceBuilder {}
-
-impl FenceBuilder {
-    pub(crate) unsafe fn new(metal_device: MTLDevice) -> Self {
-        Self { metal_device }
-    }
-}
-
-impl sync::FenceBuilder for FenceBuilder {
-    fn build(&mut self) -> Result<handles::Fence> {
-        let metal_fence = self.metal_device.new_fence();
-        if metal_fence.is_null() {
-            return Err(nil_error("MTLDevice newFence"));
-        }
-        Ok(unsafe { Fence::from_raw(metal_fence) }.into())
-    }
-}
-
 /// Implementation of `Fence` for Metal.
 #[derive(Debug, Clone)]
 pub struct Fence {
@@ -51,6 +24,14 @@ unsafe impl Send for Fence {}
 unsafe impl Sync for Fence {}
 
 impl Fence {
+    pub(crate) unsafe fn new(metal_device: MTLDevice) -> Result<Self> {
+        let metal_fence = metal_device.new_fence();
+        if metal_fence.is_null() {
+            return Err(nil_error("MTLDevice newFence"));
+        }
+        Ok(Self::from_raw(metal_fence).into())
+    }
+
     pub unsafe fn from_raw(metal_fence: MTLFence) -> Self {
         Self {
             data: Arc::new(OCPtr::from_raw(metal_fence).unwrap()),

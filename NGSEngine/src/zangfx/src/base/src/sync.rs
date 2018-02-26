@@ -8,35 +8,9 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Range;
 use common::Result;
-use handles::{Barrier, Buffer, Fence, Image};
+use handles::{Barrier, Buffer, Image};
 use {AccessTypeFlags, DeviceSize};
 use resources::{ImageLayout, ImageSubRange};
-
-/// Trait for building fences.
-///
-/// # Valid Usage
-///
-///  - No instance of `FenceBuilder` may outlive the originating `Device`.
-///
-/// # Examples
-///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::sync::FenceBuilder;
-///     # fn test(device: &Device) {
-///     let image = device.build_fence()
-///         .build()
-///         .expect("Failed to create a fence.");
-///     # }
-///
-pub trait FenceBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
-    /// Build a `Fence`.
-    ///
-    /// # Valid Usage
-    ///
-    /// All mandatory properties must have their values set before this method
-    /// is called.
-    fn build(&mut self) -> Result<Fence>;
-}
 
 /// Trait for building barriers.
 ///

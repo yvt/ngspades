@@ -53,10 +53,6 @@ impl device::Device for Device {
         unimplemented!()
     }
 
-    fn build_fence(&self) -> Box<base::sync::FenceBuilder> {
-        Box::new(unsafe { cmd::fence::FenceBuilder::new(*self.metal_device) })
-    }
-
     fn build_barrier(&self) -> Box<base::sync::BarrierBuilder> {
         Box::new(cmd::barrier::BarrierBuilder)
     }

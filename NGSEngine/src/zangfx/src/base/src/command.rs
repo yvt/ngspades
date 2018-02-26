@@ -68,6 +68,9 @@ pub trait CmdQueue: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     /// if there are too many (50–) pending command buffers.
     fn new_cmd_buffer(&self) -> Result<Box<CmdBuffer>>;
 
+    /// Create a `Fence` associated with the command queue.
+    fn build_fence(&self) -> Result<handles::Fence>;
+
     /// Schedule pending command buffers for execution.
     fn flush(&self);
 }

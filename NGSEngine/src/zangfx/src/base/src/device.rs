@@ -23,12 +23,6 @@ pub trait Device: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     /// Create a `HeapBuilder` associated with this device.
     fn build_heap(&self) -> Box<heap::HeapBuilder>;
 
-    /// Create a `FenceBuilder` associated with this device.
-    ///
-    /// [`DeviceExt`](DeviceExt) provides a shorthand method for creating a
-    /// fence.
-    fn build_fence(&self) -> Box<sync::FenceBuilder>;
-
     /// Create an `BarrierBuilder` associated with this device.
     fn build_barrier(&self) -> Box<sync::BarrierBuilder>;
 
@@ -81,10 +75,7 @@ pub trait Device: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
 
 /// Utilies for [`Device`](Device).
 pub trait DeviceExt: Device {
-    /// Shorthand method for creating a `Fence` associated with this device.
-    fn new_fence(&self) -> Result<handles::Fence> {
-        self.build_fence().build()
-    }
+    // No methods are currently defined.
 }
 
 impl<T: ?Sized + Device> DeviceExt for T {}
