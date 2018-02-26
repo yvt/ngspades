@@ -37,6 +37,10 @@ pub struct ResourceBinding {
     pub msl_texture: Option<u32>,
     pub msl_sampler: Option<u32>,
 
+    /// The index of argument buffer. When specified, `msl_buffer`,
+    /// `msl_texture`, and `msl_sampler` point indices into the argument buffer.
+    pub msl_arg_buffer: Option<u32>,
+
     pub stage: ExecutionModel,
 }
 
@@ -48,6 +52,7 @@ impl ResourceBinding {
             msl_buffer: self.msl_buffer.unwrap_or(0),
             msl_texture: self.msl_texture.unwrap_or(0),
             msl_sampler: self.msl_sampler.unwrap_or(0),
+            msl_arg_buffer: self.msl_arg_buffer.unwrap_or(<u32>::max_value()),
             stage: self.stage.as_ll(),
         }
     }

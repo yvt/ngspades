@@ -70,6 +70,7 @@ public:
             rb.msl_buffer = binding->msl_buffer;
             rb.msl_texture = binding->msl_texture;
             rb.msl_sampler = binding->msl_sampler;
+            rb.msl_argument_buffer = binding->msl_arg_buffer;
             switch (binding->stage) {
                 case SpirVCrossExecutionModelVertex:
                     rb.stage = spv::ExecutionModelVertex;

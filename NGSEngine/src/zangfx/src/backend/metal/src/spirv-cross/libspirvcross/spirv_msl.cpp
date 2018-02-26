@@ -1021,9 +1021,143 @@ void CompilerMSL::emit_resources()
 	for (auto &nsi_var : non_stage_in_input_var_ids)
 		emit_interface_block(nsi_var.second);
 
+	emit_argument_buffers();
+
 	emit_interface_block(stage_out_var_id);
 	emit_interface_block(stage_uniforms_var_id);
 	emit_interface_block(stage_workgroup_var_id);
+}
+
+std::string CompilerMSL::argument_buffer_type_name(uint32_t index)
+{
+	return "ArgBuf_" + convert_to_string(index);
+}
+
+std::string CompilerMSL::argument_buffer_parameter_name(uint32_t index)
+{
+	return "argbuf_" + convert_to_string(index);
+}
+
+auto CompilerMSL::generate_argument_buffers() -> std::unordered_map<uint32_t, std::vector<ArgBufField>> {
+
+	std::unordered_map<uint32_t, std::vector<ArgBufField>> arg_bufs;
+
+	for (auto &id : ids)
+	{
+		if (id.get_type() == TypeVariable)
+		{
+			auto &var = id.get<SPIRVariable>();
+			auto &type = get<SPIRType>(var.basetype);
+			uint32_t var_id = var.self;
+
+			if ((var.storage == StorageClassUniform || var.storage == StorageClassUniformConstant) &&
+			    !is_hidden_variable(var))
+			{
+				auto &var_dec = meta[var_id].decoration;
+				uint32_t var_desc_set = var_dec.set;
+				uint32_t var_binding = var_dec.binding;
+
+				for (auto p_res_bind : resource_bindings)
+				{
+					if (p_res_bind->desc_set == var_desc_set && p_res_bind->binding == var_binding)
+					{
+						if (!p_res_bind->is_passed_via_argument_buffer()) {
+							// passed via legacy argument table
+							continue;
+						}
+
+						switch (type.basetype)
+						{
+						case SPIRType::Struct:
+							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
+								ArgBufField{p_res_bind->msl_buffer, var_id, type.basetype});
+							break;
+						case SPIRType::Image:
+							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
+								ArgBufField{p_res_bind->msl_texture, var_id, type.basetype});
+							break;
+						case SPIRType::Sampler:
+							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
+								ArgBufField{p_res_bind->msl_sampler, var_id, type.basetype});
+							break;
+						case SPIRType::SampledImage:
+							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
+								ArgBufField{p_res_bind->msl_texture, var_id, SPIRType::Image});
+							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
+								ArgBufField{p_res_bind->msl_sampler, var_id, SPIRType::Sampler});
+							break;
+						default:
+							statement("// NOT SUPPORTED: unknown SPIRType in argument buffer");
+							break;
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	return arg_bufs;
+}
+
+void CompilerMSL::emit_argument_buffers()
+{
+	// Extract all uniform variables passed via argument buffers
+	auto arg_bufs = generate_argument_buffers();
+
+	// Emit argument buffers
+	for (auto &arg_buf_pair: arg_bufs) {
+		uint32_t arg_buf_id = arg_buf_pair.first;
+		auto &args = arg_buf_pair.second;
+
+		// Fields must be sorted by `[[id]]`
+		std::sort(args.begin(), args.end());
+
+		statement("struct " + argument_buffer_type_name(arg_buf_id));
+		begin_scope();
+		for (const auto &arg: args) {
+			auto &var = get<SPIRVariable>(arg.var_id);
+			auto &type = get<SPIRType>(var.basetype);
+
+			std::string arg_field;
+			switch (arg.type)
+			{
+			case SPIRType::Struct:
+			{
+				auto &m = meta.at(type.self);
+				if (m.members.size() == 0)
+					break;
+				arg_field += get_argument_address_space(var) + " " + type_to_glsl(type) + "& " + to_name(arg.var_id);
+				break;
+			}
+			case SPIRType::Sampler:
+				if (type.basetype == SPIRType::SampledImage) {
+					// This field is a part of a combined sampled image
+					arg_field += "sampler " + to_sampler_expression(arg.var_id);
+				} else {
+					arg_field += type_to_glsl(type) + " " + to_name(arg.var_id);
+				}
+				break;
+			case SPIRType::Image:
+				arg_field += type_to_glsl(type, arg.var_id) + " " + to_name(arg.var_id);
+				break;
+			default:
+				break;
+			}
+
+			if (arg_field.empty()) {
+				continue;
+			}
+
+			arg_field += " [[id(" + convert_to_string(arg.argument_id) + ")]];";
+
+			statement(arg_field);
+		}
+
+		end_scope_decl();
+
+		statement("");
+	}
 }
 
 // Emit declarations for the specialization Metal function constants
@@ -2343,6 +2477,9 @@ string CompilerMSL::entry_point_args(bool append_comma)
 			     var.storage == StorageClassPushConstant) &&
 			    !is_hidden_variable(var))
 			{
+				bool is_arg_buf;
+				uint32_t resource_index;
+
 				switch (type.basetype)
 				{
 				case SPIRType::Struct:
@@ -2350,35 +2487,60 @@ string CompilerMSL::entry_point_args(bool append_comma)
 					auto &m = meta.at(type.self);
 					if (m.members.size() == 0)
 						break;
+
+					resource_index = get_metal_resource_index(var, type.basetype, is_arg_buf);
+					if (is_arg_buf) {
+						break;
+					}
+
 					if (!ep_args.empty())
 						ep_args += ", ";
+
 					ep_args += get_argument_address_space(var) + " " + type_to_glsl(type) + "& " + to_name(var_id);
-					ep_args += " [[buffer(" + convert_to_string(get_metal_resource_index(var, type.basetype)) + ")]]";
+					ep_args += " [[buffer(" + convert_to_string(resource_index) + ")]]";
 					break;
 				}
 				case SPIRType::Sampler:
+					resource_index = get_metal_resource_index(var, type.basetype, is_arg_buf);
+					if (is_arg_buf) {
+						break;
+					}
+
 					if (!ep_args.empty())
 						ep_args += ", ";
+
 					ep_args += type_to_glsl(type) + " " + to_name(var_id);
-					ep_args += " [[sampler(" + convert_to_string(get_metal_resource_index(var, type.basetype)) + ")]]";
+					ep_args += " [[sampler(" + convert_to_string(resource_index) + ")]]";
 					break;
 				case SPIRType::Image:
+					resource_index = get_metal_resource_index(var, type.basetype, is_arg_buf);
+					if (is_arg_buf) {
+						break;
+					}
+
 					if (!ep_args.empty())
 						ep_args += ", ";
+
 					ep_args += type_to_glsl(type, var_id) + " " + to_name(var_id);
-					ep_args += " [[texture(" + convert_to_string(get_metal_resource_index(var, type.basetype)) + ")]]";
+					ep_args += " [[texture(" + convert_to_string(resource_index) + ")]]";
 					break;
 				case SPIRType::SampledImage:
+					resource_index = get_metal_resource_index(var, SPIRType::Image, is_arg_buf);
+					if (is_arg_buf) {
+						break;
+					}
+
 					if (!ep_args.empty())
 						ep_args += ", ";
+
 					ep_args += type_to_glsl(type, var_id) + " " + to_name(var_id);
 					ep_args +=
-					    " [[texture(" + convert_to_string(get_metal_resource_index(var, SPIRType::Image)) + ")]]";
+					    " [[texture(" + convert_to_string(resource_index) + ")]]";
 					if (type.image.dim != DimBuffer)
 					{
 						ep_args += ", sampler " + to_sampler_expression(var_id);
 						ep_args +=
-						    " [[sampler(" + convert_to_string(get_metal_resource_index(var, SPIRType::Sampler)) + ")]]";
+						    " [[sampler(" + convert_to_string(get_metal_resource_index(var, SPIRType::Sampler, is_arg_buf)) + ")]]";
 					}
 					break;
 				default:
@@ -2396,6 +2558,31 @@ string CompilerMSL::entry_point_args(bool append_comma)
 		}
 	}
 
+	// Indirect argument buffers
+	// (Their type definitions are emitted by `emit_argument_buffers`.)
+	auto arg_bufs = generate_argument_buffers();
+	for (const auto &arg_buf_pair: arg_bufs) {
+		uint32_t arg_buf_id = arg_buf_pair.first;
+
+		if (!ep_args.empty())
+			ep_args += ", ";
+
+		auto type_name = argument_buffer_type_name(arg_buf_id);
+		auto param_name = argument_buffer_parameter_name(arg_buf_id);
+
+		ep_args += "constant " + type_name + "& " + param_name;
+		ep_args += " [[buffer(" + convert_to_string(arg_buf_id) + ")]]";
+
+		for (const auto &arg: arg_buf_pair.second) {
+			auto var_id = arg.var_id;
+
+			// Changing the name here might be crazy
+			string name = ensure_valid_name(to_expression(var_id), "");
+			string qual_var_name = param_name + "." + name;
+			meta[var_id].decoration.qualified_alias = qual_var_name;
+		}
+	}
+
 	// Vertex and instance index built-ins
 	if (needs_vertex_idx_arg)
 		ep_args += built_in_func_arg(BuiltInVertexIndex, !ep_args.empty());
@@ -2410,12 +2597,15 @@ string CompilerMSL::entry_point_args(bool append_comma)
 }
 
 // Returns the Metal index of the resource of the specified type as used by the specified variable.
-uint32_t CompilerMSL::get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype)
+// `is_arg_buf` is set to `true` iff the resource is passed via an indirect argument buffer.
+uint32_t CompilerMSL::get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype, bool &is_arg_buf)
 {
 	auto &execution = get_entry_point();
 	auto &var_dec = meta[var.self].decoration;
 	uint32_t var_desc_set = (var.storage == StorageClassPushConstant) ? kPushConstDescSet : var_dec.set;
 	uint32_t var_binding = (var.storage == StorageClassPushConstant) ? kPushConstBinding : var_dec.binding;
+
+	is_arg_buf = false;
 
 	// If a matching binding has been specified, find and use it
 	for (auto p_res_bind : resource_bindings)
@@ -2425,6 +2615,7 @@ uint32_t CompilerMSL::get_metal_resource_index(SPIRVariable &var, SPIRType::Base
 		{
 
 			p_res_bind->used_by_shader = true;
+			is_arg_buf = p_res_bind->is_passed_via_argument_buffer();
 			switch (basetype)
 			{
 			case SPIRType::Struct:

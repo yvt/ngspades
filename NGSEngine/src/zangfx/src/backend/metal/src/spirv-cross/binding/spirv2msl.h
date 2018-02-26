@@ -24,6 +24,7 @@ struct SpirV2MslVertexAttr
     uint32_t msl_buffer;
     uint32_t msl_offset;
     uint32_t msl_stride;
+
     SpirVCrossVertexInputRate input_rate;
 };
 
@@ -35,6 +36,11 @@ struct SpirV2MslResourceBinding
     uint32_t msl_buffer;
     uint32_t msl_texture;
     uint32_t msl_sampler;
+
+    /// The index of argument buffer. When specified (not `(uint32_t)-1`),
+    /// `msl_buffer`, `msl_texture`, and `msl_sampler` point indices into the
+    /// argument buffer.
+    uint32_t msl_arg_buffer;
 
     SpirVCrossExecutionModel stage;
 };

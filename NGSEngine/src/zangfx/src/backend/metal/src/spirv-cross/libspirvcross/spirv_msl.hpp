@@ -55,7 +55,13 @@ struct MSLResourceBinding
 	uint32_t msl_texture = 0;
 	uint32_t msl_sampler = 0;
 
+	uint32_t msl_argument_buffer = static_cast<uint32_t>(-1);
+
 	bool used_by_shader = false;
+
+	bool is_passed_via_argument_buffer() const {
+		return msl_argument_buffer != static_cast<uint32_t>(-1);
+	}
 };
 
 // Tracks the type ID and member index of a struct member
@@ -140,6 +146,8 @@ public:
 	                    std::vector<MSLResourceBinding> *p_res_bindings = nullptr);
 
 protected:
+	struct ArgBufField;
+
 	void emit_instruction(const Instruction &instr) override;
 	void emit_glsl_op(uint32_t result_type, uint32_t result_id, uint32_t op, const uint32_t *args,
 	                  uint32_t count) override;
@@ -183,6 +191,10 @@ protected:
 	void emit_resources();
 	void emit_specialization_constants();
 	void emit_interface_block(uint32_t ib_var_id);
+	void emit_argument_buffers();
+	std::unordered_map<uint32_t, std::vector<ArgBufField>> generate_argument_buffers();
+	std::string argument_buffer_type_name(uint32_t index);
+	std::string argument_buffer_parameter_name(uint32_t index);
 	void populate_func_name_overrides();
 	void populate_var_name_overrides();
 
@@ -199,7 +211,7 @@ protected:
 	std::string member_attribute_qualifier(const SPIRType &type, uint32_t index);
 	std::string argument_decl(const SPIRFunction::Parameter &arg);
 	std::string round_fp_tex_coords(std::string tex_coords, bool coord_is_fp);
-	uint32_t get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype);
+	uint32_t get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype, bool &is_arg_buf);
 	uint32_t get_ordered_member_location(uint32_t type_id, uint32_t index);
 	size_t get_declared_struct_member_alignment(const SPIRType &struct_type, uint32_t index) const;
 	std::string to_component_argument(uint32_t id);
@@ -277,6 +289,26 @@ protected:
 		SPIRType &type;
 		Meta &meta;
 		SortAspect sort_aspect;
+	};
+
+	// A field in an indirect argument buffer.
+	struct ArgBufField {
+		uint32_t argument_id;
+		uint32_t var_id;
+
+		/// `SPIRType::{Image, Sampler, Struct}`
+		SPIRType::BaseType type;
+
+		ArgBufField(uint32_t argument_id, uint32_t var_id, SPIRType::BaseType type)
+		:
+			argument_id{argument_id},
+			var_id{var_id},
+			type{type}
+		{}
+
+		bool operator < (const ArgBufField &o) const {
+			return argument_id < o.argument_id;
+		}
 	};
 };
 }

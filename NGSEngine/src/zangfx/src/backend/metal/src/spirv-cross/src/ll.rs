@@ -49,6 +49,8 @@ pub struct SpirV2MslResourceBinding {
     pub msl_texture: u32,
     pub msl_sampler: u32,
 
+    pub msl_arg_buffer: u32,
+
     pub stage: SpirVCrossExecutionModel,
 }
 
