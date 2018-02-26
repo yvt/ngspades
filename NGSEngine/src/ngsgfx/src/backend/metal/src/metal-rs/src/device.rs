@@ -102,6 +102,12 @@ impl<'a> MTLDevice {
         }
     }
 
+    pub fn recommended_max_working_set_size(&self) -> u64 {
+        unsafe {
+            msg_send![self.0, recommendedMaxWorkingSetSize]
+        }
+    }
+
     pub fn is_low_power(&self) -> bool {
         unsafe {
             match msg_send![self.0, isLowPower] {

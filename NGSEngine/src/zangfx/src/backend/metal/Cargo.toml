@@ -6,3 +6,10 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 zangfx_common = { path = "../../common" }
 zangfx_base = { path = "../../base" }
+ngsgfx_metal-rs = { path = "../../../../ngsgfx/src/backend/metal/src/metal-rs"}
+ngsenumflags = { path = "../../../../support/ngsenumflags" }
+spirv-cross = { path = "../../../../ngsgfx/src/backend/metal/src/spirv-cross" }
+block = "0.1.5"
+rspirv = "0.5.1"
+spirv_headers = "1.1.5"
+cocoa = "0.9"
