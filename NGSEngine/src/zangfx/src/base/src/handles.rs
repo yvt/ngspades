@@ -298,15 +298,15 @@ impl<'a> From<&'a Buffer> for ResourceRef<'a> {
 #[macro_export]
 macro_rules! zangfx_impl_handle {
     ($type:ty, $handletype:ty) => {
-        impl $crate::handles::HandleImpl<$handletype> for MyImage {
+        impl $crate::handles::HandleImpl<$handletype> for $type {
             fn clone_handle(&self) -> $handletype {
                 <$handletype>::new(Clone::clone(self))
             }
         }
-        impl AsRef<::std::any::Any> for MyImage {
+        impl AsRef<::std::any::Any> for $type {
             fn as_ref(&self) -> &::std::any::Any { self }
         }
-        impl AsMut<::std::any::Any> for MyImage {
+        impl AsMut<::std::any::Any> for $type {
             fn as_mut(&mut self) -> &mut ::std::any::Any { self }
         }
     }

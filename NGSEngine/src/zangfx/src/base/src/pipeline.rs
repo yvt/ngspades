@@ -6,7 +6,6 @@
 //! Builder for render/compute pipeline objects.
 use std::any::Any;
 use std::fmt::Debug;
-use ngsenumflags::BitFlags;
 
 use common::Result;
 use handles::{ComputePipeline, Library};

@@ -7,7 +7,6 @@
 //! interface for backend implementations.
 #![feature(unsize)]
 extern crate zangfx_common as common;
-use common::cgmath;
 extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;
@@ -82,4 +81,21 @@ pub enum CmpFn {
 pub mod prelude {
     pub use device::DeviceExt;
     pub use formats::{IntAsScalarFormat, FloatAsScalarFormat, AsIndexFormat};
+}
+
+/// Generates a boiler-plate code for defining a ZanGFX object type.
+///
+/// For a given type, this macro generates the implementation for the following
+/// traits: `AsRef<Any>`, and `AsMut<Any>`.
+///
+#[macro_export]
+macro_rules! zangfx_impl_object {
+    ($type:ty) => {
+        impl AsRef<::std::any::Any> for $type {
+            fn as_ref(&self) -> &::std::any::Any { self }
+        }
+        impl AsMut<::std::any::Any> for $type {
+            fn as_mut(&mut self) -> &mut ::std::any::Any { self }
+        }
+    }
 }

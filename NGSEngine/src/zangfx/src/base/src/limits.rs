@@ -6,7 +6,6 @@
 //! Provides an information regarding a device's capabilities and limits.
 use std::any::Any;
 use std::fmt::Debug;
-use cgmath::Vector3;
 use ngsenumflags::BitFlags;
 
 use formats::{ImageFormat, VertexFormat};
@@ -43,14 +42,14 @@ pub struct DeviceLimits {
     /// Indicates the maximum size of a local compute workgroup (specified by
     /// the `LocalSize` execution mode and by the object decorated by the
     /// `WorkgroupSize` decoration in a SPIR-V shader module).
-    pub max_compute_workgroup_size: Vector3<u32>,
+    pub max_compute_workgroup_size: [u32; 3],
 
     /// Indicates the maximum total number of compute shader invocations in a
     /// single local compute workgroup.
     pub max_num_compute_workgroup_invocations: u32,
 
     /// Indicates the maximum number of compute local workgroups.
-    pub max_compute_workgroup_count: Vector3<u32>,
+    pub max_compute_workgroup_count: [u32; 3],
     // TODO: expose more limits
 }
 
