@@ -11,6 +11,9 @@
 //!  - `BitFlags` implements `Hash`.
 //!  - Generated `InnerXXX` types are now marked as `#[doc(hidden)]` and you
 //!    no longer have to hide them manually
+//!  - Provides a helper macro named [`flags!`].
+//!
+//! [`flags!`]: flags
 //!
 //! ## Examples
 //!
@@ -235,4 +238,41 @@ impl<T> std::ops::Not for BitFlags<T>
     fn not(self) -> BitFlags<T> {
         (!self.val).into()
     }
+}
+
+/// Convenient macro for constructing a `BitFlags`.
+///
+/// # Examples
+///
+///     #[macro_use]
+///     extern crate ngsenumflags;
+///     # #[macro_use]
+///     # extern crate ngsenumflags_derive;
+///     # fn main() {
+///     #[derive(NgsEnumFlags, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+///     #[repr(u8)]
+///     pub enum Test {A = 0b0001, B = 0b0010}
+///
+///     let flags0 = flags![Test::{}];
+///     let flags1 = flags![Test::{A}];
+///     let flags2 = flags![Test::{A | B}];
+///
+///     assert_eq!(flags0, ngsenumflags::BitFlags::empty());
+///     assert_eq!(flags1, Test::A.into());
+///     assert_eq!(flags2, Test::A | Test::B);
+///     # }
+#[macro_export]
+macro_rules! flags {
+    ( $($ns:ident::)* {} ) => (
+        $($ns::)*empty_bitflag()
+    );
+
+    ( $($ns:ident::)* {$tail:ident} ) => (
+        $crate::BitFlags::from($($ns::)*$tail)
+    );
+
+    ( $($ns:ident::)* {$head:ident | $($rest:tt)*} ) => ((
+        flags![$($ns::)*{$head}] |
+        flags![$($ns::)*{$($rest)*}]
+    ))
 }
