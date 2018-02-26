@@ -80,6 +80,7 @@ pub enum CmpFn {
 #[doc(no_inline)]
 pub mod prelude {
     pub use device::DeviceExt;
+    pub use handles::HandleImpl;
     pub use formats::{IntAsScalarFormat, FloatAsScalarFormat, AsIndexFormat};
 }
 

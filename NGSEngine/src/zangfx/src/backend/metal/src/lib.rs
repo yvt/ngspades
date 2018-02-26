@@ -9,7 +9,7 @@
 //! predecessor, NgsGFX. For this reason, ZanGFX is designed to run efficiently
 //! on Metal.
 extern crate zangfx_common as common;
-#[macro_use(zangfx_impl_object)]
+#[macro_use(zangfx_impl_object, zangfx_impl_handle)]
 extern crate zangfx_base as base;
 extern crate ngsgfx_metal_rs as metal;
 #[macro_use(flags)]
@@ -22,8 +22,11 @@ extern crate cocoa;
 
 // TODO
 
+pub mod cmd;
+pub mod device;
 pub mod formats;
 pub mod limits;
+mod utils;
 
 pub static MEMORY_REGION_GLOBAL: base::MemoryRegionIndex = 0;
 

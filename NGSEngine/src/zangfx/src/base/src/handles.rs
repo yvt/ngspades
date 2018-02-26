@@ -93,6 +93,12 @@ macro_rules! define_handle {
             }
         }
 
+        impl<T: marker::Unsize<HandleImpl<$name>>> From<T> for $name {
+            fn from(x: T) -> Self {
+                Self::new(x)
+            }
+        }
+
         impl Clone for $name {
             fn clone(&self) -> Self {
                 self.inner.clone_handle()

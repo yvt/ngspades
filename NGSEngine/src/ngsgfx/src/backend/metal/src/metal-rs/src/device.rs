@@ -28,6 +28,7 @@ use libc;
 use std::marker::PhantomData;
 use std::ffi::CStr;
 use std::path::Path;
+use std::mem::transmute_copy;
 
 #[allow(non_camel_case_types)]
 #[repr(u64)]
@@ -167,6 +168,12 @@ impl<'a> MTLDevice {
     pub fn new_default_library(&self) -> MTLLibrary {
         unsafe {
             msg_send![self.0, newDefaultLibrary]
+        }
+    }
+
+    pub fn new_fence(&self) -> MTLFence {
+        unsafe {
+            msg_send![self.0, newFence]
         }
     }
 
@@ -312,3 +319,20 @@ impl NSObjectProtocol for MTLDevice {
     }
 }
 
+pub enum MTLFencePrototype {}
+pub type MTLFence = id<(MTLFencePrototype, (NSObjectPrototype, ()))>;
+
+impl<'a> MTLFence {
+    pub fn set_label(&self, label: &str) {
+        unsafe {
+            let nslabel = NSString::from_str(label);
+            msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
+        }
+    }
+}
+
+impl NSObjectProtocol for MTLFence {
+    unsafe fn class() -> &'static Class {
+        Class::get("MTLFence").unwrap()
+    }
+}
