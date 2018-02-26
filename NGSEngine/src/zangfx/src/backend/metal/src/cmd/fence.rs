@@ -5,7 +5,7 @@
 //
 //! Implementation of `Fence` for Metal.
 use std::sync::Arc;
-use base::{handles, sync};
+use base::handles;
 use common::Result;
 use metal::{MTLDevice, MTLFence};
 use utils::{nil_error, OCPtr};

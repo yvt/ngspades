@@ -19,6 +19,7 @@ extern crate zangfx_spirv_cross as spirv_cross;
 extern crate rspirv;
 extern crate spirv_headers;
 extern crate cocoa;
+extern crate parking_lot;
 
 // TODO
 
