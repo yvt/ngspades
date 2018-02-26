@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for sampler objects, and other relevant types.
-use std::any::Any;
-use std::fmt::Debug;
+use {Debug, Object};
 use std::ops;
 
 use common::Result;
@@ -31,7 +30,7 @@ use CmpFn;
 ///         .expect("Failed to create a sampler.");
 ///     # }
 ///
-pub trait SamplerBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait SamplerBuilder: Object + Debug + Send + Sync {
     /// Set the magnification filter.
     ///
     /// Defaults to `Filter::Linear`.

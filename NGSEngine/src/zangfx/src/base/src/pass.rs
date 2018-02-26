@@ -5,8 +5,7 @@
 //
 //! Builder for render pass objects and render target objects, and other
 //! relevant types.
-use std::any::Any;
-use std::fmt::Debug;
+use {Debug, Object};
 
 use common::Result;
 use formats::ImageFormat;
@@ -56,7 +55,7 @@ use {AccessTypeFlags, StageFlags};
 ///         .expect("Failed to create a render pass.");
 ///     # }
 ///
-pub trait RenderPassBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait RenderPassBuilder: Object + Debug + Send + Sync {
     /// Define a render target of the render pass.
     ///
     /// Use the returned `RenderPassTarget` to specify additional properties
@@ -114,7 +113,7 @@ pub trait RenderPassBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any>
     fn build(&mut self) -> Result<RenderPass>;
 }
 
-pub trait RenderPassTarget: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait RenderPassTarget: Object + Debug + Send + Sync {
     /// Set the image format for the render target.
     ///
     /// Mandatory.
@@ -182,7 +181,7 @@ pub enum StoreOp {
 ///         .expect("Failed to create a render target table.");
 ///     # }
 ///
-pub trait RtTableBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait RtTableBuilder: Object + Debug + Send + Sync {
     /// Set the associated render pass to `v`.
     ///
     /// Mandatory.

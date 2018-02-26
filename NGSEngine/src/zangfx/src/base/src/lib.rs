@@ -6,15 +6,19 @@
 //! This crate is a part of [ZanGFX](../zangfx/index.html) and provides the base
 //! interface for backend implementations.
 #![feature(unsize)]
-extern crate zangfx_common as common;
+#[macro_use]
+extern crate lazy_static;
 extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;
 #[macro_use]
-extern crate lazy_static;
+extern crate query_interface;
+extern crate zangfx_common as common;
 
 // `handles` defines a macro
 pub mod handles;
+// It's here for no reasons
+pub mod objects;
 
 pub mod arg;
 pub mod command;
@@ -76,27 +80,16 @@ pub enum CmpFn {
     Always,
 }
 
+#[doc(no_inline)]
+pub use objects::Object;
+
+use std::fmt::Debug;
+
 /// The `zangfx_base` prelude.
 #[doc(no_inline)]
 pub mod prelude {
     pub use device::DeviceExt;
     pub use handles::HandleImpl;
-    pub use formats::{IntAsScalarFormat, FloatAsScalarFormat, AsIndexFormat};
-}
-
-/// Generates a boiler-plate code for defining a ZanGFX object type.
-///
-/// For a given type, this macro generates the implementation for the following
-/// traits: `AsRef<Any>`, and `AsMut<Any>`.
-///
-#[macro_export]
-macro_rules! zangfx_impl_object {
-    ($type:ty) => {
-        impl AsRef<::std::any::Any> for $type {
-            fn as_ref(&self) -> &::std::any::Any { self }
-        }
-        impl AsMut<::std::any::Any> for $type {
-            fn as_mut(&mut self) -> &mut ::std::any::Any { self }
-        }
-    }
+    pub use formats::{AsIndexFormat, FloatAsScalarFormat, IntAsScalarFormat};
+    pub use objects::ObjectQi;
 }

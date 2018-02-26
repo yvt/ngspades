@@ -75,7 +75,9 @@
 //! - **Src** - source
 //! - **Vec** - vector
 //!
-//! # Flags
+//! # Implementation Details
+//!
+//! ## Flags
 //!
 //! Parameters that accept multiple flags are defined as `BitFlags<T>` (provided by
 //! the `ngsenumflags` crate) where `T` is an enumerated type (e.g., `AccessType`).
@@ -100,6 +102,37 @@
 //!     AccessType::CopyRead |
 //!     AccessType::CopyWrite;
 //! ```
+//!
+//! ## Objects
+//!
+//! The object model of ZanGFX is based around two categories of objects:
+//!
+//! 1. Normal **objects**. The examples of objects include `Device` and
+//!    `CmdQueue`.
+//!
+//!    Each object provides an interface defined by the trait representing its
+//!    object type. They also implement `Object` (provided by the crate
+//!    `query_interface`) via which additional traits implemented by it can be
+//!    queried.
+//!
+//!    Objects are passed around in a boxed form like `Box<Trait>` or
+//!    `Arc<Trait>`.
+//!
+//! 2. Light-weight **handles**. The examples of handles include `Image` and
+//!    `Fence`.
+//!
+//!    Handles do not provide methods by themselves. Instead, they are solely
+//!    manipulated via the methods provided by objects.
+//!
+//!    Handles are capsuled using a type-erasure container type like
+//!    `SmallBox<HandleImpl<Image>, S>`. `HandleImpl` is a trait implemented by
+//!    all handle implementations and has `AsRef<Any>` in its trait bounds.
+//!    You can use this to downcast a handle to a known concrete type.
+//!
+//!    Some handle types require manual memory management. Others require
+//!    a peculiar way to manage their lifetimes. Consult their documentation for
+//!    more information.
+//!
 pub extern crate zangfx_base as base;
 pub extern crate zangfx_common as common;
 

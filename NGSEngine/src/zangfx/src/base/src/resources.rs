@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for (heap-allocated) resource objects, and other relevant types.
-use std::any::Any;
-use std::fmt::Debug;
+use {Debug, Object};
 use std::ops;
 use ngsenumflags::BitFlags;
 
@@ -33,7 +32,7 @@ use DeviceSize;
 ///         .expect("Failed to create an image.");
 ///     # }
 ///
-pub trait ImageBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait ImageBuilder: Object + Debug + Send + Sync {
     /// Set the image extents to `v`. Used for 1D/2D/3D images.
     ///
     /// `v.len()` matches the dimensionality of the image and must be one of
@@ -156,7 +155,7 @@ pub enum ImageAspect {
 ///         .expect("Failed to create a buffer.");
 ///     # }
 ///
-pub trait BufferBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait BufferBuilder: Object + Debug + Send + Sync {
     /// Set the buffer size to `v` bytes.
     ///
     /// This property is mandatory.

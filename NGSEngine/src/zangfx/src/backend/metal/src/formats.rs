@@ -3,11 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-use base::formats::{ImageFormat, Signedness, Normalizedness, VertexFormat, VecWidth, ScalarFormat};
+use base::formats::{ImageFormat, Normalizedness, ScalarFormat, Signedness, VecWidth, VertexFormat};
 use self::Signedness::{Signed, Unsigned};
 use self::Normalizedness::{Normalized, Unnormalized};
 use self::VecWidth::{Scalar, Vector2, Vector3, Vector4};
-use self::ScalarFormat::{I8, I16, I32, F32};
+use self::ScalarFormat::{F32, I16, I32, I8};
 use metal::{MTLPixelFormat, MTLVertexFormat};
 
 pub fn translate_image_format(format: ImageFormat) -> Option<MTLPixelFormat> {
@@ -103,9 +103,9 @@ pub fn translate_vertex_format(format: VertexFormat) -> Option<MTLVertexFormat> 
         VertexFormat(Vector2, I8(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UChar2),
 
         VertexFormat(Vector2, I16(Signed, Normalized)) => Some(MTLVertexFormat::Short2Normalized),
-        VertexFormat(Vector2, I16(Unsigned, Normalized)) => Some(
-            MTLVertexFormat::UShort2Normalized,
-        ),
+        VertexFormat(Vector2, I16(Unsigned, Normalized)) => {
+            Some(MTLVertexFormat::UShort2Normalized)
+        }
         VertexFormat(Vector2, I16(Signed, Unnormalized)) => Some(MTLVertexFormat::Short2),
         VertexFormat(Vector2, I16(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UShort2),
 
@@ -120,9 +120,9 @@ pub fn translate_vertex_format(format: VertexFormat) -> Option<MTLVertexFormat> 
         VertexFormat(Vector3, I8(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UChar3),
 
         VertexFormat(Vector3, I16(Signed, Normalized)) => Some(MTLVertexFormat::Short3Normalized),
-        VertexFormat(Vector3, I16(Unsigned, Normalized)) => Some(
-            MTLVertexFormat::UShort3Normalized,
-        ),
+        VertexFormat(Vector3, I16(Unsigned, Normalized)) => {
+            Some(MTLVertexFormat::UShort3Normalized)
+        }
         VertexFormat(Vector3, I16(Signed, Unnormalized)) => Some(MTLVertexFormat::Short3),
         VertexFormat(Vector3, I16(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UShort3),
 
@@ -137,9 +137,9 @@ pub fn translate_vertex_format(format: VertexFormat) -> Option<MTLVertexFormat> 
         VertexFormat(Vector4, I8(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UChar4),
 
         VertexFormat(Vector4, I16(Signed, Normalized)) => Some(MTLVertexFormat::Short4Normalized),
-        VertexFormat(Vector4, I16(Unsigned, Normalized)) => Some(
-            MTLVertexFormat::UShort4Normalized,
-        ),
+        VertexFormat(Vector4, I16(Unsigned, Normalized)) => {
+            Some(MTLVertexFormat::UShort4Normalized)
+        }
         VertexFormat(Vector4, I16(Signed, Unnormalized)) => Some(MTLVertexFormat::Short4),
         VertexFormat(Vector4, I16(Unsigned, Unnormalized)) => Some(MTLVertexFormat::UShort4),
 

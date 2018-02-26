@@ -22,6 +22,7 @@ pub struct CmdBuffer {
 }
 
 zangfx_impl_object! { CmdBuffer }
+interfaces! { CmdBuffer: command::CmdBuffer, ::Debug, ::Any }
 
 unsafe impl Send for CmdBuffer {}
 unsafe impl Sync for CmdBuffer {}

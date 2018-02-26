@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Provides an information regarding a device's capabilities and limits.
-use std::any::Any;
-use std::fmt::Debug;
+use {Debug, Object};
 use ngsenumflags::BitFlags;
 
 use formats::{ImageFormat, VertexFormat};
@@ -132,7 +131,7 @@ pub struct QueueFamilyInfo {
 }
 
 /// Describes the properties and capabilities of a device.
-pub trait DeviceCaps: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait DeviceCaps: Object + Debug + Send + Sync {
     fn limits(&self) -> &DeviceLimits;
     fn image_format_caps(&self, format: ImageFormat) -> ImageFormatCapsFlags;
     fn vertex_format_caps(&self, format: VertexFormat) -> VertexFormatCapsFlags;

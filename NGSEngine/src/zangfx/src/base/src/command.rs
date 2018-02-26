@@ -4,10 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Command queues and command buffers.
-use std::any::Any;
 use std::ops::Range;
-use std::fmt::Debug;
 
+use {Debug, Object};
 use common::Result;
 use {handles, heap, resources};
 use {ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
@@ -28,7 +27,7 @@ use {ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
 ///         .expect("Failed to create a command queue.");
 ///     # }
 ///
-pub trait CmdQueueBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait CmdQueueBuilder: Object + Debug + Send + Sync {
     /// Set the queue family index.
     ///
     /// This property is mandatory.
@@ -61,7 +60,7 @@ pub trait CmdQueueBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
 ///  - `CmdQueue` must not be dropped until the queue is idle. (i.e. There
 ///    exists no command buffer being executed)
 ///
-pub trait CmdQueue: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait CmdQueue: Object + Debug + Send + Sync {
     /// Allocate a new command buffer.
     ///
     /// Command buffers are meant to be shortly lived. This method might stall
@@ -79,7 +78,7 @@ pub trait CmdQueue: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
 ///
 /// An application can (and should) drop a `CmdBuffer` as soon as it finishes
 /// recording commands to the `CmdBuffer` and commiting it.
-pub trait CmdBuffer: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait CmdBuffer: Object + Debug + Send + Sync {
     /// Reserve a place for this command buffer on the associated command queue.
     fn enqueue(&mut self) -> Result<()>;
 
@@ -96,14 +95,12 @@ pub trait CmdBuffer: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     // TODO: semaphores
 }
 
-pub trait RenderCmdEncoder
-    : Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> + CmdEncoder {
+pub trait RenderCmdEncoder: Object + Debug + Send + Sync + CmdEncoder {
     // TODO: render commands
     // TODO: passes
 }
 
-pub trait ComputeCmdEncoder
-    : Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> + CmdEncoder {
+pub trait ComputeCmdEncoder: Object + Debug + Send + Sync + CmdEncoder {
     /// Set the current `ComputePipeline` object.
     fn bind_pipeline(&mut self, pipeline: &handles::ComputePipeline);
 
@@ -116,7 +113,7 @@ pub trait ComputeCmdEncoder
     fn dispatch(&mut self, workgroup_count: &[u32]);
 }
 
-pub trait CopyCmdEncoder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait CopyCmdEncoder: Object + Debug + Send + Sync {
     /// Fill a buffer with a constant byte value.
     ///
     /// Both of `range.start` and `range.end` must be a multiple of 4.
@@ -195,7 +192,7 @@ pub trait CopyCmdEncoder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
     );
 }
 
-pub trait CmdEncoder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait CmdEncoder: Object + Debug + Send + Sync {
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder.
     ///

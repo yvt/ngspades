@@ -18,6 +18,7 @@ use common::Result;
 pub struct BarrierBuilder;
 
 zangfx_impl_object! { BarrierBuilder }
+interfaces! { BarrierBuilder: sync::BarrierBuilder, ::Debug, ::Any }
 
 impl sync::BarrierBuilder for BarrierBuilder {
     fn global(

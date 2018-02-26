@@ -29,6 +29,7 @@ pub struct DeviceCaps {
 }
 
 zangfx_impl_object! { DeviceCaps }
+interfaces! { DeviceCaps: limits::DeviceCaps, ::Debug, ::Any }
 
 impl DeviceCaps {
     pub(crate) fn new(device: metal::MTLDevice) -> Self {

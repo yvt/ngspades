@@ -20,6 +20,7 @@ pub struct Device {
 }
 
 zangfx_impl_object! { Device }
+interfaces! { Device: device::Device, ::Debug, ::Any }
 
 unsafe impl Send for Device {}
 unsafe impl Sync for Device {}

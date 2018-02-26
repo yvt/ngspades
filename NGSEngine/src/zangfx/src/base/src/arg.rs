@@ -5,9 +5,7 @@
 //
 //! Builder for argument table objects, argument table signature objects, and
 //! root signature objects, and other relevant types.
-use std::any::Any;
-use std::fmt::Debug;
-
+use {Debug, Object};
 use common::Result;
 use handles::{ArgTable, ArgTableSig, RootSig};
 use shader::ShaderStageFlags;
@@ -37,8 +35,7 @@ use {ArgArrayIndex, ArgIndex, ArgTableIndex};
 ///         .expect("Failed to create an argument table signature.");
 ///     # }
 ///
-pub trait ArgTableSigBuilder
-    : Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait ArgTableSigBuilder: Object + Debug + Send + Sync {
     /// Define an argument. Use the returned `ArgSig` to specify
     /// additional properties of it.
     fn arg(&mut self, index: ArgIndex, ty: ArgType) -> &mut ArgSig;
@@ -53,7 +50,7 @@ pub trait ArgTableSigBuilder
 }
 
 /// Trait for setting properties of an argument in an argument table signature.
-pub trait ArgSig: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait ArgSig: Object + Debug + Send + Sync {
     /// Set the number of elements. Must be non-zero.
     ///
     /// Defaults to `1`.
@@ -124,7 +121,7 @@ impl ArgType {
 ///         .expect("Failed to create a root signature.");
 ///     # }
 ///
-pub trait RootSigBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait RootSigBuilder: Object + Debug + Send + Sync {
     /// Set the argument table signature at the specified location.
     fn arg_table(&mut self, index: ArgTableIndex, x: &ArgTableSig) -> &mut RootSigBuilder;
 
@@ -154,7 +151,7 @@ pub trait RootSigBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
 ///         .expect("Failed to create an argument pool.");
 ///     # }
 ///
-pub trait ArgPoolBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait ArgPoolBuilder: Object + Debug + Send + Sync {
     /// Increase the capacity of the created argument pool to contain additional
     /// `count` argument tables of the signature `table`.
     fn reserve_table_sig(&mut self, count: usize, table: &ArgTableSig) -> &mut ArgPoolBuilder;
@@ -197,7 +194,7 @@ pub trait ArgPoolBuilder: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
 ///    operation of the `ArgPool`, the valid usage of `destroy_tables` must be
 ///    followed.
 ///
-pub trait ArgPool: Send + Sync + Any + Debug + AsRef<Any> + AsMut<Any> {
+pub trait ArgPool: Object + Debug + Send + Sync {
     /// Allocate zero or more `ArgTable`s from the pool.
     ///
     /// Returns `Ok(Some(vec))` with `vec.len() == count` if the allocation
