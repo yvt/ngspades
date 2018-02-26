@@ -11,11 +11,11 @@
 extern crate zangfx_common as common;
 #[macro_use(zangfx_impl_object, zangfx_impl_handle)]
 extern crate zangfx_base as base;
-extern crate ngsgfx_metal_rs as metal;
+extern crate zangfx_metal_rs as metal;
 #[macro_use(flags)]
 extern crate ngsenumflags;
 extern crate block;
-extern crate spirv_cross;
+extern crate zangfx_spirv_cross as spirv_cross;
 extern crate rspirv;
 extern crate spirv_headers;
 extern crate cocoa;

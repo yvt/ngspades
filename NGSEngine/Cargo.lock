@@ -1472,12 +1472,35 @@ dependencies = [
  "block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cocoa 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsenumflags 0.1.2",
- "ngsgfx_metal-rs 0.3.0",
  "rspirv 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "spirv-cross 0.1.0",
  "spirv_headers 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
+ "zangfx_metal-rs 0.3.0",
+ "zangfx_spirv-cross 0.1.0",
+]
+
+[[package]]
+name = "zangfx_metal-rs"
+version = "0.3.0"
+dependencies = [
+ "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cocoa 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "objc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "objc-foundation 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "zangfx_spirv-cross"
+version = "0.1.0"
+dependencies = [
+ "cc 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "include_data 0.1.0",
+ "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prebuild-glslang 0.1.0",
+ "unsafe_unions 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [metadata]

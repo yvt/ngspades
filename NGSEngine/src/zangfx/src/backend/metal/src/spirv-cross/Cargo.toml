@@ -1,5 +1,5 @@
 [package]
-name = "spirv-cross"
+name = "zangfx_spirv-cross"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 

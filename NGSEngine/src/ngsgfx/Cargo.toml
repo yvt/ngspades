@@ -28,7 +28,7 @@ name = "cube"
 name = "capsviewer"
 
 [build-dependencies]
-prebuild-glslang = { path = "tools/prebuild-glslang" } # required for examples
+prebuild-glslang = { path = "../support/prebuild-glslang" } # required for examples
 
 [dev-dependencies]
-include_data = { path = "tools/include_data" } # required for examples
+include_data = { path = "../support/include_data" } # required for examples
