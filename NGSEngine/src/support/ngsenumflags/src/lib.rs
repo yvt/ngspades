@@ -31,7 +31,7 @@
 //!         D = 0b1000,
 //!     }
 //!     # }
-use std::ops::{BitOr, BitAnd, BitXor, Not};
+use std::ops::{BitAnd, BitOr, BitXor, Not};
 use std::cmp;
 
 pub trait EnumFlagSize {
@@ -39,7 +39,8 @@ pub trait EnumFlagSize {
 }
 
 pub trait InnerBitFlags: BitOr<Self> + cmp::PartialEq + cmp::Eq + Clone + Copy
-    where Self: Sized
+where
+    Self: Sized,
 {
     type Type;
     fn all() -> Self;
@@ -63,19 +64,23 @@ pub struct BitFlags<T: EnumFlagSize> {
 }
 
 impl<T> ::std::fmt::Debug for BitFlags<T>
-    where T: EnumFlagSize,
-          T::Size: ::std::fmt::Debug
+where
+    T: EnumFlagSize,
+    T::Size: ::std::fmt::Debug,
 {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        fmt.write_str(&format!("BitFlags {o} {inner:?} {c} ",
-                               o = "{",
-                               inner = self.val,
-                               c = "}"))
+        fmt.write_str(&format!(
+            "BitFlags {o} {inner:?} {c} ",
+            o = "{",
+            inner = self.val,
+            c = "}"
+        ))
     }
 }
 
 impl<T> BitFlags<T>
-    where T: EnumFlagSize
+where
+    T: EnumFlagSize,
 {
     /// Create a new BitFlags unsafely. Consider using `from_bits` or `from_bits_truncate`.
     pub unsafe fn new(val: T::Size) -> Self {
@@ -84,8 +89,9 @@ impl<T> BitFlags<T>
 }
 
 impl<T> BitFlags<T>
-    where T: EnumFlagSize,
-          T::Size: InnerBitFlags + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    T::Size: InnerBitFlags + Into<BitFlags<T>>,
 {
     /// Create an empty BitFlags. Empty means `0`.
     pub fn empty() -> Self {
@@ -151,7 +157,8 @@ impl<T> BitFlags<T>
 }
 
 impl<T> std::cmp::PartialEq for BitFlags<T>
-    where T: EnumFlagSize
+where
+    T: EnumFlagSize,
 {
     fn eq(&self, other: &Self) -> bool {
         self.val == other.val
@@ -169,9 +176,10 @@ impl<T> std::cmp::PartialEq for BitFlags<T>
 // }
 
 impl<T, B> std::ops::BitOr<B> for BitFlags<T>
-    where T: EnumFlagSize,
-          B: Into<BitFlags<T>>,
-          T::Size: BitOr<T::Size, Output = T::Size> + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    B: Into<BitFlags<T>>,
+    T::Size: BitOr<T::Size, Output = T::Size> + Into<BitFlags<T>>,
 {
     type Output = BitFlags<T>;
     fn bitor(self, other: B) -> BitFlags<T> {
@@ -180,9 +188,10 @@ impl<T, B> std::ops::BitOr<B> for BitFlags<T>
 }
 
 impl<T, B> std::ops::BitAnd<B> for BitFlags<T>
-    where T: EnumFlagSize,
-          B: Into<BitFlags<T>>,
-          T::Size: BitAnd<T::Size, Output = T::Size> + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    B: Into<BitFlags<T>>,
+    T::Size: BitAnd<T::Size, Output = T::Size> + Into<BitFlags<T>>,
 {
     type Output = BitFlags<T>;
     fn bitand(self, other: B) -> BitFlags<T> {
@@ -191,9 +200,10 @@ impl<T, B> std::ops::BitAnd<B> for BitFlags<T>
 }
 
 impl<T, B> std::ops::BitXor<B> for BitFlags<T>
-    where T: EnumFlagSize,
-          B: Into<BitFlags<T>>,
-          T::Size: BitXor<T::Size, Output = T::Size> + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    B: Into<BitFlags<T>>,
+    T::Size: BitXor<T::Size, Output = T::Size> + Into<BitFlags<T>>,
 {
     type Output = BitFlags<T>;
     fn bitxor(self, other: B) -> BitFlags<T> {
@@ -202,9 +212,10 @@ impl<T, B> std::ops::BitXor<B> for BitFlags<T>
 }
 
 impl<T, B> std::ops::BitOrAssign<B> for BitFlags<T>
-    where T: EnumFlagSize,
-          B: Into<BitFlags<T>>,
-          T::Size: BitOr<T::Size, Output = T::Size> + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    B: Into<BitFlags<T>>,
+    T::Size: BitOr<T::Size, Output = T::Size> + Into<BitFlags<T>>,
 {
     fn bitor_assign(&mut self, other: B) {
         *self = (self.val | other.into().val).into();
@@ -212,18 +223,20 @@ impl<T, B> std::ops::BitOrAssign<B> for BitFlags<T>
 }
 
 impl<T, B> std::ops::BitAndAssign<B> for BitFlags<T>
-    where T: EnumFlagSize,
-          B: Into<BitFlags<T>>,
-          T::Size: BitAnd<T::Size, Output = T::Size> + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    B: Into<BitFlags<T>>,
+    T::Size: BitAnd<T::Size, Output = T::Size> + Into<BitFlags<T>>,
 {
     fn bitand_assign(&mut self, other: B) {
         *self = (self.val & other.into().val).into();
     }
 }
 impl<T, B> std::ops::BitXorAssign<B> for BitFlags<T>
-    where T: EnumFlagSize,
-          B: Into<BitFlags<T>>,
-          T::Size: BitXor<T::Size, Output = T::Size> + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    B: Into<BitFlags<T>>,
+    T::Size: BitXor<T::Size, Output = T::Size> + Into<BitFlags<T>>,
 {
     fn bitxor_assign(&mut self, other: B) {
         *self = (self.val ^ other.into().val).into();
@@ -231,8 +244,9 @@ impl<T, B> std::ops::BitXorAssign<B> for BitFlags<T>
 }
 
 impl<T> std::ops::Not for BitFlags<T>
-    where T: EnumFlagSize,
-          T::Size: Not<Output = T::Size> + Into<BitFlags<T>>
+where
+    T: EnumFlagSize,
+    T::Size: Not<Output = T::Size> + Into<BitFlags<T>>,
 {
     type Output = BitFlags<T>;
     fn not(self) -> BitFlags<T> {
