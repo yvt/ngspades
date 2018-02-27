@@ -37,4 +37,8 @@ impl Fence {
             data: Arc::new(OCPtr::from_raw(metal_fence).unwrap()),
         }
     }
+
+    pub fn metal_fence(&self) -> MTLFence {
+        **self.data
+    }
 }

@@ -14,6 +14,7 @@ use pipeline::{MTLRenderPipelineState, MTLComputePipelineState};
 use sampler::MTLSamplerState;
 use depthstencil::MTLDepthStencilState;
 use types::{MTLSize, MTLOrigin};
+use device::MTLFence;
 
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -75,6 +76,13 @@ bitflags! {
         const MTLBlitOptionDepthFromDepthStencil   = 1 << 0,
         const MTLBlitOptionStencilFromDepthStencil = 1 << 1,
         const MTLBlitOptionRowLinearPVRTC          = 1 << 2
+    }
+}
+
+bitflags! {
+    pub flags MTLRenderStages: NSUInteger {
+        const MTLRenderStageVertex   = 1 << 0,
+        const MTLRenderStageFragment = 1 << 1,
     }
 }
 
@@ -431,6 +439,22 @@ impl MTLRenderCommandEncoder {
     // fn setVertexSamplerStates_withRange(self, samplers: *const id, range: NSRange);
     // fn setVertexSamplerStates_lodMinClamps_lodMaxClamps_withRange(self, samplers: *const id, lodMinClamps: *const f32, lodMaxClamps: *const f32, range: NSRange);
 
+    // Performing Fence Operations
+
+    pub fn update_fence_after_stages(&self, fence: MTLFence, stages: MTLRenderStages) {
+        unsafe {
+            msg_send![self.0, updateFence:fence.0
+                              afterStages:stages]
+        }
+    }
+
+    pub fn wait_for_fence_before_stages(&self, fence: MTLFence, stages: MTLRenderStages) {
+        unsafe {
+            msg_send![self.0, waitForFence:fence.0
+                              beforeStages:stages]
+        }
+    }
+
 }
 
 impl NSObjectProtocol for MTLRenderCommandEncoder {
@@ -446,6 +470,18 @@ pub type MTLBlitCommandEncoder = id<
             (NSObjectPrototype, ())))>;
 
 impl MTLBlitCommandEncoder {
+
+    pub fn update_fence(&self, fence: MTLFence) {
+        unsafe {
+            msg_send![self.0, updateFence:fence.0]
+        }
+    }
+
+    pub fn wait_for_fence(&self, fence: MTLFence) {
+        unsafe {
+            msg_send![self.0, waitForFence:fence.0]
+        }
+    }
 
     pub fn synchronize_resource(&self, resource: MTLResource) {
         unsafe {
@@ -566,6 +602,18 @@ pub type MTLComputeCommandEncoder = id<
             (NSObjectPrototype, ())))>;
 
 impl MTLComputeCommandEncoder {
+
+    pub fn update_fence(&self, fence: MTLFence) {
+        unsafe {
+            msg_send![self.0, updateFence:fence.0]
+        }
+    }
+
+    pub fn wait_for_fence(&self, fence: MTLFence) {
+        unsafe {
+            msg_send![self.0, waitForFence:fence.0]
+        }
+    }
 
     pub fn set_compute_pipeline_state(&self, pipeline_state: MTLComputePipelineState) {
         unsafe {
