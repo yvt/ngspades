@@ -92,15 +92,33 @@
 //!
 //! ```
 //! use zangfx::base::{AccessType, AccessTypeFlags};
-//!
 //! let no_access1: AccessTypeFlags = AccessTypeFlags::empty();
 //! let no_access2: AccessTypeFlags = AccessType::empty_bitflag();
 //!
 //! let oneway_access: AccessTypeFlags = AccessType::CopyRead.into();
 //!
-//! let twoway_access: AccessTypeFlags =
+//! let twoway_access_1: AccessTypeFlags =
 //!     AccessType::CopyRead |
 //!     AccessType::CopyWrite;
+//!
+//! let twoway_access_2 =
+//!     AccessType::CopyRead |
+//!     AccessType::CopyWrite;
+//! ```
+//!
+//! Or, by using the `flags!` macro:
+//!
+//! ```
+//! #[macro_use(flags)]
+//! extern crate ngsenumflags;
+//! # extern crate zangfx;
+//! use zangfx::base::AccessType;
+//! # fn main() {
+//!
+//! let no_access = flags![AccessType::{}];
+//! let oneway_access = flags![AccessType::{CopyRead}];
+//! let twoway_access = flags![AccessType::{CopyRead | CopyWrite}];
+//! # }
 //! ```
 //!
 //! ## Objects

@@ -12,3 +12,6 @@ zangfx_common = { path = "src/common" }
 
 [target.'cfg(target_os="macos")'.dependencies]
 zangfx_metal = { path = "src/backend/metal" }
+
+[dev-dependencies]
+ngsenumflags = { path = "../support/ngsenumflags" }
