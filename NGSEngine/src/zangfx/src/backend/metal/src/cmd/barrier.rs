@@ -17,8 +17,7 @@ use common::Result;
 #[derive(Debug, Clone)]
 pub struct BarrierBuilder;
 
-zangfx_impl_object! { BarrierBuilder }
-interfaces! { BarrierBuilder: sync::BarrierBuilder, ::Debug, ::Any }
+zangfx_impl_object! { BarrierBuilder: sync::BarrierBuilder, ::Debug }
 
 impl sync::BarrierBuilder for BarrierBuilder {
     fn global(

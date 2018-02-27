@@ -5,7 +5,7 @@
 //
 //! Builder for render pass objects and render target objects, and other
 //! relevant types.
-use {Debug, Object};
+use Object;
 
 use common::Result;
 use formats::ImageFormat;
@@ -55,7 +55,7 @@ use {AccessTypeFlags, StageFlags};
 ///         .expect("Failed to create a render pass.");
 ///     # }
 ///
-pub trait RenderPassBuilder: Object + Debug + Send + Sync {
+pub trait RenderPassBuilder: Object {
     /// Define a render target of the render pass.
     ///
     /// Use the returned `RenderPassTarget` to specify additional properties
@@ -113,7 +113,7 @@ pub trait RenderPassBuilder: Object + Debug + Send + Sync {
     fn build(&mut self) -> Result<RenderPass>;
 }
 
-pub trait RenderPassTarget: Object + Debug + Send + Sync {
+pub trait RenderPassTarget: Object {
     /// Set the image format for the render target.
     ///
     /// Mandatory.
@@ -181,7 +181,7 @@ pub enum StoreOp {
 ///         .expect("Failed to create a render target table.");
 ///     # }
 ///
-pub trait RtTableBuilder: Object + Debug + Send + Sync {
+pub trait RtTableBuilder: Object {
     /// Set the associated render pass to `v`.
     ///
     /// Mandatory.

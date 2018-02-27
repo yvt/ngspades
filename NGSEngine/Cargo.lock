@@ -1479,7 +1479,6 @@ dependencies = [
  "cocoa 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsenumflags 0.1.2",
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "query_interface 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rspirv 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "spirv_headers 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "zangfx_base 0.1.0",

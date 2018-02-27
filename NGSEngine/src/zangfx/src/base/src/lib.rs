@@ -6,12 +6,15 @@
 //! This crate is a part of [ZanGFX](../zangfx/index.html) and provides the base
 //! interface for backend implementations.
 #![feature(unsize)]
+#![feature(macro_reexport)]
+
 #[macro_use]
 extern crate lazy_static;
 extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;
 #[macro_use]
+#[macro_reexport(interfaces, vtable_for, mopo)] // FIXME: deprecated in favor of Macro 2.0
 extern crate query_interface;
 extern crate zangfx_common as common;
 
@@ -83,7 +86,31 @@ pub enum CmpFn {
 #[doc(no_inline)]
 pub use objects::Object;
 
-use std::fmt::Debug;
+// Can't define `mopo!`s in the same module as those traits due to the name
+// confliction of the unqualified name of`Result`.
+mopo! { arg::ArgTableSigBuilder }
+mopo! { arg::ArgSig }
+mopo! { arg::RootSigBuilder }
+mopo! { arg::ArgPoolBuilder }
+mopo! { arg::ArgPool }
+mopo! { command::CmdQueueBuilder }
+mopo! { command::CmdQueue }
+mopo! { command::CmdBuffer }
+mopo! { command::RenderCmdEncoder }
+mopo! { command::ComputeCmdEncoder }
+mopo! { command::CopyCmdEncoder }
+mopo! { command::CmdEncoder }
+mopo! { heap::HeapBuilder }
+mopo! { heap::Heap }
+mopo! { pass::RenderPassBuilder }
+mopo! { pass::RenderPassTarget }
+mopo! { pass::RtTableBuilder }
+mopo! { pipeline::ComputePipelineBuilder }
+mopo! { resources::ImageBuilder }
+mopo! { resources::BufferBuilder }
+mopo! { sampler::SamplerBuilder }
+mopo! { shader::LibraryBuilder }
+mopo! { sync::BarrierBuilder }
 
 /// The `zangfx_base` prelude.
 #[doc(no_inline)]
@@ -91,5 +118,4 @@ pub mod prelude {
     pub use device::DeviceExt;
     pub use handles::HandleImpl;
     pub use formats::{AsIndexFormat, FloatAsScalarFormat, IntAsScalarFormat};
-    pub use objects::ObjectQi;
 }

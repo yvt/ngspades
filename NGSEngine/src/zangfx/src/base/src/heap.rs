@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Heap object.
-use {Debug, Object};
+use Object;
 use common::Result;
 use handles as h;
 use {DeviceSize, MemoryType};
@@ -31,7 +31,7 @@ use {DeviceSize, MemoryType};
 ///         .expect("Failed to create a heap.");
 ///     # }
 ///
-pub trait HeapBuilder: Object + Debug + Send + Sync {
+pub trait HeapBuilder: Object {
     /// Set the heap size to `v` bytes.
     ///
     /// Defaults to `0`.
@@ -62,7 +62,7 @@ pub trait HeapBuilder: Object + Debug + Send + Sync {
 ///
 ///  - No instance of `Heap` may outlive the originating `Device`.
 ///
-pub trait Heap: Object + Debug + Send + Sync {
+pub trait Heap: Object {
     /// Allocate a memory region for a given resource.
     ///
     /// The resource must be in the **Prototype** state.

@@ -5,7 +5,7 @@
 //
 //! Builder for argument table objects, argument table signature objects, and
 //! root signature objects, and other relevant types.
-use {Debug, Object};
+use Object;
 use common::Result;
 use handles::{ArgTable, ArgTableSig, RootSig};
 use shader::ShaderStageFlags;
@@ -35,7 +35,7 @@ use {ArgArrayIndex, ArgIndex, ArgTableIndex};
 ///         .expect("Failed to create an argument table signature.");
 ///     # }
 ///
-pub trait ArgTableSigBuilder: Object + Debug + Send + Sync {
+pub trait ArgTableSigBuilder: Object {
     /// Define an argument. Use the returned `ArgSig` to specify
     /// additional properties of it.
     fn arg(&mut self, index: ArgIndex, ty: ArgType) -> &mut ArgSig;
@@ -50,7 +50,7 @@ pub trait ArgTableSigBuilder: Object + Debug + Send + Sync {
 }
 
 /// Trait for setting properties of an argument in an argument table signature.
-pub trait ArgSig: Object + Debug + Send + Sync {
+pub trait ArgSig: Object {
     /// Set the number of elements. Must be non-zero.
     ///
     /// Defaults to `1`.
@@ -121,7 +121,7 @@ impl ArgType {
 ///         .expect("Failed to create a root signature.");
 ///     # }
 ///
-pub trait RootSigBuilder: Object + Debug + Send + Sync {
+pub trait RootSigBuilder: Object {
     /// Set the argument table signature at the specified location.
     fn arg_table(&mut self, index: ArgTableIndex, x: &ArgTableSig) -> &mut RootSigBuilder;
 
@@ -151,7 +151,7 @@ pub trait RootSigBuilder: Object + Debug + Send + Sync {
 ///         .expect("Failed to create an argument pool.");
 ///     # }
 ///
-pub trait ArgPoolBuilder: Object + Debug + Send + Sync {
+pub trait ArgPoolBuilder: Object {
     /// Increase the capacity of the created argument pool to contain additional
     /// `count` argument tables of the signature `table`.
     fn reserve_table_sig(&mut self, count: usize, table: &ArgTableSig) -> &mut ArgPoolBuilder;
@@ -194,7 +194,7 @@ pub trait ArgPoolBuilder: Object + Debug + Send + Sync {
 ///    operation of the `ArgPool`, the valid usage of `destroy_tables` must be
 ///    followed.
 ///
-pub trait ArgPool: Object + Debug + Send + Sync {
+pub trait ArgPool: Object {
     /// Allocate zero or more `ArgTable`s from the pool.
     ///
     /// Returns `Ok(Some(vec))` with `vec.len() == count` if the allocation

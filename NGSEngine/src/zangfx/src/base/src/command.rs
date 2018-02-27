@@ -6,7 +6,7 @@
 //! Command queues and command buffers.
 use std::ops::Range;
 
-use {Debug, Object};
+use Object;
 use common::Result;
 use {handles, heap, resources};
 use {ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
@@ -27,7 +27,7 @@ use {ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
 ///         .expect("Failed to create a command queue.");
 ///     # }
 ///
-pub trait CmdQueueBuilder: Object + Debug + Send + Sync {
+pub trait CmdQueueBuilder: Object {
     /// Set the queue family index.
     ///
     /// This property is mandatory.
@@ -60,7 +60,7 @@ pub trait CmdQueueBuilder: Object + Debug + Send + Sync {
 ///  - `CmdQueue` must not be dropped until the queue is idle. (i.e. There
 ///    exists no command buffer being executed)
 ///
-pub trait CmdQueue: Object + Debug + Send + Sync {
+pub trait CmdQueue: Object {
     /// Allocate a new command buffer.
     ///
     /// Command buffers are meant to be shortly lived. This method might stall
@@ -78,7 +78,7 @@ pub trait CmdQueue: Object + Debug + Send + Sync {
 ///
 /// An application can (and should) drop a `CmdBuffer` as soon as it finishes
 /// recording commands to the `CmdBuffer` and commiting it.
-pub trait CmdBuffer: Object + Debug + Send + Sync {
+pub trait CmdBuffer: Object {
     /// Reserve a place for this command buffer on the associated command queue.
     fn enqueue(&mut self) -> Result<()>;
 
@@ -95,12 +95,12 @@ pub trait CmdBuffer: Object + Debug + Send + Sync {
     // TODO: semaphores
 }
 
-pub trait RenderCmdEncoder: Object + Debug + Send + Sync + CmdEncoder {
+pub trait RenderCmdEncoder: Object + CmdEncoder {
     // TODO: render commands
     // TODO: passes
 }
 
-pub trait ComputeCmdEncoder: Object + Debug + Send + Sync + CmdEncoder {
+pub trait ComputeCmdEncoder: Object + CmdEncoder {
     /// Set the current `ComputePipeline` object.
     fn bind_pipeline(&mut self, pipeline: &handles::ComputePipeline);
 
@@ -113,7 +113,7 @@ pub trait ComputeCmdEncoder: Object + Debug + Send + Sync + CmdEncoder {
     fn dispatch(&mut self, workgroup_count: &[u32]);
 }
 
-pub trait CopyCmdEncoder: Object + Debug + Send + Sync {
+pub trait CopyCmdEncoder: Object {
     /// Fill a buffer with a constant byte value.
     ///
     /// Both of `range.start` and `range.end` must be a multiple of 4.
@@ -192,7 +192,7 @@ pub trait CopyCmdEncoder: Object + Debug + Send + Sync {
     );
 }
 
-pub trait CmdEncoder: Object + Debug + Send + Sync {
+pub trait CmdEncoder: Object {
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder.
     ///

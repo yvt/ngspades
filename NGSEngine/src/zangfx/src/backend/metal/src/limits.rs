@@ -28,8 +28,7 @@ pub struct DeviceCaps {
     queue_families: [limits::QueueFamilyInfo; 1],
 }
 
-zangfx_impl_object! { DeviceCaps }
-interfaces! { DeviceCaps: limits::DeviceCaps, ::Debug, ::Any }
+zangfx_impl_object! { DeviceCaps: limits::DeviceCaps, ::Debug }
 
 impl DeviceCaps {
     pub(crate) fn new(device: metal::MTLDevice) -> Self {

@@ -111,9 +111,10 @@
 //!    `CmdQueue`.
 //!
 //!    Each object provides an interface defined by the trait representing its
-//!    object type. They also implement `Object` (provided by the crate
-//!    `query_interface`) via which additional traits implemented by it can be
-//!    queried.
+//!    object type. The object traits implement `query_ref` and similar methods
+//!    (provided by `query_interface`'s [`mopo!`]) via which additional traits
+//!    implemented by it can be queried. See the documentation of the crate
+//!    [`query_interface`] for details.
 //!
 //!    Objects are passed around in a boxed form like `Box<Trait>` or
 //!    `Arc<Trait>`.
@@ -133,6 +134,9 @@
 //!    a peculiar way to manage their lifetimes. Consult their documentation for
 //!    more information.
 //!
+//! [`query_interface`]: ../query_interface/index.html
+//! [`mopo!`]: ../query_interface/macro.mopo.html
+//!
 pub extern crate zangfx_base as base;
 pub extern crate zangfx_common as common;
 
@@ -145,8 +149,9 @@ pub mod backends {
 }
 
 /// The ZanGFX prelude.
-#[doc(no_inline)]
 pub mod prelude {
+    #[doc(no_inline)]
     pub use base::prelude::*;
+    #[doc(no_inline)]
     pub use common::{BinaryInteger, BinaryUInteger};
 }

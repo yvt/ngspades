@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for shader library objects, and other relevant types.
-use {Debug, Object};
+use Object;
 use ngsenumflags::BitFlags;
 
 use common::Result;
@@ -28,7 +28,7 @@ use handles::Library;
 ///                      SPIR-V code.");
 ///     # }
 ///
-pub trait LibraryBuilder: Object + Debug + Send + Sync {
+pub trait LibraryBuilder: Object {
     /// Set the SPIR-V code.
     ///
     /// See Vulkan 1.0 Specification Appendix A: "Vulkan Environment for SPIR-V"

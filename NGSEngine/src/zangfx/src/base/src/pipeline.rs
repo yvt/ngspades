@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for render/compute pipeline objects.
-use {Debug, Object};
+use Object;
 
 use common::Result;
 use handles::{ComputePipeline, Library};
@@ -26,7 +26,7 @@ use handles::{ComputePipeline, Library};
 ///         .expect("Failed to create a pipeline.");
 ///     # }
 ///
-pub trait ComputePipelineBuilder: Object + Debug + Send + Sync {
+pub trait ComputePipelineBuilder: Object {
     /// Set the compute shader.
     ///
     /// Mandatory.

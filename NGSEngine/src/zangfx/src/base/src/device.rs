@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Device object.
-use {Debug, Object};
+use Object;
 use common::Result;
 use {arg, command, handles, heap, limits, pass, pipeline, resources, sampler, shader, sync};
 
@@ -13,7 +13,7 @@ use {arg, command, handles, heap, limits, pass, pipeline, resources, sampler, sh
 /// The lifetime of the underlying device object is associated with that of
 /// `Device`. Drop the `Device` to destroy the associated device object
 /// (cf. handle types).
-pub trait Device: Object + Debug + Send + Sync {
+pub trait Device: Object {
     fn caps(&self) -> &limits::DeviceCaps;
 
     /// Create a `CmdQueueBuilder` associated with this device.

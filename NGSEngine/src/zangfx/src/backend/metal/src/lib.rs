@@ -13,11 +13,8 @@ extern crate cocoa;
 #[macro_use(flags)]
 extern crate ngsenumflags;
 extern crate parking_lot;
-#[macro_use]
-extern crate query_interface;
 extern crate rspirv;
-extern crate spirv_headers;
-#[macro_use(zangfx_impl_object, zangfx_impl_handle)]
+#[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
 extern crate zangfx_metal_rs as metal;
@@ -31,7 +28,6 @@ pub mod formats;
 pub mod limits;
 mod utils;
 
-use std::any::Any;
 use std::fmt::Debug;
 
 pub static MEMORY_REGION_GLOBAL: base::MemoryRegionIndex = 0;

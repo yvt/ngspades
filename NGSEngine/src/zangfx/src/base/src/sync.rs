@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for synchronization objects.
-use {Debug, Object};
+use Object;
 use std::ops::Range;
 use common::Result;
 use handles::{Barrier, Buffer, Image};
@@ -32,7 +32,7 @@ use resources::{ImageLayout, ImageSubRange};
 ///         .expect("Failed to create a barrier.");
 ///     # }
 ///
-pub trait BarrierBuilder: Object + Debug + Send + Sync {
+pub trait BarrierBuilder: Object {
     /// Define a global memory barrier.
     fn global(
         &mut self,

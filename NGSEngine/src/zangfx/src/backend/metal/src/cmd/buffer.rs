@@ -21,8 +21,7 @@ pub struct CmdBuffer {
     signal_fences: Vec<Fence>,
 }
 
-zangfx_impl_object! { CmdBuffer }
-interfaces! { CmdBuffer: command::CmdBuffer, ::Debug, ::Any }
+zangfx_impl_object! { CmdBuffer: command::CmdBuffer, ::Debug }
 
 unsafe impl Send for CmdBuffer {}
 unsafe impl Sync for CmdBuffer {}
