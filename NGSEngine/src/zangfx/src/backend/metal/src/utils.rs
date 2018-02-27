@@ -70,7 +70,7 @@ impl<T: NSObjectProtocol> Drop for OCPtr<T> {
     }
 }
 
-pub fn translate_compare_function(value: base::CmpFn) -> metal::MTLCompareFunction {
+pub fn translate_cmp_fn(value: base::CmpFn) -> metal::MTLCompareFunction {
     match value {
         base::CmpFn::NotEqual => metal::MTLCompareFunction::NotEqual,
         base::CmpFn::Equal => metal::MTLCompareFunction::Equal,

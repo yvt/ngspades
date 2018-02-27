@@ -28,6 +28,7 @@ pub mod cmd;
 pub mod device;
 pub mod formats;
 pub mod limits;
+pub mod sampler;
 pub mod shader;
 mod utils;
 

@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::OCPtr;
 use limits::DeviceCaps;
-use {cmd, shader};
+use {cmd, sampler, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -66,7 +66,7 @@ impl device::Device for Device {
     }
 
     fn build_sampler(&self) -> Box<base::sampler::SamplerBuilder> {
-        unimplemented!()
+        unsafe { Box::new(sampler::SamplerBuilder::new(self.metal_device())) }
     }
 
     fn build_library(&self) -> Box<base::shader::LibraryBuilder> {
@@ -105,8 +105,12 @@ impl device::Device for Device {
         unimplemented!()
     }
 
-    fn destroy_sampler(&self, _obj: &handles::Sampler) -> Result<()> {
-        unimplemented!()
+    fn destroy_sampler(&self, obj: &handles::Sampler) -> Result<()> {
+        let our_sampler: &sampler::Sampler = obj.downcast_ref().expect("bad sampler type");
+        unsafe {
+            our_sampler.destroy();
+        }
+        Ok(())
     }
 
     fn get_memory_req(&self, _obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {
