@@ -11,7 +11,7 @@ use objc_foundation::{NSString, INSString};
 
 use super::{id, nil, NSObjectPrototype, NSObjectProtocol};
 
-use resource::MTLResourceOptions;
+use resource::{MTLResourceOptions, MTLHeapDescriptor, MTLHeap};
 use commandqueue::MTLCommandQueue;
 use pipeline::{MTLRenderPipelineState, MTLRenderPipelineDescriptor,
                MTLRenderPipelineReflection, MTLComputePipelineState,
@@ -303,6 +303,12 @@ impl<'a> MTLDevice {
     pub fn new_sampler(&self, descriptor: MTLSamplerDescriptor) -> MTLSamplerState {
         unsafe {
             msg_send![self.0, newSamplerStateWithDescriptor:descriptor.0]
+        }
+    }
+
+    pub fn new_heap(&self, descriptor: MTLHeapDescriptor) -> MTLHeap {
+        unsafe {
+            msg_send![self.0, newHeapWithDescriptor:descriptor.0]
         }
     }
 

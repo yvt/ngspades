@@ -83,6 +83,16 @@ pub fn translate_cmp_fn(value: base::CmpFn) -> metal::MTLCompareFunction {
     }
 }
 
+pub fn translate_storage_mode(value: base::MemoryType) -> Result<metal::MTLStorageMode, base::MemoryType> {
+    if value == ::MEMORY_TYPE_PRIVATE {
+        Ok(metal::MTLStorageMode::Private)
+    } else if value == ::MEMORY_TYPE_SHARED {
+        Ok(metal::MTLStorageMode::Shared)
+    } else {
+        Err(value)
+    }
+}
+
 /* pub fn translate_viewport(value: &base::Viewport) -> metal::MTLViewport {
     metal::MTLViewport {
         originX: value.x as f64,

@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::OCPtr;
 use limits::DeviceCaps;
-use {cmd, sampler, shader};
+use {cmd, sampler, shader, heap};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -50,7 +50,7 @@ impl device::Device for Device {
     }
 
     fn build_heap(&self) -> Box<base::heap::HeapBuilder> {
-        unimplemented!()
+        unsafe { Box::new(heap::HeapBuilder::new(self.metal_device())) }
     }
 
     fn build_barrier(&self) -> Box<base::sync::BarrierBuilder> {

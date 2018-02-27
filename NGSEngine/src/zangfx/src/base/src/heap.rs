@@ -26,7 +26,7 @@ use {DeviceSize, MemoryType};
 ///     # fn test(device: &Device) {
 ///     let heap = device.build_heap()
 ///         .size(1024 * 1024)
-///         .mem_type(0)
+///         .memory_type(0)
 ///         .build()
 ///         .expect("Failed to create a heap.");
 ///     # }
@@ -40,7 +40,7 @@ pub trait HeapBuilder: Object {
     /// Set the memory type index.
     ///
     /// This property is mandatory.
-    fn mem_type(&mut self, v: MemoryType) -> &mut HeapBuilder;
+    fn memory_type(&mut self, v: MemoryType) -> &mut HeapBuilder;
 
     /// Build a `Heap`.
     ///
@@ -100,6 +100,7 @@ pub trait Heap: Object {
     ///  - The resource must be in the **Allocated** state.
     ///  - The heap's memory type must be host-visible.
     ///  - `alloc` must originate from the same `Heap`.
+    ///  - `alloc` must be associated with a buffer resource.
     ///
     fn as_ptr(&self, alloc: &h::HeapAlloc) -> Result<*mut ()>;
 }

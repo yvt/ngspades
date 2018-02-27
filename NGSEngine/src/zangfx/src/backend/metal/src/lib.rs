@@ -16,6 +16,7 @@ extern crate parking_lot;
 extern crate rspirv;
 extern crate spirv_headers;
 extern crate tokenlock;
+extern crate iterpool;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
@@ -27,6 +28,7 @@ extern crate zangfx_spirv_cross as spirv_cross;
 pub mod cmd;
 pub mod device;
 pub mod formats;
+pub mod heap;
 pub mod limits;
 pub mod sampler;
 pub mod shader;

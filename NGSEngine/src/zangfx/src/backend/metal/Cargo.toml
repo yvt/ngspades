@@ -15,3 +15,4 @@ spirv_headers = "1.1.5"
 cocoa = "0.9"
 parking_lot = "0.4.4"
 tokenlock = { path = "../../../../support/tokenlock" }
+iterpool = { path = "../../../../support/iterpool" }
