@@ -8,6 +8,21 @@
 //! Metal is one of the primary target APIs of ZanGFX as well as its
 //! predecessor, NgsGFX. For this reason, ZanGFX is designed to run efficiently
 //! on Metal.
+//!
+//! # Implementation Details
+//!
+//! ## Ownership of raw pointers
+//!
+//! Metal objects require manual reference counting using `[NSObject retain]`
+//! and `[NSObject release]`. When dealing with ref-counted objects, it is
+//! crucial to maintain the ownership properly. In general, this crate follows
+//! the pattern shown below:
+//!
+//!  - Methods named `new` increases the reference count when receiving an
+//!    object, thus creating a new strong reference.
+//!  - Conversely, methods named `from_raw` do not increase the reference count.
+//!  - No method increases the reference count when returning an object.
+//!
 extern crate block;
 extern crate cocoa;
 #[macro_use(flags)]
@@ -25,6 +40,7 @@ extern crate zangfx_spirv_cross as spirv_cross;
 
 // TODO
 
+pub mod buffer;
 pub mod cmd;
 pub mod device;
 pub mod formats;

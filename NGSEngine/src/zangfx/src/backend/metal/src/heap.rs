@@ -12,6 +12,7 @@ use base::{handles, heap, DeviceSize, MemoryType};
 use common::{Error, ErrorKind, Result};
 
 use utils::{nil_error, translate_storage_mode, OCPtr};
+use buffer::Buffer;
 
 /// Implementation of `HeapBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -69,7 +70,7 @@ impl heap::HeapBuilder for HeapBuilder {
 
         let metal_heap = OCPtr::new(self.metal_device.new_heap(*metal_desc))
             .ok_or_else(|| nil_error("MTLDevice newHeapWithDescriptor:"))?;
-        Ok(Box::new(Heap::new(metal_heap)))
+        Ok(Box::new(Heap::new(metal_heap, storage_mode)))
     }
 }
 
@@ -85,6 +86,7 @@ zangfx_impl_handle! { HeapAlloc, handles::HeapAlloc }
 #[derive(Debug)]
 pub struct Heap {
     metal_heap: OCPtr<metal::MTLHeap>,
+    storage_mode: metal::MTLStorageMode,
     allocations: Mutex<Pool<OCPtr<metal::MTLResource>>>,
 }
 
@@ -94,17 +96,45 @@ unsafe impl Send for Heap {}
 unsafe impl Sync for Heap {}
 
 impl Heap {
-    fn new(metal_heap: OCPtr<metal::MTLHeap>) -> Self {
+    fn new(metal_heap: OCPtr<metal::MTLHeap>, storage_mode: metal::MTLStorageMode) -> Self {
         Self {
             metal_heap,
+            storage_mode,
             allocations: Mutex::new(Pool::new()),
         }
     }
 }
 
 impl heap::Heap for Heap {
-    fn bind(&self, _obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
-        unimplemented!()
+    fn bind(&self, obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
+        match obj {
+            handles::ResourceRef::Buffer(buffer) => {
+                let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+                let size = my_buffer.prototype_size().ok_or_else(|| {
+                    Error::with_detail(ErrorKind::InvalidUsage, "already allocated")
+                })?;
+
+                let options = metal::MTLResourceOptions::from_bits(
+                    (self.storage_mode as u64) << metal::MTLResourceStorageModeShift,
+                ).unwrap();
+                let metal_buffer = OCPtr::new(self.metal_heap.new_buffer(size, options));
+
+                if let Some(metal_buffer) = metal_buffer {
+                    let resource = OCPtr::new(**metal_buffer).unwrap();
+                    let ptr = self.allocations.lock().allocate(resource);
+                    let heap_alloc = HeapAlloc { ptr };
+
+                    // Transition the buffer to the Allocated state
+                    my_buffer.materialize(metal_buffer);
+
+                    Ok(Some(handles::HeapAlloc::new(heap_alloc)))
+                } else {
+                    Ok(None)
+                }
+            }
+            handles::ResourceRef::Image(_image) => unimplemented!(),
+        }
     }
 
     fn make_aliasable(&self, alloc: &handles::HeapAlloc) -> Result<()> {

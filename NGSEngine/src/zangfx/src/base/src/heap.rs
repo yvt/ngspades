@@ -74,6 +74,10 @@ pub trait Heap: Object {
     ///    a sufficient space.
     ///  - `Err(err)` — The allocation has failed for other reasons.
     ///
+    /// # Valid Usage
+    ///
+    ///  - `obj` must originate from the same `Device` as the one the heap was
+    ///    created from.
     fn bind(&self, obj: h::ResourceRef) -> Result<Option<h::HeapAlloc>>;
 
     fn make_aliasable(&self, alloc: &h::HeapAlloc) -> Result<()>;

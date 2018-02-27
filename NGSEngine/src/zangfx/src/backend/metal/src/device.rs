@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::OCPtr;
 use limits::DeviceCaps;
-use {cmd, sampler, shader, heap};
+use {buffer, cmd, heap, sampler, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -62,7 +62,7 @@ impl device::Device for Device {
     }
 
     fn build_buffer(&self) -> Box<base::resources::BufferBuilder> {
-        unimplemented!()
+        Box::new(buffer::BufferBuilder::new())
     }
 
     fn build_sampler(&self) -> Box<base::sampler::SamplerBuilder> {
@@ -101,8 +101,12 @@ impl device::Device for Device {
         unimplemented!()
     }
 
-    fn destroy_buffer(&self, _obj: &handles::Buffer) -> Result<()> {
-        unimplemented!()
+    fn destroy_buffer(&self, obj: &handles::Buffer) -> Result<()> {
+        let our_buffer: &buffer::Buffer = obj.downcast_ref().expect("bad buffer type");
+        unsafe {
+            our_buffer.destroy();
+        }
+        Ok(())
     }
 
     fn destroy_sampler(&self, obj: &handles::Sampler) -> Result<()> {
