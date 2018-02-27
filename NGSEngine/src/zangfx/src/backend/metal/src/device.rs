@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::OCPtr;
 use limits::DeviceCaps;
-use cmd;
+use {cmd, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -70,7 +70,7 @@ impl device::Device for Device {
     }
 
     fn build_library(&self) -> Box<base::shader::LibraryBuilder> {
-        unimplemented!()
+        Box::new(shader::LibraryBuilder::new())
     }
 
     fn build_arg_table_sig(&self) -> Box<base::arg::ArgTableSigBuilder> {

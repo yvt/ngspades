@@ -14,6 +14,7 @@ extern crate cocoa;
 extern crate ngsenumflags;
 extern crate parking_lot;
 extern crate rspirv;
+extern crate spirv_headers;
 extern crate tokenlock;
 #[macro_use]
 extern crate zangfx_base as base;
@@ -27,6 +28,7 @@ pub mod cmd;
 pub mod device;
 pub mod formats;
 pub mod limits;
+pub mod shader;
 mod utils;
 
 use std::fmt::Debug;
