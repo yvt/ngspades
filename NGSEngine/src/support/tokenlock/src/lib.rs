@@ -112,6 +112,12 @@ impl Token {
     }
 }
 
+impl Default for Token {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Token that cannot be used to access the contents of a `TokenLock`, but can
 /// be used to create a new `TokenLock`.
 ///

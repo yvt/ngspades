@@ -7,5 +7,6 @@
 pub mod barrier;
 pub mod buffer;
 pub mod fence;
+pub mod queue;
 mod enc;
 mod enc_compute;

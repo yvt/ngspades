@@ -14,6 +14,7 @@ extern crate cocoa;
 extern crate ngsenumflags;
 extern crate parking_lot;
 extern crate rspirv;
+extern crate tokenlock;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;

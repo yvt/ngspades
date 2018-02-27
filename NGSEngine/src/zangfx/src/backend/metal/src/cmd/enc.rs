@@ -16,4 +16,3 @@ impl CmdBufferFenceSet {
         Default::default()
     }
 }
-
