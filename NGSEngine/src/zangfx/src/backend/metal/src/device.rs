@@ -120,4 +120,13 @@ impl device::Device for Device {
     fn get_memory_req(&self, _obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {
         unimplemented!()
     }
+
+    fn update_arg_table(
+        &self,
+        _arg_table: &handles::ArgTable,
+        _arg_table_sig: &handles::ArgTableSig,
+        _updates: &[device::ArgUpdateSet],
+    ) -> Result<()> {
+        unimplemented!()
+    }
 }

@@ -7,6 +7,7 @@
 use Object;
 use common::Result;
 use {arg, command, handles, heap, limits, pass, pipeline, resources, sampler, shader, sync};
+use {ArgArrayIndex, ArgIndex};
 
 /// Trait for device objects.
 ///
@@ -70,11 +71,59 @@ pub trait Device: Object {
 
     /// Retrieve the memory requirements for a given resource.
     fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<resources::MemoryReq>;
+
+    /// Update a given argument table.
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::device::Device;
+    ///     # use zangfx_base::handles::{ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # fn test(
+    ///     #     device: &Device,
+    ///     #     arg_table: &ArgTable,
+    ///     #     arg_table_sig: &ArgTableSig,
+    ///     #     image_views: &[&ImageView],
+    ///     #     buffer: &Buffer
+    ///     # ) {
+    ///     device.update_arg_table(
+    ///         arg_table,
+    ///         arg_table_sig,
+    ///         &[
+    ///             // The index range 0..2 of the argument 0
+    ///             (0, 0, [image_views[0], image_views[1]][..].into()),
+    ///
+    ///             // The index range 2..3 of the argument 1
+    ///             (1, 2, [buffer][..].into()),
+    ///         ],
+    ///     );
+    ///     # }
+    ///
+    fn update_arg_table(
+        &self,
+        arg_table: &handles::ArgTable,
+        arg_table_sig: &handles::ArgTableSig,
+        updates: &[ArgUpdateSet],
+    ) -> Result<()>;
 }
 
 /// Utilies for [`Device`](Device).
 pub trait DeviceExt: Device {
     // No methods are currently defined.
 }
+
+/// Represents a consecutive update of arguments in an argument table.
+///
+/// An `ArgUpdateSet` is comprised of the following parts:
+///
+///  - An `ArgIndex` specifying the argument index.
+///  - An `ArgArrayIndex` specifying the starting index.
+///  - An `ArgSlice` specifying the new contents.
+///
+/// Unlike Vulkan's descriptor update, `ArgSlice` does not overflow into the
+/// succeeding argument slots. (This is prohibited in ZanGFX.)
+///
+/// See the documentation of [`update_arg_table`](Device::update_arg_table) for
+/// example.
+pub type ArgUpdateSet<'a> = (ArgIndex, ArgArrayIndex, handles::ArgSlice<'a>);
 
 impl<T: ?Sized + Device> DeviceExt for T {}

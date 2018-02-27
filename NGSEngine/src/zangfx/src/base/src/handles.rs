@@ -295,6 +295,41 @@ impl<'a> From<&'a Buffer> for ResourceRef<'a> {
     }
 }
 
+/// A reference to a homogeneous slice of handles that can be passed to a shader
+/// function as an argument.
+///
+/// # Examples
+///
+///     # use zangfx_base::handles::{ImageView, ArgSlice};
+///     fn test(image1: ImageView, image2: ImageView) {
+///         let _: ArgSlice = [&image1, &image2][..].into();
+///     }
+///
+#[derive(Debug, Clone, Copy)]
+pub enum ArgSlice<'a> {
+    ImageView(&'a [&'a ImageView]),
+    Buffer(&'a [&'a Buffer]),
+    Sampler(&'a [&'a Sampler]),
+}
+
+impl<'a> From<&'a [&'a ImageView]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a ImageView]) -> Self {
+        ArgSlice::ImageView(x)
+    }
+}
+
+impl<'a> From<&'a [&'a Buffer]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a Buffer]) -> Self {
+        ArgSlice::Buffer(x)
+    }
+}
+
+impl<'a> From<&'a [&'a Sampler]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a Sampler]) -> Self {
+        ArgSlice::Sampler(x)
+    }
+}
+
 /// Generates a boiler-plate code for defining a handle implementation type.
 ///
 /// For a given type, this macro generates the implementation for the following
