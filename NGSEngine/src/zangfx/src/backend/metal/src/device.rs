@@ -46,7 +46,7 @@ impl device::Device for Device {
     }
 
     fn build_cmd_queue(&self) -> Box<base::command::CmdQueueBuilder> {
-        unimplemented!()
+        unsafe { Box::new(cmd::queue::CmdQueueBuilder::new(self.metal_device())) }
     }
 
     fn build_heap(&self) -> Box<base::heap::HeapBuilder> {

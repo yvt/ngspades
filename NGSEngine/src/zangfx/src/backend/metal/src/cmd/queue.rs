@@ -10,13 +10,46 @@ use tokenlock::{Token, TokenRef};
 use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
 
-use base::{command, handles};
+use base::{command, handles, QueueFamily};
 use common::Result;
-use utils::OCPtr;
+use utils::{OCPtr, nil_error};
 
 use super::enc::CmdBufferFenceSet;
 use super::buffer::CmdBuffer;
 use super::fence::Fence;
+
+/// Implementation of `CmdQueueBuilder` for Metal.
+#[derive(Debug)]
+pub struct CmdQueueBuilder {
+    metal_device: MTLDevice,
+}
+
+zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, ::Debug }
+
+impl CmdQueueBuilder {
+    /// Construct a `CmdQueueBuilder`.
+    ///
+    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    pub unsafe fn new(metal_device: MTLDevice) -> Self {
+        Self { metal_device }
+    }
+}
+
+impl command::CmdQueueBuilder for CmdQueueBuilder {
+    fn queue_family(&mut self, _: QueueFamily) -> &mut command::CmdQueueBuilder {
+        // Ignore it since we know we only have exactly one queue family
+        self
+    }
+
+    fn build(&mut self) -> Result<Box<command::CmdQueue>> {
+        let metal_queue = self.metal_device.new_command_queue();
+        if metal_queue.is_null() {
+            Err(nil_error("MTLDevice newCommandQueue"))
+        } else {
+            unsafe { Ok(Box::new(CmdQueue::from_raw(metal_queue))) }
+        }
+    }
+}
 
 /// Implementation of `CmdQueue` for Metal.
 #[derive(Debug)]
