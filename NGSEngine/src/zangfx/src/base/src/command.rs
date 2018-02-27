@@ -68,7 +68,7 @@ pub trait CmdQueue: Object {
     fn new_cmd_buffer(&self) -> Result<Box<CmdBuffer>>;
 
     /// Create a `Fence` associated with the command queue.
-    fn build_fence(&self) -> Result<handles::Fence>;
+    fn new_fence(&self) -> Result<handles::Fence>;
 
     /// Schedule pending command buffers for execution.
     fn flush(&self);
@@ -80,6 +80,9 @@ pub trait CmdQueue: Object {
 /// recording commands to the `CmdBuffer` and commiting it.
 pub trait CmdBuffer: Object {
     /// Reserve a place for this command buffer on the associated command queue.
+    ///
+    /// The order in which `enqueue` is called defines the submission order of
+    /// command buffers.
     fn enqueue(&mut self) -> Result<()>;
 
     /// Mark this command buffer as ready for submission.
@@ -220,8 +223,8 @@ pub trait CmdEncoder: Object {
     /// Wait on the specified fence and establish an inter-encoder execution
     /// dependency
     ///
-    /// The fence must be updated first before waiting on it. Otherwise,
-    /// a dead-lock might occur.
+    /// The fence must be updated first before waiting on it (according to the
+    /// command buffer's submission order). Otherwise, a dead-lock might occur.
     ///
     /// # Valid Usage
     ///
