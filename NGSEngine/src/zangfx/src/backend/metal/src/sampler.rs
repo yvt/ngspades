@@ -123,7 +123,7 @@ impl sampler::SamplerBuilder for SamplerBuilder {
 
         let metal_sampler = self.metal_device.new_sampler(*metal_desc);
         if metal_sampler.is_null() {
-            return Err(nil_error("MTLSamplerDescriptor new"));
+            return Err(nil_error("MTLDevice newSamplerStateWithDescriptor:"));
         }
         unsafe {
             metal_sampler.retain();
