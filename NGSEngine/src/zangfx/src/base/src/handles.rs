@@ -28,7 +28,7 @@
 //! object types. Specifically, the following object types are released when
 //! and only when the application makes an explicit request to do so: **images**,
 //! **buffers**, **samplers**, **argument tables**, and **image views**, with
-//! the exception of, argument tables, which are also released when their
+//! the exception of argument tables, which are also released when their
 //! originating argument pool is released or resetted.
 //!
 //! # Examples

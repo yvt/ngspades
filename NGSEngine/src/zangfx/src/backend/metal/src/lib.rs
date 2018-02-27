@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-//! NgsGFX Metal Backend — Implements a ZanGFX backend using Apple's Metal 2 API.
+//! ZanGFX Metal Backend — Implements a ZanGFX backend using Apple's Metal 2 API.
 //!
 //! Metal is one of the primary target APIs of ZanGFX as well as its
 //! predecessor, NgsGFX. For this reason, ZanGFX is designed to run efficiently
