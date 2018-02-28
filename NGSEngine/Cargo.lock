@@ -1490,6 +1490,7 @@ dependencies = [
  "zangfx_common 0.1.0",
  "zangfx_metal-rs 0.3.0",
  "zangfx_spirv-cross 0.1.0",
+ "zangfx_test 0.1.0",
 ]
 
 [[package]]
@@ -1513,6 +1514,14 @@ dependencies = [
  "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "prebuild-glslang 0.1.0",
  "unsafe_unions 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "zangfx_test"
+version = "0.1.0"
+dependencies = [
+ "zangfx_base 0.1.0",
+ "zangfx_common 0.1.0",
 ]
 
 [metadata]

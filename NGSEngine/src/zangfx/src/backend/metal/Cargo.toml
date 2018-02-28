@@ -18,3 +18,6 @@ tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }
 xalloc = { path = "../../../../support/xalloc-rs", features = ["nightly"] }
 smallvec = "0.4.1"
+
+[dev-dependencies]
+zangfx_test = { path = "../../test" }

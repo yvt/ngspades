@@ -42,6 +42,7 @@ members = [
     "src/zangfx/src/backend/metal/src/metal-rs",
     "src/zangfx/src/common",
     "src/zangfx/src/base",
+    "src/zangfx/src/test",
 ]
 
 [profile.release]
