@@ -9,11 +9,12 @@ use cocoa::foundation::NSArray;
 use cocoa::base::nil;
 use parking_lot::Mutex;
 use std::sync::Arc;
+use smallvec::SmallVec;
 
-use base::{arg, handles, shader, ArgArrayIndex, ArgIndex};
+use base::{arg, device, handles, shader, ArgArrayIndex, ArgIndex};
 use common::Result;
 
-use super::ArgSize;
+use arg::ArgSize;
 use utils::{nil_error, OCPtr};
 
 /// Implementation of `ArgTableSigBuilder` for Metal.
@@ -84,6 +85,8 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
             });
 
             if let &Some(ref arg_sig_builder) = arg_sig_builder {
+                // Allocate Metal argument locations for the current argument,
+                // starting from `current_index` through `current_index + len - 1`.
                 let metal_desc = unsafe { OCPtr::from_raw(metal::MTLArgumentDescriptor::new()) }
                     .ok_or_else(|| nil_error("MTLArgumentDescriptor argumentDescriptor"))?;
 
@@ -201,7 +204,7 @@ impl ArgTableSig {
 
     /// Obtain a `MTLArgumentEncoder` that can safely be used in the current
     /// thread.
-    pub(crate) fn lock_encoder<T, R>(&self, cb: T) -> Result<R>
+    fn lock_encoder<T, R>(&self, cb: T) -> Result<R>
     where
         T: FnOnce(&OCPtr<metal::MTLArgumentEncoder>) -> R,
     {
@@ -221,5 +224,75 @@ impl ArgTableSig {
 
     pub(crate) fn encoded_alignment(&self) -> ArgSize {
         self.data.alignment
+    }
+
+    pub(crate) fn update_arg_tables(
+        &self,
+        updates: &[(&handles::ArgTable, &[device::ArgUpdateSet])],
+    ) -> Result<()> {
+        use base::handles::ArgSlice::*;
+        use arg::table::ArgTable;
+        use buffer::Buffer;
+        use sampler::Sampler;
+
+        self.lock_encoder(|encoder| {
+            for &(table, update_sets) in updates.iter() {
+                let table: &ArgTable = table.downcast_ref().expect("bad argument table type");
+                encoder.set_argument_buffer(table.metal_buffer(), table.offset() as _);
+
+                for &(arg_index, start, resources) in update_sets.iter() {
+                    // The current Metal argument index.
+                    let mut index = self.data.args[arg_index].index + start;
+
+                    // Before passing `ArgSlice` to `MTLArgumentEncoder`, it must
+                    // first be converted to a slice containing Metal objects.
+                    // In order to avoid heap allocation, we split the `ArgSlice`
+                    // into chunks and process each chunk on a fixed size
+                    // stack-allocated array (`SmallVec`).
+                    match resources {
+                        ImageView(_) => unimplemented!(),
+
+                        Buffer(objs) => for objs in objs.chunks(64) {
+                            let metal_objs: SmallVec<[_; 64]> = objs.iter()
+                                .map(|&(_, obj)| {
+                                    let my_obj: &Buffer =
+                                        obj.downcast_ref().expect("bad buffer type");
+                                    my_obj.metal_buffer()
+                                })
+                                .collect();
+
+                            let offsets: SmallVec<[_; 64]> = objs.iter()
+                                .map(|&(ref range, _)| range.start as _)
+                                .collect();
+
+                            encoder.set_buffers(
+                                metal_objs.as_slice(),
+                                offsets.as_slice(),
+                                index as _,
+                            );
+
+                            index += objs.len();
+                        },
+
+                        Sampler(objs) => for objs in objs.chunks(64) {
+                            let metal_objs: SmallVec<[_; 64]> = objs.iter()
+                                .map(|obj| {
+                                    let my_obj: &Sampler =
+                                        obj.downcast_ref().expect("bad sampler type");
+                                    my_obj.metal_sampler()
+                                })
+                                .collect();
+
+                            encoder.set_sampler_states(metal_objs.as_slice(), index as _);
+
+                            index += objs.len();
+                        },
+                    }
+                    // Updating an `ArgUpdateSet` is done
+                }
+                // Updating `table` is done
+            }
+            // All done
+        })
     }
 }

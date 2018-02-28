@@ -56,6 +56,7 @@ use std::any::Any;
 use std::{fmt, marker, ops};
 
 use common::SmallBox;
+use DeviceSize;
 
 /// Base trait for all handle implementation traits.
 ///
@@ -307,9 +308,22 @@ impl<'a> From<&'a Buffer> for ResourceRef<'a> {
 ///
 #[derive(Debug, Clone, Copy)]
 pub enum ArgSlice<'a> {
+    /// Image views.
     ImageView(&'a [&'a ImageView]),
-    Buffer(&'a [&'a Buffer]),
+    /// Buffers and their subranges.
+    Buffer(&'a [(ops::Range<DeviceSize>, &'a Buffer)]),
+    /// Samplers.
     Sampler(&'a [&'a Sampler]),
+}
+
+impl<'a> ArgSlice<'a> {
+    pub fn len(&self) -> usize {
+        match self {
+            &ArgSlice::ImageView(x) => x.len(),
+            &ArgSlice::Buffer(x) => x.len(),
+            &ArgSlice::Sampler(x) => x.len(),
+        }
+    }
 }
 
 impl<'a> From<&'a [&'a ImageView]> for ArgSlice<'a> {
@@ -318,8 +332,8 @@ impl<'a> From<&'a [&'a ImageView]> for ArgSlice<'a> {
     }
 }
 
-impl<'a> From<&'a [&'a Buffer]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a Buffer]) -> Self {
+impl<'a> From<&'a [(ops::Range<DeviceSize>, &'a Buffer)]> for ArgSlice<'a> {
+    fn from(x: &'a [(ops::Range<DeviceSize>, &'a Buffer)]) -> Self {
         ArgSlice::Buffer(x)
     }
 }

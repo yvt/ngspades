@@ -128,12 +128,14 @@ impl device::Device for Device {
         unimplemented!()
     }
 
-    fn update_arg_table(
+    fn update_arg_tables(
         &self,
-        _arg_table: &handles::ArgTable,
-        _arg_table_sig: &handles::ArgTableSig,
-        _updates: &[device::ArgUpdateSet],
+        arg_table_sig: &handles::ArgTableSig,
+        updates: &[(&handles::ArgTable, &[device::ArgUpdateSet])],
     ) -> Result<()> {
-        unimplemented!()
+        let our_sig: &arg::tablesig::ArgTableSig = arg_table_sig
+            .downcast_ref()
+            .expect("bad argument table signature type");
+        our_sig.update_arg_tables(updates)
     }
 }

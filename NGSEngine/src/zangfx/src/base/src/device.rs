@@ -72,6 +72,40 @@ pub trait Device: Object {
     /// Retrieve the memory requirements for a given resource.
     fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<resources::MemoryReq>;
 
+    /// Update given argument tables.
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::device::Device;
+    ///     # use zangfx_base::handles::{ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # fn test(
+    ///     #     device: &Device,
+    ///     #     arg_table: &ArgTable,
+    ///     #     arg_table_sig: &ArgTableSig,
+    ///     #     image_views: &[&ImageView],
+    ///     #     buffer: &Buffer
+    ///     # ) {
+    ///     device.update_arg_tables(
+    ///         arg_table_sig,
+    ///         &[(
+    ///             arg_table,
+    ///             &[
+    ///                 // The index range 0..2 of the argument 0
+    ///                 (0, 0, [image_views[0], image_views[1]][..].into()),
+    ///
+    ///                 // The index range 2..3 of the argument 1
+    ///                 (1, 2, [(0..1024, buffer)][..].into()),
+    ///             ],
+    ///         )],
+    ///     );
+    ///     # }
+    ///
+    fn update_arg_tables(
+        &self,
+        arg_table_sig: &handles::ArgTableSig,
+        updates: &[(&handles::ArgTable, &[ArgUpdateSet])],
+    ) -> Result<()>;
+
     /// Update a given argument table.
     ///
     /// # Examples
@@ -86,24 +120,26 @@ pub trait Device: Object {
     ///     #     buffer: &Buffer
     ///     # ) {
     ///     device.update_arg_table(
-    ///         arg_table,
     ///         arg_table_sig,
+    ///         arg_table,
     ///         &[
     ///             // The index range 0..2 of the argument 0
     ///             (0, 0, [image_views[0], image_views[1]][..].into()),
     ///
     ///             // The index range 2..3 of the argument 1
-    ///             (1, 2, [buffer][..].into()),
+    ///             (1, 2, [(0..1024, buffer)][..].into()),
     ///         ],
     ///     );
     ///     # }
     ///
     fn update_arg_table(
         &self,
-        arg_table: &handles::ArgTable,
         arg_table_sig: &handles::ArgTableSig,
+        arg_table: &handles::ArgTable,
         updates: &[ArgUpdateSet],
-    ) -> Result<()>;
+    ) -> Result<()> {
+        self.update_arg_tables(arg_table_sig, &[(arg_table, updates)])
+    }
 }
 
 /// Utilies for [`Device`](Device).

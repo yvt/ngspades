@@ -17,3 +17,4 @@ parking_lot = "0.4.4"
 tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }
 xalloc = { path = "../../../../support/xalloc-rs", features = ["nightly"] }
+smallvec = "0.4.1"
