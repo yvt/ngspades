@@ -90,6 +90,10 @@ pub enum MTLDataType {
     Bool2 = 54,
     Bool3 = 55,
     Bool4 = 56,
+
+    Texture = 58,
+    Sampler = 59,
+    Pointer = 60,
 }
 
 #[repr(u32)]

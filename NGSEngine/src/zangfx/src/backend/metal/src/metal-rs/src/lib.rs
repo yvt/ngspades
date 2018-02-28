@@ -341,6 +341,7 @@ mod encoder;
 mod pipeline;
 mod library;
 mod argument;
+mod argumentbuffer;
 mod vertexdescriptor;
 mod depthstencil;
 
@@ -359,6 +360,7 @@ pub use encoder::*;
 pub use pipeline::*;
 pub use library::*;
 pub use argument::*;
+pub use argumentbuffer::*;
 pub use vertexdescriptor::*;
 pub use depthstencil::*;
 

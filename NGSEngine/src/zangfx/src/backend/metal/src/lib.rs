@@ -40,6 +40,7 @@ extern crate zangfx_spirv_cross as spirv_cross;
 
 // TODO
 
+pub mod arg;
 pub mod buffer;
 pub mod cmd;
 pub mod device;

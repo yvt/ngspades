@@ -8,6 +8,7 @@
 use cocoa::foundation::{NSUInteger};
 use objc::runtime::{Object, Class, YES, NO};
 use objc_foundation::{NSString, INSString};
+use NSArray;
 
 use super::{id, nil, NSObjectPrototype, NSObjectProtocol};
 
@@ -22,6 +23,7 @@ use buffer::MTLBuffer;
 use texture::{MTLTexture, MTLTextureDescriptor};
 use sampler::{MTLSamplerState, MTLSamplerDescriptor};
 use depthstencil::{MTLDepthStencilDescriptor, MTLDepthStencilState};
+use argumentbuffer::{MTLArgumentDescriptor, MTLArgumentEncoder};
 
 use libc;
 
@@ -52,6 +54,14 @@ bitflags! {
         const MTLPipelineOptionArgumentInfo   = 1 << 0,
         const MTLPipelineOptionBufferTypeInfo = 1 << 1
     }
+}
+
+#[allow(non_camel_case_types)]
+#[repr(u64)]
+#[derive(Copy, Clone)]
+pub enum MTLArgumentBuffersTier {
+    MTLArgumentBuffersTier1 = 0,
+    MTLArgumentBuffersTier2 = 1,
 }
 
 #[link(name = "Metal", kind = "framework")]
@@ -156,6 +166,12 @@ impl<'a> MTLDevice {
                 NO => false,
                 _ => unreachable!()
             }
+        }
+    }
+
+    pub fn argument_buffers_support(&self) -> MTLArgumentBuffersTier {
+        unsafe {
+            msg_send![self.0, argumentBuffersSupport]
         }
     }
 
@@ -315,6 +331,12 @@ impl<'a> MTLDevice {
     pub fn new_depth_stencil_state(&self, descriptor: MTLDepthStencilDescriptor) -> MTLDepthStencilState {
         unsafe {
             msg_send![self.0, newDepthStencilStateWithDescriptor:descriptor]
+        }
+    }
+
+    pub fn new_argument_encoder_with_arguments(&self, arguments: NSArray<MTLArgumentDescriptor>) -> MTLArgumentEncoder {
+        unsafe {
+            msg_send![self.0, newArgumentEncoderWithArguments:arguments.0]
         }
     }
 }

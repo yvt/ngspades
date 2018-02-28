@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::OCPtr;
 use limits::DeviceCaps;
-use {buffer, cmd, heap, sampler, shader};
+use {arg, buffer, cmd, heap, sampler, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -74,11 +74,11 @@ impl device::Device for Device {
     }
 
     fn build_arg_table_sig(&self) -> Box<base::arg::ArgTableSigBuilder> {
-        unimplemented!()
+        unsafe { Box::new(arg::tablesig::ArgTableSigBuilder::new(self.metal_device())) }
     }
 
     fn build_root_sig(&self) -> Box<base::arg::RootSigBuilder> {
-        unimplemented!()
+        Box::new(arg::rootsig::RootSigBuilder::new())
     }
 
     fn build_arg_pool(&self) -> Box<base::arg::ArgPoolBuilder> {
