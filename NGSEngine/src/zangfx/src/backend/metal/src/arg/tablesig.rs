@@ -13,6 +13,7 @@ use std::sync::Arc;
 use base::{arg, handles, shader, ArgArrayIndex, ArgIndex};
 use common::Result;
 
+use super::ArgSize;
 use utils::{nil_error, OCPtr};
 
 /// Implementation of `ArgTableSigBuilder` for Metal.
@@ -32,7 +33,7 @@ unsafe impl Sync for ArgTableSigBuilder {}
 #[derive(Debug, Clone)]
 struct ArgSigBuilder {
     ty: arg::ArgType,
-    len: usize,
+    len: ArgSize,
 }
 
 zangfx_impl_object! { ArgSigBuilder: arg::ArgSig, ::Debug }
@@ -46,6 +47,18 @@ impl ArgTableSigBuilder {
             metal_device,
             args: Vec::new(),
         }
+    }
+
+    /// Used by `arg::table::ArgLayoutInfo` to estimate the overhead of the
+    /// argument buffer. Not optimized because the intention is that
+    /// `ArgLayoutInfo` is computed only once for each `Device` created.
+    pub(super) fn encoded_size(&mut self) -> Result<ArgSize> {
+        use base::arg::ArgTableSigBuilder;
+        let gfx_sig = self.build()?;
+        let sig: &ArgTableSig = gfx_sig.downcast_ref().unwrap();
+        let size = sig.encoded_size();
+        let align = sig.encoded_alignment();
+        Ok((size + align - 1) & !(align - 1))
     }
 }
 
@@ -63,7 +76,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
     fn build(&mut self) -> Result<handles::ArgTableSig> {
         let mut metal_args = Vec::with_capacity(self.args.len());
         let mut arg_sigs = Vec::with_capacity(self.args.len());
-        let mut current_index = 0;
+        let mut current_index = 0usize;
 
         for (_, arg_sig_builder) in self.args.iter().enumerate() {
             arg_sigs.push(ArgSig {
@@ -98,7 +111,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
                 }
 
                 metal_args.push(metal_desc);
-                current_index += arg_sig_builder.len;
+                current_index += arg_sig_builder.len as usize;
             }
         }
 
@@ -115,7 +128,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
 
 impl arg::ArgSig for ArgSigBuilder {
     fn set_len(&mut self, x: ArgArrayIndex) -> &mut arg::ArgSig {
-        self.len = x;
+        self.len = x as _;
         self
     }
 
@@ -137,6 +150,7 @@ zangfx_impl_handle! { ArgTableSig, handles::ArgTableSig }
 
 #[derive(Debug)]
 struct ArgTableSigData {
+    metal_device: metal::MTLDevice,
     args: Vec<ArgSig>,
     metal_args_array: OCPtr<metal::NSArray<metal::MTLArgumentDescriptor>>,
 
@@ -144,6 +158,9 @@ struct ArgTableSigData {
     /// so we might have to create a temporary instance (slow!) in contended
     /// case.
     metal_arg_encoder: Mutex<OCPtr<metal::MTLArgumentEncoder>>,
+
+    size: ArgSize,
+    alignment: ArgSize,
 }
 
 #[derive(Debug)]
@@ -169,8 +186,11 @@ impl ArgTableSig {
         let metal_arg_encoder = new_metal_arg_encoder(metal_device, *metal_args_array)?;
 
         let data = ArgTableSigData {
+            metal_device,
             args,
             metal_args_array,
+            size: metal_arg_encoder.encoded_length() as ArgSize,
+            alignment: metal_arg_encoder.alignment() as ArgSize,
             metal_arg_encoder: Mutex::new(metal_arg_encoder),
         };
 
@@ -179,5 +199,27 @@ impl ArgTableSig {
         })
     }
 
-    // TODO: update argument table
+    /// Obtain a `MTLArgumentEncoder` that can safely be used in the current
+    /// thread.
+    pub(crate) fn lock_encoder<T, R>(&self, cb: T) -> Result<R>
+    where
+        T: FnOnce(&OCPtr<metal::MTLArgumentEncoder>) -> R,
+    {
+        if let Some(encoder) = self.data.metal_arg_encoder.try_lock() {
+            Ok(cb(&encoder))
+        } else {
+            let metal_arg_encoder = unsafe {
+                new_metal_arg_encoder(self.data.metal_device, *self.data.metal_args_array)?
+            };
+            Ok(cb(&metal_arg_encoder))
+        }
+    }
+
+    pub(crate) fn encoded_size(&self) -> ArgSize {
+        self.data.size
+    }
+
+    pub(crate) fn encoded_alignment(&self) -> ArgSize {
+        self.data.alignment
+    }
 }

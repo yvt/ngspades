@@ -224,7 +224,7 @@ pub trait ArgPool: Object {
     ///
     /// [`ArgPoolBuilder::enable_destroy_tables`]: ArgPoolBuilder::enable_destroy_tables
     ///
-    fn destroy_tables(&mut self, tables: &[&ArgTableSig]) -> Result<()>;
+    fn destroy_tables(&mut self, tables: &[&ArgTable]) -> Result<()>;
 
     /// Deallocate all `ArgTable`s.
     ///

@@ -17,6 +17,7 @@ use {arg, buffer, cmd, heap, sampler, shader};
 pub struct Device {
     metal_device: OCPtr<metal::MTLDevice>,
     caps: DeviceCaps,
+    arg_layout_info: arg::table::ArgLayoutInfo,
 }
 
 zangfx_impl_object! { Device: device::Device, ::Debug }
@@ -28,11 +29,12 @@ impl Device {
     /// Constructs a new `Device` with a supplied `MTLDevice`.
     ///
     /// `metal_device` must not be null. Otherwise, it will panic.
-    pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
-        Self {
+    pub unsafe fn new(metal_device: metal::MTLDevice) -> Result<Self> {
+        Ok(Self {
             metal_device: OCPtr::new(metal_device).unwrap(),
             caps: DeviceCaps::new(metal_device),
-        }
+            arg_layout_info: arg::table::ArgLayoutInfo::new(metal_device)?,
+        })
     }
 
     pub fn metal_device(&self) -> metal::MTLDevice {
@@ -82,7 +84,12 @@ impl device::Device for Device {
     }
 
     fn build_arg_pool(&self) -> Box<base::arg::ArgPoolBuilder> {
-        unimplemented!()
+        unsafe {
+            Box::new(arg::table::ArgPoolBuilder::new(
+                self.metal_device(),
+                self.arg_layout_info,
+            ))
+        }
     }
 
     fn build_render_pass(&self) -> Box<base::pass::RenderPassBuilder> {
