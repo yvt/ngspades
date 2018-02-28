@@ -37,6 +37,18 @@ impl Device {
         })
     }
 
+    /// Constructs a new `Device` with the preferred system default Metal
+    /// device.
+    pub unsafe fn new_system_default() -> Result<Self> {
+        use utils::nil_error;
+        let metal_device = metal::create_system_default_device();
+        if metal_device.is_null() {
+            Err(nil_error("MTLCreateSystemDefaultDevice"))
+        } else {
+            Self::new(metal_device)
+        }
+    }
+
     pub fn metal_device(&self) -> metal::MTLDevice {
         *self.metal_device
     }
