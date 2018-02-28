@@ -87,7 +87,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
             if let &Some(ref arg_sig_builder) = arg_sig_builder {
                 // Allocate Metal argument locations for the current argument,
                 // starting from `current_index` through `current_index + len - 1`.
-                let metal_desc = unsafe { OCPtr::from_raw(metal::MTLArgumentDescriptor::new()) }
+                let metal_desc = OCPtr::new(metal::MTLArgumentDescriptor::new())
                     .ok_or_else(|| nil_error("MTLArgumentDescriptor argumentDescriptor"))?;
 
                 metal_desc.set_index(current_index as _);
