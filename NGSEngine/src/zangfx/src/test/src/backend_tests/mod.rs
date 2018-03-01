@@ -30,7 +30,7 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { arg_table_sampler, $driver }
 
         zangfx_test_single! { cmdqueue_create, $driver }
-        #[should_panic] zangfx_test_single! { cmdqueue_create_fail_missing_queue_family, $driver }
+        zangfx_test_single! { #[should_panic] cmdqueue_create_fail_missing_queue_family, $driver }
         zangfx_test_single! { cmdqueue_create_buffer, $driver }
         zangfx_test_single! { cmdqueue_create_encoder, $driver }
         zangfx_test_single! { cmdqueue_buffer_noop_completes, $driver }
@@ -38,15 +38,16 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { cmdqueue_buffer_noop_multiple_completes, $driver }
 
         zangfx_test_single! { heap_create, $driver }
-        zangfx_test_single! { heap_create_fail_zero_size, $driver }
-        zangfx_test_single! { heap_create_fail_missing_memory_type, $driver }
+        zangfx_test_single! { #[should_panic] heap_create_fail_zero_size, $driver }
+        zangfx_test_single! { #[should_panic] heap_create_fail_missing_memory_type, $driver }
     }
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! zangfx_test_single {
-    ($name:ident, $driver:expr) => {
+    ($(#[$m:meta])* $name:ident, $driver:expr) => {
+        $(#[$m])*
         #[test]
         fn $name() {
             $crate::backend_tests::$name($driver);
