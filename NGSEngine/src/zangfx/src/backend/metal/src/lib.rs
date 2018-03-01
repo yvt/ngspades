@@ -23,6 +23,14 @@
 //!  - Conversely, methods named `from_raw` do not increase the reference count.
 //!  - No method increases the reference count when returning an object.
 //!
+//! # Performance Quirks
+//!
+//! Due to Metal's restrictions, `Heap` uses an emulated implementation for a
+//! heap placed in a shared memory that does not use `MTLHeap`. As a result,
+//! `use_heap` runs much slower for such heaps. In general, you should avoid
+//! referencing shared resources through argument tables since their performance
+//! is lower than private resources.
+//!
 extern crate block;
 extern crate cocoa;
 #[macro_use(flags)]

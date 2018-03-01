@@ -5,8 +5,6 @@
 //
 //! Implementation of `Heap` for Metal.
 use metal;
-use iterpool::{Pool, PoolPtr};
-use parking_lot::Mutex;
 
 use base::{handles, heap, DeviceSize, MemoryType};
 use common::{Error, ErrorKind, Result};
@@ -63,31 +61,43 @@ impl heap::HeapBuilder for HeapBuilder {
             return Err(Error::new(ErrorKind::InvalidUsage));
         }
 
-        let metal_desc = unsafe { OCPtr::from_raw(metal::MTLHeapDescriptor::new()) }
-            .ok_or(nil_error("MTLHeapDescriptor new"))?;
-        metal_desc.set_size(self.size);
-        metal_desc.set_storage_mode(storage_mode);
+        if storage_mode == metal::MTLStorageMode::Private {
+            let metal_desc = unsafe { OCPtr::from_raw(metal::MTLHeapDescriptor::new()) }
+                .ok_or(nil_error("MTLHeapDescriptor new"))?;
+            metal_desc.set_size(self.size);
+            metal_desc.set_storage_mode(storage_mode);
 
-        let metal_heap = OCPtr::new(self.metal_device.new_heap(*metal_desc))
-            .ok_or_else(|| nil_error("MTLDevice newHeapWithDescriptor:"))?;
-        Ok(Box::new(Heap::new(metal_heap, storage_mode)))
+            let metal_heap = OCPtr::new(self.metal_device.new_heap(*metal_desc))
+                .ok_or_else(|| nil_error("MTLDevice newHeapWithDescriptor:"))?;
+
+            Ok(Box::new(Heap::new(metal_heap, storage_mode)))
+        } else {
+            // `MTLHeap` only supports the private storage mode
+            Ok(Box::new(unsafe {
+                EmulatedHeap::new(self.metal_device, storage_mode)
+            }))
+        }
     }
 }
 
-/// Implementation of `HeapAlloc` for Metal.
+/// Implementation of `HeapAlloc` for Metal. To be used with [`Heap`].
+///
+/// [`Heap`]: Heap
 #[derive(Debug, Clone)]
 pub struct HeapAlloc {
-    ptr: PoolPtr,
+    resource: metal::MTLResource,
 }
 
 zangfx_impl_handle! { HeapAlloc, handles::HeapAlloc }
 
-/// Implementation of `Heap` for Metal.
+unsafe impl Send for HeapAlloc {}
+unsafe impl Sync for HeapAlloc {}
+
+/// Implementation of `Heap` for Metal, backed by `MTLHeap`.
 #[derive(Debug)]
 pub struct Heap {
     metal_heap: OCPtr<metal::MTLHeap>,
     storage_mode: metal::MTLStorageMode,
-    allocations: Mutex<Pool<OCPtr<metal::MTLResource>>>,
 }
 
 zangfx_impl_object! { Heap: heap::Heap, ::Debug }
@@ -100,7 +110,6 @@ impl Heap {
         Self {
             metal_heap,
             storage_mode,
-            allocations: Mutex::new(Pool::new()),
         }
     }
 }
@@ -109,37 +118,28 @@ impl heap::Heap for Heap {
     fn bind(&self, obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
         match obj {
             handles::ResourceRef::Buffer(buffer) => {
-                let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+                let metal_buffer_or_none =
+                    bind_buffer(buffer, self.storage_mode, |size, options| {
+                        self.metal_heap.new_buffer(size, options)
+                    })?;
 
-                let size = my_buffer.prototype_size().ok_or_else(|| {
-                    Error::with_detail(ErrorKind::InvalidUsage, "already allocated")
-                })?;
+                Ok(metal_buffer_or_none.map(|metal_buffer| {
+                    // If the allocation was successful, then return
+                    // a `HeapAlloc` for the allocated buffer
+                    let resource = *metal_buffer;
+                    let heap_alloc = HeapAlloc { resource };
 
-                let options = metal::MTLResourceOptions::from_bits(
-                    (self.storage_mode as u64) << metal::MTLResourceStorageModeShift,
-                ).unwrap();
-                let metal_buffer = OCPtr::new(self.metal_heap.new_buffer(size, options));
-
-                if let Some(metal_buffer) = metal_buffer {
-                    let resource = OCPtr::new(**metal_buffer).unwrap();
-                    let ptr = self.allocations.lock().allocate(resource);
-                    let heap_alloc = HeapAlloc { ptr };
-
-                    // Transition the buffer to the Allocated state
-                    my_buffer.materialize(metal_buffer);
-
-                    Ok(Some(handles::HeapAlloc::new(heap_alloc)))
-                } else {
-                    Ok(None)
-                }
+                    handles::HeapAlloc::new(heap_alloc)
+                }))
             }
+
             handles::ResourceRef::Image(_image) => unimplemented!(),
         }
     }
 
     fn make_aliasable(&self, alloc: &handles::HeapAlloc) -> Result<()> {
         let my_alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        self.allocations.lock()[my_alloc.ptr].make_aliasable();
+        my_alloc.resource.make_aliasable();
         Ok(())
     }
 
@@ -147,22 +147,123 @@ impl heap::Heap for Heap {
         let my_alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
 
         // Deallocate the resource as soon as possible
-        let mut allocations = self.allocations.lock();
-        allocations[my_alloc.ptr].make_aliasable();
-
-        allocations.deallocate(my_alloc.ptr);
+        my_alloc.resource.make_aliasable();
 
         Ok(())
     }
 
+    fn as_ptr(&self, _alloc: &handles::HeapAlloc) -> Result<*mut ()> {
+        Err(Error::with_detail(
+            ErrorKind::InvalidUsage,
+            "not host visible",
+        ))
+    }
+}
+
+/// Implementation of `EmulatedHeapAlloc` for Metal. To be used with [`EmulatedHeap`].
+///
+/// [`EmulatedHeap`]: EmulatedHeap
+#[derive(Debug, Clone)]
+pub struct EmulatedHeapAlloc {
+    /// The pointer to the resource's contents. Invalid for images.
+    ptr: *mut (),
+}
+
+zangfx_impl_handle! { EmulatedHeapAlloc, handles::HeapAlloc }
+
+unsafe impl Send for EmulatedHeapAlloc {}
+unsafe impl Sync for EmulatedHeapAlloc {}
+
+/// Emulated implementation of `Heap` for Metal. Does not `MTLHeap` and
+/// allocates resources from `MTLDevice` directly.
+#[derive(Debug)]
+pub struct EmulatedHeap {
+    metal_device: metal::MTLDevice,
+    storage_mode: metal::MTLStorageMode,
+}
+
+zangfx_impl_object! { EmulatedHeap: heap::Heap, ::Debug }
+
+unsafe impl Send for EmulatedHeap {}
+unsafe impl Sync for EmulatedHeap {}
+
+impl EmulatedHeap {
+    unsafe fn new(metal_device: metal::MTLDevice, storage_mode: metal::MTLStorageMode) -> Self {
+        Self {
+            metal_device,
+            storage_mode,
+        }
+    }
+}
+
+impl heap::Heap for EmulatedHeap {
+    fn bind(&self, obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
+        match obj {
+            handles::ResourceRef::Buffer(buffer) => {
+                let metal_buffer_or_none =
+                    bind_buffer(buffer, self.storage_mode, |size, options| {
+                        self.metal_device.new_buffer(size, options)
+                    })?;
+
+                Ok(metal_buffer_or_none.map(|metal_buffer| {
+                    // If the allocation was successful, then return
+                    // a `HeapAlloc` for the allocated buffer
+                    let ptr = metal_buffer.contents() as *mut ();
+                    let heap_alloc = EmulatedHeapAlloc { ptr };
+
+                    handles::HeapAlloc::new(heap_alloc)
+                }))
+            }
+
+            handles::ResourceRef::Image(_image) => unimplemented!(),
+        }
+    }
+
+    fn make_aliasable(&self, _alloc: &handles::HeapAlloc) -> Result<()> {
+        // We do not support aliasing, but the definition of `make_aliasable`
+        // does not guarantee aliasing
+        Ok(())
+    }
+
+    fn unbind(&self, _alloc: &handles::HeapAlloc) -> Result<()> {
+        // We do not maintain the lifetime of `MTLResource`
+        Ok(())
+    }
+
     fn as_ptr(&self, alloc: &handles::HeapAlloc) -> Result<*mut ()> {
-        use std::mem::transmute;
-        let my_alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+        let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+        Ok(my_alloc.ptr)
+    }
+}
 
-        let resource: metal::MTLResource = *self.allocations.lock()[my_alloc.ptr];
+fn bind_buffer<T>(
+    buffer: &handles::Buffer,
+    storage_mode: metal::MTLStorageMode,
+    allocator: T,
+) -> Result<Option<metal::MTLBuffer>>
+where
+    T: FnOnce(u64, metal::MTLResourceOptions) -> metal::MTLBuffer,
+{
+    let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
 
-        // The associated resource must be a buffer
-        let buffer: metal::MTLBuffer = unsafe { transmute(resource) };
-        Ok(buffer.contents() as *mut ())
+    let size = my_buffer
+        .prototype_size()
+        .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "already allocated"))?;
+
+    let options = metal::MTLResourceOptions::from_bits(
+        (storage_mode as u64) << metal::MTLResourceStorageModeShift,
+    ).unwrap() | metal::MTLResourceHazardTrackingModeUntracked;
+    let metal_buffer = OCPtr::new(allocator(size, options));
+
+    if let Some(metal_buffer) = metal_buffer {
+        let metal_buffer_ptr = *metal_buffer;
+
+        // Transition the buffer to the Allocated state
+        my_buffer.materialize(metal_buffer);
+
+        // Return `metal_buffer_ptr` for `HeapAlloc` creation
+        Ok(Some(metal_buffer_ptr))
+    } else {
+        Ok(None)
     }
 }
