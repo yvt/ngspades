@@ -17,6 +17,8 @@ use utils::{nil_error, OCPtr};
 use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::CmdBufferFenceSet;
 use super::enc_compute::ComputeEncoder;
+use super::enc_copy::CopyEncoder;
+use super::enc_render::RenderEncoder;
 
 /// Implementation of `CmdBuffer` for Metal.
 #[derive(Debug)]
@@ -49,6 +51,8 @@ struct CallbackSet(Vec<Box<FnMut()>>);
 #[derive(Debug)]
 enum Encoder {
     Compute(ComputeEncoder),
+    Render(RenderEncoder),
+    Copy(CopyEncoder),
 }
 
 unsafe impl Send for CmdBuffer {}
@@ -97,6 +101,8 @@ impl UncommitedBuffer {
         if let Some(enc) = self.encoder.take() {
             match enc {
                 Encoder::Compute(e) => self.fence_set = e.finish(),
+                Encoder::Render(e) => self.fence_set = e.finish(),
+                Encoder::Copy(e) => self.fence_set = e.finish(),
             }
         }
     }
@@ -139,7 +145,27 @@ impl command::CmdBuffer for CmdBuffer {
     }
 
     fn encode_render(&mut self) -> &mut command::RenderCmdEncoder {
-        unimplemented!();
+        let uncommited = self.uncommited
+            .as_mut()
+            .ok_or_else(already_commited_error)
+            .unwrap();
+        uncommited.clear_encoder();
+
+        let metal_encoder = unimplemented!();
+        // TODO: handle nil `metal_encoder`
+
+        // Create a `RenderEncoder` and move `uncommited.fence_set` to it
+        let encoder = unsafe {
+            RenderEncoder::new(
+                metal_encoder,
+                replace(&mut uncommited.fence_set, Default::default()),
+            )
+        };
+        uncommited.encoder = Some(Encoder::Render(encoder));
+        match uncommited.encoder {
+            Some(Encoder::Render(ref mut e)) => e,
+            _ => unreachable!(),
+        }
     }
     fn encode_compute(&mut self) -> &mut command::ComputeCmdEncoder {
         let uncommited = self.uncommited
@@ -165,7 +191,27 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
     fn encode_copy(&mut self) -> &mut command::CopyCmdEncoder {
-        unimplemented!();
+        let uncommited = self.uncommited
+            .as_mut()
+            .ok_or_else(already_commited_error)
+            .unwrap();
+        uncommited.clear_encoder();
+
+        let metal_encoder = uncommited.metal_buffer.new_blit_command_encoder();
+        // TODO: handle nil `metal_encoder`
+
+        // Create a `CopyEncoder` and move `uncommited.fence_set` to it
+        let encoder = unsafe {
+            CopyEncoder::new(
+                metal_encoder,
+                replace(&mut uncommited.fence_set, Default::default()),
+            )
+        };
+        uncommited.encoder = Some(Encoder::Copy(encoder));
+        match uncommited.encoder {
+            Some(Encoder::Copy(ref mut e)) => e,
+            _ => unreachable!(),
+        }
     }
 
     fn on_complete(&mut self, cb: Box<FnMut()>) {

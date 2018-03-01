@@ -285,8 +285,9 @@ macro_rules! flags {
         $crate::BitFlags::from($($ns::)*$tail)
     );
 
-    ( $($ns:ident::)* {$head:ident | $($rest:tt)*} ) => ((
+    // Use `{}` instead of `()` to avoid `unused_parens` warning
+    ( $($ns:ident::)* {$head:ident | $($rest:tt)*} ) => ({
         flags![$($ns::)*{$head}] |
         flags![$($ns::)*{$($rest)*}]
-    ))
+    })
 }

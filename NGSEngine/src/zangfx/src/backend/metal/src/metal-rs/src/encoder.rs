@@ -463,6 +463,13 @@ impl MTLRenderCommandEncoder {
         }
     }
 
+    // Enabling Texture Barriers
+    pub fn texture_barrier(&self) {
+        unsafe {
+            msg_send![self.0, textureBarrier]
+        }
+    }
+
     // Specifying Resources for an Argument Buffer
 
     pub fn use_resources(&self, resources: &[MTLResource], usage: MTLResourceUsage) {

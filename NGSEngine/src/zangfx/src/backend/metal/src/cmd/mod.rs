@@ -10,3 +10,5 @@ pub mod fence;
 pub mod queue;
 mod enc;
 mod enc_compute;
+mod enc_copy;
+mod enc_render;
