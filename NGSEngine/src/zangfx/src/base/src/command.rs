@@ -116,7 +116,7 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     fn dispatch(&mut self, workgroup_count: &[u32]);
 }
 
-pub trait CopyCmdEncoder: Object {
+pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// Fill a buffer with a constant byte value.
     ///
     /// Both of `range.start` and `range.end` must be a multiple of 4.
