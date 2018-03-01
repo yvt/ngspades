@@ -36,6 +36,7 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { cmdqueue_buffer_noop_completes, $driver }
         zangfx_test_single! { cmdqueue_buffer_noop_completes_dropped_soon, $driver }
         zangfx_test_single! { cmdqueue_buffer_noop_multiple_completes, $driver }
+        zangfx_test_single! { cmdqueue_buffer_fence_update_wait_completes, $driver }
 
         zangfx_test_single! { heap_create, $driver }
         zangfx_test_single! { #[should_panic] heap_create_fail_zero_size, $driver }

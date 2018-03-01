@@ -213,3 +213,58 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
         println!("- The execution of the command buffer has completed");
     });
 }
+
+pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
+    use std::sync::mpsc;
+    use std::time::Duration;
+    driver.for_each_device(&mut |device| {
+        println!("- Creating a command queue");
+        let queue: Box<base::command::CmdQueue> =
+            device.build_cmd_queue().queue_family(0).build().unwrap();
+
+        println!("- Creating a fence");
+        let fence = queue.new_fence().unwrap();
+
+        println!("- Creating a barrier");
+        let barrier = device
+            .build_barrier()
+            .global(
+                flags![base::AccessType::{CopyWrite}],
+                flags![base::AccessType::{CopyRead}],
+            )
+            .build()
+            .unwrap();
+
+        println!("- Creating a command buffer");
+        let mut buffer: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+
+        println!("- Encoding the command buffer");
+        {
+            let e = buffer.encode_copy();
+            // Update and wait on a fence from the same command buffer.
+            e.update_fence(&fence, flags![base::Stage::{All}]);
+            e.wait_fence(
+                &fence,
+                flags![base::Stage::{All}],
+                flags![base::Stage::{All}],
+                &barrier,
+            );
+        }
+
+        println!("- Installing a completion handler");
+        let (send, recv) = mpsc::channel();
+        buffer.on_complete(Box::new(move || {
+            let _ = send.send(());
+        }));
+        println!("- Commiting the command buffer");
+        buffer.commit().unwrap();
+
+        println!("- Flushing the command queue");
+        queue.flush();
+
+        println!("- Waiting for completion");
+        recv.recv_timeout(Duration::from_millis(1000)).unwrap();
+
+        println!("- The execution of the command buffer has completed");
+    });
+}
