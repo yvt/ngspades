@@ -10,7 +10,7 @@ use Object;
 use common::Result;
 use formats::ImageFormat;
 use resources::ImageLayout;
-use handles::{ImageView, RenderPass, RtTable};
+use handles::{ImageView, RenderPass, RenderTargetTable};
 use {RenderPassTargetIndex, SubpassIndex};
 use {AccessTypeFlags, StageFlags};
 
@@ -165,12 +165,12 @@ pub enum StoreOp {
 ///
 /// # Valid Usage
 ///
-///  - No instance of `RtTableBuilder` may outlive the originating `Device`.
+///  - No instance of `RenderTargetTableBuilder` may outlive the originating `Device`.
 ///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
-///     # use zangfx_base::pass::RtTableBuilder;
+///     # use zangfx_base::pass::RenderTargetTableBuilder;
 ///     # use zangfx_base::handles::{RenderPass, ImageView};
 ///     # fn test(device: &Device, pass: &RenderPass, image_view: &ImageView) {
 ///     let mut rt_table = device.build_rt_table()
@@ -181,23 +181,23 @@ pub enum StoreOp {
 ///         .expect("Failed to create a render target table.");
 ///     # }
 ///
-pub trait RtTableBuilder: Object {
+pub trait RenderTargetTableBuilder: Object {
     /// Set the associated render pass to `v`.
     ///
     /// Mandatory.
-    fn render_pass(&mut self, v: &RenderPass) -> &mut RtTableBuilder;
+    fn render_pass(&mut self, v: &RenderPass) -> &mut RenderTargetTableBuilder;
 
     /// Set the render target extents to `v`.
     ///
     /// `v.len()` matches the dimensionality of the image and must be 1 or 2.
     ///
     /// Mandatory.
-    fn extents(&mut self, v: &[u32]) -> &mut RtTableBuilder;
+    fn extents(&mut self, v: &[u32]) -> &mut RenderTargetTableBuilder;
 
     /// Set the render target layer count to `v`.
     ///
     /// Defaults to `1`.
-    fn num_layers(&mut self, v: u32) -> &mut RtTableBuilder;
+    fn num_layers(&mut self, v: u32) -> &mut RenderTargetTableBuilder;
 
     /// Define a render target.
     ///
@@ -206,7 +206,7 @@ pub trait RtTableBuilder: Object {
     ///
     /// Mandatory. Must be specified for each render target defined by the
     /// render pass.
-    fn target(&mut self, index: RenderPassTargetIndex, view: &ImageView) -> &mut RtTableBuilder;
+    fn target(&mut self, index: RenderPassTargetIndex, view: &ImageView) -> &mut RenderTargetTableBuilder;
 
     /// Build an `ArgTableSig`.
     ///
@@ -214,5 +214,5 @@ pub trait RtTableBuilder: Object {
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<RtTable>;
+    fn build(&mut self) -> Result<RenderTargetTable>;
 }

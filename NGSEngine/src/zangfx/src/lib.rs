@@ -70,7 +70,6 @@
 //! - **Mip** - mipmap, mipmapping
 //! - **Norm** - normalize, normalized
 //! - **Res** - resource
-//! - **Rt** - render target
 //! - **Sig** - signature
 //! - **Src** - source
 //! - **Vec** - vector

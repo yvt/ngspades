@@ -249,7 +249,7 @@ define_handle! {
     ///
     /// See [the module-level documentation](index.html) for the generic usage
     /// of handles.
-    RtTable
+    RenderTargetTable
 }
 
 define_handle! {

@@ -108,7 +108,7 @@ impl device::Device for Device {
         unimplemented!()
     }
 
-    fn build_rt_table(&self) -> Box<base::pass::RtTableBuilder> {
+    fn build_rt_table(&self) -> Box<base::pass::RenderTargetTableBuilder> {
         unimplemented!()
     }
 

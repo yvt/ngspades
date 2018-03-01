@@ -50,8 +50,8 @@ pub trait Device: Object {
     /// Create a `RenderPassBuilder` associated with this device.
     fn build_render_pass(&self) -> Box<pass::RenderPassBuilder>;
 
-    /// Create a `RtTableBuilder` associated with this device.
-    fn build_rt_table(&self) -> Box<pass::RtTableBuilder>;
+    /// Create a `RenderTargetTableBuilder` associated with this device.
+    fn build_rt_table(&self) -> Box<pass::RenderTargetTableBuilder>;
 
     // TODO: image view
 

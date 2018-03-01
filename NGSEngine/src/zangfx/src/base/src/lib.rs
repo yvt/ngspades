@@ -104,7 +104,7 @@ mopo! { heap::HeapBuilder }
 mopo! { heap::Heap }
 mopo! { pass::RenderPassBuilder }
 mopo! { pass::RenderPassTarget }
-mopo! { pass::RtTableBuilder }
+mopo! { pass::RenderTargetTableBuilder }
 mopo! { pipeline::ComputePipelineBuilder }
 mopo! { resources::ImageBuilder }
 mopo! { resources::BufferBuilder }
