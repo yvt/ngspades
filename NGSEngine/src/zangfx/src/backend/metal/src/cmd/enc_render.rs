@@ -32,6 +32,7 @@ impl RenderEncoder {
     }
 
     pub fn finish(self) -> CmdBufferFenceSet {
+        self.metal_encoder.end_encoding();
         self.fence_set
     }
 }
