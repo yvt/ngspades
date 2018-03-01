@@ -206,7 +206,7 @@ pub trait RenderTargetTableBuilder: Object {
     ///
     /// Mandatory. Must be specified for each render target defined by the
     /// render pass.
-    fn target(&mut self, index: RenderPassTargetIndex, view: &ImageView) -> &mut RenderTargetTableBuilder;
+    fn target(&mut self, index: RenderPassTargetIndex, view: &ImageView) -> &mut RenderTarget;
 
     /// Build an `ArgTableSig`.
     ///
@@ -215,4 +215,29 @@ pub trait RenderTargetTableBuilder: Object {
     /// All mandatory properties must have their values set before this method
     /// is called.
     fn build(&mut self) -> Result<RenderTargetTable>;
+}
+
+pub trait RenderTarget: Object {
+    /// Set the clear value for the render target with a format other than
+    /// unnormalized integer ones..
+    ///
+    /// Defaults to an implementation defined value.
+    fn clear_float(&mut self, v: &[f32]) -> &mut RenderTarget;
+
+    /// Set the clear value for the render target with an unnormalized unsigned
+    /// integer format.
+    ///
+    /// Defaults to an implementation defined value.
+    fn clear_uint(&mut self, v: &[u32]) -> &mut RenderTarget;
+
+    /// Set the clear value for the render target with an unnormalized signed
+    /// integer format.
+    ///
+    /// Defaults to an implementation defined value.
+    fn clear_sint(&mut self, v: &[i32]) -> &mut RenderTarget;
+
+    /// Set the clear value for the depth and stencil render targets.
+    ///
+    /// Defaults to an implementation defined value.
+    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut RenderTarget;
 }

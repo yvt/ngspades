@@ -77,8 +77,9 @@ pub fn cmdqueue_create_encoder<T: TestDriver>(driver: T) {
 
             let caps = queue_family.caps;
             if caps.intersects(base::limits::QueueFamilyCaps::Render) {
-                println!("- Creating a render encoder");
-                buffer.encode_render();
+                println!("- Skipping a render encoder");
+                // Starting a render encoder requires other multiple structures
+                // to be set up -- let's not do it here
             }
             if caps.intersects(base::limits::QueueFamilyCaps::Compute) {
                 println!("- Creating a compute encoder");

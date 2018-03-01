@@ -8,11 +8,12 @@ use std::fmt;
 use std::sync::Arc;
 use std::mem::replace;
 use parking_lot::Mutex;
-
-use base::command;
-use common::{Error, ErrorKind, Result};
 use metal::{MTLCommandBuffer, MTLCommandQueue};
+
+use base::{command, handles};
+use common::{Error, ErrorKind, Result};
 use utils::{nil_error, OCPtr};
+use renderpass::RenderTargetTable;
 
 use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::CmdBufferFenceSet;
@@ -144,14 +145,23 @@ impl command::CmdBuffer for CmdBuffer {
         Ok(())
     }
 
-    fn encode_render(&mut self) -> &mut command::RenderCmdEncoder {
+    fn encode_render(
+        &mut self,
+        render_target_table: &handles::RenderTargetTable,
+    ) -> &mut command::RenderCmdEncoder {
+        let our_rt_table: &RenderTargetTable = render_target_table
+            .downcast_ref()
+            .expect("bad render target table type");
+
         let uncommited = self.uncommited
             .as_mut()
             .ok_or_else(already_commited_error)
             .unwrap();
         uncommited.clear_encoder();
 
-        let metal_encoder = unimplemented!();
+        let metal_encoder = uncommited
+            .metal_buffer
+            .new_render_command_encoder(our_rt_table.metal_render_pass());
         // TODO: handle nil `metal_encoder`
 
         // Create a `RenderEncoder` and move `uncommited.fence_set` to it

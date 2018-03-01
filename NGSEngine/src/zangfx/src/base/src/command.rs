@@ -88,7 +88,10 @@ pub trait CmdBuffer: Object {
     /// Mark this command buffer as ready for submission.
     fn commit(&mut self) -> Result<()>;
 
-    fn encode_render(&mut self) -> &mut RenderCmdEncoder;
+    fn encode_render(
+        &mut self,
+        render_target_table: &handles::RenderTargetTable,
+    ) -> &mut RenderCmdEncoder;
     fn encode_compute(&mut self) -> &mut ComputeCmdEncoder;
     fn encode_copy(&mut self) -> &mut CopyCmdEncoder;
 

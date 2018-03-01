@@ -57,6 +57,7 @@ pub mod device;
 pub mod formats;
 pub mod heap;
 pub mod limits;
+pub mod renderpass;
 pub mod sampler;
 pub mod shader;
 mod utils;
