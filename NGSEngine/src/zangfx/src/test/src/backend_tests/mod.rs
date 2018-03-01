@@ -21,10 +21,25 @@ pub trait TestDriver {
 macro_rules! zangfx_generate_backend_tests {
     ($driver:expr) => {
         zangfx_test_single! { create_device, $driver }
+
+        zangfx_test_single! { arg_table_sig_create_image, $driver }
+        zangfx_test_single! { arg_table_sig_create_buffer, $driver }
+        zangfx_test_single! { arg_table_sig_create_sampler, $driver }
+        zangfx_test_single! { arg_table_image, $driver }
+        zangfx_test_single! { arg_table_buffer, $driver }
+        zangfx_test_single! { arg_table_sampler, $driver }
+
         zangfx_test_single! { cmdqueue_create, $driver }
         #[should_panic] zangfx_test_single! { cmdqueue_create_fail_missing_queue_family, $driver }
         zangfx_test_single! { cmdqueue_create_buffer, $driver }
+        zangfx_test_single! { cmdqueue_create_encoder, $driver }
         zangfx_test_single! { cmdqueue_buffer_noop_completes, $driver }
+        zangfx_test_single! { cmdqueue_buffer_noop_completes_dropped_soon, $driver }
+        zangfx_test_single! { cmdqueue_buffer_noop_multiple_completes, $driver }
+
+        zangfx_test_single! { heap_create, $driver }
+        zangfx_test_single! { heap_create_fail_zero_size, $driver }
+        zangfx_test_single! { heap_create_fail_missing_memory_type, $driver }
     }
 }
 
@@ -43,5 +58,11 @@ pub fn create_device<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |_| {});
 }
 
+mod arg_table;
+pub use self::arg_table::*;
+
 mod cmdqueue;
 pub use self::cmdqueue::*;
+
+mod heap;
+pub use self::heap::*;

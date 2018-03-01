@@ -6,3 +6,4 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 zangfx_common = { path = "../common" }
 zangfx_base = { path = "../base" }
+ngsenumflags = { path = "../../../support/ngsenumflags" }

@@ -1520,6 +1520,7 @@ dependencies = [
 name = "zangfx_test"
 version = "0.1.0"
 dependencies = [
+ "ngsenumflags 0.1.2",
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
 ]
