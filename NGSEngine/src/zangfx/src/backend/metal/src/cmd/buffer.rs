@@ -73,7 +73,7 @@ impl CmdBuffer {
 
         Ok(Self {
             uncommited: Some(UncommitedBuffer {
-                metal_buffer: OCPtr::from_raw(metal_buffer).unwrap(),
+                metal_buffer: OCPtr::new(metal_buffer).unwrap(),
                 completion_callbacks: Default::default(),
                 fence_set: CmdBufferFenceSet::new(),
                 encoder: None,
