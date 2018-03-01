@@ -7,7 +7,7 @@
 use Object;
 
 use common::Result;
-use handles::{ComputePipeline, Library};
+use handles::{ComputePipeline, Library, RootSig};
 
 /// Trait for building compute pipelines.
 ///
@@ -35,6 +35,11 @@ pub trait ComputePipelineBuilder: Object {
         library: &Library,
         entry_point: &str,
     ) -> &mut ComputePipelineBuilder;
+
+    /// Set the root signature.
+    ///
+    /// Mandatory.
+    fn root_sig(&mut self, v: &RootSig) -> &mut ComputePipelineBuilder;
 
     /// Build an `ComputePipeline`.
     ///
