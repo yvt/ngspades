@@ -14,6 +14,17 @@ pub trait TestDriver {
     fn is_safe(&self) -> bool {
         false
     }
+
+    fn for_each_compute_queue(&self, runner: &mut FnMut(&base::device::Device, base::QueueFamily)) {
+        self.for_each_device(&mut |device| {
+            for (i, qf) in device.caps().queue_families().iter().enumerate() {
+                if qf.caps.intersects(base::limits::QueueFamilyCaps::Compute) {
+                    println!("[Queue Family #{}]", i);
+                    runner(device, i as _);
+                }
+            }
+        })
+    }
 }
 
 /// Generates test cases given a test driver.
@@ -41,6 +52,8 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { heap_create, $driver }
         zangfx_test_single! { #[should_panic] heap_create_fail_zero_size, $driver }
         zangfx_test_single! { #[should_panic] heap_create_fail_missing_memory_type, $driver }
+
+        zangfx_test_single! { compute_null, $driver }
     }
 }
 
@@ -60,6 +73,8 @@ pub fn create_device<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |_| {});
 }
 
+mod utils;
+
 mod arg_table;
 pub use self::arg_table::*;
 
@@ -68,3 +83,6 @@ pub use self::cmdqueue::*;
 
 mod heap;
 pub use self::heap::*;
+
+mod compute_null;
+pub use self::compute_null::*;

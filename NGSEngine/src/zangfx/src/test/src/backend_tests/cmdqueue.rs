@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use base;
-use super::TestDriver;
+use super::{utils, TestDriver};
 
 pub fn cmdqueue_create<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {
@@ -94,8 +94,6 @@ pub fn cmdqueue_create_encoder<T: TestDriver>(driver: T) {
 }
 
 pub fn cmdqueue_buffer_noop_completes<T: TestDriver>(driver: T) {
-    use std::sync::mpsc;
-    use std::time::Duration;
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
         let queue: Box<base::command::CmdQueue> =
@@ -105,10 +103,8 @@ pub fn cmdqueue_buffer_noop_completes<T: TestDriver>(driver: T) {
         let mut buffer: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Installing a completion handler");
-        let (send, recv) = mpsc::channel();
-        buffer.on_complete(Box::new(move || {
-            let _ = send.send(());
-        }));
+        let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
+
         println!("- Commiting the command buffer");
         buffer.commit().unwrap();
 
@@ -116,15 +112,13 @@ pub fn cmdqueue_buffer_noop_completes<T: TestDriver>(driver: T) {
         queue.flush();
 
         println!("- Waiting for completion");
-        recv.recv_timeout(Duration::from_millis(1000)).unwrap();
+        awaiter.wait_until_completed();
 
         println!("- The execution of the command buffer has completed");
     });
 }
 
 pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
-    use std::sync::mpsc;
-    use std::time::Duration;
     use std::mem::drop;
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
@@ -135,10 +129,8 @@ pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
         let mut buffer: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Installing a completion handler");
-        let (send, recv) = mpsc::channel();
-        buffer.on_complete(Box::new(move || {
-            let _ = send.send(());
-        }));
+        let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
+
         println!("- Commiting the command buffer");
         buffer.commit().unwrap();
 
@@ -149,15 +141,13 @@ pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
         queue.flush();
 
         println!("- Waiting for completion");
-        recv.recv_timeout(Duration::from_millis(1000)).unwrap();
+        awaiter.wait_until_completed();
 
         println!("- The execution of the command buffer has completed");
     });
 }
 
 pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
-    use std::sync::mpsc;
-    use std::time::Duration;
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
         let queue: Box<base::command::CmdQueue> =
@@ -197,10 +187,8 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
         }
 
         println!("- Installing a completion handler");
-        let (send, recv) = mpsc::channel();
-        buffer2.on_complete(Box::new(move || {
-            let _ = send.send(());
-        }));
+        let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer2);
+
         println!("- Commiting the command buffer");
         buffer2.commit().unwrap();
         buffer1.commit().unwrap();
@@ -209,15 +197,13 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
         queue.flush();
 
         println!("- Waiting for completion");
-        recv.recv_timeout(Duration::from_millis(1000)).unwrap();
+        awaiter.wait_until_completed();
 
         println!("- The execution of the command buffer has completed");
     });
 }
 
 pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
-    use std::sync::mpsc;
-    use std::time::Duration;
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
         let queue: Box<base::command::CmdQueue> =
@@ -253,10 +239,7 @@ pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
         }
 
         println!("- Installing a completion handler");
-        let (send, recv) = mpsc::channel();
-        buffer.on_complete(Box::new(move || {
-            let _ = send.send(());
-        }));
+        let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
         println!("- Commiting the command buffer");
         buffer.commit().unwrap();
 
@@ -264,7 +247,7 @@ pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
         queue.flush();
 
         println!("- Waiting for completion");
-        recv.recv_timeout(Duration::from_millis(1000)).unwrap();
+        awaiter.wait_until_completed();
 
         println!("- The execution of the command buffer has completed");
     });
