@@ -109,6 +109,16 @@ impl UncommitedBuffer {
     }
 }
 
+impl Drop for CmdBuffer {
+    fn drop(&mut self) {
+        // We always must call `[MTLCommandEncoder endEncoding]` before
+        // deallocating it. (Otherwise an assertion failure would occur)
+        if let Some(ref mut uncommited) = self.uncommited {
+            uncommited.clear_encoder();
+        }
+    }
+}
+
 impl command::CmdBuffer for CmdBuffer {
     fn enqueue(&mut self) -> Result<()> {
         Ok(())
