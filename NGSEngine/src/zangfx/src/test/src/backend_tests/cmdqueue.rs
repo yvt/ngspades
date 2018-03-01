@@ -111,6 +111,9 @@ pub fn cmdqueue_buffer_noop_completes<T: TestDriver>(driver: T) {
         println!("- Commiting the command buffer");
         buffer.commit().unwrap();
 
+        println!("- Flushing the command queue");
+        queue.flush();
+
         println!("- Waiting for completion");
         recv.recv_timeout(Duration::from_millis(1000)).unwrap();
 
@@ -140,6 +143,9 @@ pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
 
         println!("- Dropping the command buffer");
         drop(buffer);
+
+        println!("- Flushing the command queue");
+        queue.flush();
 
         println!("- Waiting for completion");
         recv.recv_timeout(Duration::from_millis(1000)).unwrap();
@@ -197,6 +203,9 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
         println!("- Commiting the command buffer");
         buffer2.commit().unwrap();
         buffer1.commit().unwrap();
+
+        println!("- Flushing the command queue");
+        queue.flush();
 
         println!("- Waiting for completion");
         recv.recv_timeout(Duration::from_millis(1000)).unwrap();
