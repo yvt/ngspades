@@ -12,7 +12,7 @@ use block;
 
 use base::{command, handles, QueueFamily};
 use common::Result;
-use utils::{OCPtr, nil_error};
+use utils::{nil_error, OCPtr};
 
 use super::enc::CmdBufferFenceSet;
 use super::buffer::CmdBuffer;

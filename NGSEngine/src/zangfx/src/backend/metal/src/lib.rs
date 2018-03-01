@@ -33,15 +33,15 @@
 //!
 extern crate block;
 extern crate cocoa;
+extern crate iterpool;
 #[macro_use(flags)]
 extern crate ngsenumflags;
 extern crate parking_lot;
 extern crate rspirv;
+extern crate smallvec;
 extern crate spirv_headers;
 extern crate tokenlock;
-extern crate iterpool;
 extern crate xalloc;
-extern crate smallvec;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;

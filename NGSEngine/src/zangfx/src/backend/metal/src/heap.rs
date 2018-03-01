@@ -5,6 +5,8 @@
 //
 //! Implementation of `Heap` for Metal.
 use metal;
+use iterpool::{IterablePool, PoolPtr};
+use parking_lot::Mutex;
 
 use base::{handles, heap, DeviceSize, MemoryType};
 use common::{Error, ErrorKind, Result};
@@ -112,6 +114,10 @@ impl Heap {
             storage_mode,
         }
     }
+
+    pub fn metal_heap(&self) -> metal::MTLHeap {
+        *self.metal_heap
+    }
 }
 
 impl heap::Heap for Heap {
@@ -166,7 +172,11 @@ impl heap::Heap for Heap {
 #[derive(Debug, Clone)]
 pub struct EmulatedHeapAlloc {
     /// The pointer to the resource's contents. Invalid for images.
-    ptr: *mut (),
+    contents_ptr: *mut (),
+
+    /// Associates this `EmulatedHeapAlloc` with an element of
+    /// `EmulatedHeap::pool`.
+    pool_ptr: PoolPtr,
 }
 
 zangfx_impl_handle! { EmulatedHeapAlloc, handles::HeapAlloc }
@@ -180,6 +190,10 @@ unsafe impl Sync for EmulatedHeapAlloc {}
 pub struct EmulatedHeap {
     metal_device: metal::MTLDevice,
     storage_mode: metal::MTLStorageMode,
+
+    /// We need to keep the list of allocated resources to implement
+    /// `CmdEncoder::use_heap`.
+    pool: Mutex<IterablePool<metal::MTLResource>>,
 }
 
 zangfx_impl_object! { EmulatedHeap: heap::Heap, ::Debug }
@@ -192,6 +206,16 @@ impl EmulatedHeap {
         Self {
             metal_device,
             storage_mode,
+            pool: Mutex::new(IterablePool::new()),
+        }
+    }
+
+    pub(crate) fn for_each_metal_resources<T>(&self, cb: &mut T)
+    where
+        T: FnMut(metal::MTLResource),
+    {
+        for &metal_resource in self.pool.lock().iter() {
+            cb(metal_resource);
         }
     }
 }
@@ -208,8 +232,13 @@ impl heap::Heap for EmulatedHeap {
                 Ok(metal_buffer_or_none.map(|metal_buffer| {
                     // If the allocation was successful, then return
                     // a `HeapAlloc` for the allocated buffer
-                    let ptr = metal_buffer.contents() as *mut ();
-                    let heap_alloc = EmulatedHeapAlloc { ptr };
+                    let contents_ptr = metal_buffer.contents() as *mut ();
+                    let pool_ptr = self.pool.lock().allocate(*metal_buffer);
+
+                    let heap_alloc = EmulatedHeapAlloc {
+                        contents_ptr,
+                        pool_ptr,
+                    };
 
                     handles::HeapAlloc::new(heap_alloc)
                 }))
@@ -225,14 +254,17 @@ impl heap::Heap for EmulatedHeap {
         Ok(())
     }
 
-    fn unbind(&self, _alloc: &handles::HeapAlloc) -> Result<()> {
+    fn unbind(&self, alloc: &handles::HeapAlloc) -> Result<()> {
+        let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+        self.pool.lock().deallocate(my_alloc.pool_ptr).unwrap();
+
         // We do not maintain the lifetime of `MTLResource`
         Ok(())
     }
 
     fn as_ptr(&self, alloc: &handles::HeapAlloc) -> Result<*mut ()> {
         let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        Ok(my_alloc.ptr)
+        Ok(my_alloc.contents_ptr)
     }
 }
 

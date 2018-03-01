@@ -7,7 +7,7 @@ use metal::{MTLComputeCommandEncoder, MTLSize};
 use base::{command, handles, heap, ArgTableIndex, StageFlags};
 
 use utils::OCPtr;
-use cmd::enc::CmdBufferFenceSet;
+use cmd::enc::{CmdBufferFenceSet, UseResources};
 use cmd::fence::Fence;
 
 #[derive(Debug)]
@@ -36,12 +36,12 @@ impl ComputeEncoder {
 }
 
 impl command::CmdEncoder for ComputeEncoder {
-    fn use_resource(&mut self, _usage: command::ResourceUsage, _objs: &[handles::ResourceRef]) {
-        unimplemented!();
+    fn use_resource(&mut self, usage: command::ResourceUsage, objs: &[handles::ResourceRef]) {
+        self.metal_encoder.use_gfx_resource(usage, objs);
     }
 
-    fn use_heap(&mut self, _heaps: &[&heap::Heap]) {
-        unimplemented!();
+    fn use_heap(&mut self, heaps: &[&heap::Heap]) {
+        self.metal_encoder.use_gfx_heap(heaps);
     }
 
     fn wait_fence(

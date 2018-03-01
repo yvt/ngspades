@@ -7,7 +7,7 @@ use super::{id, NSObjectPrototype, NSObjectProtocol};
 use libc;
 use std::mem::transmute_copy;
 
-use resource::MTLResource;
+use resource::{MTLResource, MTLHeap};
 use texture::MTLTexture;
 use buffer::MTLBuffer;
 use pipeline::{MTLRenderPipelineState, MTLComputePipelineState};
@@ -68,6 +68,14 @@ pub enum MTLDepthClipMode {
 pub enum MTLTriangleFillMode {
     Fill = 0,
     Lines = 1,
+}
+
+#[repr(u64)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum MTLResourceUsage {
+    Read = 1 << 0,
+    Write = 1 << 1,
+    Sample = 1 << 2,
 }
 
 bitflags! {
@@ -455,6 +463,22 @@ impl MTLRenderCommandEncoder {
         }
     }
 
+    // Specifying Resources for an Argument Buffer
+
+    pub fn use_resources(&self, resources: &[MTLResource], usage: MTLResourceUsage) {
+        unsafe {
+            msg_send![self.0, useResources:resources.as_ptr()
+                                     count:resources.len() as NSUInteger
+                                     usage:usage]
+        }
+    }
+
+    pub fn use_heaps(&self, heaps: &[MTLHeap]) {
+        unsafe {
+            msg_send![self.0, useHeaps:heaps.as_ptr()
+                                 count:heaps.len() as NSUInteger]
+        }
+    }
 }
 
 impl NSObjectProtocol for MTLRenderCommandEncoder {
@@ -686,6 +710,23 @@ impl MTLComputeCommandEncoder {
             msg_send![self.0, dispatchThreadgroupsWithIndirectBuffer:indirect_buffer.0
                                                 indirectBufferOffset:indirect_buffer_offset
                                                threadsPerThreadgroup:threads_per_threadgroup]
+        }
+    }
+
+    // Specifying Resources for an Argument Buffer
+
+    pub fn use_resources(&self, resources: &[MTLResource], usage: MTLResourceUsage) {
+        unsafe {
+            msg_send![self.0, useResources:resources.as_ptr()
+                                     count:resources.len() as NSUInteger
+                                     usage:usage]
+        }
+    }
+
+    pub fn use_heaps(&self, heaps: &[MTLHeap]) {
+        unsafe {
+            msg_send![self.0, useHeaps:heaps.as_ptr()
+                                 count:heaps.len() as NSUInteger]
         }
     }
 }
