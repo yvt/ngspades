@@ -70,4 +70,6 @@ pub static MEMORY_REGION_GLOBAL: base::MemoryRegionIndex = 0;
 pub static MEMORY_TYPE_PRIVATE: base::MemoryType = 0;
 pub static MEMORY_TYPE_SHARED: base::MemoryType = 1;
 
+pub static MEMORY_TYPE_ALL_BITS: u32 = 0b11;
+
 pub static QUEUE_FAMILY_UNIVERSAL: base::QueueFamily = 0;

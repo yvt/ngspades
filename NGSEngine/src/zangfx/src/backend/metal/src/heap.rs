@@ -278,9 +278,7 @@ where
 {
     let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
 
-    let size = my_buffer
-        .prototype_size()
-        .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "already allocated"))?;
+    let size = my_buffer.size();
 
     let options = metal::MTLResourceOptions::from_bits(
         (storage_mode as u64) << metal::MTLResourceStorageModeShift,

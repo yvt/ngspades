@@ -136,8 +136,14 @@ impl device::Device for Device {
         Ok(())
     }
 
-    fn get_memory_req(&self, _obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {
-        unimplemented!()
+    fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {
+        match obj {
+            handles::ResourceRef::Buffer(buffer) => {
+                let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
+                Ok(our_buffer.memory_req(self.metal_device()))
+            }
+            handles::ResourceRef::Image(_image) => unimplemented!(),
+        }
     }
 
     fn update_arg_tables(

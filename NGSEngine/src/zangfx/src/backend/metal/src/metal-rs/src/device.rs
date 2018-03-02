@@ -18,7 +18,7 @@ use pipeline::{MTLRenderPipelineState, MTLRenderPipelineDescriptor,
                MTLRenderPipelineReflection, MTLComputePipelineState,
                MTLComputePipelineDescriptor};
 use library::{MTLLibrary, MTLCompileOptions};
-use types::{MTLSize};
+use types::{MTLSize, MTLSizeAndAlign};
 use buffer::MTLBuffer;
 use texture::{MTLTexture, MTLTextureDescriptor};
 use sampler::{MTLSamplerState, MTLSamplerDescriptor};
@@ -325,6 +325,19 @@ impl<'a> MTLDevice {
     pub fn new_heap(&self, descriptor: MTLHeapDescriptor) -> MTLHeap {
         unsafe {
             msg_send![self.0, newHeapWithDescriptor:descriptor.0]
+        }
+    }
+
+    pub fn heap_buffer_size_and_align_with_length(&self, length: NSUInteger, options: MTLResourceOptions) -> MTLSizeAndAlign {
+        unsafe {
+            msg_send![self.0, heapBufferSizeAndAlignWithLength:length
+                                                       options:options]
+        }
+    }
+
+    pub fn heap_texture_size_and_align_with_descriptor(&self, desc: MTLTextureDescriptor) -> MTLSizeAndAlign {
+        unsafe {
+            msg_send![self.0, heapTextureSizeAndAlignWithDescriptor:desc.0]
         }
     }
 

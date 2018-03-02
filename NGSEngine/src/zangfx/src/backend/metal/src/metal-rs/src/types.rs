@@ -30,3 +30,9 @@ pub struct MTLRegion {
     pub size: MTLSize
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct MTLSizeAndAlign {
+    pub size: NSUInteger,
+    pub align: NSUInteger,
+}

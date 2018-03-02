@@ -53,14 +53,18 @@ unsafe impl Send for Buffer {}
 unsafe impl Sync for Buffer {}
 
 #[derive(Debug)]
-enum BufferData {
-    Prototype(DeviceSize),
-    Allocated(OCPtr<metal::MTLBuffer>),
+struct BufferData {
+    size: DeviceSize,
+    metal_buffer: Option<OCPtr<metal::MTLBuffer>>,
 }
 
 impl Buffer {
     fn new(size: DeviceSize) -> Self {
-        let data = BufferData::Prototype(size);
+        let data = BufferData {
+            size,
+            metal_buffer: None,
+        };
+
         Self {
             data: Box::into_raw(Box::new(data)),
         }
@@ -70,31 +74,51 @@ impl Buffer {
     ///
     /// The constructed `Buffer` will be initally in the Allocated state.
     pub unsafe fn from_raw(metal_buffer: metal::MTLBuffer) -> Self {
-        let data = BufferData::Allocated(OCPtr::from_raw(metal_buffer).unwrap());
+        let data = BufferData {
+            size: metal_buffer.length(),
+            metal_buffer: OCPtr::from_raw(metal_buffer),
+        };
+
         Self {
             data: Box::into_raw(Box::new(data)),
         }
     }
 
+    unsafe fn data(&self) -> &mut BufferData {
+        &mut *self.data
+    }
+
     /// Return the underlying `MTLBuffer`. Returns `nil` for `Buffer`s in the
     /// Prototype state (i.e. not allocated on a heap).
     pub fn metal_buffer(&self) -> metal::MTLBuffer {
-        match unsafe { &*self.data } {
-            &BufferData::Prototype(_) => metal::MTLBuffer::nil(),
-            &BufferData::Allocated(ref p) => **p,
+        unsafe {
+            if let Some(ref p) = self.data().metal_buffer {
+                **p
+            } else {
+                metal::MTLBuffer::nil()
+            }
         }
     }
 
-    pub(super) fn prototype_size(&self) -> Option<DeviceSize> {
-        match unsafe { &*self.data } {
-            &BufferData::Prototype(size) => Some(size),
-            &BufferData::Allocated(_) => None,
-        }
+    pub(super) fn size(&self) -> DeviceSize {
+        unsafe { self.data().size }
     }
 
     pub(super) fn materialize(&self, metal_buffer: OCPtr<metal::MTLBuffer>) {
         unsafe {
-            *self.data = BufferData::Allocated(metal_buffer);
+            self.data().metal_buffer = Some(metal_buffer);
+        }
+    }
+
+    pub(super) fn memory_req(&self, metal_device: metal::MTLDevice) -> resources::MemoryReq {
+        let metal_req = metal_device.heap_buffer_size_and_align_with_length(
+            self.size(),
+            metal::MTLResourceStorageModePrivate | metal::MTLResourceHazardTrackingModeUntracked,
+        );
+        resources::MemoryReq {
+            size: metal_req.size,
+            align: metal_req.align,
+            memory_types: ::MEMORY_TYPE_ALL_BITS,
         }
     }
 
