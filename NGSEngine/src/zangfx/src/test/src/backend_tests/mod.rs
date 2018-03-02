@@ -58,6 +58,7 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { heap_dedicated_alloc_buffer, $driver }
 
         zangfx_test_single! { compute_null, $driver }
+        zangfx_test_single! { compute_conv1, $driver }
     }
 }
 
@@ -90,3 +91,6 @@ pub use self::heap::*;
 
 mod compute_null;
 pub use self::compute_null::*;
+
+mod compute_conv1;
+pub use self::compute_conv1::*;
