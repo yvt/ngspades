@@ -97,7 +97,8 @@ mopo! { command::RenderCmdEncoder }
 mopo! { command::ComputeCmdEncoder }
 mopo! { command::CopyCmdEncoder }
 mopo! { command::CmdEncoder }
-mopo! { heap::HeapBuilder }
+mopo! { heap::DynamicHeapBuilder }
+mopo! { heap::DedicatedHeapBuilder }
 mopo! { heap::Heap }
 mopo! { pass::RenderPassBuilder }
 mopo! { pass::RenderPassTarget }

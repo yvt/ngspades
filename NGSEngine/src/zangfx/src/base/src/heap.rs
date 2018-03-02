@@ -9,38 +9,88 @@ use common::Result;
 use handles as h;
 use {DeviceSize, MemoryType};
 
-/// Trait for building heap objects.
+/// Trait for building dynamic heap objects.
 ///
 /// # Valid Usage
 ///
-///  - No instance of `HeapBuilder` may outlive the originating `Device`.
-///
-/// # Allocation Provision
-///
-/// TODO
+///  - No instance of `DynamicHeapBuilder` may outlive the originating `Device`.
 ///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
-///     # use zangfx_base::heap::HeapBuilder;
+///     # use zangfx_base::heap::DynamicHeapBuilder;
 ///     # fn test(device: &Device) {
-///     let heap = device.build_heap()
+///     let heap = device.build_dynamic_heap()
 ///         .size(1024 * 1024)
 ///         .memory_type(0)
 ///         .build()
 ///         .expect("Failed to create a heap.");
 ///     # }
 ///
-pub trait HeapBuilder: Object {
+pub trait DynamicHeapBuilder: Object {
     /// Set the heap size to `v` bytes.
     ///
-    /// Defaults to `0`.
-    fn size(&mut self, v: DeviceSize) -> &mut HeapBuilder;
+    /// This property is mandatory.
+    fn size(&mut self, v: DeviceSize) -> &mut DynamicHeapBuilder;
 
     /// Set the memory type index.
     ///
     /// This property is mandatory.
-    fn memory_type(&mut self, v: MemoryType) -> &mut HeapBuilder;
+    fn memory_type(&mut self, v: MemoryType) -> &mut DynamicHeapBuilder;
+
+    /// Build a `Heap`.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All mandatory properties must have their values set before this method
+    ///   is called.
+    /// - The final heap size must not be zero.
+    ///
+    fn build(&mut self) -> Result<Box<Heap>>;
+}
+
+/// Trait for building dedicated heap objects.
+///
+/// Dedicated allocation is a feature that allows to describe all allocations
+/// at the heap's creation time. The benefits include:
+///
+///  - The size of the heap will be computed automatically.
+///  - Certain drivers and backends can optimize the operation of the
+///    heap, for example, by utilizing Vulkan's `VK_KHR_dedicated_allocation`
+///    extension.
+///
+/// # Valid Usage
+///
+///  - No instance of `DedicatedHeapBuilder` may outlive the originating `Device`.
+///
+/// # Examples
+///
+///     # use zangfx_base::{Device, DedicatedHeapBuilder, Image};
+///     # fn test(device: &Device, image: &Image) {
+///     let builder = device.build_dedicated_heap()
+///         .memory_type(0);
+///
+///     // Pre-allocation
+///     builder.prebind((&image).into());
+///
+///     let heap = builder.build().expect("Failed to create a heap.");
+///
+///     // The real allocation must done in the exactly same order
+///     builder.bind((&image).into());
+///     # }
+///
+pub trait DedicatedHeapBuilder: Object {
+    /// Set the memory type index.
+    ///
+    /// This property is mandatory.
+    fn memory_type(&mut self, v: MemoryType) -> &mut DedicatedHeapBuilder;
+
+    /// Add a given resource to the dedicated allocation list.
+    ///
+    /// The return type of this method is reserved for future extensions.
+    fn prebind(&mut self, obj: h::ResourceRef);
+
+    // FIXME: resource aliasing?
 
     /// Build a `Heap`.
     ///
@@ -78,8 +128,23 @@ pub trait Heap: Object {
     ///
     ///  - `obj` must originate from the same `Device` as the one the heap was
     ///    created from.
+    ///  - If the heap is a dedicated heap, then `obj` must be one of the
+    ///    resources preallocated via `DedicatedHeapBuilder::prebind`.
+    ///    Furthermore, calls to `bind` must occur in the exact same order as
+    ///    those to `prebind`.
+    ///
     fn bind(&self, obj: h::ResourceRef) -> Result<Option<h::HeapAlloc>>;
 
+    /// Mark the allocated region available for future allocations.
+    ///
+    /// # Valid Usage
+    ///
+    ///  - `alloc` must originate from the same `Heap`.
+    ///  - `alloc` must not have been deallocated yet.
+    ///  - The heap must be a dynamic heap, i.e. have been created using a
+    ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
+    ///    method yet.)
+    ///
     fn make_aliasable(&self, alloc: &h::HeapAlloc) -> Result<()>;
 
     /// Deallocate a memory region.
@@ -94,6 +159,8 @@ pub trait Heap: Object {
     ///
     ///  - The resource must be in the **Allocated** state.
     ///  - `alloc` must originate from the same `Heap`.
+    ///  - The heap must be a dynamic heap, i.e. have been created using a
+    ///    `DynamicHeapBuilder`.
     ///
     fn unbind(&self, alloc: &h::HeapAlloc) -> Result<()>;
 

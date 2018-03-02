@@ -11,10 +11,10 @@ use parking_lot::Mutex;
 use base::{handles, heap, DeviceSize, MemoryType};
 use common::{Error, ErrorKind, Result};
 
-use utils::{nil_error, translate_storage_mode, OCPtr};
+use utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 use buffer::Buffer;
 
-/// Implementation of `HeapBuilder` for Metal.
+/// Implementation of `DynamicHeapBuilder` and `DedicatedHeapBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct HeapBuilder {
     /// A reference to a `MTLDevice`. We are not required to maintain a strong
@@ -24,7 +24,8 @@ pub struct HeapBuilder {
     memory_type: Option<MemoryType>,
 }
 
-zangfx_impl_object! { HeapBuilder: heap::HeapBuilder, ::Debug }
+zangfx_impl_object! { HeapBuilder:
+heap::DynamicHeapBuilder, heap::DedicatedHeapBuilder, ::Debug }
 
 unsafe impl Send for HeapBuilder {}
 unsafe impl Sync for HeapBuilder {}
@@ -40,20 +41,8 @@ impl HeapBuilder {
             memory_type: None,
         }
     }
-}
 
-impl heap::HeapBuilder for HeapBuilder {
-    fn size(&mut self, v: DeviceSize) -> &mut heap::HeapBuilder {
-        self.size = v;
-        self
-    }
-
-    fn memory_type(&mut self, v: MemoryType) -> &mut heap::HeapBuilder {
-        self.memory_type = Some(v);
-        self
-    }
-
-    fn build(&mut self) -> Result<Box<heap::Heap>> {
+    fn build_common(&mut self) -> Result<Box<heap::Heap>> {
         let memory_type = self.memory_type
             .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "memory_type"))?;
         let storage_mode = translate_storage_mode(memory_type)
@@ -79,6 +68,39 @@ impl heap::HeapBuilder for HeapBuilder {
                 EmulatedHeap::new(self.metal_device, storage_mode)
             }))
         }
+    }
+}
+
+impl heap::DynamicHeapBuilder for HeapBuilder {
+    fn size(&mut self, v: DeviceSize) -> &mut heap::DynamicHeapBuilder {
+        self.size = v;
+        self
+    }
+
+    fn memory_type(&mut self, v: MemoryType) -> &mut heap::DynamicHeapBuilder {
+        self.memory_type = Some(v);
+        self
+    }
+
+    fn build(&mut self) -> Result<Box<heap::Heap>> {
+        self.build_common()
+    }
+}
+
+impl heap::DedicatedHeapBuilder for HeapBuilder {
+    fn prebind(&mut self, obj: handles::ResourceRef) {
+        let req = get_memory_req(self.metal_device, obj).unwrap();
+        self.size = (self.size + req.align - 1) & !(req.align - 1);
+        self.size += req.size;
+    }
+
+    fn memory_type(&mut self, v: MemoryType) -> &mut heap::DedicatedHeapBuilder {
+        self.memory_type = Some(v);
+        self
+    }
+
+    fn build(&mut self) -> Result<Box<heap::Heap>> {
+        self.build_common()
     }
 }
 

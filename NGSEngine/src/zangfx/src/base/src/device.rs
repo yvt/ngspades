@@ -20,8 +20,11 @@ pub trait Device: Object {
     /// Create a `CmdQueueBuilder` associated with this device.
     fn build_cmd_queue(&self) -> Box<command::CmdQueueBuilder>;
 
-    /// Create a `HeapBuilder` associated with this device.
-    fn build_heap(&self) -> Box<heap::HeapBuilder>;
+    /// Create a `DynamicHeapBuilder` associated with this device.
+    fn build_dynamic_heap(&self) -> Box<heap::DynamicHeapBuilder>;
+
+    /// Create a `DedicatedHeapBuilder` associated with this device.
+    fn build_dedicated_heap(&self) -> Box<heap::DedicatedHeapBuilder>;
 
     /// Create an `BarrierBuilder` associated with this device.
     fn build_barrier(&self) -> Box<sync::BarrierBuilder>;

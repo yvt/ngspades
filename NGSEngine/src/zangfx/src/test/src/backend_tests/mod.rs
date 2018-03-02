@@ -49,10 +49,13 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { cmdqueue_buffer_noop_multiple_completes, $driver }
         zangfx_test_single! { cmdqueue_buffer_fence_update_wait_completes, $driver }
 
-        zangfx_test_single! { heap_create, $driver }
-        zangfx_test_single! { #[should_panic] heap_create_fail_zero_size, $driver }
-        zangfx_test_single! { #[should_panic] heap_create_fail_missing_memory_type, $driver }
-        zangfx_test_single! { heap_alloc_buffer, $driver }
+        zangfx_test_single! { heap_dynamic_create, $driver }
+        zangfx_test_single! { #[should_panic] heap_dynamic_create_fail_zero_size, $driver }
+        zangfx_test_single! { #[should_panic] heap_dynamic_create_fail_missing_memory_type, $driver }
+        zangfx_test_single! { heap_dynamic_alloc_buffer, $driver }
+        zangfx_test_single! { #[should_panic] heap_dedicated_create_fail_zero_size, $driver }
+        zangfx_test_single! { #[should_panic] heap_dedicated_create_fail_missing_memory_type, $driver }
+        zangfx_test_single! { heap_dedicated_alloc_buffer, $driver }
 
         zangfx_test_single! { compute_null, $driver }
     }

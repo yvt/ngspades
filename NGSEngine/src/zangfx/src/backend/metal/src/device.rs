@@ -8,7 +8,7 @@ use {base, metal};
 use base::{device, handles};
 use common::Result;
 
-use utils::OCPtr;
+use utils::{get_memory_req, OCPtr};
 use limits::DeviceCaps;
 use {arg, buffer, cmd, heap, pipeline, sampler, shader};
 
@@ -63,7 +63,11 @@ impl device::Device for Device {
         unsafe { Box::new(cmd::queue::CmdQueueBuilder::new(self.metal_device())) }
     }
 
-    fn build_heap(&self) -> Box<base::heap::HeapBuilder> {
+    fn build_dynamic_heap(&self) -> Box<base::heap::DynamicHeapBuilder> {
+        unsafe { Box::new(heap::HeapBuilder::new(self.metal_device())) }
+    }
+
+    fn build_dedicated_heap(&self) -> Box<base::heap::DedicatedHeapBuilder> {
         unsafe { Box::new(heap::HeapBuilder::new(self.metal_device())) }
     }
 
@@ -137,13 +141,7 @@ impl device::Device for Device {
     }
 
     fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {
-        match obj {
-            handles::ResourceRef::Buffer(buffer) => {
-                let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
-                Ok(our_buffer.memory_req(self.metal_device()))
-            }
-            handles::ResourceRef::Image(_image) => unimplemented!(),
-        }
+        get_memory_req(self.metal_device(), obj)
     }
 
     fn update_arg_tables(

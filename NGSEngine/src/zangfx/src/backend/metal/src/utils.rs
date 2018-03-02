@@ -5,7 +5,7 @@
 //
 use std::ops::Deref;
 use std::fmt;
-use metal::{self, id, NSObjectProtocol};
+use metal::{self, id, MTLDevice, NSObjectProtocol};
 use base;
 use common;
 
@@ -161,4 +161,18 @@ impl fmt::Display for SelectorReturnedNullError {
 /// Construct a `common::Error` indicating a selector returned the `nil` value.
 pub fn nil_error(sel: &'static str) -> common::Error {
     common::Error::with_detail(common::ErrorKind::Other, SelectorReturnedNullError { sel })
+}
+
+pub fn get_memory_req(
+    metal_device: MTLDevice,
+    obj: base::ResourceRef,
+) -> common::Result<base::MemoryReq> {
+    use buffer;
+    match obj {
+        base::ResourceRef::Buffer(buffer) => {
+            let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
+            Ok(our_buffer.memory_req(metal_device))
+        }
+        base::ResourceRef::Image(_image) => unimplemented!(),
+    }
 }
