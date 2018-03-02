@@ -132,10 +132,25 @@ pub struct QueueFamilyInfo {
 
 /// Describes the properties and capabilities of a device.
 pub trait DeviceCaps: Object {
+    /// Return the implementation limits of the device.
     fn limits(&self) -> &DeviceLimits;
+
+    /// Return the device capabilies on a given image format.
     fn image_format_caps(&self, format: ImageFormat) -> ImageFormatCapsFlags;
+
+    /// Return the device capabilies on a given vertex format.
     fn vertex_format_caps(&self, format: VertexFormat) -> VertexFormatCapsFlags;
+
+    /// Return the memory types provided by the device.
+    ///
+    /// The ordering must follow that of Vulkan's
+    /// `VkPhysicalDeviceMemoryProperties`. See Vulkan 1.0 "10.2. Device Memory"
+    /// for details.
     fn memory_types(&self) -> &[MemoryTypeInfo];
+
+    /// Return the memory regions provided by the device.
     fn memory_regions(&self) -> &[MemoryRegionInfo];
+
+    /// Return the queue families provided by the device.
     fn queue_families(&self) -> &[QueueFamilyInfo];
 }
