@@ -62,13 +62,13 @@ impl command::CmdEncoder for ComputeEncoder {
     ) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.wait_for_fence(our_fence.metal_fence());
-        self.fence_set.wait_fences.push(our_fence);
+        self.fence_set.wait_fence(our_fence);
     }
 
     fn update_fence(&mut self, fence: &handles::Fence, _src_stage: StageFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.update_fence(our_fence.metal_fence());
-        self.fence_set.signal_fences.push(our_fence);
+        self.fence_set.signal_fence(our_fence);
     }
 
     fn barrier(

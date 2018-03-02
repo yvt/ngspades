@@ -42,6 +42,7 @@ extern crate smallvec;
 extern crate spirv_headers;
 extern crate tokenlock;
 extern crate xalloc;
+extern crate refeq;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;

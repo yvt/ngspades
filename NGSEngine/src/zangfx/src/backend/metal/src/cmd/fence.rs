@@ -4,11 +4,11 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Fence` for Metal.
-use std::sync::Arc;
 use base::handles;
 use common::Result;
 use tokenlock::{TokenLock, TokenRef};
 use metal::{MTLDevice, MTLFence};
+use refeq::RefEqArc;
 
 use utils::{nil_error, OCPtr};
 use cmd::queue::Item;
@@ -16,9 +16,9 @@ use cmd::queue::Item;
 // TODO: recycle fences after use
 
 /// Implementation of `Fence` for Metal.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Fence {
-    data: Arc<FenceData>,
+    data: RefEqArc<FenceData>,
 }
 
 zangfx_impl_handle! { Fence, handles::Fence }
@@ -43,7 +43,7 @@ impl Fence {
         let metal_fence =
             OCPtr::new(metal_device.new_fence()).ok_or_else(|| nil_error("MTLDevice newFence"))?;
         Ok(Self {
-            data: Arc::new(FenceData {
+            data: RefEqArc::new(FenceData {
                 metal_fence,
                 schedule: TokenLock::new(
                     token_ref,

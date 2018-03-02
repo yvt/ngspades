@@ -77,7 +77,7 @@ impl command::CmdEncoder for RenderEncoder {
         self.metal_encoder
             .wait_for_fence_before_stages(our_fence.metal_fence(), stages);
 
-        self.fence_set.wait_fences.push(our_fence);
+        self.fence_set.wait_fence(our_fence);
     }
 
     fn update_fence(&mut self, fence: &handles::Fence, src_stage: StageFlags) {
@@ -87,7 +87,7 @@ impl command::CmdEncoder for RenderEncoder {
         self.metal_encoder
             .update_fence_after_stages(our_fence.metal_fence(), stages);
 
-        self.fence_set.signal_fences.push(our_fence);
+        self.fence_set.signal_fence(our_fence);
     }
 
     fn barrier(

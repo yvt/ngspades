@@ -6,6 +6,7 @@
 use metal;
 use base::{command, handles, heap};
 use smallvec::SmallVec;
+use std::collections::HashSet;
 
 use cmd::fence::Fence;
 use buffer::Buffer;
@@ -14,12 +15,24 @@ use heap::{EmulatedHeap, Heap};
 #[derive(Debug, Default)]
 pub struct CmdBufferFenceSet {
     pub wait_fences: Vec<Fence>,
-    pub signal_fences: Vec<Fence>,
+    pub signal_fences: HashSet<Fence>,
 }
 
 impl CmdBufferFenceSet {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn wait_fence(&mut self, fence: Fence) {
+        if self.signal_fences.contains(&fence) {
+            // Found a matching fence signaling operating in the same CB
+            return;
+        }
+        self.wait_fences.push(fence);
+    }
+
+    pub fn signal_fence(&mut self, fence: Fence) {
+        self.signal_fences.insert(fence);
     }
 }
 

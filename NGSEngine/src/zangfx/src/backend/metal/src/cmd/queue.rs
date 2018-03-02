@@ -5,6 +5,7 @@
 //
 //! Implementation of `CmdQueue` for Metal.
 use std::sync::Arc;
+use std::collections::HashSet;
 use parking_lot::Mutex;
 use tokenlock::{Token, TokenRef};
 use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
@@ -126,14 +127,14 @@ impl Scheduler {
         data.process_items(items, this);
     }
 
-    fn fence_scheduled(this: &Arc<Self>, fences: &Vec<Fence>) {
+    fn fence_scheduled(this: &Arc<Self>, fences: &HashSet<Fence>) {
         this.data.lock().fence_scheduled(fences, this);
     }
 }
 
 impl SchedulerData {
     /// Unblock queue items blocked by given fence(s).
-    fn fence_scheduled(&mut self, fences: &Vec<Fence>, scheduler: &Arc<Scheduler>) {
+    fn fence_scheduled(&mut self, fences: &HashSet<Fence>, scheduler: &Arc<Scheduler>) {
         let mut unblocked_items: Option<Box<Item>> = None;
 
         for fence in fences.iter() {
@@ -216,7 +217,8 @@ impl SchedulerData {
                 let ref mut commited: CommitedBuffer = item.commited;
 
                 // Register the scheduled handler for the Metal command buffer
-                let signal_fences = replace(&mut commited.fence_set.signal_fences, Vec::new());
+                let signal_fences =
+                    replace(&mut commited.fence_set.signal_fences, Default::default());
 
                 if signal_fences.len() > 0 {
                     let scheduler = Arc::clone(scheduler);
