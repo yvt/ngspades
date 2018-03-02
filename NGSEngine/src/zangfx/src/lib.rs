@@ -151,6 +151,55 @@
 //!    a peculiar way to manage their lifetimes. Consult their documentation for
 //!    more information.
 //!
+//! The following table shows all objects and handles defined by ZanGFX as well
+//! as the requirements for their manual reference tracking:
+//!
+//! |         Name        |  Type  |  Is destroyed on  |        Dependents¹         |
+//! | ------------------- | ------ | ----------------- | -------------------------- |
+//! | `.*Builder`         | object | drop              |                            |
+//! | `Device`            | object | drop              | GPU and everything         |
+//! | `ArgTableSig`       | handle | automatic         |                            |
+//! | `RootSig`           | handle | automatic         |                            |
+//! | `ArgPool`           | object | drop              |                            |
+//! | `ArgTable`          | handle | `destroy_tables`  | GPU, `CmdBuffer`           |
+//! |                     |        | `reset`           |                            |
+//! | `CmdQueue`          | object | drop              | GPU, `CmdBuffer`           |
+//! | `CmdBuffer`         | object | automatic         |                            |
+//! | `Barrier`           | handle | automatic         |                            |
+//! | `Fence`             | handle | automatic         |                            |
+//! | `Semaphore`         | handle | TBD               | TBD                        |
+//! | `RenderPass`        | handle | automatic         |                            |
+//! | `RenderTargetTable` | handle | automatic         |                            |
+//! | `Heap`              | object | drop              | `Image`, `Buffer`          |
+//! | `HeapAlloc`         | handle | automatic         |                            |
+//! | `Image`             | handle | TBD²              | TBD                        |
+//! | `Buffer`            | handle | `destroy_buffer`² | GPU, `ArgTable`, `Barrier` |
+//! | `Sampler`           | handle | `destroy_sampler` | `ArgTable`                 |
+//! | `ImageView`         | handle | TBD               | TBD                        |
+//! | `Library`           | handle | automatic         |                            |
+//! | `RenderPipeline`    | handle | TBD               | TBD                        |
+//! | `ComputePipeline`   | handle | automatic         |                            |
+//!
+//! ¹ The **Dependents** column denotes the objects that possibly contain a weak
+//! reference to a certain object and require it to operate properly. For example,
+//!
+//! - Builders are no longer usable (and might cause an *undefined behavior*
+//!   if you try to call a method of it) once their parent device was destroyed.
+//!
+//! - If you submit a command buffer that includes a reference to a buffer. You must
+//!   not destroy the buffer nor its heap until the completion of the command
+//!   buffer.
+//!
+//! - You must first wait on queue idle and drop all objects before dropping a
+//!   `Device`.
+//!
+//! Strong/lifetimed references are *not* included in **Dependents**. In other words,
+//! those shown in Dependents are the only dependencies you must track manually.
+//!
+//! ² Images and buffers are invalidated when the heap they were allocated from was
+//! destroyed. Invalidates images and buffers are no longer usable, but you still
+//! have to explicitly destroy them via `destroy_image` and/or `destroy_buffer`.
+//!
 //! [`query_interface`]: ../query_interface/index.html
 //! [`mopo!`]: ../query_interface/macro.mopo.html
 //!
