@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::OCPtr;
 use limits::DeviceCaps;
-use {arg, buffer, cmd, heap, sampler, shader};
+use {arg, buffer, cmd, heap, pipeline, sampler, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -113,7 +113,7 @@ impl device::Device for Device {
     }
 
     fn build_compute_pipeline(&self) -> Box<base::pipeline::ComputePipelineBuilder> {
-        unimplemented!()
+        unsafe { Box::new(pipeline::ComputePipelineBuilder::new(self.metal_device())) }
     }
 
     fn destroy_image(&self, _obj: &handles::Image) -> Result<()> {

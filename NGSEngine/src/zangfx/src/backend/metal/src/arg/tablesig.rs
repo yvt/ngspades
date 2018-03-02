@@ -16,6 +16,7 @@ use common::Result;
 
 use arg::ArgSize;
 use utils::{nil_error, OCPtr};
+use spirv_cross::{ExecutionModel, ResourceBinding, SpirV2Msl};
 
 /// Implementation of `ArgTableSigBuilder` for Metal.
 #[derive(Debug)]
@@ -294,5 +295,25 @@ impl ArgTableSig {
             }
             // All done
         })
+    }
+
+    pub(crate) fn setup_spirv2msl(
+        &self,
+        s2m: &mut SpirV2Msl,
+        desc_set: u32,
+        msl_arg_buffer: Option<u32>,
+        stage: ExecutionModel,
+    ) {
+        for (i, arg) in self.data.args.iter().enumerate() {
+            s2m.bind_resource(&ResourceBinding {
+                desc_set,
+                binding: i as u32,
+                msl_buffer: Some(arg.index as u32),
+                msl_texture: Some(arg.index as u32),
+                msl_sampler: Some(arg.index as u32),
+                msl_arg_buffer,
+                stage,
+            });
+        }
     }
 }

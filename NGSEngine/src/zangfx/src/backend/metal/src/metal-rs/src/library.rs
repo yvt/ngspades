@@ -99,6 +99,7 @@ impl NSObjectProtocol for MTLFunction {
 pub enum MTLLanguageVersion {
     V1_0 = (1 << 16),
     V1_1 = (1 << 16) + 1,
+    V2_0 = (2 << 16),
 }
 
 

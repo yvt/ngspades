@@ -10,6 +10,7 @@ use base::{arg, handles, ArgTableIndex};
 use common::Result;
 
 use super::tablesig::ArgTableSig;
+use spirv_cross::{ExecutionModel, SpirV2Msl};
 
 /// Implementation of `RootSigBuilder` for Metal.
 #[derive(Debug)]
@@ -51,7 +52,23 @@ impl arg::RootSigBuilder for RootSigBuilder {
 /// Implementation of `RootSig` for Metal.
 #[derive(Debug, Clone)]
 pub struct RootSig {
+    // Each arugment table index is directly mapped to Metal buffer index
     tables: Arc<Vec<Option<ArgTableSig>>>,
 }
 
 zangfx_impl_handle! { RootSig, handles::RootSig }
+
+impl RootSig {
+    pub(crate) fn setup_spirv2msl(&self, s2m: &mut SpirV2Msl, stage: ExecutionModel) {
+        for (arg_table_index, table) in self.tables.iter().enumerate() {
+            if let &Some(ref table) = table {
+                table.setup_spirv2msl(
+                    s2m,
+                    arg_table_index as u32,
+                    Some(arg_table_index as u32),
+                    stage,
+                );
+            }
+        }
+    }
+}

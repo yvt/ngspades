@@ -5,11 +5,18 @@
 //
 //! Implementation of `Library` for Metal.
 use std::sync::Arc;
+use std::fmt;
+
+use metal;
 use rspirv::mr;
 use spirv_headers;
+use spirv_cross::{ExecutionModel, SpirV2Msl};
 
 use base::{handles, shader};
 use common::{Error, ErrorKind, Result};
+
+use arg::rootsig::RootSig;
+use utils::{nil_error, OCPtr};
 
 // TODO: recycle fences after use
 
@@ -102,5 +109,104 @@ impl Library {
 
     pub fn spirv_code(&self) -> &[u32] {
         self.data.spirv_code.as_slice()
+    }
+
+    pub(crate) fn new_metal_function(
+        &self,
+        entry_point: &str,
+        stage: shader::ShaderStage,
+        root_sig: &RootSig,
+        metal_device: metal::MTLDevice,
+    ) -> Result<OCPtr<metal::MTLFunction>> {
+        assert!(!metal_device.is_null());
+
+        let mut s2m = SpirV2Msl::new(self.spirv_code());
+
+        let model = match stage {
+            shader::ShaderStage::Fragment => ExecutionModel::Fragment,
+            shader::ShaderStage::Vertex => ExecutionModel::Vertex,
+            shader::ShaderStage::Compute => ExecutionModel::GLCompute,
+        };
+
+        root_sig.setup_spirv2msl(&mut s2m, model);
+
+        // TODO: vertex attributes
+
+        let s2m_output = s2m.compile().map_err(|e| {
+            Error::with_detail(ErrorKind::Other, ShaderTranspilationFailed { reason: e })
+        })?;
+        let code = s2m_output.msl_code;
+
+        let options = unsafe { OCPtr::from_raw(metal::MTLCompileOptions::alloc().init()) }.unwrap();
+        options.set_language_version(metal::MTLLanguageVersion::V2_0);
+
+        let lib = OCPtr::new(metal_device
+            .new_library_with_source(&code, *options)
+            .map_err(|e| {
+                Error::with_detail(
+                    ErrorKind::Other,
+                    ShaderCompilationFailed {
+                        reason: e,
+                        code: code.clone(),
+                    },
+                )
+            })?).unwrap();
+
+        let fn_name: &str = if entry_point == "main" {
+            // `main` is renamed automatically by SPIRV-Cross (probably) because
+            // C++11 (which Metal Shading Language is based on) treats a function
+            // named `main` in a special way
+            "main0"
+        } else {
+            entry_point
+        };
+
+        OCPtr::new(lib.get_function(fn_name))
+            .ok_or_else(|| nil_error("MTLLibrary newFunctionWithName:"))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ShaderTranspilationFailed {
+    reason: String,
+}
+
+impl ::std::error::Error for ShaderTranspilationFailed {
+    fn description(&self) -> &str {
+        "failed to transpile a shader code"
+    }
+}
+
+impl fmt::Display for ShaderTranspilationFailed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Failed to transpile a shader code due to the following reason: {}",
+            &self.reason
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ShaderCompilationFailed {
+    reason: String,
+    code: String,
+}
+
+impl ::std::error::Error for ShaderCompilationFailed {
+    fn description(&self) -> &str {
+        "failed to compile the transpiled MSL code"
+    }
+}
+
+impl fmt::Display for ShaderCompilationFailed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Failed to compile the transpiled MSL code due to the following reason: {}\n\
+             \n\
+             The transpiled code is shown below:\n{}",
+            &self.reason, &self.code
+        )
     }
 }

@@ -9,11 +9,14 @@ use base::{command, handles, heap, ArgTableIndex, StageFlags};
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, UseResources};
 use cmd::fence::Fence;
+use arg::table::ArgTable;
+use pipeline::ComputePipeline;
 
 #[derive(Debug)]
 pub struct ComputeEncoder {
     metal_encoder: OCPtr<MTLComputeCommandEncoder>,
     fence_set: CmdBufferFenceSet,
+    threads_per_threadgroup: MTLSize,
 }
 
 zangfx_impl_object! { ComputeEncoder:
@@ -27,6 +30,11 @@ impl ComputeEncoder {
         Self {
             metal_encoder: OCPtr::new(metal_encoder).unwrap(),
             fence_set,
+            threads_per_threadgroup: MTLSize {
+                width: 1,
+                height: 1,
+                depth: 1,
+            },
         }
     }
 
@@ -75,12 +83,23 @@ impl command::CmdEncoder for ComputeEncoder {
 }
 
 impl command::ComputeCmdEncoder for ComputeEncoder {
-    fn bind_pipeline(&mut self, _pipeline: &handles::ComputePipeline) {
-        unimplemented!();
+    fn bind_pipeline(&mut self, pipeline: &handles::ComputePipeline) {
+        let our_pipeline: &ComputePipeline =
+            pipeline.downcast_ref().expect("bad compute pipeline type");
+        self.metal_encoder
+            .set_compute_pipeline_state(our_pipeline.metal_pipeline());
+        self.threads_per_threadgroup = our_pipeline.threads_per_threadgroup();
     }
 
-    fn bind_arg_table(&mut self, _index: ArgTableIndex, _tables: &[&handles::ArgTable]) {
-        unimplemented!();
+    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&handles::ArgTable]) {
+        for (i, table) in tables.iter().enumerate() {
+            let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
+            self.metal_encoder.set_buffer(
+                (i + index) as u64,
+                our_table.offset() as u64,
+                our_table.metal_buffer(),
+            );
+        }
     }
 
     fn dispatch(&mut self, workgroup_count: &[u32]) {
@@ -90,7 +109,7 @@ impl command::ComputeCmdEncoder for ComputeEncoder {
                 height: workgroup_count.get(1).cloned().unwrap_or(1) as u64,
                 depth: workgroup_count.get(2).cloned().unwrap_or(1) as u64,
             },
-            unimplemented!(), // TODO: threads_per_threadgroup
+            self.threads_per_threadgroup,
         );
     }
 }
