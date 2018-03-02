@@ -129,7 +129,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             let mut builder = device.build_arg_table_sig();
             builder.arg(binding_input, gfx::ArgType::StorageBuffer);
             builder.arg(binding_output, gfx::ArgType::StorageBuffer);
-            builder.arg(binding_param, gfx::ArgType::StorageBuffer);
+            builder.arg(binding_param, gfx::ArgType::UniformBuffer);
             builder.build().unwrap()
         };
 
@@ -143,11 +143,14 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         println!("- Creating an argument pool");
         let mut arg_pool: Box<gfx::ArgPool> = device
             .build_arg_pool()
-            .reserve_table_sig(1, &arg_table_sig)
+            .reserve_table_sig(2, &arg_table_sig)
             .build()
             .unwrap();
 
         println!("- Creating an argument table");
+        // The first one is actually unused -- The intention is to check if
+        // constant buffer alignment restriction is enforced in the Metal backend
+        arg_pool.new_table(&arg_table_sig).unwrap().unwrap();
         let arg_table = arg_pool.new_table(&arg_table_sig).unwrap().unwrap();
 
         println!("- Writing the argument table");

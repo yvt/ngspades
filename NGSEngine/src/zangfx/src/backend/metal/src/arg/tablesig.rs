@@ -187,6 +187,7 @@ impl ArgTableSig {
         metal_args_array: OCPtr<metal::NSArray<metal::MTLArgumentDescriptor>>,
         args: Vec<ArgSig>,
     ) -> Result<Self> {
+        use std::cmp::max;
         let metal_arg_encoder = new_metal_arg_encoder(metal_device, *metal_args_array)?;
 
         let data = ArgTableSigData {
@@ -194,7 +195,8 @@ impl ArgTableSig {
             args,
             metal_args_array,
             size: metal_arg_encoder.encoded_length() as ArgSize,
-            alignment: metal_arg_encoder.alignment() as ArgSize,
+            // Constant buffers must be aligned to 256 bytes in macOS.
+            alignment: max(metal_arg_encoder.alignment() as ArgSize, 256),
             metal_arg_encoder: Mutex::new(metal_arg_encoder),
         };
 
