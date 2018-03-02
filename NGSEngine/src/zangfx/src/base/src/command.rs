@@ -233,6 +233,8 @@ pub trait CmdEncoder: Object {
     ///
     ///  - `src_stage` must match the `src_state` of the corresponding call to
     ///    `update_fence`.
+    ///  - You must not wait on a fence that was previously updated in the same
+    ///    `CmdEncoder`.
     fn wait_fence(
         &mut self,
         fence: &handles::Fence,

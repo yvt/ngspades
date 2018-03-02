@@ -221,10 +221,13 @@ pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
         let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
+        // Update and wait on a fence from the same command buffer.
         {
             let e = buffer.encode_copy();
-            // Update and wait on a fence from the same command buffer.
             e.update_fence(&fence, flags![gfx::Stage::{All}]);
+        }
+        {
+            let e = buffer.encode_copy();
             e.wait_fence(
                 &fence,
                 flags![gfx::Stage::{All}],
