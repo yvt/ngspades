@@ -4,10 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Tests for ZanGFX implementations.
-use base;
+use gfx;
 
 pub trait TestDriver {
-    fn for_each_device(&self, runner: &mut FnMut(&base::device::Device));
+    fn for_each_device(&self, runner: &mut FnMut(&gfx::Device));
 
     /// Retrieve if the backend is based on a safe implementation, i.e., does
     /// not cause an undefined behavior on invalid usages.
@@ -15,10 +15,10 @@ pub trait TestDriver {
         false
     }
 
-    fn for_each_compute_queue(&self, runner: &mut FnMut(&base::device::Device, base::QueueFamily)) {
+    fn for_each_compute_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
         self.for_each_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
-                if qf.caps.intersects(base::limits::QueueFamilyCaps::Compute) {
+                if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Compute) {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
                 }

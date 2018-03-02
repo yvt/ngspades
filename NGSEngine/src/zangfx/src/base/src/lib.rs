@@ -83,9 +83,6 @@ pub enum CmpFn {
     Always,
 }
 
-#[doc(no_inline)]
-pub use objects::Object;
-
 // Can't define `mopo!`s in the same module as those traits due to the name
 // confliction of the unqualified name of`Result`.
 mopo! { arg::ArgTableSigBuilder }
@@ -113,9 +110,41 @@ mopo! { shader::LibraryBuilder }
 mopo! { sync::BarrierBuilder }
 
 /// The `zangfx_base` prelude.
-#[doc(no_inline)]
 pub mod prelude {
+    #[doc(no_inline)]
     pub use device::DeviceExt;
+    #[doc(no_inline)]
     pub use handles::HandleImpl;
+    #[doc(no_inline)]
     pub use formats::{AsIndexFormat, FloatAsScalarFormat, IntAsScalarFormat};
 }
+
+// Import all objects
+#[doc(no_inline)]
+pub use handles::*;
+#[doc(no_inline)]
+pub use objects::*;
+#[doc(no_inline)]
+pub use arg::*;
+#[doc(no_inline)]
+pub use command::*;
+#[doc(no_inline)]
+pub use device::*;
+#[doc(no_inline)]
+pub use formats::*;
+#[doc(no_inline)]
+pub use heap::*;
+#[doc(no_inline)]
+pub use limits::*;
+#[doc(no_inline)]
+pub use pass::*;
+#[doc(no_inline)]
+pub use pipeline::*;
+#[doc(no_inline)]
+pub use resources::*;
+#[doc(no_inline)]
+pub use sampler::*;
+#[doc(no_inline)]
+pub use shader::*;
+#[doc(no_inline)]
+pub use sync::*;

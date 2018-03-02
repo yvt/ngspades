@@ -6,7 +6,7 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
-use base;
+use gfx;
 
 #[derive(Debug)]
 pub struct CmdBufferAwaiter {
@@ -14,7 +14,7 @@ pub struct CmdBufferAwaiter {
 }
 
 impl CmdBufferAwaiter {
-    pub fn new(buffer: &mut base::command::CmdBuffer) -> Self {
+    pub fn new(buffer: &mut gfx::CmdBuffer) -> Self {
         let (send, recv) = mpsc::channel();
 
         buffer.on_complete(Box::new(move || {

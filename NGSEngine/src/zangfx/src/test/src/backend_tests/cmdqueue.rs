@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use base;
+use gfx;
 use super::{utils, TestDriver};
 
 pub fn cmdqueue_create<T: TestDriver>(driver: T) {
@@ -46,8 +46,7 @@ pub fn cmdqueue_create_fail_missing_queue_family<T: TestDriver>(driver: T) {
 pub fn cmdqueue_create_buffer<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
-        let queue: Box<base::command::CmdQueue> =
-            device.build_cmd_queue().queue_family(0).build().unwrap();
+        let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
         println!("- Creating a command buffer");
         queue.new_cmd_buffer().unwrap();
@@ -66,26 +65,26 @@ pub fn cmdqueue_create_encoder<T: TestDriver>(driver: T) {
             println!("- Creating a queue for [{}] : {:?}", i, queue_family);
 
             println!("- Creating a command queue");
-            let queue: Box<base::command::CmdQueue> = device
+            let queue: Box<gfx::CmdQueue> = device
                 .build_cmd_queue()
                 .queue_family(i as _)
                 .build()
                 .unwrap();
 
             println!("- Creating a command buffer");
-            let mut buffer: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+            let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
             let caps = queue_family.caps;
-            if caps.intersects(base::limits::QueueFamilyCaps::Render) {
+            if caps.intersects(gfx::limits::QueueFamilyCaps::Render) {
                 println!("- Skipping a render encoder");
                 // Starting a render encoder requires other multiple structures
                 // to be set up -- let's not do it here
             }
-            if caps.intersects(base::limits::QueueFamilyCaps::Compute) {
+            if caps.intersects(gfx::limits::QueueFamilyCaps::Compute) {
                 println!("- Creating a compute encoder");
                 buffer.encode_compute();
             }
-            if caps.intersects(base::limits::QueueFamilyCaps::Copy) {
+            if caps.intersects(gfx::limits::QueueFamilyCaps::Copy) {
                 println!("- Creating a copy encoder");
                 buffer.encode_copy();
             }
@@ -96,11 +95,10 @@ pub fn cmdqueue_create_encoder<T: TestDriver>(driver: T) {
 pub fn cmdqueue_buffer_noop_completes<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
-        let queue: Box<base::command::CmdQueue> =
-            device.build_cmd_queue().queue_family(0).build().unwrap();
+        let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
         println!("- Creating a command buffer");
-        let mut buffer: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
@@ -122,11 +120,10 @@ pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
     use std::mem::drop;
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
-        let queue: Box<base::command::CmdQueue> =
-            device.build_cmd_queue().queue_family(0).build().unwrap();
+        let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
         println!("- Creating a command buffer");
-        let mut buffer: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
@@ -150,8 +147,7 @@ pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
 pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
-        let queue: Box<base::command::CmdQueue> =
-            device.build_cmd_queue().queue_family(0).build().unwrap();
+        let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
         println!("- Creating a fence");
         let fence = queue.new_fence().unwrap();
@@ -160,28 +156,28 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
         let barrier = device
             .build_barrier()
             .global(
-                flags![base::AccessType::{CopyWrite}],
-                flags![base::AccessType::{CopyRead}],
+                flags![gfx::AccessType::{CopyWrite}],
+                flags![gfx::AccessType::{CopyRead}],
             )
             .build()
             .unwrap();
 
         println!("- Creating a command buffer");
-        let mut buffer1: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
-        let mut buffer2: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer1: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer2: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding 1");
         {
             let e = buffer1.encode_copy();
-            e.update_fence(&fence, flags![base::Stage::{All}]);
+            e.update_fence(&fence, flags![gfx::Stage::{All}]);
         }
         println!("- Encoding 2");
         {
             let e = buffer2.encode_copy();
             e.wait_fence(
                 &fence,
-                flags![base::Stage::{All}],
-                flags![base::Stage::{All}],
+                flags![gfx::Stage::{All}],
+                flags![gfx::Stage::{All}],
                 &barrier,
             );
         }
@@ -206,8 +202,7 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
 pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
-        let queue: Box<base::command::CmdQueue> =
-            device.build_cmd_queue().queue_family(0).build().unwrap();
+        let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
         println!("- Creating a fence");
         let fence = queue.new_fence().unwrap();
@@ -216,24 +211,24 @@ pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
         let barrier = device
             .build_barrier()
             .global(
-                flags![base::AccessType::{CopyWrite}],
-                flags![base::AccessType::{CopyRead}],
+                flags![gfx::AccessType::{CopyWrite}],
+                flags![gfx::AccessType::{CopyRead}],
             )
             .build()
             .unwrap();
 
         println!("- Creating a command buffer");
-        let mut buffer: Box<base::command::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {
             let e = buffer.encode_copy();
             // Update and wait on a fence from the same command buffer.
-            e.update_fence(&fence, flags![base::Stage::{All}]);
+            e.update_fence(&fence, flags![gfx::Stage::{All}]);
             e.wait_fence(
                 &fence,
-                flags![base::Stage::{All}],
-                flags![base::Stage::{All}],
+                flags![gfx::Stage::{All}],
+                flags![gfx::Stage::{All}],
                 &barrier,
             );
         }
