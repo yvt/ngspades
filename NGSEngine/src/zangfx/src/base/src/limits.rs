@@ -49,6 +49,18 @@ pub struct DeviceLimits {
 
     /// Indicates the maximum number of compute local workgroups.
     pub max_compute_workgroup_count: [u32; 3],
+
+    /// The minimum alignment requirement for uniform buffers, measured in
+    /// bytes.
+    ///
+    /// Must be equal to or less than 256 bytes.
+    pub uniform_buffer_align: DeviceSize,
+
+    /// The minimum alignment requirement for storage buffers, measured in
+    /// bytes.
+    ///
+    /// Must be equal to or less than 256 bytes.
+    pub storage_buffer_align: DeviceSize,
     // TODO: expose more limits
 }
 
