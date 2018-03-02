@@ -5,6 +5,8 @@
 //
 use std::sync::mpsc;
 use std::time::Duration;
+use std::borrow::Borrow;
+use std::ops::Deref;
 
 use gfx;
 
@@ -26,5 +28,33 @@ impl CmdBufferAwaiter {
 
     pub fn wait_until_completed(&self) {
         self.recv.recv_timeout(Duration::from_millis(1000)).unwrap();
+    }
+}
+
+#[derive(Debug)]
+pub struct UniqueBuffer<D: Borrow<gfx::Device>> {
+    device: D,
+    buffer: gfx::Buffer,
+}
+
+impl<D: Borrow<gfx::Device>> UniqueBuffer<D> {
+    pub fn new(device: D, buffer: gfx::Buffer) -> Self {
+        Self {
+            device,
+            buffer,
+        }
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Deref for UniqueBuffer<D> {
+    type Target = gfx::Buffer;
+    fn deref(&self) -> &Self::Target {
+        &self.buffer
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Drop for UniqueBuffer<D> {
+    fn drop(&mut self) {
+        self.device.borrow().destroy_buffer(&self.buffer).unwrap();
     }
 }

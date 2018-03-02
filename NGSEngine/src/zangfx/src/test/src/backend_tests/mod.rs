@@ -52,6 +52,7 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { heap_create, $driver }
         zangfx_test_single! { #[should_panic] heap_create_fail_zero_size, $driver }
         zangfx_test_single! { #[should_panic] heap_create_fail_missing_memory_type, $driver }
+        zangfx_test_single! { heap_alloc_buffer, $driver }
 
         zangfx_test_single! { compute_null, $driver }
     }
