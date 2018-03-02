@@ -312,9 +312,9 @@ pub enum ArgSlice<'a> {
     ImageView(&'a [&'a ImageView]),
     /// Buffers and their subranges.
     ///
-    /// - For a uniform buffer, the starting position of each range must be
+    /// - For a uniform buffer, the starting offset of each range must be
     ///   aligned to `DeviceLimits::uniform_buffer_alignment` bytes.
-    /// - For a storage buffer, the starting position of each range must be
+    /// - For a storage buffer, the starting offset of each range must be
     ///   aligned to `DeviceLimits::storage_buffer_alignment` bytes.
     ///
     Buffer(&'a [(ops::Range<DeviceSize>, &'a Buffer)]),
