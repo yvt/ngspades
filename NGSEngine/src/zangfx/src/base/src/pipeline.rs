@@ -11,7 +11,7 @@ use common::{Rect2D, Result};
 use handles::{ComputePipeline, Library, RenderPass, RootSig};
 use formats::VertexFormat;
 use {CmpFn, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex, VertexAttrIndex,
-     VertexBufferIndex};
+     VertexBufferIndex, ViewportIndex};
 
 /// Trait for building compute pipelines.
 ///
@@ -215,10 +215,20 @@ pub enum PrimitiveTopology {
 ///     # }
 ///
 pub trait RenderPassRasterizer: Object {
+    /// Set the number of viewports.
+    ///
+    /// Must be less than or equal to `DeviceLimits::max_num_viewports`. Must be
+    /// not zero.
+    fn set_num_viewports(&mut self, v: usize) -> &mut RenderPassRasterizer;
+
     /// Set the scissor rect.
     ///
     /// Defaults to `Static(Rect2D([0; 2], [<u32>::max_value(); 2]))`.
-    fn set_scissor(&mut self, v: &StaticOrDynamic<Rect2D<u32>>) -> &mut RenderPassRasterizer;
+    fn set_scissor(
+        &mut self,
+        viewport: ViewportIndex,
+        v: &StaticOrDynamic<Rect2D<u32>>,
+    ) -> &mut RenderPassRasterizer;
 
     /// Set the cull mode. Defaults to `Back`.
     fn set_cull_mode(&mut self, v: CullMode) -> &mut RenderPassRasterizer;

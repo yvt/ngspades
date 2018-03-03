@@ -52,7 +52,8 @@ impl DeviceCaps {
             max_image_extent_2d: 16384,
             max_image_extent_3d: 2048,
             max_image_num_array_layers: 2048,
-            max_framebuffer_extent: 16384,
+            max_render_target_extent: 16384,
+            max_num_viewports: 1, // TODO: support multiple viewport?
             max_compute_workgroup_size: [
                 mtptg.width as u32,
                 mtptg.height as u32,

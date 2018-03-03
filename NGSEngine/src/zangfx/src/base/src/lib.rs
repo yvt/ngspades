@@ -73,6 +73,9 @@ pub type RenderPassTargetIndex = usize;
 /// Represents a single color render target of a render subpass.
 pub type RenderSubpassColorTargetIndex = usize;
 
+/// Specifies a viewport in a render pipeline.
+pub type ViewportIndex = usize;
+
 /// Specifies a predicate (boolean-valued function) on two numeric values
 /// used during various kinds of tests (e.g., depth test).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

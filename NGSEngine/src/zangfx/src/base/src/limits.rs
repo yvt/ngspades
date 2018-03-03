@@ -41,7 +41,9 @@ pub struct DeviceLimits {
     pub max_image_extent_2d: u32,
     pub max_image_extent_3d: u32,
     pub max_image_num_array_layers: u32,
-    pub max_framebuffer_extent: u32,
+    pub max_render_target_extent: u32,
+
+    pub max_num_viewports: u32,
 
     /// Indicates the maximum size of a local compute workgroup (specified by
     /// the `LocalSize` execution mode and by the object decorated by the
