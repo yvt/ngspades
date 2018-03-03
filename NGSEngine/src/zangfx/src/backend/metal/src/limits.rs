@@ -47,6 +47,7 @@ impl DeviceCaps {
             supports_cube_array: true,
             supports_depth_clamp: true,
             supports_fill_mode_non_solid: true,
+            supports_independent_blend: true,
             max_image_extent_1d: 16384,
             max_image_extent_2d: 16384,
             max_image_extent_3d: 2048,

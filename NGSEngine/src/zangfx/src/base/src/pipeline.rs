@@ -273,6 +273,9 @@ pub trait RenderPassRasterizer: Object {
     ) -> &mut RenderPassRasterizer;
 
     /// Setup the color output for a color render target at a specified index.
+    ///
+    /// If `DeviceLimits::supports_independent_blend` is `false` then the same
+    /// property values must be supplied for all color render targets.
     fn color_target(&mut self, index: RenderSubpassColorTargetIndex) -> &mut RenderPassColorTarget;
 }
 
