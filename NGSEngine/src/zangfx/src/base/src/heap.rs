@@ -66,9 +66,9 @@ pub trait DynamicHeapBuilder: Object {
 /// # Examples
 ///
 ///     # use zangfx_base::{Device, DedicatedHeapBuilder, Image};
-///     # fn test(device: &Device, image: &Image) {
-///     let builder = device.build_dedicated_heap()
-///         .memory_type(0);
+///     # fn test(device: &Device, image: Image) {
+///     let mut builder = device.build_dedicated_heap();
+///     builder.memory_type(0);
 ///
 ///     // Pre-allocation
 ///     builder.prebind((&image).into());
@@ -76,7 +76,7 @@ pub trait DynamicHeapBuilder: Object {
 ///     let heap = builder.build().expect("Failed to create a heap.");
 ///
 ///     // The real allocation must done in the exactly same order
-///     builder.bind((&image).into());
+///     heap.bind((&image).into());
 ///     # }
 ///
 pub trait DedicatedHeapBuilder: Object {

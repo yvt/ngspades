@@ -172,12 +172,15 @@ pub enum StoreOp {
 ///     # use zangfx_base::device::Device;
 ///     # use zangfx_base::pass::RenderTargetTableBuilder;
 ///     # use zangfx_base::handles::{RenderPass, ImageView};
-///     # fn test(device: &Device, pass: &RenderPass, image_view: &ImageView) {
-///     let mut rt_table = device.build_rt_table()
-///         .render_pass(pass)
-///         .extents(&[1024, 768])
-///         .target(0, image_view)
-///         .build()
+///     # fn test(device: &Device, pass: RenderPass, image_view: ImageView) {
+///     let mut builder = device.build_render_target_table();
+///     builder.render_pass(&pass)
+///         .extents(&[1024, 768]);
+///
+///     builder.target(0, &image_view)
+///         .clear_float(&[0.0, 0.0, 0.0, 1.0]);
+///
+///     let rt_table = builder.build()
 ///         .expect("Failed to create a render target table.");
 ///     # }
 ///
