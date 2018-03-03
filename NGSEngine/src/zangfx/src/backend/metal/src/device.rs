@@ -87,6 +87,10 @@ impl device::Device for Device {
         unsafe { Box::new(sampler::SamplerBuilder::new(self.metal_device())) }
     }
 
+    fn build_image_view(&self) -> Box<base::resources::ImageViewBuilder> {
+        unimplemented!()
+    }
+
     fn build_library(&self) -> Box<base::shader::LibraryBuilder> {
         Box::new(shader::LibraryBuilder::new())
     }
@@ -142,6 +146,10 @@ impl device::Device for Device {
             our_sampler.destroy();
         }
         Ok(())
+    }
+
+    fn destroy_image_view(&self, _obj: &handles::ImageView) -> Result<()> {
+        unimplemented!()
     }
 
     fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {

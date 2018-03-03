@@ -173,6 +173,8 @@ define_handle! {
 define_handle! {
     /// Image view object.
     ///
+    /// Shaders always access images via image views.
+    ///
     /// See [the module-level documentation](index.html) for the generic usage
     /// of handles.
     ImageView

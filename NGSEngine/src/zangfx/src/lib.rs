@@ -155,31 +155,31 @@
 //! The following table shows all objects and handles defined by ZanGFX as well
 //! as the requirements for their manual reference tracking:
 //!
-//! |         Name        |  Type  |  Is destroyed on  |        Dependents¹         |
-//! | ------------------- | ------ | ----------------- | -------------------------- |
-//! | `.*Builder`         | object | drop              |                            |
-//! | `Device`            | object | drop              | GPU and everything         |
-//! | `ArgTableSig`       | handle | automatic         |                            |
-//! | `RootSig`           | handle | automatic         |                            |
-//! | `ArgPool`           | object | drop              |                            |
-//! | `ArgTable`          | handle | `destroy_tables`  | GPU, `CmdBuffer`           |
-//! |                     |        | `reset`           |                            |
-//! | `CmdQueue`          | object | drop              | GPU, `CmdBuffer`           |
-//! | `CmdBuffer`         | object | automatic         |                            |
-//! | `Barrier`           | handle | automatic         |                            |
-//! | `Fence`             | handle | automatic         |                            |
-//! | `Semaphore`         | handle | automatic         |                            |
-//! | `RenderPass`        | handle | automatic         |                            |
-//! | `RenderTargetTable` | handle | automatic         |                            |
-//! | `Heap`              | object | drop              | `Image`, `Buffer`          |
-//! | `HeapAlloc`         | handle | automatic         |                            |
-//! | `Image`             | handle | TBD²              | TBD                        |
-//! | `Buffer`            | handle | `destroy_buffer`² | GPU, `ArgTable`, `Barrier` |
-//! | `Sampler`           | handle | `destroy_sampler` | `ArgTable`                 |
-//! | `ImageView`         | handle | TBD               | TBD                        |
-//! | `Library`           | handle | automatic         |                            |
-//! | `RenderPipeline`    | handle | TBD               | TBD                        |
-//! | `ComputePipeline`   | handle | automatic         |                            |
+//! |         Name        |  Type  |   Is destroyed on    |            Dependents¹             |
+//! | ------------------- | ------ | -------------------- | ---------------------------------- |
+//! | `.*Builder`         | object | drop                 |                                    |
+//! | `Device`            | object | drop                 | GPU and everything                 |
+//! | `ArgTableSig`       | handle | automatic            |                                    |
+//! | `RootSig`           | handle | automatic            |                                    |
+//! | `ArgPool`           | object | drop                 |                                    |
+//! | `ArgTable`          | handle | `destroy_tables`     | GPU, `CmdBuffer`                   |
+//! |                     |        | `reset`              |                                    |
+//! | `CmdQueue`          | object | drop                 | GPU, `CmdBuffer`                   |
+//! | `CmdBuffer`         | object | automatic            |                                    |
+//! | `Barrier`           | handle | automatic            |                                    |
+//! | `Fence`             | handle | automatic            |                                    |
+//! | `Semaphore`         | handle | automatic            |                                    |
+//! | `RenderPass`        | handle | automatic            |                                    |
+//! | `RenderTargetTable` | handle | automatic            |                                    |
+//! | `Heap`              | object | drop                 | `Image`, `Buffer`                  |
+//! | `HeapAlloc`         | handle | automatic            |                                    |
+//! | `Image`             | handle | `destroy_image`²     | GPU, `RenderTargetTable` `Barrier` |
+//! | `Buffer`            | handle | `destroy_buffer`²    | GPU, `ArgTable`, `Barrier`         |
+//! | `Sampler`           | handle | `destroy_sampler`    | `ArgTable`                         |
+//! | `ImageView`         | handle | `destroy_image_view` | `ArgTable`                         |
+//! | `Library`           | handle | automatic            |                                    |
+//! | `RenderPipeline`    | handle | TBD                  | TBD                                |
+//! | `ComputePipeline`   | handle | automatic            |                                    |
 //!
 //! ¹ The **Dependents** column denotes the objects that possibly contain a weak
 //! reference to a certain object and require it to operate properly. For example,

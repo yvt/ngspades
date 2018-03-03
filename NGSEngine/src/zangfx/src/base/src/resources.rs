@@ -9,7 +9,7 @@ use std::ops;
 use ngsenumflags::BitFlags;
 
 use common::Result;
-use handles::{Buffer, Image};
+use handles::{Buffer, Image, ImageView};
 use formats::ImageFormat;
 use DeviceSize;
 
@@ -119,6 +119,14 @@ pub enum ImageUsage {
     Sampled = 0b00000100,
     Storage = 0b00001000,
     Render = 0b00010000,
+
+    /// Enables the creation of `ImageView` with a different type (2D/3D/...).
+    MutableType = 0b00100000,
+    /// Enables the creation of `ImageView` with a different image format.
+    MutableFormat = 0b01000000,
+    /// Enables the creation of `ImageView` using a partial layer range of the
+    /// original image.
+    PartialView = 0b10000000,
 }
 
 pub type ImageUsageFlags = BitFlags<ImageUsage>;
@@ -223,4 +231,68 @@ pub struct MemoryReq {
     ///     # }
     ///
     pub memory_types: u32,
+}
+
+/// Trait for building image views.
+///
+/// # Valid Usage
+///
+///  - No instance of `ImageViewBuilder` may outlive the originating `Device`.
+///
+/// # Examples
+///
+///     # use zangfx_base::*;
+///     # fn test(device: &Device, image: Image) {
+///     let image_view = device.build_image_view()
+///         .image(&image)
+///         .build()
+///         .expect("Failed to create an image view.");
+///     # }
+///
+pub trait ImageViewBuilder: Object {
+    /// Set the image.
+    ///
+    /// This property is mandatory.
+    fn image(&mut self, v: &Image) -> &mut ImageViewBuilder;
+
+    /// Set the subresource range to `v`.
+    ///
+    /// Defaults to `Default::default()` (full range). The original image's
+    /// [`usage`] must include [`PartialView`] to specify a partial range here.
+    ///
+    /// [`usage`]: ImageBuilder::usage
+    /// [`PartialView`]: ImageUsage::PartialView
+    fn subrange(&mut self, v: &ImageSubRange) -> &mut ImageViewBuilder;
+
+    /// Set the image view format.
+    ///
+    /// The original image's format is used by default. The original image's
+    /// [`usage`] must include [`MutableFormat`] to specify a different format
+    /// here.
+    fn format(&mut self, v: ImageFormat) -> &mut ImageViewBuilder;
+
+    /// Set the image view type.
+    ///
+    /// The original image's type is used by default. The original image's
+    /// [`usage`] must include [`MutableType`] to specify a different type
+    /// here.
+    fn image_type(&mut self, v: ImageType) -> &mut ImageViewBuilder;
+
+    /// Build an `ImageView`.
+    ///
+    /// # Valid Usage
+    ///
+    /// All mandatory properties must have their values set before this method
+    /// is called.
+    fn build(&mut self) -> Result<ImageView>;
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ImageType {
+    OneD,
+    TwoD,
+    TwoDArray,
+    ThreeD,
+    Cube,
+    CubeArray,
 }

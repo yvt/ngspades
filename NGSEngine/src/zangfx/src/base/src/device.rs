@@ -50,6 +50,9 @@ pub trait Device: Object {
     /// Create a `SamplerBuilder` associated with this device.
     fn build_sampler(&self) -> Box<sampler::SamplerBuilder>;
 
+    /// Create an `ImageViewBuilder` associated with this device.
+    fn build_image_view(&self) -> Box<resources::ImageViewBuilder>;
+
     /// Create a `LibraryBuilder` associated with this device.
     fn build_library(&self) -> Box<shader::LibraryBuilder>;
 
@@ -68,8 +71,6 @@ pub trait Device: Object {
     /// Create a `RenderTargetTableBuilder` associated with this device.
     fn build_render_target_table(&self) -> Box<pass::RenderTargetTableBuilder>;
 
-    // TODO: image view
-
     /// Create a `RenderPipelineBuilder` associated with this device.
     fn build_render_pipeline(&self) -> Box<pipeline::RenderPipelineBuilder>;
 
@@ -84,6 +85,9 @@ pub trait Device: Object {
 
     /// Destroy a `Sampler` associated with this device.
     fn destroy_sampler(&self, obj: &handles::Sampler) -> Result<()>;
+
+    /// Destroy an `ImageView` associated with this device.
+    fn destroy_image_view(&self, obj: &handles::ImageView) -> Result<()>;
 
     /// Retrieve the memory requirements for a given resource.
     fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<resources::MemoryReq>;
