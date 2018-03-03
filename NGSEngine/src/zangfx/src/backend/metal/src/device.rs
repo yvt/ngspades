@@ -116,6 +116,10 @@ impl device::Device for Device {
         unimplemented!()
     }
 
+    fn build_render_pipeline(&self) -> Box<base::pipeline::RenderPipelineBuilder> {
+        unimplemented!()
+    }
+
     fn build_compute_pipeline(&self) -> Box<base::pipeline::ComputePipelineBuilder> {
         unsafe { Box::new(pipeline::ComputePipelineBuilder::new(self.metal_device())) }
     }

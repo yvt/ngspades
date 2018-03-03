@@ -53,3 +53,16 @@ pub enum AccessType {
 
 /// Specifies zero or more types of memory access.
 pub type AccessTypeFlags = BitFlags<AccessType>;
+
+/// Specifies a color channel.
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash)]
+#[repr(u32)]
+pub enum ColorChannel {
+    Red = 0b0001,
+    Green = 0b0010,
+    Blue = 0b0100,
+    Alpha = 0b1000,
+}
+
+/// Specifies zero or more color channels.
+pub type ColorChannelFlags = BitFlags<ColorChannel>;

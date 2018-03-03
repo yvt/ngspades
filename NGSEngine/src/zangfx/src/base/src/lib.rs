@@ -55,9 +55,9 @@ pub type MemoryRegionIndex = u32;
 pub type SubpassIndex = usize;
 
 /// Represents a location in a vertex buffer binding table.
-pub type VertexBindingLocation = usize;
+pub type VertexBufferIndex = usize;
 /// Represents a location of a vertex attribute consumed by a vertex shader.
-pub type VertexAttrLocation = usize;
+pub type VertexAttrIndex = usize;
 
 /// Represents a location of an argument table in an argument binding table.
 pub type ArgTableIndex = usize;
@@ -66,9 +66,12 @@ pub type ArgIndex = usize;
 /// Represents an element of an array of descriptors.
 pub type ArgArrayIndex = usize;
 
-/// Represents a signle render target (possibly shared by multiple subpasses)
+/// Represents a single render target (possibly shared by multiple subpasses)
 /// of a render pass.
 pub type RenderPassTargetIndex = usize;
+
+/// Represents a single color render target of a render subpass.
+pub type RenderSubpassColorTargetIndex = usize;
 
 /// Specifies a predicate (boolean-valued function) on two numeric values
 /// used during various kinds of tests (e.g., depth test).
@@ -82,6 +85,22 @@ pub enum CmpFn {
     NotEqual,
     GreaterEqual,
     Always,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Viewport {
+    /// The X coordinate of the viewport's upper left corner.
+    pub x: f32,
+    /// The Y coordinate of the viewport's upper left corner.
+    pub y: f32,
+    /// The width of the viewport (measure in pixels).
+    pub width: f32,
+    /// The height of the viewport (measure in pixels).
+    pub height: f32,
+    /// The lower bound of the viewport's depth range.
+    pub min_depth: f32,
+    /// The upper bound of the viewport's depth range.
+    pub max_depth: f32,
 }
 
 // Can't define `mopo!`s in the same module as those traits due to the name
@@ -119,6 +138,8 @@ pub mod prelude {
     pub use handles::HandleImpl;
     #[doc(no_inline)]
     pub use formats::{AsIndexFormat, FloatAsScalarFormat, IntAsScalarFormat};
+    #[doc(no_inline)]
+    pub use pipeline::RenderPassRasterizerExt;
 }
 
 // Import all objects
@@ -150,3 +171,6 @@ pub use sampler::*;
 pub use shader::*;
 #[doc(no_inline)]
 pub use sync::*;
+
+#[doc(no_inline)]
+pub use common::Rect2D;

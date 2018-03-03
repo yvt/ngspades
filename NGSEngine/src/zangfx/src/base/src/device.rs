@@ -70,7 +70,8 @@ pub trait Device: Object {
 
     // TODO: image view
 
-    // TODO: render pipeline
+    /// Create a `RenderPipelineBuilder` associated with this device.
+    fn build_render_pipeline(&self) -> Box<pipeline::RenderPipelineBuilder>;
 
     /// Create a `ComputePipelineBuilder` associated with this device.
     fn build_compute_pipeline(&self) -> Box<pipeline::ComputePipelineBuilder>;
