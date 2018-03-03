@@ -20,7 +20,8 @@ extern crate zangfx_common as common;
 
 // `handles` defines a macro
 pub mod handles;
-// It's here for no reasons
+// `objects` defines a macro too
+#[macro_use]
 pub mod objects;
 
 pub mod arg;

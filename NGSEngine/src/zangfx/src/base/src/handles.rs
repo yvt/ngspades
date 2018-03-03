@@ -197,6 +197,17 @@ define_handle! {
 }
 
 define_handle! {
+    /// Semaphore handle.
+    ///
+    /// Fences are used for inter-queue/API synchronization. Not supported by
+    /// every backend.
+    ///
+    /// See [the module-level documentation](index.html) for the generic usage
+    /// of handles.
+    Semaphore
+}
+
+define_handle! {
     /// Barrier handle.
     ///
     /// See [the module-level documentation](index.html) for the generic usage

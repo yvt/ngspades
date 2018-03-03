@@ -42,6 +42,7 @@ impl DeviceCaps {
         // OSX_GPUFamily1_v2
         let limits = limits::DeviceLimits {
             supports_heap_aliasing: true,
+            supports_semaphore: false,
             supports_depth_bounds: false,
             supports_cube_array: true,
             supports_depth_clamp: true,

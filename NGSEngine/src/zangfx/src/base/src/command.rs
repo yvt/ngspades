@@ -98,6 +98,22 @@ pub trait CmdBuffer: Object {
     /// Register a completion handler. Must not be called after calling `commit`.
     fn on_complete(&mut self, cb: Box<FnMut()>);
 
+    /// Wait on a given semaphore before the execution of the command buffer.
+    ///
+    /// The default implementation panics.
+    fn wait_semaphore(&mut self, semaphore: &handles::Semaphore, dst_stage: StageFlags) {
+        let _ = (semaphore, dst_stage);
+        panic!("Semaphores are not supported by this backend.");
+    }
+
+    /// Signal a given semaphore after the execution of the command buffer.
+    ///
+    /// The default implementation panics.
+    fn signal_semaphore(&mut self, semaphore: &handles::Semaphore, src_stage: StageFlags) {
+        let _ = (semaphore, src_stage);
+        panic!("Semaphores are not supported by this backend.");
+    }
+
     // TODO: semaphores
 }
 

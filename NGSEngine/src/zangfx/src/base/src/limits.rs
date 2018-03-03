@@ -12,11 +12,14 @@ use {DeviceSize, MemoryRegionIndex};
 
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceLimits {
-    // TODO: port `DeviceLimits` to ZanGFX
     /// Indicates whether [`Heap::make_aliasable`] is supported or not.
     ///
     /// [`Heap::make_aliasable`]: make_aliasable
     pub supports_heap_aliasing: bool,
+
+    /// Indicates whether *creating* semaphores (inter-queue synchronization) are
+    /// supported or not.
+    pub supports_semaphore: bool,
 
     /// Indicates whether `GraphicsPipelineRasterizerDescription::depth_bounds`
     /// can have values other than `None`.

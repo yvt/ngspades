@@ -41,6 +41,7 @@
 //! | command buffer           | command buffer         | command buffer        | ?                       |
 //! | completion handler       | completed handler      | (fence)               | ?                       |
 //! | fence                    | fence                  | event                 | ?                       |
+//! | semaphore                | -                      | semaphore             | ?                       |
 //! | library                  | library                | shader module         | ?                       |
 //! | heap                     | heap                   | device memory         | resource heap           |
 //! | render pipeline          | render pipeline state  | graphics pipeline     | graphics pipeline state |
@@ -167,7 +168,7 @@
 //! | `CmdBuffer`         | object | automatic         |                            |
 //! | `Barrier`           | handle | automatic         |                            |
 //! | `Fence`             | handle | automatic         |                            |
-//! | `Semaphore`         | handle | TBD               | TBD                        |
+//! | `Semaphore`         | handle | automatic         |                            |
 //! | `RenderPass`        | handle | automatic         |                            |
 //! | `RenderTargetTable` | handle | automatic         |                            |
 //! | `Heap`              | object | drop              | `Image`, `Buffer`          |

@@ -20,6 +20,18 @@ pub trait Device: Object {
     /// Create a `CmdQueueBuilder` associated with this device.
     fn build_cmd_queue(&self) -> Box<command::CmdQueueBuilder>;
 
+    /// Create a `SemaphoreBuilder` associated with this device.
+    ///
+    /// `DeviceExt` provides a shorthand method named [`new_semaphore`].
+    ///
+    /// The default implementation returns a [`NotSupportedSemaphoreBuilder`].
+    ///
+    /// [`new_semaphore`]: DeviceExt::new_semaphore
+    /// [`NotSupportedSemaphoreBuilder`]: NotSupportedSemaphoreBuilder
+    fn build_semaphore(&self) -> Box<sync::SemaphoreBuilder> {
+        Box::new(sync::NotSupportedSemaphoreBuilder)
+    }
+
     /// Create a `DynamicHeapBuilder` associated with this device.
     fn build_dynamic_heap(&self) -> Box<heap::DynamicHeapBuilder>;
 
@@ -194,6 +206,15 @@ pub trait Device: Object {
 
 /// Utilies for [`Device`](Device).
 pub trait DeviceExt: Device {
+    /// Create a `Semaphore` associated with this device.
+    ///
+    /// This is a shorthand method for [`build_semaphore`].
+    ///
+    /// [`build_semaphore`]: Device::build_semaphore
+    fn new_semaphore(&self) -> Result<handles::Semaphore> {
+        self.build_semaphore().build()
+    }
+
     /// Create a autorelease pool and call the specified function inside it.
     ///
     /// This is a wrapper of [`autorelease_pool_scope_core`] that allows the function

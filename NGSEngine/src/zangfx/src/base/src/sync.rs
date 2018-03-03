@@ -6,8 +6,8 @@
 //! Builder for synchronization objects.
 use Object;
 use std::ops::Range;
-use common::Result;
-use handles::{Barrier, Buffer, Image};
+use common::{Error, ErrorKind, Result};
+use handles::{Barrier, Buffer, Image, Semaphore};
 use {AccessTypeFlags, DeviceSize};
 use resources::{ImageLayout, ImageSubRange};
 
@@ -67,4 +67,43 @@ pub trait BarrierBuilder: Object {
     /// All mandatory properties must have their values set before this method
     /// is called.
     fn build(&mut self) -> Result<Barrier>;
+}
+
+/// Trait for building semaphores.
+///
+/// # Valid Usage
+///
+///  - No instance of `SemaphoreBuilder` may outlive the originating `Device`.
+///
+/// # Examples
+///
+///     # use zangfx_base::device::Device;
+///     # fn test(device: &Device) {
+///     let semaphore = device.build_semaphore()
+///         .build()
+///         .expect("Failed to create a semaphore.");
+///     # }
+///
+pub trait SemaphoreBuilder: Object {
+    /// Build an `Semaphore`.
+    ///
+    /// # Valid Usage
+    ///
+    /// All mandatory properties must have their values set before this method
+    /// is called.
+    fn build(&mut self) -> Result<Semaphore>;
+}
+
+/// An implementation of `SemaphoreBuilder` that always returns `NotSupported`
+/// error.
+#[derive(Debug)]
+pub struct NotSupportedSemaphoreBuilder;
+
+zangfx_impl_object! { NotSupportedSemaphoreBuilder:
+SemaphoreBuilder, ::std::fmt::Debug }
+
+impl SemaphoreBuilder for NotSupportedSemaphoreBuilder {
+    fn build(&mut self) -> Result<Semaphore> {
+        Err(Error::new(ErrorKind::NotSupported))
+    }
 }
