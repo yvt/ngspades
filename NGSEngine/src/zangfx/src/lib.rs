@@ -43,6 +43,9 @@
 //! | fence                    | fence                  | event                 | ?                       |
 //! | semaphore                | -                      | semaphore             | ?                       |
 //! | library                  | library                | shader module         | ?                       |
+//! | buffer                   | buffer                 | buffer                | ?                       |
+//! | image                    | texture                | image                 | ?                       |
+//! | image view               | (texture view)         | image view            | ?                       |
 //! | heap                     | heap                   | device memory         | resource heap           |
 //! | render pipeline          | render pipeline state  | graphics pipeline     | graphics pipeline state |
 //! | compute pipeline         | compute pipeline state | compute pipeline      | ?                       |
