@@ -38,12 +38,12 @@ pub trait ImageBuilder: Object {
     /// `v.len()` matches the dimensionality of the image and must be one of
     /// 1, 2, and 3.
     ///
-    /// Specifying either of `extents` or `extents_cube` is mandatory.
+    /// Specifying either of `extents` and `extents_cube` is mandatory.
     fn extents(&mut self, v: &[u32]) -> &mut ImageBuilder;
 
     /// Set the image extents to `v`. Used for cube images.
     ///
-    /// Specifying either of `extents` or `extents_cube` is mandatory.
+    /// Specifying either of `extents` and `extents_cube` is mandatory.
     fn extents_cube(&mut self, v: u32) -> &mut ImageBuilder;
 
     /// Set the number of array layers.
