@@ -120,12 +120,12 @@ pub enum ImageUsage {
     Storage = 0b00001000,
     Render = 0b00010000,
 
-    /// Enables the creation of `ImageView` with a different type (2D/3D/...).
+    /// Enables the creation of an `ImageView` with a different type (2D/3D/...).
     MutableType = 0b00100000,
-    /// Enables the creation of `ImageView` with a different image format.
+    /// Enables the creation of an `ImageView` with a different image format.
     MutableFormat = 0b01000000,
-    /// Enables the creation of `ImageView` using a partial layer range of the
-    /// original image.
+    /// Enables the creation of an `ImageView` using a partial layer range of
+    /// the original image.
     PartialView = 0b10000000,
 }
 
@@ -273,6 +273,9 @@ pub trait ImageViewBuilder: Object {
     /// The original image's format is used by default. The original image's
     /// [`usage`] must include [`MutableFormat`] to specify a different format
     /// here.
+    ///
+    /// [`usage`]: ImageBuilder::usage
+    /// [`MutableFormat`]: ImageUsage::MutableFormat
     fn format(&mut self, v: ImageFormat) -> &mut ImageViewBuilder;
 
     /// Set the image view type.
@@ -280,6 +283,9 @@ pub trait ImageViewBuilder: Object {
     /// The original image's type is used by default. The original image's
     /// [`usage`] must include [`MutableType`] to specify a different type
     /// here.
+    ///
+    /// [`usage`]: ImageBuilder::usage
+    /// [`MutableType`]: ImageUsage::MutableType
     fn image_type(&mut self, v: ImageType) -> &mut ImageViewBuilder;
 
     /// Build an `ImageView`.
