@@ -187,9 +187,17 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             .unwrap();
 
         println!("- Creating a command buffer");
-        let mut buffer = queue.new_cmd_buffer().unwrap();
+        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
+        buffer.acquire_host_buffer(
+            flags![gfx::Stage::{Compute}],
+            flags![gfx::AccessType::{ShaderRead}],
+            &[
+                (0..input_bytes, &*input_buffer),
+                (0..kernel_bytes, &*kernel_buffer),
+            ],
+        );
         {
             let e: &mut gfx::ComputeCmdEncoder = buffer.encode_compute();
             e.use_resource(
@@ -201,6 +209,11 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             e.bind_arg_table(0, &[&arg_table]);
             e.dispatch(&[global_size as u32]);
         }
+        buffer.release_host_buffer(
+            flags![gfx::Stage::{Compute}],
+            flags![gfx::AccessType::{ShaderWrite}],
+            &[(0..output_bytes, &*output_buffer)],
+        );
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);

@@ -9,7 +9,7 @@ use std::ops::Range;
 use Object;
 use common::Result;
 use {handles, heap, resources};
-use {ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
+use {AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
 
 /// Trait for building command queue objects.
 ///
@@ -114,7 +114,31 @@ pub trait CmdBuffer: Object {
         panic!("Semaphores are not supported by this backend.");
     }
 
-    // TODO: semaphores
+    /// Make host writes to buffers done visible to the device during the
+    /// execution of this and succeeding command buffers.
+    ///
+    /// The default implementation is no-op.
+    fn acquire_host_buffer(
+        &mut self,
+        dst_stage: StageFlags,
+        dst_access: AccessTypeFlags,
+        buffers: &[(Range<DeviceSize>, &handles::Buffer)],
+    ) {
+        let _ = (dst_stage, dst_access, buffers);
+    }
+
+    /// Make device writes to buffers done during the execution of this and
+    /// preceding command buffers visible to the host.
+    ///
+    /// The default implementation is no-op.
+    fn release_host_buffer(
+        &mut self,
+        src_stage: StageFlags,
+        src_access: AccessTypeFlags,
+        buffers: &[(Range<DeviceSize>, &handles::Buffer)],
+    ) {
+        let _ = (src_stage, src_access, buffers);
+    }
 }
 
 pub trait RenderCmdEncoder: Object + CmdEncoder {

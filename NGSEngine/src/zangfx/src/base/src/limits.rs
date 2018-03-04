@@ -107,6 +107,18 @@ pub type VertexFormatCapsFlags = BitFlags<VertexFormatCaps>;
 #[repr(u32)]
 pub enum MemoryTypeCaps {
     HostVisible = 0b0001,
+    /// Indicates that the coherency of the memory contents between the host and
+    /// the device is maintained automatically. Note that even with this flag
+    /// you still have to insert appropriate memory barriers by issuing
+    /// [`acquire_host_buffer`] and/or [`release_host_buffer`] commands.
+    ///
+    /// For a memory type without this flag, you must perform cache maintenance
+    /// operations manually. (Currently API does not define a way to do this.
+    /// Therefore, host-visible memory types without this flag are practially
+    /// useless.)
+    ///
+    /// [`acquire_host_buffer`]: CmdBuffer::acquire_host_buffer
+    /// [`release_host_buffer`]: CmdBuffer::release_host_buffer
     HostCoherent = 0b0010,
     HostCached = 0b0100,
     DeviceLocal = 0b1000,
