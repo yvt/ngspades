@@ -253,6 +253,10 @@ pub trait ImageViewBuilder: Object {
     /// Set the image.
     ///
     /// This property is mandatory.
+    ///
+    /// # Valid Usage
+    ///
+    ///  - The image must be in the Allocated state.
     fn image(&mut self, v: &Image) -> &mut ImageViewBuilder;
 
     /// Set the subresource range to `v`.

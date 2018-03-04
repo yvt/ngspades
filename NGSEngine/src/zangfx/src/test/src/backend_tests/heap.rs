@@ -93,6 +93,48 @@ pub fn heap_dynamic_alloc_buffer<T: TestDriver>(driver: T) {
     });
 }
 
+pub fn heap_dynamic_alloc_image<T: TestDriver>(driver: T) {
+    driver.for_each_device(&mut |device| {
+        let mut builder = device.build_image();
+        builder
+            .extents(&[256, 256])
+            .format(gfx::ImageFormat::SrgbRgba8);
+
+        println!("- Creating an image");
+        let mut image = utils::UniqueImage::new(device, builder.build().unwrap());
+
+        println!("- Querying the memory requirement for the image");
+        let req = device.get_memory_req((&*image).into()).unwrap();
+        println!("- Memory requirement = {:?}", req);
+
+        for memory_type in req.memory_types.one_digits() {
+            println!("- Trying the memory type '{}'", memory_type);
+            println!("  - Creating a heap");
+
+            let heap = device
+                .build_dynamic_heap()
+                .size(req.size)
+                .memory_type(memory_type)
+                .build()
+                .unwrap();
+
+            println!("  - Allocating a storage for the image");
+            heap.bind((&*image).into())
+                .expect("'bind' failed")
+                .expect("allocation failed");
+
+            println!("  - Creating an image view");
+            {
+                let image_view = device.build_image_view().image(&*image).build().unwrap();
+                utils::UniqueImageView::new(device, image_view);
+            }
+
+            println!("- Recreating a image");
+            image = utils::UniqueImage::new(device, builder.build().unwrap());
+        }
+    });
+}
+
 pub fn heap_dedicated_create_fail_zero_size<T: TestDriver>(driver: T) {
     if !driver.is_safe() {
         panic!("this test was skipped because the backend is unsafe");
@@ -159,6 +201,48 @@ pub fn heap_dedicated_alloc_buffer<T: TestDriver>(driver: T) {
 
             println!("- Recreating a buffer");
             buffer = utils::UniqueBuffer::new(device, builder.build().unwrap());
+        }
+    });
+}
+
+pub fn heap_dedicated_alloc_image<T: TestDriver>(driver: T) {
+    driver.for_each_device(&mut |device| {
+        let mut builder = device.build_image();
+        builder
+            .extents(&[256, 256])
+            .format(gfx::ImageFormat::SrgbRgba8);
+
+        println!("- Creating an image");
+        let mut image = utils::UniqueImage::new(device, builder.build().unwrap());
+
+        println!("- Querying the memory requirement for the image");
+        let req = device.get_memory_req((&*image).into()).unwrap();
+        println!("- Memory requirement = {:?}", req);
+
+        for memory_type in req.memory_types.one_digits() {
+            println!("- Trying the memory type '{}'", memory_type);
+            println!("  - Creating a heap");
+
+            let heap = {
+                let mut builder = device.build_dedicated_heap();
+                builder.memory_type(memory_type);
+                builder.prebind((&*image).into());
+                builder.build().unwrap()
+            };
+
+            println!("  - Allocating a storage for the image");
+            heap.bind((&*image).into())
+                .expect("'bind' failed")
+                .expect("allocation failed");
+
+            println!("  - Creating an image view");
+            {
+                let image_view = device.build_image_view().image(&*image).build().unwrap();
+                utils::UniqueImageView::new(device, image_view);
+            }
+
+            println!("- Recreating a image");
+            image = utils::UniqueImage::new(device, builder.build().unwrap());
         }
     });
 }

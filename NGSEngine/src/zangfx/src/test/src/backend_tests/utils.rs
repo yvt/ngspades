@@ -57,6 +57,59 @@ impl<D: Borrow<gfx::Device>> Drop for UniqueBuffer<D> {
     }
 }
 
+#[derive(Debug)]
+pub struct UniqueImage<D: Borrow<gfx::Device>> {
+    device: D,
+    image: gfx::Image,
+}
+
+impl<D: Borrow<gfx::Device>> UniqueImage<D> {
+    pub fn new(device: D, image: gfx::Image) -> Self {
+        Self { device, image }
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Deref for UniqueImage<D> {
+    type Target = gfx::Image;
+    fn deref(&self) -> &Self::Target {
+        &self.image
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Drop for UniqueImage<D> {
+    fn drop(&mut self) {
+        self.device.borrow().destroy_image(&self.image).unwrap();
+    }
+}
+
+#[derive(Debug)]
+pub struct UniqueImageView<D: Borrow<gfx::Device>> {
+    device: D,
+    image_view: gfx::ImageView,
+}
+
+impl<D: Borrow<gfx::Device>> UniqueImageView<D> {
+    pub fn new(device: D, image_view: gfx::ImageView) -> Self {
+        Self { device, image_view }
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Deref for UniqueImageView<D> {
+    type Target = gfx::ImageView;
+    fn deref(&self) -> &Self::Target {
+        &self.image_view
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Drop for UniqueImageView<D> {
+    fn drop(&mut self) {
+        self.device
+            .borrow()
+            .destroy_image_view(&self.image_view)
+            .unwrap();
+    }
+}
+
 pub fn choose_memory_type(
     device: &gfx::Device,
     valid_memory_types: u32,
