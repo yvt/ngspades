@@ -200,7 +200,7 @@ pub enum PrimitiveTopology {
 ///     {
 ///         let rast = builder.rasterize();
 ///
-///         rast.set_scissor(&StaticOrDynamic::Dynamic)
+///         rast.set_scissor(0, &StaticOrDynamic::Dynamic)
 ///             .set(CullMode::None)
 ///             .set(Winding::CounterClockwise); // front face
 ///
