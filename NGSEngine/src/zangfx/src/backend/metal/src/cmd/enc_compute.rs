@@ -57,7 +57,6 @@ impl command::CmdEncoder for ComputeEncoder {
         &mut self,
         fence: &handles::Fence,
         _src_stage: StageFlags,
-        _dst_stage: StageFlags,
         _barrier: &handles::Barrier,
     ) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
@@ -71,12 +70,7 @@ impl command::CmdEncoder for ComputeEncoder {
         self.fence_set.signal_fence(our_fence);
     }
 
-    fn barrier(
-        &mut self,
-        _src_stage: StageFlags,
-        _dst_stage: StageFlags,
-        _barrier: &handles::Barrier,
-    ) {
+    fn barrier(&mut self, _barrier: &handles::Barrier) {
         // No-op: Metal's compute command encoders implicitly barrier between
         // each dispatch.
     }

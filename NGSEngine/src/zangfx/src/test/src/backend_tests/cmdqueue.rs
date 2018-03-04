@@ -169,17 +169,12 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
         println!("- Encoding 1");
         {
             let e = buffer1.encode_copy();
-            e.update_fence(&fence, flags![gfx::Stage::{All}]);
+            e.update_fence(&fence, gfx::Stage::all());
         }
         println!("- Encoding 2");
         {
             let e = buffer2.encode_copy();
-            e.wait_fence(
-                &fence,
-                flags![gfx::Stage::{All}],
-                flags![gfx::Stage::{All}],
-                &barrier,
-            );
+            e.wait_fence(&fence, gfx::Stage::all(), &barrier);
         }
 
         println!("- Installing a completion handler");
@@ -224,16 +219,11 @@ pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
         // Update and wait on a fence from the same command buffer.
         {
             let e = buffer.encode_copy();
-            e.update_fence(&fence, flags![gfx::Stage::{All}]);
+            e.update_fence(&fence, gfx::Stage::all());
         }
         {
             let e = buffer.encode_copy();
-            e.wait_fence(
-                &fence,
-                flags![gfx::Stage::{All}],
-                flags![gfx::Stage::{All}],
-                &barrier,
-            );
+            e.wait_fence(&fence, gfx::Stage::all(), &barrier);
         }
 
         println!("- Installing a completion handler");

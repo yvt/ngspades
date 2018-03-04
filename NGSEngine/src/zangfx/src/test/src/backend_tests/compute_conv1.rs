@@ -191,8 +191,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
 
         println!("- Encoding the command buffer");
         buffer.acquire_host_buffer(
-            flags![gfx::Stage::{Compute}],
-            flags![gfx::AccessType::{ShaderRead}],
+            flags![gfx::AccessType::{ComputeRead}],
             &[
                 (0..input_bytes, &*input_buffer),
                 (0..kernel_bytes, &*kernel_buffer),
@@ -210,8 +209,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             e.dispatch(&[global_size as u32]);
         }
         buffer.release_host_buffer(
-            flags![gfx::Stage::{Compute}],
-            flags![gfx::AccessType::{ShaderWrite}],
+            flags![gfx::AccessType::{ComputeWrite}],
             &[(0..output_bytes, &*output_buffer)],
         );
 

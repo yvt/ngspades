@@ -26,7 +26,7 @@ use resources::{ImageLayout, ImageSubRange};
 ///     let image = device.build_barrier()
 ///         .global(
 ///             AccessType::ColorWrite.into(),
-///             AccessType::ShaderRead.into(),
+///             AccessType::FragmentRead.into(),
 ///         )
 ///         .build()
 ///         .expect("Failed to create a barrier.");

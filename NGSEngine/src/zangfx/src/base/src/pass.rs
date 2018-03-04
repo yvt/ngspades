@@ -12,7 +12,7 @@ use formats::ImageFormat;
 use resources::ImageLayout;
 use handles::{Image, RenderPass, RenderTargetTable};
 use {RenderPassTargetIndex, SubpassIndex};
-use {AccessTypeFlags, StageFlags};
+use AccessTypeFlags;
 
 /// Trait for building render passes.
 ///
@@ -45,10 +45,8 @@ use {AccessTypeFlags, StageFlags};
 ///     builder.end()
 ///         .subpass_dep(
 ///             Some(1),
-///             Stage::RenderOutput.into(),
 ///             AccessType::ColorWrite.into(),
-///             Stage::RenderOutput.into(),
-///             AccessType::ColorWrite.into(),
+///             AccessType::FragmentRead.into(),
 ///         );
 ///
 ///     let render_pass = builder.build()
@@ -84,9 +82,7 @@ pub trait RenderPassBuilder: Object {
     fn subpass_dep(
         &mut self,
         from: Option<SubpassIndex>,
-        src_stage: StageFlags,
         src_access: AccessTypeFlags,
-        dst_stage: StageFlags,
         dst_access: AccessTypeFlags,
     ) -> &mut RenderPassBuilder;
 

@@ -95,6 +95,24 @@ pub fn translate_storage_mode(
     }
 }
 
+pub fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStages {
+    let mut stages = metal::MTLRenderStages::empty();
+
+    if stage.intersects(flags![
+        base::Stage::{IndirectDraw | VertexInput | Vertex}])
+    {
+        stages |= metal::MTLRenderStageVertex;
+    }
+
+    if stage.intersects(flags![
+        base::Stage::{Fragment | EarlyFragTests | LateFragTests | RenderOutput}])
+    {
+        stages |= metal::MTLRenderStageFragment;
+    }
+
+    stages
+}
+
 /* pub fn translate_viewport(value: &base::Viewport) -> metal::MTLViewport {
     metal::MTLViewport {
         originX: value.x as f64,

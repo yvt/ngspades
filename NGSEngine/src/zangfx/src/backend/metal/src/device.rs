@@ -72,7 +72,7 @@ impl device::Device for Device {
     }
 
     fn build_barrier(&self) -> Box<base::sync::BarrierBuilder> {
-        Box::new(cmd::barrier::BarrierBuilder)
+        Box::new(cmd::barrier::BarrierBuilder::new())
     }
 
     fn build_image(&self) -> Box<base::resources::ImageBuilder> {

@@ -120,11 +120,10 @@ pub trait CmdBuffer: Object {
     /// The default implementation is no-op.
     fn acquire_host_buffer(
         &mut self,
-        dst_stage: StageFlags,
         dst_access: AccessTypeFlags,
         buffers: &[(Range<DeviceSize>, &handles::Buffer)],
     ) {
-        let _ = (dst_stage, dst_access, buffers);
+        let _ = (dst_access, buffers);
     }
 
     /// Make device writes to buffers done during the execution of this and
@@ -133,11 +132,10 @@ pub trait CmdBuffer: Object {
     /// The default implementation is no-op.
     fn release_host_buffer(
         &mut self,
-        src_stage: StageFlags,
         src_access: AccessTypeFlags,
         buffers: &[(Range<DeviceSize>, &handles::Buffer)],
     ) {
-        let _ = (src_stage, src_access, buffers);
+        let _ = (src_access, buffers);
     }
 }
 
@@ -273,13 +271,14 @@ pub trait CmdEncoder: Object {
     ///
     ///  - `src_stage` must match the `src_state` of the corresponding call to
     ///    `update_fence`.
+    ///  - The supported stages of the first access type of each barrier
+    ///    defined by `berrier` must be a subset of `src_stage`.
     ///  - You must not wait on a fence that was previously updated in the same
     ///    `CmdEncoder`.
     fn wait_fence(
         &mut self,
         fence: &handles::Fence,
         src_stage: StageFlags,
-        dst_stage: StageFlags,
         barrier: &handles::Barrier,
     );
 
@@ -291,7 +290,7 @@ pub trait CmdEncoder: Object {
 
     /// Insert a barrier and establish an execution dependency within the
     /// current encoder or subpass.
-    fn barrier(&mut self, src_stage: StageFlags, dst_stage: StageFlags, barrier: &handles::Barrier);
+    fn barrier(&mut self, barrier: &handles::Barrier);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
