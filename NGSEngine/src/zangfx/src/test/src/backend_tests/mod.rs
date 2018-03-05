@@ -25,6 +25,17 @@ pub trait TestDriver {
             }
         })
     }
+
+    fn for_each_render_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+        self.for_each_device(&mut |device| {
+            for (i, qf) in device.caps().queue_families().iter().enumerate() {
+                if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Render) {
+                    println!("[Queue Family #{}]", i);
+                    runner(device, i as _);
+                }
+            }
+        })
+    }
 }
 
 /// Generates test cases given a test driver.
@@ -61,6 +72,8 @@ macro_rules! zangfx_generate_backend_tests {
 
         zangfx_test_single! { compute_null, $driver }
         zangfx_test_single! { compute_conv1, $driver }
+
+        zangfx_test_single! { render_null, $driver }
     }
 }
 
@@ -96,3 +109,6 @@ pub use self::compute_null::*;
 
 mod compute_conv1;
 pub use self::compute_conv1::*;
+
+mod render_null;
+pub use self::render_null::*;

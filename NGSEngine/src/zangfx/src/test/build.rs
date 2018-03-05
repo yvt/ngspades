@@ -14,4 +14,12 @@ fn main() {
         .file("src/backend_tests/compute_conv1.comp")
         .flag("-V")
         .compile("compute_conv1.comp.spv");
+    prebuild_glslang::Config::new()
+        .file("src/backend_tests/render_null.vert")
+        .flag("-V")
+        .compile("render_null.vert.spv");
+    prebuild_glslang::Config::new()
+        .file("src/backend_tests/render_null.frag")
+        .flag("-V")
+        .compile("render_null.frag.spv");
 }
