@@ -211,6 +211,25 @@ pub trait Device: Object {
 
 /// Utilies for [`Device`](Device).
 pub trait DeviceExt: Device {
+    /// Create a `Library` associated with this device using a supplied SPIRV
+    /// code.
+    ///
+    /// This is a shorthand method for [`build_library`].
+    ///
+    /// [`build_library`]: Device::build_library
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::device::Device;
+    ///     use zangfx_base::prelude::*;
+    ///     # fn test(device: &Device) {
+    ///     let library = device.new_library().unwrap();
+    ///     # }
+    ///
+    fn new_library(&self, spirv_code: &[u32]) -> Result<handles::Library> {
+        self.build_library().spirv_code(spirv_code).build()
+    }
+
     /// Create a `Semaphore` associated with this device.
     ///
     /// This is a shorthand method for [`build_semaphore`].

@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
+use gfx::prelude::*;
 
 static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
@@ -14,11 +15,7 @@ pub fn compute_null<T: TestDriver>(driver: T) {
         let queue = device.build_cmd_queue().queue_family(qf).build().unwrap();
 
         println!("- Creating a library");
-        let library = device
-            .build_library()
-            .spirv_code(SPIRV_NULL.as_u32_slice())
-            .build()
-            .unwrap();
+        let library = device.new_library(SPIRV_NULL.as_u32_slice()).unwrap();
 
         println!("- Creating a root signature");
         let root_sig = device.build_root_sig().build().unwrap();

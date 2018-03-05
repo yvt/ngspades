@@ -6,6 +6,7 @@
 use std::mem::size_of_val;
 use std::slice::from_raw_parts_mut;
 use gfx;
+use gfx::prelude::*;
 use super::{utils, TestDriver};
 
 static SPIRV_CONV: ::include_data::DataView =
@@ -118,11 +119,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         let queue = device.build_cmd_queue().queue_family(qf).build().unwrap();
 
         println!("- Creating a library");
-        let library = device
-            .build_library()
-            .spirv_code(SPIRV_CONV.as_u32_slice())
-            .build()
-            .unwrap();
+        let library = device.new_library(SPIRV_CONV.as_u32_slice()).unwrap();
 
         println!("- Creating an argument table signature");
         let arg_table_sig = {
