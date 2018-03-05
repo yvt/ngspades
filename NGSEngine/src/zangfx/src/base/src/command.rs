@@ -129,6 +129,36 @@ pub trait CmdBuffer: Object {
     ) {
         let _ = (src_access, buffers);
     }
+
+    /// Acquire resources from another queue with a different queue family.
+    ///
+    /// This operation is a part of a queue family ownership transfer operation.
+    /// See Vulkan 1.0 "6.7.4. Queue Family Ownership Transfer" for details.
+    ///
+    /// All global memory barriers in `barrier` are ignored. All image/memory
+    /// barriers are converted to queue family ownership transfer operations.
+    ///
+    /// The default implementation panics. Implementations that support more
+    /// than one queue families must override this method.
+    fn queue_acquire_barrier(&mut self, src_queue_family: QueueFamily, barrier: &handles::Barrier) {
+        let _ = (src_queue_family, barrier);
+        panic!("Queue families are not supported by this backend.");
+    }
+
+    /// Release resources from another queue with a different queue family.
+    ///
+    /// This operation is a part of a queue family ownership transfer operation.
+    /// See Vulkan 1.0 "6.7.4. Queue Family Ownership Transfer" for details.
+    ///
+    /// All global memory barriers in `barrier` are ignored. All image/memory
+    /// barriers are converted to queue family ownership transfer operations.
+    ///
+    /// The default implementation panics. Implementations that support more
+    /// than one queue families must override this method.
+    fn queue_release_barrier(&mut self, dst_queue_family: QueueFamily, barrier: &handles::Barrier) {
+        let _ = (dst_queue_family, barrier);
+        panic!("Queue families are not supported by this backend.");
+    }
 }
 
 pub trait RenderCmdEncoder: Object + CmdEncoder {
