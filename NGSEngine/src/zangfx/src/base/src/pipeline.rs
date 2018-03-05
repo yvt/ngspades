@@ -218,7 +218,7 @@ pub trait RenderPassRasterizer: Object {
     /// Set the number of viewports.
     ///
     /// Must be less than or equal to `DeviceLimits::max_num_viewports`. Must be
-    /// not zero.
+    /// not zero. Defaults to `1`.
     fn set_num_viewports(&mut self, v: usize) -> &mut RenderPassRasterizer;
 
     /// Set the scissor rect.
