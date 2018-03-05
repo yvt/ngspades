@@ -70,6 +70,9 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { heap_dedicated_alloc_buffer, $driver }
         zangfx_test_single! { heap_dedicated_alloc_image, $driver }
 
+        zangfx_test_single! { image_all_formats, $driver }
+        zangfx_test_single! { image_all_types, $driver }
+
         zangfx_test_single! { compute_null, $driver }
         zangfx_test_single! { compute_conv1, $driver }
 
@@ -103,6 +106,9 @@ pub use self::cmdqueue::*;
 
 mod heap;
 pub use self::heap::*;
+
+mod image;
+pub use self::image::*;
 
 mod compute_null;
 pub use self::compute_null::*;
