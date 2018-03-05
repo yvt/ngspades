@@ -12,7 +12,6 @@
 //!  - `Drop`. Note that dropping a handle does not necessarily destroy the
 //!    underlying object. See also the section "Allocation Strategy".
 //!  - `Clone`. Only the reference — not the object itself is cloned.
-//!  - `PartialEq`, `Eq` — TODO
 //!
 //! [`Image`]: struct.Image.html
 //!
