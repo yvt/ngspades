@@ -216,6 +216,15 @@ pub trait DeviceExt: Device {
     /// This is a shorthand method for [`build_semaphore`].
     ///
     /// [`build_semaphore`]: Device::build_semaphore
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::device::Device;
+    ///     use zangfx_base::prelude::*;
+    ///     # fn test(device: &Device) {
+    ///     let semaphore = device.new_semaphore().unwrap();
+    ///     # }
+    ///
     fn new_semaphore(&self) -> Result<handles::Semaphore> {
         self.build_semaphore().build()
     }
