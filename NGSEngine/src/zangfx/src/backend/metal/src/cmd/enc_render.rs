@@ -3,8 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
+use std::ops::Range;
 use metal::MTLRenderCommandEncoder;
-use base::{command, handles, heap, StageFlags};
+use base::{self, command, handles, heap, StageFlags};
+use common::Rect2D;
 
 use utils::{translate_render_stage, OCPtr};
 use cmd::enc::{CmdBufferFenceSet, UseResources};
@@ -77,4 +79,70 @@ impl command::CmdEncoder for RenderEncoder {
     }
 }
 
-impl command::RenderCmdEncoder for RenderEncoder {}
+impl command::RenderCmdEncoder for RenderEncoder {
+    fn bind_pipeline(&mut self, _pipeline: &handles::RenderPipeline) {
+        unimplemented!()
+    }
+
+    fn set_blend_constant(&mut self, _value: &[f32]) {
+        unimplemented!()
+    }
+
+    fn set_depth_bias(&mut self, _value: Option<base::DepthBias>) {
+        unimplemented!()
+    }
+
+    fn set_depth_bounds(&mut self, _value: Option<Range<f32>>) {
+        unimplemented!()
+    }
+
+    fn set_stencil_state(&mut self, _value: &[base::StencilMasks]) {
+        unimplemented!()
+    }
+
+    fn set_stencil_refs(&mut self, _values: &[u32]) {
+        unimplemented!()
+    }
+
+    fn set_viewports(&mut self, _start_viewport: base::ViewportIndex, _value: &[base::Viewport]) {
+        unimplemented!()
+    }
+
+    fn set_scissors(&mut self, _start_viewport: base::ViewportIndex, _value: &[Rect2D<u32>]) {
+        unimplemented!()
+    }
+
+    fn bind_arg_table(&mut self, _index: base::ArgTableIndex, _tables: &[&handles::ArgTable]) {
+        unimplemented!()
+    }
+
+    fn bind_vertex_buffers(
+        &mut self,
+        _index: base::VertexBufferIndex,
+        _buffers: &[(&handles::Buffer, base::DeviceSize)],
+    ) {
+        unimplemented!()
+    }
+
+    fn bind_index_buffer(
+        &mut self,
+        _buffers: &handles::Buffer,
+        _offset: base::DeviceSize,
+        _format: base::IndexFormat,
+    ) {
+        unimplemented!()
+    }
+
+    fn draw(&mut self, _vertex_range: Range<u32>, _instance_range: Range<u32>) {
+        unimplemented!()
+    }
+
+    fn draw_indexed(
+        &mut self,
+        _index_buffer_range: Range<u32>,
+        _vertex_offset: u32,
+        _instance_range: Range<u32>,
+    ) {
+        unimplemented!()
+    }
+}

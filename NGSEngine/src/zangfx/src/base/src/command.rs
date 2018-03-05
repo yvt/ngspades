@@ -7,9 +7,11 @@
 use std::ops::Range;
 
 use Object;
-use common::Result;
-use {handles, heap, resources};
-use {AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags};
+use common::{Rect2D, Result};
+use {handles, heap, pipeline, resources};
+use {AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
+     Viewport, ViewportIndex};
+use formats::IndexFormat;
 
 /// Trait for building command queue objects.
 ///
@@ -162,8 +164,116 @@ pub trait CmdBuffer: Object {
 }
 
 pub trait RenderCmdEncoder: Object + CmdEncoder {
-    // TODO: render commands
-    // TODO: passes
+    /// Set the current `RenderPipeline` object.
+    ///
+    /// All non-dynamic state values of the new `RenderPipeline` will override
+    /// the current ones. Other states are left intact.
+    fn bind_pipeline(&mut self, pipeline: &handles::RenderPipeline);
+
+    /// Set the blend constant values.
+    ///
+    /// # Valid Usage
+    ///
+    /// `value` must have exactly four elements.
+    fn set_blend_constant(&mut self, value: &[f32]);
+
+    /// Specify the dynamic depth bias values.
+    ///
+    /// # Valid Usage
+    ///
+    /// The current `RenderPipeline` must have been created with rasterization
+    /// enabled and `RenderPassRasterizer::set_depth_bias` called with
+    /// `Some(Dynamic(_))`.
+    fn set_depth_bias(&mut self, value: Option<pipeline::DepthBias>);
+
+    /// Specify the dynamic depth bound values.
+    ///
+    /// # Valid Usage
+    ///
+    /// The current `RenderPipeline` must have been created with rasterization
+    /// enabled and `RenderPassRasterizer::set_depth_bounds` called with
+    /// `Some(Dynamic(_))`.
+    ///
+    fn set_depth_bounds(&mut self, value: Option<Range<f32>>);
+
+    /// Set the dynamic stencil masks.
+    ///
+    /// # Valid Usage
+    ///
+    /// The current `RenderPipeline` must have been created with rasterization
+    /// enabled and `RenderPassRasterizer::set_stencil_masks` called with
+    /// `Dynamic(_)`.
+    ///
+    /// `value` must have exactly two elements.
+    fn set_stencil_state(&mut self, value: &[pipeline::StencilMasks]);
+
+    /// Set the current stencil reference values for the front-facing primitives
+    /// and back-facing ones, respectively.
+    ///
+    /// `value` must have exactly two elements.
+    fn set_stencil_refs(&mut self, values: &[u32]);
+
+    /// Specify the dynamic viewport values.
+    fn set_viewports(&mut self, start_viewport: ViewportIndex, value: &[Viewport]);
+
+    /// Specify the dynamic scissor rects.
+    ///
+    /// # Valid Usage
+    ///
+    /// The current `RenderPipeline` must have been created with rasterization
+    /// enabled and `RenderPassRasterizer::set_scissors` called with
+    /// `Dynamic(_)` for the corresponding viewports.
+    fn set_scissors(&mut self, start_viewport: ViewportIndex, value: &[Rect2D<u32>]);
+
+    /// Bind zero or more `ArgTable`s.
+    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&handles::ArgTable]);
+
+    /// Bind zero or more vertex buffers.
+    fn bind_vertex_buffers(
+        &mut self,
+        index: VertexBufferIndex,
+        buffers: &[(&handles::Buffer, DeviceSize)],
+    );
+
+    /// Bind an index buffer.
+    fn bind_index_buffer(
+        &mut self,
+        buffers: &handles::Buffer,
+        offset: DeviceSize,
+        format: IndexFormat,
+    );
+
+    /// Render primitives.
+    ///
+    /// `vertex_range` specifies the consecutive range of vertex indices to draw.
+    ///
+    /// The primitives are drawn for `instance_range.len()` times.
+    /// Specify `0..1` to perform a normal (not instanced) rendering.
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>);
+
+    /// Render primitives using a currently bound index buffer.
+    ///
+    /// Vertex indices are retrieved from the consecutive range of index buffer
+    /// specified by `index_buffer_range`.
+    /// Before indexing into the vertex buffers, the value of `vertex_offset` is
+    /// added to the vertex index.
+    ///
+    /// The primitives are drawn for `instance_range.len()` times. Specify `0..1`
+    /// for `instance_range` to perform a normal (not instanced) rendering.
+    ///
+    /// The largest index value (`0xffff` for `U16` or `0xffffffff` for `U32`)
+    /// is used for primitive restart functionality.
+    /// This functionality is unavailable to "list" primitive topologies.
+    /// For such topologies, the largest index value simply should not be used
+    /// (due to compatibility issues).
+    fn draw_indexed(
+        &mut self,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
+    );
+
+    // TODO: indirect draw
 }
 
 pub trait ComputeCmdEncoder: Object + CmdEncoder {

@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
+use gfx;
 use gfx::prelude::*;
 
 static SPIRV_VERT: ::include_data::DataView =
@@ -57,7 +58,21 @@ pub fn render_null<T: TestDriver>(driver: T) {
         println!("- Encoding the command buffer");
         {
             let e = buffer.encode_render(&rtt);
-            unimplemented!();
+            e.bind_pipeline(&pipeline);
+            e.set_viewports(
+                0,
+                &[
+                    gfx::Viewport {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 256.0,
+                        height: 256.0,
+                        min_depth: 0.0,
+                        max_depth: 1.0,
+                    },
+                ],
+            );
+            e.draw(0..4, 0..1);
         }
 
         println!("- Installing a completion handler");

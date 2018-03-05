@@ -8,7 +8,7 @@ use std::ops::Range;
 use Object;
 
 use common::{Rect2D, Result};
-use handles::{ComputePipeline, Library, RenderPass, RootSig};
+use handles::{ComputePipeline, Library, RenderPass, RenderPipeline, RootSig};
 use formats::VertexFormat;
 use {CmpFn, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex, VertexAttrIndex,
      VertexBufferIndex, ViewportIndex};
@@ -151,13 +151,13 @@ pub trait RenderPipelineBuilder: Object {
     /// Enable rasterizer.
     fn rasterize(&mut self) -> &mut RenderPassRasterizer;
 
-    /// Build an `ComputePipeline`.
+    /// Build an `RenderPipeline`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<ComputePipeline>;
+    fn build(&mut self) -> Result<RenderPipeline>;
 }
 
 /// Trait for defining a vertex buffer binding.
@@ -200,7 +200,7 @@ pub enum PrimitiveTopology {
 ///     {
 ///         let rast = builder.rasterize();
 ///
-///         rast.set_scissor(0, &StaticOrDynamic::Dynamic)
+///         rast.set_scissors(0, &[StaticOrDynamic::Dynamic])
 ///             .set(CullMode::None)
 ///             .set(Winding::CounterClockwise); // front face
 ///
@@ -224,10 +224,10 @@ pub trait RenderPassRasterizer: Object {
     /// Set the scissor rect.
     ///
     /// Defaults to `Static(Rect2D([0; 2], [<u32>::max_value(); 2]))`.
-    fn set_scissor(
+    fn set_scissors(
         &mut self,
-        viewport: ViewportIndex,
-        v: &StaticOrDynamic<Rect2D<u32>>,
+        start_viewport: ViewportIndex,
+        v: &[StaticOrDynamic<Rect2D<u32>>],
     ) -> &mut RenderPassRasterizer;
 
     /// Set the cull mode. Defaults to `Back`.
