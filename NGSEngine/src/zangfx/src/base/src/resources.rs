@@ -15,6 +15,27 @@ use DeviceSize;
 
 /// Trait for building images.
 ///
+/// The image type is inferred from the property values. The following
+/// combinations are permitted:
+///
+/// |  [Extents]  | [# of layers] | [Image type] |
+/// | ----------- | ------------- | ------------ |
+/// | `[x]`       | `None`        | 1D           |
+/// | `[x]`       | `Some(i)`     | 1D array     |
+/// | `[x, y]`    | `None`        | 2D           |
+/// | `[x, y]`    | `Some(i)`     | 2D array     |
+/// | `[x, y, z]` | `None`        | 3D           |
+/// | [Cube]      | `None`        | Cube         |
+/// | Cube        | `Some(i)`     | Cube array¹  |
+///
+/// ¹ Requires [`supports_cube_array`].
+///
+/// [Extents]: ImageBuilder::extents
+/// [Cube]: ImageBuilder::extents_cube
+/// [# of layers]: ImageBuilder::num_layers
+/// [Image type]: ImageType
+/// [`supports_cube_array`]: DeviceLimits::supports_cube_array
+///
 /// # Valid Usage
 ///
 ///  - No instance of `ImageBuilder` may outlive the originating `Device`.
@@ -39,11 +60,13 @@ pub trait ImageBuilder: Object {
     /// 1, 2, and 3.
     ///
     /// Specifying either of `extents` and `extents_cube` is mandatory.
+    /// Specifying one overwrites the specification of another.
     fn extents(&mut self, v: &[u32]) -> &mut ImageBuilder;
 
     /// Set the image extents to `v`. Used for cube images.
     ///
     /// Specifying either of `extents` and `extents_cube` is mandatory.
+    /// Specifying one overwrites the specification of another.
     fn extents_cube(&mut self, v: u32) -> &mut ImageBuilder;
 
     /// Set the number of array layers.
@@ -56,8 +79,8 @@ pub trait ImageBuilder: Object {
 
     /// Set the number of mipmap levels.
     ///
-    /// Must be less than or equal to `log2(extents_value.iter().max())`.
-    /// Defaults to `1`.
+    /// Must be less than or equal to
+    /// `log2(extents_value.iter().max().unwrap()).ceil() + 1`. Defaults to `1`.
     fn num_mip_levels(&mut self, v: u32) -> &mut ImageBuilder;
 
     /// Set the image format.
