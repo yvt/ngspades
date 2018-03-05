@@ -187,13 +187,6 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
-        buffer.acquire_host_buffer(
-            flags![gfx::AccessType::{ComputeRead}],
-            &[
-                (0..input_bytes, &*input_buffer),
-                (0..kernel_bytes, &*kernel_buffer),
-            ],
-        );
         {
             let e: &mut gfx::ComputeCmdEncoder = buffer.encode_compute();
             e.use_resource(
@@ -205,7 +198,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             e.bind_arg_table(0, &[&arg_table]);
             e.dispatch(&[global_size as u32]);
         }
-        buffer.release_host_buffer(
+        buffer.host_barrier(
             flags![gfx::AccessType::{ComputeWrite}],
             &[(0..output_bytes, &*output_buffer)],
         );

@@ -114,23 +114,15 @@ pub trait CmdBuffer: Object {
         panic!("Semaphores are not supported by this backend.");
     }
 
-    /// Make host writes to buffers done visible to the device during the
-    /// execution of this and succeeding command buffers.
-    ///
-    /// The default implementation is no-op.
-    fn acquire_host_buffer(
-        &mut self,
-        dst_access: AccessTypeFlags,
-        buffers: &[(Range<DeviceSize>, &handles::Buffer)],
-    ) {
-        let _ = (dst_access, buffers);
-    }
-
     /// Make device writes to buffers done during the execution of this and
     /// preceding command buffers visible to the host.
     ///
+    /// The opposite, acquiring operation is not required. (See Vulkan 1.0
+    /// "6.9. Host Write Ordering Guarantees". On Metal, both operations are
+    /// implicit)
+    ///
     /// The default implementation is no-op.
-    fn release_host_buffer(
+    fn host_barrier(
         &mut self,
         src_access: AccessTypeFlags,
         buffers: &[(Range<DeviceSize>, &handles::Buffer)],
