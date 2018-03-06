@@ -307,6 +307,16 @@ pub trait ImageViewBuilder: Object {
     /// [`usage`] must include [`MutableType`] to specify a different type
     /// here.
     ///
+    /// If `usage` includes `MutableType`, only the following combinations of
+    /// the original image's `ImageType` and the image view's one are supported:
+    ///
+    /// | Original image type |          View image type          |
+    /// | ------------------- | --------------------------------- |
+    /// | 1D                  | 1D                                |
+    /// | 2D or 2D array      | 2D or 2D array                    |
+    /// | Cube or cube array  | 2D, 2D array, cube, or cube array |
+    /// | 3D                  | 3D                                |
+    ///
     /// [`usage`]: ImageBuilder::usage
     /// [`MutableType`]: ImageUsage::MutableType
     fn image_type(&mut self, v: ImageType) -> &mut ImageViewBuilder;
