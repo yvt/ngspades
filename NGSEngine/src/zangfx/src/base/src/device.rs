@@ -223,7 +223,10 @@ pub trait DeviceExt: Device {
     ///     # use zangfx_base::device::Device;
     ///     use zangfx_base::prelude::*;
     ///     # fn test(device: &Device) {
-    ///     let library = device.new_library().unwrap();
+    ///     device
+    ///         .new_library(&[])
+    ///         .expect_err("Succeeded to create a shader library with an \
+    ///                      invalid SPIR-V code.");
     ///     # }
     ///
     fn new_library(&self, spirv_code: &[u32]) -> Result<handles::Library> {
