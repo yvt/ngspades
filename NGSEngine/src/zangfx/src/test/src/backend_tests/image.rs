@@ -89,16 +89,6 @@ pub fn image_all_types<T: TestDriver>(driver: T) {
         println!("- (1D, {:?})", format);
         try_all_memory_types(device, device.build_image().extents(&[32]).format(format));
 
-        println!("- (1D + mip, {:?})", format);
-        try_all_memory_types(
-            device,
-            device
-                .build_image()
-                .extents(&[32])
-                .num_mip_levels(6)
-                .format(format),
-        );
-
         println!("- (2D, {:?})", format);
         try_all_memory_types(
             device,

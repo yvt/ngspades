@@ -81,6 +81,8 @@ pub trait ImageBuilder: Object {
     ///
     /// Must be less than or equal to
     /// `log2(extents_value.iter().max().unwrap()).ceil() + 1`. Defaults to `1`.
+    ///
+    /// Must be `1` for 1D textures.
     fn num_mip_levels(&mut self, v: u32) -> &mut ImageBuilder;
 
     /// Set the image format.
