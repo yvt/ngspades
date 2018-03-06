@@ -236,6 +236,7 @@ impl ArgTableSig {
         use base::handles::ArgSlice::*;
         use arg::table::ArgTable;
         use buffer::Buffer;
+        use image::ImageView;
         use sampler::Sampler;
 
         self.lock_encoder(|encoder| {
@@ -253,7 +254,19 @@ impl ArgTableSig {
                     // into chunks and process each chunk on a fixed size
                     // stack-allocated array (`SmallVec`).
                     match resources {
-                        ImageView(_) => unimplemented!(),
+                        ImageView(objs) => for objs in objs.chunks(64) {
+                            let metal_objs: SmallVec<[_; 64]> = objs.iter()
+                                .map(|obj| {
+                                    let my_obj: &ImageView =
+                                        obj.downcast_ref().expect("bad image view type");
+                                    my_obj.metal_texture()
+                                })
+                                .collect();
+
+                            encoder.set_textures(metal_objs.as_slice(), index as _);
+
+                            index += objs.len();
+                        },
 
                         Buffer(objs) => for objs in objs.chunks(64) {
                             let metal_objs: SmallVec<[_; 64]> = objs.iter()

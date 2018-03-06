@@ -88,7 +88,7 @@ impl device::Device for Device {
     }
 
     fn build_image_view(&self) -> Box<base::resources::ImageViewBuilder> {
-        unimplemented!()
+        Box::new(image::ImageViewBuilder::new())
     }
 
     fn build_library(&self) -> Box<base::shader::LibraryBuilder> {
@@ -152,8 +152,12 @@ impl device::Device for Device {
         Ok(())
     }
 
-    fn destroy_image_view(&self, _obj: &handles::ImageView) -> Result<()> {
-        unimplemented!()
+    fn destroy_image_view(&self, obj: &handles::ImageView) -> Result<()> {
+        let our_image_view: &image::ImageView = obj.downcast_ref().expect("bad image view type");
+        unsafe {
+            our_image_view.destroy();
+        }
+        Ok(())
     }
 
     fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {

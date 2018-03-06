@@ -4,12 +4,20 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Image` for Metal.
+use std::ops;
 use base;
 use common::{Error, ErrorKind, Result};
 use metal;
+use cocoa::foundation::NSRange;
 
-use utils::OCPtr;
+use utils::{nil_error, OCPtr};
 use formats::translate_image_format;
+
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct ImageSubRange {
+    pub mip_levels: ops::Range<u32>,
+    pub layers: ops::Range<u32>,
+}
 
 /// Implementation of `ImageBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -239,7 +247,157 @@ impl Image {
         }
     }
 
+    pub(super) fn resolve_subrange(&self, range: &base::ImageSubRange) -> ImageSubRange {
+        let metal_texture = self.metal_texture();
+        debug_assert!(!metal_texture.is_null());
+        ImageSubRange {
+            mip_levels: range
+                .mip_levels
+                .clone()
+                .unwrap_or_else(|| 0..metal_texture.mipmap_level_count() as u32),
+            layers: range
+                .layers
+                .clone()
+                .unwrap_or_else(|| 0..metal_texture.array_length() as u32),
+        }
+    }
+
     pub(super) unsafe fn destroy(&self) {
         Box::from_raw(self.data);
+    }
+}
+
+/// Implementation of `ImageViewBuilder` for Metal.
+#[derive(Debug, Clone)]
+pub struct ImageViewBuilder {
+    image: Option<Image>,
+    subrange: base::ImageSubRange,
+    format: Option<base::ImageFormat>,
+    image_type: Option<base::ImageType>,
+}
+
+zangfx_impl_object! { ImageViewBuilder: base::ImageViewBuilder, ::Debug }
+
+impl ImageViewBuilder {
+    /// Construct a `ImageBuilder`.
+    pub fn new() -> Self {
+        Self {
+            image: None,
+            subrange: Default::default(),
+            format: None,
+            image_type: None,
+        }
+    }
+}
+
+impl base::ImageViewBuilder for ImageViewBuilder {
+    fn image(&mut self, v: &base::Image) -> &mut base::ImageViewBuilder {
+        let my_image: &Image = v.downcast_ref().expect("bad image type");
+        self.image = Some(my_image.clone());
+        self
+    }
+
+    fn subrange(&mut self, v: &base::ImageSubRange) -> &mut base::ImageViewBuilder {
+        self.subrange = v.clone();
+        self
+    }
+
+    fn format(&mut self, v: base::ImageFormat) -> &mut base::ImageViewBuilder {
+        self.format = Some(v);
+        self
+    }
+
+    fn image_type(&mut self, v: base::ImageType) -> &mut base::ImageViewBuilder {
+        self.image_type = Some(v);
+        self
+    }
+
+    fn build(&mut self) -> Result<base::ImageView> {
+        let image = self.image
+            .as_ref()
+            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "image"))?;
+        let metal_texture = image.metal_texture();
+        assert!(!metal_texture.is_null());
+
+        let subrange = image.resolve_subrange(&self.subrange);
+        let full_subrange = image.resolve_subrange(&Default::default());
+        let metal_format = self.format
+            .map(|x| translate_image_format(x).expect("Unsupported image format"))
+            .unwrap_or_else(|| metal_texture.pixel_format());
+
+        use metal::MTLTextureType::*;
+        let metal_ty = self.image_type
+            .map(|ty| match ty {
+                base::ImageType::OneD => D1,
+                base::ImageType::TwoD => D2,
+                base::ImageType::TwoDArray => D2Array,
+                base::ImageType::ThreeD => D3,
+                base::ImageType::Cube => Cube,
+                base::ImageType::CubeArray => CubeArray,
+            })
+            .unwrap_or_else(|| metal_texture.texture_type());
+
+        if subrange == full_subrange && metal_format == metal_texture.pixel_format()
+            && metal_ty == metal_texture.texture_type()
+        {
+            return Ok(base::ImageView::new(ImageView::new(metal_texture, false)));
+        }
+
+        let view = metal_texture.new_texture_view_from_slice(
+            metal_format,
+            metal_ty,
+            NSRange::new(
+                subrange.mip_levels.start as u64,
+                (subrange.mip_levels.end - subrange.mip_levels.start) as u64,
+            ),
+            NSRange::new(
+                subrange.layers.start as u64,
+                (subrange.layers.end - subrange.layers.start) as u64,
+            ),
+        );
+
+        if view.is_null() {
+            return Err(nil_error(
+                "MTLTexture newTextureViewWithPixelFormat:textureType:levels:slices:",
+            ));
+        }
+
+        Ok(base::ImageView::new(ImageView::new(metal_texture, true)))
+    }
+}
+
+/// Implementation of `ImageView` for Metal.
+#[derive(Debug, Clone)]
+pub struct ImageView {
+    metal_texture: metal::MTLTexture,
+
+    /// Indicates whether we should release `metal_texture` along with
+    /// `ImageView`.
+    owned: bool,
+}
+
+zangfx_impl_handle! { ImageView, base::ImageView }
+
+unsafe impl Send for ImageView {}
+unsafe impl Sync for ImageView {}
+
+impl ImageView {
+    fn new(metal_texture: metal::MTLTexture, owned: bool) -> Self {
+        Self {
+            metal_texture,
+            owned,
+        }
+    }
+
+    /// Return the underlying `MTLTexture`.
+    pub fn metal_texture(&self) -> metal::MTLTexture {
+        self.metal_texture
+    }
+
+    pub(super) unsafe fn destroy(&self) {
+        use metal::NSObjectProtocol;
+        if self.owned {
+            self.metal_texture.release();
+        }
     }
 }
