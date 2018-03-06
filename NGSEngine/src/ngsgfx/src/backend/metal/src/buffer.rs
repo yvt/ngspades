@@ -39,7 +39,6 @@ impl Buffer {
             core::StorageMode::Private => metal::MTLResourceStorageModePrivate,
             core::StorageMode::Shared => metal::MTLResourceStorageModeShared,
             core::StorageMode::Memoryless => {
-                // should have been filtered out by core::Validate
                 unreachable!()
             }
         };
