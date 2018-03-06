@@ -9,7 +9,7 @@ use base::{self, command, handles, heap, StageFlags};
 use common::Rect2D;
 
 use utils::{translate_render_stage, OCPtr};
-use cmd::enc::{CmdBufferFenceSet, UseResources, DebugCommands};
+use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
 use cmd::fence::Fence;
 use cmd::barrier::Barrier;
 

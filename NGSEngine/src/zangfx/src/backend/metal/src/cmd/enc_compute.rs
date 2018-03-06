@@ -7,7 +7,7 @@ use metal::{MTLComputeCommandEncoder, MTLSize};
 use base::{command, handles, heap, ArgTableIndex, StageFlags};
 
 use utils::OCPtr;
-use cmd::enc::{CmdBufferFenceSet, UseResources, DebugCommands};
+use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
 use cmd::fence::Fence;
 use arg::table::ArgTable;
 use pipeline::ComputePipeline;

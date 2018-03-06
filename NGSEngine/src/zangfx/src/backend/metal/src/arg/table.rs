@@ -159,8 +159,8 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
 
         // Allocate a buffer for the newly created argument pool
         let metal_buffer = {
-            let options = metal::MTLResourceStorageModeShared
-                | metal::MTLResourceHazardTrackingModeUntracked;
+            let options =
+                metal::MTLResourceStorageModeShared | metal::MTLResourceHazardTrackingModeUntracked;
             unsafe { OCPtr::from_raw(self.metal_device.new_buffer(self.size as _, options)) }
                 .ok_or_else(|| nil_error("MTLDevice newBufferWithLength:options:"))?
         };

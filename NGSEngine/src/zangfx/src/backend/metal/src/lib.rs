@@ -50,12 +50,12 @@ extern crate iterpool;
 #[macro_use(flags)]
 extern crate ngsenumflags;
 extern crate parking_lot;
+extern crate refeq;
 extern crate rspirv;
 extern crate smallvec;
 extern crate spirv_headers;
 extern crate tokenlock;
 extern crate xalloc;
-extern crate refeq;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
