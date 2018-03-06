@@ -13,6 +13,7 @@ use common::{Error, ErrorKind, Result};
 
 use utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 use buffer::Buffer;
+use image::Image;
 
 /// Implementation of `DynamicHeapBuilder` and `DedicatedHeapBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -173,7 +174,20 @@ impl heap::Heap for Heap {
                 }))
             }
 
-            handles::ResourceRef::Image(_image) => unimplemented!(),
+            handles::ResourceRef::Image(image) => {
+                let metal_texture_or_none = bind_image(image, self.storage_mode, |desc| {
+                    self.metal_heap.new_texture(desc)
+                })?;
+
+                Ok(metal_texture_or_none.map(|metal_texture| {
+                    // If the allocation was successful, then return
+                    // a `HeapAlloc` for the allocated image
+                    let resource = *metal_texture;
+                    let heap_alloc = HeapAlloc { resource };
+
+                    handles::HeapAlloc::new(heap_alloc)
+                }))
+            }
         }
     }
 
@@ -278,7 +292,12 @@ impl heap::Heap for EmulatedHeap {
                 }))
             }
 
-            handles::ResourceRef::Image(_image) => unimplemented!(),
+            handles::ResourceRef::Image(_image) => {
+                return Err(Error::with_detail(
+                    ErrorKind::InvalidUsage,
+                    "images cannot be bound to host-visible memory",
+                ));
+            }
         }
     }
 
@@ -327,6 +346,33 @@ where
 
         // Return `metal_buffer_ptr` for `HeapAlloc` creation
         Ok(Some(metal_buffer_ptr))
+    } else {
+        Ok(None)
+    }
+}
+
+fn bind_image<T>(
+    image: &handles::Image,
+    storage_mode: metal::MTLStorageMode,
+    allocator: T,
+) -> Result<Option<metal::MTLTexture>>
+where
+    T: FnOnce(metal::MTLTextureDescriptor) -> metal::MTLTexture,
+{
+    let my_image: &Image = image.downcast_ref().expect("bad image type");
+
+    assert_eq!(storage_mode, metal::MTLStorageMode::Private);
+
+    let metal_texture = OCPtr::new(allocator(my_image.prototype_metal_desc()));
+
+    if let Some(metal_texture) = metal_texture {
+        let metal_texture_ptr = *metal_texture;
+
+        // Transition the buffer to the Allocated state
+        my_image.materialize(metal_texture);
+
+        // Return `metal_texture_ptr` for `HeapAlloc` creation
+        Ok(Some(metal_texture_ptr))
     } else {
         Ok(None)
     }

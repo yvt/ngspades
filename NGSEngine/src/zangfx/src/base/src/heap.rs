@@ -132,6 +132,8 @@ pub trait Heap: Object {
     ///    resources preallocated via `DedicatedHeapBuilder::prebind`.
     ///    Furthermore, calls to `bind` must occur in the exact same order as
     ///    those to `prebind`.
+    ///  - If `obj` refers to an image, this heap must not be associated with a
+    ///    host-visible memory type.
     ///
     fn bind(&self, obj: h::ResourceRef) -> Result<Option<h::HeapAlloc>>;
 

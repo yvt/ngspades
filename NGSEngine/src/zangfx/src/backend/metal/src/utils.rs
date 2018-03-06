@@ -185,12 +185,15 @@ pub fn get_memory_req(
     metal_device: MTLDevice,
     obj: base::ResourceRef,
 ) -> common::Result<base::MemoryReq> {
-    use buffer;
+    use {buffer, image};
     match obj {
         base::ResourceRef::Buffer(buffer) => {
             let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
             Ok(our_buffer.memory_req(metal_device))
         }
-        base::ResourceRef::Image(_image) => unimplemented!(),
+        base::ResourceRef::Image(image) => {
+            let our_image: &image::Image = image.downcast_ref().expect("bad image type");
+            Ok(our_image.memory_req(metal_device))
+        }
     }
 }

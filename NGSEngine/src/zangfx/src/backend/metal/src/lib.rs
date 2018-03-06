@@ -68,6 +68,7 @@ pub mod cmd;
 pub mod device;
 pub mod formats;
 pub mod heap;
+pub mod image;
 pub mod limits;
 pub mod pipeline;
 pub mod renderpass;

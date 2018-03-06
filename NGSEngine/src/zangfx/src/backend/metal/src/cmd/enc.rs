@@ -10,6 +10,7 @@ use std::collections::HashSet;
 
 use cmd::fence::Fence;
 use buffer::Buffer;
+use image::Image;
 use heap::{EmulatedHeap, Heap};
 
 #[derive(Debug, Default)]
@@ -42,7 +43,10 @@ fn translate_resource(handle: handles::ResourceRef) -> metal::MTLResource {
             let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
             *my_buffer.metal_buffer()
         }
-        handles::ResourceRef::Image(_image) => unimplemented!(),
+        handles::ResourceRef::Image(image) => {
+            let my_image: &Image = image.downcast_ref().expect("bad image type");
+            *my_image.metal_texture()
+        }
     }
 }
 

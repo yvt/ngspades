@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::{get_memory_req, OCPtr};
 use limits::DeviceCaps;
-use {arg, buffer, cmd, heap, pipeline, sampler, shader};
+use {arg, buffer, cmd, heap, image, pipeline, sampler, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -76,7 +76,7 @@ impl device::Device for Device {
     }
 
     fn build_image(&self) -> Box<base::resources::ImageBuilder> {
-        unimplemented!()
+        Box::new(image::ImageBuilder::new())
     }
 
     fn build_buffer(&self) -> Box<base::resources::BufferBuilder> {
@@ -128,8 +128,12 @@ impl device::Device for Device {
         unsafe { Box::new(pipeline::ComputePipelineBuilder::new(self.metal_device())) }
     }
 
-    fn destroy_image(&self, _obj: &handles::Image) -> Result<()> {
-        unimplemented!()
+    fn destroy_image(&self, obj: &handles::Image) -> Result<()> {
+        let our_image: &image::Image = obj.downcast_ref().expect("bad image type");
+        unsafe {
+            our_image.destroy();
+        }
+        Ok(())
     }
 
     fn destroy_buffer(&self, obj: &handles::Buffer) -> Result<()> {
