@@ -655,10 +655,10 @@ fn scalar_to_red(value: ScalarFormat) -> ImageFormat {
     use ScalarFormat::*;
     use ImageFormat::*;
     match value {
-        I8(sgn, norm) => ImageFormat::R8(sgn, norm),
-        I16(sgn, norm) => ImageFormat::R16(sgn, norm),
-        I32(sgn, norm) => ImageFormat::R32(sgn, norm),
-        F32 => ImageFormat::RFloat32,
+        I8(sgn, norm) => R8(sgn, norm),
+        I16(sgn, norm) => R16(sgn, norm),
+        I32(sgn, norm) => R32(sgn, norm),
+        F32 => RFloat32,
     }
 }
 
@@ -666,10 +666,10 @@ fn scalar_to_rg(value: ScalarFormat) -> ImageFormat {
     use ScalarFormat::*;
     use ImageFormat::*;
     match value {
-        I8(sgn, norm) => ImageFormat::Rg8(sgn, norm),
-        I16(sgn, norm) => ImageFormat::Rg16(sgn, norm),
-        I32(sgn, norm) => ImageFormat::Rg32(sgn, norm),
-        F32 => ImageFormat::RgFloat32,
+        I8(sgn, norm) => Rg8(sgn, norm),
+        I16(sgn, norm) => Rg16(sgn, norm),
+        I32(sgn, norm) => Rg32(sgn, norm),
+        F32 => RgFloat32,
     }
 }
 
@@ -677,10 +677,10 @@ fn scalar_to_rgba(value: ScalarFormat) -> ImageFormat {
     use ScalarFormat::*;
     use ImageFormat::*;
     match value {
-        I8(sgn, norm) => ImageFormat::Rgba8(sgn, norm),
-        I16(sgn, norm) => ImageFormat::Rgba16(sgn, norm),
-        I32(sgn, norm) => ImageFormat::Rgba32(sgn, norm),
-        F32 => ImageFormat::RgbaFloat32,
+        I8(sgn, norm) => Rgba8(sgn, norm),
+        I16(sgn, norm) => Rgba16(sgn, norm),
+        I32(sgn, norm) => Rgba32(sgn, norm),
+        F32 => RgbaFloat32,
     }
 }
 
