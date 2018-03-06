@@ -369,6 +369,42 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
 }
 
 pub trait CmdEncoder: Object {
+    /// Begin a debug group.
+    ///
+    /// The default implementation just returns `None`.
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::*;
+    ///     # fn test(encoder: &mut CmdEncoder) {
+    ///     encoder.begin_debug_group("Pinkie mane");
+    ///     // Issue draw commands here...
+    ///     encoder.end_debug_group();
+    ///     # }
+    ///
+    fn begin_debug_group(&mut self, _label: &str) {}
+
+    /// End a debug group.
+    ///
+    /// There must be an outstanding call to [`begin_debug_group`] corresponding
+    /// to this one in the same encoder.
+    ///
+    /// [`begin_debug_group`]: begin_debug_group
+    fn end_debug_group(&mut self) {}
+
+    /// Insert a debug marker.
+    ///
+    /// The default implementation just returns `None`.
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::*;
+    ///     # fn test(encoder: &mut CmdEncoder) {
+    ///     encoder.debug_marker("Let there be dragons here");
+    ///     # }
+    ///
+    fn debug_marker(&mut self, _label: &str) {}
+
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder.
     ///

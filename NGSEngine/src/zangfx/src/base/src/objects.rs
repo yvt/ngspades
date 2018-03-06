@@ -50,3 +50,18 @@ macro_rules! zangfx_impl_object {
         interfaces! { $type: $crate::Object $(, $iface)* }
     }
 }
+
+/// Boiler-plate code for defining ZanGFX object trait.
+macro_rules! define_object {
+    ($t:ty) => {
+        mopo! { $t }
+        impl ::debug::Label for $t {
+            fn label(&mut self, label: &str) -> &mut Self {
+                if let Some(x) = self.query_mut::<::debug::SetLabel>() {
+                    x.set_label(label);
+                }
+                self
+            }
+        }
+    }
+}

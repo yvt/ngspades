@@ -34,6 +34,7 @@ pub mod objects;
 
 pub mod arg;
 pub mod command;
+pub mod debug;
 pub mod device;
 mod flags;
 pub use self::flags::*;
@@ -115,31 +116,32 @@ pub struct Viewport {
 }
 
 // Can't define `mopo!`s in the same module as those traits due to the name
-// confliction of the unqualified name of`Result`.
-mopo! { arg::ArgTableSigBuilder }
-mopo! { arg::ArgSig }
-mopo! { arg::RootSigBuilder }
-mopo! { arg::ArgPoolBuilder }
-mopo! { arg::ArgPool }
-mopo! { command::CmdQueueBuilder }
-mopo! { command::CmdQueue }
-mopo! { command::CmdBuffer }
-mopo! { command::RenderCmdEncoder }
-mopo! { command::ComputeCmdEncoder }
-mopo! { command::CopyCmdEncoder }
-mopo! { command::CmdEncoder }
-mopo! { heap::DynamicHeapBuilder }
-mopo! { heap::DedicatedHeapBuilder }
-mopo! { heap::Heap }
-mopo! { pass::RenderPassBuilder }
-mopo! { pass::RenderPassTarget }
-mopo! { pass::RenderTargetTableBuilder }
-mopo! { pipeline::ComputePipelineBuilder }
-mopo! { resources::ImageBuilder }
-mopo! { resources::BufferBuilder }
-mopo! { sampler::SamplerBuilder }
-mopo! { shader::LibraryBuilder }
-mopo! { sync::BarrierBuilder }
+// confliction of the unqualified name of `Result`.
+define_object! { arg::ArgTableSigBuilder }
+define_object! { arg::ArgSig }
+define_object! { arg::RootSigBuilder }
+define_object! { arg::ArgPoolBuilder }
+define_object! { arg::ArgPool }
+define_object! { command::CmdQueueBuilder }
+define_object! { command::CmdQueue }
+define_object! { command::CmdBuffer }
+define_object! { command::RenderCmdEncoder }
+define_object! { command::ComputeCmdEncoder }
+define_object! { command::CopyCmdEncoder }
+define_object! { command::CmdEncoder }
+define_object! { device::Device }
+define_object! { heap::DynamicHeapBuilder }
+define_object! { heap::DedicatedHeapBuilder }
+define_object! { heap::Heap }
+define_object! { pass::RenderPassBuilder }
+define_object! { pass::RenderPassTarget }
+define_object! { pass::RenderTargetTableBuilder }
+define_object! { pipeline::ComputePipelineBuilder }
+define_object! { resources::ImageBuilder }
+define_object! { resources::BufferBuilder }
+define_object! { sampler::SamplerBuilder }
+define_object! { shader::LibraryBuilder }
+define_object! { sync::BarrierBuilder }
 
 /// The `zangfx_base` prelude.
 pub mod prelude {
@@ -152,6 +154,8 @@ pub mod prelude {
                       IntAsScalarFormat};
     #[doc(no_inline)]
     pub use pipeline::RenderPassRasterizerExt;
+    #[doc(no_inline)]
+    pub use debug::Label;
 }
 
 // Import all objects
@@ -183,6 +187,8 @@ pub use sampler::*;
 pub use shader::*;
 #[doc(no_inline)]
 pub use sync::*;
+#[doc(no_inline)]
+pub use debug::*;
 
 #[doc(no_inline)]
 pub use common::Rect2D;
