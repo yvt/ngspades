@@ -18,6 +18,12 @@ use std::ops;
 use itervalues::IterValues;
 
 /// Image format.
+///
+/// See [`IntAsImageFormat`] and [`FloatAsImageFormat`] for a convenient way
+/// to construct certain values of `ImageFormat`.
+///
+/// [`IntAsImageFormat`]: IntAsImageFormat
+/// [`FloatAsImageFormat`]: FloatAsImageFormat
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, IterValues)]
 pub enum ImageFormat {
     /// Represents a pixel format with a 8-bit red channel.
@@ -588,7 +594,7 @@ impl_int_as_scalar_format!(i8, Signedness::Signed, I8);
 impl_int_as_scalar_format!(i16, Signedness::Signed, I16);
 impl_int_as_scalar_format!(i32, Signedness::Signed, I32);
 
-/// Constructs a [`ScalarFormat`] from an integer type.
+/// Constructs a [`ScalarFormat`] from a floating point value type.
 /// Provided for convenience.
 ///
 /// See also: [`IntAsScalarFormat`].
@@ -617,5 +623,128 @@ pub trait FloatAsScalarFormat: Sized {
 impl FloatAsScalarFormat for f32 {
     fn as_format() -> ScalarFormat {
         ScalarFormat::F32
+    }
+}
+
+/// Constructs a [`ImageFormat`] from an integer type.
+/// Provided for convenience.
+///
+/// See also: [`FloatAsImageFormat`].
+///
+/// [`ImageFormat`]: ImageFormat
+/// [`FloatAsImageFormat`]: FloatAsImageFormat
+///
+/// # Examples
+///
+///     use zangfx_base::formats::{ImageFormat, Signedness, Normalizedness};
+///     use zangfx_base::formats::IntAsImageFormat;
+///     assert_eq!(
+///         <u8>::as_rgba_norm(),
+///         ImageFormat::Rgba8(Signedness::Unsigned, Normalizedness::Normalized),
+///     );
+pub trait IntAsImageFormat: Sized {
+    fn as_red_norm() -> ImageFormat;
+    fn as_red_unnorm() -> ImageFormat;
+    fn as_rg_norm() -> ImageFormat;
+    fn as_rg_unnorm() -> ImageFormat;
+    fn as_rgba_norm() -> ImageFormat;
+    fn as_rgba_unnorm() -> ImageFormat;
+}
+
+fn scalar_to_red(value: ScalarFormat) -> ImageFormat {
+    use ScalarFormat::*;
+    use ImageFormat::*;
+    match value {
+        I8(sgn, norm) => ImageFormat::R8(sgn, norm),
+        I16(sgn, norm) => ImageFormat::R16(sgn, norm),
+        I32(sgn, norm) => ImageFormat::R32(sgn, norm),
+        F32 => ImageFormat::RFloat32,
+    }
+}
+
+fn scalar_to_rg(value: ScalarFormat) -> ImageFormat {
+    use ScalarFormat::*;
+    use ImageFormat::*;
+    match value {
+        I8(sgn, norm) => ImageFormat::Rg8(sgn, norm),
+        I16(sgn, norm) => ImageFormat::Rg16(sgn, norm),
+        I32(sgn, norm) => ImageFormat::Rg32(sgn, norm),
+        F32 => ImageFormat::RgFloat32,
+    }
+}
+
+fn scalar_to_rgba(value: ScalarFormat) -> ImageFormat {
+    use ScalarFormat::*;
+    use ImageFormat::*;
+    match value {
+        I8(sgn, norm) => ImageFormat::Rgba8(sgn, norm),
+        I16(sgn, norm) => ImageFormat::Rgba16(sgn, norm),
+        I32(sgn, norm) => ImageFormat::Rgba32(sgn, norm),
+        F32 => ImageFormat::RgbaFloat32,
+    }
+}
+
+impl<T: IntAsScalarFormat> IntAsImageFormat for T {
+    fn as_red_norm() -> ImageFormat {
+        scalar_to_red(Self::as_format_norm())
+    }
+    fn as_red_unnorm() -> ImageFormat {
+        scalar_to_red(Self::as_format_unnorm())
+    }
+    fn as_rg_norm() -> ImageFormat {
+        scalar_to_rg(Self::as_format_norm())
+    }
+    fn as_rg_unnorm() -> ImageFormat {
+        scalar_to_rg(Self::as_format_unnorm())
+    }
+    fn as_rgba_norm() -> ImageFormat {
+        scalar_to_rgba(Self::as_format_norm())
+    }
+    fn as_rgba_unnorm() -> ImageFormat {
+        scalar_to_rgba(Self::as_format_unnorm())
+    }
+}
+
+/// Constructs a [`ImageFormat`] from a floating point value type.
+/// Provided for convenience.
+///
+/// See also: [`IntAsImageFormat`].
+///
+/// [`ImageFormat`]: ImageFormat
+/// [`IntAsImageFormat`]: IntAsImageFormat
+///
+/// # Examples
+///
+///     use zangfx_base::formats::ImageFormat;
+///     use zangfx_base::formats::FloatAsImageFormat;
+///     assert_eq!(<f32>::as_rgba(), ImageFormat::RgbaFloat32);
+///     assert_eq!(<f32>::as_half_red(), ImageFormat::RFloat16);
+pub trait FloatAsImageFormat: Sized {
+    fn as_red() -> ImageFormat;
+    fn as_rg() -> ImageFormat;
+    fn as_rgba() -> ImageFormat;
+    fn as_half_red() -> ImageFormat;
+    fn as_half_rg() -> ImageFormat;
+    fn as_half_rgba() -> ImageFormat;
+}
+
+impl FloatAsImageFormat for f32 {
+    fn as_red() -> ImageFormat {
+        ImageFormat::RFloat32
+    }
+    fn as_rg() -> ImageFormat {
+        ImageFormat::RgFloat32
+    }
+    fn as_rgba() -> ImageFormat {
+        ImageFormat::RgbaFloat32
+    }
+    fn as_half_red() -> ImageFormat {
+        ImageFormat::RFloat16
+    }
+    fn as_half_rg() -> ImageFormat {
+        ImageFormat::RgFloat16
+    }
+    fn as_half_rgba() -> ImageFormat {
+        ImageFormat::RgbaFloat16
     }
 }

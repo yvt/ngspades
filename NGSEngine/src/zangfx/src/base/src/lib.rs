@@ -148,7 +148,8 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use handles::HandleImpl;
     #[doc(no_inline)]
-    pub use formats::{AsIndexFormat, FloatAsScalarFormat, IntAsScalarFormat};
+    pub use formats::{AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
+                      IntAsScalarFormat};
     #[doc(no_inline)]
     pub use pipeline::RenderPassRasterizerExt;
 }
