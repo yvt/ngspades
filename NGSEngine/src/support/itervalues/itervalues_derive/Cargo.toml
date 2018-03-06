@@ -1,0 +1,11 @@
+[package]
+name = "itervalues_derive"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+syn = { version = "0.12.13", features = ["derive"] }
+quote = "0.4.2"
+
+[lib]
+proc-macro = true

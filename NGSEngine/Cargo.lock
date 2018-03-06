@@ -290,6 +290,21 @@ name = "iterpool"
 version = "0.1.0"
 
 [[package]]
+name = "itervalues"
+version = "0.1.0"
+dependencies = [
+ "itervalues_derive 0.1.0",
+]
+
+[[package]]
+name = "itervalues_derive"
+version = "0.1.0"
+dependencies = [
+ "quote 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 0.12.13 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "itoa"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

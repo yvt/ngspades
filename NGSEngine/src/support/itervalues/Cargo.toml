@@ -1,0 +1,9 @@
+[package]
+name = "itervalues"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+
+[dev-dependencies]
+itervalues_derive = { path = "./itervalues_derive" }

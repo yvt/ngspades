@@ -19,6 +19,8 @@ members = [
     "src/ngspf",
     "src/ngsterrain",
     "src/support/arclock",
+    "src/support/itervalues",
+    "src/support/itervalues/itervalues_derive",
     "src/support/iterpool",
     "src/support/ngsenumflags",
     "src/support/ngsenumflags/ngsenumflags_derive",
