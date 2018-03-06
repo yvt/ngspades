@@ -125,3 +125,23 @@ impl UseResources for metal::MTLComputeCommandEncoder {
         self.use_heaps(heaps)
     }
 }
+
+pub trait DebugCommands {
+    fn begin_debug_group(&self, label: &str);
+    fn end_debug_group(&self);
+    fn debug_marker(&self, label: &str);
+}
+
+impl DebugCommands for metal::MTLCommandEncoder {
+    fn begin_debug_group(&self, label: &str) {
+        self.push_debug_group(label);
+    }
+
+    fn end_debug_group(&self) {
+        self.pop_debug_group();
+    }
+
+    fn debug_marker(&self, label: &str) {
+        self.insert_debug_signpost(label);
+    }
+}

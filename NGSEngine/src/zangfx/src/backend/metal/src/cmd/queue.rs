@@ -11,7 +11,7 @@ use tokenlock::{Token, TokenRef};
 use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
 
-use base::{command, handles, QueueFamily};
+use base::{self, command, handles, QueueFamily};
 use common::Result;
 use utils::{nil_error, OCPtr};
 
@@ -23,6 +23,7 @@ use super::fence::Fence;
 #[derive(Debug)]
 pub struct CmdQueueBuilder {
     metal_device: MTLDevice,
+    label: Option<String>,
 }
 
 zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, ::Debug }
@@ -32,7 +33,16 @@ impl CmdQueueBuilder {
     ///
     /// Ir's up to the caller to maintain the lifetime of `metal_device`.
     pub unsafe fn new(metal_device: MTLDevice) -> Self {
-        Self { metal_device }
+        Self {
+            metal_device,
+            label: None,
+        }
+    }
+}
+
+impl base::SetLabel for CmdQueueBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 
@@ -47,6 +57,9 @@ impl command::CmdQueueBuilder for CmdQueueBuilder {
         if metal_queue.is_null() {
             Err(nil_error("MTLDevice newCommandQueue"))
         } else {
+            if let Some(ref label) = self.label {
+                metal_queue.set_label(label);
+            }
             unsafe { Ok(Box::new(CmdQueue::from_raw(metal_queue))) }
         }
     }

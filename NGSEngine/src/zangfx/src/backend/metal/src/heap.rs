@@ -8,7 +8,7 @@ use metal;
 use iterpool::{IterablePool, PoolPtr};
 use parking_lot::Mutex;
 
-use base::{handles, heap, DeviceSize, MemoryType};
+use base::{self, handles, heap, DeviceSize, MemoryType};
 use common::{Error, ErrorKind, Result};
 
 use utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
@@ -22,6 +22,7 @@ pub struct HeapBuilder {
     metal_device: metal::MTLDevice,
     size: DeviceSize,
     memory_type: Option<MemoryType>,
+    label: Option<String>,
 }
 
 zangfx_impl_object! { HeapBuilder:
@@ -39,6 +40,7 @@ impl HeapBuilder {
             metal_device,
             size: 0,
             memory_type: None,
+            label: None,
         }
     }
 
@@ -61,6 +63,10 @@ impl HeapBuilder {
             let metal_heap = OCPtr::new(self.metal_device.new_heap(*metal_desc))
                 .ok_or_else(|| nil_error("MTLDevice newHeapWithDescriptor:"))?;
 
+            if let Some(ref label) = self.label {
+                metal_heap.set_label(label);
+            }
+
             Ok(Box::new(Heap::new(metal_heap, storage_mode)))
         } else {
             // `MTLHeap` only supports the private storage mode
@@ -68,6 +74,12 @@ impl HeapBuilder {
                 EmulatedHeap::new(self.metal_device, storage_mode)
             }))
         }
+    }
+}
+
+impl base::SetLabel for HeapBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 

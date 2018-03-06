@@ -31,6 +31,19 @@
 //! referencing shared resources through argument tables since their performance
 //! is lower than private resources.
 //!
+//! # Debugging
+//!
+//! Setting labels is supported by the following objects: `ArgPoolBuilder`,
+//! `CmdBuffer`, `CmdQueueBuilder`, `BufferBuilder`, `HeapBuilder`,
+//! `ComputePipelineBuilder`, `SamplerBuilder`, and `LibraryBuilder`. Labels
+//! are visible via a debugger interface, for example, Xcode's GPU Frame
+//! Capture.
+//!
+//! All command encoders support debug commands (`begin_debug_group`,
+//! `end_debug_group`, and `insert_debug_marker`). They are mapped to
+//! `MTLCommandEncoder`'s methods and they are visible via Xcode's GPU Frame
+//! Capture.
+//!
 extern crate block;
 extern crate cocoa;
 extern crate iterpool;

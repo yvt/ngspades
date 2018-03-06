@@ -6,7 +6,7 @@
 //! Implementation of `ArgPool` and `ArgTable` for Metal.
 use metal;
 
-use base::{arg, handles};
+use base::{self, arg, handles};
 use common::{Error, ErrorKind, Result};
 
 use utils::{nil_error, OCPtr};
@@ -75,6 +75,8 @@ pub struct ArgPoolBuilder {
 
     size: ArgSize,
     enable_destroy_tables: bool,
+
+    label: Option<String>,
 }
 
 zangfx_impl_object! { ArgPoolBuilder: arg::ArgPoolBuilder, ::Debug }
@@ -92,7 +94,14 @@ impl ArgPoolBuilder {
             layout,
             size: 0,
             enable_destroy_tables: false,
+            label: None,
         }
+    }
+}
+
+impl base::SetLabel for ArgPoolBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 
@@ -155,6 +164,10 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
             unsafe { OCPtr::from_raw(self.metal_device.new_buffer(self.size as _, options)) }
                 .ok_or_else(|| nil_error("MTLDevice newBufferWithLength:options:"))?
         };
+
+        if let Some(ref label) = self.label {
+            metal_buffer.set_label(label);
+        }
 
         if self.enable_destroy_tables {
             Ok(Box::new(DynamicArgPool(BaseArgPool::new(metal_buffer))))

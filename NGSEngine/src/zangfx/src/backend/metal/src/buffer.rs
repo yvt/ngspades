@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Buffer` for Metal.
-use base::{handles, resources, DeviceSize};
+use base::{self, handles, resources, DeviceSize};
 use common::{Error, ErrorKind, Result};
 use metal;
 
@@ -14,6 +14,7 @@ use utils::OCPtr;
 #[derive(Debug, Clone)]
 pub struct BufferBuilder {
     size: Option<DeviceSize>,
+    label: Option<String>,
 }
 
 zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, ::Debug }
@@ -21,7 +22,16 @@ zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, ::Debug }
 impl BufferBuilder {
     /// Construct a `BufferBuilder`.
     pub fn new() -> Self {
-        Self { size: None }
+        Self {
+            size: None,
+            label: None,
+        }
+    }
+}
+
+impl base::SetLabel for BufferBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 
@@ -37,7 +47,7 @@ impl resources::BufferBuilder for BufferBuilder {
     fn build(&mut self) -> Result<handles::Buffer> {
         let size = self.size
             .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "size"))?;
-        Ok(handles::Buffer::new(Buffer::new(size)))
+        Ok(handles::Buffer::new(Buffer::new(size, self.label.clone())))
     }
 }
 
@@ -56,13 +66,15 @@ unsafe impl Sync for Buffer {}
 struct BufferData {
     size: DeviceSize,
     metal_buffer: Option<OCPtr<metal::MTLBuffer>>,
+    label: Option<String>,
 }
 
 impl Buffer {
-    fn new(size: DeviceSize) -> Self {
+    fn new(size: DeviceSize, label: Option<String>) -> Self {
         let data = BufferData {
             size,
             metal_buffer: None,
+            label,
         };
 
         Self {
@@ -77,6 +89,7 @@ impl Buffer {
         let data = BufferData {
             size: metal_buffer.length(),
             metal_buffer: OCPtr::from_raw(metal_buffer),
+            label: None,
         };
 
         Self {
@@ -105,8 +118,11 @@ impl Buffer {
     }
 
     pub(super) fn materialize(&self, metal_buffer: OCPtr<metal::MTLBuffer>) {
-        unsafe {
-            self.data().metal_buffer = Some(metal_buffer);
+        let data = unsafe { self.data() };
+        data.metal_buffer = Some(metal_buffer);
+
+        if let Some(label) = data.label.take() {
+            data.metal_buffer.as_ref().unwrap().set_label(&label);
         }
     }
 

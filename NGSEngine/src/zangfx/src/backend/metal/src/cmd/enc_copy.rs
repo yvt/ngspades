@@ -9,7 +9,7 @@ use cocoa::foundation::NSRange;
 use base::{command, handles, heap, resources, DeviceSize, StageFlags};
 
 use utils::OCPtr;
-use cmd::enc::CmdBufferFenceSet;
+use cmd::enc::{CmdBufferFenceSet, DebugCommands};
 use cmd::fence::Fence;
 
 use buffer::Buffer;
@@ -38,6 +38,18 @@ impl CopyEncoder {
 }
 
 impl command::CmdEncoder for CopyEncoder {
+    fn begin_debug_group(&mut self, label: &str) {
+        self.metal_encoder.begin_debug_group(label);
+    }
+
+    fn end_debug_group(&mut self) {
+        self.metal_encoder.end_debug_group();
+    }
+
+    fn debug_marker(&mut self, label: &str) {
+        self.metal_encoder.debug_marker(label);
+    }
+
     fn use_resource(&mut self, _usage: command::ResourceUsage, _objs: &[handles::ResourceRef]) {
         // No-op: no arguemnt table for copy encoder
     }

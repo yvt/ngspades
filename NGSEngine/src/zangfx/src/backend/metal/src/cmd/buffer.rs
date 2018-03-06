@@ -10,7 +10,7 @@ use std::mem::replace;
 use parking_lot::Mutex;
 use metal::{MTLCommandBuffer, MTLCommandQueue};
 
-use base::{command, handles};
+use base::{self, command, handles};
 use common::{Error, ErrorKind, Result};
 use utils::{nil_error, OCPtr};
 use renderpass::RenderTargetTable;
@@ -115,6 +115,14 @@ impl Drop for CmdBuffer {
         // deallocating it. (Otherwise an assertion failure would occur)
         if let Some(ref mut uncommited) = self.uncommited {
             uncommited.clear_encoder();
+        }
+    }
+}
+
+impl base::SetLabel for CmdBuffer {
+    fn set_label(&mut self, label: &str) {
+        if let Some(ref mut uncommited) = self.uncommited {
+            uncommited.metal_buffer.set_label(label);
         }
     }
 }

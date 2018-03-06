@@ -153,6 +153,13 @@ impl MTLSamplerDescriptor {
             } else { NO }]
         }
     }
+
+    pub fn set_label(&self, label: &str) {
+        unsafe {
+            let nslabel = NSString::from_str(label);
+            msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
+        }
+    }
 }
 
 impl NSObjectProtocol for MTLSamplerDescriptor {
@@ -171,10 +178,4 @@ impl NSObjectProtocol for MTLSamplerState {
 }
 
 impl MTLSamplerState {
-    pub fn set_label(&self, label: &str) {
-        unsafe {
-            let nslabel = NSString::from_str(label);
-            msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
-        }
-    }
 }

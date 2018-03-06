@@ -5,7 +5,7 @@
 //
 //! Implementation of `Sampler` for Metal.
 use std::ops::Range;
-use base::{handles, sampler, CmpFn};
+use base::{self, handles, sampler, CmpFn};
 use common::Result;
 use metal;
 use metal::NSObjectProtocol;
@@ -27,6 +27,7 @@ pub struct SamplerBuilder {
     cmp_fn: Option<CmpFn>,
     border_color: sampler::BorderColor,
     unnorm_coords: bool,
+    label: Option<String>,
 }
 
 zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, ::Debug }
@@ -47,7 +48,14 @@ impl SamplerBuilder {
             cmp_fn: None,
             border_color: sampler::BorderColor::FloatTransparentBlack,
             unnorm_coords: false,
+            label: None,
         }
+    }
+}
+
+impl base::SetLabel for SamplerBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 
@@ -120,6 +128,10 @@ impl sampler::SamplerBuilder for SamplerBuilder {
         metal_desc.set_lod_max_clamp(self.lod_clamp.end);
         metal_desc.set_border_color(translate_border_color(self.border_color));
         metal_desc.set_normalized_coordinates(!self.unnorm_coords);
+
+        if let Some(ref label) = self.label {
+            metal_desc.set_label(label);
+        }
 
         let metal_sampler = self.metal_device.new_sampler(*metal_desc);
         if metal_sampler.is_null() {

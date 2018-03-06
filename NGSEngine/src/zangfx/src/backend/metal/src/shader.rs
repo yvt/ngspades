@@ -12,7 +12,7 @@ use rspirv::mr;
 use spirv_headers;
 use spirv_cross::{ExecutionModel, SpirV2Msl};
 
-use base::{handles, shader};
+use base::{self, handles, shader};
 use common::{Error, ErrorKind, Result};
 
 use arg::rootsig::RootSig;
@@ -24,6 +24,7 @@ use utils::{nil_error, OCPtr};
 #[derive(Debug, Default, Clone)]
 pub struct LibraryBuilder {
     spirv_code: Option<Vec<u32>>,
+    label: Option<String>,
 }
 
 zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, ::Debug }
@@ -31,6 +32,12 @@ zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, ::Debug }
 impl LibraryBuilder {
     pub fn new() -> Self {
         Default::default()
+    }
+}
+
+impl base::SetLabel for LibraryBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 
@@ -44,7 +51,7 @@ impl shader::LibraryBuilder for LibraryBuilder {
         let spirv_code = self.spirv_code
             .clone()
             .ok_or(Error::new(ErrorKind::InvalidUsage))?;
-        Library::new(spirv_code).map(handles::Library::new)
+        Library::new(spirv_code, self.label.clone()).map(handles::Library::new)
     }
 }
 
@@ -59,12 +66,13 @@ zangfx_impl_handle! { Library, handles::Library }
 #[derive(Debug)]
 struct LibraryData {
     spirv_code: Vec<u32>,
+    label: Option<String>,
 }
 
 impl Library {
-    fn new(spirv_code: Vec<u32>) -> Result<Self> {
+    fn new(spirv_code: Vec<u32>, label: Option<String>) -> Result<Self> {
         Ok(Self {
-            data: Arc::new(LibraryData { spirv_code }),
+            data: Arc::new(LibraryData { spirv_code, label }),
         })
     }
 
@@ -117,6 +125,7 @@ impl Library {
         stage: shader::ShaderStage,
         root_sig: &RootSig,
         metal_device: metal::MTLDevice,
+        pipeline_name: &Option<String>,
     ) -> Result<OCPtr<metal::MTLFunction>> {
         assert!(!metal_device.is_null());
 
@@ -151,6 +160,20 @@ impl Library {
                     },
                 )
             })?).unwrap();
+
+        if self.data.label.is_some() || pipeline_name.is_some() {
+            let pipeline_name = pipeline_name
+                .as_ref()
+                .map(String::as_str)
+                .unwrap_or("(none)");
+            let library_name = self.data
+                .label
+                .as_ref()
+                .map(String::as_str)
+                .unwrap_or("(none)");
+            let label = format!("{}: {}", pipeline_name, library_name);
+            lib.set_label(&label);
+        }
 
         let fn_name: &str = if entry_point == "main" {
             // `main` is renamed automatically by SPIRV-Cross (probably) because

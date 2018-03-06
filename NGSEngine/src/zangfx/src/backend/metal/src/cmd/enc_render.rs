@@ -9,7 +9,7 @@ use base::{self, command, handles, heap, StageFlags};
 use common::Rect2D;
 
 use utils::{translate_render_stage, OCPtr};
-use cmd::enc::{CmdBufferFenceSet, UseResources};
+use cmd::enc::{CmdBufferFenceSet, UseResources, DebugCommands};
 use cmd::fence::Fence;
 use cmd::barrier::Barrier;
 
@@ -40,6 +40,18 @@ impl RenderEncoder {
 }
 
 impl command::CmdEncoder for RenderEncoder {
+    fn begin_debug_group(&mut self, label: &str) {
+        self.metal_encoder.begin_debug_group(label);
+    }
+
+    fn end_debug_group(&mut self) {
+        self.metal_encoder.end_debug_group();
+    }
+
+    fn debug_marker(&mut self, label: &str) {
+        self.metal_encoder.debug_marker(label);
+    }
+
     fn use_resource(&mut self, usage: command::ResourceUsage, objs: &[handles::ResourceRef]) {
         self.metal_encoder.use_gfx_resource(usage, objs);
     }

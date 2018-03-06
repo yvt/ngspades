@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use metal;
 
-use base::{handles, pipeline, shader};
+use base::{self, handles, pipeline, shader};
 use common::{Error, ErrorKind, Result};
 use arg::rootsig::RootSig;
 use shader::Library;
@@ -22,6 +22,8 @@ pub struct ComputePipelineBuilder {
 
     compute_shader: Option<(Library, String)>,
     root_sig: Option<RootSig>,
+
+    label: Option<String>,
 }
 
 zangfx_impl_object! { ComputePipelineBuilder: pipeline::ComputePipelineBuilder, ::Debug }
@@ -35,7 +37,14 @@ impl ComputePipelineBuilder {
             metal_device,
             compute_shader: None,
             root_sig: None,
+            label: None,
         }
+    }
+}
+
+impl base::SetLabel for ComputePipelineBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 
@@ -74,6 +83,7 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             shader::ShaderStage::Compute,
             root_sig,
             self.metal_device,
+            &self.label,
         )?;
         metal_desc.set_compute_function(*compute_fn);
 
@@ -83,6 +93,10 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             height: local_size[1] as u64,
             depth: local_size[2] as u64,
         };
+
+        if let Some(ref label) = self.label {
+            metal_desc.set_label(label);
+        }
 
         let metal_pipeline = self.metal_device
             .new_compute_pipeline_state(*metal_desc)
