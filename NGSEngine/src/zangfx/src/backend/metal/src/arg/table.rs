@@ -165,7 +165,7 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
 }
 
 /// Generic implementation of `ArgPool` for Metal.
-/// (Because `zangfx_impl_object` does not generics)
+/// (Because `zangfx_impl_object` does not support generics)
 #[derive(Debug)]
 struct BaseArgPool<T> {
     metal_buffer: OCPtr<metal::MTLBuffer>,
