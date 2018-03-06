@@ -26,6 +26,7 @@ pub struct DeviceCaps {
     memory_types: [limits::MemoryTypeInfo; 2],
     memory_regions: [limits::MemoryRegionInfo; 1],
     queue_families: [limits::QueueFamilyInfo; 1],
+    d24_s8_supported: bool,
 }
 
 zangfx_impl_object! { DeviceCaps: limits::DeviceCaps, ::Debug }
@@ -96,6 +97,7 @@ impl DeviceCaps {
             memory_types,
             memory_regions,
             queue_families,
+            d24_s8_supported: device.d24_s8_supported(),
         }
     }
 }
@@ -173,9 +175,14 @@ impl limits::DeviceCaps for DeviceCaps {
             ImageFormat::Depth16 => Sampled | SampledFilterLinear | Render | trans, // + MSAA w/Resolve
 
             ImageFormat::Depth24 => undefined,
-            ImageFormat::Depth24Stencil8
-            | ImageFormat::DepthFloat32
-            | ImageFormat::DepthFloat32Stencil8 => Sampled | SampledFilterLinear | Render | trans, // + MSAA w/Resolve
+            ImageFormat::Depth24Stencil8 => if self.d24_s8_supported {
+                Sampled | SampledFilterLinear | Render | trans
+            } else {
+                empty
+            },
+            ImageFormat::DepthFloat32 | ImageFormat::DepthFloat32Stencil8 => {
+                Sampled | SampledFilterLinear | Render | trans
+            } // + MSAA w/Resolve
         }
     }
 
