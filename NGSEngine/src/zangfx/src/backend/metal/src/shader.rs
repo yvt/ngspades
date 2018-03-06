@@ -27,7 +27,7 @@ pub struct LibraryBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, ::Debug }
+zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, ::Debug, base::SetLabel }
 
 impl LibraryBuilder {
     pub fn new() -> Self {

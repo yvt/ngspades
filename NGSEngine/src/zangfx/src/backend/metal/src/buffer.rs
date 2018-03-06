@@ -17,7 +17,7 @@ pub struct BufferBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, ::Debug }
+zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, ::Debug, base::SetLabel }
 
 impl BufferBuilder {
     /// Construct a `BufferBuilder`.

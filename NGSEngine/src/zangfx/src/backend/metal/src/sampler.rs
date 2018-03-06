@@ -30,7 +30,7 @@ pub struct SamplerBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, ::Debug }
+zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, ::Debug, base::SetLabel }
 
 impl SamplerBuilder {
     /// Construct a `SamplerBuilder`.

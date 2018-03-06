@@ -26,7 +26,7 @@ pub struct CmdQueueBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, ::Debug }
+zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, ::Debug, base::SetLabel }
 
 impl CmdQueueBuilder {
     /// Construct a `CmdQueueBuilder`.

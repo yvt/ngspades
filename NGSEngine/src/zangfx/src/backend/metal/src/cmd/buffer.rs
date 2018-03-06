@@ -31,7 +31,7 @@ pub struct CmdBuffer {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdBuffer: command::CmdBuffer, ::Debug }
+zangfx_impl_object! { CmdBuffer: command::CmdBuffer, ::Debug, base::SetLabel }
 
 #[derive(Debug)]
 struct UncommitedBuffer {

@@ -26,7 +26,8 @@ pub struct ComputePipelineBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { ComputePipelineBuilder: pipeline::ComputePipelineBuilder, ::Debug }
+zangfx_impl_object! { ComputePipelineBuilder:
+    pipeline::ComputePipelineBuilder, ::Debug, base::SetLabel }
 
 impl ComputePipelineBuilder {
     /// Construct a `ComputePipelineBuilder`.

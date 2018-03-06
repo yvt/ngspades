@@ -27,7 +27,7 @@ pub struct HeapBuilder {
 }
 
 zangfx_impl_object! { HeapBuilder:
-heap::DynamicHeapBuilder, heap::DedicatedHeapBuilder, ::Debug }
+heap::DynamicHeapBuilder, heap::DedicatedHeapBuilder, ::Debug, base::SetLabel }
 
 unsafe impl Send for HeapBuilder {}
 unsafe impl Sync for HeapBuilder {}

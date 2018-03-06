@@ -38,7 +38,7 @@ enum ImageExtents {
     Cube(u32),
 }
 
-zangfx_impl_object! { ImageBuilder: base::ImageBuilder, ::Debug }
+zangfx_impl_object! { ImageBuilder: base::ImageBuilder, ::Debug, base::SetLabel }
 
 impl ImageBuilder {
     /// Construct a `ImageBuilder`.
@@ -51,6 +51,12 @@ impl ImageBuilder {
             usage: flags![base::ImageUsage::{CopyWrite | Sampled}],
             label: None,
         }
+    }
+}
+
+impl base::SetLabel for ImageBuilder {
+    fn set_label(&mut self, label: &str) {
+        self.label = Some(label.to_owned());
     }
 }
 

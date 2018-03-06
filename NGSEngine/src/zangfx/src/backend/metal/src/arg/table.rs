@@ -79,7 +79,7 @@ pub struct ArgPoolBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { ArgPoolBuilder: arg::ArgPoolBuilder, ::Debug }
+zangfx_impl_object! { ArgPoolBuilder: arg::ArgPoolBuilder, ::Debug, base::SetLabel }
 
 unsafe impl Send for ArgPoolBuilder {}
 unsafe impl Sync for ArgPoolBuilder {}
