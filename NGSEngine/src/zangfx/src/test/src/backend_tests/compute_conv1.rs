@@ -40,6 +40,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             device,
             device
                 .build_buffer()
+                .label("Input buffer")
                 .size(input_bytes)
                 .usage(flags![gfx::BufferUsage::{Storage}])
                 .build()
@@ -49,6 +50,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             device,
             device
                 .build_buffer()
+                .label("Kernel buffer")
                 .size(kernel_bytes)
                 .usage(flags![gfx::BufferUsage::{Storage}])
                 .build()
@@ -58,6 +60,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             device,
             device
                 .build_buffer()
+                .label("Output buffer")
                 .size(output_bytes)
                 .usage(flags![gfx::BufferUsage::{Storage}])
                 .build()
@@ -83,7 +86,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         println!("- Creating a heap");
         let heap: Box<gfx::Heap> = {
             let mut builder = device.build_dedicated_heap();
-            builder.memory_type(memory_type);
+            builder.memory_type(memory_type).label("Buffer heap");
             builder.prebind((&*input_buffer).into());
             builder.prebind((&*kernel_buffer).into());
             builder.prebind((&*output_buffer).into());
@@ -116,7 +119,12 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         kernel_ptr.copy_from_slice(&kernel_data);
 
         println!("- Creating a command queue");
-        let queue = device.build_cmd_queue().queue_family(qf).build().unwrap();
+        let queue = device
+            .build_cmd_queue()
+            .queue_family(qf)
+            .label("Main queue")
+            .build()
+            .unwrap();
 
         println!("- Creating a library");
         let library = device.new_library(SPIRV_CONV.as_u32_slice()).unwrap();
@@ -180,6 +188,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             .build_compute_pipeline()
             .compute_shader(&library, "main")
             .root_sig(&root_sig)
+            .label("Convolution pipeline")
             .build()
             .unwrap();
 
@@ -194,9 +203,11 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
                 &[(&*input_buffer).into(), (&*kernel_buffer).into()],
             );
             e.use_resource(gfx::ResourceUsage::Write, &[(&*output_buffer).into()]);
+            e.begin_debug_group("Convolution");
             e.bind_pipeline(&pipeline);
             e.bind_arg_table(0, &[&arg_table]);
             e.dispatch(&[global_size as u32]);
+            e.end_debug_group();
         }
         buffer.host_barrier(
             flags![gfx::AccessType::{ComputeWrite}],
