@@ -49,8 +49,6 @@ extern crate zangfx_common as common;
 extern crate zangfx_metal_rs as metal;
 extern crate zangfx_spirv_cross as spirv_cross;
 
-// TODO
-
 pub mod arg;
 pub mod buffer;
 pub mod cmd;
