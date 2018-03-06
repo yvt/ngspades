@@ -10,13 +10,20 @@
 
 #[macro_use]
 extern crate lazy_static;
+
 #[macro_use]
 extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;
+
+extern crate itervalues;
+#[macro_use]
+extern crate itervalues_derive;
+
 #[macro_use]
 #[macro_reexport(interfaces, vtable_for, mopo)] // FIXME: deprecated in favor of Macro 2.0
 extern crate query_interface;
+
 extern crate zangfx_common as common;
 
 // `handles` defines a macro

@@ -15,193 +15,153 @@
 //!     - Color attachment operations are undeifned on all depth/stencil formats.
 //!
 use std::ops;
+use itervalues::IterValues;
 
-macro_rules! define_enumerable_enum {
-    (
-        $list:ident;
-        $(#[$m:meta])*
-        pub enum $name:ident {
-            $(
-                $(#[$fm:meta])*
-                $p:ident $(($($t:ty),*))*,
-            )*
-        }
-    ) => (
-        $(#[$m])*
-        pub enum $name {
-            $(
-                $(#[$fm])* $p $(($($t),*))*,
-            )*
-        }
-        lazy_static! {
-            static ref $list: Vec<$name> = {
-                let mut v = Vec::new();
-                $(
-                    variation_list!(v, $name, $p $(($($t),*))*);
-                )*
-                v
-            };
-        }
-        impl $name {
-            /// Retrieve all possible values of `Self`.
-            pub fn values() -> &'static [Self] {
-                &$list
-            }
-        }
-    )
-}
+/// Image format.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, IterValues)]
+pub enum ImageFormat {
+    /// Represents a pixel format with a 8-bit red channel.
+    ///
+    /// Mandatory.
+    R8(Signedness, Normalizedness),
 
-macro_rules! variation_list {
-    ($v:expr, $t:ident, $p:ident) => ($v.push($t::$p));
-    ($v:expr, $t:ident, $p:ident($t1:ty, $t2:ty)) => (
-        for &v1 in <$t1>::values() {
-            for &v2 in <$t2>::values() {
-                $v.push($t::$p(v1, v2));
-            }
-        }
-    )
-}
+    /// Represents a pixel format with a 8-bit red channel in the sRGB encoding.
+    ///
+    /// Not mandatory.
+    SrgbR8,
 
-define_enumerable_enum! {
-    IMAGE_FORMATS;
-    /// Image format.
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-    pub enum ImageFormat {
-        /// Represents a pixel format with a 8-bit red channel.
-        ///
-        /// Mandatory.
-        R8(Signedness, Normalizedness),
+    /// Represents a pixel format with a 8-bit red/green channels.
+    ///
+    /// Mandatory.
+    Rg8(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 8-bit red channel in the sRGB encoding.
-        ///
-        /// Not mandatory.
-        SrgbR8,
+    /// Represents a pixel format with a 8-bit red/green channels in the sRGB encoding.
+    ///
+    /// Not mandatory.
+    SrgbRg8,
 
-        /// Represents a pixel format with a 8-bit red/green channels.
-        ///
-        /// Mandatory.
-        Rg8(Signedness, Normalizedness),
+    /// Represents a pixel format with a 8-bit red/green/blue/alpha channels.
+    ///
+    /// Not mandatory.
+    Rgba8(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 8-bit red/green channels in the sRGB encoding.
-        ///
-        /// Not mandatory.
-        SrgbRg8,
+    /// Represents a pixel format with a 8-bit red/green/blue/alpha channels
+    /// in the sRGB encoding.
+    ///
+    /// Mandatory.
+    SrgbRgba8,
 
-        /// Represents a pixel format with a 8-bit red/green/blue/alpha channels.
-        ///
-        /// Not mandatory.
-        Rgba8(Signedness, Normalizedness),
+    /// Represents a pixel format with a 10-bit red/green/blue and 2-bit
+    /// alpha channels.
+    ///
+    /// Unsigned variations are mandatory.
+    Rgb10A2(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 8-bit red/green/blue/alpha channels
-        /// in the sRGB encoding.
-        ///
-        /// Mandatory.
-        SrgbRgba8,
+    /// Represents a pixel format with a 16-bit red channel.
+    ///
+    /// Mandatory.
+    R16(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 10-bit red/green/blue and 2-bit
-        /// alpha channels.
-        ///
-        /// Unsigned variations are mandatory.
-        Rgb10A2(Signedness, Normalizedness),
+    /// Represents a pixel format with a 16-bit floating point red channel.
+    ///
+    /// TODO: make this mandatory if required by Vulkan.
+    RFloat16,
 
-        /// Represents a pixel format with a 16-bit red channel.
-        ///
-        /// Mandatory.
-        R16(Signedness, Normalizedness),
+    /// Represents a pixel format with a 16-bit red/green channels.
+    ///
+    /// Not mandatory.
+    Rg16(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 16-bit floating point red channel.
-        ///
-        /// TODO: make this mandatory if required by Vulkan.
-        RFloat16,
+    /// Represents a pixel format with a 16-bit floating point red/green channels.
+    ///
+    /// TODO: make this mandatory if required by Vulkan.
+    RgFloat16,
 
-        /// Represents a pixel format with a 16-bit red/green channels.
-        ///
-        /// Not mandatory.
-        Rg16(Signedness, Normalizedness),
+    /// Represents a pixel format with a 16-bit red/green/blue/alpha channels.
+    ///
+    /// Unnormalized variations are mandatory.
+    Rgba16(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 16-bit floating point red/green channels.
-        ///
-        /// TODO: make this mandatory if required by Vulkan.
-        RgFloat16,
+    /// Represents a pixel format with a 16-bit floating point red/green/blue/alpha channels.
+    ///
+    /// Mandatory.
+    RgbaFloat16,
 
-        /// Represents a pixel format with a 16-bit red/green/blue/alpha channels.
-        ///
-        /// Unnormalized variations are mandatory.
-        Rgba16(Signedness, Normalizedness),
+    /// Represents a pixel format with a 32-bit red channel.
+    ///
+    /// Unnormalized variations are mandatory.
+    R32(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 16-bit floating point red/green/blue/alpha channels.
-        ///
-        /// Mandatory.
-        RgbaFloat16,
+    /// Represents a pixel format with a 32-bit floating point red channel.
+    ///
+    /// Mandatory.
+    RFloat32,
 
-        /// Represents a pixel format with a 32-bit red channel.
-        ///
-        /// Unnormalized variations are mandatory.
-        R32(Signedness, Normalizedness),
+    /// Represents a pixel format with a 32-bit red/green channels.
+    ///
+    /// Not mandatory.
+    Rg32(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 32-bit floating point red channel.
-        ///
-        /// Mandatory.
-        RFloat32,
+    /// Represents a pixel format with a 32-bit floating point red/green channels.
+    ///
+    /// Mandatory.
+    RgFloat32,
 
-        /// Represents a pixel format with a 32-bit red/green channels.
-        ///
-        /// Not mandatory.
-        Rg32(Signedness, Normalizedness),
+    /// Represents a pixel format with a 32-bit red/green/blue/alpha channels.
+    ///
+    /// Unnormalized variations are mandatory.
+    Rgba32(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 32-bit floating point red/green channels.
-        ///
-        /// Mandatory.
-        RgFloat32,
+    /// Represents a pixel format with a 32-bit floating point red/green/blue/alpha channels.
+    ///
+    /// Mandatory.
+    RgbaFloat32,
 
-        /// Represents a pixel format with a 32-bit red/green/blue/alpha channels.
-        ///
-        /// Unnormalized variations are mandatory.
-        Rgba32(Signedness, Normalizedness),
+    /// Represents a pixel format with a 32-bit red/green/blue/alpha channels
+    /// in BGRA order.
+    Bgra8(Signedness, Normalizedness),
 
-        /// Represents a pixel format with a 32-bit floating point red/green/blue/alpha channels.
-        ///
-        /// Mandatory.
-        RgbaFloat32,
+    /// Represents a pixel format with a 8-bit red/green/blue/alpha channels
+    /// in the sRGB encoding and in BGRA order.
+    SrgbBgra8,
 
-        /// Represents a pixel format with a 32-bit red/green/blue/alpha channels
-        /// in BGRA order.
-        Bgra8(Signedness, Normalizedness),
+    /// Represents a pixel format with a 16-bit depth.
+    ///
+    /// Mandatory.
+    ///
+    /// FIXME: This format isn't supported on iOS and OS X 10.11. Should this be mandatory?
+    Depth16,
 
-        /// Represents a pixel format with a 8-bit red/green/blue/alpha channels
-        /// in the sRGB encoding and in BGRA order.
-        SrgbBgra8,
+    /// Represents a pixel format with a 24-bit depth.
+    ///
+    /// Either of this and `DepthFloat32` is mandatory.
+    Depth24,
 
-        /// Represents a pixel format with a 16-bit depth.
-        ///
-        /// Mandatory.
-        ///
-        /// FIXME: This format isn't supported on iOS and OS X 10.11. Should this be mandatory?
-        Depth16,
+    /// Represents a pixel format with a 32-bit floating point depth.
+    ///
+    /// Either of this and `Depth24` is mandatory.
+    DepthFloat32,
 
-        /// Represents a pixel format with a 24-bit depth.
-        ///
-        /// Either of this and `DepthFloat32` is mandatory.
-        Depth24,
+    /// Represents a pixel format with a 24-bit depth and 8-bit stencil.
+    ///
+    /// Either of this and `DepthFloat32Stencil8` is mandatory.
+    Depth24Stencil8,
 
-        /// Represents a pixel format with a 32-bit floating point depth.
-        ///
-        /// Either of this and `Depth24` is mandatory.
-        DepthFloat32,
-
-        /// Represents a pixel format with a 24-bit depth and 8-bit stencil.
-        ///
-        /// Either of this and `DepthFloat32Stencil8` is mandatory.
-        Depth24Stencil8,
-
-        /// Represents a pixel format with a 32-bit floating point depth and 8-bit stencil.
-        ///
-        /// Either of this and `Depth24Stencil8` is mandatory.
-        DepthFloat32Stencil8,
-    }
+    /// Represents a pixel format with a 32-bit floating point depth and 8-bit stencil.
+    ///
+    /// Either of this and `Depth24Stencil8` is mandatory.
+    DepthFloat32Stencil8,
 }
 
 impl ImageFormat {
+    /// Retrieve all possible values of `ImageFormat`.
+    pub fn values() -> &'static [ImageFormat] {
+        lazy_static! {
+            static ref VALUES: Vec<ImageFormat> = ImageFormat::iter_values().collect();
+        }
+        &VALUES
+    }
+
     pub fn has_color(&self) -> bool {
         !self.has_depth()
     }
@@ -363,21 +323,35 @@ pub enum ChannelSet {
     Stencil,
 }
 
-define_enumerable_enum! {
-    SIGNEDNESSES;
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-    pub enum Signedness {
-        Unsigned,
-        Signed,
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, IterValues)]
+pub enum Signedness {
+    Unsigned,
+    Signed,
+}
+
+impl Signedness {
+    /// Retrieve all possible values of `Signedness`.
+    pub fn values() -> &'static [Signedness] {
+        lazy_static! {
+            static ref VALUES: Vec<Signedness> = Signedness::iter_values().collect();
+        }
+        &VALUES
     }
 }
 
-define_enumerable_enum! {
-    NORMALIZEDNESSES;
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-    pub enum Normalizedness {
-        Unnormalized,
-        Normalized,
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, IterValues)]
+pub enum Normalizedness {
+    Unnormalized,
+    Normalized,
+}
+
+impl Normalizedness {
+    /// Retrieve all possible values of `Normalizedness`.
+    pub fn values() -> &'static [Normalizedness] {
+        lazy_static! {
+            static ref VALUES: Vec<Normalizedness> = Normalizedness::iter_values().collect();
+        }
+        &VALUES
     }
 }
 
@@ -410,18 +384,6 @@ define_enumerable_enum! {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct VertexFormat(pub VecWidth, pub ScalarFormat);
 
-lazy_static! {
-    static ref VERTEX_FORMATS: Vec<VertexFormat> = {
-        let mut v = Vec::new();
-        for &v1 in VecWidth::values() {
-            for &v2 in ScalarFormat::values() {
-                v.push(VertexFormat(v1, v2));
-            }
-        }
-        v
-    };
-}
-
 impl VertexFormat {
     pub fn width(&self) -> usize {
         self.0.width()
@@ -431,24 +393,34 @@ impl VertexFormat {
         self.width() * self.1.size()
     }
 
-    /// Retrieve all possible values of `Self`.
-    pub fn values() -> &'static [Self] {
-        &VERTEX_FORMATS
+    /// Retrieve all possible values of `VertexFormat`.
+    pub fn values() -> &'static [VertexFormat] {
+        lazy_static! {
+            static ref VALUES: Vec<VertexFormat> = <(VecWidth, ScalarFormat)>::iter_values()
+                .map(|(x, y)| VertexFormat(x, y))
+                .collect();
+        }
+        &VALUES
     }
 }
 
-define_enumerable_enum! {
-    VECTOR_WIDTHS;
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-    pub enum VecWidth {
-        Scalar,
-        Vector2,
-        Vector3,
-        Vector4,
-    }
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, IterValues)]
+pub enum VecWidth {
+    Scalar,
+    Vector2,
+    Vector3,
+    Vector4,
 }
 
 impl VecWidth {
+    /// Retrieve all possible values of `VecWidth`.
+    pub fn values() -> &'static [VecWidth] {
+        lazy_static! {
+            static ref VALUES: Vec<VecWidth> = VecWidth::iter_values().collect();
+        }
+        &VALUES
+    }
+
     pub fn from_width(width: usize) -> Option<Self> {
         match width {
             1 => Some(VecWidth::Scalar),
@@ -469,18 +441,23 @@ impl VecWidth {
     }
 }
 
-define_enumerable_enum! {
-    SCALAR_FORMATS;
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-    pub enum ScalarFormat {
-        I8(Signedness, Normalizedness),
-        I16(Signedness, Normalizedness),
-        I32(Signedness, Normalizedness),
-        F32,
-    }
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, IterValues)]
+pub enum ScalarFormat {
+    I8(Signedness, Normalizedness),
+    I16(Signedness, Normalizedness),
+    I32(Signedness, Normalizedness),
+    F32,
 }
 
 impl ScalarFormat {
+    /// Retrieve all possible values of `ScalarFormat`.
+    pub fn values() -> &'static [ScalarFormat] {
+        lazy_static! {
+            static ref VALUES: Vec<ScalarFormat> = ScalarFormat::iter_values().collect();
+        }
+        &VALUES
+    }
+
     pub fn size(&self) -> usize {
         match *self {
             ScalarFormat::I8(_, _) => 1,
