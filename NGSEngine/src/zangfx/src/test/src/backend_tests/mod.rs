@@ -36,6 +36,17 @@ pub trait TestDriver {
             }
         })
     }
+
+    fn for_each_copy_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+        self.for_each_device(&mut |device| {
+            for (i, qf) in device.caps().queue_families().iter().enumerate() {
+                if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Copy) {
+                    println!("[Queue Family #{}]", i);
+                    runner(device, i as _);
+                }
+            }
+        })
+    }
 }
 
 /// Generates test cases given a test driver.
@@ -73,6 +84,9 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { image_all_formats, $driver }
         zangfx_test_single! { image_all_types, $driver }
 
+        zangfx_test_single! { copy_fill_buffer, $driver }
+        zangfx_test_single! { copy_copy_buffer, $driver }
+
         zangfx_test_single! { compute_null, $driver }
         zangfx_test_single! { compute_conv1, $driver }
 
@@ -109,6 +123,9 @@ pub use self::heap::*;
 
 mod image;
 pub use self::image::*;
+
+mod copy;
+pub use self::copy::*;
 
 mod compute_null;
 pub use self::compute_null::*;
