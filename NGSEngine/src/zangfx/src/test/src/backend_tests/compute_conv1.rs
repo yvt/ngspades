@@ -15,9 +15,10 @@ static SPIRV_CONV: ::include_data::DataView =
 /// Performs a convolution using a compute shader.
 pub fn compute_conv1<T: TestDriver>(driver: T) {
     driver.for_each_compute_queue(&mut |device, qf| {
-        let binding_param = 0;
-        let binding_input = 1;
-        let binding_output = 2;
+        let binding_redundant = 0; // unused -- evoke possible issue in arg table handling
+        let binding_param = 1;
+        let binding_input = 2;
+        let binding_output = 3;
 
         let local_size = 64;
         let global_size = 4;
@@ -132,6 +133,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         println!("- Creating an argument table signature");
         let arg_table_sig = {
             let mut builder = device.build_arg_table_sig();
+            builder.arg(binding_redundant, gfx::ArgType::StorageBuffer);
             builder.arg(binding_input, gfx::ArgType::StorageBuffer);
             builder.arg(binding_output, gfx::ArgType::StorageBuffer);
             builder.arg(binding_param, gfx::ArgType::UniformBuffer);
@@ -141,7 +143,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         println!("- Creating a root signature");
         let root_sig = device
             .build_root_sig()
-            .arg_table(0, &arg_table_sig)
+            .arg_table(1, &arg_table_sig)
             .build()
             .unwrap();
 
@@ -164,6 +166,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
                 &arg_table_sig,
                 &arg_table,
                 &[
+                    (binding_redundant, 0, [(0..4, &*kernel_buffer)][..].into()),
                     (
                         binding_input,
                         0,
@@ -205,7 +208,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             e.use_resource(gfx::ResourceUsage::Write, &[(&*output_buffer).into()]);
             e.begin_debug_group("Convolution");
             e.bind_pipeline(&pipeline);
-            e.bind_arg_table(0, &[&arg_table]);
+            e.bind_arg_table(1, &[&arg_table]);
             e.dispatch(&[global_size as u32]);
             e.end_debug_group();
         }
