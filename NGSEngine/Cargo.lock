@@ -1545,6 +1545,21 @@ dependencies = [
  "zangfx_common 0.1.0",
 ]
 
+[[package]]
+name = "zangfx_vulkan"
+version = "0.1.0"
+dependencies = [
+ "iterpool 0.1.0",
+ "ngsenumflags 0.1.2",
+ "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokenlock 0.1.4",
+ "xalloc 0.2.2",
+ "zangfx_base 0.1.0",
+ "zangfx_common 0.1.0",
+ "zangfx_test 0.1.0",
+]
+
 [metadata]
 "checksum android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
 "checksum ansi_term 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6b3568b48b7cefa6b8ce125f9bb4989e52fbcc29ebea88df04cc7c5f12f70455"

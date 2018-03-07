@@ -1,0 +1,18 @@
+[package]
+name = "zangfx_vulkan"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+zangfx_common = { path = "../../common" }
+zangfx_base = { path = "../../base" }
+ngsenumflags = { path = "../../../../support/ngsenumflags" }
+parking_lot = "0.4.4"
+tokenlock = { path = "../../../../support/tokenlock" }
+iterpool = { path = "../../../../support/iterpool" }
+xalloc = { path = "../../../../support/xalloc-rs", features = ["nightly"] }
+smallvec = "0.4.1"
+ash = "0.22.0"
+
+[dev-dependencies]
+zangfx_test = { path = "../../test" }
