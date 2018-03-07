@@ -16,7 +16,12 @@ extern crate parking_lot;
 extern crate smallvec;
 extern crate tokenlock;
 extern crate xalloc;
-extern crate ash;
+pub extern crate ash;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
+
+pub mod device;
+
+use std::fmt::Debug;
+pub type AshDevice = ash::Device<ash::version::V1_0>;

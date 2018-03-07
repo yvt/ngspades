@@ -40,6 +40,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ash"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shared_library 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "atomic_refcell"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1549,6 +1559,7 @@ dependencies = [
 name = "zangfx_vulkan"
 version = "0.1.0"
 dependencies = [
+ "ash 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "iterpool 0.1.0",
  "ngsenumflags 0.1.2",
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1567,6 +1578,7 @@ dependencies = [
 "checksum arrayref 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "0fd1479b7c29641adbd35ff3b5c293922d696a92f25c8c975da3e0acbc87258f"
 "checksum arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "a1e964f9e24d588183fcb43503abda40d288c8657dfc27311516ce2f05675aef"
 "checksum ash 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5f00acb2a591d505cbd2f6493312eeba686319fc75433d80c7b04df0a732d3ab"
+"checksum ash 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e58e6bfd112bddc047162982e96c50f93f16c2624f78fc6af5c4e10fed7144df"
 "checksum atomic_refcell 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d7209e59a3bed898705353140d965172ab13bd310d089bcdadbe1d11f2e22536"
 "checksum atty 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "8352656fd42c30a0c3c89d26dea01e3b77c0ab2af18230835c15e2e13cd51859"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
