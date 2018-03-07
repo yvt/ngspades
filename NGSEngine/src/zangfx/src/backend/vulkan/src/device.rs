@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Vulkan.
-use {base, AshDevice};
+use {base, limits, AshDevice};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -15,17 +15,23 @@ use common::Result;
 /// prevent premature release of `Device` (as required by ZanGFX's base
 /// interface.)
 #[derive(Debug, Clone, Copy)]
-pub(super) struct DeviceRef(*const AshDevice);
+pub(super) struct DeviceRef(*const AshDevice, *const limits::DeviceCaps);
 
 impl DeviceRef {
     pub fn vk_device(&self) -> &AshDevice {
         unsafe { &*self.0 }
     }
+
+    pub fn caps(&self) -> &limits::DeviceCaps {
+        unsafe { &*self.1 }
+    }
 }
 
 /// Implementation of `Device` for Vulkan.
 pub struct Device {
+    // These fields are boxed so they can be referenced by `DeviceRef`
     vk_device: Box<AshDevice>,
+    caps: Box<limits::DeviceCaps>,
 }
 
 zangfx_impl_object! { Device: base::Device, ::Debug }
@@ -34,23 +40,36 @@ unsafe impl Send for Device {}
 unsafe impl Sync for Device {}
 
 impl Device {
-    /// Construct a `Device` using a given Vulkan device object.
+    /// Construct a `Device` using a given Vulkan device object and
+    /// backend configurations;
     ///
     /// `Device` does not destroy the given `AshDevice` automatically when
     /// dropped.
-    pub unsafe fn new(vk_device: AshDevice) -> Self {
-        Self {
+    ///
+    /// Fails and returns `Err(_)` if the configuration fails validation.
+    pub unsafe fn new(
+        vk_device: AshDevice,
+        info: limits::DeviceInfo,
+        config: limits::DeviceConfig,
+    ) -> Result<Self> {
+        let caps = limits::DeviceCaps::new(info, config)?;
+        Ok(Self {
             vk_device: Box::new(vk_device),
-        }
+            caps: Box::new(caps),
+        })
     }
 
     pub fn vk_device(&self) -> &AshDevice {
         &self.vk_device
     }
 
-    /// Construct a `DeviceRef`.
+    pub(super) fn caps(&self) -> &limits::DeviceCaps {
+        &self.caps
+    }
+
+    /// Construct a `DeviceRef` pointing this `Device`.
     pub(super) unsafe fn new_device_ref(&self) -> DeviceRef {
-        DeviceRef(&*self.vk_device)
+        DeviceRef(&*self.vk_device, &*self.caps)
     }
 }
 
@@ -63,7 +82,7 @@ impl ::Debug for Device {
 
 impl base::Device for Device {
     fn caps(&self) -> &base::DeviceCaps {
-        unimplemented!()
+        &*self.caps
     }
 
     fn build_cmd_queue(&self) -> Box<base::CmdQueueBuilder> {

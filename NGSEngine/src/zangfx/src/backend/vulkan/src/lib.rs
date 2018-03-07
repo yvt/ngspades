@@ -22,6 +22,8 @@ extern crate zangfx_base as base;
 extern crate zangfx_common as common;
 
 pub mod device;
+pub mod formats;
+pub mod limits;
 
 use std::fmt::Debug;
 pub type AshDevice = ash::Device<ash::version::V1_0>;

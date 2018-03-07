@@ -181,10 +181,26 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                     CStr::from_ptr(prop.device_name.as_ptr())
                 );
 
+                let available_features = instance.get_physical_device_features(phys_device);
+
+                if available_features.robust_buffer_access == ash::vk::VK_FALSE {
+                    println!("Warning: Feature 'robust_buffer_access' is unavailable");
+                }
+
+                let enabled_features = ash::vk::PhysicalDeviceFeatures {
+                    robust_buffer_access: available_features.robust_buffer_access,
+                    ..Default::default()
+                };
+
+                let info = backend::limits::DeviceInfo::from_physical_device(
+                    &instance,
+                    phys_device,
+                    &enabled_features,
+                );
+
+                // Allocate some queues
                 use std::cmp::min;
-                let queue_families =
-                    instance.get_physical_device_queue_family_properties(phys_device);
-                let queues = queue_families
+                let queues = info.queue_families
                     .iter()
                     .enumerate()
                     .map(|(i, prop)| ash::vk::DeviceQueueCreateInfo {
@@ -192,15 +208,17 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                         p_next: null(),
                         flags: ash::vk::DeviceQueueCreateFlags::empty(),
                         queue_family_index: i as u32,
-                        queue_count: min(2, prop.queue_count),
+                        queue_count: min(2, prop.count) as u32,
                         p_queue_priorities: [0.5f32, 0.5f32].as_ptr(),
                     })
                     .collect::<Vec<_>>();
 
-                let available_features = instance.get_physical_device_features(phys_device);
+                let mut config = backend::limits::DeviceConfig::new();
 
-                if available_features.robust_buffer_access == ash::vk::VK_FALSE {
-                    println!("Warning: Feature 'robust_buffer_access' is unavailable");
+                for queue_ci in queues.iter() {
+                    for i in 0..queue_ci.queue_count {
+                        config.queues.push((queue_ci.queue_family_index, i));
+                    }
                 }
 
                 let device = instance
@@ -216,17 +234,16 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                             pp_enabled_layer_names: null(),
                             enabled_extension_count: 0,
                             pp_enabled_extension_names: null(),
-                            p_enabled_features: &ash::vk::PhysicalDeviceFeatures {
-                                robust_buffer_access: available_features.robust_buffer_access,
-                                ..Default::default()
-                            },
+                            p_enabled_features: &enabled_features,
                         },
                         None,
                     )
                     .map(UniqueDevice)
                     .expect("Failed to create a Vulkan device.");
 
-                let gfx_device = backend::device::Device::new(ash::Device::clone(&device));
+                let gfx_device =
+                    backend::device::Device::new(ash::Device::clone(&device), info, config)
+                        .expect("Failed to create a ZanGFX device.");
                 runner(&gfx_device);
             }
         }
