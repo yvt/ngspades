@@ -4,7 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Vulkan.
-use {base, limits, AshDevice};
+use {base, AshDevice};
+use {heap, limits};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -16,6 +17,9 @@ use common::Result;
 /// interface.)
 #[derive(Debug, Clone, Copy)]
 pub(super) struct DeviceRef(*const AshDevice, *const limits::DeviceCaps);
+
+unsafe impl Sync for DeviceRef {}
+unsafe impl Send for DeviceRef {}
 
 impl DeviceRef {
     pub fn vk_device(&self) -> &AshDevice {
@@ -94,7 +98,7 @@ impl base::Device for Device {
     }
 
     fn build_dynamic_heap(&self) -> Box<base::DynamicHeapBuilder> {
-        unimplemented!()
+        unsafe { Box::new(heap::DynamicHeapBuilder::new(self.new_device_ref())) }
     }
 
     fn build_dedicated_heap(&self) -> Box<base::DedicatedHeapBuilder> {

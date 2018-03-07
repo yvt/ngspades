@@ -250,7 +250,7 @@ impl DeviceConfig {
 /// Implementation of `DeviceCaps` for Vulkan
 #[derive(Debug)]
 pub struct DeviceCaps {
-    info: DeviceInfo,
+    pub(super) info: DeviceInfo,
     config: DeviceConfig,
     available_qfs: Vec<base::QueueFamilyInfo>,
 }
