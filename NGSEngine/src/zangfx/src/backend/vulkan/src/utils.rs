@@ -68,3 +68,25 @@ pub fn get_memory_req(vk_device: &::AshDevice, obj: base::ResourceRef) -> Result
         memory_types: req.memory_type_bits,
     })
 }
+
+pub fn translate_shader_stage(value: base::ShaderStage) -> vk::ShaderStageFlags {
+    match value {
+        base::ShaderStage::Vertex => vk::SHADER_STAGE_VERTEX_BIT,
+        base::ShaderStage::Fragment => vk::SHADER_STAGE_FRAGMENT_BIT,
+        base::ShaderStage::Compute => vk::SHADER_STAGE_COMPUTE_BIT,
+    }
+}
+
+pub fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::ShaderStageFlags {
+    let mut ret = vk::ShaderStageFlags::empty();
+    if value.contains(base::ShaderStage::Vertex) {
+        ret |= vk::SHADER_STAGE_VERTEX_BIT;
+    }
+    if value.contains(base::ShaderStage::Fragment) {
+        ret |= vk::SHADER_STAGE_FRAGMENT_BIT;
+    }
+    if value.contains(base::ShaderStage::Compute) {
+        ret |= vk::SHADER_STAGE_COMPUTE_BIT;
+    }
+    ret
+}

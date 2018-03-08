@@ -5,7 +5,7 @@
 //
 //! Implementation of `Device` for Vulkan.
 use {base, AshDevice};
-use {buffer, heap, limits, utils};
+use {arg, buffer, heap, limits, utils};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -130,15 +130,15 @@ impl base::Device for Device {
     }
 
     fn build_arg_table_sig(&self) -> Box<base::ArgTableSigBuilder> {
-        unimplemented!()
+        unsafe { Box::new(arg::layout::ArgTableSigBuilder::new(self.new_device_ref())) }
     }
 
     fn build_root_sig(&self) -> Box<base::RootSigBuilder> {
-        unimplemented!()
+        unsafe { Box::new(arg::layout::RootSigBuilder::new(self.new_device_ref())) }
     }
 
     fn build_arg_pool(&self) -> Box<base::ArgPoolBuilder> {
-        unimplemented!()
+        unsafe { Box::new(arg::pool::ArgPoolBuilder::new(self.new_device_ref())) }
     }
 
     fn build_render_pass(&self) -> Box<base::RenderPassBuilder> {
