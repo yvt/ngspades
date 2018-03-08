@@ -80,6 +80,10 @@ impl Error {
         use std::ops::DerefMut;
         self.error.as_mut().map(DerefMut::deref_mut)
     }
+
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
+    }
 }
 
 impl fmt::Display for Error {

@@ -102,7 +102,7 @@ impl base::Device for Device {
     }
 
     fn build_dedicated_heap(&self) -> Box<base::DedicatedHeapBuilder> {
-        unimplemented!()
+        unsafe { Box::new(heap::DedicatedHeapBuilder::new(self.new_device_ref())) }
     }
 
     fn build_barrier(&self) -> Box<base::BarrierBuilder> {

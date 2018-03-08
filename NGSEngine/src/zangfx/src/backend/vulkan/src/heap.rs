@@ -57,6 +57,69 @@ impl base::DynamicHeapBuilder for DynamicHeapBuilder {
     }
 }
 
+/// Implementation of `DedicatedHeapBuilder` for Vulkan.
+#[derive(Debug)]
+pub struct DedicatedHeapBuilder {
+    device: DeviceRef,
+    memory_type: Option<base::MemoryType>,
+    allocs: Vec<(base::DeviceSize, base::DeviceSize)>,
+    error: Option<Error>,
+}
+
+zangfx_impl_object! { DedicatedHeapBuilder: base::DedicatedHeapBuilder, ::Debug }
+
+impl DedicatedHeapBuilder {
+    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+        Self {
+            device,
+            memory_type: None,
+            allocs: Vec::new(),
+            error: None,
+        }
+    }
+}
+
+impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
+    fn memory_type(&mut self, v: base::MemoryType) -> &mut base::DedicatedHeapBuilder {
+        self.memory_type = Some(v);
+        self
+    }
+
+    fn prebind(&mut self, obj: base::ResourceRef) {
+        match get_memory_req(self.device.vk_device(), obj) {
+            Ok(req) => self.allocs.push((req.size, req.align)),
+            // Save the error and return it from `build`.
+            Err(err) => self.error = Some(err),
+        }
+    }
+
+    fn build(&mut self) -> Result<Box<base::Heap>> {
+        if let Some(error) = self.error.take() {
+            // We can't return the full `Error` twice because it's not `Clone`.
+            self.error = Some(Error::new(error.kind()));
+            return Err(error);
+        }
+
+        let memory_type = self.memory_type
+            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "memory_type"))?;
+        let mut heap_size = 0;
+
+        // Since dedicated heaps do not support aliasing (yet), estimating the
+        // required heap size is easy peasy cheesy¹.
+        //
+        // The `arena_size` argument is reserved for when we implement aliasing.
+        // We'll need it to deterministically operate `SysTlsf`s.
+        //
+        // ¹ http://mlp.wikia.com/wiki/File:Pinkie_Pie_%22easy-peasy-cheesy!%22_S7E18.png
+        for &(size, align) in self.allocs.iter() {
+            heap_size = (heap_size + align - 1) & !(align - 1);
+            heap_size += size;
+        }
+
+        Heap::new(self.device, heap_size, memory_type, heap_size).map(|x| Box::new(x) as _)
+    }
+}
+
 /// Implementation of `HeapAlloc` for Vulkan.
 #[derive(Debug, Clone)]
 struct HeapAlloc {
