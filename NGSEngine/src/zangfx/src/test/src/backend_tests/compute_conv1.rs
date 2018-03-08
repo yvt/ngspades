@@ -143,6 +143,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         println!("- Creating a root signature");
         let root_sig = device
             .build_root_sig()
+            .arg_table(0, &arg_table_sig)
             .arg_table(1, &arg_table_sig)
             .build()
             .unwrap();
@@ -208,6 +209,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             e.use_resource(gfx::ResourceUsage::Write, &[(&*output_buffer).into()]);
             e.begin_debug_group("Convolution");
             e.bind_pipeline(&pipeline);
+            e.bind_arg_table(0, &[&arg_table]);
             e.bind_arg_table(1, &[&arg_table]);
             e.dispatch(&[global_size as u32]);
             e.end_debug_group();

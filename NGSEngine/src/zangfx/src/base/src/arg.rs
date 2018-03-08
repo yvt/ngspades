@@ -129,8 +129,12 @@ pub trait RootSigBuilder: Object {
     ///
     /// # Valid Usage
     ///
-    /// All mandatory properties must have their values set before this method
-    /// is called.
+    /// - All mandatory properties must have their values set before this method
+    ///   is called.
+    /// - Binding indices of argument table signatures must be tightly arranged.
+    ///   That is, when `N` is max(binding indices ∪ -1), there must not exist
+    ///   an unassigned binding index `n` such that `0 ≤ n ≤ N`.
+    ///
     fn build(&mut self) -> Result<RootSig>;
 }
 
