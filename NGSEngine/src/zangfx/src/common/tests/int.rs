@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate ngsgfx_common;
-use ngsgfx_common::int::BinaryUInteger;
+extern crate zangfx_common;
+use zangfx_common::BinaryUInteger;
 
 #[test]
 fn is_power_of_two() {

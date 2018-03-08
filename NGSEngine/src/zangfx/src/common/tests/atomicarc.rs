@@ -3,11 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate ngsgfx_common;
+extern crate zangfx_common;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use ngsgfx_common::atom2::AtomicArc;
-use ngsgfx_common::barc::BArc;
+use zangfx_common::{AtomicArc, BArc};
 
 #[test]
 fn arc_into_inner_some() {
