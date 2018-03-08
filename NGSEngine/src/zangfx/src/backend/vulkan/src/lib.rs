@@ -21,9 +21,11 @@ pub extern crate ash;
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
 
+pub mod buffer;
 pub mod device;
 pub mod formats;
 pub mod heap;
+pub mod image;
 pub mod limits;
 mod utils;
 

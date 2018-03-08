@@ -4,8 +4,10 @@
 // This source code is a part of Nightingales.
 //
 use ash::vk;
+use ash::version::*;
 
-use common::{Error, ErrorKind};
+use base;
+use common::{Error, ErrorKind, Result};
 
 /// Translates a subset of `vk::Result` values into `core::GenericError`.
 ///
@@ -49,4 +51,20 @@ pub(crate) fn translate_map_memory_error(
 
 pub(crate) fn translate_map_memory_error_unwrap(result: vk::Result) -> Error {
     translate_map_memory_error(result).unwrap()
+}
+
+pub fn get_memory_req(vk_device: &::AshDevice, obj: base::ResourceRef) -> Result<base::MemoryReq> {
+    use buffer;
+    let req = match obj {
+        base::ResourceRef::Buffer(buffer) => {
+            let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
+            vk_device.get_buffer_memory_requirements(our_buffer.vk_buffer())
+        }
+        base::ResourceRef::Image(_image) => unimplemented!(),
+    };
+    Ok(base::MemoryReq {
+        size: req.size,
+        align: req.alignment,
+        memory_types: req.memory_type_bits,
+    })
 }

@@ -5,7 +5,7 @@
 //
 //! Implementation of `Device` for Vulkan.
 use {base, AshDevice};
-use {heap, limits};
+use {buffer, heap, limits, utils};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -114,7 +114,7 @@ impl base::Device for Device {
     }
 
     fn build_buffer(&self) -> Box<base::BufferBuilder> {
-        unimplemented!()
+        unsafe { Box::new(buffer::BufferBuilder::new(self.new_device_ref())) }
     }
 
     fn build_sampler(&self) -> Box<base::SamplerBuilder> {
@@ -161,8 +161,12 @@ impl base::Device for Device {
         unimplemented!()
     }
 
-    fn destroy_buffer(&self, _obj: &base::Buffer) -> Result<()> {
-        unimplemented!()
+    fn destroy_buffer(&self, obj: &base::Buffer) -> Result<()> {
+        let our_buffer: &buffer::Buffer = obj.downcast_ref().expect("bad buffer type");
+        unsafe {
+            our_buffer.destroy(self.vk_device());
+        }
+        Ok(())
     }
 
     fn destroy_sampler(&self, _obj: &base::Sampler) -> Result<()> {
@@ -173,8 +177,8 @@ impl base::Device for Device {
         unimplemented!()
     }
 
-    fn get_memory_req(&self, _obj: base::ResourceRef) -> Result<base::MemoryReq> {
-        unimplemented!()
+    fn get_memory_req(&self, obj: base::ResourceRef) -> Result<base::MemoryReq> {
+        utils::get_memory_req(self.vk_device(), obj)
     }
 
     fn update_arg_tables(
