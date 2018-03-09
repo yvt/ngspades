@@ -17,7 +17,7 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
                 .build_buffer()
                 .label("Buffer 1")
                 .size(65536)
-                .usage(flags![gfx::BufferUsage::{CopyRead}])
+                .usage(flags![gfx::BufferUsage::{CopyWrite}])
                 .build()
                 .unwrap(),
         );
