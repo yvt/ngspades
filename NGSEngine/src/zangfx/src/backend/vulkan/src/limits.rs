@@ -11,13 +11,16 @@ use ash;
 use ash::version::*;
 use ash::vk::{self, VK_FALSE};
 use common::Result;
+use ngsenumflags::BitFlags;
 
 use formats::{translate_image_format, translate_vertex_format};
+use utils::translate_generic_error_unwrap;
 
 /// Properties of a Vulkan physical device as recognized by the ZanGFX Vulkan
 /// backend.
 #[derive(Debug, Clone)]
 pub struct DeviceInfo {
+    pub traits: DeviceTraitFlags,
     pub limits: base::DeviceLimits,
     pub queue_families: Vec<base::QueueFamilyInfo>,
     pub memory_types: Vec<base::MemoryTypeInfo>,
@@ -26,13 +29,36 @@ pub struct DeviceInfo {
     pub vertex_features: HashMap<base::VertexFormat, base::VertexFormatCapsFlags>,
 }
 
+#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum DeviceTrait {
+    /// Enables work-arounds for MoltenVK (Vulkan-on-Metal emulation layer).
+    MoltenVK = 0b1,
+}
+
+pub type DeviceTraitFlags = BitFlags<DeviceTrait>;
+
 impl DeviceInfo {
     pub fn from_physical_device(
         instance: &ash::Instance<V1_0>,
         phys_device: vk::PhysicalDevice,
         enabled_features: &vk::PhysicalDeviceFeatures,
-    ) -> Self {
+    ) -> Result<Self> {
         use std::cmp::min;
+        let mut traits = flags![DeviceTrait::{}];
+
+        let exts = instance
+            .enumerate_device_extension_properties(phys_device)
+            .map_err(translate_generic_error_unwrap)?;
+
+        use std::ffi::CStr;
+        let mvk_ext_name = CStr::from_bytes_with_nul(b"VK_MVK_moltenvk\0").unwrap();
+        let is_molten_vk = exts.iter()
+            .any(|p| unsafe { CStr::from_ptr(p.extension_name.as_ptr()) } == mvk_ext_name);
+        if is_molten_vk {
+            traits |= DeviceTrait::MoltenVK;
+        }
+
         let dev_prop = instance.get_physical_device_properties(phys_device);
         let ref dev_limits = dev_prop.limits;
         let limits = base::DeviceLimits {
@@ -112,14 +138,15 @@ impl DeviceInfo {
             }
         }
 
-        Self {
+        Ok(Self {
+            traits,
             limits,
             queue_families,
             image_features,
             vertex_features,
             memory_types,
             memory_regions,
-        }
+        })
     }
 }
 

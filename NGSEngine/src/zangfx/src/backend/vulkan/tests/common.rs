@@ -196,7 +196,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                     &instance,
                     phys_device,
                     &enabled_features,
-                );
+                ).unwrap();
 
                 // Allocate some queues
                 use std::cmp::min;

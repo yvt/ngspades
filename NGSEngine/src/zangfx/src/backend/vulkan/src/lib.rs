@@ -11,13 +11,17 @@
 //!
 pub extern crate ash;
 extern crate iterpool;
-#[macro_use(flags)]
-extern crate ngsenumflags;
 extern crate parking_lot;
 extern crate refeq;
 extern crate smallvec;
 extern crate tokenlock;
 extern crate xalloc;
+
+#[macro_use(flags)]
+extern crate ngsenumflags;
+#[macro_use]
+extern crate ngsenumflags_derive;
+
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;

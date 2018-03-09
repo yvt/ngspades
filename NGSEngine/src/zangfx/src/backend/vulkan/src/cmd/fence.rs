@@ -26,6 +26,7 @@ use refeq::RefEqArc;
 use base;
 use common::Result;
 use device::DeviceRef;
+use limits::DeviceTrait;
 
 use utils::translate_generic_error_unwrap;
 use cmd::queue::Item;
@@ -63,12 +64,20 @@ impl Fence {
 
         let vk_device: &::AshDevice = device.vk_device();
         let mut vk_event = vk::Event::null();
-        match vk_device
-            .fp_v1_0()
-            .create_event(vk_device.handle(), &info, ::null(), &mut vk_event)
-        {
-            vk::Result::Success => {}
-            e => return Err(translate_generic_error_unwrap(e)),
+
+        // Skip all event operations on MoltenVK -- Events are not supported.
+        // It'll (probably) work without them thanks to Metal's automatic memory
+        // barriers anyway.
+        if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
+            match vk_device.fp_v1_0().create_event(
+                vk_device.handle(),
+                &info,
+                ::null(),
+                &mut vk_event,
+            ) {
+                vk::Result::Success => {}
+                e => return Err(translate_generic_error_unwrap(e)),
+            }
         }
 
         Ok(Self {
@@ -97,11 +106,14 @@ impl Fence {
 
 impl Drop for FenceData {
     fn drop(&mut self) {
-        let vk_device: &::AshDevice = self.device.vk_device();
-        unsafe {
-            vk_device
-                .fp_v1_0()
-                .destroy_event(vk_device.handle(), self.vk_event, ::null());
+        let ref device = self.device;
+        if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
+            let vk_device: &::AshDevice = self.device.vk_device();
+            unsafe {
+                vk_device
+                    .fp_v1_0()
+                    .destroy_event(vk_device.handle(), self.vk_event, ::null());
+            }
         }
     }
 }

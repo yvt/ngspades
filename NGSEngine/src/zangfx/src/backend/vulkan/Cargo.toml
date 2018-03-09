@@ -7,6 +7,7 @@ authors = ["yvt <i@yvt.jp>"]
 zangfx_common = { path = "../../common" }
 zangfx_base = { path = "../../base" }
 ngsenumflags = { path = "../../../../support/ngsenumflags" }
+ngsenumflags_derive = { path = "../../../../support/ngsenumflags/ngsenumflags_derive" }
 parking_lot = "0.4.4"
 tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }
