@@ -86,6 +86,9 @@ pub struct ArgSig {
 
 zangfx_impl_object! { ArgSig: base::ArgSig, ::Debug }
 
+unsafe impl Send for ArgSig {}
+unsafe impl Sync for ArgSig {}
+
 impl base::ArgSig for ArgSig {
     fn set_len(&mut self, x: base::ArgArrayIndex) -> &mut base::ArgSig {
         self.vk_binding.descriptor_count = x as u32;

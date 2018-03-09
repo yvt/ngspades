@@ -22,6 +22,9 @@ pub struct RenderEncoder {
 zangfx_impl_object! { RenderEncoder:
 command::CmdEncoder, command::RenderCmdEncoder, ::Debug }
 
+unsafe impl Send for RenderEncoder {}
+unsafe impl Sync for RenderEncoder {}
+
 impl RenderEncoder {
     pub unsafe fn new(
         metal_encoder: MTLRenderCommandEncoder,

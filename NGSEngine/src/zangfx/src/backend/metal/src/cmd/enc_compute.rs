@@ -22,6 +22,9 @@ pub struct ComputeEncoder {
 zangfx_impl_object! { ComputeEncoder:
 command::CmdEncoder, command::ComputeCmdEncoder, ::Debug }
 
+unsafe impl Send for ComputeEncoder {}
+unsafe impl Sync for ComputeEncoder {}
+
 impl ComputeEncoder {
     pub unsafe fn new(
         metal_encoder: MTLComputeCommandEncoder,

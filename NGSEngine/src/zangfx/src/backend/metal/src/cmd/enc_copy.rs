@@ -23,6 +23,9 @@ pub struct CopyEncoder {
 zangfx_impl_object! { CopyEncoder:
 command::CmdEncoder, command::CopyCmdEncoder, ::Debug }
 
+unsafe impl Send for CopyEncoder {}
+unsafe impl Sync for CopyEncoder {}
+
 impl CopyEncoder {
     pub unsafe fn new(metal_encoder: MTLBlitCommandEncoder, fence_set: CmdBufferFenceSet) -> Self {
         Self {

@@ -27,7 +27,10 @@ pub struct ComputePipelineBuilder {
 }
 
 zangfx_impl_object! { ComputePipelineBuilder:
-    pipeline::ComputePipelineBuilder, ::Debug, base::SetLabel }
+pipeline::ComputePipelineBuilder, ::Debug, base::SetLabel }
+
+unsafe impl Send for ComputePipelineBuilder {}
+unsafe impl Sync for ComputePipelineBuilder {}
 
 impl ComputePipelineBuilder {
     /// Construct a `ComputePipelineBuilder`.

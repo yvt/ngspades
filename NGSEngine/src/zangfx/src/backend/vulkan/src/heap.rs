@@ -143,6 +143,9 @@ pub struct Heap {
 
 zangfx_impl_object! { Heap: base::Heap, ::Debug }
 
+unsafe impl Send for Heap {}
+unsafe impl Sync for Heap {}
+
 #[derive(Debug)]
 struct HeapState {
     allocator: SysTlsf<base::DeviceSize>,

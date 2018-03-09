@@ -28,6 +28,9 @@ pub struct CmdQueueBuilder {
 
 zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, ::Debug, base::SetLabel }
 
+unsafe impl Send for CmdQueueBuilder {}
+unsafe impl Sync for CmdQueueBuilder {}
+
 impl CmdQueueBuilder {
     /// Construct a `CmdQueueBuilder`.
     ///
@@ -74,6 +77,9 @@ pub struct CmdQueue {
 }
 
 zangfx_impl_object! { CmdQueue: command::CmdQueue, ::Debug }
+
+unsafe impl Send for CmdQueue {}
+unsafe impl Sync for CmdQueue {}
 
 #[derive(Debug)]
 pub(super) struct Scheduler {

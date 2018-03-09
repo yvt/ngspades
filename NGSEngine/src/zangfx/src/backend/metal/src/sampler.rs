@@ -32,6 +32,9 @@ pub struct SamplerBuilder {
 
 zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, ::Debug, base::SetLabel }
 
+unsafe impl Send for SamplerBuilder {}
+unsafe impl Sync for SamplerBuilder {}
+
 impl SamplerBuilder {
     /// Construct a `SamplerBuilder`.
     ///

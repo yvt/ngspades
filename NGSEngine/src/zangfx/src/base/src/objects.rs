@@ -36,7 +36,7 @@ use query_interface as qi;
 ///     assert!(boxed.query_ref::<SomeInterface>().is_some());
 ///     # }
 ///
-pub trait Object: qi::Object {}
+pub trait Object: qi::Object + Sync + Send {}
 mopo!(Object);
 
 /// Generates a boiler-plate code for defining a ZanGFX object type.
