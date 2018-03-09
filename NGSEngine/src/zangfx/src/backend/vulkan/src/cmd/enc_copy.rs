@@ -4,10 +4,12 @@
 // This source code is a part of Nightingales.
 //
 use ash::vk;
+use ash::version::*;
 use std::ops::Range;
 
 use base;
 use device::DeviceRef;
+use buffer::Buffer;
 
 use super::enc::{CommonCmdEncoder, FenceSet};
 use super::fence::Fence;
@@ -88,19 +90,52 @@ impl base::CmdEncoder for CopyEncoder {
 }
 
 impl base::CopyCmdEncoder for CopyEncoder {
-    fn fill_buffer(&mut self, _buffer: &base::Buffer, _range: Range<base::DeviceSize>, _value: u8) {
-        unimplemented!();
+    fn fill_buffer(&mut self, buffer: &base::Buffer, range: Range<base::DeviceSize>, value: u8) {
+        if range.start >= range.end {
+            return;
+        }
+        let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        let vk_device = self.device.vk_device();
+
+        let data = (value as u32) * 0x1010101;
+
+        unsafe {
+            vk_device.cmd_fill_buffer(
+                self.vk_cmd_buffer,
+                my_buffer.vk_buffer(),
+                range.start,
+                range.end - range.start,
+                data,
+            );
+        }
     }
 
     fn copy_buffer(
         &mut self,
-        _src: &base::Buffer,
-        _src_offset: base::DeviceSize,
-        _dst: &base::Buffer,
-        _dst_offset: base::DeviceSize,
-        _size: base::DeviceSize,
+        src: &base::Buffer,
+        src_offset: base::DeviceSize,
+        dst: &base::Buffer,
+        dst_offset: base::DeviceSize,
+        size: base::DeviceSize,
     ) {
-        unimplemented!();
+        let my_src: &Buffer = src.downcast_ref().expect("bad buffer type");
+        let my_dst: &Buffer = dst.downcast_ref().expect("bad buffer type");
+        let vk_device = self.device.vk_device();
+
+        unsafe {
+            vk_device.cmd_copy_buffer(
+                self.vk_cmd_buffer,
+                my_src.vk_buffer(),
+                my_dst.vk_buffer(),
+                &[
+                    vk::BufferCopy {
+                        src_offset,
+                        dst_offset,
+                        size,
+                    },
+                ],
+            );
+        }
     }
 
     fn copy_buffer_to_image(

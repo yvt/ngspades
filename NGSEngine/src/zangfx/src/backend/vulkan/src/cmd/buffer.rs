@@ -8,12 +8,15 @@ use ash::version::*;
 use ash::vk;
 use std::sync::Arc;
 use std::ops::Range;
+use smallvec::SmallVec;
 
 use base;
 use common::{Error, ErrorKind, Result};
 
 use device::DeviceRef;
-use utils::translate_generic_error_unwrap;
+use utils::{translate_access_type_flags, translate_generic_error_unwrap,
+            translate_pipeline_stage_flags};
+use buffer::Buffer;
 
 use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::{FenceSet, RefTable};
@@ -226,10 +229,51 @@ impl base::CmdBuffer for CmdBuffer {
 
     fn host_barrier(
         &mut self,
-        _src_access: base::AccessTypeFlags,
-        _buffers: &[(Range<base::DeviceSize>, &base::Buffer)],
+        src_access: base::AccessTypeFlags,
+        buffers: &[(Range<base::DeviceSize>, &base::Buffer)],
     ) {
-        unimplemented!()
+        let uncommited = self.uncommited
+            .as_mut()
+            .ok_or_else(already_commited_error)
+            .unwrap();
+        uncommited.clear_encoder();
+
+        let vk_device = uncommited.device.vk_device();
+
+        let src_access_mask = translate_access_type_flags(src_access);
+        let src_stages =
+            translate_pipeline_stage_flags(base::AccessType::union_supported_stages(src_access));
+        for buffers in buffers.chunks(64) {
+            let buf_barriers: SmallVec<[_; 64]> = buffers
+                .iter()
+                .map(|&(ref range, ref buffer)| {
+                    let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+                    vk::BufferMemoryBarrier {
+                        s_type: vk::StructureType::BufferMemoryBarrier,
+                        p_next: ::null(),
+                        src_access_mask,
+                        dst_access_mask: vk::ACCESS_HOST_READ_BIT,
+                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        buffer: my_buffer.vk_buffer(),
+                        offset: range.start,
+                        size: range.end - range.start,
+                    }
+                })
+                .collect();
+
+            unsafe {
+                vk_device.cmd_pipeline_barrier(
+                    uncommited.vk_cmd_buffer,
+                    src_stages,
+                    vk::PIPELINE_STAGE_HOST_BIT,
+                    vk::DependencyFlags::empty(),
+                    &[],
+                    buf_barriers.as_slice(),
+                    &[],
+                );
+            }
+        }
     }
 
     fn queue_acquire_barrier(
