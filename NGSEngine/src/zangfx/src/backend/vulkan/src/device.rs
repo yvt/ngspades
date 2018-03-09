@@ -4,8 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Vulkan.
+use std::sync::Arc;
 use {base, AshDevice};
-use {arg, buffer, heap, limits, utils};
+use {arg, buffer, cmd, heap, limits, utils};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -36,6 +37,7 @@ pub struct Device {
     // These fields are boxed so they can be referenced by `DeviceRef`
     vk_device: Box<AshDevice>,
     caps: Box<limits::DeviceCaps>,
+    queue_pool: Arc<cmd::queue::QueuePool>,
 }
 
 zangfx_impl_object! { Device: base::Device, ::Debug }
@@ -57,9 +59,12 @@ impl Device {
         config: limits::DeviceConfig,
     ) -> Result<Self> {
         let caps = limits::DeviceCaps::new(info, config)?;
+        let queue_pool = cmd::queue::QueuePool::new(&caps.config);
+
         Ok(Self {
             vk_device: Box::new(vk_device),
             caps: Box::new(caps),
+            queue_pool: Arc::new(queue_pool),
         })
     }
 
@@ -90,7 +95,12 @@ impl base::Device for Device {
     }
 
     fn build_cmd_queue(&self) -> Box<base::CmdQueueBuilder> {
-        unimplemented!()
+        unsafe {
+            Box::new(cmd::queue::CmdQueueBuilder::new(
+                self.new_device_ref(),
+                self.queue_pool.clone(),
+            ))
+        }
     }
 
     fn build_semaphore(&self) -> Box<base::SemaphoreBuilder> {

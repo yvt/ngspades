@@ -251,7 +251,7 @@ impl DeviceConfig {
 #[derive(Debug)]
 pub struct DeviceCaps {
     pub(super) info: DeviceInfo,
-    config: DeviceConfig,
+    pub(super) config: DeviceConfig,
     available_qfs: Vec<base::QueueFamilyInfo>,
 }
 
