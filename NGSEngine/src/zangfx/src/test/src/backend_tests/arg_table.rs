@@ -43,12 +43,11 @@ fn arg_table<T: TestDriver>(driver: T, arg_type: gfx::ArgType) {
                 .unwrap();
 
             println!("  - Allocating tables");
-            let tables = pool.new_tables(TABLE_COUNT, &sig)
+            let _tables = pool.new_tables(TABLE_COUNT, &sig)
                 .unwrap()
                 .expect("allocation failed");
-            println!("  - Deallocating tables");
-            pool.destroy_tables(tables.iter().collect::<Vec<_>>().as_slice())
-                .unwrap();
+            println!("  - Resetting the pool");
+            pool.reset().unwrap();
         }
 
         println!("- Allocating a pool with deallocation enabled");
