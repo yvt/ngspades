@@ -9,15 +9,15 @@
 //! predecessor, NgsGFX. For this reason, ZanGFX is designed to run efficiently
 //! on Vulkan.
 //!
+pub extern crate ash;
 extern crate iterpool;
 #[macro_use(flags)]
 extern crate ngsenumflags;
 extern crate parking_lot;
+extern crate refeq;
 extern crate smallvec;
 extern crate tokenlock;
 extern crate xalloc;
-extern crate refeq;
-pub extern crate ash;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
