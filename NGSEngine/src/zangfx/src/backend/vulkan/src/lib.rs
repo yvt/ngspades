@@ -16,6 +16,7 @@ extern crate parking_lot;
 extern crate smallvec;
 extern crate tokenlock;
 extern crate xalloc;
+extern crate refeq;
 pub extern crate ash;
 #[macro_use]
 extern crate zangfx_base as base;
@@ -32,5 +33,6 @@ pub mod limits;
 mod utils;
 
 use std::fmt::{self, Debug};
+use std::ops::Deref;
 use std::ptr::{null, null_mut};
 pub type AshDevice = ash::Device<ash::version::V1_0>;

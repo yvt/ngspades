@@ -1563,6 +1563,7 @@ dependencies = [
  "iterpool 0.1.0",
  "ngsenumflags 0.1.2",
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "refeq 0.1.0",
  "smallvec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",
  "xalloc 0.2.2",

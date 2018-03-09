@@ -17,18 +17,24 @@ use utils::translate_generic_error_unwrap;
 
 /// Maintains a set of fences, and calls a provided callback function when one
 /// of them are signaled.
+///
+/// `T` specifies the type of callback functions.
 #[derive(Debug)]
-pub(super) struct Monitor {
+pub(super) struct Monitor<T> {
     shared: Arc<SharedData>,
 
     fence_receiver: Mutex<Receiver<vk::Fence>>,
     fence_sender: SyncSender<vk::Fence>,
-    cmd_sender: Option<SyncSender<Cmd>>,
+    cmd_sender: Option<SyncSender<Cmd<T>>>,
 }
 
-struct Cmd {
+pub(super) trait MonitorHandler: 'static + Send {
+    fn on_fence_signaled(self);
+}
+
+struct Cmd<T> {
     fence: vk::Fence,
-    callback: Box<FnMut() + Sync + Send>,
+    callback: T,
 }
 
 #[derive(Debug)]
@@ -37,7 +43,10 @@ struct SharedData {
     queue: vk::Queue,
 }
 
-impl Monitor {
+impl<T> Monitor<T>
+where
+    T: MonitorHandler,
+{
     pub fn new(device: DeviceRef, queue: vk::Queue, num_fences: usize) -> Result<Self> {
         let (fence_sender, fence_receiver) = sync_channel(num_fences);
         let (cmd_sender, cmd_receiver) = sync_channel(num_fences + 1);
@@ -86,7 +95,7 @@ impl Monitor {
     fn monitor_thread(
         shared: Arc<SharedData>,
         fence_sender: SyncSender<vk::Fence>,
-        cmd_receiver: Receiver<Cmd>,
+        cmd_receiver: Receiver<Cmd<T>>,
     ) {
         let device = shared.device.vk_device();
         for mut cmd in cmd_receiver.iter() {
@@ -108,11 +117,11 @@ impl Monitor {
 
             // Call the callback for the fence (Note that this callback
             // function might drop `Monitor`)
-            (cmd.callback)();
+            cmd.callback.on_fence_signaled();
         }
     }
 
-    pub fn get_fence(&self) -> MonitorFence {
+    pub fn get_fence(&self) -> MonitorFence<T> {
         let fence = self.fence_receiver.lock().recv().unwrap();
         MonitorFence {
             monitor: Some(self),
@@ -121,7 +130,7 @@ impl Monitor {
     }
 }
 
-impl Drop for Monitor {
+impl<T> Drop for Monitor<T> {
     fn drop(&mut self) {
         // Hang up the channel (which causes the monitor thread to quit)
         self.cmd_sender = None;
@@ -137,18 +146,18 @@ impl Drop for Monitor {
 
 /// This type is used to set up a fence to be waited by `Monitor` and then
 /// to have its associated callback called when the fence is signaled.
-pub(crate) struct MonitorFence<'a> {
-    monitor: Option<&'a Monitor>,
+pub(super) struct MonitorFence<'a, T: 'a> {
+    monitor: Option<&'a Monitor<T>>,
     fence: vk::Fence,
 }
 
-impl<'a> MonitorFence<'a> {
+impl<'a, T: 'a> MonitorFence<'a, T> {
     pub fn vk_fence(&self) -> vk::Fence {
         self.fence
     }
 
     /// Register a callback function for the fence.
-    pub fn finish(mut self, callback: Box<FnMut() + Sync + Send>) {
+    pub fn finish(mut self, callback: T) {
         let monitor = self.monitor.take().unwrap();
         monitor
             .cmd_sender
@@ -162,10 +171,10 @@ impl<'a> MonitorFence<'a> {
     }
 }
 
-impl<'a> Drop for MonitorFence<'a> {
+impl<'a, T: 'a> Drop for MonitorFence<'a, T> {
     fn drop(&mut self) {
         if let Some(monitor) = self.monitor.take() {
-            monitor.fence_sender.send(self.fence);
+            monitor.fence_sender.send(self.fence).unwrap();
         }
     }
 }
