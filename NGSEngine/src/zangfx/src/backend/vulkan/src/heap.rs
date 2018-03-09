@@ -124,7 +124,7 @@ impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
 #[derive(Debug, Clone)]
 struct HeapAlloc {
     pool_ptr: PoolPtr,
-    ptr: *mut (),
+    ptr: *mut u8,
 }
 
 zangfx_impl_handle! { HeapAlloc, base::HeapAlloc }
@@ -136,7 +136,7 @@ unsafe impl Send for HeapAlloc {}
 #[derive(Debug)]
 pub struct Heap {
     device: DeviceRef,
-    ptr: *mut (),
+    ptr: *mut u8,
     vk_mem: vk::DeviceMemory,
     state: Mutex<HeapState>,
 }
@@ -198,7 +198,7 @@ impl Heap {
                 device
                     .vk_device()
                     .map_memory(heap.vk_mem, 0, size, vk::MemoryMapFlags::empty())
-            }.map_err(translate_map_memory_error_unwrap)? as *mut ();
+            }.map_err(translate_map_memory_error_unwrap)? as *mut u8;
         }
 
         Ok(heap)
@@ -300,7 +300,7 @@ impl base::Heap for Heap {
         Ok(())
     }
 
-    fn as_ptr(&self, alloc: &base::HeapAlloc) -> Result<*mut ()> {
+    fn as_ptr(&self, alloc: &base::HeapAlloc) -> Result<*mut u8> {
         let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         Ok(alloc.ptr)
     }

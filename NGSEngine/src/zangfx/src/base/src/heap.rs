@@ -175,5 +175,5 @@ pub trait Heap: Object {
     ///  - `alloc` must originate from the same `Heap`.
     ///  - `alloc` must be associated with a buffer resource.
     ///
-    fn as_ptr(&self, alloc: &h::HeapAlloc) -> Result<*mut ()>;
+    fn as_ptr(&self, alloc: &h::HeapAlloc) -> Result<*mut u8>;
 }

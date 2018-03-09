@@ -206,7 +206,7 @@ impl heap::Heap for Heap {
         Ok(())
     }
 
-    fn as_ptr(&self, _alloc: &handles::HeapAlloc) -> Result<*mut ()> {
+    fn as_ptr(&self, _alloc: &handles::HeapAlloc) -> Result<*mut u8> {
         Err(Error::with_detail(
             ErrorKind::InvalidUsage,
             "not host visible",
@@ -220,7 +220,7 @@ impl heap::Heap for Heap {
 #[derive(Debug, Clone)]
 pub struct EmulatedHeapAlloc {
     /// The pointer to the resource's contents. Invalid for images.
-    contents_ptr: *mut (),
+    contents_ptr: *mut u8,
 
     /// Associates this `EmulatedHeapAlloc` with an element of
     /// `EmulatedHeap::pool`.
@@ -280,7 +280,7 @@ impl heap::Heap for EmulatedHeap {
                 Ok(metal_buffer_or_none.map(|metal_buffer| {
                     // If the allocation was successful, then return
                     // a `HeapAlloc` for the allocated buffer
-                    let contents_ptr = metal_buffer.contents() as *mut ();
+                    let contents_ptr = metal_buffer.contents() as *mut u8;
                     let pool_ptr = self.pool.lock().allocate(*metal_buffer);
 
                     let heap_alloc = EmulatedHeapAlloc {
@@ -315,7 +315,7 @@ impl heap::Heap for EmulatedHeap {
         Ok(())
     }
 
-    fn as_ptr(&self, alloc: &handles::HeapAlloc) -> Result<*mut ()> {
+    fn as_ptr(&self, alloc: &handles::HeapAlloc) -> Result<*mut u8> {
         let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         Ok(my_alloc.contents_ptr)
     }
