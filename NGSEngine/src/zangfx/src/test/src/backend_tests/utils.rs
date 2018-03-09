@@ -18,7 +18,8 @@ pub struct CmdBufferAwaiter {
 
 impl CmdBufferAwaiter {
     pub fn new(buffer: &mut gfx::CmdBuffer) -> Self {
-        let (send, recv) = mpsc::channel();
+        // `Sender` is not `Sync`. What.
+        let (send, recv) = mpsc::sync_channel(1);
 
         buffer.on_complete(Box::new(move || {
             let _ = send.send(());

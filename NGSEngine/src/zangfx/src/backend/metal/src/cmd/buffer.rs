@@ -47,7 +47,7 @@ struct UncommitedBuffer {
 }
 
 #[derive(Default)]
-struct CallbackSet(Vec<Box<FnMut()>>);
+struct CallbackSet(Vec<Box<FnMut() + Sync + Send>>);
 
 #[derive(Debug)]
 enum Encoder {
@@ -242,7 +242,7 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn on_complete(&mut self, cb: Box<FnMut()>) {
+    fn on_complete(&mut self, cb: Box<FnMut() + Sync + Send>) {
         let uncommited = self.uncommited
             .as_mut()
             .ok_or_else(already_commited_error)

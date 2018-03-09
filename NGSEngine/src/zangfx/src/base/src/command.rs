@@ -98,7 +98,7 @@ pub trait CmdBuffer: Object {
     fn encode_copy(&mut self) -> &mut CopyCmdEncoder;
 
     /// Register a completion handler. Must not be called after calling `commit`.
-    fn on_complete(&mut self, cb: Box<FnMut()>);
+    fn on_complete(&mut self, cb: Box<FnMut() + Sync + Send>);
 
     /// Wait on a given semaphore before the execution of the command buffer.
     ///
