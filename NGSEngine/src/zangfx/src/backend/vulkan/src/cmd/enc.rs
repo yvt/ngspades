@@ -167,16 +167,18 @@ impl DescSetBindingTable {
         }
 
         // Emit bind commands
-        let vk_device = device.vk_device();
-        unsafe {
-            vk_device.cmd_bind_descriptor_sets(
-                vk_cmd_buffer,
-                bind_point,
-                root_sig.vk_pipeline_layout(),
-                self.start_dirty as u32,
-                &self.desc_sets[self.start_dirty..table_sigs.len()],
-                &[],
-            );
+        if self.start_dirty < table_sigs.len() {
+            let vk_device = device.vk_device();
+            unsafe {
+                vk_device.cmd_bind_descriptor_sets(
+                    vk_cmd_buffer,
+                    bind_point,
+                    root_sig.vk_pipeline_layout(),
+                    self.start_dirty as u32,
+                    &self.desc_sets[self.start_dirty..table_sigs.len()],
+                    &[],
+                );
+            }
         }
 
         self.start_dirty = table_sigs.len();
