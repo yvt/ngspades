@@ -11,9 +11,12 @@ use base;
 
 use cmd::fence::Fence;
 use device::DeviceRef;
+use cmd::barrier::Barrier;
 use arg::layout::RootSig;
 use arg::pool::ArgTable;
 use pipeline::ComputePipeline;
+use utils::translate_pipeline_stage_flags;
+use limits::DeviceTrait;
 
 #[derive(Debug, Default)]
 pub struct FenceSet {
@@ -87,21 +90,89 @@ impl CommonCmdEncoder {
         // TODO: debug commands
     }
 
+    /// Implementation of `wait_fence` used by all command encoders except
+    /// the render encoder.
+    ///
+    /// A render pass automatically inserts memory barriers as defined by
+    /// external subpass dependencies, and ZanGFX requires that they must be
+    /// a conservative approximation of the barrier inserted by fences.
     pub fn wait_fence(
         &mut self,
-        _fence: &Fence,
-        _src_stage: base::StageFlags,
-        _barrier: &base::Barrier,
+        fence: &Fence,
+        src_stage: base::StageFlags,
+        barrier: &base::Barrier,
     ) {
-        // TODO
+        let traits = self.device.caps().info.traits;
+        if traits.intersects(DeviceTrait::MoltenVK) {
+            // Skip all event operations on MoltenVK
+            return;
+        }
+
+        let my_barrier: &Barrier = barrier.downcast_ref().expect("bad barrier type");
+        let data = my_barrier.data();
+        debug_assert_eq!(
+            data.src_stage_mask & translate_pipeline_stage_flags(src_stage),
+            data.src_stage_mask,
+            "Valid usage violation: \
+             The supported stages of the first access type of each barrier \
+             defined by `barrier` must be a subset of `src_stage`."
+        );
+
+        let device = self.device.vk_device();
+        unsafe {
+            device.fp_v1_0().cmd_wait_events(
+                self.vk_cmd_buffer,
+                1,
+                &fence.vk_event(),
+                translate_pipeline_stage_flags(src_stage),
+                data.dst_stage_mask,
+                data.global_barriers.len() as u32,
+                data.global_barriers.as_ptr(),
+                data.buffer_barriers.len() as u32,
+                data.buffer_barriers.as_ptr(),
+                data.image_barriers.len() as u32,
+                data.image_barriers.as_ptr(),
+            );
+        }
     }
 
-    pub fn update_fence(&mut self, _fence: &Fence, _src_stage: base::StageFlags) {
-        // TODO
+    /// Implementation of `update_fence` used by all command encoders.
+    ///
+    /// When calling this from a render encoder, this must be called after
+    /// ending a render pass.
+    pub fn update_fence(&mut self, fence: &Fence, src_stage: base::StageFlags) {
+        let traits = self.device.caps().info.traits;
+        if traits.intersects(DeviceTrait::MoltenVK) {
+            // Skip all event operations on MoltenVK
+            return;
+        }
+
+        let device = self.device.vk_device();
+        unsafe {
+            device.fp_v1_0().cmd_set_event(
+                self.vk_cmd_buffer,
+                fence.vk_event(),
+                translate_pipeline_stage_flags(src_stage),
+            );
+        }
     }
 
-    pub fn barrier(&mut self, _barrier: &base::Barrier) {
-        // TODO
+    pub fn barrier(&mut self, barrier: &base::Barrier) {
+        let my_barrier: &Barrier = barrier.downcast_ref().expect("bad barrier type");
+        let data = my_barrier.data();
+
+        let device = self.device.vk_device();
+        unsafe {
+            device.cmd_pipeline_barrier(
+                self.vk_cmd_buffer,
+                data.src_stage_mask,
+                data.dst_stage_mask,
+                vk::DependencyFlags::empty(),
+                &data.global_barriers,
+                &data.buffer_barriers,
+                &data.image_barriers,
+            );
+        }
     }
 }
 

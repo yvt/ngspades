@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of command queues, buffers, and encoders for Vulkan.
+pub mod barrier;
 pub mod buffer;
 mod enc;
 mod enc_compute;

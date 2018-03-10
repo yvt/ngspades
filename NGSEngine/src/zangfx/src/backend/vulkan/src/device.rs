@@ -121,7 +121,7 @@ impl base::Device for Device {
     }
 
     fn build_barrier(&self) -> Box<base::BarrierBuilder> {
-        unimplemented!()
+        Box::new(cmd::barrier::BarrierBuilder::new())
     }
 
     fn build_image(&self) -> Box<base::ImageBuilder> {
