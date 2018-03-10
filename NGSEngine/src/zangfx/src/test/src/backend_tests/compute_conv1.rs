@@ -53,7 +53,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
                 .build_buffer()
                 .label("Kernel buffer")
                 .size(kernel_bytes)
-                .usage(flags![gfx::BufferUsage::{Storage}])
+                .usage(flags![gfx::BufferUsage::{Uniform}])
                 .build()
                 .unwrap(),
         );
@@ -133,7 +133,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         println!("- Creating an argument table signature");
         let arg_table_sig = {
             let mut builder = device.build_arg_table_sig();
-            builder.arg(binding_redundant, gfx::ArgType::StorageBuffer);
+            builder.arg(binding_redundant, gfx::ArgType::UniformBuffer);
             builder.arg(binding_input, gfx::ArgType::StorageBuffer);
             builder.arg(binding_output, gfx::ArgType::StorageBuffer);
             builder.arg(binding_param, gfx::ArgType::UniformBuffer);
