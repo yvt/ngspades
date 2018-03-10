@@ -4,12 +4,16 @@
 // This source code is a part of Nightingales.
 //
 use ash::vk;
+use ash::version::*;
 use std::collections::HashSet;
 
 use base;
 
 use cmd::fence::Fence;
 use device::DeviceRef;
+use arg::layout::RootSig;
+use arg::pool::ArgTable;
+use pipeline::ComputePipeline;
 
 #[derive(Debug, Default)]
 pub struct FenceSet {
@@ -44,12 +48,16 @@ impl FenceSet {
 ///
 #[derive(Debug, Default)]
 pub struct RefTable {
-    // TODO
+    compute_pipelines: HashSet<ComputePipeline>,
 }
 
 impl RefTable {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn insert_compute_pipeline(&mut self, obj: &ComputePipeline) {
+        self.compute_pipelines.insert(obj.clone());
     }
 }
 
@@ -94,5 +102,83 @@ impl CommonCmdEncoder {
 
     pub fn barrier(&mut self, _barrier: &base::Barrier) {
         // TODO
+    }
+}
+
+#[derive(Debug)]
+pub(super) struct DescSetBindingTable {
+    /// The first arugment table index that needs rebinding.
+    start_dirty: usize,
+    table_sig_id: [usize; ::MAX_NUM_ARG_TABLES],
+    desc_sets: [vk::DescriptorSet; ::MAX_NUM_ARG_TABLES],
+
+    /// The root signature of the currently bound pipeline.
+    bound_root_sig: Option<RootSig>,
+}
+
+impl DescSetBindingTable {
+    pub fn new() -> Self {
+        Self {
+            start_dirty: 0,
+            table_sig_id: [0; ::MAX_NUM_ARG_TABLES],
+            desc_sets: [vk::DescriptorSet::null(); ::MAX_NUM_ARG_TABLES],
+            bound_root_sig: None,
+        }
+    }
+
+    pub fn bind_root_sig(&mut self, root_sig: &RootSig) {
+        self.bound_root_sig = Some(root_sig.clone());
+    }
+
+    pub fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&base::ArgTable]) {
+        use std::cmp::min;
+
+        if tables.len() == 0 {
+            return;
+        }
+
+        for (i, table) in tables.iter().enumerate() {
+            let my_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
+            self.desc_sets[i + index] = my_table.vk_descriptor_set();
+        }
+
+        self.start_dirty = min(self.start_dirty, index);
+    }
+
+    pub fn flush(
+        &mut self,
+        device: DeviceRef,
+        vk_cmd_buffer: vk::CommandBuffer,
+        bind_point: vk::PipelineBindPoint,
+    ) {
+        use std::cmp::min;
+
+        let root_sig = self.bound_root_sig.as_ref().expect("no bound pipeline");
+        let table_sigs = root_sig.tables();
+
+        // Compare the pipeline layout against the last one, and mark the
+        // incompatible part as dirty.
+        self.start_dirty = min(self.start_dirty, table_sigs.len());
+        for i in (0..self.start_dirty).rev() {
+            if table_sigs[i].id() != self.table_sig_id[i] {
+                self.start_dirty = i;
+                self.table_sig_id[i] = table_sigs[i].id();
+            }
+        }
+
+        // Emit bind commands
+        let vk_device = device.vk_device();
+        unsafe {
+            vk_device.cmd_bind_descriptor_sets(
+                vk_cmd_buffer,
+                bind_point,
+                root_sig.vk_pipeline_layout(),
+                self.start_dirty as u32,
+                &self.desc_sets[self.start_dirty..table_sigs.len()],
+                &[],
+            );
+        }
+
+        self.start_dirty = table_sigs.len();
     }
 }

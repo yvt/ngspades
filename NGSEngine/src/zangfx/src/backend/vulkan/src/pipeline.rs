@@ -4,10 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of pipelines for Vulkan.
-use std::sync::Arc;
 use std::ffi;
 use ash::vk;
 use ash::version::*;
+use refeq::RefEqArc;
 
 use base;
 use common::{Error, ErrorKind, Result};
@@ -128,14 +128,15 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
         let vk_device = self.device.vk_device();
         let vk_pipeline = unsafe { vk_device.create_compute_pipelines(cache, &[info], None) }
             .map_err(|e| translate_pipeline_creation_error_unwrap(self.device, e))?[0];
-        Ok(unsafe { ComputePipeline::from_raw(self.device, vk_pipeline) }.into())
+
+        Ok(unsafe { ComputePipeline::from_raw(self.device, vk_pipeline, root_sig.clone()) }.into())
     }
 }
 
 /// Implementation of `ComputePipeline` for Vulkan.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComputePipeline {
-    data: Arc<ComputePipelineData>,
+    data: RefEqArc<ComputePipelineData>,
 }
 
 zangfx_impl_handle! { ComputePipeline, base::ComputePipeline }
@@ -144,20 +145,30 @@ zangfx_impl_handle! { ComputePipeline, base::ComputePipeline }
 struct ComputePipelineData {
     device: DeviceRef,
     vk_pipeline: vk::Pipeline,
+    root_sig: RootSig,
 }
 
 impl ComputePipeline {
-    pub(crate) unsafe fn from_raw(device: DeviceRef, vk_pipeline: vk::Pipeline) -> Self {
+    pub(crate) unsafe fn from_raw(
+        device: DeviceRef,
+        vk_pipeline: vk::Pipeline,
+        root_sig: RootSig,
+    ) -> Self {
         Self {
-            data: Arc::new(ComputePipelineData {
+            data: RefEqArc::new(ComputePipelineData {
                 device,
                 vk_pipeline,
+                root_sig,
             }),
         }
     }
 
     pub fn vk_pipeline(&self) -> vk::Pipeline {
         self.data.vk_pipeline
+    }
+
+    pub(crate) fn root_sig(&self) -> &RootSig {
+        &self.data.root_sig
     }
 }
 

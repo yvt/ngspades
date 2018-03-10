@@ -9,6 +9,11 @@
 //! predecessor, NgsGFX. For this reason, ZanGFX is designed to run efficiently
 //! on Vulkan.
 //!
+//! # Limitations
+//!
+//!  - The number of argument tables per root signature is limited to 32
+//!    (`MAX_NUM_ARG_TABLES`).
+//!
 pub extern crate ash;
 extern crate iterpool;
 extern crate parking_lot;
@@ -42,3 +47,5 @@ use std::fmt::{self, Debug};
 use std::ops::Deref;
 use std::ptr::{null, null_mut};
 pub type AshDevice = ash::Device<ash::version::V1_0>;
+
+pub const MAX_NUM_ARG_TABLES: usize = 32;

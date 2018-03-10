@@ -21,6 +21,7 @@ use buffer::Buffer;
 use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::{FenceSet, RefTable};
 use super::enc_copy::CopyEncoder;
+use super::enc_compute::ComputeEncoder;
 
 /// Implementation of `CmdBuffer` for Vulkan.
 #[derive(Debug)]
@@ -50,6 +51,7 @@ struct Uncommited {
 #[derive(Debug)]
 enum Encoder {
     Copy(CopyEncoder),
+    Compute(ComputeEncoder),
 }
 
 #[derive(Default)]
@@ -131,6 +133,11 @@ impl Uncommited {
         if let Some(enc) = self.encoder.take() {
             match enc {
                 Encoder::Copy(e) => self.fence_set = e.finish(),
+                Encoder::Compute(e) => {
+                    let (fence_set, ref_table) = e.finish();
+                    self.fence_set = fence_set;
+                    self.ref_table = ref_table;
+                }
             }
         }
     }
@@ -186,7 +193,27 @@ impl base::CmdBuffer for CmdBuffer {
         unimplemented!()
     }
     fn encode_compute(&mut self) -> &mut base::ComputeCmdEncoder {
-        unimplemented!()
+        use std::mem::replace;
+
+        let uncommited = self.uncommited
+            .as_mut()
+            .ok_or_else(already_commited_error)
+            .unwrap();
+        uncommited.clear_encoder();
+
+        let encoder = unsafe {
+            ComputeEncoder::new(
+                uncommited.device,
+                uncommited.vk_cmd_buffer,
+                replace(&mut uncommited.fence_set, Default::default()),
+                replace(&mut uncommited.ref_table, Default::default()),
+            )
+        };
+        uncommited.encoder = Some(Encoder::Compute(encoder));
+        match uncommited.encoder {
+            Some(Encoder::Compute(ref mut e)) => e,
+            _ => unreachable!(),
+        }
     }
     fn encode_copy(&mut self) -> &mut base::CopyCmdEncoder {
         use std::mem::replace;

@@ -9,7 +9,7 @@ use ash::vk;
 use ash::version::*;
 
 use base;
-use common::Result;
+use common::{Error, ErrorKind, Result};
 use device::DeviceRef;
 
 use utils::{translate_generic_error_unwrap, translate_shader_stage_flags};
@@ -151,6 +151,15 @@ impl ArgTableSig {
     pub(super) fn desc_count(&self) -> &DescriptorCount {
         &self.data.desc_count
     }
+
+    /// Get the non-zero (practically) unique identifier of the argument table
+    /// signature. Used to determine the compatibility of pipeline layouts.
+    ///
+    /// The returned identifier is valid only as long as the lifetime of the
+    /// object.
+    pub(crate) fn id(&self) -> usize {
+        (&*self.data) as *const _ as usize
+    }
 }
 
 /// Implementation of `RootSigBuilder` for Vulkan.
@@ -186,6 +195,13 @@ impl base::RootSigBuilder for RootSigBuilder {
     }
 
     fn build(&mut self) -> Result<base::RootSig> {
+        if self.tables.len() > ::MAX_NUM_ARG_TABLES {
+            return Err(Error::with_detail(
+                ErrorKind::NotSupported,
+                "Exceeds the backend limit of the number of argument tables",
+            ));
+        }
+
         let set_layouts: Vec<_> = self.tables
             .iter()
             .map(|x| {
@@ -194,6 +210,8 @@ impl base::RootSigBuilder for RootSigBuilder {
                     .vk_descriptor_set_layout()
             })
             .collect();
+
+        let tables: Vec<_> = self.tables.iter().map(|x| x.clone().unwrap()).collect();
 
         let info = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PipelineLayoutCreateInfo,
@@ -208,7 +226,7 @@ impl base::RootSigBuilder for RootSigBuilder {
         let vk_device = self.device.vk_device();
         let vk_p_layout = unsafe { vk_device.create_pipeline_layout(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(RootSig::new(self.device, vk_p_layout).into())
+        Ok(RootSig::new(self.device, vk_p_layout, tables).into())
     }
 }
 
@@ -227,6 +245,7 @@ unsafe impl Send for RootSigData {}
 struct RootSigData {
     device: DeviceRef,
     vk_p_layout: vk::PipelineLayout,
+    tables: Vec<ArgTableSig>,
 }
 
 impl Drop for RootSigData {
@@ -240,16 +259,21 @@ impl Drop for RootSigData {
 }
 
 impl RootSig {
-    fn new(device: DeviceRef, vk_p_layout: vk::PipelineLayout) -> Self {
+    fn new(device: DeviceRef, vk_p_layout: vk::PipelineLayout, tables: Vec<ArgTableSig>) -> Self {
         Self {
             data: Arc::new(RootSigData {
                 device,
                 vk_p_layout,
+                tables,
             }),
         }
     }
 
     pub fn vk_pipeline_layout(&self) -> vk::PipelineLayout {
         self.data.vk_p_layout
+    }
+
+    pub fn tables(&self) -> &[ArgTableSig] {
+        self.data.tables.as_slice()
     }
 }
