@@ -432,17 +432,20 @@ pub trait CmdEncoder: Object {
     /// Wait on the specified fence and establish an inter-encoder execution
     /// dependency
     ///
-    /// The fence must be updated first before waiting on it (according to the
-    /// command buffer's submission order). Otherwise, a dead-lock might occur.
+    /// The fence must be updated first before waiting on it. The command queue
+    /// automatically reorders command buffer submissions to satisfy this
+    /// constraint. If fence operations are inserted in a way there exists no
+    /// such ordering, a dead-lock might occur.
     ///
     /// # Valid Usage
     ///
     ///  - `src_stage` must match the `src_state` of the corresponding call to
     ///    `update_fence`.
     ///  - The supported stages of the first access type of each barrier
-    ///    defined by `berrier` must be a subset of `src_stage`.
-    ///  - You must not wait on a fence that was previously updated in the same
-    ///    `CmdEncoder`.
+    ///    defined by `barrier` must be a subset of `src_stage`.
+    ///  - You must not wait on a fence that was previously updated in the
+    ///    *same* `CmdEncoder`.
+    ///
     fn wait_fence(
         &mut self,
         fence: &handles::Fence,
@@ -458,6 +461,10 @@ pub trait CmdEncoder: Object {
 
     /// Insert a barrier and establish an execution dependency within the
     /// current encoder or subpass.
+    ///
+    /// When this is called inside a render subpass, a self-dependency with
+    /// matching access type flags and stage flags must have been defined on the
+    /// subpass.
     fn barrier(&mut self, barrier: &handles::Barrier);
 }
 
