@@ -5,6 +5,11 @@
 //
 //! Implementation of `Device` for Vulkan.
 use std::sync::Arc;
+use arrayvec::ArrayVec;
+
+use ash::vk;
+use ash::version::*;
+
 use {base, AshDevice};
 use {arg, buffer, cmd, heap, limits, pipeline, shader, utils};
 use common::Result;
@@ -193,9 +198,89 @@ impl base::Device for Device {
 
     fn update_arg_tables(
         &self,
-        _arg_table_sig: &base::ArgTableSig,
-        _updates: &[(&base::ArgTable, &[base::ArgUpdateSet])],
+        arg_table_sig: &base::ArgTableSig,
+        updates: &[(&base::ArgTable, &[base::ArgUpdateSet])],
     ) -> Result<()> {
-        unimplemented!()
+        let vk_device = self.vk_device();
+        let table_sig: &arg::layout::ArgTableSig = arg_table_sig
+            .downcast_ref()
+            .expect("bad argument table signature type");
+
+        let mut writes: ArrayVec<[vk::WriteDescriptorSet; 256]> = ArrayVec::new();
+        let mut write_images: ArrayVec<[vk::DescriptorImageInfo; 256]> = ArrayVec::new();
+        let mut write_buffers: ArrayVec<[vk::DescriptorBufferInfo; 256]> = ArrayVec::new();
+
+        macro_rules! flush {
+            () => ({
+                unsafe {
+                    vk_device.update_descriptor_sets(writes.as_slice(), &[]);
+                }
+                writes.clear();
+                write_images.clear();
+                write_buffers.clear();
+            })
+        }
+
+        fn vec_end_ptr<T>(v: &[T]) -> *const T {
+            v.as_ptr().wrapping_offset(v.len() as isize)
+        }
+
+        for &(table, update_sets) in updates.iter() {
+            let table: &arg::pool::ArgTable =
+                table.downcast_ref().expect("bad argument table type");
+            for &(arg_i, mut array_i, objs) in update_sets.iter() {
+                if objs.len() == 0 {
+                    continue;
+                }
+
+                let descriptor_type = table_sig.desc_type(arg_i).expect("invalid argument index");
+
+                let mut i = 0;
+                while i < objs.len() {
+                    if writes.is_full() || write_images.is_full() || write_buffers.is_full() {
+                        flush!();
+                    }
+                    let mut write = vk::WriteDescriptorSet {
+                        s_type: vk::StructureType::WriteDescriptorSet,
+                        p_next: ::null(),
+                        dst_set: table.vk_descriptor_set(),
+                        dst_binding: arg_i as u32,
+                        dst_array_element: array_i as u32,
+                        descriptor_count: 0, // set later
+                        descriptor_type,
+                        p_image_info: vec_end_ptr(&write_images),
+                        p_buffer_info: vec_end_ptr(&write_buffers),
+                        p_texel_buffer_view: ::null(),
+                    };
+                    let mut descriptor_count = 0;
+                    match objs {
+                        base::ArgSlice::Buffer(buffers) => {
+                            while !write_buffers.is_full() && i < buffers.len() {
+                                let (ref range, ref buffer) = buffers[i];
+                                let buffer: &buffer::Buffer =
+                                    buffer.downcast_ref().expect("bad buffer type");
+
+                                write_buffers.push(vk::DescriptorBufferInfo {
+                                    buffer: buffer.vk_buffer(),
+                                    offset: range.start,
+                                    range: range.end - range.start,
+                                });
+                                i += 1;
+                                descriptor_count += 1;
+                            }
+                        }
+                        base::ArgSlice::ImageView(_) => unimplemented!(),
+                        base::ArgSlice::Sampler(_) => unimplemented!(),
+                    };
+                    write.descriptor_count = descriptor_count;
+                    writes.push(write);
+                }
+            }
+        }
+
+        if writes.len() > 0 {
+            flush!();
+        }
+        Ok(())
     }
 }

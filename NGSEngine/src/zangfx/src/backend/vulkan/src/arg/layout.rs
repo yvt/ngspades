@@ -60,6 +60,11 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
             .map(|arg| arg.vk_binding.clone())
             .collect();
 
+        let desc_types = self.args
+            .iter()
+            .map(|arg| arg.as_ref().map(|arg| arg.vk_binding.descriptor_type))
+            .collect();
+
         let info = vk::DescriptorSetLayoutCreateInfo {
             s_type: vk::StructureType::DescriptorSetLayoutCreateInfo,
             p_next: ::null(),
@@ -74,7 +79,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
         let vk_device = self.device.vk_device();
         let vk_ds_layout = unsafe { vk_device.create_descriptor_set_layout(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(ArgTableSig::new(self.device, vk_ds_layout, desc_count).into())
+        Ok(ArgTableSig::new(self.device, vk_ds_layout, desc_count, desc_types).into())
     }
 }
 
@@ -117,6 +122,7 @@ struct ArgTableSigData {
     device: DeviceRef,
     vk_ds_layout: vk::DescriptorSetLayout,
     desc_count: DescriptorCount,
+    desc_types: Vec<Option<vk::DescriptorType>>,
 }
 
 impl Drop for ArgTableSigData {
@@ -134,12 +140,14 @@ impl ArgTableSig {
         device: DeviceRef,
         vk_ds_layout: vk::DescriptorSetLayout,
         desc_count: DescriptorCount,
+        desc_types: Vec<Option<vk::DescriptorType>>,
     ) -> Self {
         Self {
             data: Arc::new(ArgTableSigData {
                 device,
                 vk_ds_layout,
                 desc_count,
+                desc_types,
             }),
         }
     }
@@ -159,6 +167,10 @@ impl ArgTableSig {
     /// object.
     pub(crate) fn id(&self) -> usize {
         (&*self.data) as *const _ as usize
+    }
+
+    pub(crate) fn desc_type(&self, index: base::ArgIndex) -> Option<vk::DescriptorType> {
+        self.data.desc_types.get(index).cloned().unwrap_or(None)
     }
 }
 
