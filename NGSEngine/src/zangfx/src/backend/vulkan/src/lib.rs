@@ -34,6 +34,7 @@ pub mod formats;
 pub mod heap;
 pub mod image;
 pub mod limits;
+pub mod shader;
 mod utils;
 
 use std::fmt::{self, Debug};

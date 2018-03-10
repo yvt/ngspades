@@ -6,7 +6,7 @@
 //! Implementation of `Device` for Vulkan.
 use std::sync::Arc;
 use {base, AshDevice};
-use {arg, buffer, cmd, heap, limits, utils};
+use {arg, buffer, cmd, heap, limits, shader, utils};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -136,7 +136,7 @@ impl base::Device for Device {
     }
 
     fn build_library(&self) -> Box<base::LibraryBuilder> {
-        unimplemented!()
+        unsafe { Box::new(shader::LibraryBuilder::new(self.new_device_ref())) }
     }
 
     fn build_arg_table_sig(&self) -> Box<base::ArgTableSigBuilder> {
