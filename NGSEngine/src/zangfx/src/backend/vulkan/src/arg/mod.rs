@@ -6,7 +6,7 @@
 //! Implementation of argument tables for Vulkan.
 use std::ops::{AddAssign, Index, IndexMut, Mul};
 use ash::vk;
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 
 use base;
 
@@ -47,7 +47,7 @@ impl DescriptorCount {
         self
     }
 
-    pub fn as_pool_sizes(&self) -> SmallVec<[vk::DescriptorPoolSize; 11]> {
+    pub fn as_pool_sizes(&self) -> ArrayVec<[vk::DescriptorPoolSize; 11]> {
         use ash::vk::DescriptorType::*;
         [
             Sampler,

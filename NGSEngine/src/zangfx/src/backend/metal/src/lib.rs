@@ -53,7 +53,7 @@ extern crate ngsenumflags;
 extern crate parking_lot;
 extern crate refeq;
 extern crate rspirv;
-extern crate smallvec;
+extern crate arrayvec;
 extern crate spirv_headers;
 extern crate tokenlock;
 extern crate xalloc;

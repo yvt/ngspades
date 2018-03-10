@@ -14,11 +14,11 @@
 //!  - The number of argument tables per root signature is limited to 32
 //!    (`MAX_NUM_ARG_TABLES`).
 //!
+extern crate arrayvec;
 pub extern crate ash;
 extern crate iterpool;
 extern crate parking_lot;
 extern crate refeq;
-extern crate smallvec;
 extern crate tokenlock;
 extern crate xalloc;
 

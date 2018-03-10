@@ -8,7 +8,7 @@ use ash::version::*;
 use ash::vk;
 use std::sync::Arc;
 use std::ops::Range;
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 
 use base;
 use common::{Error, ErrorKind, Result};
@@ -271,7 +271,7 @@ impl base::CmdBuffer for CmdBuffer {
         let src_stages =
             translate_pipeline_stage_flags(base::AccessType::union_supported_stages(src_access));
         for buffers in buffers.chunks(64) {
-            let buf_barriers: SmallVec<[_; 64]> = buffers
+            let buf_barriers: ArrayVec<[_; 64]> = buffers
                 .iter()
                 .map(|&(ref range, ref buffer)| {
                     let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");

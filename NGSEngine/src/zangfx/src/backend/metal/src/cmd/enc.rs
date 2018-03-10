@@ -5,7 +5,7 @@
 //
 use metal;
 use base::{command, handles, heap};
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 use std::collections::HashSet;
 
 use cmd::fence::Fence;
@@ -62,7 +62,7 @@ pub trait UseResources {
         };
 
         for objs in objs.chunks(256) {
-            let metal_resources: SmallVec<[_; 256]> =
+            let metal_resources: ArrayVec<[_; 256]> =
                 objs.iter().cloned().map(translate_resource).collect();
             self.use_metal_resources(metal_resources.as_slice(), metal_usage);
         }
@@ -70,8 +70,8 @@ pub trait UseResources {
 
     fn use_gfx_heap(&self, heaps: &[&heap::Heap]) {
         use metal::MTLResourceUsage::Read;
-        let mut metal_heaps = SmallVec::<[_; 256]>::new();
-        let mut metal_resources = SmallVec::<[_; 256]>::new();
+        let mut metal_heaps = ArrayVec::<[_; 256]>::new();
+        let mut metal_resources = ArrayVec::<[_; 256]>::new();
 
         for heap in heaps {
             if let Some(heap) = heap.query_ref::<Heap>() {

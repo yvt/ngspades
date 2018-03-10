@@ -1503,6 +1503,7 @@ dependencies = [
 name = "zangfx_metal"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cocoa 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "iterpool 0.1.0",
@@ -1510,7 +1511,6 @@ dependencies = [
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
  "rspirv 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "smallvec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "spirv_headers 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",
  "xalloc 0.2.2",
@@ -1559,13 +1559,13 @@ dependencies = [
 name = "zangfx_vulkan"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ash 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "iterpool 0.1.0",
  "ngsenumflags 0.1.2",
  "ngsenumflags_derive 0.2.2",
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
- "smallvec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",
  "xalloc 0.2.2",
  "zangfx_base 0.1.0",

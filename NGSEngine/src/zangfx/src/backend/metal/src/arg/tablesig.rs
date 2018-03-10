@@ -9,7 +9,7 @@ use cocoa::foundation::NSArray;
 use cocoa::base::nil;
 use parking_lot::Mutex;
 use std::sync::Arc;
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 
 use base::{arg, device, handles, shader, ArgArrayIndex, ArgIndex};
 use common::Result;
@@ -252,10 +252,10 @@ impl ArgTableSig {
                     // first be converted to a slice containing Metal objects.
                     // In order to avoid heap allocation, we split the `ArgSlice`
                     // into chunks and process each chunk on a fixed size
-                    // stack-allocated array (`SmallVec`).
+                    // stack-allocated array (`ArrayVec`).
                     match resources {
                         ImageView(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: SmallVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
                                 .map(|obj| {
                                     let my_obj: &ImageView =
                                         obj.downcast_ref().expect("bad image view type");
@@ -269,7 +269,7 @@ impl ArgTableSig {
                         },
 
                         Buffer(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: SmallVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
                                 .map(|&(_, obj)| {
                                     let my_obj: &Buffer =
                                         obj.downcast_ref().expect("bad buffer type");
@@ -277,7 +277,7 @@ impl ArgTableSig {
                                 })
                                 .collect();
 
-                            let offsets: SmallVec<[_; 64]> = objs.iter()
+                            let offsets: ArrayVec<[_; 64]> = objs.iter()
                                 .map(|&(ref range, _)| range.start as _)
                                 .collect();
 
@@ -291,7 +291,7 @@ impl ArgTableSig {
                         },
 
                         Sampler(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: SmallVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
                                 .map(|obj| {
                                     let my_obj: &Sampler =
                                         obj.downcast_ref().expect("bad sampler type");

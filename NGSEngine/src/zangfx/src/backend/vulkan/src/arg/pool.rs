@@ -6,7 +6,7 @@
 //! Implementation of argument table and pool for Vulkan.
 use ash::vk;
 use ash::version::*;
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 
 use base;
 use common::Result;
@@ -144,7 +144,7 @@ impl base::ArgPool for ArgPool {
 
                 // Conversion `&[T]` to `&[&T]`
                 for chunk in self.1.chunks(256) {
-                    let sets: SmallVec<[_; 256]> = chunk.iter().collect();
+                    let sets: ArrayVec<[_; 256]> = chunk.iter().collect();
                     // Ignore the deallocation errors
                     let _ = self.0.destroy_tables(&sets);
                 }
@@ -157,7 +157,7 @@ impl base::ArgPool for ArgPool {
         let mut result_set = PartialTableSet(self, Vec::with_capacity(count));
 
         let set_layout = sig.vk_descriptor_set_layout();
-        let set_layouts: SmallVec<[_; 256]> = (0..min(256, count)).map(|_| set_layout).collect();
+        let set_layouts: ArrayVec<[_; 256]> = (0..min(256, count)).map(|_| set_layout).collect();
 
         let mut remaining_count = count;
         while remaining_count > 0 {
@@ -195,7 +195,7 @@ impl base::ArgPool for ArgPool {
     fn destroy_tables(&mut self, tables: &[&base::ArgTable]) -> Result<()> {
         let device = self.device.vk_device();
         for chunk in tables.chunks(256) {
-            let sets: SmallVec<[_; 256]> = chunk
+            let sets: ArrayVec<[_; 256]> = chunk
                 .iter()
                 .map(|x| {
                     let table: &ArgTable = x.downcast_ref().expect("bad argument table type");
