@@ -323,6 +323,11 @@ pub trait ImageViewBuilder: Object {
     /// [`MutableType`]: ImageUsage::MutableType
     fn image_type(&mut self, v: ImageType) -> &mut ImageViewBuilder;
 
+    /// Set the image layout.
+    ///
+    /// This property is mandatory.
+    fn layout(&mut self, v: ImageLayout) -> &mut ImageViewBuilder;
+
     /// Build an `ImageView`.
     ///
     /// # Valid Usage

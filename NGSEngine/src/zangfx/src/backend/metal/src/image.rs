@@ -318,6 +318,11 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         self
     }
 
+    fn layout(&mut self, _: base::ImageLayout) -> &mut base::ImageViewBuilder {
+        // No-op: The concept of image layouts does not exist in Metal
+        self
+    }
+
     fn build(&mut self) -> Result<base::ImageView> {
         let image = self.image
             .as_ref()
