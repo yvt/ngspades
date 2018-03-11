@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 The Brenwill Workshop Ltd.
+ * Copyright 2016-2018 The Brenwill Workshop Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #define SPIRV_CROSS_MSL_HPP
 
 #include "spirv_glsl.hpp"
+#include <limits>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -69,7 +70,7 @@ using MSLStructMemberKey = uint64_t;
 
 // Special constant used in a MSLResourceBinding desc_set
 // element to indicate the bindings for the push constants.
-static const uint32_t kPushConstDescSet = UINT32_MAX;
+static const uint32_t kPushConstDescSet = std::numeric_limits<uint32_t>::max();
 
 // Special constant used in a MSLResourceBinding binding
 // element to indicate the bindings for the push constants.
@@ -82,19 +83,62 @@ public:
 	// Options for compiling to Metal Shading Language
 	struct Options
 	{
-		bool flip_vert_y = false;
+		typedef enum {
+			iOS,
+			macOS,
+		} Platform;
+
+		Platform platform = macOS;
+		uint32_t msl_version = make_msl_version(1, 2);
 		bool enable_point_size_builtin = true;
-		std::string entry_point_name;
+		bool resolve_specialized_array_lengths = true;
+
+		bool is_ios()
+		{
+			return platform == iOS;
+		}
+
+		bool is_macos()
+		{
+			return platform == macOS;
+		}
+
+		void set_msl_version(uint32_t major, uint32_t minor = 0, uint32_t patch = 0)
+		{
+			msl_version = make_msl_version(major, minor, patch);
+		}
+
+		bool supports_msl_version(uint32_t major, uint32_t minor = 0, uint32_t patch = 0)
+		{
+			return msl_version >= make_msl_version(major, minor, patch);
+		}
+
+		static uint32_t make_msl_version(uint32_t major, uint32_t minor = 0, uint32_t patch = 0)
+		{
+			return (major * 10000) + (minor * 100) + patch;
+		}
 	};
 
+	SPIRV_CROSS_DEPRECATED("CompilerMSL::get_options() is obsolete, use get_msl_options() instead.")
 	const Options &get_options() const
 	{
-		return options;
+		return msl_options;
 	}
 
+	const Options &get_msl_options() const
+	{
+		return msl_options;
+	}
+
+	SPIRV_CROSS_DEPRECATED("CompilerMSL::set_options() is obsolete, use set_msl_options() instead.")
 	void set_options(Options &opts)
 	{
-		options = opts;
+		msl_options = opts;
+	}
+
+	void set_msl_options(const Options &opts)
+	{
+		msl_options = opts;
 	}
 
 	// An enum of SPIR-V functions that are implemented in additional
@@ -108,9 +152,16 @@ public:
 		SPVFuncImplFindILsb,
 		SPVFuncImplFindSMsb,
 		SPVFuncImplFindUMsb,
-		SPVFuncImplInverse2x2,
-		SPVFuncImplInverse3x3,
+		SPVFuncImplArrayCopy,
 		SPVFuncImplInverse4x4,
+		SPVFuncImplInverse3x3,
+		SPVFuncImplInverse2x2,
+		SPVFuncImplRowMajor2x3,
+		SPVFuncImplRowMajor2x4,
+		SPVFuncImplRowMajor3x2,
+		SPVFuncImplRowMajor3x4,
+		SPVFuncImplRowMajor4x2,
+		SPVFuncImplRowMajor4x3,
 	};
 
 	// Constructs an instance to compile the SPIR-V code into Metal Shading Language,
@@ -141,7 +192,7 @@ public:
 
 	// This legacy method is deprecated.
 	typedef Options MSLConfiguration;
-	SPIRV_CROSS_DEPRECATED("Please use get_options() and set_options() instead.")
+	SPIRV_CROSS_DEPRECATED("Please use get_msl_options() and set_msl_options() instead.")
 	std::string compile(MSLConfiguration &msl_cfg, std::vector<MSLVertexAttr> *p_vtx_attrs = nullptr,
 	                    std::vector<MSLResourceBinding> *p_res_bindings = nullptr);
 
@@ -156,10 +207,10 @@ protected:
 	void emit_sampled_image_op(uint32_t result_type, uint32_t result_id, uint32_t image_id, uint32_t samp_id) override;
 	void emit_fixup() override;
 	void emit_struct_member(const SPIRType &type, uint32_t member_type_id, uint32_t index,
-	                        const std::string &qualifier = "") override;
+	                        const std::string &qualifier = "", uint32_t base_offset = 0) override;
 	std::string type_to_glsl(const SPIRType &type, uint32_t id = 0) override;
 	std::string image_type_glsl(const SPIRType &type, uint32_t id = 0) override;
-	std::string builtin_to_glsl(spv::BuiltIn builtin) override;
+	std::string builtin_to_glsl(spv::BuiltIn builtin, spv::StorageClass storage) override;
 	std::string constant_expression(const SPIRConstant &c) override;
 	size_t get_declared_struct_member_size(const SPIRType &struct_type, uint32_t index) const override;
 	std::string to_func_call_arg(uint32_t id) override;
@@ -174,11 +225,20 @@ protected:
 	std::string unpack_expression_type(std::string expr_str, const SPIRType &type) override;
 	std::string bitcast_glsl_op(const SPIRType &result_type, const SPIRType &argument_type) override;
 	bool skip_argument(uint32_t id) const override;
-	std::string variable_decl(const SPIRType &type, const std::string &name, uint32_t id = 0) override;
+	std::string to_qualifiers_glsl(uint32_t id) override;
+	void replace_illegal_names() override;
+	void declare_undefined_values() override;
+	void declare_constant_arrays();
+	bool is_non_native_row_major_matrix(uint32_t id) override;
+	bool member_is_non_native_row_major_matrix(const SPIRType &type, uint32_t index) override;
+	std::string convert_row_major_matrix(std::string exp_str, const SPIRType &exp_type, bool is_packed) override;
 
 	void preprocess_op_codes();
 	void localize_global_variables();
 	void extract_global_variables_from_functions();
+	void resolve_specialized_array_lengths();
+	void mark_packable_structs();
+	void mark_as_packable(SPIRType &type);
 
 	std::unordered_map<uint32_t, std::set<uint32_t>> function_global_vars;
 	void extract_global_variables_from_function(uint32_t func_id, std::set<uint32_t> &added_arg_ids,
@@ -186,6 +246,7 @@ protected:
 	                                            std::unordered_set<uint32_t> &processed_func_ids);
 	uint32_t add_interface_block(spv::StorageClass storage);
 	void mark_location_as_used_by_shader(uint32_t location, spv::StorageClass storage);
+	uint32_t ensure_correct_builtin_type(uint32_t type_id, spv::BuiltIn builtin);
 
 	void emit_custom_functions();
 	void emit_resources();
@@ -195,11 +256,11 @@ protected:
 	std::unordered_map<uint32_t, std::vector<ArgBufField>> generate_argument_buffers();
 	std::string argument_buffer_type_name(uint32_t index);
 	std::string argument_buffer_parameter_name(uint32_t index);
-	void populate_func_name_overrides();
-	void populate_var_name_overrides();
+	bool maybe_emit_input_struct_assignment(uint32_t id_lhs, uint32_t id_rhs);
+	bool maybe_emit_array_assignment(uint32_t id_lhs, uint32_t id_rhs);
+	void add_convert_row_major_matrix_function(uint32_t cols, uint32_t rows);
 
 	std::string func_type_decl(SPIRType &type);
-	std::string clean_func_name(std::string func_name) override;
 	std::string entry_point_args(bool append_comma);
 	std::string get_entry_point_name();
 	std::string to_qualified_member_name(const SPIRType &type, uint32_t index);
@@ -215,35 +276,38 @@ protected:
 	uint32_t get_ordered_member_location(uint32_t type_id, uint32_t index);
 	size_t get_declared_struct_member_alignment(const SPIRType &struct_type, uint32_t index) const;
 	std::string to_component_argument(uint32_t id);
-	void exclude_from_stage_in(SPIRVariable &var);
-	void exclude_member_from_stage_in(const SPIRType &type, uint32_t index);
+	bool should_move_to_input_buffer(uint32_t type_id, bool is_builtin, spv::StorageClass storage);
+	void move_to_input_buffer(SPIRVariable &var);
+	void move_member_to_input_buffer(const SPIRType &type, uint32_t index);
 	std::string add_input_buffer_block_member(uint32_t mbr_type_id, std::string mbr_name, uint32_t mbr_locn);
 	uint32_t get_input_buffer_block_var_id(uint32_t msl_buffer);
 	void align_struct(SPIRType &ib_type);
 	bool is_member_packable(SPIRType &ib_type, uint32_t index);
 	MSLStructMemberKey get_struct_member_key(uint32_t type_id, uint32_t index);
-	SPVFuncImpl get_spv_func_impl(spv::Op opcode, const uint32_t *args);
 	std::string get_argument_address_space(const SPIRVariable &argument);
 	void emit_atomic_func_op(uint32_t result_type, uint32_t result_id, const char *op, uint32_t mem_order_1,
 	                         uint32_t mem_order_2, bool has_mem_order_2, uint32_t op0, uint32_t op1 = 0,
 	                         bool op1_is_pointer = false, uint32_t op2 = 0);
 	const char *get_memory_order(uint32_t spv_mem_sem);
 	void add_pragma_line(const std::string &line);
+	void add_typedef_line(const std::string &line);
+	void emit_barrier(uint32_t id_exe_scope, uint32_t id_mem_scope, uint32_t id_mem_sem);
+	void emit_array_copy(const std::string &lhs, uint32_t rhs_id) override;
+	void build_implicit_builtins();
+	uint32_t builtin_frag_coord_id = 0;
 
-	Options options;
-	std::unordered_map<std::string, std::string> func_name_overrides;
-	std::unordered_map<std::string, std::string> var_name_overrides;
+	Options msl_options;
 	std::set<SPVFuncImpl> spv_function_implementations;
 	std::unordered_map<uint32_t, MSLVertexAttr *> vtx_attrs_by_location;
 	std::map<uint32_t, uint32_t> non_stage_in_input_var_ids;
 	std::unordered_map<MSLStructMemberKey, uint32_t> struct_member_padding;
-	std::vector<std::string> pragma_lines;
+	std::set<std::string> pragma_lines;
+	std::set<std::string> typedef_lines;
 	std::vector<MSLResourceBinding *> resource_bindings;
 	MSLResourceBinding next_metal_resource_index;
 	uint32_t stage_in_var_id = 0;
 	uint32_t stage_out_var_id = 0;
 	uint32_t stage_uniforms_var_id = 0;
-	uint32_t stage_workgroup_var_id = 0;
 	bool needs_vertex_idx_arg = false;
 	bool needs_instance_idx_arg = false;
 	std::string qual_pos_var_name;
@@ -252,6 +316,7 @@ protected:
 	std::string stage_uniform_var_name = "uniforms";
 	std::string stage_workgroup_var_name = "workgroup";
 	std::string sampler_name_suffix = "Smplr";
+	spv::Op previous_instruction_opcode = spv::OpNop;
 
 	// OpcodeHandler that handles several MSL preprocessing operations.
 	struct OpCodePreprocessor : OpcodeHandler
@@ -262,8 +327,10 @@ protected:
 		}
 
 		bool handle(spv::Op opcode, const uint32_t *args, uint32_t length) override;
+		CompilerMSL::SPVFuncImpl get_spv_func_impl(spv::Op opcode, const uint32_t *args);
 
 		CompilerMSL &compiler;
+		std::unordered_map<uint32_t, uint32_t> result_types;
 		bool suppress_missing_prototypes = false;
 		bool uses_atomics = false;
 	};

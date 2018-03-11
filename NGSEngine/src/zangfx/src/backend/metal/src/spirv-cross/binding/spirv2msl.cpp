@@ -12,6 +12,7 @@
 
 using spirv_cross::MSLVertexAttr;
 using spirv_cross::MSLResourceBinding;
+using spirv_cross::CompilerGLSL;
 using spirv_cross::CompilerMSL;
 
 class SpirV2Msl
@@ -22,9 +23,13 @@ public:
         try {
             compiler.reset(new CompilerMSL{ spirv, static_cast<size_t>(spirv_count) });
 
-            CompilerMSL::Options options;
-            options.flip_vert_y = true;
-            compiler->set_options(options);
+            CompilerGLSL::Options options = compiler->get_common_options();
+            options.vertex.flip_vert_y = true;
+            compiler->set_common_options(options);
+
+            CompilerMSL::Options msl_options = compiler->get_msl_options();
+            msl_options.set_msl_version(2, 0, 0);
+            compiler->set_msl_options(msl_options);
         } catch (const std::exception &ex) {
             last_error = ex.what();
         }
