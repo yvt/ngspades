@@ -5,6 +5,7 @@
 //
 //! Tests for ZanGFX implementations.
 use gfx;
+use utils;
 
 pub trait TestDriver {
     fn for_each_device(&self, runner: &mut FnMut(&gfx::Device));
@@ -111,8 +112,6 @@ macro_rules! zangfx_test_single {
 pub fn create_device<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |_| {});
 }
-
-mod utils;
 
 mod arg_table;
 pub use self::arg_table::*;
