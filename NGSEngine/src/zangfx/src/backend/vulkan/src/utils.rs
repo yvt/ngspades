@@ -205,3 +205,16 @@ pub fn translate_image_layout(value: base::ImageLayout, is_depth_stencil: bool) 
         (base::ImageLayout::Present, _) => vk::ImageLayout::PresentSrcKhr,
     }
 }
+
+pub fn translate_compare_op(value: base::CmpFn) -> vk::CompareOp {
+    match value {
+        base::CmpFn::Never => vk::CompareOp::Never,
+        base::CmpFn::Less => vk::CompareOp::Less,
+        base::CmpFn::Equal => vk::CompareOp::Equal,
+        base::CmpFn::LessEqual => vk::CompareOp::LessOrEqual,
+        base::CmpFn::Greater => vk::CompareOp::Greater,
+        base::CmpFn::NotEqual => vk::CompareOp::NotEqual,
+        base::CmpFn::GreaterEqual => vk::CompareOp::GreaterOrEqual,
+        base::CmpFn::Always => vk::CompareOp::Always,
+    }
+}

@@ -11,7 +11,7 @@ use ash::vk;
 use ash::version::*;
 
 use {base, AshDevice};
-use {arg, buffer, cmd, heap, image, limits, pipeline, shader, utils};
+use {arg, buffer, cmd, heap, image, limits, pipeline, sampler, shader, utils};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -133,7 +133,7 @@ impl base::Device for Device {
     }
 
     fn build_sampler(&self) -> Box<base::SamplerBuilder> {
-        unimplemented!()
+        unsafe { Box::new(sampler::SamplerBuilder::new(self.new_device_ref())) }
     }
 
     fn build_image_view(&self) -> Box<base::ImageViewBuilder> {
@@ -188,8 +188,12 @@ impl base::Device for Device {
         Ok(())
     }
 
-    fn destroy_sampler(&self, _obj: &base::Sampler) -> Result<()> {
-        unimplemented!()
+    fn destroy_sampler(&self, obj: &base::Sampler) -> Result<()> {
+        let our_sampler: &sampler::Sampler = obj.downcast_ref().expect("bad sampler type");
+        unsafe {
+            our_sampler.destroy(self.vk_device());
+        }
+        Ok(())
     }
 
     fn destroy_image_view(&self, obj: &base::ImageView) -> Result<()> {
