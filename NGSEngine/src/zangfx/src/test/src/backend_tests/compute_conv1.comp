@@ -9,15 +9,15 @@ layout(local_size_x = 64 /* local_size */) in;
 shared uint in_values[local_size + kernel_size - 1u];
 shared uint kernel_values[kernel_size];
 
-layout(set = 1, binding = 1) readonly uniform ConvolutionParameter {
+layout(std140, set = 1, binding = 1) readonly uniform ConvolutionParameter {
     uint kernel_values[kernel_size];
 } conv_param;
 
-layout(set = 1, binding = 2) readonly buffer ConvolutionInput {
+layout(std430, set = 1, binding = 2) readonly buffer ConvolutionInput {
     uint data[];
 } conv_in;
 
-layout(set = 1, binding = 3) writeonly buffer ConvolutionOutput {
+layout(std430, set = 1, binding = 3) writeonly buffer ConvolutionOutput {
     uint data[];
 } conv_out;
 

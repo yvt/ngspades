@@ -24,7 +24,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         let global_size = 4;
         let num_elements = local_size * global_size;
 
-        let kernel_data = [1u32, 3u32, 5u32, 7u32];
+        let kernel_data = [[1u32; 4], [3u32; 4], [5u32; 4], [7u32; 4]]; // std140 layout
         let mut input_data = vec![0u32; num_elements + kernel_data.len() - 1];
         let mut output_data = vec![0u32; num_elements];
 
@@ -98,12 +98,12 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         let input_ptr = unsafe {
             let alloc = heap.bind((&*input_buffer).into()).unwrap().unwrap();
             let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut u32, input_data.len())
+            from_raw_parts_mut(ptr as *mut _, input_data.len())
         };
         let kernel_ptr = unsafe {
             let alloc = heap.bind((&*kernel_buffer).into()).unwrap().unwrap();
             let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut u32, kernel_data.len())
+            from_raw_parts_mut(ptr as *mut _, kernel_data.len())
         };
         let output_ptr = unsafe {
             let alloc = heap.bind((&*output_buffer).into()).unwrap().unwrap();
@@ -238,7 +238,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         for (i, model) in model_data.iter_mut().enumerate() {
             let mut sum = 0;
             for (k, kern) in kernel_data.iter().enumerate() {
-                sum += input_data[i + k] * kern;
+                sum += input_data[i + k] * kern[0];
             }
             *model = sum;
         }
