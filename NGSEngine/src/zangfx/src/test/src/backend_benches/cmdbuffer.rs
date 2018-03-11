@@ -60,6 +60,10 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
                 }
             });
         });
+
+        for mut await in cb_ring.drain(..) {
+            await();
+        }
     });
 }
 

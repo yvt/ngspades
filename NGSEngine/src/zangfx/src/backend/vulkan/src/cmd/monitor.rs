@@ -22,7 +22,7 @@ use utils::translate_generic_error_unwrap;
 #[derive(Debug)]
 pub(super) struct Monitor<T> {
     shared: Arc<SharedData>,
-
+    join_handle: Option<thread::JoinHandle<()>>,
     fence_receiver: Mutex<Receiver<vk::Fence>>,
     fence_sender: SyncSender<vk::Fence>,
     cmd_sender: Option<SyncSender<Cmd<T>>>,
@@ -54,16 +54,17 @@ where
         let shared = Arc::new(SharedData { device, queue });
 
         // Start the monitor thread
-        {
+        let join_handle = {
             let shared = Arc::clone(&shared);
             let fence_sender = SyncSender::clone(&fence_sender);
             thread::Builder::new()
                 .spawn(move || Self::monitor_thread(shared, fence_sender, cmd_receiver))
-                .unwrap();
-        }
+                .unwrap()
+        };
 
         let monitor = Self {
             shared,
+            join_handle: Some(join_handle),
             fence_receiver: Mutex::new(fence_receiver),
             fence_sender,
             cmd_sender: Some(cmd_sender),
@@ -140,6 +141,14 @@ impl<T> Drop for Monitor<T> {
         let device = self.shared.device.vk_device();
         for fence in self.fence_receiver.get_mut().try_iter() {
             unsafe { device.destroy_fence(fence, None) };
+        }
+
+        // Wait until the monitor thread exits -- otherwise a race condition
+        // between `VkCmdQueue`'s destructor and `free_command_buffers`
+        // called by `on_fence_signaled` might occur
+        let join_handle = self.join_handle.take().unwrap();
+        if thread::current().id() != join_handle.thread().id() {
+            join_handle.join().unwrap();
         }
     }
 }

@@ -9,6 +9,7 @@ use ash::vk;
 use std::sync::Arc;
 use std::ops::Range;
 use arrayvec::ArrayVec;
+use parking_lot::Mutex;
 
 use base;
 use common::{Error, ErrorKind, Result};
@@ -37,6 +38,7 @@ struct Uncommited {
     scheduler: Arc<Scheduler>,
     vk_cmd_pool: vk::CommandPool,
     vk_cmd_buffer: vk::CommandBuffer,
+    cmd_pool_lock: Arc<Mutex<()>>,
 
     fence_set: FenceSet,
     ref_table: RefTable,
@@ -72,6 +74,7 @@ impl Drop for CmdBuffer {
 
             let vk_device = uncommited.device.vk_device();
             unsafe {
+                let _lock = uncommited.cmd_pool_lock.lock();
                 vk_device.free_command_buffers(uncommited.vk_cmd_pool, &[uncommited.vk_cmd_buffer]);
             }
         }
@@ -83,10 +86,12 @@ impl CmdBuffer {
         device: DeviceRef,
         vk_cmd_pool: vk::CommandPool,
         scheduler: Arc<Scheduler>,
+        cmd_pool_lock: Arc<Mutex<()>>,
     ) -> Result<Self> {
         let vk_device = device.vk_device();
 
         let vk_cmd_buffer = unsafe {
+            let _lock = cmd_pool_lock.lock();
             vk_device.allocate_command_buffers(&vk::CommandBufferAllocateInfo {
                 s_type: vk::StructureType::CommandBufferAllocateInfo,
                 p_next: ::null(),
@@ -101,6 +106,7 @@ impl CmdBuffer {
             scheduler,
             vk_cmd_pool,
             vk_cmd_buffer,
+            cmd_pool_lock,
             fence_set: FenceSet::new(),
             ref_table: RefTable::new(),
             completion_callbacks: Default::default(),
