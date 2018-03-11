@@ -11,7 +11,7 @@ use ash::vk;
 use ash::version::*;
 
 use {base, AshDevice};
-use {arg, buffer, cmd, heap, limits, pipeline, shader, utils};
+use {arg, buffer, cmd, heap, image, limits, pipeline, shader, utils};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -125,7 +125,7 @@ impl base::Device for Device {
     }
 
     fn build_image(&self) -> Box<base::ImageBuilder> {
-        unimplemented!()
+        unsafe { Box::new(image::ImageBuilder::new(self.new_device_ref())) }
     }
 
     fn build_buffer(&self) -> Box<base::BufferBuilder> {
@@ -137,7 +137,7 @@ impl base::Device for Device {
     }
 
     fn build_image_view(&self) -> Box<base::ImageViewBuilder> {
-        unimplemented!()
+        unsafe { Box::new(image::ImageViewBuilder::new(self.new_device_ref())) }
     }
 
     fn build_library(&self) -> Box<base::LibraryBuilder> {
@@ -172,8 +172,12 @@ impl base::Device for Device {
         unsafe { Box::new(pipeline::ComputePipelineBuilder::new(self.new_device_ref())) }
     }
 
-    fn destroy_image(&self, _obj: &base::Image) -> Result<()> {
-        unimplemented!()
+    fn destroy_image(&self, obj: &base::Image) -> Result<()> {
+        let our_image: &image::Image = obj.downcast_ref().expect("bad image type");
+        unsafe {
+            our_image.destroy(self.vk_device());
+        }
+        Ok(())
     }
 
     fn destroy_buffer(&self, obj: &base::Buffer) -> Result<()> {
@@ -188,8 +192,12 @@ impl base::Device for Device {
         unimplemented!()
     }
 
-    fn destroy_image_view(&self, _obj: &base::ImageView) -> Result<()> {
-        unimplemented!()
+    fn destroy_image_view(&self, obj: &base::ImageView) -> Result<()> {
+        let our_image_view: &image::ImageView = obj.downcast_ref().expect("bad image view type");
+        unsafe {
+            our_image_view.destroy(self.vk_device());
+        }
+        Ok(())
     }
 
     fn get_memory_req(&self, obj: base::ResourceRef) -> Result<base::MemoryReq> {
@@ -269,7 +277,21 @@ impl base::Device for Device {
                                 descriptor_count += 1;
                             }
                         }
-                        base::ArgSlice::ImageView(_) => unimplemented!(),
+                        base::ArgSlice::ImageView(views) => {
+                            while !write_images.is_full() && i < views.len() {
+                                let view = views[i];
+                                let view: &image::ImageView =
+                                    view.downcast_ref().expect("bad image view type");
+
+                                write_images.push(vk::DescriptorImageInfo {
+                                    sampler: vk::Sampler::null(),
+                                    image_view: view.vk_image_view(),
+                                    image_layout: view.meta().image_layout(),
+                                });
+                                i += 1;
+                                descriptor_count += 1;
+                            }
+                        }
                         base::ArgSlice::Sampler(_) => unimplemented!(),
                     };
                     write.descriptor_count = descriptor_count;

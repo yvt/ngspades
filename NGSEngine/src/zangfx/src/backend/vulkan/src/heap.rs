@@ -15,7 +15,7 @@ use common::{Error, ErrorKind, Result};
 
 use device::DeviceRef;
 use utils::{get_memory_req, translate_generic_error_unwrap, translate_map_memory_error_unwrap};
-use buffer;
+use {buffer, image};
 
 /// Implementation of `DynamicHeapBuilder` for Vulkan.
 #[derive(Debug)]
@@ -251,7 +251,11 @@ impl base::Heap for Heap {
                     vk_device.bind_buffer_memory(our_buffer.vk_buffer(), self.vk_mem, offset)
                 }.map_err(translate_map_memory_error_unwrap)?;
             }
-            base::ResourceRef::Image(_image) => unimplemented!(),
+            base::ResourceRef::Image(image) => {
+                let our_image: &image::Image = image.downcast_ref().expect("bad image type");
+                unsafe { vk_device.bind_image_memory(our_image.vk_image(), self.vk_mem, offset) }
+                    .map_err(translate_map_memory_error_unwrap)?;
+            }
         }
 
         // Insert it to the internal pool -- First we only allocate a place in

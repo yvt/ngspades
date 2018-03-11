@@ -54,13 +54,16 @@ pub(crate) fn translate_map_memory_error_unwrap(result: vk::Result) -> Error {
 }
 
 pub fn get_memory_req(vk_device: &::AshDevice, obj: base::ResourceRef) -> Result<base::MemoryReq> {
-    use buffer;
+    use {buffer, image};
     let req = match obj {
         base::ResourceRef::Buffer(buffer) => {
             let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
             vk_device.get_buffer_memory_requirements(our_buffer.vk_buffer())
         }
-        base::ResourceRef::Image(_image) => unimplemented!(),
+        base::ResourceRef::Image(image) => {
+            let our_image: &image::Image = image.downcast_ref().expect("bad image type");
+            vk_device.get_image_memory_requirements(our_image.vk_image())
+        }
     };
     Ok(base::MemoryReq {
         size: req.size,
@@ -165,4 +168,40 @@ pub fn translate_pipeline_stage_flags(value: base::StageFlags) -> vk::PipelineSt
         ret |= vk::PIPELINE_STAGE_TRANSFER_BIT;
     }
     ret
+}
+
+pub fn translate_image_subresource_range(
+    value: &base::ImageSubRange,
+    aspect_mask: vk::ImageAspectFlags,
+) -> vk::ImageSubresourceRange {
+    let mip_levels = value.mip_levels.as_ref();
+    let layers = value.layers.as_ref();
+    vk::ImageSubresourceRange {
+        aspect_mask,
+        base_mip_level: mip_levels.map(|x| x.start).unwrap_or(0),
+        base_array_layer: layers.map(|x| x.start).unwrap_or(0),
+        level_count: mip_levels
+            .map(|x| x.end - x.start)
+            .unwrap_or(vk::VK_REMAINING_MIP_LEVELS),
+        layer_count: layers
+            .map(|x| x.end - x.start)
+            .unwrap_or(vk::VK_REMAINING_ARRAY_LAYERS),
+    }
+}
+
+pub fn translate_image_layout(value: base::ImageLayout, is_depth_stencil: bool) -> vk::ImageLayout {
+    match (value, is_depth_stencil) {
+        (base::ImageLayout::Undefined, _) => vk::ImageLayout::Undefined,
+        (base::ImageLayout::General, _) => vk::ImageLayout::General,
+        (base::ImageLayout::RenderWrite, false) => vk::ImageLayout::ColorAttachmentOptimal,
+        (base::ImageLayout::RenderWrite, true) => vk::ImageLayout::DepthStencilAttachmentOptimal,
+        (base::ImageLayout::RenderRead, false) => {
+            panic!("color render target cannot use the RenderRead layout")
+        }
+        (base::ImageLayout::RenderRead, true) => vk::ImageLayout::DepthStencilReadOnlyOptimal,
+        (base::ImageLayout::ShaderRead, _) => vk::ImageLayout::ShaderReadOnlyOptimal,
+        (base::ImageLayout::CopyRead, _) => vk::ImageLayout::TransferSrcOptimal,
+        (base::ImageLayout::CopyWrite, _) => vk::ImageLayout::TransferDstOptimal,
+        (base::ImageLayout::Present, _) => vk::ImageLayout::PresentSrcKhr,
+    }
 }

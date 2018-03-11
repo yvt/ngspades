@@ -325,7 +325,9 @@ pub trait ImageViewBuilder: Object {
 
     /// Set the image layout.
     ///
-    /// This property is mandatory.
+    /// Defaults to `ImageLayout::ShaderRead`. Since image views are solely used
+    /// for shader access, the only valid values here are `ShaderRead` and
+    /// `General`.
     fn layout(&mut self, v: ImageLayout) -> &mut ImageViewBuilder;
 
     /// Build an `ImageView`.
