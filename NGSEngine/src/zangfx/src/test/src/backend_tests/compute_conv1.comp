@@ -7,10 +7,12 @@ const uint kernel_size = 4u;
 layout(local_size_x = 64 /* local_size */) in;
 
 shared uint in_values[local_size + kernel_size - 1u];
-shared uint kernel_values[kernel_size];
 
 layout(std140, set = 1, binding = 1) readonly uniform ConvolutionParameter {
-    uint kernel_values[kernel_size];
+    // SPIRV-Cross disregards std140's array base alignment rule, so we can't
+    // use `uint[]` here. Only the `x` component of each element is actually
+    // used by the kernel.
+    uvec4 kernel_values[kernel_size];
 } conv_param;
 
 layout(std430, set = 1, binding = 2) readonly buffer ConvolutionInput {
@@ -34,11 +36,6 @@ void main()
             conv_in.data[global_id + kernel_size - 1u];
     }
 
-    // load kernel into shared memory
-    if (local_id < kernel_size) {
-        kernel_values[local_id] = conv_param.kernel_values[local_id];
-    }
-
     // wait for all inputs to be ready...
     groupMemoryBarrier();
     barrier();
@@ -46,7 +43,7 @@ void main()
     // perform convolution
     uint sum = 0u;
     for (uint i = 0u; i < kernel_size; ++i) {
-        sum += in_values[local_id + i] * kernel_values[i];
+        sum += in_values[local_id + i] * conv_param.kernel_values[i].x;
     }
 
     // store the result

@@ -24,7 +24,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         let global_size = 4;
         let num_elements = local_size * global_size;
 
-        let kernel_data = [[1u32; 4], [3u32; 4], [5u32; 4], [7u32; 4]]; // std140 layout
+        let kernel_data = [[1u32; 4], [3u32; 4], [5u32; 4], [7u32; 4]];
         let mut input_data = vec![0u32; num_elements + kernel_data.len() - 1];
         let mut output_data = vec![0u32; num_elements];
 

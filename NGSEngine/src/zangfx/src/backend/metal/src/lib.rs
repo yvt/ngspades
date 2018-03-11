@@ -45,6 +45,15 @@
 //! `MTLCommandEncoder`'s methods and they are visible via Xcode's GPU Frame
 //! Capture.
 //!
+//! # Limitations
+//!
+//! ## Shaders
+//!
+//! - SPIRV-Cross does not adhere to the array base alignment rule as defined by
+//!   the standard uniform buffer layout yet. It is advised that you only use
+//!   16-byte aligned types (e.g., `vec4` or structs containing one) as element
+//!   types for arrays defined in uniform buffers.
+//!
 extern crate block;
 extern crate cocoa;
 extern crate iterpool;
