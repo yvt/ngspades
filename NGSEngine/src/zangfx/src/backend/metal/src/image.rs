@@ -48,7 +48,7 @@ impl ImageBuilder {
             num_layers: None,
             num_mip_levels: 1,
             format: None,
-            usage: flags![base::ImageUsage::{CopyWrite | Sampled}],
+            usage: base::ImageUsage::default_flags(),
             label: None,
         }
     }
