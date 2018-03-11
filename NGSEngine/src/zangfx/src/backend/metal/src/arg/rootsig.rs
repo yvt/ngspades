@@ -65,7 +65,7 @@ impl RootSig {
                 table.setup_spirv2msl(
                     s2m,
                     arg_table_index as u32,
-                    Some(arg_table_index as u32),
+                    arg_table_index as u32,
                     stage,
                 );
             }

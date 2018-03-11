@@ -8,7 +8,7 @@ extern crate include_data;
 extern crate zangfx_spirv_cross;
 
 use zangfx_spirv_cross::{ExecutionModel, ResourceBinding, SpirV2Msl, VertexAttribute,
-                         VertexInputRate};
+                         VertexInputRate, IndirectArgument};
 
 static TEST_FRAG: include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/test.frag.spv"));
@@ -209,6 +209,40 @@ fn transpile_vert2_iab() {
     assert!(result.msl_code.contains("u_obj_params [[id(0)]]"));
     assert!(result.msl_code.contains("[[buffer(0)]]"));
     assert!(result.msl_code.contains(".u_obj_params"));
+}
+
+#[test]
+fn transpile_vert2_iab_explicit_ia() {
+    let result = SpirV2Msl::new(TEST2_VERT.as_u32_slice())
+        .bind_resource(&ResourceBinding {
+            stage: ExecutionModel::Vertex,
+            desc_set: 0,
+            binding: 2,
+            msl_buffer: Some(2),
+            msl_sampler: None,
+            msl_texture: None,
+            msl_arg_buffer: Some(0),
+        })
+        .bind_resource(&ResourceBinding {
+            stage: ExecutionModel::Vertex,
+            desc_set: 0,
+            binding: 3,
+            msl_buffer: Some(0),
+            msl_sampler: None,
+            msl_texture: None,
+            msl_arg_buffer: Some(0),
+        })
+        .add_indirect_argument(&IndirectArgument {
+            msl_arg_buffer: 0,
+            msl_arg: 4,
+            msl_type: "sampler",
+        })
+        .compile()
+        .unwrap();
+    println!("// Beginning of Generated Code");
+    println!("{}", result.msl_code);
+    println!("// End of Generated Code");
+    assert!(result.msl_code.contains("[[id(4)]]"));
 }
 
 // TODO: see if entry point name other than `main` works

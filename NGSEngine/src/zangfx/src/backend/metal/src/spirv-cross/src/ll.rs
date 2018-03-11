@@ -8,7 +8,6 @@
 
 use libc::*;
 
-
 // spirvcross.h
 pub type SpirVCrossExecutionModel = u8;
 
@@ -54,14 +53,28 @@ pub struct SpirV2MslResourceBinding {
     pub stage: SpirVCrossExecutionModel,
 }
 
+#[repr(C)]
+pub struct SpirV2MslIndirectArgument {
+    pub msl_arg_buffer: u32,
+    pub msl_arg: u32,
+    pub msl_type: *const c_char,
+}
+
 pub type SpirV2Msl = c_void;
 
 // spirv2msl.h
-extern {
+extern "C" {
     pub fn SpirV2MslCreate(spirv: *const u32, spirv_count: u32) -> *mut SpirV2Msl;
     pub fn SpirV2MslDestroy(this: *mut SpirV2Msl);
     pub fn SpirV2MslAddVertexAttr(this: *mut SpirV2Msl, vertex_attr: *const SpirV2MslVertexAttr);
-    pub fn SpirV2MslAddResourceBinding(this: *mut SpirV2Msl, binding: *const SpirV2MslResourceBinding);
+    pub fn SpirV2MslAddResourceBinding(
+        this: *mut SpirV2Msl,
+        binding: *const SpirV2MslResourceBinding,
+    );
+    pub fn SpirV2MslAddIndirectArgument(
+        this: *mut SpirV2Msl,
+        binding: *const SpirV2MslIndirectArgument,
+    );
     pub fn SpirV2MslCompile(this: *mut SpirV2Msl) -> SpirVCrossBool;
     pub fn SpirV2MslGetError(this: *mut SpirV2Msl) -> *mut c_char;
     pub fn SpirV2MslGetOutputSourceCode(this: *mut SpirV2Msl) -> *mut c_char;

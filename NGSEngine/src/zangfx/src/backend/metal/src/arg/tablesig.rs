@@ -16,7 +16,7 @@ use common::Result;
 
 use arg::ArgSize;
 use utils::{nil_error, OCPtr};
-use spirv_cross::{ExecutionModel, ResourceBinding, SpirV2Msl};
+use spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl};
 
 /// Implementation of `ArgTableSigBuilder` for Metal.
 #[derive(Debug)]
@@ -83,6 +83,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
         for (_, arg_sig_builder) in self.args.iter().enumerate() {
             arg_sigs.push(ArgSig {
                 index: current_index,
+                ty: arg_sig_builder.as_ref().map(|b| b.ty),
             });
 
             if let &Some(ref arg_sig_builder) = arg_sig_builder {
@@ -169,6 +170,8 @@ struct ArgTableSigData {
 
 #[derive(Debug)]
 struct ArgSig {
+    ty: Option<arg::ArgType>,
+
     /// The starting index of the argument in an argument buffer.
     index: usize,
 }
@@ -316,7 +319,7 @@ impl ArgTableSig {
         &self,
         s2m: &mut SpirV2Msl,
         desc_set: u32,
-        msl_arg_buffer: Option<u32>,
+        msl_arg_buffer: u32,
         stage: ExecutionModel,
     ) {
         for (i, arg) in self.data.args.iter().enumerate() {
@@ -326,9 +329,33 @@ impl ArgTableSig {
                 msl_buffer: Some(arg.index as u32),
                 msl_texture: Some(arg.index as u32),
                 msl_sampler: Some(arg.index as u32),
-                msl_arg_buffer,
+                msl_arg_buffer: Some(msl_arg_buffer),
                 stage,
             });
+
+            if let Some(ty) = arg.ty {
+                // Since each indirect argument is given a binding location in a way
+                // resembling those of Vulkan's descriptors, you might be lulled
+                // into a false impression that you don't have to declare them in
+                // MSL provided that they are not statically used by the shader.
+                // That's not true. The physical location of each argument within an
+                // argument buffer is determined by the fields defined in the
+                // argument buffer. You have to define every field of an argument
+                // buffer in every shader that accesses the same argument buffer.
+                let msl_type = match ty {
+                    arg::ArgType::StorageBuffer => "device int *",
+                    arg::ArgType::UniformBuffer => "constant int *",
+                    // TODO: texture type? array types?
+                    arg::ArgType::SampledImage => "texture2d<float>",
+                    arg::ArgType::StorageImage => "texture2d<float, access::read>",
+                    arg::ArgType::Sampler => "sampler",
+                };
+                s2m.add_indirect_argument(&IndirectArgument {
+                    msl_arg_buffer,
+                    msl_arg: i as u32,
+                    msl_type,
+                });
+            }
         }
     }
 }

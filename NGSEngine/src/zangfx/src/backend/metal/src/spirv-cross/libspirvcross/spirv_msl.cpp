@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <numeric>
+#include <iostream>
 
 using namespace spv;
 using namespace spirv_cross;
@@ -152,6 +153,8 @@ string CompilerMSL::compile()
 	stage_out_var_id = add_interface_block(StorageClassOutput);
 	stage_uniforms_var_id = add_interface_block(StorageClassUniformConstant);
 
+	bind_indirect_arguments_and_vars();
+
 	// Convert the use of global variables to recursively-passed function parameters
 	localize_global_variables();
 	extract_global_variables_from_functions();
@@ -189,7 +192,8 @@ string CompilerMSL::compile()
 	return buffer->str();
 }
 
-string CompilerMSL::compile(vector<MSLVertexAttr> *p_vtx_attrs, vector<MSLResourceBinding> *p_res_bindings)
+string CompilerMSL::compile(vector<MSLVertexAttr> *p_vtx_attrs, vector<MSLResourceBinding> *p_res_bindings,
+	std::vector<MSLIndirectArgument> *p_indirect_arguments)
 {
 	if (p_vtx_attrs)
 	{
@@ -205,6 +209,12 @@ string CompilerMSL::compile(vector<MSLVertexAttr> *p_vtx_attrs, vector<MSLResour
 			resource_bindings.push_back(&rb);
 	}
 
+	if (p_indirect_arguments) {
+		for (auto &ib : *p_indirect_arguments) {
+			indirect_arguments[ib.msl_argument_buffer][ib.msl_argument] = ArgBufField {ib.msl_type};
+		}
+	}
+
 	return compile();
 }
 
@@ -212,7 +222,7 @@ string CompilerMSL::compile(MSLConfiguration &msl_cfg, vector<MSLVertexAttr> *p_
                             vector<MSLResourceBinding> *p_res_bindings)
 {
 	msl_options = msl_cfg;
-	return compile(p_vtx_attrs, p_res_bindings);
+	return compile(p_vtx_attrs, p_res_bindings, nullptr);
 }
 
 // Register the need to output any custom functions.
@@ -1367,10 +1377,12 @@ std::string CompilerMSL::argument_buffer_parameter_name(uint32_t index)
 	return "argbuf_" + convert_to_string(index);
 }
 
-auto CompilerMSL::generate_argument_buffers() -> std::unordered_map<uint32_t, std::vector<ArgBufField>> {
+std::string CompilerMSL::argument_buffer_argument_name(uint32_t index)
+{
+	return "arg_" + convert_to_string(index);
+}
 
-	std::unordered_map<uint32_t, std::vector<ArgBufField>> arg_bufs;
-
+void CompilerMSL::bind_indirect_arguments_and_vars() {
 	for (auto &id : ids)
 	{
 		if (id.get_type() == TypeVariable)
@@ -1379,8 +1391,8 @@ auto CompilerMSL::generate_argument_buffers() -> std::unordered_map<uint32_t, st
 			auto &type = get<SPIRType>(var.basetype);
 			uint32_t var_id = var.self;
 
-			if ((var.storage == StorageClassUniform || var.storage == StorageClassUniformConstant) &&
-			    !is_hidden_variable(var))
+			if ((var.storage == StorageClassUniform || var.storage == StorageClassUniformConstant ||
+				 var.storage == StorageClassStorageBuffer) && !is_hidden_variable(var))
 			{
 				auto &var_dec = meta[var_id].decoration;
 				uint32_t var_desc_set = var_dec.set;
@@ -1395,90 +1407,100 @@ auto CompilerMSL::generate_argument_buffers() -> std::unordered_map<uint32_t, st
 							continue;
 						}
 
-						switch (type.basetype)
-						{
-						case SPIRType::Struct:
-							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
-								ArgBufField{p_res_bind->msl_buffer, var_id, type.basetype});
-							break;
-						case SPIRType::Image:
-							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
-								ArgBufField{p_res_bind->msl_texture, var_id, type.basetype});
-							break;
-						case SPIRType::Sampler:
-							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
-								ArgBufField{p_res_bind->msl_sampler, var_id, type.basetype});
-							break;
-						case SPIRType::SampledImage:
-							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
-								ArgBufField{p_res_bind->msl_texture, var_id, SPIRType::Image});
-							arg_bufs[p_res_bind->msl_argument_buffer].push_back(
-								ArgBufField{p_res_bind->msl_sampler, var_id, SPIRType::Sampler});
-							break;
-						default:
-							statement("// NOT SUPPORTED: unknown SPIRType in argument buffer");
-							break;
+						auto &arg_buf = indirect_arguments[p_res_bind->msl_argument_buffer];
+
+						// Use the qualified name for the uniform variable
+						string name = ensure_valid_name(to_expression(var_id), "");
+						string qual_var_name = argument_buffer_parameter_name(p_res_bind->msl_argument_buffer) + "." + name;
+						meta[var_id].decoration.qualified_alias = qual_var_name;
+
+						auto bind = [&] (uint32_t arg_index, SPIRType::BaseType basetype) {
+							auto it = arg_buf.find(arg_index);
+
+							if (it != arg_buf.end()) {
+								if (it->second.var_id != 0) {
+									std::cerr << "**SPIRV-Cross** duplicate indirect argument location: " << to_expression(var_id) << std::endl;
+								}
+								it->second.var_id = var_id;
+								it->second.type = basetype;
+							} else {
+								arg_buf.emplace(arg_index, ArgBufField {var_id, basetype});
+							}
+						};
+
+						if (type.basetype == SPIRType::Struct) {
+							auto &m = meta.at(type.self);
+							if (m.members.size() == 0)
+								break;
+							bind(p_res_bind->msl_buffer, SPIRType::Struct);
 						}
+						if (type.basetype == SPIRType::Image || type.basetype == SPIRType::SampledImage) {
+							bind(p_res_bind->msl_texture, SPIRType::Image);
+						}
+						if (type.basetype == SPIRType::Sampler || type.basetype == SPIRType::SampledImage) {
+							bind(p_res_bind->msl_sampler, SPIRType::Sampler);
+						}
+
 						break;
 					}
 				}
 			}
 		}
 	}
-
-	return arg_bufs;
 }
 
 void CompilerMSL::emit_argument_buffers()
 {
-	// Extract all uniform variables passed via argument buffers
-	auto arg_bufs = generate_argument_buffers();
-
 	// Emit argument buffers
-	for (auto &arg_buf_pair: arg_bufs) {
+	for (auto &arg_buf_pair: indirect_arguments) {
 		uint32_t arg_buf_id = arg_buf_pair.first;
 		auto &args = arg_buf_pair.second;
 
-		// Fields must be sorted by `[[id]]`
-		std::sort(args.begin(), args.end());
-
 		statement("struct " + argument_buffer_type_name(arg_buf_id));
 		begin_scope();
-		for (const auto &arg: args) {
-			auto &var = get<SPIRVariable>(arg.var_id);
-			auto &type = get<SPIRType>(var.basetype);
+		for (const auto &arg_pair: args) {
+			uint32_t arg_id = arg_pair.first;
+			const ArgBufField &arg = arg_pair.second;
 
 			std::string arg_field;
-			switch (arg.type)
-			{
-			case SPIRType::Struct:
-			{
-				auto &m = meta.at(type.self);
-				if (m.members.size() == 0)
+			if (arg.var_id != 0) {
+				auto &var = get<SPIRVariable>(arg.var_id);
+				auto &type = get<SPIRType>(var.basetype);
+
+				switch (arg.type)
+				{
+				case SPIRType::Struct:
+				{
+					auto &m = meta.at(type.self);
+					if (m.members.size() == 0)
+						break;
+					arg_field += get_argument_address_space(var) + " " + type_to_glsl(type) + "& " + to_name(arg.var_id);
 					break;
-				arg_field += get_argument_address_space(var) + " " + type_to_glsl(type) + "& " + to_name(arg.var_id);
-				break;
-			}
-			case SPIRType::Sampler:
-				if (type.basetype == SPIRType::SampledImage) {
-					// This field is a part of a combined sampled image
-					arg_field += "sampler " + to_sampler_expression(arg.var_id);
-				} else {
-					arg_field += type_to_glsl(type) + " " + to_name(arg.var_id);
 				}
-				break;
-			case SPIRType::Image:
-				arg_field += type_to_glsl(type, arg.var_id) + " " + to_name(arg.var_id);
-				break;
-			default:
-				break;
+				case SPIRType::Sampler:
+					if (type.basetype == SPIRType::SampledImage) {
+						// This field is a part of a combined sampled image
+						arg_field += "sampler " + to_sampler_expression(arg.var_id);
+					} else {
+						arg_field += type_to_glsl(type) + " " + to_name(arg.var_id);
+					}
+					break;
+				case SPIRType::Image:
+					arg_field += type_to_glsl(type, arg.var_id) + " " + to_name(arg.var_id);
+					break;
+				default:
+					statement("// unsupported type");
+					break;
+				}
+			} else {
+				arg_field = arg.msl_type + " " + argument_buffer_argument_name(arg_id);
 			}
 
 			if (arg_field.empty()) {
 				continue;
 			}
 
-			arg_field += " [[id(" + convert_to_string(arg.argument_id) + ")]];";
+			arg_field += " [[id(" + convert_to_string(arg_id) + ")]];";
 
 			statement(arg_field);
 		}
@@ -3209,8 +3231,7 @@ string CompilerMSL::entry_point_args(bool append_comma)
 
 	// Indirect argument buffers
 	// (Their type definitions are emitted by `emit_argument_buffers`.)
-	auto arg_bufs = generate_argument_buffers();
-	for (const auto &arg_buf_pair: arg_bufs) {
+	for (const auto &arg_buf_pair: indirect_arguments) {
 		uint32_t arg_buf_id = arg_buf_pair.first;
 
 		if (!ep_args.empty())
@@ -3222,14 +3243,6 @@ string CompilerMSL::entry_point_args(bool append_comma)
 		ep_args += "constant " + type_name + "& " + param_name;
 		ep_args += " [[buffer(" + convert_to_string(arg_buf_id) + ")]]";
 
-		for (const auto &arg: arg_buf_pair.second) {
-			auto var_id = arg.var_id;
-
-			// Changing the name here might be crazy
-			string name = ensure_valid_name(to_expression(var_id), "");
-			string qual_var_name = param_name + "." + name;
-			meta[var_id].decoration.qualified_alias = qual_var_name;
-		}
 	}
 
 	// Vertex and instance index built-ins

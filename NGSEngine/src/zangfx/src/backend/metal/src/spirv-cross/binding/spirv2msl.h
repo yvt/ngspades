@@ -38,17 +38,25 @@ struct SpirV2MslResourceBinding
     uint32_t msl_sampler;
 
     /// The index of argument buffer. When specified (not `(uint32_t)-1`),
-    /// `msl_buffer`, `msl_texture`, and `msl_sampler` point indices into the
-    /// argument buffer.
+    /// `msl_buffer`, `msl_texture`, and `msl_sampler` turn into indices into
+    /// the argument buffer.
     uint32_t msl_arg_buffer;
 
     SpirVCrossExecutionModel stage;
+};
+
+struct SpirV2MslIndirectArgument
+{
+    uint32_t msl_arg_buffer;
+    uint32_t msl_arg;
+    const char *msl_type;
 };
 
 SpirV2Msl *SpirV2MslCreate(const uint32_t *spirv, uint32_t spirv_count);
 void SpirV2MslDestroy(SpirV2Msl *self);
 void SpirV2MslAddVertexAttr(SpirV2Msl *self, const SpirV2MslVertexAttr *vertex_attr);
 void SpirV2MslAddResourceBinding(SpirV2Msl *self, const SpirV2MslResourceBinding *binding);
+void SpirV2MslAddIndirectArgument(SpirV2Msl *self, const SpirV2MslIndirectArgument *ia);
 SpirVCrossBool SpirV2MslCompile(SpirV2Msl *self);
 const char *SpirV2MslGetError(SpirV2Msl *self);
 const char *SpirV2MslGetOutputSourceCode(SpirV2Msl *self);

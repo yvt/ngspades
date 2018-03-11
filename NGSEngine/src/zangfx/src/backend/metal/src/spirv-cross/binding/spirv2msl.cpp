@@ -12,6 +12,7 @@
 
 using spirv_cross::MSLVertexAttr;
 using spirv_cross::MSLResourceBinding;
+using spirv_cross::MSLIndirectArgument;
 using spirv_cross::CompilerGLSL;
 using spirv_cross::CompilerMSL;
 
@@ -108,13 +109,30 @@ public:
         }
     }
 
+    void AddIndirectArgument(const SpirV2MslIndirectArgument *argument)
+    {
+        if (!compiler) {
+            return;
+        }
+        try {
+            MSLIndirectArgument ia;
+            ia.msl_argument_buffer = argument->msl_arg_buffer;
+            ia.msl_argument = argument->msl_arg;
+            ia.msl_type = argument->msl_type;
+            indirect_arguments.push_back(ia);
+        } catch (const std::exception &ex) {
+            last_error = ex.what();
+            compiler.reset();
+        }
+    }
+
     SpirVCrossBool Compile()
     {
         if (!compiler) {
             return SpirVCrossBoolFalse;
         }
         try {
-            output_msl = compiler->compile(&vertex_attrs, &bindings);
+            output_msl = compiler->compile(&vertex_attrs, &bindings, &indirect_arguments);
             return SpirVCrossBoolTrue;
         } catch (const std::exception &ex) {
             last_error = ex.what();
@@ -135,6 +153,7 @@ private:
 
     std::vector<MSLVertexAttr> vertex_attrs;
     std::vector<MSLResourceBinding> bindings;
+    std::vector<MSLIndirectArgument> indirect_arguments;
 };
 
 SpirV2Msl *
@@ -159,6 +178,12 @@ void
 SpirV2MslAddResourceBinding(SpirV2Msl *self, const SpirV2MslResourceBinding *binding)
 {
     self->AddResourceBinding(binding);
+}
+
+void
+SpirV2MslAddIndirectArgument(SpirV2Msl *self, const SpirV2MslIndirectArgument *ia)
+{
+    self->AddIndirectArgument(ia);
 }
 
 SpirVCrossBool

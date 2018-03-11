@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use ll;
-use std::ffi::CStr;
-use {VertexInputRate, ExecutionModel, Result};
+use std::ffi::{CStr, CString};
+use {ExecutionModel, Result, VertexInputRate};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct VertexAttribute {
@@ -58,6 +58,30 @@ impl ResourceBinding {
     }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct IndirectArgument<'a> {
+    /// The index in the buffer argument table.
+    pub msl_arg_buffer: u32,
+    /// The index in the argument buffer.
+    pub msl_arg: u32,
+    // Metal type qualifier.
+    pub msl_type: &'a str,
+}
+
+impl<'a> IndirectArgument<'a> {
+    fn as_ll(self) -> (ll::SpirV2MslIndirectArgument, CString) {
+        let cstr = CString::new(self.msl_type).unwrap();
+        (
+            ll::SpirV2MslIndirectArgument {
+                msl_arg_buffer: self.msl_arg_buffer,
+                msl_arg: self.msl_arg,
+                msl_type: cstr.as_ptr(),
+            },
+            cstr,
+        )
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct SpirV2MslOutput {
     pub msl_code: String,
@@ -98,6 +122,14 @@ impl SpirV2Msl {
         self
     }
 
+    pub fn add_indirect_argument(&mut self, ia: &IndirectArgument) -> &mut Self {
+        let (ll, _cstr) = ia.as_ll();
+        unsafe {
+            ll::SpirV2MslAddIndirectArgument(self.obj, &ll as *const ll::SpirV2MslIndirectArgument);
+        }
+        self
+    }
+
     pub fn compile(&mut self) -> Result<SpirV2MslOutput> {
         let success = unsafe { ll::SpirV2MslCompile(self.obj) };
         if success != ll::SpirVCrossBoolFalse {
@@ -105,7 +137,9 @@ impl SpirV2Msl {
             assert!(!msl_code_c.is_null());
             let msl_code = unsafe { CStr::from_ptr(msl_code_c) }.to_str().unwrap();
 
-            Ok(SpirV2MslOutput { msl_code: String::from(msl_code) })
+            Ok(SpirV2MslOutput {
+                msl_code: String::from(msl_code),
+            })
         } else {
             let error_c = unsafe { ll::SpirV2MslGetError(self.obj) };
             assert!(!error_c.is_null());

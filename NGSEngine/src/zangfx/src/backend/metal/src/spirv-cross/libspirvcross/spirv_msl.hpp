@@ -65,6 +65,18 @@ struct MSLResourceBinding
 	}
 };
 
+struct MSLIndirectArgument
+{
+	// The index in the buffer argument table.
+	uint32_t msl_argument_buffer;
+
+	// The index in the argument buffer.
+	uint32_t msl_argument;
+
+	// Metal type qualifier.
+	std::string msl_type;
+};
+
 // Tracks the type ID and member index of a struct member
 using MSLStructMemberKey = uint64_t;
 
@@ -188,7 +200,8 @@ public:
 	// Any of the parameters here may be null to indicate that the configuration provided in the
 	// constructor should be used. They are not declared as optional to avoid a conflict with the
 	// inherited and overridden zero-parameter compile() function.
-	std::string compile(std::vector<MSLVertexAttr> *p_vtx_attrs, std::vector<MSLResourceBinding> *p_res_bindings);
+	std::string compile(std::vector<MSLVertexAttr> *p_vtx_attrs, std::vector<MSLResourceBinding> *p_res_bindings,
+	            std::vector<MSLIndirectArgument> *p_indirect_arguments);
 
 	// This legacy method is deprecated.
 	typedef Options MSLConfiguration;
@@ -253,9 +266,11 @@ protected:
 	void emit_specialization_constants();
 	void emit_interface_block(uint32_t ib_var_id);
 	void emit_argument_buffers();
-	std::unordered_map<uint32_t, std::vector<ArgBufField>> generate_argument_buffers();
+	std::unordered_map<uint32_t, std::map<uint32_t, ArgBufField>> indirect_arguments;
+	void bind_indirect_arguments_and_vars();
 	std::string argument_buffer_type_name(uint32_t index);
 	std::string argument_buffer_parameter_name(uint32_t index);
+	std::string argument_buffer_argument_name(uint32_t index);
 	bool maybe_emit_input_struct_assignment(uint32_t id_lhs, uint32_t id_rhs);
 	bool maybe_emit_array_assignment(uint32_t id_lhs, uint32_t id_rhs);
 	void add_convert_row_major_matrix_function(uint32_t cols, uint32_t rows);
@@ -360,22 +375,24 @@ protected:
 
 	// A field in an indirect argument buffer.
 	struct ArgBufField {
-		uint32_t argument_id;
 		uint32_t var_id;
 
-		/// `SPIRType::{Image, Sampler, Struct}`
+		/// `SPIRType::{Image, Sampler, Struct}`. Ignored if `var_id == 0`.
 		SPIRType::BaseType type;
 
-		ArgBufField(uint32_t argument_id, uint32_t var_id, SPIRType::BaseType type)
+		std::string msl_type;
+
+		ArgBufField() = default;
+		ArgBufField(uint32_t var_id, SPIRType::BaseType type)
 		:
-			argument_id{argument_id},
 			var_id{var_id},
 			type{type}
 		{}
-
-		bool operator < (const ArgBufField &o) const {
-			return argument_id < o.argument_id;
-		}
+		ArgBufField(std::string msl_type)
+		:
+			var_id{0},
+			msl_type{msl_type}
+		{}
 	};
 };
 }
