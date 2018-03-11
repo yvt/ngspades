@@ -176,18 +176,20 @@ impl device::Device for Device {
     }
 
     fn autorelease_pool_scope_core(&self, cb: &mut FnMut(&mut device::AutoreleasePool)) {
-        struct AutoreleasePool(OCPtr<metal::NSAutoreleasePool>);
+        struct AutoreleasePool(Option<OCPtr<metal::NSAutoreleasePool>>);
 
         impl device::AutoreleasePool for AutoreleasePool {
             fn drain(&mut self) {
-                self.0 =
-                    unsafe { OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap() };
+                self.0 = None;
+                self.0 = Some(unsafe {
+                    OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap()
+                });
             }
         }
 
-        let mut op = AutoreleasePool(unsafe {
+        let mut op = AutoreleasePool(Some(unsafe {
             OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap()
-        });
+        }));
         cb(&mut op)
     }
 }
