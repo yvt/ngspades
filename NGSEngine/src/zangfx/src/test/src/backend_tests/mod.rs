@@ -84,6 +84,8 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { image_all_formats, $driver }
         zangfx_test_single! { image_all_types, $driver }
 
+        zangfx_test_single! { sampler_create, $driver }
+
         zangfx_test_single! { copy_fill_buffer, $driver }
         zangfx_test_single! { copy_copy_buffer, $driver }
 
@@ -123,6 +125,9 @@ pub use self::heap::*;
 
 mod image;
 pub use self::image::*;
+
+mod sampler;
+pub use self::sampler::*;
 
 mod copy;
 pub use self::copy::*;

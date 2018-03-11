@@ -111,6 +111,31 @@ impl<D: Borrow<gfx::Device>> Drop for UniqueImageView<D> {
     }
 }
 
+#[derive(Debug)]
+pub struct UniqueSampler<D: Borrow<gfx::Device>> {
+    device: D,
+    sampler: gfx::Sampler,
+}
+
+impl<D: Borrow<gfx::Device>> UniqueSampler<D> {
+    pub fn new(device: D, sampler: gfx::Sampler) -> Self {
+        Self { device, sampler }
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Deref for UniqueSampler<D> {
+    type Target = gfx::Sampler;
+    fn deref(&self) -> &Self::Target {
+        &self.sampler
+    }
+}
+
+impl<D: Borrow<gfx::Device>> Drop for UniqueSampler<D> {
+    fn drop(&mut self) {
+        self.device.borrow().destroy_sampler(&self.sampler).unwrap();
+    }
+}
+
 pub fn choose_memory_type(
     device: &gfx::Device,
     valid_memory_types: u32,
