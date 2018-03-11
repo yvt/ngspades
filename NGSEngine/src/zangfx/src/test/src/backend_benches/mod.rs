@@ -54,6 +54,8 @@ macro_rules! zangfx_generate_backend_benches {
         zangfx_bench_single! { cb_throughput_10, $driver }
         zangfx_bench_single! { cb_throughput_20, $driver }
         zangfx_bench_single! { cb_throughput_40, $driver }
+
+        zangfx_bench_single! { cmds_dispatch_throughput, $driver }
     }
 }
 
@@ -71,3 +73,6 @@ macro_rules! zangfx_bench_single {
 
 mod cmdbuffer;
 pub use self::cmdbuffer::*;
+
+mod cmds;
+pub use self::cmds::*;
