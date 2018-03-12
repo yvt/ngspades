@@ -3,11 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-
+#![feature(test)]
+extern crate xdispatch;
 extern crate test;
 
-use self::test::Bencher;
-use super::*;
+use test::Bencher;
+use xdispatch::*;
 
 #[bench] fn queueing_serial(b: &mut Bencher) {
     let queue = Queue::create("xdispatch test", QueueAttribute::Serial);

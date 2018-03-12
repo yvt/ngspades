@@ -53,8 +53,6 @@ let nums = queue.map(nums, |x| x.to_string());
 assert!(nums[0] == "2");
 ```
 */
-
-#![feature(test)]
 #![cfg_attr(windows, feature(used))]
 #![warn(missing_docs)]
 
@@ -72,9 +70,6 @@ use ffi::*;
 pub mod ffi;
 
 mod init;
-
-#[cfg(test)]
-mod benchmark;
 
 /// The type of a dispatch queue.
 #[derive(Debug, PartialEq, Eq, Hash)]
