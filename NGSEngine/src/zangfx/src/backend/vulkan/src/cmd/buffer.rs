@@ -9,7 +9,6 @@ use ash::vk;
 use std::sync::Arc;
 use std::ops::Range;
 use arrayvec::ArrayVec;
-use parking_lot::Mutex;
 
 use base;
 use common::{Error, ErrorKind, Result};
@@ -23,6 +22,7 @@ use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::{FenceSet, RefTable};
 use super::enc_copy::CopyEncoder;
 use super::enc_compute::ComputeEncoder;
+use super::bufferpool::VkCmdBufferPoolItem;
 
 /// Implementation of `CmdBuffer` for Vulkan.
 #[derive(Debug)]
@@ -36,9 +36,7 @@ zangfx_impl_object! { CmdBuffer: base::CmdBuffer, ::Debug }
 struct Uncommited {
     device: DeviceRef,
     scheduler: Arc<Scheduler>,
-    vk_cmd_pool: vk::CommandPool,
-    vk_cmd_buffer: vk::CommandBuffer,
-    cmd_pool_lock: Arc<Mutex<()>>,
+    vk_cmd_buffer_pool_item: VkCmdBufferPoolItem,
 
     fence_set: FenceSet,
     ref_table: RefTable,
@@ -67,46 +65,18 @@ impl ::Debug for CallbackSet {
     }
 }
 
-impl Drop for CmdBuffer {
-    fn drop(&mut self) {
-        if let Some(ref uncommited) = self.uncommited {
-            // This command buffer was dropped without being commited.
-
-            let vk_device = uncommited.device.vk_device();
-            unsafe {
-                let _lock = uncommited.cmd_pool_lock.lock();
-                vk_device.free_command_buffers(uncommited.vk_cmd_pool, &[uncommited.vk_cmd_buffer]);
-            }
-        }
-    }
-}
-
 impl CmdBuffer {
     pub(super) fn new(
         device: DeviceRef,
-        vk_cmd_pool: vk::CommandPool,
+        vk_cmd_buffer_pool_item: VkCmdBufferPoolItem,
         scheduler: Arc<Scheduler>,
-        cmd_pool_lock: Arc<Mutex<()>>,
     ) -> Result<Self> {
         let vk_device = device.vk_device();
-
-        let vk_cmd_buffer = unsafe {
-            let _lock = cmd_pool_lock.lock();
-            vk_device.allocate_command_buffers(&vk::CommandBufferAllocateInfo {
-                s_type: vk::StructureType::CommandBufferAllocateInfo,
-                p_next: ::null(),
-                command_pool: vk_cmd_pool,
-                level: vk::CommandBufferLevel::Primary,
-                command_buffer_count: 1,
-            })
-        }.map_err(translate_generic_error_unwrap)?[0];
 
         let uncommited = Uncommited {
             device,
             scheduler,
-            vk_cmd_pool,
-            vk_cmd_buffer,
-            cmd_pool_lock,
+            vk_cmd_buffer_pool_item,
             fence_set: FenceSet::new(),
             ref_table: RefTable::new(),
             completion_callbacks: Default::default(),
@@ -119,7 +89,7 @@ impl CmdBuffer {
 
         unsafe {
             vk_device.begin_command_buffer(
-                cmd_buffer.uncommited.as_ref().unwrap().vk_cmd_buffer,
+                cmd_buffer.uncommited.as_ref().unwrap().vk_cmd_buffer(),
                 &vk::CommandBufferBeginInfo {
                     s_type: vk::StructureType::CommandBufferBeginInfo,
                     p_next: ::null(),
@@ -147,6 +117,10 @@ impl Uncommited {
             }
         }
     }
+
+    fn vk_cmd_buffer(&self) -> vk::CommandBuffer {
+        self.vk_cmd_buffer_pool_item.vk_cmd_buffer()
+    }
 }
 
 fn already_commited_error() -> Error {
@@ -173,7 +147,7 @@ impl base::CmdBuffer for CmdBuffer {
 
             let vk_device = uncommited.device.vk_device();
 
-            unsafe { vk_device.end_command_buffer(uncommited.vk_cmd_buffer) }
+            unsafe { vk_device.end_command_buffer(uncommited.vk_cmd_buffer()) }
                 .map_err(translate_generic_error_unwrap)?;
         }
 
@@ -183,7 +157,7 @@ impl base::CmdBuffer for CmdBuffer {
         uncommited.scheduler.commit(CommitedBuffer {
             fence_set: uncommited.fence_set,
             ref_table: Some(uncommited.ref_table),
-            vk_cmd_buffer: uncommited.vk_cmd_buffer,
+            vk_cmd_buffer_pool_item: Some(uncommited.vk_cmd_buffer_pool_item),
             completion_handler: BufferCompleteCallback {
                 completion_callbacks: uncommited.completion_callbacks,
             },
@@ -210,7 +184,7 @@ impl base::CmdBuffer for CmdBuffer {
         let encoder = unsafe {
             ComputeEncoder::new(
                 uncommited.device,
-                uncommited.vk_cmd_buffer,
+                uncommited.vk_cmd_buffer(),
                 replace(&mut uncommited.fence_set, Default::default()),
                 replace(&mut uncommited.ref_table, Default::default()),
             )
@@ -233,7 +207,7 @@ impl base::CmdBuffer for CmdBuffer {
         let encoder = unsafe {
             CopyEncoder::new(
                 uncommited.device,
-                uncommited.vk_cmd_buffer,
+                uncommited.vk_cmd_buffer(),
                 replace(&mut uncommited.fence_set, Default::default()),
             )
         };
@@ -297,7 +271,7 @@ impl base::CmdBuffer for CmdBuffer {
 
             unsafe {
                 vk_device.cmd_pipeline_barrier(
-                    uncommited.vk_cmd_buffer,
+                    uncommited.vk_cmd_buffer(),
                     src_stages,
                     vk::PIPELINE_STAGE_HOST_BIT,
                     vk::DependencyFlags::empty(),

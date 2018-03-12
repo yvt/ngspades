@@ -21,6 +21,7 @@ use super::monitor::{Monitor, MonitorHandler};
 use super::fence::Fence;
 use super::enc::{FenceSet, RefTable};
 use super::buffer::{BufferCompleteCallback, CmdBuffer};
+use super::bufferpool::{VkCmdBufferPool, VkCmdBufferPoolItem};
 
 #[derive(Debug)]
 pub(crate) struct QueuePool {
@@ -68,7 +69,7 @@ impl CmdQueueBuilder {
         Self {
             device,
             queue_pool,
-            max_num_outstanding_cmd_buffers: 32,
+            max_num_outstanding_cmd_buffers: 64,
             max_num_outstanding_batches: 8,
             queue_family: None,
         }
@@ -76,7 +77,7 @@ impl CmdQueueBuilder {
 
     /// Set the maximum number of outstanding command buffers.
     ///
-    /// Defaults to `32`.
+    /// Defaults to `64`.
     pub fn max_num_outstanding_cmd_buffers(&mut self, v: usize) -> &mut Self {
         self.max_num_outstanding_cmd_buffers = v;
         self
@@ -121,8 +122,10 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
         let vk_queue = unsafe { vk_device.get_device_queue(queue_family, index) };
 
         let num_fences = self.max_num_outstanding_batches;
+        let num_cbs = self.max_num_outstanding_cmd_buffers;
 
-        CmdQueue::new(self.device, vk_queue, queue_family, num_fences).map(|x| Box::new(x) as _)
+        CmdQueue::new(self.device, vk_queue, queue_family, num_fences, num_cbs)
+            .map(|x| Box::new(x) as _)
     }
 }
 
@@ -131,10 +134,9 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
 pub struct CmdQueue {
     device: DeviceRef,
     vk_queue: vk::Queue,
-    vk_cmd_pool: VkCmdPool,
+    vk_cmd_buffer_pool: VkCmdBufferPool,
     monitor: Monitor<BatchDoneHandler>,
     scheduler: Option<Arc<Scheduler>>,
-    cmd_pool_lock: Arc<Mutex<()>>,
 }
 
 zangfx_impl_object! { CmdQueue: base::CmdQueue, ::Debug }
@@ -152,35 +154,21 @@ impl CmdQueue {
         vk_queue: vk::Queue,
         queue_family_index: u32,
         num_fences: usize,
+        num_cbs: usize,
     ) -> Result<Self> {
         let scheduler_data = SchedulerData::default();
 
-        let vk_device = device.vk_device();
-        let vk_cmd_pool = unsafe {
-            vk_device.create_command_pool(
-                &vk::CommandPoolCreateInfo {
-                    s_type: vk::StructureType::CommandPoolCreateInfo,
-                    p_next: ::null(),
-                    flags: vk::COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                    queue_family_index,
-                },
-                None,
-            )
-        }.map_err(translate_generic_error_unwrap)?;
-        let vk_cmd_pool = VkCmdPool(device, vk_cmd_pool);
-
-        let cmd_pool_lock = Arc::new(Mutex::new(()));
+        let vk_cmd_buffer_pool = VkCmdBufferPool::new(device, queue_family_index, num_cbs)?;
 
         Ok(Self {
             device,
             vk_queue,
-            vk_cmd_pool,
+            vk_cmd_buffer_pool,
             monitor: Monitor::new(device, vk_queue, num_fences)?,
             scheduler: Some(Arc::new(Scheduler {
                 token_ref: (&scheduler_data.token).into(),
                 data: Mutex::new(scheduler_data),
             })),
-            cmd_pool_lock,
         })
     }
 
@@ -193,9 +181,8 @@ impl base::CmdQueue for CmdQueue {
     fn new_cmd_buffer(&self) -> Result<Box<base::CmdBuffer>> {
         CmdBuffer::new(
             self.device,
-            *self.vk_cmd_pool,
+            self.vk_cmd_buffer_pool.new_cmd_buffer()?,
             Arc::clone(&self.scheduler()),
-            self.cmd_pool_lock.clone(),
         ).map(|x| Box::new(x) as _)
     }
 
@@ -204,13 +191,10 @@ impl base::CmdQueue for CmdQueue {
     }
 
     fn flush(&self) {
-        self.scheduler().data.lock().flush(
-            &self.monitor,
-            self.device,
-            *self.vk_cmd_pool,
-            self.vk_queue,
-            &self.cmd_pool_lock,
-        );
+        self.scheduler()
+            .data
+            .lock()
+            .flush(&self.monitor, self.device, self.vk_queue);
     }
 }
 
@@ -267,7 +251,7 @@ fn for_each_item_mut<T: FnMut(&mut Item)>(item_or_none: &mut Option<Box<Item>>, 
 pub(super) struct CommitedBuffer {
     pub fence_set: FenceSet,
     pub ref_table: Option<RefTable>,
-    pub vk_cmd_buffer: vk::CommandBuffer,
+    pub vk_cmd_buffer_pool_item: Option<VkCmdBufferPoolItem>,
     pub completion_handler: BufferCompleteCallback,
 }
 
@@ -302,9 +286,7 @@ impl SchedulerData {
         &mut self,
         monitor: &Monitor<BatchDoneHandler>,
         device: DeviceRef,
-        vk_cmd_pool: vk::CommandPool,
         vk_queue: vk::Queue,
-        cmd_pool_lock: &Arc<Mutex<()>>,
     ) {
         let mut scheduled_items = None;
 
@@ -395,7 +377,13 @@ impl SchedulerData {
         let vk_submit_infos: Vec<_> = ItemIter(scheduled_items.as_ref())
             .map(|item| {
                 let p_command_buffers = vec_end_ptr(&vk_command_buffers);
-                vk_command_buffers.push(item.commited.vk_cmd_buffer);
+                let vk_cmd_buffer = item.commited
+                    .vk_cmd_buffer_pool_item
+                    .as_ref()
+                    .unwrap()
+                    .vk_cmd_buffer();
+                vk_command_buffers.push(vk_cmd_buffer);
+
                 vk::SubmitInfo {
                     s_type: vk::StructureType::SubmitInfo,
                     p_next: ::null(),
@@ -416,64 +404,30 @@ impl SchedulerData {
             .unwrap();
 
         // Call `BatchDoneHandler::on_fence_signaled` when the batch is complete
-        fence.finish(BatchDoneHandler {
-            scheduled_items,
-            device,
-            vk_cmd_pool,
-            cmd_pool_lock: Arc::clone(cmd_pool_lock),
-        });
+        fence.finish(BatchDoneHandler { scheduled_items });
     }
 }
 
 #[derive(Debug)]
 pub(super) struct BatchDoneHandler {
     scheduled_items: Option<Box<Item>>,
-    device: DeviceRef,
-    vk_cmd_pool: vk::CommandPool,
-    cmd_pool_lock: Arc<Mutex<()>>,
 }
 
 impl MonitorHandler for BatchDoneHandler {
     fn on_fence_signaled(self) {
         let mut scheduled_items = self.scheduled_items;
-        let vk_device = self.device.vk_device();
-        let vk_cmd_pool = self.vk_cmd_pool;
 
         // Release objects first (because completion callbacks might tear
         // down the device)
         for_each_item_mut(&mut scheduled_items, |item| {
             item.commited.ref_table = None;
+            item.commited.vk_cmd_buffer_pool_item = None;
         });
-        unsafe {
-            let _lock = self.cmd_pool_lock.lock();
-            for item in ItemIter(scheduled_items.as_ref()) {
-                vk_device.free_command_buffers(vk_cmd_pool, &[item.commited.vk_cmd_buffer]);
-            }
-        }
 
         // Call the completion callbacks
         while let Some(mut item) = { scheduled_items } {
             item.commited.completion_handler.on_complete();
             scheduled_items = item.next;
         }
-    }
-}
-
-#[derive(Debug)]
-struct VkCmdPool(DeviceRef, vk::CommandPool);
-
-impl Drop for VkCmdPool {
-    fn drop(&mut self) {
-        unsafe {
-            self.0.vk_device().destroy_command_pool(self.1, None);
-        }
-    }
-}
-
-impl ::Deref for VkCmdPool {
-    type Target = vk::CommandPool;
-
-    fn deref(&self) -> &Self::Target {
-        &self.1
     }
 }

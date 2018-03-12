@@ -45,7 +45,6 @@ pub mod shader;
 mod utils;
 
 use std::fmt::{self, Debug};
-use std::ops::Deref;
 use std::ptr::{null, null_mut};
 pub type AshDevice = ash::Device<ash::version::V1_0>;
 
