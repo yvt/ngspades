@@ -374,29 +374,30 @@ impl SchedulerData {
         }
         let mut vk_command_buffers = Vec::with_capacity(ItemIter(scheduled_items.as_ref()).count());
 
-        let vk_submit_infos: Vec<_> = ItemIter(scheduled_items.as_ref())
-            .map(|item| {
-                let p_command_buffers = vec_end_ptr(&vk_command_buffers);
-                let vk_cmd_buffer = item.commited
-                    .vk_cmd_buffer_pool_item
-                    .as_ref()
-                    .unwrap()
-                    .vk_cmd_buffer();
-                vk_command_buffers.push(vk_cmd_buffer);
+        let p_command_buffers = vec_end_ptr(&vk_command_buffers);
 
-                vk::SubmitInfo {
-                    s_type: vk::StructureType::SubmitInfo,
-                    p_next: ::null(),
-                    wait_semaphore_count: 0,
-                    p_wait_semaphores: ::null(),
-                    p_wait_dst_stage_mask: ::null(),
-                    command_buffer_count: 1,
-                    p_command_buffers,
-                    signal_semaphore_count: 0,
-                    p_signal_semaphores: ::null(),
-                }
-            })
-            .collect();
+        vk_command_buffers.extend(ItemIter(scheduled_items.as_ref()).map(|item| {
+            let vk_cmd_buffer = item.commited
+                .vk_cmd_buffer_pool_item
+                .as_ref()
+                .unwrap()
+                .vk_cmd_buffer();
+            vk_cmd_buffer
+        }));
+
+        let vk_submit_infos = [
+            vk::SubmitInfo {
+                s_type: vk::StructureType::SubmitInfo,
+                p_next: ::null(),
+                wait_semaphore_count: 0,
+                p_wait_semaphores: ::null(),
+                p_wait_dst_stage_mask: ::null(),
+                command_buffer_count: vk_command_buffers.len() as u32,
+                p_command_buffers,
+                signal_semaphore_count: 0,
+                p_signal_semaphores: ::null(),
+            },
+        ];
 
         // TODO: safe handling of error
         unsafe { vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence()) }
