@@ -8,6 +8,7 @@ zangfx_common = { path = "../common" }
 zangfx_base = { path = "../base" }
 ngsenumflags = { path = "../../../support/ngsenumflags" }
 include_data = { path = "../../../support/include_data" }
+xdispatch = { path = "../../../xdispatch" }
 
 [build-dependencies]
 prebuild-glslang = { path = "../../../support/prebuild-glslang" }

@@ -12,6 +12,7 @@ extern crate zangfx_common as common;
 extern crate ngsenumflags;
 #[macro_use]
 extern crate include_data;
+extern crate xdispatch;
 #[doc(hidden)]
 pub extern crate test;
 
