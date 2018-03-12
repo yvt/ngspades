@@ -11,7 +11,7 @@ static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
 
 /// Issues a command buffer containing 10000 compute dispatches.
-pub fn cmds_dispatch_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
+pub fn cmds_dispatch_10000_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
     driver.choose_compute_queue(&mut |device, qf| {
         let queue = device.build_cmd_queue().queue_family(qf).build().unwrap();
         let library = device.new_library(SPIRV_NULL.as_u32_slice()).unwrap();
@@ -47,7 +47,7 @@ pub fn cmds_dispatch_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
 }
 
 /// Issues multiples command buffer containing 10000 compute dispatches by total.
-pub fn cmds_dispatch_mt_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
+pub fn cmds_dispatch_10000_mt_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
     use xdispatch::{Queue, QueuePriority};
 
     driver.choose_compute_queue(&mut |device, qf| {
