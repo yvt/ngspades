@@ -23,6 +23,7 @@ Serial queues execute tasks serially in FIFO order. The application's main
 queue is serial and can be accessed through the `Queue::main` function.
 
 ```
+# unsafe { xdispatch::ffi::libdispatch_init(); }
 use xdispatch::{Queue, QueueAttribute};
 
 let queue = Queue::create("com.example.rust", QueueAttribute::Serial);
@@ -39,6 +40,7 @@ concurrent queues that can be accessed through the `Queue::global` function.
 and `map`:
 
 ```
+# unsafe { xdispatch::ffi::libdispatch_init(); }
 use xdispatch::{Queue, QueuePriority};
 
 let queue = Queue::global(QueuePriority::Default);

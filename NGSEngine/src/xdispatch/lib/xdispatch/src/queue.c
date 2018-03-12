@@ -2,19 +2,19 @@
 * Copyright (c) 2008-2009 Apple Inc. All rights reserved.
 *
 * @APPLE_APACHE_LICENSE_HEADER_START@
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
-* 
+*
 *     http://www.apache.org/licenses/LICENSE-2.0
-* 
+*
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
 * limitations under the License.
-* 
+*
 * @APPLE_APACHE_LICENSE_HEADER_END@
 */
 
@@ -36,7 +36,7 @@ long
 	dummy_function_r0(void)
 {
 	return 0;
-}	
+}
 
 static struct dispatch_semaphore_s _dispatch_thread_mediator[] = {
 	{
@@ -683,7 +683,7 @@ void
 	_dispatch_dispose( (dq));
 }
 
-DISPATCH_NOINLINE 
+DISPATCH_NOINLINE
 	void
 	_dispatch_queue_push_list_slow(dispatch_queue_t dq, struct dispatch_object_s *obj)
 {
@@ -783,7 +783,7 @@ DISPATCH_NOINLINE
 struct dispatch_barrier_sync_slow2_s {
 	dispatch_queue_t dbss2_dq;
 	dispatch_function_t dbss2_func;
-	dispatch_function_t dbss2_ctxt;	
+	dispatch_function_t dbss2_ctxt;
 	dispatch_semaphore_t dbss2_sema;
 };
 
@@ -850,7 +850,7 @@ void
 	if (dq == dispatch_get_main_queue()) {
 		dispatch_block_t block = Block_copy(work);
 		return dispatch_barrier_sync_f(dq, block, _dispatch_call_block_and_release);
-	}	
+	}
 	struct Block_basic *bb = (void *)work;
 
 	dispatch_barrier_sync_f(dq, work, (dispatch_function_t)bb->Block_invoke);
@@ -1201,6 +1201,10 @@ void
 	for TLS, thus we call the destructor
 	with dllMain, see shared_constructor.c
 	*/
+	if (dispatch_queue_key) {
+		// Already initialized
+		return;
+	}
 	_dispatch_thread_key_create(&dispatch_queue_key,
 		_dispatch_queue_cleanup);
 	_dispatch_thread_key_create(&dispatch_sema4_key,

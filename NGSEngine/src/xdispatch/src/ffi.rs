@@ -28,6 +28,9 @@ extern {
     static _dispatch_main_q: dispatch_object_s;
     static _dispatch_queue_attr_concurrent: dispatch_object_s;
 
+    #[doc(hidden)]
+    pub fn libdispatch_init();
+
     pub fn dispatch_get_global_queue(identifier: c_long, flags: c_ulong) -> dispatch_queue_t;
     pub fn dispatch_queue_create(label: *const c_char, attr: dispatch_queue_attr_t) -> dispatch_queue_t;
     // dispatch_queue_attr_t dispatch_queue_attr_make_with_qos_class ( dispatch_queue_attr_t attr, dispatch_qos_class_t qos_class, int relative_priority );
