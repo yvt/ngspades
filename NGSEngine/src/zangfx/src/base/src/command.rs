@@ -4,7 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Command queues and command buffers.
-use std::ops::Range;
+use std::ops::{Deref, DerefMut, Range};
+use std::marker::PhantomData;
 
 use Object;
 use common::{Rect2D, Result};
@@ -53,7 +54,7 @@ pub trait CmdQueueBuilder: Object {
 /// Trait for command queues.
 ///
 /// The lifetime of the underlying queue object is associated with that of
-/// `CmdQueue`. Drop the `CmdQueue` to destroy the associated queu object (cf.
+/// `CmdQueue`. Drop the `CmdQueue` to destroy the associated queue object (cf.
 /// handle types).
 ///
 /// # Valid Usage
@@ -63,18 +64,95 @@ pub trait CmdQueueBuilder: Object {
 ///    exists no command buffer being executed)
 ///
 pub trait CmdQueue: Object {
-    /// Allocate a new command buffer.
-    ///
-    /// Command buffers are meant to be shortly lived. This method might stall
-    /// if there are too many (50–) pending command buffers.
-    fn new_cmd_buffer(&self) -> Result<Box<CmdBuffer>>;
+    /// Create a new command pool.
+    fn new_cmd_pool(&self) -> Result<Box<CmdPool>>;
 
     /// Create a `Fence` associated with the command queue.
     fn new_fence(&self) -> Result<handles::Fence>;
 
-    /// Schedule pending command buffers for execution.
+    /// Schedule pending commited command buffers for execution.
     fn flush(&self);
 }
+
+/// Trait for command pools. Objects associated with command buffers are
+/// allocated from a command pool, and it allows to amortize the cost of
+/// resource creation across multiple command buffers.
+///
+/// All accesses to command pools must be externally synchronized. This extends
+/// not only to command buffer allocation but also to **recording commands on
+/// command buffers allocated from the pool**. Using the [`begin_cmd_buffer`]
+/// method provided by the extension trait [`CmdPoolExt`] is the recommended way
+/// to encode command buffers while fulfilling this requirement.
+///
+/// [`begin_cmd_buffer`]: CmdPoolExt::begin_cmd_buffer
+/// [`CmdPoolExt`]: CmdPoolExt
+///
+/// # Valid Usage
+///
+///  - No instance of `CmdPool` may outlive the originating `CmdQueue`.
+///  - All accesses (including indirect accesses as described above) to the
+///    command pool must be synchronized.
+///
+pub trait CmdPool: Object {
+    /// Allocate a new command buffer.
+    ///
+    /// Command buffers are meant to be shortly lived. This method might stall
+    /// if there are too many (20–) outstanding command buffers.
+    unsafe fn new_cmd_buffer(&mut self) -> Result<Box<CmdBuffer>>;
+}
+
+/// Extension trait for `CmdPool`. Provides a safe method for allocating and
+/// recording command buffers.
+pub trait CmdPoolExt: CmdPool {
+    /// Allocate a new command buffer and return a wrapper type which is tied to
+    /// the lifetime of this `CmdPool`.
+    ///
+    /// This is a safe wrapper of [`new_cmd_buffer`].
+    ///
+    /// [`new_cmd_buffer`]: CmdPool::new_cmd_buffer
+    ///
+    /// Command buffers are meant to be shortly lived. This method might stall
+    /// if there are too many (20–) outstanding command buffers.
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::*;
+    ///     # use zangfx_base::prelude::*;
+    ///     # fn test(cmd_pool: &mut CmdPool) {
+    ///     let mut cmd_buffer = cmd_pool.begin_cmd_buffer()
+    ///         .expect("Failed to create a command buffer.");
+    ///     // Record commands here...
+    ///     cmd_buffer.commit();
+    ///     # }
+    ///
+    fn begin_cmd_buffer(&mut self) -> Result<SafeCmdBuffer> {
+        Ok(SafeCmdBuffer {
+            _phantom: PhantomData,
+            cmd_buffer: unsafe { self.new_cmd_buffer()? },
+        })
+    }
+}
+
+/// A somewhat safe wrapper of `Box<CmdBuffer>`.
+pub struct SafeCmdBuffer<'a> {
+    _phantom: PhantomData<&'a mut ()>,
+    cmd_buffer: Box<CmdBuffer>,
+}
+
+impl<'a> Deref for SafeCmdBuffer<'a> {
+    type Target = CmdBuffer;
+    fn deref(&self) -> &Self::Target {
+        &*self.cmd_buffer
+    }
+}
+
+impl<'a> DerefMut for SafeCmdBuffer<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.cmd_buffer
+    }
+}
+
+impl<T: ?Sized + CmdPool> CmdPoolExt for T {}
 
 /// Trait for command buffers.
 ///

@@ -24,9 +24,11 @@ pub fn cmds_dispatch_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
             .build()
             .unwrap();
 
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         b.iter(|| {
             device.autorelease_pool_scope_core(&mut |_| {
-                let mut buffer = queue.new_cmd_buffer().unwrap();
+                let mut buffer = pool.begin_cmd_buffer().unwrap();
                 {
                     let e = buffer.encode_compute();
                     e.bind_pipeline(&pipeline);
@@ -60,10 +62,14 @@ pub fn cmds_dispatch_mt_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
             .build()
             .unwrap();
 
+        let mut pools: Vec<_> = (0..10).map(|_| queue.new_cmd_pool().unwrap()).collect();
+
         b.iter(|| {
             device.autorelease_pool_scope_core(&mut |_| {
-                let mut buffers: Vec<_> =
-                    (0..10).map(|_| queue.new_cmd_buffer().unwrap()).collect();
+                let mut buffers: Vec<_> = pools
+                    .iter_mut()
+                    .map(|pool| pool.begin_cmd_buffer().unwrap())
+                    .collect();
 
                 let mut awaiters: Vec<_> = buffers
                     .iter_mut()

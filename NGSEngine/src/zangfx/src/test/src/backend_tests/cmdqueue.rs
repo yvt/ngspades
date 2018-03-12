@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use gfx;
+use gfx::prelude::*;
 use super::{utils, TestDriver};
 
 pub fn cmdqueue_create<T: TestDriver>(driver: T) {
@@ -48,8 +49,11 @@ pub fn cmdqueue_create_buffer<T: TestDriver>(driver: T) {
         println!("- Creating a command queue");
         let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        queue.new_cmd_buffer().unwrap();
+        pool.begin_cmd_buffer().unwrap();
     });
 }
 
@@ -71,8 +75,11 @@ pub fn cmdqueue_create_encoder<T: TestDriver>(driver: T) {
                 .build()
                 .unwrap();
 
+            println!("- Creating a command pool");
+            let mut pool = queue.new_cmd_pool().unwrap();
+
             println!("- Creating a command buffer");
-            let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+            let mut buffer = pool.begin_cmd_buffer().unwrap();
 
             let caps = queue_family.caps;
             if caps.intersects(gfx::limits::QueueFamilyCaps::Render) {
@@ -97,8 +104,11 @@ pub fn cmdqueue_buffer_noop_completes<T: TestDriver>(driver: T) {
         println!("- Creating a command queue");
         let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer = pool.begin_cmd_buffer().unwrap();
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
@@ -122,8 +132,11 @@ pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
         println!("- Creating a command queue");
         let queue: Box<gfx::CmdQueue> = device.build_cmd_queue().queue_family(0).build().unwrap();
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer = pool.begin_cmd_buffer().unwrap();
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
@@ -162,9 +175,12 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
             .build()
             .unwrap();
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        let mut buffer1: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
-        let mut buffer2: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer1 = unsafe { pool.new_cmd_buffer() }.unwrap();
+        let mut buffer2 = unsafe { pool.new_cmd_buffer() }.unwrap();
 
         println!("- Encoding 1");
         {
@@ -212,8 +228,11 @@ pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
             .build()
             .unwrap();
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer = pool.begin_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         // Update and wait on a fence from the same command buffer.

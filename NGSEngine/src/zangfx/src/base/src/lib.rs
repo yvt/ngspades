@@ -146,6 +146,8 @@ define_object! { sync::BarrierBuilder }
 /// The `zangfx_base` prelude.
 pub mod prelude {
     #[doc(no_inline)]
+    pub use command::CmdPoolExt;
+    #[doc(no_inline)]
     pub use device::DeviceExt;
     #[doc(no_inline)]
     pub use handles::HandleImpl;

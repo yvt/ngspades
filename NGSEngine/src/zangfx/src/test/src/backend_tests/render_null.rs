@@ -52,8 +52,11 @@ pub fn render_null<T: TestDriver>(driver: T) {
             builder.build().unwrap()
         };
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        let mut buffer = queue.new_cmd_buffer().unwrap();
+        let mut buffer = pool.begin_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {

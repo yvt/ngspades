@@ -64,8 +64,11 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             .build()
             .unwrap();
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer = pool.begin_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {
@@ -173,8 +176,11 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             .build()
             .unwrap();
 
+        println!("- Creating a command pool");
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         println!("- Creating a command buffer");
-        let mut buffer: Box<gfx::CmdBuffer> = queue.new_cmd_buffer().unwrap();
+        let mut buffer = pool.begin_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {

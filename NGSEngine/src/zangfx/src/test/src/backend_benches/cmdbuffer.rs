@@ -23,6 +23,8 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
             .build()
             .unwrap();
 
+        let mut pool = queue.new_cmd_pool().unwrap();
+
         let mut cb_ring: Vec<Box<FnMut()>> = (0..5).map(|_| Box::new(|| {}) as _).collect();
 
         b.iter(|| {
@@ -36,7 +38,7 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
 
                     let mut awaiters: Vec<_> = (0..num_cbs)
                         .map(|_| {
-                            let mut buffer = queue.new_cmd_buffer().unwrap();
+                            let mut buffer = pool.begin_cmd_buffer().unwrap();
                             {
                                 let e = buffer.encode_compute();
                                 e.bind_pipeline(&pipeline);

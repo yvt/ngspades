@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::Arc;
 use ash::vk;
 use ash::version::*;
 use parking_lot::Mutex;
@@ -18,13 +19,14 @@ use utils::translate_generic_error_unwrap;
 #[derive(Debug)]
 pub(super) struct VkCmdBufferPool {
     device: DeviceRef,
-    data: Mutex<PoolData>,
+    data: Arc<Mutex<PoolData>>,
     cb_send: SyncSender<Option<vk::CommandBuffer>>,
 }
 
 /// Non-`Sync` data.
 #[derive(Debug)]
 struct PoolData {
+    device: DeviceRef,
     vk_cmd_pool: vk::CommandPool,
     cb_recv: Receiver<Option<vk::CommandBuffer>>,
 }
@@ -35,6 +37,7 @@ struct PoolData {
 pub(super) struct VkCmdBufferPoolItem {
     vk_cmd_buffer: vk::CommandBuffer,
     cb_send: SyncSender<Option<vk::CommandBuffer>>,
+    data: Arc<Mutex<PoolData>>,
 }
 
 impl VkCmdBufferPool {
@@ -60,10 +63,11 @@ impl VkCmdBufferPool {
 
         Ok(Self {
             device,
-            data: Mutex::new(PoolData {
+            data: Arc::new(Mutex::new(PoolData {
+                device,
                 vk_cmd_pool,
                 cb_recv,
-            }),
+            })),
             cb_send,
         })
     }
@@ -116,16 +120,16 @@ impl VkCmdBufferPool {
         Ok(VkCmdBufferPoolItem {
             vk_cmd_buffer,
             cb_send,
+            data: Arc::clone(&self.data),
         })
     }
 }
 
-impl Drop for VkCmdBufferPool {
+impl Drop for PoolData {
     fn drop(&mut self) {
-        let data = self.data.get_mut();
         let vk_device = self.device.vk_device();
         unsafe {
-            vk_device.destroy_command_pool(data.vk_cmd_pool, None);
+            vk_device.destroy_command_pool(self.vk_cmd_pool, None);
         }
     }
 }

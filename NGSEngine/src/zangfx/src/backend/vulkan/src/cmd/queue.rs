@@ -20,8 +20,9 @@ use limits::DeviceConfig;
 use super::monitor::{Monitor, MonitorHandler};
 use super::fence::Fence;
 use super::enc::{FenceSet, RefTable};
-use super::buffer::{BufferCompleteCallback, CmdBuffer};
-use super::bufferpool::{VkCmdBufferPool, VkCmdBufferPoolItem};
+use super::buffer::BufferCompleteCallback;
+use super::bufferpool::VkCmdBufferPoolItem;
+use super::pool::CmdPool;
 
 #[derive(Debug)]
 pub(crate) struct QueuePool {
@@ -75,7 +76,7 @@ impl CmdQueueBuilder {
         }
     }
 
-    /// Set the maximum number of outstanding command buffers.
+    /// Set the maximum number of outstanding command buffers per command pool.
     ///
     /// Defaults to `64`.
     pub fn max_num_outstanding_cmd_buffers(&mut self, v: usize) -> &mut Self {
@@ -134,7 +135,8 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
 pub struct CmdQueue {
     device: DeviceRef,
     vk_queue: vk::Queue,
-    vk_cmd_buffer_pool: VkCmdBufferPool,
+    queue_family_index: u32,
+    num_cbs: usize,
     monitor: Monitor<BatchDoneHandler>,
     scheduler: Option<Arc<Scheduler>>,
 }
@@ -158,12 +160,11 @@ impl CmdQueue {
     ) -> Result<Self> {
         let scheduler_data = SchedulerData::default();
 
-        let vk_cmd_buffer_pool = VkCmdBufferPool::new(device, queue_family_index, num_cbs)?;
-
         Ok(Self {
             device,
             vk_queue,
-            vk_cmd_buffer_pool,
+            queue_family_index,
+            num_cbs,
             monitor: Monitor::new(device, vk_queue, num_fences)?,
             scheduler: Some(Arc::new(Scheduler {
                 token_ref: (&scheduler_data.token).into(),
@@ -178,11 +179,12 @@ impl CmdQueue {
 }
 
 impl base::CmdQueue for CmdQueue {
-    fn new_cmd_buffer(&self) -> Result<Box<base::CmdBuffer>> {
-        CmdBuffer::new(
+    fn new_cmd_pool(&self) -> Result<Box<base::CmdPool>> {
+        CmdPool::new(
             self.device,
-            self.vk_cmd_buffer_pool.new_cmd_buffer()?,
             Arc::clone(&self.scheduler()),
+            self.queue_family_index,
+            self.num_cbs,
         ).map(|x| Box::new(x) as _)
     }
 

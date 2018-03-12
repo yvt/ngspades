@@ -38,6 +38,7 @@
 //! | argument pool            | (heap and buffer)      | descriptor pool       | descriptor heap         |
 //! | root signature           | ?                      | pipeline layout       | root signature          |
 //! | command queue            | command queue          | queue                 | ?                       |
+//! | command pool             | -                      | command pool          | ?                       |
 //! | command buffer           | command buffer         | command buffer        | ?                       |
 //! | completion handler       | completed handler      | (fence)               | ?                       |
 //! | fence                    | fence                  | event                 | ?                       |

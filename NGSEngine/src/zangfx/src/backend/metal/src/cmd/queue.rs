@@ -257,9 +257,11 @@ impl SchedulerData {
 }
 
 impl command::CmdQueue for CmdQueue {
-    fn new_cmd_buffer(&self) -> Result<Box<command::CmdBuffer>> {
-        unsafe { CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler)) }
-            .map(|cb| Box::new(cb) as Box<_>)
+    fn new_cmd_pool(&self) -> Result<Box<command::CmdPool>> {
+        Ok(Box::new(CmdPool {
+            metal_queue: self.metal_queue.clone(),
+            scheduler: self.scheduler.clone(),
+        }))
     }
 
     fn new_fence(&self) -> Result<handles::Fence> {
@@ -269,5 +271,23 @@ impl command::CmdQueue for CmdQueue {
 
     fn flush(&self) {
         Scheduler::flush(&self.scheduler);
+    }
+}
+
+/// Implementation of `CmdPool` for Metal.
+#[derive(Debug)]
+pub struct CmdPool {
+    metal_queue: OCPtr<MTLCommandQueue>,
+    scheduler: Arc<Scheduler>,
+}
+
+zangfx_impl_object! { CmdPool: command::CmdPool, ::Debug }
+
+unsafe impl Send for CmdPool {}
+unsafe impl Sync for CmdPool {}
+
+impl command::CmdPool for CmdPool {
+    unsafe fn new_cmd_buffer(&mut self) -> Result<Box<command::CmdBuffer>> {
+        CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler)).map(|cb| Box::new(cb) as _)
     }
 }
