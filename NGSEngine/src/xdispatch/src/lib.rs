@@ -53,6 +53,7 @@ assert!(nums[0] == "2");
 */
 
 #![feature(test)]
+#![cfg_attr(windows, feature(used))]
 #![warn(missing_docs)]
 
 use std::cell::UnsafeCell;
@@ -68,6 +69,8 @@ use ffi::*;
 /// Raw foreign function interface for libdispatch.
 pub mod ffi;
 
+mod init;
+
 #[cfg(test)]
 mod benchmark;
 
@@ -77,10 +80,15 @@ pub enum QueueAttribute {
     /// The queue executes blocks serially in FIFO order.
     Serial,
     /// The queue executes blocks concurrently.
+    ///
+    /// This value is **not supported** because xdispatch included with this
+    /// crate is really old from before OS X 10.7. Always interpreted as
+    /// `Serial`.
     Concurrent,
 }
 
 impl QueueAttribute {
+    /*
     #[cfg(not(all(test, target_os = "linux")))]
     fn as_raw(&self) -> dispatch_queue_attr_t {
         match *self {
@@ -89,7 +97,7 @@ impl QueueAttribute {
         }
     }
 
-    #[cfg(all(test, target_os = "linux"))]
+    #[cfg(all(test, target_os = "linux"))] */
     fn as_raw(&self) -> dispatch_queue_attr_t {
         // The Linux tests use Ubuntu's libdispatch-dev package, which is
         // apparently really old from before OSX 10.7.

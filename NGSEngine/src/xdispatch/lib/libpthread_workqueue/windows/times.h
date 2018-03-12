@@ -12,10 +12,12 @@ struct timezone
 
 // quick workaround in case this is included after event.h
 #ifndef _SYS_EVENT_H_
+#if 0
 struct timespec {
     long tv_sec; /* seconds */
     long tv_nsec; /* nanoseconds */
-}; 
+};
+#endif
 #endif
 
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)

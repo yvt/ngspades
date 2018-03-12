@@ -30,11 +30,15 @@ void __attribute((destructor)) cleanup(void);
 int init();
 void cleanup();
 
+#ifdef MAKE_STATIC
+void NTAPI xdispatch_tls_callback(LPVOID dllHandle, DWORD fdwReason, LPVOID lpReserved)
+#else
 // DllMain - see http://msdn.microsoft.com/en-us/library/ms682596%28v=vs.85%29.aspx
 BOOL WINAPI DllMain(
     HINSTANCE hinstDLL,  // handle to DLL module
     DWORD fdwReason,     // reason for calling function
     LPVOID lpReserved )  // reserved
+#endif
 {
     // Perform actions based on the reason for calling.
     switch( fdwReason )
@@ -43,7 +47,11 @@ BOOL WINAPI DllMain(
         // Initialize once for each new process.
         // Return FALSE to fail DLL load.
         if(init() < 0)
+# if MAKE_STATIC
+            FatalAppExit(0, "Failed to initialize xdispatch.");
+# else
             return FALSE;
+# endif
         break;
 
     case DLL_PROCESS_DETACH:
@@ -74,9 +82,11 @@ BOOL WINAPI DllMain(
     }
         break;
     }
+# if MAKE_STATIC
+# else
     return TRUE;  // Successful DLL_PROCESS_ATTACH.
+# endif
 }
-
 #endif
 
 int init(){

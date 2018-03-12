@@ -34,7 +34,7 @@ int DEBUG_WORKQUEUE = 0;
 char *WORKQUEUE_DEBUG_IDENT = "WQ";
 
 static int
-valid_workq(pthread_workqueue_t workq) 
+valid_workq(pthread_workqueue_t workq)
 {
     if (workq->sig == PTHREAD_WORKQUEUE_SIG)
         return (1);
@@ -55,7 +55,7 @@ pthread_workqueue_init_np(void)
 
     if (getenv("PWQ_SPIN_LAPS") != NULL)
         PWQ_SPIN_LAPS = atol(getenv("PWQ_SPIN_LAPS"));
-    
+
     if (getenv("PWQ_SPIN_THREADS") != NULL)
         PWQ_SPIN_THREADS =  atoi(getenv("PWQ_SPIN_THREADS"));
 
@@ -103,11 +103,11 @@ pthread_workqueue_create_np(pthread_workqueue_t *workqp,
 int VISIBLE
 pthread_workqueue_additem_np(pthread_workqueue_t workq,
                      void (*workitem_func)(void *), void * workitem_arg,
-                     pthread_workitem_handle_t * itemhandlep, 
+                     pthread_workitem_handle_t * itemhandlep,
                      unsigned int *gencountp)
 {
     struct work *witem;
-    
+
     if (valid_workq(workq) == 0)
         return (EINVAL);
 
@@ -150,7 +150,7 @@ pthread_workqueue_attr_getovercommit_np(
     if (attr->sig == PTHREAD_WORKQUEUE_ATTR_SIG) {
         *ocommp = attr->overcommit;
         return (0);
-    } else 
+    } else
         return (EINVAL); /* Not an attribute struct. */
 }
 
@@ -172,7 +172,7 @@ pthread_workqueue_attr_getqueuepriority_np(
     if (attr->sig == PTHREAD_WORKQUEUE_ATTR_SIG) {
         *qpriop = attr->queueprio;
         return (0);
-    } else 
+    } else
         return (EINVAL);
 }
 

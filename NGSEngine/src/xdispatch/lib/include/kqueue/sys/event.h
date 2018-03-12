@@ -36,7 +36,7 @@
 #define intptr_t long
 #else
 #include <sys/types.h>
-#if defined(_WIN32) && !defined(__GNUC__) && _MSC_VER < 1600
+#if defined(_WIN32) && _MSC_VER < 1600 && !defined(__MINGW32__)
 # include "../../src/windows/stdint.h"
 #else
 # include <stdint.h>
@@ -44,10 +44,7 @@
 #define LIBKQUEUE       1
 #endif
 
-#ifndef _TIMESPEC_DEFINED
-# define _TIMESPEC_DEFINED
 struct timespec;
-#endif
 
 #define EVFILT_READ		(-1)
 #define EVFILT_WRITE		(-2)
@@ -179,7 +176,7 @@ extern "C" {
 
 #ifdef _WIN32
 
-#include <time.h> // modern MSVC supports `struct timespec`
+#include <time.h>
 #if 0
 struct timespec {
     time_t  tv_sec;
@@ -198,10 +195,6 @@ kevent(int kq, const struct kevent *changelist, int nchanges,
 #ifdef MAKE_STATIC
 __declspec(dllexport) int
 libkqueue_init();
-__declspec(dllexport) void
-libkqueue_thread_attach();
-__declspec(dllexport) void
-libkqueue_thread_detach();
 #endif
 
 #else
@@ -210,7 +203,7 @@ int     kevent(int kq, const struct kevent *changelist, int nchanges,
 	    struct kevent *eventlist, int nevents,
 	    const struct timespec *timeout);
 #ifdef MAKE_STATIC
-int     libkqueue_init();
+void     libkqueue_init();
 #endif
 #endif
 

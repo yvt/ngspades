@@ -13,10 +13,12 @@ struct timezone
 
 // quick workaround in case this is included after event.h
 #ifndef _SYS_EVENT_H_
+#if 0
 struct timespec {
     long tv_sec; /* seconds */
     long tv_nsec; /* nanoseconds */
-}; 
+};
+#endif
 #endif
 
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
@@ -42,7 +44,7 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz)
         // The GetSystemTimeAsFileTime returns the number of 100 nanosecond
         // intervals since Jan 1, 1601 in a structure.
         tmpres.LowPart  = ft.dwLowDateTime;
-        tmpres.HighPart = ft.dwHighDateTime;        
+        tmpres.HighPart = ft.dwHighDateTime;
 
         // Convert to microseconds by dividing by 10
         tmpres.QuadPart /= 10;
