@@ -129,6 +129,13 @@ pub enum ColorChannel {
 /// Specifies zero or more color channels.
 pub type ColorChannelFlags = BitFlags<ColorChannel>;
 
+impl ColorChannel {
+    /// Return a value specifying all channels.
+    pub fn all() -> ColorChannelFlags {
+        flags![ColorChannel::{Red | Green | Blue | Alpha}]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

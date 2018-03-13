@@ -11,7 +11,7 @@ use common::{Rect2D, Result};
 use handles::{ComputePipeline, Library, RenderPass, RenderPipeline, RootSig};
 use formats::VertexFormat;
 use {CmpFn, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex, VertexAttrIndex,
-     VertexBufferIndex, ViewportIndex};
+     VertexBufferIndex, ViewportIndex, ColorChannelFlags};
 
 /// Trait for building compute pipelines.
 ///
@@ -483,6 +483,9 @@ impl RenderPassRasterizerProp for DepthBias {
 
 /// Trait for setting the properties of the color output stage of a render pass.
 pub trait RenderPassColorTarget: Object {
+    /// Set the write mask. Defaults to `ColorChannel::all()`.
+    fn set_write_mask(&mut self, v: ColorChannelFlags) -> &mut RenderPassColorTarget;
+
     /// Enable blending. Defaults to `false`.
     fn set_blending(&mut self, v: bool) -> &mut RenderPassColorTarget;
 
