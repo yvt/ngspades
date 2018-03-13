@@ -1475,6 +1475,7 @@ dependencies = [
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
  "zangfx_metal 0.1.0",
+ "zangfx_vulkan 0.1.0",
 ]
 
 [[package]]

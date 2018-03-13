@@ -218,7 +218,7 @@ pub mod backends {
     #[cfg(target_os = "macos")]
     pub extern crate zangfx_metal as metal;
 
-    // TODO: pub extern crate zangfx_vulkan as vulkan;
+    pub extern crate zangfx_vulkan as vulkan;
 }
 
 /// The ZanGFX prelude.
