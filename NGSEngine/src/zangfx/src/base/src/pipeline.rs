@@ -230,7 +230,7 @@ pub trait Rasterizer: Object {
         v: &[StaticOrDynamic<Rect2D<u32>>],
     ) -> &mut Rasterizer;
 
-    /// Set the cull mode. Defaults to `Back`.
+    /// Set the cull mode. Defaults to `None`.
     fn set_cull_mode(&mut self, v: CullMode) -> &mut Rasterizer;
 
     /// Set the front face winding. Defaults to `CounterClockwise`.
@@ -253,10 +253,10 @@ pub trait Rasterizer: Object {
     /// Defaults to `1`.
     fn set_sample_count(&mut self, v: u32) -> &mut Rasterizer;
 
-    /// Enable the depth write. Defaults to `true`.
+    /// Enable the depth write. Defaults to `false`.
     fn set_depth_write(&mut self, v: bool) -> &mut Rasterizer;
 
-    /// Set the depth test function. Defaults to `LessEqual`.
+    /// Set the depth test function. Defaults to `Always`.
     ///
     /// Specify `Always` to disable the depth test.
     fn set_depth_test(&mut self, v: CmpFn) -> &mut Rasterizer;
@@ -264,11 +264,8 @@ pub trait Rasterizer: Object {
     /// Set the stencil operations. Defaults to `Default::default()`.
     fn set_stencil_ops(&mut self, front_back: [StencilOps; 2]) -> &mut Rasterizer;
 
-    /// Set the stencil masks. Defaults to `Static(Default::default())`.
-    fn set_stencil_masks(
-        &mut self,
-        front_back: StaticOrDynamic<[StencilMasks; 2]>,
-    ) -> &mut Rasterizer;
+    /// Set the stencil masks. Defaults to `Default::default()`.
+    fn set_stencil_masks(&mut self, front_back: [StencilMasks; 2]) -> &mut Rasterizer;
 
     /// Specify whether depth bounds tests are enabled.
     ///
@@ -328,7 +325,7 @@ pub enum TriangleFillMode {
     Fill,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct DepthBias {
     pub constant_factor: f32,
     pub slope_factor: f32,
@@ -384,19 +381,19 @@ impl<T> StaticOrDynamic<T> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct StencilOps {
-    pub stencil_fail_operation: StencilOp,
-    pub depth_fail_operation: StencilOp,
-    pub pass_operation: StencilOp,
-    pub compare_function: CmpFn,
+    pub stencil_fail: StencilOp,
+    pub depth_fail: StencilOp,
+    pub pass: StencilOp,
+    pub stencil_test: CmpFn,
 }
 
 impl ::std::default::Default for StencilOps {
     fn default() -> Self {
         Self {
-            stencil_fail_operation: StencilOp::Keep,
-            depth_fail_operation: StencilOp::Keep,
-            pass_operation: StencilOp::Keep,
-            compare_function: CmpFn::Always,
+            stencil_fail: StencilOp::Keep,
+            depth_fail: StencilOp::Keep,
+            pass: StencilOp::Keep,
+            stencil_test: CmpFn::Always,
         }
     }
 }

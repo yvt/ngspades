@@ -111,10 +111,6 @@ impl command::RenderCmdEncoder for RenderEncoder {
         unimplemented!()
     }
 
-    fn set_stencil_state(&mut self, _value: &[base::StencilMasks]) {
-        unimplemented!()
-    }
-
     fn set_stencil_refs(&mut self, _values: &[u32]) {
         unimplemented!()
     }

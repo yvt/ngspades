@@ -274,17 +274,6 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     ///
     fn set_depth_bounds(&mut self, value: Option<Range<f32>>);
 
-    /// Set the dynamic stencil masks.
-    ///
-    /// # Valid Usage
-    ///
-    /// The current `RenderPipeline` must have been created with rasterization
-    /// enabled and `RenderPassRasterizer::set_stencil_masks` called with
-    /// `Dynamic(_)`.
-    ///
-    /// `value` must have exactly two elements.
-    fn set_stencil_state(&mut self, value: &[pipeline::StencilMasks]);
-
     /// Set the current stencil reference values for the front-facing primitives
     /// and back-facing ones, respectively.
     ///
