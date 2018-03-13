@@ -48,6 +48,7 @@ pub fn render_null<T: TestDriver>(driver: T) {
                 .vertex_shader(&library_vert, "main")
                 .fragment_shader(&library_frag, "main")
                 .root_sig(&root_sig)
+                .topology(gfx::PrimitiveTopology::Triangles)
                 .render_pass(&pass, 0);
             builder.rasterize();
             builder.build().unwrap()
