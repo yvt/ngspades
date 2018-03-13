@@ -204,7 +204,7 @@
 //! those shown in Dependents are the only dependencies you must track manually.
 //!
 //! ² Images and buffers are invalidated when the heap they were allocated from was
-//! destroyed. Invalidates images and buffers are no longer usable, but you still
+//! destroyed. Invalidated images and buffers are no longer usable, but you still
 //! have to explicitly destroy them via `destroy_image` and/or `destroy_buffer`.
 //!
 //! [`query_interface`]: ../query_interface/index.html
