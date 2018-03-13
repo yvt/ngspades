@@ -146,7 +146,7 @@ pub trait RenderPipelineBuilder: Object {
     );
 
     /// Set the input primitive topology. Mandatory.
-    fn topology(&mut self, v: PrimitiveTopology) -> &mut VertexBufferBinding;
+    fn topology(&mut self, v: PrimitiveTopology) -> &mut RenderPipelineBuilder;
 
     /// Enable rasterization.
     fn rasterize(&mut self) -> &mut Rasterizer;
@@ -410,7 +410,7 @@ pub enum StencilOp {
     DecrementAndWrap,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct StencilMasks {
     pub read: u32,
     pub write: u32,
