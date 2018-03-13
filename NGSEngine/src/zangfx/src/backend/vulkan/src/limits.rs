@@ -75,6 +75,7 @@ impl DeviceInfo {
                 dev_limits.max_framebuffer_width,
                 dev_limits.max_framebuffer_height,
             ),
+            max_render_target_num_layers: dev_limits.max_framebuffer_layers,
             max_compute_workgroup_size: [
                 dev_limits.max_compute_work_group_size[0],
                 dev_limits.max_compute_work_group_size[1],

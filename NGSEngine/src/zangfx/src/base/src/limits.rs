@@ -42,6 +42,7 @@ pub struct DeviceLimits {
     pub max_image_extent_3d: u32,
     pub max_image_num_array_layers: u32,
     pub max_render_target_extent: u32,
+    pub max_render_target_num_layers: u32,
 
     pub max_num_viewports: u32,
 
