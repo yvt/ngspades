@@ -31,7 +31,7 @@ pub enum MTLStoreAction {
 }
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct MTLClearColor {
     red: f64,
     green: f64,
@@ -353,6 +353,12 @@ impl MTLRenderPassDescriptor {
     pub fn visibility_result_buffer(&self) -> MTLBuffer {
         unsafe {
             msg_send![self.0, visibilityResultBuffer]
+        }
+    }
+
+    pub fn set_render_target_array_length(&self, render_target_array_length: u64) {
+        unsafe {
+            msg_send![self.0, setRenderTargetArrayLength:render_target_array_length]
         }
     }
 

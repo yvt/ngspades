@@ -211,8 +211,12 @@ pub trait RenderTargetTableBuilder: Object {
     ///
     /// # Valid Usage
     ///
-    /// All mandatory properties must have their values set before this method
-    /// is called.
+    /// - All mandatory properties must have their values set before this
+    ///   method is called.
+    /// - The indices of render targets must be tightly arranged. In other
+    ///   words, when `N` is max(indices ∪ -1), there must not exist an
+    ///   unassigned render target index `n` such that `0 ≤ n ≤ N`.
+    ///
     fn build(&mut self) -> Result<RenderTargetTable>;
 }
 
@@ -228,21 +232,24 @@ pub trait RenderTarget: Object {
     fn layer(&mut self, v: u32) -> &mut RenderTarget;
 
     /// Set the clear value for the render target with a format other than
-    /// unnormalized integer ones..
+    /// unnormalized integer ones.
     ///
     /// Defaults to an implementation defined value.
+    /// `v.len()` must be at least `4`.
     fn clear_float(&mut self, v: &[f32]) -> &mut RenderTarget;
 
     /// Set the clear value for the render target with an unnormalized unsigned
     /// integer format.
     ///
     /// Defaults to an implementation defined value.
+    /// `v.len()` must be at least `4`.
     fn clear_uint(&mut self, v: &[u32]) -> &mut RenderTarget;
 
     /// Set the clear value for the render target with an unnormalized signed
     /// integer format.
     ///
     /// Defaults to an implementation defined value.
+    /// `v.len()` must be at least `4`.
     fn clear_sint(&mut self, v: &[i32]) -> &mut RenderTarget;
 
     /// Set the clear value for the depth and stencil render targets.

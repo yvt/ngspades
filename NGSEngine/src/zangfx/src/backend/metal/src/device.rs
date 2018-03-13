@@ -10,7 +10,7 @@ use common::Result;
 
 use utils::{get_memory_req, OCPtr};
 use limits::DeviceCaps;
-use {arg, buffer, cmd, heap, image, pipeline, sampler, shader};
+use {arg, buffer, cmd, heap, image, pipeline, renderpass, sampler, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -113,11 +113,15 @@ impl device::Device for Device {
     }
 
     fn build_render_pass(&self) -> Box<base::pass::RenderPassBuilder> {
-        unimplemented!()
+        Box::new(renderpass::RenderPassBuilder::new())
     }
 
     fn build_render_target_table(&self) -> Box<base::pass::RenderTargetTableBuilder> {
-        unimplemented!()
+        unsafe {
+            Box::new(renderpass::RenderTargetTableBuilder::new(
+                self.metal_device(),
+            ))
+        }
     }
 
     fn build_render_pipeline(&self) -> Box<base::pipeline::RenderPipelineBuilder> {
