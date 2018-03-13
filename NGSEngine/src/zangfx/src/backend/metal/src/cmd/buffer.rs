@@ -187,6 +187,7 @@ impl command::CmdBuffer for CmdBuffer {
             RenderEncoder::new(
                 metal_encoder,
                 replace(&mut uncommited.fence_set, Default::default()),
+                our_rt_table.extents(),
             )
         };
         uncommited.encoder = Some(Encoder::Render(encoder));

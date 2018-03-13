@@ -113,7 +113,7 @@ pub fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStages
     stages
 }
 
-/* pub fn translate_viewport(value: &base::Viewport) -> metal::MTLViewport {
+pub fn translate_viewport(value: &base::Viewport) -> metal::MTLViewport {
     metal::MTLViewport {
         originX: value.x as f64,
         originY: value.y as f64,
@@ -122,16 +122,16 @@ pub fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStages
         znear: value.min_depth as f64,
         zfar: value.max_depth as f64,
     }
-} */
+}
 
-/* pub fn translate_scissor_rect(value: &base::Rect2D<u32>) -> metal::MTLScissorRect {
+pub fn translate_scissor_rect(value: &base::Rect2D<u32>) -> metal::MTLScissorRect {
     metal::MTLScissorRect {
-        x: value.min.x as u64,
-        y: value.min.y as u64,
-        width: value.max.x.saturating_sub(value.min.x) as u64,
-        height: value.max.y.saturating_sub(value.min.y) as u64,
+        x: value.min[0] as u64,
+        y: value.min[1] as u64,
+        width: value.max[0].saturating_sub(value.min[0]) as u64,
+        height: value.max[1].saturating_sub(value.min[1]) as u64,
     }
-} */
+}
 
 pub fn clip_scissor_rect(
     value: &metal::MTLScissorRect,

@@ -227,6 +227,13 @@ impl MTLRenderCommandEncoder {
         }
     }
 
+    pub fn set_viewports(&self, viewports: &[MTLViewport]) {
+        unsafe {
+            msg_send![self.0, setViewports:viewports.as_ptr()
+                                     count:viewports.len() as NSUInteger]
+        }
+    }
+
     pub fn set_front_facing_winding(&self, winding: MTLWinding) {
         unsafe {
             msg_send![self.0, setFrontFacingWinding:winding]
@@ -325,6 +332,15 @@ impl MTLRenderCommandEncoder {
         }
     }
 
+    pub fn set_vertex_buffers(&self, index: u64, buffers: &[MTLBuffer], offsets: &[u64]) {
+        debug_assert_eq!(buffers.len(), offsets.len());
+        unsafe {
+            msg_send![self.0, setVertexBuffers:buffers.as_ptr()
+                                       offsets:offsets.as_ptr()
+                                     withRange:NSRange::new(index, buffers.len() as u64)]
+        }
+    }
+
     pub fn set_vertex_texture(&self, index: u64, texture: MTLTexture) {
         unsafe {
             msg_send![self.0, setVertexTexture:texture.0
@@ -363,6 +379,15 @@ impl MTLRenderCommandEncoder {
             msg_send![self.0, setFragmentBuffer:buffer.0
                                          offset:offset
                                         atIndex:index]
+        }
+    }
+
+    pub fn set_fragment_buffers(&self, index: u64, buffers: &[MTLBuffer], offsets: &[u64]) {
+        debug_assert_eq!(buffers.len(), offsets.len());
+        unsafe {
+            msg_send![self.0, setFragmentBuffers:buffers.as_ptr()
+                                         offsets:offsets.as_ptr()
+                                       withRange:NSRange::new(index, buffers.len() as u64)]
         }
     }
 
@@ -672,6 +697,15 @@ impl MTLComputeCommandEncoder {
         unsafe {
             msg_send![self.0, setBufferOffset:offset
                                       atIndex:index]
+        }
+    }
+
+    pub fn set_buffers(&self, index: u64, buffers: &[MTLBuffer], offsets: &[u64]) {
+        debug_assert_eq!(buffers.len(), offsets.len());
+        unsafe {
+            msg_send![self.0, setBuffers:buffers.as_ptr()
+                                 offsets:offsets.as_ptr()
+                               withRange:NSRange::new(index, buffers.len() as u64)]
         }
     }
 

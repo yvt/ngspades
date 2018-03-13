@@ -10,7 +10,7 @@ use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
 use cmd::fence::Fence;
 use arg::table::ArgTable;
-use pipeline::ComputePipeline;
+use computepipeline::ComputePipeline;
 
 #[derive(Debug)]
 pub struct ComputeEncoder {

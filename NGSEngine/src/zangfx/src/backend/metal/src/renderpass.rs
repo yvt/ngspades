@@ -468,4 +468,8 @@ impl RenderTargetTable {
     pub fn metal_render_pass(&self) -> metal::MTLRenderPassDescriptor {
         *self.metal_render_pass
     }
+
+    pub(crate) fn extents(&self) -> [u32; 2] {
+        self.extents
+    }
 }

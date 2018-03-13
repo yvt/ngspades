@@ -35,8 +35,8 @@
 //!
 //! Setting labels is supported by the following objects: `ArgPoolBuilder`,
 //! `CmdBuffer`, `CmdQueueBuilder`, `BufferBuilder`, `ImageBuilder`,
-//! `HeapBuilder`, `ComputePipelineBuilder`, `SamplerBuilder`, and
-//! `LibraryBuilder`.
+//! `HeapBuilder`, `RenderPipelineBuilder`, `ComputePipelineBuilder`,
+//! `SamplerBuilder`, and `LibraryBuilder`.
 //! Labels are visible via a debugger interface, for example, Xcode's GPU Frame
 //! Capture.
 //!
@@ -47,6 +47,10 @@
 //!
 //! # Limitations
 //!
+//! ## Implementation Limits
+//!
+//! - The upper bound of the number of vertex buffer bindings is `16`.
+//!
 //! ## Shaders
 //!
 //! - SPIRV-Cross does not adhere to the array base alignment rule as defined by
@@ -54,6 +58,7 @@
 //!   16-byte aligned types (e.g., `vec4` or structs containing one) as element
 //!   types for arrays defined in uniform buffers.
 //!
+extern crate arrayvec;
 extern crate block;
 extern crate cocoa;
 extern crate iterpool;
@@ -62,7 +67,6 @@ extern crate ngsenumflags;
 extern crate parking_lot;
 extern crate refeq;
 extern crate rspirv;
-extern crate arrayvec;
 extern crate spirv_headers;
 extern crate tokenlock;
 extern crate xalloc;
@@ -80,7 +84,8 @@ pub mod formats;
 pub mod heap;
 pub mod image;
 pub mod limits;
-pub mod pipeline;
+pub mod computepipeline;
+pub mod renderpipeline;
 pub mod renderpass;
 pub mod sampler;
 pub mod shader;
@@ -97,4 +102,4 @@ pub const MEMORY_TYPE_ALL_BITS: u32 = 0b11;
 
 pub const QUEUE_FAMILY_UNIVERSAL: base::QueueFamily = 0;
 
-
+pub const MAX_NUM_VERTEX_BUFFERS: usize = 16;

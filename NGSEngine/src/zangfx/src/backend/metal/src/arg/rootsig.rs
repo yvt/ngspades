@@ -62,13 +62,14 @@ impl RootSig {
     pub(crate) fn setup_spirv2msl(&self, s2m: &mut SpirV2Msl, stage: ExecutionModel) {
         for (arg_table_index, table) in self.tables.iter().enumerate() {
             if let &Some(ref table) = table {
-                table.setup_spirv2msl(
-                    s2m,
-                    arg_table_index as u32,
-                    arg_table_index as u32,
-                    stage,
-                );
+                table.setup_spirv2msl(s2m, arg_table_index as u32, arg_table_index as u32, stage);
             }
         }
+    }
+
+    /// The first index in the vertex buffer argument table that can be used for
+    /// ZanGFX vertex buffers.
+    pub(crate) fn gfx_vertex_buffer_index(&self) -> u32 {
+        self.tables.len() as u32
     }
 }

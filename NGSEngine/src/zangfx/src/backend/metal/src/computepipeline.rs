@@ -86,6 +86,7 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             &compute_shader.1,
             shader::ShaderStage::Compute,
             root_sig,
+            ::std::iter::empty(),
             self.metal_device,
             &self.label,
         )?;

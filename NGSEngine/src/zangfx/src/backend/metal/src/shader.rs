@@ -10,7 +10,7 @@ use std::fmt;
 use metal;
 use rspirv::mr;
 use spirv_headers;
-use spirv_cross::{ExecutionModel, SpirV2Msl};
+use spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
 use base::{self, handles, shader};
 use common::{Error, ErrorKind, Result};
@@ -119,14 +119,18 @@ impl Library {
         self.data.spirv_code.as_slice()
     }
 
-    pub(crate) fn new_metal_function(
+    pub(crate) fn new_metal_function<T>(
         &self,
         entry_point: &str,
         stage: shader::ShaderStage,
         root_sig: &RootSig,
+        vertex_attrs: T,
         metal_device: metal::MTLDevice,
         pipeline_name: &Option<String>,
-    ) -> Result<OCPtr<metal::MTLFunction>> {
+    ) -> Result<OCPtr<metal::MTLFunction>>
+    where
+        T: Iterator<Item = ShaderVertexAttrInfo>,
+    {
         assert!(!metal_device.is_null());
 
         let mut s2m = SpirV2Msl::new(self.spirv_code());
@@ -139,7 +143,19 @@ impl Library {
 
         root_sig.setup_spirv2msl(&mut s2m, model);
 
-        // TODO: vertex attributes
+        for attr in vertex_attrs {
+            s2m.add_vertex_attribute(&VertexAttribute {
+                location: attr.binding as u32,
+                msl_buffer: attr.msl_buffer_index as u32,
+                msl_offset: attr.offset,
+                msl_stride: attr.stride,
+                input_rate: match attr.input_rate {
+                    metal::MTLVertexStepFunction::PerVertex => VertexInputRate::Vertex,
+                    metal::MTLVertexStepFunction::PerInstance => VertexInputRate::Instance,
+                    _ => unreachable!(),
+                },
+            });
+        }
 
         let s2m_output = s2m.compile().map_err(|e| {
             Error::with_detail(ErrorKind::Other, ShaderTranspilationFailed { reason: e })
@@ -232,4 +248,13 @@ impl fmt::Display for ShaderCompilationFailed {
             &self.reason, &self.code
         )
     }
+}
+
+/// Vertex attribute information provided to `ShaderModule::get_function`.
+pub(crate) struct ShaderVertexAttrInfo {
+    pub binding: usize,
+    pub msl_buffer_index: usize,
+    pub offset: u32,
+    pub stride: u32,
+    pub input_rate: metal::MTLVertexStepFunction,
 }

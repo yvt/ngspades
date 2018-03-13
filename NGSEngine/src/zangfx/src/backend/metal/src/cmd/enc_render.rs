@@ -12,11 +12,13 @@ use utils::{translate_render_stage, OCPtr};
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
 use cmd::fence::Fence;
 use cmd::barrier::Barrier;
+use renderpipeline::RenderStateManager;
 
 #[derive(Debug)]
 pub struct RenderEncoder {
     metal_encoder: OCPtr<MTLRenderCommandEncoder>,
     fence_set: CmdBufferFenceSet,
+    state: RenderStateManager,
 }
 
 zangfx_impl_object! { RenderEncoder:
@@ -29,10 +31,12 @@ impl RenderEncoder {
     pub unsafe fn new(
         metal_encoder: MTLRenderCommandEncoder,
         fence_set: CmdBufferFenceSet,
+        extents: [u32; 2],
     ) -> Self {
         Self {
             metal_encoder: OCPtr::new(metal_encoder).unwrap(),
             fence_set,
+            state: RenderStateManager::new(metal_encoder, extents),
         }
     }
 
@@ -95,65 +99,66 @@ impl command::CmdEncoder for RenderEncoder {
 }
 
 impl command::RenderCmdEncoder for RenderEncoder {
-    fn bind_pipeline(&mut self, _pipeline: &handles::RenderPipeline) {
-        unimplemented!()
+    fn bind_pipeline(&mut self, pipeline: &handles::RenderPipeline) {
+        self.state.bind_pipeline(pipeline);
     }
 
-    fn set_blend_constant(&mut self, _value: &[f32]) {
-        unimplemented!()
+    fn set_blend_constant(&mut self, value: &[f32]) {
+        self.state.set_blend_constant(value);
     }
 
-    fn set_depth_bias(&mut self, _value: Option<base::DepthBias>) {
-        unimplemented!()
+    fn set_depth_bias(&mut self, value: Option<base::DepthBias>) {
+        self.state.set_depth_bias(value);
     }
 
-    fn set_depth_bounds(&mut self, _value: Option<Range<f32>>) {
-        unimplemented!()
+    fn set_depth_bounds(&mut self, value: Option<Range<f32>>) {
+        self.state.set_depth_bounds(value);
     }
 
-    fn set_stencil_refs(&mut self, _values: &[u32]) {
-        unimplemented!()
+    fn set_stencil_refs(&mut self, values: &[u32]) {
+        self.state.set_stencil_refs(values);
     }
 
-    fn set_viewports(&mut self, _start_viewport: base::ViewportIndex, _value: &[base::Viewport]) {
-        unimplemented!()
+    fn set_viewports(&mut self, start_viewport: base::ViewportIndex, value: &[base::Viewport]) {
+        self.state.set_viewports(start_viewport, value);
     }
 
-    fn set_scissors(&mut self, _start_viewport: base::ViewportIndex, _value: &[Rect2D<u32>]) {
-        unimplemented!()
+    fn set_scissors(&mut self, start_viewport: base::ViewportIndex, value: &[Rect2D<u32>]) {
+        self.state.set_scissors(start_viewport, value);
     }
 
-    fn bind_arg_table(&mut self, _index: base::ArgTableIndex, _tables: &[&handles::ArgTable]) {
-        unimplemented!()
+    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&handles::ArgTable]) {
+        self.state.bind_arg_table(index, tables);
     }
 
     fn bind_vertex_buffers(
         &mut self,
-        _index: base::VertexBufferIndex,
-        _buffers: &[(&handles::Buffer, base::DeviceSize)],
+        index: base::VertexBufferIndex,
+        buffers: &[(&handles::Buffer, base::DeviceSize)],
     ) {
-        unimplemented!()
+        self.state.bind_vertex_buffers(index, buffers);
     }
 
     fn bind_index_buffer(
         &mut self,
-        _buffers: &handles::Buffer,
-        _offset: base::DeviceSize,
-        _format: base::IndexFormat,
+        buffers: &handles::Buffer,
+        offset: base::DeviceSize,
+        format: base::IndexFormat,
     ) {
-        unimplemented!()
+        self.state.bind_index_buffer(buffers, offset, format);
     }
 
-    fn draw(&mut self, _vertex_range: Range<u32>, _instance_range: Range<u32>) {
-        unimplemented!()
+    fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
+        self.state.draw(vertex_range, instance_range);
     }
 
     fn draw_indexed(
         &mut self,
-        _index_buffer_range: Range<u32>,
-        _vertex_offset: u32,
-        _instance_range: Range<u32>,
+        index_buffer_range: Range<u32>,
+        vertex_offset: u32,
+        instance_range: Range<u32>,
     ) {
-        unimplemented!()
+        self.state
+            .draw_indexed(index_buffer_range, vertex_offset, instance_range);
     }
 }
