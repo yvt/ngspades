@@ -223,7 +223,7 @@ pub trait Rasterizer: Object {
 
     /// Set the scissor rect.
     ///
-    /// Defaults to `Static(Rect2D([0; 2], [<u32>::max_value(); 2]))`.
+    /// Defaults to `Static(Rect2D::<u32>::all())`.
     fn set_scissors(
         &mut self,
         start_viewport: ViewportIndex,

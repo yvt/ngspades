@@ -18,3 +18,10 @@ impl<T> Rect2D<T> {
         }
     }
 }
+
+impl Rect2D<u32> {
+    /// Return `Rect2D::new([0; 2], [<u32>::max_value(); 2])`.
+    pub fn all() -> Self {
+        Rect2D::new([0; 2], [<u32>::max_value(); 2])
+    }
+}
