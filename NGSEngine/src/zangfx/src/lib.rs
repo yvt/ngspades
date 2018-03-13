@@ -42,7 +42,7 @@
 //! | command buffer           | command buffer         | command buffer        | ?                       |
 //! | completion handler       | completed handler      | (fence)               | ?                       |
 //! | fence                    | fence                  | event                 | ?                       |
-//! | semaphore                | -                      | semaphore             | ?                       |
+//! | semaphore                | scheduled handler      | semaphore             | ?                       |
 //! | library                  | library                | shader module         | ?                       |
 //! | buffer                   | buffer                 | buffer                | ?                       |
 //! | image                    | texture                | image                 | ?                       |
@@ -83,16 +83,15 @@
 //!
 //! ## Flags
 //!
-//! Parameters that accept multiple flags are defined as `BitFlags<T>` (provided by
-//! the `ngsenumflags` crate) where `T` is an enumerated type (e.g., `AccessType`).
+//! Parameters that accept multiple flags are defined as [`BitFlags<T>`]
+//! (provided by the [`ngsenumflags`] crate) where `T` is an enumerated type
+//! (e.g., `AccessType`).
 //! For every enumerated type for which such parameters exist, a type alias to
-//! `BitFlags<T>` is defined with its name suffixed with `Flags` (e.g., `AccessTypeFlags`).
+//! `BitFlags<T>` is defined with its name suffixed with `Flags` (e.g.,
+//! [`AccessTypeFlags`]).
 //!
-//! There are some exceptions including `ImageFlags`, which is a type alias of
-//! `BitFlags<ImageFlagsBit>`.
-//!
-//! The following example shows how to provide a `BitFlags<T>` value with an arbitrary
-//! number of `T` values:
+//! The following example shows how to provide a `BitFlags<T>` value with an
+//! arbitrary number of flags (`T` values):
 //!
 //! ```
 //! use zangfx::base::{AccessType, AccessTypeFlags};
@@ -124,6 +123,10 @@
 //! let twoway_access = flags![AccessType::{CopyRead | CopyWrite}];
 //! # }
 //! ```
+//!
+//! [`ngsenumflags`]: ../ngsenumflags/index.html
+//! [`BitFlags<T>`]: ../ngsenumflags/struct.BitFlags.html
+//! [`AccessTypeFlags`]: ../zangfx_base/type.AccessTypeFlags.html
 //!
 //! ## Objects
 //!
@@ -159,33 +162,34 @@
 //! The following table shows all objects and handles defined by ZanGFX as well
 //! as the requirements for their manual reference tracking:
 //!
-//! |         Name        |  Type  |    Is destroyed on    |        Dependents¹         |
-//! | ------------------- | ------ | --------------------- | -------------------------- |
-//! | `.*Builder`         | object | drop                  |                            |
-//! | `Device`            | object | drop                  | GPU and everything         |
-//! | `ArgTableSig`       | handle | automatic             |                            |
-//! | `RootSig`           | handle | automatic             |                            |
-//! | `ArgPool`           | object | drop                  |                            |
-//! | `ArgTable`          | handle | Pool `destroy_tables` | GPU, `CmdBuffer`           |
-//! |                     |        | Pool `reset`          |                            |
-//! |                     |        | Pool `drop`           |                            |
-//! | `CmdQueue`          | object | drop                  | GPU, `CmdBuffer`           |
-//! | `CmdBuffer`         | object | automatic             |                            |
-//! | `Barrier`           | handle | automatic             |                            |
-//! | `Fence`             | handle | automatic             |                            |
-//! | `Semaphore`         | handle | automatic             |                            |
-//! | `RenderPass`        | handle | automatic             |                            |
-//! | `RenderTargetTable` | handle | automatic             |                            |
-//! | `Heap`              | object | drop                  | `Image`, `Buffer`          |
-//! | `HeapAlloc`         | handle | automatic             |                            |
-//! | `Image`             | handle | `destroy_image`²      | GPU, `RenderTargetTable`,  |
-//! |                     |        |                       | `Barrier`, `ImageView`     |
-//! | `Buffer`            | handle | `destroy_buffer`²     | GPU, `ArgTable`, `Barrier` |
-//! | `Sampler`           | handle | `destroy_sampler`     | `ArgTable`                 |
-//! | `ImageView`         | handle | `destroy_image_view`  | `ArgTable`                 |
-//! | `Library`           | handle | automatic             |                            |
-//! | `RenderPipeline`    | handle | automatic             |                            |
-//! | `ComputePipeline`   | handle | automatic             |                            |
+//! |         Name        |  Type  |    Is destroyed on    |         Dependents¹         |
+//! | ------------------- | ------ | --------------------- | --------------------------- |
+//! | `.*Builder`         | object | drop                  |                             |
+//! | `Device`            | object | drop                  | GPU and everything          |
+//! | `ArgTableSig`       | handle | automatic             |                             |
+//! | `RootSig`           | handle | automatic             |                             |
+//! | `ArgPool`           | object | drop                  |                             |
+//! | `ArgTable`          | handle | Pool `destroy_tables` | GPU, `CmdBuffer`            |
+//! |                     |        | Pool `reset`          |                             |
+//! |                     |        | Pool `drop`           |                             |
+//! | `CmdQueue`          | object | drop                  | GPU, `CmdBuffer`, `CmdPool` |
+//! | `CmdPool`           | object | automatic             |                             |
+//! | `CmdBuffer`         | object | automatic             |                             |
+//! | `Barrier`           | handle | automatic             |                             |
+//! | `Fence`             | handle | automatic             |                             |
+//! | `Semaphore`         | handle | automatic             |                             |
+//! | `RenderPass`        | handle | automatic             |                             |
+//! | `RenderTargetTable` | handle | automatic             |                             |
+//! | `Heap`              | object | drop                  | `Image`, `Buffer`           |
+//! | `HeapAlloc`         | handle | automatic             |                             |
+//! | `Image`             | handle | `destroy_image`²      | GPU, `RenderTargetTable`,   |
+//! |                     |        |                       | `Barrier`, `ImageView`      |
+//! | `Buffer`            | handle | `destroy_buffer`²     | GPU, `ArgTable`, `Barrier`  |
+//! | `Sampler`           | handle | `destroy_sampler`     | `ArgTable`                  |
+//! | `ImageView`         | handle | `destroy_image_view`  | `ArgTable`                  |
+//! | `Library`           | handle | automatic             |                             |
+//! | `RenderPipeline`    | handle | automatic             |                             |
+//! | `ComputePipeline`   | handle | automatic             |                             |
 //!
 //! ¹ The **Dependents** column denotes the objects that possibly contain a weak
 //! reference to a certain object and require it to operate properly. For example,
