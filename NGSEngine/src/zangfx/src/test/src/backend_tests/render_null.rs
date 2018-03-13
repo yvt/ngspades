@@ -36,6 +36,7 @@ pub fn render_null<T: TestDriver>(driver: T) {
         println!("- Creating a render target table");
         let rtt = device
             .build_render_target_table()
+            .render_pass(&pass)
             .extents(&[256, 256])
             .build()
             .unwrap();
