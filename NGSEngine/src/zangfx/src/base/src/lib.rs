@@ -155,7 +155,7 @@ pub mod prelude {
     pub use formats::{AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
                       IntAsScalarFormat};
     #[doc(no_inline)]
-    pub use pipeline::RenderPassRasterizerExt;
+    pub use pipeline::RasterizerExt;
     #[doc(no_inline)]
     pub use debug::Label;
 }

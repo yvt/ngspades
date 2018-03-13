@@ -10,8 +10,8 @@ use Object;
 use common::{Rect2D, Result};
 use handles::{ComputePipeline, Library, RenderPass, RenderPipeline, RootSig};
 use formats::VertexFormat;
-use {CmpFn, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex, VertexAttrIndex,
-     VertexBufferIndex, ViewportIndex, ColorChannelFlags};
+use {CmpFn, ColorChannelFlags, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex,
+     VertexAttrIndex, VertexBufferIndex, ViewportIndex};
 
 /// Trait for building compute pipelines.
 ///
@@ -148,8 +148,8 @@ pub trait RenderPipelineBuilder: Object {
     /// Set the input primitive topology. Mandatory.
     fn topology(&mut self, v: PrimitiveTopology) -> &mut VertexBufferBinding;
 
-    /// Enable rasterizer.
-    fn rasterize(&mut self) -> &mut RenderPassRasterizer;
+    /// Enable rasterization.
+    fn rasterize(&mut self) -> &mut Rasterizer;
 
     /// Build an `RenderPipeline`.
     ///
@@ -182,12 +182,12 @@ pub enum PrimitiveTopology {
     TriangleStrip,
 }
 
-/// Trait for setting the properties of rasterizing stages. All properties are
-/// optional.
+/// Trait for setting the properties of the rasterization stage. All properties
+/// are optional.
 ///
-/// See also: [`RenderPassRasterizerExt`].
+/// See also: [`RasterizerExt`].
 ///
-/// [`RenderPassRasterizerExt`]: RenderPassRasterizerExt
+/// [`RasterizerExt`]: RasterizerExt
 ///
 /// # Examples
 ///
@@ -214,12 +214,12 @@ pub enum PrimitiveTopology {
 ///         .expect("Failed to create a pipeline.");
 ///     # }
 ///
-pub trait RenderPassRasterizer: Object {
+pub trait Rasterizer: Object {
     /// Set the number of viewports.
     ///
     /// Must be less than or equal to `DeviceLimits::max_num_viewports`. Must be
     /// not zero. Defaults to `1`.
-    fn set_num_viewports(&mut self, v: usize) -> &mut RenderPassRasterizer;
+    fn set_num_viewports(&mut self, v: usize) -> &mut Rasterizer;
 
     /// Set the scissor rect.
     ///
@@ -228,65 +228,59 @@ pub trait RenderPassRasterizer: Object {
         &mut self,
         start_viewport: ViewportIndex,
         v: &[StaticOrDynamic<Rect2D<u32>>],
-    ) -> &mut RenderPassRasterizer;
+    ) -> &mut Rasterizer;
 
     /// Set the cull mode. Defaults to `Back`.
-    fn set_cull_mode(&mut self, v: CullMode) -> &mut RenderPassRasterizer;
+    fn set_cull_mode(&mut self, v: CullMode) -> &mut Rasterizer;
 
     /// Set the front face winding. Defaults to `CounterClockwise`.
-    fn set_front_face(&mut self, v: Winding) -> &mut RenderPassRasterizer;
+    fn set_front_face(&mut self, v: Winding) -> &mut Rasterizer;
 
     /// Control whether fragments with depth values outside the clip volume
     /// is clipped or clamped. Defaults to `Clip`.
-    fn set_depth_clip_mode(&mut self, v: DepthClipMode) -> &mut RenderPassRasterizer;
+    fn set_depth_clip_mode(&mut self, v: DepthClipMode) -> &mut Rasterizer;
 
     /// Set the triangle filling mode. Defaults to `Fill`.
-    fn set_triangle_fill_mode(&mut self, v: TriangleFillMode) -> &mut RenderPassRasterizer;
+    fn set_triangle_fill_mode(&mut self, v: TriangleFillMode) -> &mut Rasterizer;
 
     /// Set the depth bias values. Defaults to `None`.
-    fn set_depth_bias(
-        &mut self,
-        v: Option<StaticOrDynamic<DepthBias>>,
-    ) -> &mut RenderPassRasterizer;
+    fn set_depth_bias(&mut self, v: Option<StaticOrDynamic<DepthBias>>) -> &mut Rasterizer;
 
     /// Enable the alpha-to-coverage feature. Defaults to `false`.
-    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut RenderPassRasterizer;
+    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut Rasterizer;
 
     /// Specify the number of samples per pixel for MSAA targets.
     /// Defaults to `1`.
-    fn set_sample_count(&mut self, v: u32) -> &mut RenderPassRasterizer;
+    fn set_sample_count(&mut self, v: u32) -> &mut Rasterizer;
 
     /// Enable the depth write. Defaults to `true`.
-    fn set_depth_write(&mut self, v: bool) -> &mut RenderPassRasterizer;
+    fn set_depth_write(&mut self, v: bool) -> &mut Rasterizer;
 
     /// Set the depth test function. Defaults to `LessEqual`.
     ///
     /// Specify `Always` to disable the depth test.
-    fn set_depth_test(&mut self, v: CmpFn) -> &mut RenderPassRasterizer;
+    fn set_depth_test(&mut self, v: CmpFn) -> &mut Rasterizer;
 
     /// Set the stencil operations. Defaults to `Default::default()`.
-    fn set_stencil_ops(&mut self, front_back: [StencilOps; 2]) -> &mut RenderPassRasterizer;
+    fn set_stencil_ops(&mut self, front_back: [StencilOps; 2]) -> &mut Rasterizer;
 
     /// Set the stencil masks. Defaults to `Static(Default::default())`.
     fn set_stencil_masks(
         &mut self,
         front_back: StaticOrDynamic<[StencilMasks; 2]>,
-    ) -> &mut RenderPassRasterizer;
+    ) -> &mut Rasterizer;
 
     /// Specify whether depth bounds tests are enabled.
     ///
     /// If `DeviceLimits::supports_depth_bounds` is `false` then `None` must be
     /// specified.
-    fn set_depth_bounds(
-        &mut self,
-        v: Option<StaticOrDynamic<Range<f32>>>,
-    ) -> &mut RenderPassRasterizer;
+    fn set_depth_bounds(&mut self, v: Option<StaticOrDynamic<Range<f32>>>) -> &mut Rasterizer;
 
     /// Setup the color output for a color render target at a specified index.
     ///
     /// If `DeviceLimits::supports_independent_blend` is `false` then the same
     /// property values must be supplied for all color render targets.
-    fn color_target(&mut self, index: RenderSubpassColorTargetIndex) -> &mut RenderPassColorTarget;
+    fn color_target(&mut self, index: RenderSubpassColorTargetIndex) -> &mut RasterizerColorTarget;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -425,87 +419,88 @@ pub struct StencilMasks {
     pub write: u32,
 }
 
-/// Extention trait for `RenderPassRasterizer`.
-pub trait RenderPassRasterizerExt: RenderPassRasterizer {
-    /// Set a property of `RenderPassRasterizer`. The property is determined
+/// Extention trait for `Rasterizer`.
+pub trait RasterizerExt: Rasterizer {
+    /// Set a property of `Rasterizer`. The property is determined
     /// from the type of the value.
     ///
     /// # Examples
     ///
     ///     # use zangfx_base::*;
-    ///     # fn test(rasterizer: &mut RenderPassRasterizer) {
+    ///     # fn test(rasterizer: &mut Rasterizer) {
     ///     rasterizer
     ///         .set(CullMode::Back)
     ///         .set(TriangleFillMode::Line);
     ///     # }
-    fn set<T: RenderPassRasterizerProp>(&mut self, value: T) -> &mut Self {
+    fn set<T: RasterizerProp>(&mut self, value: T) -> &mut Self {
         value.assign(self);
         self
     }
 }
 
-impl<T: ?Sized + RenderPassRasterizer> RenderPassRasterizerExt for T {}
+impl<T: ?Sized + Rasterizer> RasterizerExt for T {}
 
-/// Property value that can be assigned to a property of`RenderPassRasterizer`.
-pub trait RenderPassRasterizerProp {
-    fn assign<T: RenderPassRasterizer + ?Sized>(&self, o: &mut T);
+/// Property value that can be assigned to a property of`Rasterizer`.
+pub trait RasterizerProp {
+    fn assign<T: Rasterizer + ?Sized>(&self, o: &mut T);
 }
 
-impl RenderPassRasterizerProp for Winding {
-    fn assign<T: RenderPassRasterizer + ?Sized>(&self, o: &mut T) {
+impl RasterizerProp for Winding {
+    fn assign<T: Rasterizer + ?Sized>(&self, o: &mut T) {
         o.set_front_face(*self);
     }
 }
 
-impl RenderPassRasterizerProp for CullMode {
-    fn assign<T: RenderPassRasterizer + ?Sized>(&self, o: &mut T) {
+impl RasterizerProp for CullMode {
+    fn assign<T: Rasterizer + ?Sized>(&self, o: &mut T) {
         o.set_cull_mode(*self);
     }
 }
 
-impl RenderPassRasterizerProp for DepthClipMode {
-    fn assign<T: RenderPassRasterizer + ?Sized>(&self, o: &mut T) {
+impl RasterizerProp for DepthClipMode {
+    fn assign<T: Rasterizer + ?Sized>(&self, o: &mut T) {
         o.set_depth_clip_mode(*self);
     }
 }
 
-impl RenderPassRasterizerProp for TriangleFillMode {
-    fn assign<T: RenderPassRasterizer + ?Sized>(&self, o: &mut T) {
+impl RasterizerProp for TriangleFillMode {
+    fn assign<T: Rasterizer + ?Sized>(&self, o: &mut T) {
         o.set_triangle_fill_mode(*self);
     }
 }
 
-impl RenderPassRasterizerProp for DepthBias {
-    fn assign<T: RenderPassRasterizer + ?Sized>(&self, o: &mut T) {
+impl RasterizerProp for DepthBias {
+    fn assign<T: Rasterizer + ?Sized>(&self, o: &mut T) {
         o.set_depth_bias(Some(StaticOrDynamic::Static(*self)));
     }
 }
 
-/// Trait for setting the properties of the color output stage of a render pass.
-pub trait RenderPassColorTarget: Object {
+/// Trait for setting the properties of the color output stage of a render
+/// pipeline.
+pub trait RasterizerColorTarget: Object {
     /// Set the write mask. Defaults to `ColorChannel::all()`.
-    fn set_write_mask(&mut self, v: ColorChannelFlags) -> &mut RenderPassColorTarget;
+    fn set_write_mask(&mut self, v: ColorChannelFlags) -> &mut RasterizerColorTarget;
 
     /// Enable blending. Defaults to `false`.
-    fn set_blending(&mut self, v: bool) -> &mut RenderPassColorTarget;
+    fn set_blending(&mut self, v: bool) -> &mut RasterizerColorTarget;
 
     /// Set the source blend factor for the alpha channel. Defaults to `One`.
-    fn set_src_alpha_factor(&mut self, v: BlendFactor) -> &mut RenderPassColorTarget;
+    fn set_src_alpha_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
 
     /// Set the source blend factor for RGB channels. Defaults to `One`.
-    fn set_src_rgb_factor(&mut self, v: BlendFactor) -> &mut RenderPassColorTarget;
+    fn set_src_rgb_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
 
     /// Set the destination blend factor for the alpha channel. Defaults to `Zero`.
-    fn set_dst_alpha_factor(&mut self, v: BlendFactor) -> &mut RenderPassColorTarget;
+    fn set_dst_alpha_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
 
     /// Set the destination blend factor for RGB channels. Defaults to `Zero`.
-    fn set_dst_rgb_factor(&mut self, v: BlendFactor) -> &mut RenderPassColorTarget;
+    fn set_dst_rgb_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
 
     /// Set the blending operation for the alpha channel. Defaults to `Add`.
-    fn set_alpha_op(&mut self, v: BlendOp) -> &mut RenderPassColorTarget;
+    fn set_alpha_op(&mut self, v: BlendOp) -> &mut RasterizerColorTarget;
 
     /// Set the blending operation for RGB channels. Defaults to `Add`.
-    fn set_rgb_op(&mut self, v: BlendOp) -> &mut RenderPassColorTarget;
+    fn set_rgb_op(&mut self, v: BlendOp) -> &mut RasterizerColorTarget;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
