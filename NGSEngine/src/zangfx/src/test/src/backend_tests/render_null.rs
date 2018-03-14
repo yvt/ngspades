@@ -29,17 +29,54 @@ pub fn render_null<T: TestDriver>(driver: T) {
         println!("- Creating a render pass");
         let pass = {
             let mut builder = device.build_render_pass();
+            builder.target(0).set_format(<u8>::as_rgba_norm());
+            builder.subpass_color_targets(&[Some((0, gfx::ImageLayout::RenderWrite))]);
             builder.end();
             builder.build().unwrap()
         };
 
-        println!("- Creating a render target table");
-        let rtt = device
-            .build_render_target_table()
-            .render_pass(&pass)
+        println!("- Creating a render target");
+        let image = device
+            .build_image()
             .extents(&[256, 256])
+            .format(<u8>::as_rgba_norm())
+            .usage(flags![gfx::ImageUsage::{Render}])
             .build()
             .unwrap();
+        let image = utils::UniqueImage::new(device, image);
+
+        println!("- Computing the memory requirements for the render target");
+        let valid_memory_types = device
+            .get_memory_req((&*image).into())
+            .unwrap()
+            .memory_types;
+        let memory_type = utils::choose_memory_type(
+            device,
+            valid_memory_types,
+            flags![gfx::MemoryTypeCaps::{DeviceLocal}],
+            flags![gfx::MemoryTypeCaps::{DeviceLocal}],
+        );
+        println!("  Memory Type = {}", memory_type);
+
+        println!("- Creating a heap");
+        let heap: Box<gfx::Heap> = {
+            let mut builder = device.build_dedicated_heap();
+            builder.memory_type(memory_type).label("Render target heap");
+            builder.prebind((&*image).into());
+            builder.build().unwrap()
+        };
+        heap.bind((&*image).into()).unwrap().unwrap();
+
+        println!("- Creating a render target table");
+        let rtt = {
+            let mut builder = device.build_render_target_table();
+            builder.target(0, &*image);
+            builder
+                .render_pass(&pass)
+                .extents(&[256, 256])
+                .build()
+                .unwrap()
+        };
 
         println!("- Creating a pipeline");
         let pipeline = {

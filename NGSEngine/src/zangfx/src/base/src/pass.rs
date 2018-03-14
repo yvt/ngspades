@@ -87,6 +87,10 @@ pub trait RenderPassBuilder: Object {
     ) -> &mut RenderPassBuilder;
 
     /// Define the color render targets of the current subpass.
+    ///
+    /// # Valid Usage
+    ///
+    /// You must specify at least one non-`None` color target.
     fn subpass_color_targets(
         &mut self,
         targets: &[Option<(RenderPassTargetIndex, ImageLayout)>],
