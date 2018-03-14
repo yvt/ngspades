@@ -381,6 +381,12 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     ///
     /// If the image has a depth/stencil format, the current command queue must
     /// support graphics operations.
+    ///
+    /// If `dst_origin` has fewer elements than the dimensionality of the
+    /// destination image, the rest is assumed to be all `0`.
+    ///
+    /// If `size` has fewer elements than the dimensionality of the
+    /// destination image, the rest is assumed to be all `1`.
     fn copy_buffer_to_image(
         &mut self,
         src: &handles::Buffer,
@@ -399,6 +405,12 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     ///
     /// If the image has a depth/stencil format, the current command queue must
     /// support graphics operations.
+    ///
+    /// If `src_origin` has fewer elements than the dimensionality of the
+    /// source image, the rest is assumed to be all `0`.
+    ///
+    /// If `size` has fewer elements than the dimensionality of the
+    /// source image, the rest is assumed to be all `1`.
     fn copy_image_to_buffer(
         &mut self,
         src: &handles::Image,
@@ -413,14 +425,21 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
 
     /// Copy data from an image to another image.
     ///
-    /// The source image must be in the `General` or `TransferSource` layout.
-    /// The destination must be in the `General` or `TransferDestination` layout.
+    /// The source image must be in the `General` or `CopyRead` layout.
+    /// The destination must be in the `General` or `CopyWrite` layout.
     ///
     /// The source and destination images must have the same image format and
     /// the same sample count.
     ///
-    /// `source_subresource_range` and `destination_subresource_range` must have
-    /// the same number of array layers.
+    /// `src_range` and `dst_range` must have the same number of array layers.
+    ///
+    /// If `src_origin` has fewer elements than the dimensionality of the
+    /// source image, the rest is assumed to be all `0`. Similarly, if
+    /// `dst_origin` has fewer elements than the dimensionality of the
+    /// destination image, the rest is assumed to be all `0`.
+    ///
+    /// If `size` has fewer elements than the dimensionality of the
+    /// source and/or destination image, the rest is assumed to be all `1`.
     fn copy_image(
         &mut self,
         src: &handles::Image,
