@@ -399,7 +399,7 @@ struct RasterizerPartialStates {
     depth_clip_mode: metal::MTLDepthClipMode,
     triangle_fill_mode: metal::MTLTriangleFillMode,
     depth_bias: Option<base::DepthBias>,
-    depth_stencil: Option<OCPtr<metal::MTLDepthStencilState>>,
+    depth_stencil: OCPtr<metal::MTLDepthStencilState>,
     compact_depth_stencil: CompactDsState,
 }
 
@@ -414,8 +414,8 @@ impl Rasterizer {
             depth_bias: None,
             alpha_to_coverage: false,
             sample_count: 1,
-            depth_write: true,
-            depth_test: metal::MTLCompareFunction::LessEqual,
+            depth_write: false,
+            depth_test: metal::MTLCompareFunction::Always,
             stencil_ops: Default::default(),
             stencil_masks: Default::default(),
             color_targets: Vec::new(),
@@ -432,57 +432,50 @@ impl Rasterizer {
         metal_desc.set_alpha_to_coverage_enabled(self.alpha_to_coverage);
         metal_desc.set_sample_count(self.sample_count as u64);
 
-        let depth_stencil;
+        // Construct a `MTLDepthStencilState`
+        let metal_ds = unsafe { OCPtr::from_raw(metal::MTLDepthStencilDescriptor::alloc().init()) }
+            .ok_or_else(|| nil_error("MTLDepthStencilDescriptor alloc"))?;
 
-        if self.depth_write || self.depth_test != metal::MTLCompareFunction::Always {
-            let metal_ds = unsafe {
-                OCPtr::from_raw(metal::MTLDepthStencilDescriptor::alloc().init())
-            }.ok_or_else(|| nil_error("MTLDepthStencilDescriptor alloc"))?;
+        metal_ds.set_depth_write_enabled(self.depth_write);
+        metal_ds.set_depth_compare_function(self.depth_test);
 
-            metal_ds.set_depth_write_enabled(self.depth_write);
-            metal_ds.set_depth_compare_function(self.depth_test);
+        fn populate_stencil(
+            ops: &MetalStencilOps,
+            masks: &base::StencilMasks,
+        ) -> Result<OCPtr<metal::MTLStencilDescriptor>> {
+            let metal_desc = unsafe {
+                OCPtr::from_raw(metal::MTLStencilDescriptor::alloc().init())
+            }.ok_or_else(|| nil_error("MTLStencilDescriptor alloc"))?;
 
-            fn populate_stencil(
-                ops: &MetalStencilOps,
-                masks: &base::StencilMasks,
-            ) -> Result<OCPtr<metal::MTLStencilDescriptor>> {
-                let metal_desc = unsafe {
-                    OCPtr::from_raw(metal::MTLStencilDescriptor::alloc().init())
-                }.ok_or_else(|| nil_error("MTLStencilDescriptor alloc"))?;
+            metal_desc.set_stencil_compare_function(ops.compare);
+            metal_desc.set_stencil_failure_operation(ops.stencil_failure);
+            metal_desc.set_depth_failure_operation(ops.depth_failure);
+            metal_desc.set_depth_stencil_pass_operation(ops.pass);
+            metal_desc.set_read_mask(masks.read);
+            metal_desc.set_write_mask(masks.write);
 
-                metal_desc.set_stencil_compare_function(ops.compare);
-                metal_desc.set_stencil_failure_operation(ops.stencil_failure);
-                metal_desc.set_depth_failure_operation(ops.depth_failure);
-                metal_desc.set_depth_stencil_pass_operation(ops.pass);
-                metal_desc.set_read_mask(masks.read);
-                metal_desc.set_write_mask(masks.write);
-
-                Ok(metal_desc)
-            }
-
-            if self.stencil_ops[0] != MetalStencilOps::default() {
-                metal_ds.set_front_face_stencil(*populate_stencil(
-                    &self.stencil_ops[0],
-                    &self.stencil_masks[0],
-                )?);
-            }
-            if self.stencil_ops[1] != MetalStencilOps::default() {
-                metal_ds.set_back_face_stencil(*populate_stencil(
-                    &self.stencil_ops[1],
-                    &self.stencil_masks[1],
-                )?);
-            }
-
-            let metal_ds = OCPtr::new(metal_device.new_depth_stencil_state(*metal_ds))
-                .ok_or_else(|| nil_error("MTLDevice newDepthStencilStateWithDescriptor:"))?;
-
-            depth_stencil = Some(metal_ds);
-        } else {
-            depth_stencil = None;
+            Ok(metal_desc)
         }
+
+        if self.stencil_ops[0] != MetalStencilOps::default() {
+            metal_ds.set_front_face_stencil(*populate_stencil(
+                &self.stencil_ops[0],
+                &self.stencil_masks[0],
+            )?);
+        }
+        if self.stencil_ops[1] != MetalStencilOps::default() {
+            metal_ds.set_back_face_stencil(*populate_stencil(
+                &self.stencil_ops[1],
+                &self.stencil_masks[1],
+            )?);
+        }
+
+        let depth_stencil = OCPtr::new(metal_device.new_depth_stencil_state(*metal_ds))
+            .ok_or_else(|| nil_error("MTLDevice newDepthStencilStateWithDescriptor:"))?;
 
         let compact_depth_stencil = CompactDsState::from_rasterizer(self);
 
+        // Setup attachments
         metal_desc.set_depth_attachment_pixel_format(render_pass.depth_format(subpass_index));
         metal_desc.set_stencil_attachment_pixel_format(render_pass.stencil_format(subpass_index));
 
@@ -960,12 +953,8 @@ impl RenderStateManager {
                 self.set_depth_bias(Some(depth_bias));
             }
             if self.compact_depth_stencil != rps.compact_depth_stencil {
-                self.metal_encoder.set_depth_stencil_state(
-                    rps.depth_stencil
-                        .as_ref()
-                        .map(|x| **x)
-                        .unwrap_or(metal::MTLDepthStencilState::nil()),
-                );
+                self.metal_encoder
+                    .set_depth_stencil_state(*rps.depth_stencil);
                 self.compact_depth_stencil = rps.compact_depth_stencil;
             }
         }

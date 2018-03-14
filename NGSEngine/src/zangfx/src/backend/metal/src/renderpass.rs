@@ -372,6 +372,10 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 
                 let target: &Target = self.targets[pass_target.index].as_ref().unwrap();
 
+                debug_assert!(
+                    !target.image.metal_texture().is_null(),
+                    "image is not bound to memory"
+                );
                 metal_desc.set_texture(target.image.metal_texture());
                 metal_desc.set_level(target.mip_level as u64);
                 metal_desc.set_slice(target.layer as u64);
