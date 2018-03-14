@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use num_integer::Integer;
-use std::{ops, fmt};
+use std::{fmt, ops};
 
 /// Integral types with efficient binary operations.
 pub trait BinaryInteger
@@ -17,7 +17,7 @@ pub trait BinaryInteger
     + ops::DivAssign
     + RefSaturatingAdd<Output = Self>
     + fmt::Debug {
-    type OneDigits: Iterator<Item=u32>;
+    type OneDigits: Iterator<Item = u32>;
 
     fn max_digits() -> u32;
 
