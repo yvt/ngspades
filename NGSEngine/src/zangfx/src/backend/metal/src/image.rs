@@ -11,7 +11,7 @@ use metal;
 use cocoa::foundation::NSRange;
 
 use utils::{nil_error, OCPtr};
-use formats::translate_image_format;
+use formats::{translate_image_format, translate_metal_pixel_format};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImageSubRange {
@@ -150,8 +150,8 @@ impl base::ImageBuilder for ImageBuilder {
         );
         metal_desc.set_storage_mode(metal::MTLStorageMode::Private);
 
-        let format = translate_image_format(format).expect("Unsupported image format");
-        metal_desc.set_pixel_format(format);
+        let metal_format = translate_image_format(format).expect("Unsupported image format");
+        metal_desc.set_pixel_format(metal_format);
 
         metal_desc.set_width(dims[0] as u64);
         metal_desc.set_height(dims[1] as u64);
@@ -161,7 +161,13 @@ impl base::ImageBuilder for ImageBuilder {
         metal_desc.set_sample_count(1);
         metal_desc.set_array_length(self.num_layers.unwrap_or(1) as u64);
 
-        Ok(base::Image::new(Image::new(metal_desc, self.label.clone())))
+        let num_bytes_per_pixel = format.size_class().num_bytes_per_pixel();
+
+        Ok(base::Image::new(Image::new(
+            metal_desc,
+            num_bytes_per_pixel,
+            self.label.clone(),
+        )))
     }
 }
 
@@ -180,14 +186,20 @@ unsafe impl Sync for Image {}
 struct ImageData {
     metal_desc: Option<OCPtr<metal::MTLTextureDescriptor>>,
     metal_texture: Option<OCPtr<metal::MTLTexture>>,
+    num_bytes_per_pixel: usize,
     label: Option<String>,
 }
 
 impl Image {
-    fn new(metal_desc: OCPtr<metal::MTLTextureDescriptor>, label: Option<String>) -> Self {
+    fn new(
+        metal_desc: OCPtr<metal::MTLTextureDescriptor>,
+        num_bytes_per_pixel: usize,
+        label: Option<String>,
+    ) -> Self {
         let data = ImageData {
             metal_desc: Some(metal_desc),
             metal_texture: None,
+            num_bytes_per_pixel,
             label,
         };
 
@@ -200,10 +212,14 @@ impl Image {
     ///
     /// The constructed `Image` will be initally in the Allocated state.
     pub unsafe fn from_raw(metal_texture: metal::MTLTexture) -> Self {
+        let metal_format = metal_texture.pixel_format();
+        let format = translate_metal_pixel_format(metal_format);
+
         let data = ImageData {
             metal_desc: None,
             metal_texture: OCPtr::from_raw(metal_texture),
             label: None,
+            num_bytes_per_pixel: format.size_class().num_bytes_per_pixel(),
         };
 
         Self {
@@ -241,6 +257,10 @@ impl Image {
 
         // We don't need it anymore
         data.metal_desc = None;
+    }
+
+    pub(super) fn num_bytes_per_pixel(&self) -> usize {
+        unsafe { self.data() }.num_bytes_per_pixel
     }
 
     pub(super) fn memory_req(&self, metal_device: metal::MTLDevice) -> base::MemoryReq {

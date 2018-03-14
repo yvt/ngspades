@@ -4,15 +4,17 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use metal::MTLBlitCommandEncoder;
+use metal::{self, MTLBlitCommandEncoder};
 use cocoa::foundation::NSRange;
-use base::{command, handles, heap, resources, DeviceSize, StageFlags};
+
+use base::{self, DeviceSize};
+use common::*;
 
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands};
 use cmd::fence::Fence;
-
 use buffer::Buffer;
+use image::Image;
 
 #[derive(Debug)]
 pub struct CopyEncoder {
@@ -21,7 +23,7 @@ pub struct CopyEncoder {
 }
 
 zangfx_impl_object! { CopyEncoder:
-command::CmdEncoder, command::CopyCmdEncoder, ::Debug }
+base::CmdEncoder, base::CopyCmdEncoder, ::Debug }
 
 unsafe impl Send for CopyEncoder {}
 unsafe impl Sync for CopyEncoder {}
@@ -40,7 +42,7 @@ impl CopyEncoder {
     }
 }
 
-impl command::CmdEncoder for CopyEncoder {
+impl base::CmdEncoder for CopyEncoder {
     fn begin_debug_group(&mut self, label: &str) {
         self.metal_encoder.begin_debug_group(label);
     }
@@ -53,39 +55,39 @@ impl command::CmdEncoder for CopyEncoder {
         self.metal_encoder.debug_marker(label);
     }
 
-    fn use_resource(&mut self, _usage: command::ResourceUsage, _objs: &[handles::ResourceRef]) {
+    fn use_resource(&mut self, _usage: base::ResourceUsage, _objs: &[base::ResourceRef]) {
         // No-op: no arguemnt table for copy encoder
     }
 
-    fn use_heap(&mut self, _heaps: &[&heap::Heap]) {
+    fn use_heap(&mut self, _heaps: &[&base::Heap]) {
         // No-op: no arguemnt table for copy encoder
     }
 
     fn wait_fence(
         &mut self,
-        fence: &handles::Fence,
-        _src_stage: StageFlags,
-        _barrier: &handles::Barrier,
+        fence: &base::Fence,
+        _src_stage: base::StageFlags,
+        _barrier: &base::Barrier,
     ) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.wait_for_fence(our_fence.metal_fence());
         self.fence_set.wait_fence(our_fence);
     }
 
-    fn update_fence(&mut self, fence: &handles::Fence, _src_stage: StageFlags) {
+    fn update_fence(&mut self, fence: &base::Fence, _src_stage: base::StageFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.update_fence(our_fence.metal_fence());
         self.fence_set.signal_fence(our_fence);
     }
 
-    fn barrier(&mut self, _barrier: &handles::Barrier) {
+    fn barrier(&mut self, _barrier: &base::Barrier) {
         // No-op: Metal's blit command encoders implicitly barrier between
         // each dispatch.
     }
 }
 
-impl command::CopyCmdEncoder for CopyEncoder {
-    fn fill_buffer(&mut self, buffer: &handles::Buffer, range: Range<DeviceSize>, value: u8) {
+impl base::CopyCmdEncoder for CopyEncoder {
+    fn fill_buffer(&mut self, buffer: &base::Buffer, range: Range<DeviceSize>, value: u8) {
         if range.start >= range.end {
             return;
         }
@@ -99,9 +101,9 @@ impl command::CopyCmdEncoder for CopyEncoder {
 
     fn copy_buffer(
         &mut self,
-        src: &handles::Buffer,
+        src: &base::Buffer,
         src_offset: DeviceSize,
-        dst: &handles::Buffer,
+        dst: &base::Buffer,
         dst_offset: DeviceSize,
         size: DeviceSize,
     ) {
@@ -119,44 +121,147 @@ impl command::CopyCmdEncoder for CopyEncoder {
 
     fn copy_buffer_to_image(
         &mut self,
-        _src: &handles::Buffer,
-        _src_range: &command::BufferImageRange,
-        _dst: &handles::Image,
-        _dst_layout: resources::ImageLayout,
-        _dst_aspect: resources::ImageAspect,
-        _dst_range: &resources::ImageLayerRange,
-        _dst_origin: &[u32],
-        _size: &[u32],
+        src: &base::Buffer,
+        src_range: &base::BufferImageRange,
+        dst: &base::Image,
+        _dst_layout: base::ImageLayout,
+        dst_aspect: base::ImageAspect,
+        dst_range: &base::ImageLayerRange,
+        dst_origin: &[u32],
+        size: &[u32],
     ) {
-        unimplemented!();
+        let my_src: &Buffer = src.downcast_ref().expect("bad source buffer type");
+        let my_dst: &Image = dst.downcast_ref().expect("bad destination image type");
+
+        let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);
+        let size: [u32; 3] = size.into_with_pad(1);
+
+        // TODO: `num_bytes_per_pixel` is incorrect for non-color images
+        let pixel_size = my_dst.num_bytes_per_pixel();
+        for i in dst_range.layers.clone() {
+            self.metal_encoder.copy_from_buffer_to_image(
+                my_src.metal_buffer(),
+                src_range.offset
+                    + src_range.plane_stride * pixel_size as u64
+                        * (i - dst_range.layers.start) as u64,
+                src_range.row_stride * pixel_size as u64,
+                src_range.plane_stride * pixel_size as u64,
+                metal::MTLSize {
+                    width: size[0] as u64,
+                    height: size[1] as u64,
+                    depth: size[2] as u64,
+                },
+                my_dst.metal_texture(),
+                i as u64,
+                dst_range.mip_level as u64,
+                metal::MTLOrigin {
+                    x: dst_origin[0] as u64,
+                    y: dst_origin[1] as u64,
+                    z: dst_origin[2] as u64,
+                },
+                match dst_aspect {
+                    base::ImageAspect::Color => metal::MTLBlitOptionNone,
+                    base::ImageAspect::Depth => metal::MTLBlitOptionDepthFromDepthStencil,
+                    base::ImageAspect::Stencil => metal::MTLBlitOptionStencilFromDepthStencil,
+                },
+            );
+        }
     }
 
     fn copy_image_to_buffer(
         &mut self,
-        _src: &handles::Image,
-        _src_layout: resources::ImageLayout,
-        _src_aspect: resources::ImageAspect,
-        _src_range: &resources::ImageLayerRange,
-        _src_origin: &[u32],
-        _dst: &handles::Buffer,
-        _dst_range: &command::BufferImageRange,
-        _size: &[u32],
+        src: &base::Image,
+        _src_layout: base::ImageLayout,
+        src_aspect: base::ImageAspect,
+        src_range: &base::ImageLayerRange,
+        src_origin: &[u32],
+        dst: &base::Buffer,
+        dst_range: &base::BufferImageRange,
+        size: &[u32],
     ) {
-        unimplemented!();
+        let my_src: &Image = src.downcast_ref().expect("bad source image type");
+        let my_dst: &Buffer = dst.downcast_ref().expect("bad destination buffer type");
+
+        let src_origin: [u32; 3] = src_origin.into_with_pad(0);
+        let size: [u32; 3] = size.into_with_pad(1);
+
+        // TODO: `num_bytes_per_pixel` is incorrect for non-color images
+        let pixel_size = my_src.num_bytes_per_pixel();
+        for i in src_range.layers.clone() {
+            self.metal_encoder.copy_from_image_to_buffer(
+                my_src.metal_texture(),
+                i as u64,
+                src_range.mip_level as u64,
+                metal::MTLOrigin {
+                    x: src_origin[0] as u64,
+                    y: src_origin[1] as u64,
+                    z: src_origin[2] as u64,
+                },
+                metal::MTLSize {
+                    width: size[0] as u64,
+                    height: size[1] as u64,
+                    depth: size[2] as u64,
+                },
+                my_dst.metal_buffer(),
+                dst_range.offset
+                    + dst_range.plane_stride * pixel_size as u64
+                        * (i - src_range.layers.start) as u64,
+                dst_range.row_stride * pixel_size as u64,
+                dst_range.plane_stride * pixel_size as u64,
+                match src_aspect {
+                    base::ImageAspect::Color => metal::MTLBlitOptionNone,
+                    base::ImageAspect::Depth => metal::MTLBlitOptionDepthFromDepthStencil,
+                    base::ImageAspect::Stencil => metal::MTLBlitOptionStencilFromDepthStencil,
+                },
+            );
+        }
     }
 
     fn copy_image(
         &mut self,
-        _src: &handles::Image,
-        _src_layout: resources::ImageLayout,
-        _src_range: &resources::ImageLayerRange,
-        _src_origin: &[u32],
-        _dst: &handles::Image,
-        _dst_layout: resources::ImageLayout,
-        _dst_range: &resources::ImageLayerRange,
-        _dst_origin: &[u32],
-        _size: &[u32],
+        src: &base::Image,
+        _src_layout: base::ImageLayout,
+        src_range: &base::ImageLayerRange,
+        src_origin: &[u32],
+        dst: &base::Image,
+        _dst_layout: base::ImageLayout,
+        dst_range: &base::ImageLayerRange,
+        dst_origin: &[u32],
+        size: &[u32],
     ) {
-        unimplemented!();
+        let my_src: &Image = src.downcast_ref().expect("bad source image type");
+        let my_dst: &Image = dst.downcast_ref().expect("bad destination image type");
+
+        let src_origin: [u32; 3] = src_origin.into_with_pad(0);
+        let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);
+        let size: [u32; 3] = size.into_with_pad(1);
+
+        assert_eq!(src_range.layers.len(), dst_range.layers.len());
+
+        for (src_layer, dst_layer) in src_range.layers.clone().zip(dst_range.layers.clone()) {
+            self.metal_encoder.copy_from_image_to_image(
+                my_src.metal_texture(),
+                src_layer as u64,
+                src_range.mip_level as u64,
+                metal::MTLOrigin {
+                    x: src_origin[0] as u64,
+                    y: src_origin[1] as u64,
+                    z: src_origin[2] as u64,
+                },
+                metal::MTLSize {
+                    width: size[0] as u64,
+                    height: size[1] as u64,
+                    depth: size[2] as u64,
+                },
+                my_dst.metal_texture(),
+                dst_layer as u64,
+                dst_range.mip_level as u64,
+                metal::MTLOrigin {
+                    x: dst_origin[0] as u64,
+                    y: dst_origin[1] as u64,
+                    z: dst_origin[2] as u64,
+                },
+            );
+        }
     }
 }
