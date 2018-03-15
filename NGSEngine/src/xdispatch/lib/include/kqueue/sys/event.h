@@ -203,7 +203,7 @@ int     kevent(int kq, const struct kevent *changelist, int nchanges,
 	    struct kevent *eventlist, int nevents,
 	    const struct timespec *timeout);
 #ifdef MAKE_STATIC
-void     libkqueue_init();
+int     libkqueue_init();
 #endif
 #endif
 

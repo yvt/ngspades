@@ -24,9 +24,7 @@ fn main() {
             build
                 .file("lib/libpthread_workqueue/posix/manager.c")
                 .file("lib/libpthread_workqueue/posix/thread_info.c")
-                .file("lib/libpthread_workqueue/posix/thread_rt.c")
-                .file("lib/libpthread_workqueue/api.c")
-                .file("lib/libpthread_workqueue/witem_cache.c");
+                .file("lib/libpthread_workqueue/posix/thread_rt.c");
         }
         build
             .file("lib/libpthread_workqueue/api.c")
@@ -45,7 +43,6 @@ fn main() {
         } else {
             build
                 .file("lib/libkqueue/linux/platform.c")
-                .file("lib/libkqueue/linux/proc.c")
                 .file("lib/libkqueue/linux/read.c")
                 .file("lib/libkqueue/linux/signal.c")
                 .file("lib/libkqueue/linux/timer.c")
@@ -60,6 +57,7 @@ fn main() {
             .file("lib/libkqueue/common/kqueue.c")
             .file("lib/libkqueue/common/map.c")
             .include("lib/include")
+            .include("lib/libkqueue/common")
             .compile("libkqueue.a");
 
         let mut build = cc::Build::new();
@@ -67,6 +65,8 @@ fn main() {
             build
                 .file("lib/xdispatch/platform/windows/platform.c")
                 .include("lib/xdispatch/platform/windows");
+        } else {
+            build.include("lib/xdispatch/platform/posix");
         }
         build
             .file("lib/xdispatch/src/apply.c")
