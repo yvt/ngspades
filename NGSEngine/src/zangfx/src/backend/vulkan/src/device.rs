@@ -296,7 +296,21 @@ impl base::Device for Device {
                                 descriptor_count += 1;
                             }
                         }
-                        base::ArgSlice::Sampler(_) => unimplemented!(),
+                        base::ArgSlice::Sampler(samplers) => {
+                            while !write_images.is_full() && i < samplers.len() {
+                                let sampler = samplers[i];
+                                let sampler: &sampler::Sampler =
+                                    sampler.downcast_ref().expect("bad sampler type");
+
+                                write_images.push(vk::DescriptorImageInfo {
+                                    sampler: sampler.vk_sampler(),
+                                    image_view: vk::ImageView::null(),
+                                    image_layout: vk::ImageLayout::Undefined,
+                                });
+                                i += 1;
+                                descriptor_count += 1;
+                            }
+                        }
                     };
                     write.descriptor_count = descriptor_count;
                     writes.push(write);
