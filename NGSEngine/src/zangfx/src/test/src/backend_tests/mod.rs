@@ -62,6 +62,7 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { arg_table_image, $driver }
         zangfx_test_single! { arg_table_buffer, $driver }
         zangfx_test_single! { arg_table_sampler, $driver }
+        zangfx_test_single! { arg_table_mixed_read, $driver }
 
         zangfx_test_single! { cmdqueue_create, $driver }
         zangfx_test_single! { #[should_panic] cmdqueue_create_fail_missing_queue_family, $driver }

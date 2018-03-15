@@ -15,6 +15,10 @@ fn main() {
         .flag("-V")
         .compile("compute_conv1.comp.spv");
     prebuild_glslang::Config::new()
+        .file("src/backend_tests/arg_table_mixed_read.comp")
+        .flag("-V")
+        .compile("arg_table_mixed_read.comp.spv");
+    prebuild_glslang::Config::new()
         .file("src/backend_tests/render_null.vert")
         .flag("-V")
         .compile("render_null.vert.spv");

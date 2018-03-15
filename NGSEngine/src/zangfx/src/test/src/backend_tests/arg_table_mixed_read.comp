@@ -1,0 +1,28 @@
+#version 450
+
+layout(std430, set = 0, binding = 0) buffer KernelOutput { uint data[]; } u_kernel_out;
+layout(std140, set = 0, binding = 2) uniform InputBuffer1 { uint data; float zero; } u_input_buffer1;
+layout(std140, set = 0, binding = 4) uniform InputBuffer2 { uint data; } u_input_buffer2;
+layout(std140, set = 0, binding = 6) uniform InputBuffer3 { uint data; } u_input_buffer3;
+layout(std140, set = 0, binding = 8) uniform InputBuffer4 { uint data; } u_input_buffer4;
+
+// Can't use `texture1D` here: https://github.com/KhronosGroup/SPIRV-Cross/issues/506
+layout(set = 0, binding = 1) uniform textureCube u_image1;
+layout(set = 0, binding = 3) uniform texture2D u_image2;
+layout(set = 0, binding = 5) uniform texture3D u_image3;
+layout(set = 0, binding = 7) uniform texture2DArray u_image4;
+layout(set = 0, binding = 9) uniform sampler u_sampler;
+
+void main()
+{
+    float zero = u_input_buffer1.zero;
+    u_kernel_out.data[0] = u_input_buffer1.data +
+        uint(texture(samplerCube(u_image1, u_sampler), vec3(1.0)).x * zero);
+    u_kernel_out.data[1] = u_input_buffer2.data +
+        uint(texture(sampler2D(u_image2, u_sampler), vec2(0.0)).x * zero);
+    u_kernel_out.data[2] = u_input_buffer3.data +
+        uint(texture(sampler3D(u_image3, u_sampler), vec3(0.0)).x * zero);
+    u_kernel_out.data[3] = u_input_buffer4.data +
+        uint(texture(sampler2DArray(u_image4, u_sampler), vec3(0.0)).x * zero);
+    u_kernel_out.data[4] = 0xdeadbeef;
+}
