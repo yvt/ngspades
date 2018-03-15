@@ -332,7 +332,7 @@ impl Queue {
         let src_ptr = src.as_ptr();
 
         let mut dest = Vec::with_capacity(len);
-        let dest_ptr = dest.as_mut_ptr();
+        let dest_ptr: *mut U = dest.as_mut_ptr();
 
         let work = move |i| unsafe {
             let result = work(ptr::read(src_ptr.offset(i as isize)));
