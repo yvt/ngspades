@@ -127,6 +127,11 @@ impl base::ImageBuilder for ImageBuilder {
             Type3d => vk::ImageType::Type3d,
         };
 
+        let mut array_layers = self.num_layers.unwrap_or(1);
+        if let ImageExtents::Cube(_) = extents {
+            array_layers *= 6;
+        }
+
         let usage = translate_image_usage(self.usage, format);
 
         let mut aspect = vk::ImageAspectFlags::empty();
@@ -156,7 +161,7 @@ impl base::ImageBuilder for ImageBuilder {
                 depth: dims[2],
             },
             mip_levels: self.num_mip_levels,
-            array_layers: self.num_layers.unwrap_or(1),
+            array_layers,
             samples: vk::SAMPLE_COUNT_1_BIT,
             tiling: vk::ImageTiling::Optimal,
             usage,
