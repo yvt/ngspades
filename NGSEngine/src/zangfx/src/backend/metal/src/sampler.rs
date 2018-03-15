@@ -131,6 +131,7 @@ impl sampler::SamplerBuilder for SamplerBuilder {
         metal_desc.set_lod_max_clamp(self.lod_clamp.end);
         metal_desc.set_border_color(translate_border_color(self.border_color));
         metal_desc.set_normalized_coordinates(!self.unnorm_coords);
+        metal_desc.set_support_argument_buffers(true);
 
         if let Some(ref label) = self.label {
             metal_desc.set_label(label);

@@ -154,6 +154,14 @@ impl MTLSamplerDescriptor {
         }
     }
 
+    pub fn set_support_argument_buffers(&self, support_argument_buffers: bool) {
+        unsafe {
+            msg_send![self.0, setSupportArgumentBuffers:if support_argument_buffers {
+                YES
+            } else { NO }]
+        }
+    }
+
     pub fn set_label(&self, label: &str) {
         unsafe {
             let nslabel = NSString::from_str(label);
