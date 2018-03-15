@@ -251,6 +251,28 @@ pub trait DeviceExt: Device {
         self.build_semaphore().build()
     }
 
+    /// Create a `ImageView` associated with this device.
+    ///
+    /// This is a shorthand method for [`build_image_view`].
+    ///
+    /// [`build_image_view`]: Device::build_image_view
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::*;
+    ///     use zangfx_base::prelude::*;
+    ///     # fn test(device: &Device, image: Image) {
+    ///     let image_view = device.new_image_view(&image, ImageLayout::ShaderRead).unwrap();
+    ///     # }
+    ///
+    fn new_image_view(
+        &self,
+        image: &handles::Image,
+        layout: resources::ImageLayout,
+    ) -> Result<handles::ImageView> {
+        self.build_image_view().image(image).layout(layout).build()
+    }
+
     /// Create a autorelease pool and call the specified function inside it.
     ///
     /// This is a wrapper of [`autorelease_pool_scope_core`] that allows the function
