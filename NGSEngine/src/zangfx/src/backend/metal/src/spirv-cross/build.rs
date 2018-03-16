@@ -32,4 +32,9 @@ fn main() {
         .file("tests/test2.vert")
         .flag("-V")
         .compile("test2.vert.spv");
+
+    prebuild_glslang::Config::new()
+        .file("tests/depthtex.frag")
+        .flag("-V")
+        .compile("depthtex.frag.spv");
 }

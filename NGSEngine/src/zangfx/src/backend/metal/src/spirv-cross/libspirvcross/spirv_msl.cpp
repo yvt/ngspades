@@ -3258,37 +3258,46 @@ string CompilerMSL::entry_point_args(bool append_comma)
 	return ep_args;
 }
 
-// Returns the Metal index of the resource of the specified type as used by the specified variable.
-// `is_arg_buf` is set to `true` iff the resource is passed via an indirect argument buffer.
-uint32_t CompilerMSL::get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype, bool &is_arg_buf)
+MSLResourceBinding *CompilerMSL::maybe_get_metal_resource_binding(SPIRVariable &var)
 {
 	auto &execution = get_entry_point();
 	auto &var_dec = meta[var.self].decoration;
 	uint32_t var_desc_set = (var.storage == StorageClassPushConstant) ? kPushConstDescSet : var_dec.set;
 	uint32_t var_binding = (var.storage == StorageClassPushConstant) ? kPushConstBinding : var_dec.binding;
 
-	is_arg_buf = false;
-
-	// If a matching binding has been specified, find and use it
 	for (auto p_res_bind : resource_bindings)
 	{
 		if (p_res_bind->stage == execution.model && p_res_bind->desc_set == var_desc_set &&
 		    p_res_bind->binding == var_binding)
 		{
+			return p_res_bind;
+		}
+	}
 
-			p_res_bind->used_by_shader = true;
-			is_arg_buf = p_res_bind->is_passed_via_argument_buffer();
-			switch (basetype)
-			{
-			case SPIRType::Struct:
-				return p_res_bind->msl_buffer;
-			case SPIRType::Image:
-				return p_res_bind->msl_texture;
-			case SPIRType::Sampler:
-				return p_res_bind->msl_sampler;
-			default:
-				return 0;
-			}
+	return nullptr;
+}
+
+// Returns the Metal index of the resource of the specified type as used by the specified variable.
+// `is_arg_buf` is set to `true` iff the resource is passed via an indirect argument buffer.
+uint32_t CompilerMSL::get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype, bool &is_arg_buf)
+{
+	is_arg_buf = false;
+
+	MSLResourceBinding *p_res_bind = maybe_get_metal_resource_binding(var);
+
+	if (p_res_bind) {
+		p_res_bind->used_by_shader = true;
+		is_arg_buf = p_res_bind->is_passed_via_argument_buffer();
+		switch (basetype)
+		{
+		case SPIRType::Struct:
+			return p_res_bind->msl_buffer;
+		case SPIRType::Image:
+			return p_res_bind->msl_texture;
+		case SPIRType::Sampler:
+			return p_res_bind->msl_sampler;
+		default:
+			return 0;
 		}
 	}
 
@@ -3539,6 +3548,11 @@ string CompilerMSL::image_type_glsl(const SPIRType &type, uint32_t id)
 	// Bypass pointers because we need the real image struct
 	auto &img_type = get<SPIRType>(type.self).image;
 	bool shadow_image = comparison_images.count(id) != 0;
+
+	MSLResourceBinding *p_res_bind = maybe_get_metal_resource_binding(get<SPIRVariable>(id));
+	if (p_res_bind && p_res_bind->is_depth_texture) {
+		shadow_image = true;
+	}
 
 	if (img_type.depth || shadow_image)
 	{

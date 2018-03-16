@@ -42,6 +42,8 @@ pub struct ResourceBinding {
     pub msl_arg_buffer: Option<u32>,
 
     pub stage: ExecutionModel,
+
+    pub is_depth_texture: bool,
 }
 
 impl ResourceBinding {
@@ -54,6 +56,7 @@ impl ResourceBinding {
             msl_sampler: self.msl_sampler.unwrap_or(0),
             msl_arg_buffer: self.msl_arg_buffer.unwrap_or(<u32>::max_value()),
             stage: self.stage.as_ll(),
+            is_depth_texture: if self.is_depth_texture { 1 } else { 0 },
         }
     }
 }

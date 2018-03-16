@@ -7,8 +7,8 @@
 extern crate include_data;
 extern crate zangfx_spirv_cross;
 
-use zangfx_spirv_cross::{ExecutionModel, ResourceBinding, SpirV2Msl, VertexAttribute,
-                         VertexInputRate, IndirectArgument};
+use zangfx_spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl,
+                         VertexAttribute, VertexInputRate};
 
 static TEST_FRAG: include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/test.frag.spv"));
@@ -28,6 +28,7 @@ fn transpile_frag() {
             msl_sampler: Some(0),
             msl_texture: Some(0),
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Fragment,
@@ -37,6 +38,7 @@ fn transpile_frag() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Fragment,
@@ -46,6 +48,7 @@ fn transpile_frag() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .compile()
         .unwrap();
@@ -67,6 +70,7 @@ fn transpile_frag_iab() {
             msl_sampler: Some(2),
             msl_texture: Some(3),
             msl_arg_buffer: Some(0),
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Fragment,
@@ -76,6 +80,7 @@ fn transpile_frag_iab() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: Some(0),
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Fragment,
@@ -85,6 +90,7 @@ fn transpile_frag_iab() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: Some(0),
+            is_depth_texture: false,
         })
         .compile()
         .unwrap();
@@ -112,6 +118,7 @@ fn transpile_vert() {
             msl_sampler: Some(0),
             msl_texture: Some(0),
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Vertex,
@@ -121,6 +128,7 @@ fn transpile_vert() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Vertex,
@@ -130,6 +138,7 @@ fn transpile_vert() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .add_vertex_attribute(&VertexAttribute {
             location: 2,
@@ -160,6 +169,7 @@ fn transpile_vert2() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Vertex,
@@ -169,6 +179,7 @@ fn transpile_vert2() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: None,
+            is_depth_texture: false,
         })
         .compile()
         .unwrap();
@@ -190,6 +201,7 @@ fn transpile_vert2_iab() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: Some(0),
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Vertex,
@@ -199,6 +211,7 @@ fn transpile_vert2_iab() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: Some(0),
+            is_depth_texture: false,
         })
         .compile()
         .unwrap();
@@ -222,6 +235,7 @@ fn transpile_vert2_iab_explicit_ia() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: Some(0),
+            is_depth_texture: false,
         })
         .bind_resource(&ResourceBinding {
             stage: ExecutionModel::Vertex,
@@ -231,6 +245,7 @@ fn transpile_vert2_iab_explicit_ia() {
             msl_sampler: None,
             msl_texture: None,
             msl_arg_buffer: Some(0),
+            is_depth_texture: false,
         })
         .add_indirect_argument(&IndirectArgument {
             msl_arg_buffer: 0,

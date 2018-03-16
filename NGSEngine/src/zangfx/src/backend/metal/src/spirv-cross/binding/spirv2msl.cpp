@@ -102,6 +102,7 @@ public:
                 default:
                     throw std::logic_error("invalid stage");
             }
+            rb.is_depth_texture = binding->is_depth_texture;
             bindings.push_back(rb);
         } catch (const std::exception &ex) {
             last_error = ex.what();

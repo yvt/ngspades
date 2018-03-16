@@ -104,6 +104,11 @@ impl base::ArgSig for ArgSig {
         self.vk_binding.stage_flags = translate_shader_stage_flags(x);
         self
     }
+
+    fn set_image_aspect(&mut self, _: base::ImageAspect) -> &mut base::ArgSig {
+        // No-op: Vulkan doen't need this information
+        self
+    }
 }
 
 /// Implementation of `ArgTableSig` for Vulkan.

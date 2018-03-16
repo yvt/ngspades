@@ -8,6 +8,7 @@
 use Object;
 use common::Result;
 use handles::{ArgTable, ArgTableSig, RootSig};
+use resources::ImageAspect;
 use shader::ShaderStageFlags;
 use {ArgArrayIndex, ArgIndex, ArgTableIndex};
 
@@ -60,6 +61,11 @@ pub trait ArgSig: Object {
     ///
     /// Defaults to all shader stages supported by the backend.
     fn set_stages(&mut self, x: ShaderStageFlags) -> &mut ArgSig;
+
+    /// Set the image aspect.
+    ///
+    /// Defaults to `Color`. Must be `Color` or `Depth`.
+    fn set_image_aspect(&mut self, _: ImageAspect) -> &mut ArgSig;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

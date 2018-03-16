@@ -51,6 +51,8 @@ pub struct SpirV2MslResourceBinding {
     pub msl_arg_buffer: u32,
 
     pub stage: SpirVCrossExecutionModel,
+
+    pub is_depth_texture: u8,
 }
 
 #[repr(C)]

@@ -60,6 +60,8 @@ struct MSLResourceBinding
 
 	bool used_by_shader = false;
 
+	bool is_depth_texture = false;
+
 	bool is_passed_via_argument_buffer() const {
 		return msl_argument_buffer != static_cast<uint32_t>(-1);
 	}
@@ -287,6 +289,8 @@ protected:
 	std::string member_attribute_qualifier(const SPIRType &type, uint32_t index);
 	std::string argument_decl(const SPIRFunction::Parameter &arg);
 	std::string round_fp_tex_coords(std::string tex_coords, bool coord_is_fp);
+
+	MSLResourceBinding *maybe_get_metal_resource_binding(SPIRVariable &var);
 	uint32_t get_metal_resource_index(SPIRVariable &var, SPIRType::BaseType basetype, bool &is_arg_buf);
 	uint32_t get_ordered_member_location(uint32_t type_id, uint32_t index);
 	size_t get_declared_struct_member_alignment(const SPIRType &struct_type, uint32_t index) const;

@@ -43,6 +43,8 @@ struct SpirV2MslResourceBinding
     uint32_t msl_arg_buffer;
 
     SpirVCrossExecutionModel stage;
+
+    uint8_t is_depth_texture;
 };
 
 struct SpirV2MslIndirectArgument

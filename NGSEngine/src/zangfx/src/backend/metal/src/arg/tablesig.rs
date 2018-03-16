@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use arrayvec::ArrayVec;
 
-use base::{arg, device, handles, shader, ArgArrayIndex, ArgIndex};
+use base::{self, arg, device, handles, shader, ArgArrayIndex, ArgIndex};
 use common::Result;
 
 use arg::ArgSize;
@@ -36,6 +36,7 @@ unsafe impl Sync for ArgTableSigBuilder {}
 struct ArgSigBuilder {
     ty: arg::ArgType,
     len: ArgSize,
+    image_aspect: base::ImageAspect,
 }
 
 zangfx_impl_object! { ArgSigBuilder: arg::ArgSig, ::Debug }
@@ -70,7 +71,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
             self.args.resize(index + 1, None);
         }
 
-        self.args[index] = Some(ArgSigBuilder { ty, len: 1 });
+        self.args[index] = Some(ArgSigBuilder::new(ty));
 
         self.args[index].as_mut().unwrap()
     }
@@ -81,12 +82,13 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
         let mut current_index = 0usize;
 
         for (_, arg_sig_builder) in self.args.iter().enumerate() {
-            arg_sigs.push(ArgSig {
-                index: current_index,
-                ty: arg_sig_builder.as_ref().map(|b| b.ty),
-            });
-
             if let &Some(ref arg_sig_builder) = arg_sig_builder {
+                arg_sigs.push(Some(ArgSig {
+                    index: current_index,
+                    ty: arg_sig_builder.ty,
+                    image_aspect: arg_sig_builder.image_aspect,
+                }));
+
                 // Allocate Metal argument locations for the current argument,
                 // starting from `current_index` through `current_index + len - 1`.
                 let metal_desc = OCPtr::new(metal::MTLArgumentDescriptor::new())
@@ -117,6 +119,8 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
 
                 metal_args.push(metal_desc);
                 current_index += arg_sig_builder.len as usize;
+            } else {
+                arg_sigs.push(None);
             }
         }
 
@@ -131,6 +135,16 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
     }
 }
 
+impl ArgSigBuilder {
+    fn new(ty: arg::ArgType) -> Self {
+        Self {
+            ty,
+            len: 1,
+            image_aspect: base::ImageAspect::Color,
+        }
+    }
+}
+
 impl arg::ArgSig for ArgSigBuilder {
     fn set_len(&mut self, x: ArgArrayIndex) -> &mut arg::ArgSig {
         self.len = x as _;
@@ -138,6 +152,11 @@ impl arg::ArgSig for ArgSigBuilder {
     }
 
     fn set_stages(&mut self, _: shader::ShaderStageFlags) -> &mut arg::ArgSig {
+        self
+    }
+
+    fn set_image_aspect(&mut self, v: base::ImageAspect) -> &mut arg::ArgSig {
+        self.image_aspect = v;
         self
     }
 }
@@ -156,7 +175,7 @@ zangfx_impl_handle! { ArgTableSig, handles::ArgTableSig }
 #[derive(Debug)]
 struct ArgTableSigData {
     metal_device: metal::MTLDevice,
-    args: Vec<ArgSig>,
+    args: Vec<Option<ArgSig>>,
     metal_args_array: OCPtr<metal::NSArray<metal::MTLArgumentDescriptor>>,
 
     /// Shared instnace of `MTLArgumentEncoder`. It is not thread-safe by itself
@@ -170,10 +189,12 @@ struct ArgTableSigData {
 
 #[derive(Debug)]
 struct ArgSig {
-    ty: Option<arg::ArgType>,
+    ty: arg::ArgType,
 
     /// The starting index of the argument in an argument buffer.
     index: usize,
+
+    image_aspect: base::ImageAspect,
 }
 
 unsafe fn new_metal_arg_encoder(
@@ -188,7 +209,7 @@ impl ArgTableSig {
     unsafe fn new(
         metal_device: metal::MTLDevice,
         metal_args_array: OCPtr<metal::NSArray<metal::MTLArgumentDescriptor>>,
-        args: Vec<ArgSig>,
+        args: Vec<Option<ArgSig>>,
     ) -> Result<Self> {
         use std::cmp::max;
         let metal_arg_encoder = new_metal_arg_encoder(metal_device, *metal_args_array)?;
@@ -249,7 +270,7 @@ impl ArgTableSig {
 
                 for &(arg_index, start, resources) in update_sets.iter() {
                     // The current Metal argument index.
-                    let mut index = self.data.args[arg_index].index + start;
+                    let mut index = self.data.args[arg_index].as_ref().unwrap().index + start;
 
                     // Before passing `ArgSlice` to `MTLArgumentEncoder`, it must
                     // first be converted to a slice containing Metal objects.
@@ -323,17 +344,18 @@ impl ArgTableSig {
         stage: ExecutionModel,
     ) {
         for (i, arg) in self.data.args.iter().enumerate() {
-            s2m.bind_resource(&ResourceBinding {
-                desc_set,
-                binding: i as u32,
-                msl_buffer: Some(arg.index as u32),
-                msl_texture: Some(arg.index as u32),
-                msl_sampler: Some(arg.index as u32),
-                msl_arg_buffer: Some(msl_arg_buffer),
-                stage,
-            });
+            if let &Some(ref arg) = arg {
+                s2m.bind_resource(&ResourceBinding {
+                    desc_set,
+                    binding: i as u32,
+                    msl_buffer: Some(arg.index as u32),
+                    msl_texture: Some(arg.index as u32),
+                    msl_sampler: Some(arg.index as u32),
+                    msl_arg_buffer: Some(msl_arg_buffer),
+                    stage,
+                    is_depth_texture: arg.image_aspect == base::ImageAspect::Depth,
+                });
 
-            if let Some(ty) = arg.ty {
                 // Since each indirect argument is given a binding location in a way
                 // resembling those of Vulkan's descriptors, you might be lulled
                 // into a false impression that you don't have to declare them in
@@ -342,7 +364,7 @@ impl ArgTableSig {
                 // argument buffer is determined by the fields defined in the
                 // argument buffer. You have to define every field of an argument
                 // buffer in every shader that accesses the same argument buffer.
-                let msl_type = match ty {
+                let msl_type = match arg.ty {
                     arg::ArgType::StorageBuffer => "device int *",
                     arg::ArgType::UniformBuffer => "constant int *",
                     // TODO: texture type? array types?
