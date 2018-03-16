@@ -77,10 +77,6 @@ impl Device {
         &self.vk_device
     }
 
-    pub(super) fn caps(&self) -> &limits::DeviceCaps {
-        &self.caps
-    }
-
     /// Construct a `DeviceRef` pointing this `Device`.
     pub(super) unsafe fn new_device_ref(&self) -> DeviceRef {
         DeviceRef(&*self.vk_device, &*self.caps)
