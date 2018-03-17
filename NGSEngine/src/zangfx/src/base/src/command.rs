@@ -318,7 +318,7 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     /// Specify `0..1` to perform a normal (not instanced) rendering.
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>);
 
-    /// Render primitives using a currently bound index buffer.
+    /// Render primitives using the currently bound index buffer.
     ///
     /// Vertex indices are retrieved from the consecutive range of index buffer
     /// specified by `index_buffer_range`.
@@ -352,7 +352,8 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
 
     /// Provoke work in a compute pipeline.
     ///
-    /// `workgroup_count` is an array with up to 3 elements.
+    /// `workgroup_count` is an array with up to 3 elements. When less than
+    /// 3 elements are given, the missing ones are filled with `1`s.
     fn dispatch(&mut self, workgroup_count: &[u32]);
 }
 
