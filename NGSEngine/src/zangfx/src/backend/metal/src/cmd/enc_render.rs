@@ -141,11 +141,11 @@ impl command::RenderCmdEncoder for RenderEncoder {
 
     fn bind_index_buffer(
         &mut self,
-        buffers: &handles::Buffer,
+        buffer: &handles::Buffer,
         offset: base::DeviceSize,
         format: base::IndexFormat,
     ) {
-        self.state.bind_index_buffer(buffers, offset, format);
+        self.state.bind_index_buffer(buffer, offset, format);
     }
 
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {

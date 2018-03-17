@@ -305,7 +305,7 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     /// Bind an index buffer.
     fn bind_index_buffer(
         &mut self,
-        buffers: &handles::Buffer,
+        buffer: &handles::Buffer,
         offset: DeviceSize,
         format: IndexFormat,
     );
