@@ -1143,4 +1143,24 @@ impl RenderStateManager {
             );
         }
     }
+
+    pub fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+        let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        self.flush_vertex_buffers();
+        self.metal_encoder
+            .draw_indirect(self.primitive_type, buffer.metal_buffer(), offset);
+    }
+
+    pub fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+        let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        self.flush_vertex_buffers();
+        self.metal_encoder.draw_indexed_indirect(
+            self.primitive_type,
+            self.index_format,
+            self.index_buffer,
+            self.index_offset,
+            buffer.metal_buffer(),
+            offset,
+        );
+    }
 }

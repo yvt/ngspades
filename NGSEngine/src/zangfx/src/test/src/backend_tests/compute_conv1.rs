@@ -12,8 +12,20 @@ use super::{utils, TestDriver};
 static SPIRV_CONV: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_conv1.comp.spv"));
 
+/// Performs a convolution using a compute shader. Parameters are passed using
+/// the normal dispatch command.
+pub fn compute_conv1_direct<T: TestDriver>(driver: T) {
+    compute_conv1_common(driver, true);
+}
+
+/// Performs a convolution using a compute shader. Parameters are passed using
+/// the indirect dispatch command.
+pub fn compute_conv1_indirect<T: TestDriver>(driver: T) {
+    compute_conv1_common(driver, false);
+}
+
 /// Performs a convolution using a compute shader.
-pub fn compute_conv1<T: TestDriver>(driver: T) {
+fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
     driver.for_each_compute_queue(&mut |device, qf| {
         let binding_redundant = 0; // unused -- evoke possible issue in arg table handling
         let binding_param = 1;
@@ -27,10 +39,12 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
         let kernel_data = [[1u32; 4], [3u32; 4], [5u32; 4], [7u32; 4]];
         let mut input_data = vec![0u32; num_elements + kernel_data.len() - 1];
         let mut output_data = vec![0u32; num_elements];
+        let indirect_data = [global_size as u32, 1, 1];
 
         let input_bytes = size_of_val(&input_data[..]) as gfx::DeviceSize;
         let kernel_bytes = size_of_val(&kernel_data[..]) as gfx::DeviceSize;
         let output_bytes = size_of_val(&output_data[..]) as gfx::DeviceSize;
+        let indirect_bytes = size_of_val(&indirect_data[..]) as gfx::DeviceSize;
 
         for (i, e) in input_data.iter_mut().enumerate() {
             *e = i as u32;
@@ -67,12 +81,23 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
                 .build()
                 .unwrap(),
         );
+        let indirect_buffer = utils::UniqueBuffer::new(
+            device,
+            device
+                .build_buffer()
+                .label("Indirect argument buffer")
+                .size(indirect_bytes)
+                .usage(flags![gfx::BufferUsage::{IndirectDraw}])
+                .build()
+                .unwrap(),
+        );
 
         println!("- Computing the memory requirements for the heap");
         let valid_memory_types = [
             device.get_memory_req((&*input_buffer).into()).unwrap(),
             device.get_memory_req((&*kernel_buffer).into()).unwrap(),
             device.get_memory_req((&*output_buffer).into()).unwrap(),
+            device.get_memory_req((&*indirect_buffer).into()).unwrap(),
         ].iter()
             .map(|r| r.memory_types)
             .fold(!0, |x, y| x & y);
@@ -91,6 +116,7 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             builder.prebind((&*input_buffer).into());
             builder.prebind((&*kernel_buffer).into());
             builder.prebind((&*output_buffer).into());
+            builder.prebind((&*indirect_buffer).into());
             builder.build().unwrap()
         };
 
@@ -110,14 +136,20 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             let ptr = heap.as_ptr(&alloc).unwrap();
             from_raw_parts_mut(ptr as *mut u32, output_data.len())
         };
+        let indirect_ptr = unsafe {
+            let alloc = heap.bind((&*indirect_buffer).into()).unwrap().unwrap();
+            let ptr = heap.as_ptr(&alloc).unwrap();
+            from_raw_parts_mut(ptr as *mut u32, indirect_data.len())
+        };
         println!(
-            "  Input = {:p}, Kernel = {:p}, Output = {:p}",
-            input_ptr, kernel_ptr, output_ptr
+            "  Input = {:p}, Kernel = {:p}, Output = {:p}, Indirect = {:p}",
+            input_ptr, kernel_ptr, output_ptr, indirect_ptr
         );
 
         println!("- Storing the shader inputs");
         input_ptr.copy_from_slice(&input_data);
         kernel_ptr.copy_from_slice(&kernel_data);
+        indirect_ptr.copy_from_slice(&indirect_data);
 
         println!("- Creating a command queue");
         let queue = device
@@ -214,7 +246,11 @@ pub fn compute_conv1<T: TestDriver>(driver: T) {
             e.bind_pipeline(&pipeline);
             e.bind_arg_table(0, &[&arg_table]);
             e.bind_arg_table(1, &[&arg_table]);
-            e.dispatch(&[global_size as u32]);
+            if direct {
+                e.dispatch(&[global_size as u32]);
+            } else {
+                e.dispatch_indirect(&indirect_buffer, 0);
+            }
             e.end_debug_group();
         }
         buffer.host_barrier(

@@ -4,13 +4,14 @@
 // This source code is a part of Nightingales.
 //
 use metal::{MTLComputeCommandEncoder, MTLSize};
-use base::{command, handles, heap, ArgTableIndex, StageFlags};
+use base::{command, handles, heap, ArgTableIndex, StageFlags, DeviceSize};
 
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
 use cmd::fence::Fence;
 use arg::table::ArgTable;
 use computepipeline::ComputePipeline;
+use buffer::Buffer;
 
 #[derive(Debug)]
 pub struct ComputeEncoder {
@@ -120,5 +121,15 @@ impl command::ComputeCmdEncoder for ComputeEncoder {
             },
             self.threads_per_threadgroup,
         );
+    }
+
+    fn dispatch_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize) {
+        let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        self.metal_encoder
+            .dispatch_threadgroups_with_indirect_buffer(
+                buffer.metal_buffer(),
+                offset,
+                self.threads_per_threadgroup,
+            );
     }
 }

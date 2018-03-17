@@ -464,7 +464,24 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    // TODO: more draws
+    pub fn draw_indirect(&self, primitive_type: MTLPrimitiveType, indirect_buffer: MTLBuffer, indirect_buffer_offset: u64) {
+        unsafe {
+            msg_send![self.0, drawPrimitives:primitive_type
+                              indirectBuffer:indirect_buffer
+                        indirectBufferOffset:indirect_buffer_offset]
+        }
+    }
+
+    pub fn draw_indexed_indirect(&self, primitive_type: MTLPrimitiveType, index_type: MTLIndexType, index_buffer: MTLBuffer, index_buffer_offset: u64, indirect_buffer: MTLBuffer, indirect_buffer_offset: u64) {
+        unsafe {
+            msg_send![self.0, drawIndexedPrimitives:primitive_type
+                                          indexType:index_type
+                                        indexBuffer:index_buffer
+                                  indexBufferOffset:index_buffer_offset
+                                     indirectBuffer:indirect_buffer
+                               indirectBufferOffset:indirect_buffer_offset]
+        }
+    }
 
     // fn setVertexBufferOffset_atIndex(self, offset: NSUInteger, index: NSUInteger);
     // fn setVertexBuffers_offsets_withRange(self, buffers: *const id, offsets: *const NSUInteger, range: NSRange);

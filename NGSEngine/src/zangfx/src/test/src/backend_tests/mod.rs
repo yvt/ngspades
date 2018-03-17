@@ -92,7 +92,8 @@ macro_rules! zangfx_generate_backend_tests {
         zangfx_test_single! { copy_copy_buffer, $driver }
 
         zangfx_test_single! { compute_null, $driver }
-        zangfx_test_single! { compute_conv1, $driver }
+        zangfx_test_single! { compute_conv1_direct, $driver }
+        zangfx_test_single! { compute_conv1_indirect, $driver }
 
         zangfx_test_single! { render_null, $driver }
     }

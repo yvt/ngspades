@@ -340,7 +340,56 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
         instance_range: Range<u32>,
     );
 
-    // TODO: indirect draw
+    /// Render primitives. Parameters are read by the device from a buffer.
+    ///
+    /// The draw parameters are defined by [`DrawIndirectArgs`].
+    ///
+    /// # Valid Usage
+    ///
+    /// - `offset` must be aligned to 4 bytes.
+    ///
+    /// [`DrawIndirectArgs`]: DrawIndirectArgs
+    fn draw_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize);
+
+    /// Render primitives using the currently bound index buffer. Parameters are
+    /// read by the device from a buffer.
+    ///
+    /// The draw parameters are defined by [`DrawIndexedIndirectArgs`].
+    ///
+    /// # Valid Usage
+    ///
+    /// - `offset` must be aligned to 4 bytes.
+    ///
+    /// [`DrawIndexedIndirectArgs`]: DrawIndexedIndirectArgs
+    fn draw_indexed_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize);
+}
+
+/// The data layout for indirect draw calls.
+#[repr(C)]
+pub struct DrawIndirectArgs {
+    /// The number of vertices to draw.
+    pub num_vertices: u32,
+    /// THe number of instances to draw.
+    pub num_instances: u32,
+    /// The first vertex index to draw.
+    pub start_vertex: u32,
+    /// The first instance index to draw.
+    pub start_instance: u32,
+}
+
+/// The data layout for indexed indirect draw calls.
+#[repr(C)]
+pub struct DrawIndexedIndirectArgs {
+    /// The number of vertices to draw.
+    pub num_vertices: u32,
+    /// THe number of instances to draw.
+    pub num_instances: u32,
+    /// The first index within the index buffer.
+    pub start_index: u32,
+    /// The value added before indexing into the vertxe buffer.
+    pub vertex_offset: u32,
+    /// The first instance index to draw.
+    pub start_instance: u32,
 }
 
 pub trait ComputeCmdEncoder: Object + CmdEncoder {
@@ -355,7 +404,22 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     /// `workgroup_count` is an array with up to 3 elements. When less than
     /// 3 elements are given, the missing ones are filled with `1`s.
     fn dispatch(&mut self, workgroup_count: &[u32]);
+
+    /// Provoke work in a compute pipeline. Parameters are read by the device
+    /// from a buffer.
+    ///
+    /// The draw parameters are defined by [`DispatchIndirectArgs`].
+    ///
+    /// # Valid Usage
+    ///
+    /// - `offset` must be aligned to 4 bytes.
+    ///
+    /// [`DispatchIndirectArgs`]: DispatchIndirectArgs
+    fn dispatch_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize);
 }
+
+/// The data layout for indirect dispatch calls.
+pub type DispatchIndirectArgs = [u32; 3];
 
 pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// Fill a buffer with a constant byte value.

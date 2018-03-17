@@ -9,6 +9,7 @@ use ash::version::*;
 use base;
 use device::DeviceRef;
 use pipeline::ComputePipeline;
+use buffer::Buffer;
 
 use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
 use super::fence::Fence;
@@ -133,6 +134,24 @@ impl base::ComputeCmdEncoder for ComputeEncoder {
                 workgroup_count.get(1).cloned().unwrap_or(1),
                 workgroup_count.get(2).cloned().unwrap_or(1),
             );
+        }
+    }
+
+    fn dispatch_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+        let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+        self.desc_set_binding_table.flush(
+            self.device,
+            self.vk_cmd_buffer,
+            vk::PipelineBindPoint::Compute,
+        );
+
+        let device = self.device.vk_device();
+
+        unsafe {
+            device
+                .fp_v1_0()
+                .cmd_dispatch_indirect(self.vk_cmd_buffer, buffer.vk_buffer(), offset);
         }
     }
 }

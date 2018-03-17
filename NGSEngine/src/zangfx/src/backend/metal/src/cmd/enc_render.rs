@@ -161,4 +161,12 @@ impl command::RenderCmdEncoder for RenderEncoder {
         self.state
             .draw_indexed(index_buffer_range, vertex_offset, instance_range);
     }
+
+    fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+        self.state.draw_indirect(buffer, offset);
+    }
+
+    fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+        self.state.draw_indexed_indirect(buffer, offset);
+    }
 }
