@@ -51,6 +51,31 @@ where
     }
 }
 
+impl<'a, T: Copy + 'static> FromWithPad<&'a [T], T> for [T; 2] {
+    /// Make a three-element `T` array from a given slice, filling the missing
+    /// elements using a provided pad value.
+    ///
+    /// Due to performance optimization, this might return a spurious value for
+    /// extremely large slices.
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_common::*;
+    ///     assert_eq!(<[u32; 2]>::from_with_pad(&[], 5), [5, 5]);
+    ///     assert_eq!(<[u32; 2]>::from_with_pad(&[1], 5), [1, 5]);
+    ///     assert_eq!(<[u32; 2]>::from_with_pad(&[1, 2], 5), [1, 2]);
+    ///     assert_eq!(<[u32; 2]>::from_with_pad(&[1, 2, 3], 5), [1, 2]);
+    ///     assert_eq!(<[u32; 2]>::from_with_pad(&[1, 2, 3, 4], 5), [1, 2]);
+    ///
+    #[inline]
+    fn from_with_pad(x: &'a [T], pad: T) -> Self {
+        [
+            x.get(0).cloned().unwrap_or(pad),
+            x.get(1).cloned().unwrap_or(pad),
+        ]
+    }
+}
+
 impl<'a, T: Copy + 'static> FromWithPad<&'a [T], T> for [T; 3] {
     /// Make a three-element `T` array from a given slice, filling the missing
     /// elements using a provided pad value.
