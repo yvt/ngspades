@@ -9,9 +9,10 @@ use ash::version::*;
 use refeq::RefEqArc;
 
 use base;
-use common::Result;
+use common::{Error, ErrorKind, IntoWithPad, Result};
 use device::DeviceRef;
 use formats::translate_image_format;
+use image::Image;
 
 use utils::{translate_access_type_flags, translate_generic_error_unwrap, translate_image_layout,
             translate_pipeline_stage_flags};
@@ -331,6 +332,298 @@ impl Drop for RenderPassData {
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.destroy_render_pass(self.vk_render_pass, None);
+        }
+    }
+}
+
+/// Image views that are destroyed automatically.
+#[derive(Debug)]
+struct UniqueImageViews {
+    device: DeviceRef,
+    image_views: Vec<vk::ImageView>,
+}
+
+impl UniqueImageViews {
+    unsafe fn with_capacity(device: DeviceRef, capacity: usize) -> Self {
+        Self {
+            device,
+            image_views: Vec::with_capacity(capacity),
+        }
+    }
+}
+
+impl ::Deref for UniqueImageViews {
+    type Target = Vec<vk::ImageView>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.image_views
+    }
+}
+
+impl ::DerefMut for UniqueImageViews {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.image_views
+    }
+}
+
+impl Drop for UniqueImageViews {
+    fn drop(&mut self) {
+        let vk_device = self.device.vk_device();
+        for image_view in self.image_views.drain(..) {
+            unsafe {
+                vk_device.destroy_image_view(image_view, None);
+            }
+        }
+    }
+}
+
+/// Implementation of `RenderTargetTableBuilder` for Vulkan.
+#[derive(Debug)]
+pub struct RenderTargetTableBuilder {
+    device: DeviceRef,
+
+    render_pass: Option<RenderPass>,
+    extents: Option<[u32; 2]>,
+    num_layers: u32,
+    targets: Vec<Option<Target>>,
+}
+
+zangfx_impl_object! { RenderTargetTableBuilder: base::RenderTargetTableBuilder, ::Debug }
+
+/// Implementation of `RenderTarget` for Vulkan.
+#[derive(Clone)]
+struct Target {
+    image: Image,
+    mip_level: u32,
+    layer: u32,
+    clear_value: vk::ClearValue,
+}
+
+zangfx_impl_object! { Target: base::RenderTarget, ::Debug }
+
+impl RenderTargetTableBuilder {
+    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+        Self {
+            device,
+
+            render_pass: None,
+            extents: None,
+            num_layers: 1,
+            targets: Vec::new(),
+        }
+    }
+}
+
+impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
+    fn render_pass(&mut self, v: &base::RenderPass) -> &mut base::RenderTargetTableBuilder {
+        let our_rp: &RenderPass = v.downcast_ref().expect("bad render pass type");
+        self.render_pass = Some(our_rp.clone());
+        self
+    }
+
+    fn extents(&mut self, v: &[u32]) -> &mut base::RenderTargetTableBuilder {
+        self.extents = Some(v.into_with_pad(1));
+        self
+    }
+
+    fn num_layers(&mut self, v: u32) -> &mut base::RenderTargetTableBuilder {
+        self.num_layers = v;
+        self
+    }
+
+    fn target(
+        &mut self,
+        index: base::RenderPassTargetIndex,
+        view: &base::Image,
+    ) -> &mut base::RenderTarget {
+        use std::mem::uninitialized;
+        if self.targets.len() <= index {
+            self.targets.resize(index + 1, None);
+        }
+
+        let our_image: &Image = view.downcast_ref().expect("bad image type");
+        self.targets[index] = Some(Target {
+            image: our_image.clone(),
+            mip_level: 0,
+            layer: 0,
+            clear_value: unsafe { uninitialized() },
+        });
+
+        self.targets[index].as_mut().unwrap()
+    }
+
+    fn build(&mut self) -> Result<base::RenderTargetTable> {
+        let render_pass: RenderPass = self.render_pass
+            .clone()
+            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "render_pass"))?;
+        let extents = self.extents
+            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "extents"))?;
+
+        let vk_device = self.device.vk_device();
+
+        let mut image_views =
+            unsafe { UniqueImageViews::with_capacity(self.device, self.targets.len()) };
+        for target in self.targets.iter() {
+            let target = target.as_ref().unwrap();
+
+            let flags = vk::ImageViewCreateFlags::empty();
+            // flags: "reserved for future use"
+
+            let image: &Image = &target.image;
+
+            let vk_image_view_info = vk::ImageViewCreateInfo {
+                s_type: vk::StructureType::ImageViewCreateInfo,
+                p_next: ::null(),
+                flags,
+                image: image.vk_image(),
+                view_type: vk::ImageViewType::Type2dArray,
+                format: image.meta().format(),
+                components: vk::ComponentMapping {
+                    r: vk::ComponentSwizzle::Identity,
+                    g: vk::ComponentSwizzle::Identity,
+                    b: vk::ComponentSwizzle::Identity,
+                    a: vk::ComponentSwizzle::Identity,
+                },
+                subresource_range: vk::ImageSubresourceRange {
+                    aspect_mask: image.meta().image_aspects(),
+                    base_mip_level: target.mip_level,
+                    base_array_layer: target.layer,
+                    level_count: 1,
+                    layer_count: self.num_layers,
+                },
+            };
+
+            let vk_image_view = unsafe { vk_device.create_image_view(&vk_image_view_info, None) }
+                .map_err(translate_generic_error_unwrap)?;
+            image_views.push(vk_image_view);
+        }
+
+        let vk_info = vk::FramebufferCreateInfo {
+            s_type: vk::StructureType::FramebufferCreateInfo,
+            p_next: ::null(),
+            flags: vk::FramebufferCreateFlags::empty(),
+            render_pass: render_pass.vk_render_pass(),
+            attachment_count: self.targets.len() as u32,
+            p_attachments: image_views.as_ptr(),
+            width: extents[0],
+            height: extents[1],
+            layers: self.num_layers,
+        };
+
+        let vk_framebuffer = unsafe { vk_device.create_framebuffer(&vk_info, None) }
+            .map_err(translate_generic_error_unwrap)?;
+
+        Ok(unsafe { RenderTargetTable::from_raw(self.device, vk_framebuffer, image_views) }.into())
+    }
+}
+
+impl base::RenderTarget for Target {
+    fn mip_level(&mut self, v: u32) -> &mut base::RenderTarget {
+        self.mip_level = v;
+        self
+    }
+
+    fn layer(&mut self, v: u32) -> &mut base::RenderTarget {
+        self.layer = v;
+        self
+    }
+
+    fn clear_float(&mut self, v: &[f32]) -> &mut base::RenderTarget {
+        unsafe {
+            self.clear_value.color.float32.copy_from_slice(&v[0..4]);
+        }
+        self
+    }
+
+    fn clear_uint(&mut self, v: &[u32]) -> &mut base::RenderTarget {
+        unsafe {
+            self.clear_value.color.uint32.copy_from_slice(&v[0..4]);
+        }
+        self
+    }
+
+    fn clear_sint(&mut self, v: &[i32]) -> &mut base::RenderTarget {
+        unsafe {
+            self.clear_value.color.int32.copy_from_slice(&v[0..4]);
+        }
+        self
+    }
+
+    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut base::RenderTarget {
+        unsafe {
+            self.clear_value.depth.depth = depth;
+            self.clear_value.depth.stencil = stencil;
+        }
+        self
+    }
+}
+
+impl ::Debug for Target {
+    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+        #[derive(Debug)]
+        struct ClearValue {
+            float32: [f32; 4],
+            uint32: [u32; 4],
+            int32: [i32; 4],
+            depth_stencil: vk::ClearDepthStencilValue,
+        }
+        fmt.debug_struct("Target")
+            .field("image", &self.image)
+            .field("mip_level", &self.mip_level)
+            .field("layer", &self.layer)
+            .field("clear_value", unsafe {
+                &ClearValue {
+                    float32: self.clear_value.color.float32,
+                    uint32: self.clear_value.color.uint32,
+                    int32: self.clear_value.color.int32,
+                    depth_stencil: self.clear_value.depth,
+                }
+            })
+            .finish()
+    }
+}
+
+/// Implementation of `RenderTargetTable` for Vulkan.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RenderTargetTable {
+    data: RefEqArc<RenderTargetTableData>,
+}
+
+zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTable }
+
+#[derive(Debug)]
+struct RenderTargetTableData {
+    device: DeviceRef,
+    vk_framebuffer: vk::Framebuffer,
+    /// Contains the attachments of the framebuffer.
+    image_views: UniqueImageViews,
+}
+
+impl RenderTargetTable {
+    unsafe fn from_raw(
+        device: DeviceRef,
+        vk_framebuffer: vk::Framebuffer,
+        image_views: UniqueImageViews,
+    ) -> Self {
+        Self {
+            data: RefEqArc::new(RenderTargetTableData {
+                device,
+                vk_framebuffer,
+                image_views,
+            }),
+        }
+    }
+
+    pub fn vk_framebuffer(&self) -> vk::Framebuffer {
+        self.data.vk_framebuffer
+    }
+}
+
+impl Drop for RenderTargetTableData {
+    fn drop(&mut self) {
+        let vk_device = self.device.vk_device();
+        unsafe {
+            vk_device.destroy_framebuffer(self.vk_framebuffer, None);
         }
     }
 }

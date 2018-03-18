@@ -157,7 +157,11 @@ impl base::Device for Device {
     }
 
     fn build_render_target_table(&self) -> Box<base::RenderTargetTableBuilder> {
-        unimplemented!()
+        unsafe {
+            Box::new(renderpass::RenderTargetTableBuilder::new(
+                self.new_device_ref(),
+            ))
+        }
     }
 
     fn build_render_pipeline(&self) -> Box<base::RenderPipelineBuilder> {
