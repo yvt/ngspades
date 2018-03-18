@@ -177,10 +177,16 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             p_dependencies: self.dependencies.as_ptr(),
         };
 
+        // The number of color attachments for subpass 0
+        let num_color_attachments = self.color_attachments.len();
+
         let vk_render_pass = unsafe { vk_device.create_render_pass(&vk_info, None) }
             .map_err(translate_generic_error_unwrap)?;
 
-        Ok(unsafe { RenderPass::from_raw(self.device, vk_render_pass) }.into())
+        Ok(
+            unsafe { RenderPass::from_raw(self.device, vk_render_pass, num_color_attachments) }
+                .into(),
+        )
     }
 }
 
@@ -293,20 +299,30 @@ zangfx_impl_handle! { RenderPass, base::RenderPass }
 struct RenderPassData {
     device: DeviceRef,
     vk_render_pass: vk::RenderPass,
+    num_color_attachments: usize,
 }
 
 impl RenderPass {
-    pub(crate) unsafe fn from_raw(device: DeviceRef, vk_render_pass: vk::RenderPass) -> Self {
+    pub(crate) unsafe fn from_raw(
+        device: DeviceRef,
+        vk_render_pass: vk::RenderPass,
+        num_color_attachments: usize,
+    ) -> Self {
         Self {
             data: RefEqArc::new(RenderPassData {
                 device,
                 vk_render_pass,
+                num_color_attachments,
             }),
         }
     }
 
     pub fn vk_render_pass(&self) -> vk::RenderPass {
         self.data.vk_render_pass
+    }
+
+    pub(crate) fn num_color_attachments(&self, _subpass: usize) -> usize {
+        self.data.num_color_attachments
     }
 }
 

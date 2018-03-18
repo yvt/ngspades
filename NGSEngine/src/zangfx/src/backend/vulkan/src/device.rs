@@ -161,7 +161,7 @@ impl base::Device for Device {
     }
 
     fn build_render_pipeline(&self) -> Box<base::RenderPipelineBuilder> {
-        unimplemented!()
+        unsafe { Box::new(pipeline::RenderPipelineBuilder::new(self.new_device_ref())) }
     }
 
     fn build_compute_pipeline(&self) -> Box<base::ComputePipelineBuilder> {

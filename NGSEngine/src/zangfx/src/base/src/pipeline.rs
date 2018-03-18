@@ -377,6 +377,13 @@ impl<T> StaticOrDynamic<T> {
             &StaticOrDynamic::Dynamic => true,
         }
     }
+
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> StaticOrDynamic<U> {
+        match self {
+            StaticOrDynamic::Static(x) => StaticOrDynamic::Static(f(x)),
+            StaticOrDynamic::Dynamic => StaticOrDynamic::Dynamic,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

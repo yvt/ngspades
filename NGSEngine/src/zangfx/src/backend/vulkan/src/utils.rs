@@ -218,3 +218,55 @@ pub fn translate_compare_op(value: base::CmpFn) -> vk::CompareOp {
         base::CmpFn::Always => vk::CompareOp::Always,
     }
 }
+
+pub fn translate_rect2d_u32(value: &base::Rect2D<u32>) -> vk::Rect2D {
+    vk::Rect2D {
+        offset: vk::Offset2D {
+            x: value.min[0] as i32,
+            y: value.min[1] as i32,
+        },
+        extent: vk::Extent2D {
+            width: value.max[0].saturating_sub(value.min[0]),
+            height: value.max[1].saturating_sub(value.min[1]),
+        },
+    }
+}
+
+pub fn translate_bool(value: bool) -> vk::Bool32 {
+    if value {
+        vk::VK_TRUE
+    } else {
+        vk::VK_FALSE
+    }
+}
+
+pub fn translate_sample_count(value: u32) -> vk::SampleCountFlags {
+    vk::SampleCountFlags::from_flags(value).expect("invalid sample count")
+}
+
+pub fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::ColorComponentFlags {
+    let mut mask = vk::ColorComponentFlags::empty();
+
+    if value.contains(base::ColorChannel::Red) {
+        mask |= vk::COLOR_COMPONENT_R_BIT;
+    }
+    if value.contains(base::ColorChannel::Green) {
+        mask |= vk::COLOR_COMPONENT_G_BIT;
+    }
+    if value.contains(base::ColorChannel::Blue) {
+        mask |= vk::COLOR_COMPONENT_B_BIT;
+    }
+    if value.contains(base::ColorChannel::Alpha) {
+        mask |= vk::COLOR_COMPONENT_A_BIT;
+    }
+
+    mask
+}
+
+pub fn maybe_ptr<T>(x: &Option<T>) -> *const T {
+    if let &Some(ref x) = x {
+        x
+    } else {
+        ::null()
+    }
+}
