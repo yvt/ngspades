@@ -22,6 +22,7 @@ use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::{FenceSet, RefTable};
 use super::enc_copy::CopyEncoder;
 use super::enc_compute::ComputeEncoder;
+use super::enc_render::RenderEncoder;
 use super::bufferpool::VkCmdBufferPoolItem;
 
 /// Implementation of `CmdBuffer` for Vulkan.
@@ -52,6 +53,7 @@ struct Uncommited {
 enum Encoder {
     Copy(CopyEncoder),
     Compute(ComputeEncoder),
+    Render(RenderEncoder),
 }
 
 #[derive(Default)]
@@ -114,6 +116,11 @@ impl Uncommited {
                     self.fence_set = fence_set;
                     self.ref_table = ref_table;
                 }
+                Encoder::Render(e) => {
+                    let (fence_set, ref_table) = e.finish();
+                    self.fence_set = fence_set;
+                    self.ref_table = ref_table;
+                }
             }
         }
     }
@@ -145,14 +152,15 @@ impl base::CmdBuffer for CmdBuffer {
                 .ok_or_else(already_commited_error)
                 .unwrap();
 
+            uncommited.clear_encoder();
+
             let vk_device = uncommited.device.vk_device();
 
             unsafe { vk_device.end_command_buffer(uncommited.vk_cmd_buffer()) }
                 .map_err(translate_generic_error_unwrap)?;
         }
 
-        let mut uncommited = self.uncommited.take().unwrap();
-        uncommited.clear_encoder();
+        let uncommited = self.uncommited.take().unwrap();
 
         uncommited.scheduler.commit(CommitedBuffer {
             fence_set: uncommited.fence_set,
@@ -168,9 +176,35 @@ impl base::CmdBuffer for CmdBuffer {
 
     fn encode_render(
         &mut self,
-        _render_target_table: &base::RenderTargetTable,
+        render_target_table: &base::RenderTargetTable,
     ) -> &mut base::RenderCmdEncoder {
-        unimplemented!()
+        use std::mem::replace;
+        use renderpass::RenderTargetTable;
+
+        let rtt: &RenderTargetTable = render_target_table
+            .downcast_ref()
+            .expect("bad render target table type");
+
+        let uncommited = self.uncommited
+            .as_mut()
+            .ok_or_else(already_commited_error)
+            .unwrap();
+        uncommited.clear_encoder();
+
+        let encoder = unsafe {
+            RenderEncoder::new(
+                uncommited.device,
+                uncommited.vk_cmd_buffer(),
+                replace(&mut uncommited.fence_set, Default::default()),
+                replace(&mut uncommited.ref_table, Default::default()),
+                rtt,
+            )
+        };
+        uncommited.encoder = Some(Encoder::Render(encoder));
+        match uncommited.encoder {
+            Some(Encoder::Render(ref mut e)) => e,
+            _ => unreachable!(),
+        }
     }
     fn encode_compute(&mut self) -> &mut base::ComputeCmdEncoder {
         use std::mem::replace;

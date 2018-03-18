@@ -14,7 +14,8 @@ use device::DeviceRef;
 use cmd::barrier::Barrier;
 use arg::layout::RootSig;
 use arg::pool::ArgTable;
-use pipeline::ComputePipeline;
+use pipeline::{ComputePipeline, RenderPipeline};
+use renderpass::RenderTargetTable;
 use utils::translate_pipeline_stage_flags;
 use limits::DeviceTrait;
 
@@ -52,6 +53,8 @@ impl FenceSet {
 #[derive(Debug, Default)]
 pub struct RefTable {
     compute_pipelines: HashSet<ComputePipeline>,
+    render_pipelines: HashSet<RenderPipeline>,
+    render_target_tables: HashSet<RenderTargetTable>,
 }
 
 impl RefTable {
@@ -61,6 +64,14 @@ impl RefTable {
 
     pub fn insert_compute_pipeline(&mut self, obj: &ComputePipeline) {
         self.compute_pipelines.insert(obj.clone());
+    }
+
+    pub fn insert_render_pipeline(&mut self, obj: &RenderPipeline) {
+        self.render_pipelines.insert(obj.clone());
+    }
+
+    pub fn insert_render_target_table(&mut self, obj: &RenderTargetTable) {
+        self.render_target_tables.insert(obj.clone());
     }
 }
 

@@ -391,12 +391,12 @@ pub struct RenderTargetTableBuilder {
 zangfx_impl_object! { RenderTargetTableBuilder: base::RenderTargetTableBuilder, ::Debug }
 
 /// Implementation of `RenderTarget` for Vulkan.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct Target {
     image: Image,
     mip_level: u32,
     layer: u32,
-    clear_value: vk::ClearValue,
+    clear_value: ClearValue,
 }
 
 zangfx_impl_object! { Target: base::RenderTarget, ::Debug }
@@ -498,6 +498,19 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
             image_views.push(vk_image_view);
         }
 
+        let render_area = vk::Rect2D {
+            offset: vk::Offset2D { x: 0, y: 0 },
+            extent: vk::Extent2D {
+                width: extents[0],
+                height: extents[1],
+            },
+        };
+
+        let clear_values = self.targets
+            .iter()
+            .map(|target| target.as_ref().unwrap().clear_value.clone())
+            .collect();
+
         let vk_info = vk::FramebufferCreateInfo {
             s_type: vk::StructureType::FramebufferCreateInfo,
             p_next: ::null(),
@@ -513,7 +526,16 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         let vk_framebuffer = unsafe { vk_device.create_framebuffer(&vk_info, None) }
             .map_err(translate_generic_error_unwrap)?;
 
-        Ok(unsafe { RenderTargetTable::from_raw(self.device, vk_framebuffer, image_views) }.into())
+        Ok(unsafe {
+            RenderTargetTable::from_raw(
+                self.device,
+                vk_framebuffer,
+                render_pass,
+                image_views,
+                render_area,
+                clear_values,
+            )
+        }.into())
     }
 }
 
@@ -530,56 +552,31 @@ impl base::RenderTarget for Target {
 
     fn clear_float(&mut self, v: &[f32]) -> &mut base::RenderTarget {
         unsafe {
-            self.clear_value.color.float32.copy_from_slice(&v[0..4]);
+            self.clear_value.0.color.float32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
     fn clear_uint(&mut self, v: &[u32]) -> &mut base::RenderTarget {
         unsafe {
-            self.clear_value.color.uint32.copy_from_slice(&v[0..4]);
+            self.clear_value.0.color.uint32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
     fn clear_sint(&mut self, v: &[i32]) -> &mut base::RenderTarget {
         unsafe {
-            self.clear_value.color.int32.copy_from_slice(&v[0..4]);
+            self.clear_value.0.color.int32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
     fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut base::RenderTarget {
         unsafe {
-            self.clear_value.depth.depth = depth;
-            self.clear_value.depth.stencil = stencil;
+            self.clear_value.0.depth.depth = depth;
+            self.clear_value.0.depth.stencil = stencil;
         }
         self
-    }
-}
-
-impl ::Debug for Target {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
-        #[derive(Debug)]
-        struct ClearValue {
-            float32: [f32; 4],
-            uint32: [u32; 4],
-            int32: [i32; 4],
-            depth_stencil: vk::ClearDepthStencilValue,
-        }
-        fmt.debug_struct("Target")
-            .field("image", &self.image)
-            .field("mip_level", &self.mip_level)
-            .field("layer", &self.layer)
-            .field("clear_value", unsafe {
-                &ClearValue {
-                    float32: self.clear_value.color.float32,
-                    uint32: self.clear_value.color.uint32,
-                    int32: self.clear_value.color.int32,
-                    depth_stencil: self.clear_value.depth,
-                }
-            })
-            .finish()
     }
 }
 
@@ -595,27 +592,56 @@ zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTable }
 struct RenderTargetTableData {
     device: DeviceRef,
     vk_framebuffer: vk::Framebuffer,
+    render_pass: RenderPass,
     /// Contains the attachments of the framebuffer.
     image_views: UniqueImageViews,
+    render_area: vk::Rect2D,
+    clear_values: Vec<ClearValue>,
 }
 
 impl RenderTargetTable {
     unsafe fn from_raw(
         device: DeviceRef,
         vk_framebuffer: vk::Framebuffer,
+        render_pass: RenderPass,
         image_views: UniqueImageViews,
+        render_area: vk::Rect2D,
+        clear_values: Vec<ClearValue>,
     ) -> Self {
         Self {
             data: RefEqArc::new(RenderTargetTableData {
                 device,
                 vk_framebuffer,
+                render_pass,
                 image_views,
+                render_area,
+                clear_values,
             }),
         }
     }
 
     pub fn vk_framebuffer(&self) -> vk::Framebuffer {
         self.data.vk_framebuffer
+    }
+
+    pub(crate) fn render_pass(&self) -> &RenderPass {
+        &self.data.render_pass
+    }
+
+    pub(crate) fn render_area(&self) -> &vk::Rect2D {
+        &self.data.render_area
+    }
+
+    pub(crate) fn render_pass_begin_info(&self) -> vk::RenderPassBeginInfo {
+        vk::RenderPassBeginInfo {
+            s_type: vk::StructureType::RenderPassBeginInfo,
+            p_next: ::null(),
+            render_pass: self.render_pass().vk_render_pass(),
+            framebuffer: self.vk_framebuffer(),
+            render_area: self.render_area().clone(),
+            clear_value_count: self.data.clear_values.len() as u32,
+            p_clear_values: self.data.clear_values.as_ptr() as *const _,
+        }
     }
 }
 
@@ -625,5 +651,32 @@ impl Drop for RenderTargetTableData {
         unsafe {
             vk_device.destroy_framebuffer(self.vk_framebuffer, None);
         }
+    }
+}
+
+/// `Debug` wrapper for `vk::ClearValue`
+#[derive(Clone)]
+#[repr(C)]
+struct ClearValue(vk::ClearValue);
+
+impl ::Debug for ClearValue {
+    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+        #[derive(Debug)]
+        struct Values {
+            float32: [f32; 4],
+            uint32: [u32; 4],
+            int32: [i32; 4],
+            depth_stencil: vk::ClearDepthStencilValue,
+        }
+        fmt.debug_tuple("Target")
+            .field(unsafe {
+                &Values {
+                    float32: self.0.color.float32,
+                    uint32: self.0.color.uint32,
+                    int32: self.0.color.int32,
+                    depth_stencil: self.0.depth,
+                }
+            })
+            .finish()
     }
 }
