@@ -212,15 +212,12 @@ pub trait RenderTargetTableBuilder: Object {
     /// render pass.
     fn target(&mut self, index: RenderPassTargetIndex, view: &Image) -> &mut RenderTarget;
 
-    /// Build an `ArgTableSig`.
+    /// Build an `RenderTargetTableBuilder`.
     ///
     /// # Valid Usage
     ///
     /// - All mandatory properties must have their values set before this
     ///   method is called.
-    /// - The indices of render targets must be tightly arranged. In other
-    ///   words, when `N` is max(indices ∪ -1), there must not exist an
-    ///   unassigned render target index `n` such that `0 ≤ n ≤ N`.
     ///
     fn build(&mut self) -> Result<RenderTargetTable>;
 }
