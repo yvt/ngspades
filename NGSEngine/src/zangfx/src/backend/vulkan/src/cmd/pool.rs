@@ -29,7 +29,7 @@ impl CmdPool {
         device: DeviceRef,
         scheduler: Arc<Scheduler>,
         queue_family_index: u32,
-        num_cbs: usize
+        num_cbs: usize,
     ) -> Result<Self> {
         let vk_cmd_buffer_pool = VkCmdBufferPool::new(device, queue_family_index, num_cbs)?;
         Ok(Self {
