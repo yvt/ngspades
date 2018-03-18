@@ -87,7 +87,12 @@ pub fn render_null<T: TestDriver>(driver: T) {
                 .root_sig(&root_sig)
                 .topology(gfx::PrimitiveTopology::Triangles)
                 .render_pass(&pass, 0);
-            builder.rasterize();
+            {
+                let raster = builder.rasterize();
+                raster
+                    .color_target(0)
+                    .set_write_mask(flags![gfx::ColorChannel::{}]);
+            }
             builder.build().unwrap()
         };
 
