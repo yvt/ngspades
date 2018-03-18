@@ -144,7 +144,8 @@ pub trait RenderPassTarget: Object {
     fn set_initial_layout(&mut self, v: ImageLayout) -> &mut RenderPassTarget;
     /// Set the initial layout for the render target.
     ///
-    /// Defaults to `ImageLayout::Undefined`.
+    /// Defaults to `ImageLayout::ShaderRead`.
+    /// Must not be `ImageLayout::Undefined`.
     fn set_final_layout(&mut self, v: ImageLayout) -> &mut RenderPassTarget;
 }
 

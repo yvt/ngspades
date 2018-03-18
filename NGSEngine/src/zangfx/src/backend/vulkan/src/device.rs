@@ -11,7 +11,7 @@ use ash::vk;
 use ash::version::*;
 
 use {base, AshDevice};
-use {arg, buffer, cmd, heap, image, limits, pipeline, sampler, shader, utils};
+use {arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader, utils};
 use common::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
@@ -153,7 +153,7 @@ impl base::Device for Device {
     }
 
     fn build_render_pass(&self) -> Box<base::RenderPassBuilder> {
-        unimplemented!()
+        unsafe { Box::new(renderpass::RenderPassBuilder::new(self.new_device_ref())) }
     }
 
     fn build_render_target_table(&self) -> Box<base::RenderTargetTableBuilder> {

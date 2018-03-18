@@ -40,6 +40,7 @@ pub mod heap;
 pub mod image;
 pub mod limits;
 pub mod pipeline;
+pub mod renderpass;
 pub mod sampler;
 pub mod shader;
 mod utils;
