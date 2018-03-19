@@ -105,7 +105,7 @@ impl base::Device for Device {
     }
 
     fn build_semaphore(&self) -> Box<base::SemaphoreBuilder> {
-        unimplemented!()
+        unsafe { Box::new(cmd::semaphore::SemaphoreBuilder::new(self.new_device_ref())) }
     }
 
     fn build_dynamic_heap(&self) -> Box<base::DynamicHeapBuilder> {

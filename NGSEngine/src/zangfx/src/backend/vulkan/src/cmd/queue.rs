@@ -23,6 +23,7 @@ use super::enc::{FenceSet, RefTable};
 use super::buffer::BufferCompleteCallback;
 use super::bufferpool::VkCmdBufferPoolItem;
 use super::pool::CmdPool;
+use super::semaphore::Semaphore;
 
 #[derive(Debug)]
 pub(crate) struct QueuePool {
@@ -255,6 +256,8 @@ pub(super) struct CommitedBuffer {
     pub ref_table: Option<RefTable>,
     pub vk_cmd_buffer_pool_item: Option<VkCmdBufferPoolItem>,
     pub completion_handler: BufferCompleteCallback,
+    pub wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
+    pub signal_semaphores: Vec<Semaphore>,
 }
 
 impl Scheduler {
@@ -365,41 +368,107 @@ impl SchedulerData {
             return;
         }
 
-        // Create a submission batch
+        // Create submission batches
         let fence = monitor.get_fence();
         let vk_device = device.vk_device();
 
-        // TODO: semaphores
+        let mut num_cmd_buffers = 0;
+        let mut num_wait_semaphores = 0;
+        let mut num_signal_semaphores = 0;
 
+        for item in ItemIter(scheduled_items.as_ref()) {
+            let ref commited = item.commited;
+            num_cmd_buffers += 1;
+            num_wait_semaphores += commited.wait_semaphores.len();
+            num_signal_semaphores += commited.signal_semaphores.len();
+        }
+
+        // Hold the objects from all batches
+        let mut vk_cmd_buffers = Vec::with_capacity(num_cmd_buffers);
+        let mut vk_wait_sems = Vec::with_capacity(num_wait_semaphores);
+        let mut vk_wait_sem_stages = Vec::with_capacity(num_wait_semaphores);
+        let mut vk_signal_sems = Vec::with_capacity(num_signal_semaphores);
+
+        let mut vk_submit_infos = Vec::with_capacity(num_cmd_buffers);
+
+        // The starting addresses for objects in the current batch
         fn vec_end_ptr<T>(v: &[T]) -> *const T {
             v.as_ptr().wrapping_offset(v.len() as isize)
         }
-        let mut vk_command_buffers = Vec::with_capacity(ItemIter(scheduled_items.as_ref()).count());
+        let mut p_cmd_buffers = vec_end_ptr(&vk_cmd_buffers);
+        let mut p_wait_sems = vec_end_ptr(&vk_wait_sems);
+        let mut p_wait_sem_stages = vec_end_ptr(&vk_wait_sem_stages);
+        let mut p_signal_sems = vec_end_ptr(&vk_signal_sems);
 
-        let p_command_buffers = vec_end_ptr(&vk_command_buffers);
+        // The state of the current batch
+        let mut terminate_current_batch = false;
+        let mut cur_num_cmd_buffers = 0;
+        let mut cur_num_wait_sems = 0;
+        let mut cur_num_signal_sems = 0;
 
-        vk_command_buffers.extend(ItemIter(scheduled_items.as_ref()).map(|item| {
-            let vk_cmd_buffer = item.commited
+        macro_rules! flush {
+            () => (if cur_num_cmd_buffers > 0 {
+                let vk_submit_info = vk::SubmitInfo {
+                    s_type: vk::StructureType::SubmitInfo,
+                    p_next: ::null(),
+                    wait_semaphore_count: cur_num_wait_sems as u32,
+                    p_wait_semaphores: p_wait_sems,
+                    p_wait_dst_stage_mask: p_wait_sem_stages,
+                    command_buffer_count: cur_num_cmd_buffers as u32,
+                    p_command_buffers: p_cmd_buffers,
+                    signal_semaphore_count: cur_num_signal_sems as u32,
+                    p_signal_semaphores: p_signal_sems,
+                };
+                vk_submit_infos.push(vk_submit_info);
+            })
+        }
+
+        for item in ItemIter(scheduled_items.as_ref()) {
+            let ref commited: CommitedBuffer = item.commited;
+
+            if commited.wait_semaphores.len() > 0 {
+                terminate_current_batch = true;
+            }
+
+            if terminate_current_batch && cur_num_cmd_buffers > 0 {
+                flush!();
+
+                p_cmd_buffers = vec_end_ptr(&vk_cmd_buffers);
+                p_wait_sems = vec_end_ptr(&vk_wait_sems);
+                p_wait_sem_stages = vec_end_ptr(&vk_wait_sem_stages);
+                p_signal_sems = vec_end_ptr(&vk_signal_sems);
+                cur_num_cmd_buffers = 0;
+                cur_num_wait_sems = 0;
+                cur_num_signal_sems = 0;
+            }
+
+            terminate_current_batch = false;
+
+            let vk_cmd_buffer = commited
                 .vk_cmd_buffer_pool_item
                 .as_ref()
                 .unwrap()
                 .vk_cmd_buffer();
-            vk_cmd_buffer
-        }));
+            vk_cmd_buffers.push(vk_cmd_buffer);
+            cur_num_cmd_buffers += 1;
 
-        let vk_submit_infos = [
-            vk::SubmitInfo {
-                s_type: vk::StructureType::SubmitInfo,
-                p_next: ::null(),
-                wait_semaphore_count: 0,
-                p_wait_semaphores: ::null(),
-                p_wait_dst_stage_mask: ::null(),
-                command_buffer_count: vk_command_buffers.len() as u32,
-                p_command_buffers,
-                signal_semaphore_count: 0,
-                p_signal_semaphores: ::null(),
-            },
-        ];
+            let ref wait_sems = commited.wait_semaphores;
+            vk_wait_sems.extend(wait_sems.iter().map(|&(ref sem, _)| sem.vk_semaphore()));
+            vk_wait_sem_stages.extend(wait_sems.iter().map(|&(_, stages)| stages));
+            cur_num_wait_sems += wait_sems.len();
+
+            let ref signal_sems = commited.signal_semaphores;
+            vk_signal_sems.extend(signal_sems.iter().map(|sem| sem.vk_semaphore()));
+            cur_num_signal_sems += signal_sems.len();
+
+            if commited.signal_semaphores.len() > 0 {
+                terminate_current_batch = true;
+            }
+        }
+
+        if cur_num_cmd_buffers > 0 {
+            flush!();
+        }
 
         // TODO: safe handling of error
         unsafe { vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence()) }
@@ -423,8 +492,11 @@ impl MonitorHandler for BatchDoneHandler {
         // Release objects first (because completion callbacks might tear
         // down the device)
         for_each_item_mut(&mut scheduled_items, |item| {
-            item.commited.ref_table = None;
-            item.commited.vk_cmd_buffer_pool_item = None;
+            let ref mut commited: CommitedBuffer = item.commited;
+            commited.ref_table = None;
+            commited.vk_cmd_buffer_pool_item = None;
+            commited.wait_semaphores.clear();
+            commited.signal_semaphores.clear();
         });
 
         // Call the completion callbacks

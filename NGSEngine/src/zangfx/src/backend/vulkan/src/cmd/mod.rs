@@ -15,3 +15,4 @@ pub mod fence;
 mod monitor;
 pub mod pool;
 pub mod queue;
+pub mod semaphore;

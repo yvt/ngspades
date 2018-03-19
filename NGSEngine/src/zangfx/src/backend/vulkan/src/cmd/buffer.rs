@@ -24,6 +24,7 @@ use super::enc_copy::CopyEncoder;
 use super::enc_compute::ComputeEncoder;
 use super::enc_render::RenderEncoder;
 use super::bufferpool::VkCmdBufferPoolItem;
+use super::semaphore::Semaphore;
 
 /// Implementation of `CmdBuffer` for Vulkan.
 #[derive(Debug)]
@@ -41,6 +42,9 @@ struct Uncommited {
 
     fence_set: FenceSet,
     ref_table: RefTable,
+
+    wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
+    signal_semaphores: Vec<Semaphore>,
 
     /// The set of registered completion callbacks.
     completion_callbacks: CallbackSet,
@@ -81,6 +85,8 @@ impl CmdBuffer {
             vk_cmd_buffer_pool_item,
             fence_set: FenceSet::new(),
             ref_table: RefTable::new(),
+            wait_semaphores: Vec::new(),
+            signal_semaphores: Vec::new(),
             completion_callbacks: Default::default(),
             encoder: None,
         };
@@ -169,6 +175,8 @@ impl base::CmdBuffer for CmdBuffer {
             completion_handler: BufferCompleteCallback {
                 completion_callbacks: uncommited.completion_callbacks,
             },
+            wait_semaphores: uncommited.wait_semaphores,
+            signal_semaphores: uncommited.signal_semaphores,
         });
 
         Ok(())
@@ -260,12 +268,23 @@ impl base::CmdBuffer for CmdBuffer {
         uncommited.completion_callbacks.0.push(cb);
     }
 
-    fn wait_semaphore(&mut self, _semaphore: &base::Semaphore, _dst_stage: base::StageFlags) {
-        unimplemented!()
+    fn wait_semaphore(&mut self, semaphore: &base::Semaphore, dst_stage: base::StageFlags) {
+        let uncommited = self.uncommited
+            .as_mut()
+            .ok_or_else(already_commited_error)
+            .unwrap();
+        let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
+        let stage = translate_pipeline_stage_flags(dst_stage);
+        uncommited.wait_semaphores.push((our_semaphore, stage));
     }
 
-    fn signal_semaphore(&mut self, _semaphore: &base::Semaphore, _src_stage: base::StageFlags) {
-        unimplemented!()
+    fn signal_semaphore(&mut self, semaphore: &base::Semaphore, _src_stage: base::StageFlags) {
+        let uncommited = self.uncommited
+            .as_mut()
+            .ok_or_else(already_commited_error)
+            .unwrap();
+        let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
+        uncommited.signal_semaphores.push(our_semaphore);
     }
 
     fn host_barrier(
