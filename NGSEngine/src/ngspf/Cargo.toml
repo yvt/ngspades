@@ -5,7 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 ngscom = { path = "../ngscom" }
-ngsgfx = { path = "../ngsgfx" }
+zangfx = { path = "../zangfx" }
 ngsbase = { path = "../ngsbase" }
 arclock = { path = "../support/arclock" }
 refeq = { path = "../support/refeq", features = ["nightly"] }
@@ -15,10 +15,14 @@ ngsenumflags = { path = "../support/ngsenumflags" }
 ngsenumflags_derive = { path = "../support/ngsenumflags/ngsenumflags_derive" }
 include_data = { path = "../support/include_data" }
 cgmath = "0.15.0"
-winit = "0.7"
+winit = "0.11"
 atomic_refcell = "0.1.0"
 rgb = "0.7.2"
 lazy_static = "0.2"
+
+[target.'cfg(target_os="macos")'.dependencies]
+cocoa = "0.9"
+objc = "0.2"
 
 [build-dependencies]
 prebuild-glslang = { path = "../support/prebuild-glslang" }

@@ -73,7 +73,7 @@ extern crate xalloc;
 #[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
-extern crate zangfx_metal_rs as metal;
+pub extern crate zangfx_metal_rs as metal;
 extern crate zangfx_spirv_cross as spirv_cross;
 
 pub mod arg;

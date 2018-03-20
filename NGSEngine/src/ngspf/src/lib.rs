@@ -9,7 +9,7 @@
 //! todo
 //!
 #![feature(conservative_impl_trait)]
-pub extern crate ngsgfx as gfx;
+pub extern crate zangfx;
 pub extern crate ngsbase;
 #[macro_use]
 extern crate ngscom;
@@ -29,10 +29,22 @@ extern crate include_data;
 extern crate lazy_static;
 pub extern crate rgb;
 
+
+#[cfg(target_os = "macos")]
+extern crate cocoa;
+#[cfg(target_os = "macos")]
+#[macro_use]
+extern crate objc;
+
 pub mod com;
 pub mod context;
 pub mod viewport;
-mod gfxutils;
+// mod gfxutils;
+
+#[cfg(target_os = "macos")]
+mod metalutils;
+
+use std::fmt::{self, Debug};
 
 /// The NgsPF prelude.
 pub mod prelude {

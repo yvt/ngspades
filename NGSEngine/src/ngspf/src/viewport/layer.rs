@@ -15,7 +15,7 @@ use rgb::RGBA;
 use ngsbase::Box2;
 use ngsbase::prelude::*;
 use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor, Node};
-use super::{ImageRef, Port};
+use super::{ImageRef};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]
@@ -135,7 +135,7 @@ pub enum LayerContents {
     },
 
     /// Specifies to use a given `Port` to generate the layer contents.
-    Port(RefEqArc<Port>),
+    // TODO: Port(RefEqArc<Port>),
 
     /// Copies contents from the contents of layers with lower Z order in the
     /// nearest rasterization context (root or a layer with `FlattenContents`).

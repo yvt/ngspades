@@ -3,6 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
+fn main() {
+    println!("This example is temporarily disabled until the new port API is ready");
+}
+/*
+This
 extern crate atomic_refcell;
 extern crate cgmath;
 #[macro_use]
@@ -433,3 +438,4 @@ fn main() {
     ws.enter_main_loop()
         .expect("error occured while running the main loop");
 }
+*/

@@ -8,8 +8,7 @@ use std::sync::{Arc, Mutex};
 use atomic_refcell::AtomicRefCell;
 use cgmath::{Vector3, Matrix4};
 use cgmath::*;
-use gfx;
-use gfx::core::Backend;
+use zangfx::base as gfx;
 use gfx::prelude::*;
 
 use prelude::*;
@@ -26,11 +25,11 @@ use super::port::{PortManager, PortRenderContext};
 ///
 /// `Compositor` does not free device allocations when dropped.
 #[derive(Debug)]
-pub struct Compositor<B: Backend> {
-    device: Arc<B::Device>,
+pub struct Compositor {
+    device: Arc<gfx::Device>,
     heap: Arc<Mutex<B::UniversalHeap>>,
-    statesets: Vec<Stateset<B>>,
-    shaders: CompositorShaders<B>,
+    statesets: Vec<Stateset>,
+    shaders: CompositorShaders,
 
     box_vertices: B::Buffer,
 
@@ -42,7 +41,7 @@ pub struct Compositor<B: Backend> {
 }
 
 #[derive(Debug)]
-struct CompositorShaders<B: Backend> {
+struct CompositorShaders {
     composite_ds_layouts: [B::DescriptorSetLayout; 2],
     composite_layout: B::PipelineLayout,
     composite_module_frag: B::ShaderModule,
@@ -96,7 +95,7 @@ mod composite {
 
 /// Pipeline states etc. specific to a framebuffer image format.
 #[derive(Debug)]
-struct Stateset<B: Backend> {
+struct Stateset {
     framebuffer_format: gfx::core::ImageFormat,
     render_passes: Vec<B::RenderPass>,
 
@@ -110,13 +109,13 @@ const RENDER_PASS_BIT_USAGE_SHADER_READ: usize = 0b01 << 1;
 const RENDER_PASS_BIT_USAGE_GENERAL: usize = 0b10 << 1;
 
 #[derive(Debug)]
-pub struct CompositorWindow<B: Backend> {
-    compositor: Arc<Compositor<B>>,
+pub struct CompositorWindow {
+    compositor: Arc<Compositor>,
     command_buffers: Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
     command_buffer_index: usize,
-    temp_res_pool: TempResPool<B>,
+    temp_res_pool: TempResPool,
 
-    port_manager: PortManager<B>,
+    port_manager: PortManager,
 
     // used as a hint to pre-allocate `Vec`s in `LocalContext`
     num_sprites: usize,
@@ -127,22 +126,22 @@ pub struct CompositorWindow<B: Backend> {
 
 #[derive(Debug)]
 pub struct CompositeContext<'a, B: Backend> {
-    pub workspace_device: &'a WorkspaceDevice<B>,
+    pub workspace_device: &'a WorkspaceDevice,
     pub schedule_next_frame: bool,
     /// Command buffers to be submitted to the device (after calls to `composite` are done).
     pub command_buffers: Vec<Arc<AtomicRefCell<B::CommandBuffer>>>,
     pub pixel_ratio: f32,
-    pub uploader: &'a Uploader<B>,
+    pub uploader: &'a Uploader,
 }
 
-impl<B: Backend> Compositor<B> {
-    pub fn new(ws_device: &WorkspaceDevice<B>) -> gfx::core::Result<Self> {
+impl Compositor {
+    pub fn new(ws_device: &WorkspaceDevice) -> gfx::core::Result<Self> {
         use gfx::core::*;
 
         let ref device = ws_device.objects().gfx_device();
         let factory = device.factory();
 
-        let utils = DeviceUtils::<B>::new(device);
+        let utils = DeviceUtils::::new(device);
 
         let composite_ds_layouts = [
             factory.make_descriptor_set_layout(
@@ -270,8 +269,8 @@ impl<B: Backend> Compositor<B> {
     }
 }
 
-impl<B: Backend> CompositorWindow<B> {
-    pub fn new(compositor: Arc<Compositor<B>>) -> gfx::core::Result<Self> {
+impl CompositorWindow {
+    pub fn new(compositor: Arc<Compositor>) -> gfx::core::Result<Self> {
         let device = Arc::clone(&compositor.device);
 
         Ok(Self {
@@ -309,7 +308,7 @@ impl<B: Backend> CompositorWindow<B> {
 
     pub fn composite<D>(
         &mut self,
-        context: &mut CompositeContext<B>,
+        context: &mut CompositeContext,
         root: &Option<NodeRef>,
         frame: &PresenterFrame,
         drawable: &D,
@@ -354,10 +353,10 @@ impl<B: Backend> CompositorWindow<B> {
             sprites: Vec<composite::Sprite>,
             contents: Vec<[(B::ImageView, B::Sampler); 2]>,
             cmds: Vec<Vec<Cmd>>,
-            rts: Vec<RenderTarget<B>>,
+            rts: Vec<RenderTarget>,
         }
 
-        struct RenderTarget<B: Backend> {
+        struct RenderTarget {
             image_view: B::ImageView,
             extents: Vector2<u32>,
         }
@@ -368,7 +367,7 @@ impl<B: Backend> CompositorWindow<B> {
             image: (&'a B::Image, &'a B::ImageView),
         }
 
-        struct BackDropInfo<B: Backend> {
+        struct BackDropInfo {
             image_view: B::ImageView,
             uv_matrix: Matrix4<f32>,
         }
@@ -379,15 +378,15 @@ impl<B: Backend> CompositorWindow<B> {
                 Matrix4::from_nonuniform_scale(size.x, size.y, 1.0)
         }
 
-        fn render_inner<B: Backend>(
-            this: &mut CompositorWindow<B>,
-            cc: &mut CompositeContext<B>,
-            c: &mut LocalContext<B>,
-            rc: &mut RasterContext<B>,
+        fn render_inner(
+            this: &mut CompositorWindow,
+            cc: &mut CompositeContext,
+            c: &mut LocalContext,
+            rc: &mut RasterContext,
             layer: &Layer,
             matrix: Matrix4<f32>,
             opacity: f32,
-            backdrop: Option<BackDropInfo<B>>,
+            backdrop: Option<BackDropInfo>,
         ) -> Result<()> {
             use super::LayerContents::*;
             use super::ImageWrapMode::*;
@@ -502,11 +501,11 @@ impl<B: Backend> CompositorWindow<B> {
             Ok(())
         }
 
-        fn traverse<B: Backend>(
-            this: &mut CompositorWindow<B>,
-            cc: &mut CompositeContext<B>,
-            c: &mut LocalContext<B>,
-            rc: &mut RasterContext<B>,
+        fn traverse(
+            this: &mut CompositorWindow,
+            cc: &mut CompositeContext,
+            c: &mut LocalContext,
+            rc: &mut RasterContext,
             layer: &Layer,
             matrix: Matrix4<f32>,
             opacity: f32,
@@ -772,10 +771,10 @@ impl<B: Backend> CompositorWindow<B> {
         self.num_rts = c.rts.len();
 
         // Collect various data
-        struct RtData<B: Backend> {
+        struct RtData {
             viewport: Viewport,
             framebuffer: [Option<B::Framebuffer>; 6],
-            rt: RenderTarget<B>,
+            rt: RenderTarget,
         }
 
         let ref compositor = self.compositor;
@@ -1055,10 +1054,10 @@ impl<B: Backend> CompositorWindow<B> {
     }
 }
 
-impl<B: Backend> Stateset<B> {
+impl Stateset {
     fn new(
         device: &B::Device,
-        shaders: &CompositorShaders<B>,
+        shaders: &CompositorShaders,
         framebuffer_format: gfx::core::ImageFormat,
     ) -> gfx::core::Result<Self> {
         use gfx::core::*;
