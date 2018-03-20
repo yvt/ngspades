@@ -8,9 +8,12 @@ use ash::version::*;
 use std::ops::Range;
 
 use base;
+use common::IntoWithPad;
+
 use device::DeviceRef;
 use buffer::Buffer;
-
+use image::Image;
+use utils::{translate_image_aspect, translate_image_layout, translate_image_subresource_layers};
 use super::enc::{CommonCmdEncoder, FenceSet};
 use super::fence::Fence;
 
@@ -140,44 +143,165 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
     fn copy_buffer_to_image(
         &mut self,
-        _src: &base::Buffer,
-        _src_range: &base::BufferImageRange,
-        _dst: &base::Image,
-        _dst_layout: base::ImageLayout,
-        _dst_aspect: base::ImageAspect,
-        _dst_range: &base::ImageLayerRange,
-        _dst_origin: &[u32],
-        _size: &[u32],
+        src: &base::Buffer,
+        src_range: &base::BufferImageRange,
+        dst: &base::Image,
+        dst_layout: base::ImageLayout,
+        dst_aspect: base::ImageAspect,
+        dst_range: &base::ImageLayerRange,
+        dst_origin: &[u32],
+        size: &[u32],
     ) {
-        unimplemented!();
+        let my_src: &Buffer = src.downcast_ref().expect("bad source buffer type");
+        let my_dst: &Image = dst.downcast_ref().expect("bad destination image type");
+
+        let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);
+        let size: [u32; 3] = size.into_with_pad(1);
+
+        let vk_device = self.device.vk_device();
+
+        unsafe {
+            vk_device.cmd_copy_buffer_to_image(
+                self.vk_cmd_buffer,
+                my_src.vk_buffer(),
+                my_dst.vk_image(),
+                translate_image_layout(dst_layout, dst_aspect != base::ImageAspect::Color),
+                &[
+                    vk::BufferImageCopy {
+                        buffer_offset: src_range.offset,
+                        buffer_row_length: src_range.row_stride as u32,
+                        buffer_image_height: src_range.plane_stride as u32,
+                        image_subresource: translate_image_subresource_layers(
+                            dst_range,
+                            translate_image_aspect(dst_aspect),
+                        ),
+                        image_offset: vk::Offset3D {
+                            x: dst_origin[0] as i32,
+                            y: dst_origin[1] as i32,
+                            z: dst_origin[2] as i32,
+                        },
+                        image_extent: vk::Extent3D {
+                            width: size[0],
+                            height: size[1],
+                            depth: size[2],
+                        },
+                    },
+                ],
+            );
+        }
     }
 
     fn copy_image_to_buffer(
         &mut self,
-        _src: &base::Image,
-        _src_layout: base::ImageLayout,
-        _src_aspect: base::ImageAspect,
-        _src_range: &base::ImageLayerRange,
-        _src_origin: &[u32],
-        _dst: &base::Buffer,
-        _dst_range: &base::BufferImageRange,
-        _size: &[u32],
+        src: &base::Image,
+        src_layout: base::ImageLayout,
+        src_aspect: base::ImageAspect,
+        src_range: &base::ImageLayerRange,
+        src_origin: &[u32],
+        dst: &base::Buffer,
+        dst_range: &base::BufferImageRange,
+        size: &[u32],
     ) {
-        unimplemented!();
+        let my_src: &Image = src.downcast_ref().expect("bad source image type");
+        let my_dst: &Buffer = dst.downcast_ref().expect("bad destination buffer type");
+
+        let src_origin: [u32; 3] = src_origin.into_with_pad(0);
+        let size: [u32; 3] = size.into_with_pad(1);
+
+        let vk_device = self.device.vk_device();
+
+        unsafe {
+            vk_device.fp_v1_0().cmd_copy_image_to_buffer(
+                self.vk_cmd_buffer,
+                my_src.vk_image(),
+                translate_image_layout(src_layout, src_aspect != base::ImageAspect::Color),
+                my_dst.vk_buffer(),
+                1,
+                &vk::BufferImageCopy {
+                    buffer_offset: dst_range.offset,
+                    buffer_row_length: dst_range.row_stride as u32,
+                    buffer_image_height: dst_range.plane_stride as u32,
+                    image_subresource: translate_image_subresource_layers(
+                        src_range,
+                        translate_image_aspect(src_aspect),
+                    ),
+                    image_offset: vk::Offset3D {
+                        x: src_origin[0] as i32,
+                        y: src_origin[1] as i32,
+                        z: src_origin[2] as i32,
+                    },
+                    image_extent: vk::Extent3D {
+                        width: size[0],
+                        height: size[1],
+                        depth: size[2],
+                    },
+                },
+            );
+        }
     }
 
     fn copy_image(
         &mut self,
-        _src: &base::Image,
-        _src_layout: base::ImageLayout,
-        _src_range: &base::ImageLayerRange,
-        _src_origin: &[u32],
-        _dst: &base::Image,
-        _dst_layout: base::ImageLayout,
-        _dst_range: &base::ImageLayerRange,
-        _dst_origin: &[u32],
-        _size: &[u32],
+        src: &base::Image,
+        src_layout: base::ImageLayout,
+        src_range: &base::ImageLayerRange,
+        src_origin: &[u32],
+        dst: &base::Image,
+        dst_layout: base::ImageLayout,
+        dst_range: &base::ImageLayerRange,
+        dst_origin: &[u32],
+        size: &[u32],
     ) {
-        unimplemented!();
+        let my_src: &Image = src.downcast_ref().expect("bad source image type");
+        let my_dst: &Image = dst.downcast_ref().expect("bad destination image type");
+
+        let src_origin: [u32; 3] = src_origin.into_with_pad(0);
+        let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);
+        let size: [u32; 3] = size.into_with_pad(1);
+
+        assert_eq!(src_range.layers.len(), dst_range.layers.len());
+
+        let src_aspect = my_src.meta().image_aspects();
+        let dst_aspect = my_dst.meta().image_aspects();
+
+        assert_eq!(
+            src_aspect, dst_aspect,
+            "source and destination format must match"
+        );
+
+        let vk_device = self.device.vk_device();
+
+        let is_depth_stencil = src_aspect != vk::IMAGE_ASPECT_COLOR_BIT;
+
+        unsafe {
+            vk_device.cmd_copy_image(
+                self.vk_cmd_buffer,
+                my_src.vk_image(),
+                translate_image_layout(src_layout, is_depth_stencil),
+                my_dst.vk_image(),
+                translate_image_layout(dst_layout, is_depth_stencil),
+                &[
+                    vk::ImageCopy {
+                        src_subresource: translate_image_subresource_layers(src_range, src_aspect),
+                        src_offset: vk::Offset3D {
+                            x: src_origin[0] as i32,
+                            y: src_origin[1] as i32,
+                            z: src_origin[2] as i32,
+                        },
+                        dst_subresource: translate_image_subresource_layers(dst_range, dst_aspect),
+                        dst_offset: vk::Offset3D {
+                            x: dst_origin[0] as i32,
+                            y: dst_origin[1] as i32,
+                            z: dst_origin[2] as i32,
+                        },
+                        extent: vk::Extent3D {
+                            width: size[0],
+                            height: size[1],
+                            depth: size[2],
+                        },
+                    },
+                ],
+            );
+        }
     }
 }

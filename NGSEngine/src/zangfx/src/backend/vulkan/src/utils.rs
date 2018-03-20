@@ -189,6 +189,19 @@ pub fn translate_image_subresource_range(
     }
 }
 
+pub fn translate_image_subresource_layers(
+    value: &base::ImageLayerRange,
+    aspect_mask: vk::ImageAspectFlags,
+) -> vk::ImageSubresourceLayers {
+    let ref layers = value.layers;
+    vk::ImageSubresourceLayers {
+        aspect_mask,
+        mip_level: value.mip_level,
+        base_array_layer: layers.start,
+        layer_count: layers.end - layers.start,
+    }
+}
+
 pub fn translate_image_layout(value: base::ImageLayout, is_depth_stencil: bool) -> vk::ImageLayout {
     match (value, is_depth_stencil) {
         (base::ImageLayout::Undefined, _) => vk::ImageLayout::Undefined,
@@ -203,6 +216,14 @@ pub fn translate_image_layout(value: base::ImageLayout, is_depth_stencil: bool) 
         (base::ImageLayout::CopyRead, _) => vk::ImageLayout::TransferSrcOptimal,
         (base::ImageLayout::CopyWrite, _) => vk::ImageLayout::TransferDstOptimal,
         (base::ImageLayout::Present, _) => vk::ImageLayout::PresentSrcKhr,
+    }
+}
+
+pub fn translate_image_aspect(value: base::ImageAspect) -> vk::ImageAspectFlags {
+    match value {
+        base::ImageAspect::Color => vk::IMAGE_ASPECT_COLOR_BIT,
+        base::ImageAspect::Depth => vk::IMAGE_ASPECT_DEPTH_BIT,
+        base::ImageAspect::Stencil => vk::IMAGE_ASPECT_STENCIL_BIT,
     }
 }
 
