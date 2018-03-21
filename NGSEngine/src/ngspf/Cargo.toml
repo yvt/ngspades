@@ -23,6 +23,7 @@ lazy_static = "0.2"
 [target.'cfg(target_os="macos")'.dependencies]
 cocoa = "0.9"
 objc = "0.2"
+block = "0.1.5"
 
 [build-dependencies]
 prebuild-glslang = { path = "../support/prebuild-glslang" }

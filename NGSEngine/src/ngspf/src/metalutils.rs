@@ -5,7 +5,7 @@
 //
 use std::ops::Deref;
 use zangfx::backends::metal::metal;
-use self::metal::{id, MTLDevice, NSObjectProtocol};
+use self::metal::{id, NSObjectProtocol};
 
 /// Smart pointer for Objective-C objects.
 #[derive(Debug, PartialEq, Eq, Hash)]

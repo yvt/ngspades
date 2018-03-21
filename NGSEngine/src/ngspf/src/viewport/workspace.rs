@@ -10,8 +10,6 @@ use winit::{self, EventsLoop};
 use ngsenumflags::BitFlags;
 use cgmath::Vector2;
 
-use zangfx::prelude::*;
-
 use context::{Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame,
               ProducerDataCell, ProducerFrame, PropertyAccessor, PropertyError, UpdateId,
               WoProperty};
@@ -101,8 +99,16 @@ impl Workspace {
     }
 
     pub fn enter_main_loop(&mut self) -> Result<(), WorkspaceError> {
+        let mut events = Vec::new();
+
         wsi::autorelease_pool_scope(|arp| loop {
             let ref mut events_loop = self.events_loop;
+
+            // Wait until we receieve at least one event
+            events_loop.run_forever(|e| {
+                events.push(e);
+                winit::ControlFlow::Break
+            });
 
             {
                 let mut frame = self.context
@@ -111,6 +117,16 @@ impl Workspace {
 
                 {
                     let ref window_set = self.window_set;
+
+                    for e in events.drain(..) {
+                        match e {
+                            winit::Event::WindowEvent { window_id, event } => {
+                                window_set.handle_window_event(window_id, event, &mut frame);
+                            }
+                            _ => {}
+                        }
+                    }
+
                     events_loop.poll_events(|e| match e {
                         winit::Event::WindowEvent { window_id, event } => {
                             window_set.handle_window_event(window_id, event, &mut frame);
@@ -148,7 +164,7 @@ struct WindowSet {
 
 struct WorkspaceWindow {
     surface: wsi::SurfaceRef,
-    winit_window: winit::Window,
+    winit_window_id: winit::WindowId,
 }
 
 impl ::Debug for WorkspaceWindow {
@@ -254,8 +270,9 @@ impl WindowSet {
         id: winit::WindowId,
     ) -> Option<(&NodeRef, &winit::Window)> {
         for (node, workspace_window) in self.windows.iter() {
-            if workspace_window.winit_window.id() == id {
-                return Some((node, &workspace_window.winit_window));
+            if workspace_window.winit_window_id == id {
+                let winit_window = self.wm.get_winit_window(workspace_window.surface).unwrap();
+                return Some((node, winit_window));
             }
         }
 
@@ -304,11 +321,12 @@ impl WindowSet {
             let winit_window = builder
                 .build(events_loop)
                 .expect("failed to instantiate a window.");
+            let winit_window_id = winit_window.id();
 
-            let surface = self.wm.add_surface(&winit_window, NodeRef::clone(new_node));
+            let surface = self.wm.add_surface(winit_window, NodeRef::clone(new_node));
 
             let workspace_window = WorkspaceWindow {
-                winit_window,
+                winit_window_id,
                 surface,
             };
 
@@ -330,7 +348,7 @@ impl WindowSet {
         // Update window properties
         for (node, workspace_window) in self.windows.iter_mut() {
             let window: &Window = node.downcast_ref().unwrap();
-            let ref winit_window = workspace_window.winit_window;
+            let winit_window = self.wm.get_winit_window(workspace_window.surface).unwrap();
 
             use std::mem::replace;
             let action = replace(
@@ -351,6 +369,12 @@ impl WindowSet {
     }
 }
 
+use std::sync::mpsc;
+use zangfx::base as gfx;
+use zangfx::prelude::*;
+
+/// Stub implementation of `Painter` -- will later be replaced with the real
+/// compositor
 #[derive(Debug)]
 struct Painter {}
 
@@ -360,36 +384,60 @@ impl Painter {
     }
 }
 
+#[derive(Debug)]
+struct PainterDeviceData {
+    device_active_send: mpsc::SyncSender<()>,
+    device_active_recv: mpsc::Receiver<()>,
+    main_queue: wsi::GfxQueue,
+    cmd_pool: Box<gfx::CmdPool>,
+}
+
 impl wsi::Painter for Painter {
-    type DeviceData = ();
+    type DeviceData = PainterDeviceData;
 
     type SurfaceParam = NodeRef;
 
-    type SurfaceData = ();
+    type SurfaceData = NodeRef;
 
-    fn add_device(&mut self, _device: &wsi::WmDevice) -> Self::DeviceData {
-        unimplemented!()
+    fn add_device(&mut self, device: &wsi::WmDevice) -> Self::DeviceData {
+        let main_queue = device.main_queue.clone();
+
+        let cmd_pool = device.main_queue.queue.new_cmd_pool().unwrap();
+
+        let (send, recv) = mpsc::sync_channel(0);
+
+        PainterDeviceData {
+            device_active_send: send,
+            device_active_recv: recv,
+            main_queue,
+            cmd_pool,
+        }
     }
 
-    fn remove_device(&mut self, _device: &wsi::WmDevice, _data: Self::DeviceData) {
-        unimplemented!()
+    fn remove_device(&mut self, _device: &wsi::WmDevice, data: Self::DeviceData) {
+        use std::mem::drop;
+
+        drop(data.device_active_send);
+
+        // This will block until all command buffers complete the execution
+        let _ = data.device_active_recv.recv();
     }
 
     fn add_surface(
         &mut self,
         _surface: &wsi::SurfaceRef,
-        _param: Self::SurfaceParam,
+        param: Self::SurfaceParam,
         _surface_props: &wsi::SurfaceProps,
     ) -> Self::SurfaceData {
-        unimplemented!()
+        param
     }
 
     fn remove_surface(
         &mut self,
         _surface: &wsi::SurfaceRef,
-        _data: Self::SurfaceData,
+        data: Self::SurfaceData,
     ) -> Self::SurfaceParam {
-        unimplemented!()
+        data
     }
 
     fn update_surface(
@@ -398,17 +446,27 @@ impl wsi::Painter for Painter {
         _data: &mut Self::SurfaceData,
         _surface_props: &wsi::SurfaceProps,
     ) {
-        unimplemented!()
     }
 
     fn paint(
         &mut self,
         _device: &wsi::WmDevice,
-        _device_data: &mut Self::DeviceData,
+        device_data: &mut Self::DeviceData,
         _surface: &wsi::SurfaceRef,
         _surface_data: &mut Self::SurfaceData,
-        _drawable: &mut wsi::Drawable,
+        drawable: &mut wsi::Drawable,
     ) {
-        unimplemented!()
+        let mut cmd_buffer = device_data.cmd_pool.begin_cmd_buffer().unwrap();
+
+        drawable.encode_prepare_present(&mut *cmd_buffer, device_data.main_queue.queue_family);
+        let device_active_send = device_data.device_active_send.clone();
+
+        cmd_buffer.on_complete(Box::new(move || {
+            let _ = device_active_send;
+        }));
+        cmd_buffer.commit().unwrap();
+
+        device_data.main_queue.queue.flush();
+        drawable.enqueue_present();
     }
 }
