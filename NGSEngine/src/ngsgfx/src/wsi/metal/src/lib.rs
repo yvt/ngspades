@@ -233,7 +233,7 @@ impl wsi_core::NewWindow for MetalWindow {
 
             let ns_cs_name = NSString::alloc(ptr::null_mut()).init_str(cs_name);
             let colorspace = CGColorSpaceCreateWithName(mem::transmute(ns_cs_name));
-            msg_send![ns_cs_name, release];
+            let () = msg_send![ns_cs_name, release];
 
             layer.set_edge_antialiasing_mask(0);
             layer.set_masks_to_bounds(true);
