@@ -115,8 +115,6 @@ pub struct Viewport {
     pub max_depth: f32,
 }
 
-// Can't define `mopo!`s in the same module as those traits due to the name
-// confliction of the unqualified name of `Result`.
 define_object! { arg::ArgTableSigBuilder }
 define_object! { arg::ArgSig }
 define_object! { arg::RootSigBuilder }
@@ -194,4 +192,4 @@ pub use sync::*;
 pub use debug::*;
 
 #[doc(no_inline)]
-pub use common::Rect2D;
+pub use common::{Rect2D, Result};

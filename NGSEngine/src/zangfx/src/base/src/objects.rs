@@ -47,7 +47,9 @@ macro_rules! zangfx_impl_object {
     ($type:ty : $($iface:ty),*) => {
         impl $crate::Object for $type {}
 
-        interfaces! { $type: $crate::Object $(, $iface)* }
+        // For a mysterious reason, `interfaces ! { $type : ... }` does not work
+        // since `query_interface` 0.3.4
+        interfaces! { @imp () $type: $crate::Object $(, $iface)* }
     }
 }
 
