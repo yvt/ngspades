@@ -11,25 +11,19 @@ use common::BinaryInteger;
 
 pub use gfxut::*;
 
+/// Tracks the execution state of a command buffer.
+///
+/// Currently, this is implemented as a thin wrapper around `CbStateTracker`.
 #[derive(Debug)]
-pub struct CmdBufferAwaiter {
-    recv: mpsc::Receiver<()>,
-}
+pub struct CmdBufferAwaiter(CbStateTracker);
 
 impl CmdBufferAwaiter {
     pub fn new(buffer: &mut gfx::CmdBuffer) -> Self {
-        // `Sender` is not `Sync`. What.
-        let (send, recv) = mpsc::sync_channel(1);
-
-        buffer.on_complete(Box::new(move || {
-            let _ = send.send(());
-        }));
-
-        Self { recv }
+        CmdBufferAwaiter(CbStateTracker::new(buffer))
     }
 
     pub fn wait_until_completed(&self) {
-        self.recv.recv_timeout(Duration::from_millis(1000)).unwrap();
+        self.0.wait_timeout(Duration::from_millis(1000)).unwrap();
     }
 }
 
