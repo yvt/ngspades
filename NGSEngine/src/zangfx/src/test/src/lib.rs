@@ -8,6 +8,7 @@
 #![macro_use]
 extern crate zangfx_base as gfx;
 extern crate zangfx_common as common;
+extern crate zangfx_utils as gfxut;
 #[macro_use]
 extern crate ngsenumflags;
 #[macro_use]

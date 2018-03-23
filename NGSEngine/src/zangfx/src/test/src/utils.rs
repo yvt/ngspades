@@ -5,11 +5,11 @@
 //
 use std::sync::mpsc;
 use std::time::Duration;
-use std::borrow::Borrow;
-use std::ops::Deref;
 
 use gfx;
 use common::BinaryInteger;
+
+pub use gfxut::*;
 
 #[derive(Debug)]
 pub struct CmdBufferAwaiter {
@@ -30,109 +30,6 @@ impl CmdBufferAwaiter {
 
     pub fn wait_until_completed(&self) {
         self.recv.recv_timeout(Duration::from_millis(1000)).unwrap();
-    }
-}
-
-#[derive(Debug)]
-pub struct UniqueBuffer<D: Borrow<gfx::Device>> {
-    device: D,
-    buffer: gfx::Buffer,
-}
-
-impl<D: Borrow<gfx::Device>> UniqueBuffer<D> {
-    pub fn new(device: D, buffer: gfx::Buffer) -> Self {
-        Self { device, buffer }
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Deref for UniqueBuffer<D> {
-    type Target = gfx::Buffer;
-    fn deref(&self) -> &Self::Target {
-        &self.buffer
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Drop for UniqueBuffer<D> {
-    fn drop(&mut self) {
-        self.device.borrow().destroy_buffer(&self.buffer).unwrap();
-    }
-}
-
-#[derive(Debug)]
-pub struct UniqueImage<D: Borrow<gfx::Device>> {
-    device: D,
-    image: gfx::Image,
-}
-
-impl<D: Borrow<gfx::Device>> UniqueImage<D> {
-    pub fn new(device: D, image: gfx::Image) -> Self {
-        Self { device, image }
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Deref for UniqueImage<D> {
-    type Target = gfx::Image;
-    fn deref(&self) -> &Self::Target {
-        &self.image
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Drop for UniqueImage<D> {
-    fn drop(&mut self) {
-        self.device.borrow().destroy_image(&self.image).unwrap();
-    }
-}
-
-#[derive(Debug)]
-pub struct UniqueImageView<D: Borrow<gfx::Device>> {
-    device: D,
-    image_view: gfx::ImageView,
-}
-
-impl<D: Borrow<gfx::Device>> UniqueImageView<D> {
-    pub fn new(device: D, image_view: gfx::ImageView) -> Self {
-        Self { device, image_view }
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Deref for UniqueImageView<D> {
-    type Target = gfx::ImageView;
-    fn deref(&self) -> &Self::Target {
-        &self.image_view
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Drop for UniqueImageView<D> {
-    fn drop(&mut self) {
-        self.device
-            .borrow()
-            .destroy_image_view(&self.image_view)
-            .unwrap();
-    }
-}
-
-#[derive(Debug)]
-pub struct UniqueSampler<D: Borrow<gfx::Device>> {
-    device: D,
-    sampler: gfx::Sampler,
-}
-
-impl<D: Borrow<gfx::Device>> UniqueSampler<D> {
-    pub fn new(device: D, sampler: gfx::Sampler) -> Self {
-        Self { device, sampler }
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Deref for UniqueSampler<D> {
-    type Target = gfx::Sampler;
-    fn deref(&self) -> &Self::Target {
-        &self.sampler
-    }
-}
-
-impl<D: Borrow<gfx::Device>> Drop for UniqueSampler<D> {
-    fn drop(&mut self) {
-        self.device.borrow().destroy_sampler(&self.sampler).unwrap();
     }
 }
 

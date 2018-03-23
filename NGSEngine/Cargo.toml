@@ -46,6 +46,7 @@ members = [
     "src/zangfx/src/common",
     "src/zangfx/src/base",
     "src/zangfx/src/test",
+    "src/zangfx/src/utils",
 ]
 
 [profile.release]

@@ -216,6 +216,7 @@
 //!
 pub extern crate zangfx_base as base;
 pub extern crate zangfx_common as common;
+pub extern crate zangfx_utils as utils;
 
 /// Includes a backend for each target API.
 pub mod backends {

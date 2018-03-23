@@ -1739,6 +1739,15 @@ dependencies = [
  "xdispatch 0.1.0",
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
+ "zangfx_utils 0.1.0",
+]
+
+[[package]]
+name = "zangfx_utils"
+version = "0.1.0"
+dependencies = [
+ "zangfx_base 0.1.0",
+ "zangfx_common 0.1.0",
 ]
 
 [[package]]
