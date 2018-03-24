@@ -18,6 +18,7 @@ extern crate refeq;
 extern crate tokenlock;
 extern crate cgmath;
 extern crate winit;
+#[macro_use]
 extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;
@@ -39,7 +40,7 @@ extern crate objc;
 pub mod com;
 pub mod context;
 pub mod viewport;
-// mod gfxutils;
+mod gfxutils;
 
 #[cfg(target_os = "macos")]
 mod metalutils;

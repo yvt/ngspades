@@ -86,6 +86,17 @@ pub trait UploadRequest {
         Ok(())
     }
 
+    /// Encode copy commands. Called after `copy` is called for all requests in
+    /// the same session.
+    fn post_copy(
+        &self,
+        _encoder: &mut base::CopyCmdEncoder,
+        _staging_buffer: &base::Buffer,
+        _staging_buffer_range: Range<base::DeviceSize>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     /// Encode commands outside a command encoder.
     fn post_encoder(&self, _cmd_buffer: &mut base::CmdBuffer) -> Result<()> {
         Ok(())
@@ -346,6 +357,10 @@ impl Uploader {
                 for (request, range) in sub_requests_with_range() {
                     let range = range.start as u64..range.end as u64;
                     request.copy(encoder, &*buffer, range)?;
+                }
+                for (request, range) in sub_requests_with_range() {
+                    let range = range.start as u64..range.end as u64;
+                    request.post_copy(encoder, &*buffer, range)?;
                 }
 
                 encoder.update_fence(&fence, flags![base::Stage::{Copy}]);

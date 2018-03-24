@@ -7,10 +7,10 @@
 // mod compositor;
 // mod device;
 mod image;
+mod imagemanager;
 mod layer;
 // mod port;
 // mod temprespool;
-// mod uploader;
 mod window;
 mod workspace;
 mod wsi;
