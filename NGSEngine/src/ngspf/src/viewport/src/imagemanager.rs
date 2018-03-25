@@ -105,7 +105,7 @@ fn uncommit_image(
     heap_set: &mut HeapSet,
     resident_image: &ResidentImageData,
 ) -> Result<()> {
-    heap_set.unbind(&resident_image.alloc);
+    heap_set.unbind(&resident_image.alloc)?;
     device.destroy_image(&resident_image.image)?;
     device.destroy_image_view(&resident_image.image_view)?;
     Ok(())

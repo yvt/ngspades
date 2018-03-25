@@ -3,113 +3,82 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::{any, fmt};
+use std::fmt;
 use std::sync::Arc;
 use std::collections::HashMap;
-use atomic_refcell::AtomicRefCell;
 use refeq::RefEqArc;
-use gfx::core::Backend;
 
-use context::PresenterFrame;
-use super::WorkspaceDevice;
+use zangfx::base as gfx;
 
-/// Trait for creating `PortInstance` for a specific NgsGFX backend.
+use core::PresenterFrame;
+
+/// ZanGFX objects passed to ports.
+#[derive(Debug, Clone)]
+pub struct GfxObjects {
+    pub device: Arc<gfx::Device>,
+    pub main_queue: Arc<gfx::CmdQueue>,
+    pub copy_queue: Option<Arc<gfx::CmdQueue>>,
+}
+
+/// Trait for creating `PortInstance` for a specific NgsGFX device.
 pub trait Port: fmt::Debug + Send + Sync + 'static {
-    /// Create a port instance for a specific NgsGFX backend.
-    ///
-    /// The callee must find an appropriate implementation for the actual
-    /// backend by calling `PortMountContext::downcast_mut` with a known set
-    /// of backends.
-    ///
-    ///     use ngspf::viewport::{Port, PortMountContext};
-    ///     use ngspf::gfx::backends::DefaultBackend;
-    ///     #[derive(Debug)]
-    ///     struct MyPort;
-    ///
-    ///     impl Port for MyPort {
-    ///         fn mount(&self, context: &mut PortMountContext) {
-    ///             if let Some(mut context) = context.downcast_mut::<DefaultBackend>() {
-    ///                 context.set_instance(panic!("provide instance here"));
-    ///             }
-    ///         }
-    ///     }
-    ///
-    fn mount(&self, context: &mut PortMountContext);
+    /// Create a port instance for a specific NgsGFX device.
+    fn mount(&self, objects: &GfxObjects) -> Box<PortInstance>;
+}
+
+/// The properties of a backing store image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PortImageProps {
+    /// The extents of the image.
+    pub extents: [u32; 2],
+    /// The image format. Currently it is always `ImageFormat::SrgbRgba8`.
+    pub format: gfx::ImageFormat,
 }
 
 #[derive(Debug)]
-pub struct PortMountContext<'a> {
-    pub(super) workspace_device: &'a any::Any,
-    pub(super) result_instance: &'a mut any::Any,
-}
-
-#[derive(Debug)]
-pub struct PortMountContextWithBackend<'a, B: Backend> {
-    pub(super) workspace_device: &'a WorkspaceDevice<B>,
-    pub(super) result_instance: &'a mut Option<Box<PortInstance<B>>>,
-}
-
-impl<'a> PortMountContext<'a> {
-    pub fn downcast_mut<B: Backend>(&mut self) -> Option<PortMountContextWithBackend<B>> {
-        if let Some(result_instance) = self.result_instance.downcast_mut() {
-            Some(PortMountContextWithBackend {
-                workspace_device: self.workspace_device.downcast_ref().unwrap(),
-                result_instance,
-            })
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, B: Backend> PortMountContextWithBackend<'a, B> {
-    pub fn workspace_device(&self) -> &'a WorkspaceDevice<B> {
-        self.workspace_device
-    }
-
-    pub fn set_instance(&mut self, instance: Box<PortInstance<B>>) {
-        *self.result_instance = Some(instance);
-    }
-
-    fn upcast_mut(&mut self) -> PortMountContext {
-        PortMountContext {
-            workspace_device: self.workspace_device,
-            result_instance: self.result_instance,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct PortRenderContext<'a> {
-    pub workspace_device: &'a WorkspaceDevice,
-
+pub struct PortRenderContext {
+    /// The image to render on.
+    ///
+    /// The image must be transitioned to the `ShaderRead` layout after
+    /// rendering. Its ownership must be transfered to `main_queue`.
+    pub image: gfx::Image,
+    pub image_props: PortImageProps,
+    /// The fence to be updated after rendering.
+    pub fence: gfx::Fence,
     /// Set this to `true` to continuously update the screen.
     pub schedule_next_frame: bool,
 }
 
 /// Trait for rendering custom contents as layer contents.
 pub trait PortInstance: fmt::Debug + Send + Sync + 'static {
+    /// The source stage flags used to update `PortRenderContext::fence`.
+    ///
+    /// The default implementation returns `flags![gfx::Stage::{RenderOutput}]`.
+    fn fence_src_stage(&self) -> gfx::StageFlags {
+        flags![gfx::Stage::{RenderOutput}]
+    }
+
     fn render(
         &mut self,
-        context: &mut PortRenderContext<B>,
+        context: &mut PortRenderContext,
         frame: &PresenterFrame,
-    ) -> B::ImageView;
+    ) -> gfx::Result<()>;
 }
 
 /// Maintains port instances associated with `Port`s.
 #[derive(Debug)]
-pub(super) struct PortManager<B: Backend> {
+pub(super) struct PortManager {
     /// Set of mounted port instances.
-    port_map: HashMap<RefEqArc<Port>, PortMapping<B>>,
+    port_map: HashMap<RefEqArc<Port>, PortMapping>,
 }
 
 #[derive(Debug)]
-struct PortMapping<B: Backend> {
-    instance: Option<Box<PortInstance<B>>>,
+struct PortMapping {
+    instance: Option<Box<PortInstance>>,
     used_in_last_frame: bool,
 }
 
-impl<B: Backend> PortManager<B> {
+impl PortManager {
     pub fn new() -> Self {
         Self {
             port_map: HashMap::new(),
@@ -129,26 +98,17 @@ impl<B: Backend> PortManager<B> {
     pub fn get(
         &mut self,
         port: &RefEqArc<Port>,
-        workspace_device: &WorkspaceDevice<B>,
-    ) -> Option<&mut Box<PortInstance<B>>> {
+        gfx_objects: &GfxObjects,
+    ) -> Option<&mut Box<PortInstance>> {
         let ent = self.port_map.entry(RefEqArc::clone(port));
         let map = ent.or_insert_with(|| {
             // The port instance has not yet been created for the `Port`.
             // Mount the port and create the port instance.
-
-            let mut instance_cell: Option<Box<PortInstance<B>>> = None;
-
-            {
-                let mut mount_context = PortMountContextWithBackend {
-                    workspace_device,
-                    result_instance: &mut instance_cell,
-                };
-                port.mount(&mut mount_context.upcast_mut());
-            }
+            let instance = port.mount(gfx_objects);
 
             // Save the created instance and return a reference to it
             PortMapping {
-                instance: instance_cell,
+                instance: Some(instance),
                 used_in_last_frame: true,
             }
         });
