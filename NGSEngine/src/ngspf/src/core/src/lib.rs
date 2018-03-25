@@ -3,8 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-//! Context API providing a basic infrastructure for the producer-presenter
-//! communication.
+//! Context API of [NgsPF] provides a basic infrastructure for the
+//! producer-presenter communication.
+//!
+//! [NgsPF]: ../ngspf/index.html
 //!
 //! ## Property Accessor
 //!
@@ -15,12 +17,18 @@
 //! See the documentation of [`KeyedPropertyAccessor`] for the usage.
 //!
 //! [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
+#![feature(conservative_impl_trait)]
+extern crate arclock;
+extern crate ngsbase;
+extern crate refeq;
+extern crate tokenlock;
+
 use std::any::Any;
 use std::sync::Mutex;
-use std::{ops, fmt, borrow, hash};
+use std::{borrow, fmt, hash, ops};
 use refeq::RefEqArc;
 use arclock::{ArcLock, ArcLockGuard};
-use tokenlock::{TokenLock, TokenRef, Token};
+use tokenlock::{Token, TokenLock, TokenRef};
 
 /// Maintains a single timeline of node property modifications.
 #[derive(Debug)]
@@ -89,10 +97,9 @@ impl Context {
     /// lifetime of the `Context`.
     pub fn commit(&self) -> Result<(), ContextError> {
         use std::mem::swap;
-        let mut frame: ArcLockGuard<ProducerFrameInner> =
-            self.producer_frame.try_lock().map_err(
-                |_| ContextError::LockFailed,
-            )?;
+        let mut frame: ArcLockGuard<ProducerFrameInner> = self.producer_frame
+            .try_lock()
+            .map_err(|_| ContextError::LockFailed)?;
 
         frame.frame_id = frame.frame_id.checked_add(1).expect("frame ID overflow");
 
@@ -114,10 +121,9 @@ impl Context {
     /// If locking succeeds, it first applies all changes commited by the
     /// producer so far.
     pub fn lock_presenter_frame(&self) -> Result<PresenterFrame, ContextError> {
-        let frame_inner: ArcLockGuard<PresenterFrameInner> =
-            self.presenter_frame.try_lock().map_err(
-                |_| ContextError::LockFailed,
-            )?;
+        let frame_inner: ArcLockGuard<PresenterFrameInner> = self.presenter_frame
+            .try_lock()
+            .map_err(|_| ContextError::LockFailed)?;
 
         let mut frame = PresenterFrame(frame_inner);
 
@@ -218,12 +224,12 @@ impl NodeRef {
         &'a self,
         mut cb: F,
     ) -> Result<(), E> {
-        self.for_each_node_r(move |node_ref| if let Some(node) = node_ref
-            .downcast_ref()
-        {
-            cb(node)
-        } else {
-            Ok(())
+        self.for_each_node_r(move |node_ref| {
+            if let Some(node) = node_ref.downcast_ref() {
+                cb(node)
+            } else {
+                Ok(())
+            }
         })
     }
 
@@ -276,7 +282,9 @@ impl GroupRef {
     }
 
     pub fn new<T: IntoIterator<Item = NodeRef>>(nodes: T) -> Self {
-        GroupRef(RefEqArc::new(Group { nodes: nodes.into_iter().collect() }))
+        GroupRef(RefEqArc::new(Group {
+            nodes: nodes.into_iter().collect(),
+        }))
     }
 
     pub fn into_node_ref(self) -> NodeRef {
@@ -339,9 +347,10 @@ impl ProducerFrame {
             *ent = Box::new(KeyedUpdate(Some((trans_fn(None), update_fn_fac()))));
             last_update
         } else {
-            self.0.changeset.push(Box::new(
-                KeyedUpdate(Some((trans_fn(None), update_fn_fac()))),
-            ));
+            self.0.changeset.push(Box::new(KeyedUpdate(Some((
+                trans_fn(None),
+                update_fn_fac(),
+            )))));
 
             UpdateId {
                 frame_id: self.0.frame_id,
@@ -390,7 +399,9 @@ pub struct Property<T> {
 
 impl<T> WoProperty<T> {
     pub fn new(context: &Context, x: T) -> Self {
-        Self { presenter_data: TokenLock::new(context.presenter_token_ref.clone(), x) }
+        Self {
+            presenter_data: TokenLock::new(context.presenter_token_ref.clone(), x),
+        }
     }
 
     pub fn write_presenter<'a>(
@@ -403,9 +414,9 @@ impl<T> WoProperty<T> {
     }
 
     pub fn read_presenter<'a>(&'a self, frame: &'a PresenterFrame) -> Result<&'a T, PropertyError> {
-        self.presenter_data.read(&frame.0.presenter_token).ok_or(
-            PropertyError::InvalidContext,
-        )
+        self.presenter_data
+            .read(&frame.0.presenter_token)
+            .ok_or(PropertyError::InvalidContext)
     }
 }
 
@@ -447,22 +458,24 @@ pub struct ProducerDataCell<T> {
 
 impl<T> ProducerDataCell<T> {
     pub fn new(context: &Context, x: T) -> Self {
-        Self { data: TokenLock::new(context.producer_token_ref.clone(), x) }
+        Self {
+            data: TokenLock::new(context.producer_token_ref.clone(), x),
+        }
     }
 
     pub fn write_producer<'a>(
         &'a self,
         frame: &'a mut ProducerFrame,
     ) -> Result<&'a mut T, PropertyError> {
-        self.data.write(&mut frame.0.producer_token).ok_or(
-            PropertyError::InvalidContext,
-        )
+        self.data
+            .write(&mut frame.0.producer_token)
+            .ok_or(PropertyError::InvalidContext)
     }
 
     pub fn read_producer<'a>(&'a self, frame: &'a ProducerFrame) -> Result<&'a T, PropertyError> {
-        self.data.read(&frame.0.producer_token).ok_or(
-            PropertyError::InvalidContext,
-        )
+        self.data
+            .read(&frame.0.producer_token)
+            .ok_or(PropertyError::InvalidContext)
     }
 }
 
@@ -619,13 +632,17 @@ where
 
         let update_id = prop.producer_data.read_producer(frame)?.1;
 
-        let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
-            let c = self.container.clone();
-            let s = self.selector.clone();
-            move |frame, value| {
-                *s(&c).write_presenter(frame).unwrap() = value;
-            }
-        });
+        let new_id = frame.record_keyed_update(
+            update_id,
+            |_| new_value,
+            || {
+                let c = self.container.clone();
+                let s = self.selector.clone();
+                move |frame, value| {
+                    *s(&c).write_presenter(frame).unwrap() = value;
+                }
+            },
+        );
 
         prop.producer_data.write_producer(frame)?.1 = new_id;
 
@@ -636,14 +653,16 @@ where
 impl<'a, T, C, F> RoPropertyAccessor<T> for KeyedPropertyAccessor<'a, C, F>
 where
     F: for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
-{}
+{
+}
 
 impl<'a, T, C, F> PropertyAccessor<T> for KeyedPropertyAccessor<'a, C, F>
 where
     C: 'static + Clone + Sync + Send,
     F: 'static + Clone + Sync + Send + for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
-    T: 'static + Clone + Sync + Send
-{}
+    T: 'static + Clone + Sync + Send,
+{
+}
 
 /// Dynamic property accessor for read-only properties.
 ///
@@ -704,4 +723,11 @@ impl<T, S> RoPropertyAccessor<S> for RefPropertyAccessor<T>
 where
     T: borrow::Borrow<S>,
 {
+}
+
+/// The NgsPF prelude.
+pub mod prelude {
+    #[doc(no_inline)]
+    pub use {PropertyAccessor, PropertyPresenterRead, PropertyProducerRead, PropertyProducerWrite,
+             RoPropertyAccessor};
 }

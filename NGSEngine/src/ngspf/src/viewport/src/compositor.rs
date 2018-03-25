@@ -141,7 +141,7 @@ impl Compositor {
         let ref device = ws_device.objects().gfx_device();
         let factory = device.factory();
 
-        let utils = DeviceUtils::::new(device);
+        let utils = DeviceUtils::new(device);
 
         let composite_ds_layouts = [
             factory.make_descriptor_set_layout(

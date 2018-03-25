@@ -648,24 +648,54 @@ dependencies = [
 name = "ngspf"
 version = "0.1.0"
 dependencies = [
- "arclock 0.1.0",
+ "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsbase 0.1.0",
+ "ngspf_com 0.1.0",
+ "ngspf_core 0.1.0",
+ "ngspf_viewport 0.1.0",
+ "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ngspf_com"
+version = "0.1.0"
+dependencies = [
  "atomic_refcell 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsbase 0.1.0",
+ "ngscom 0.1.0",
+ "ngspf_core 0.1.0",
+ "ngspf_viewport 0.1.0",
+]
+
+[[package]]
+name = "ngspf_core"
+version = "0.1.0"
+dependencies = [
+ "arclock 0.1.0",
+ "ngsbase 0.1.0",
+ "refeq 0.1.0",
+ "tokenlock 0.1.4",
+]
+
+[[package]]
+name = "ngspf_viewport"
+version = "0.1.0"
+dependencies = [
  "block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cocoa 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "include_data 0.1.0",
  "iterpool 0.1.0",
- "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsbase 0.1.0",
- "ngscom 0.1.0",
  "ngsenumflags 0.1.2",
  "ngsenumflags_derive 0.2.2",
+ "ngspf_core 0.1.0",
  "objc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prebuild-glslang 0.1.0",
- "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
  "rgb 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokenlock 0.1.4",
  "winit 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "zangfx 0.1.0",
 ]

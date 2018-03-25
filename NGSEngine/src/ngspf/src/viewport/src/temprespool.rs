@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::{HashMap, VecDeque};
 
 use atomic_refcell::AtomicRefCell;
-use iterpool::{Pool, PoolPtr, intrusive_list};
+use iterpool::{intrusive_list, Pool, PoolPtr};
 
 use gfx;
 use gfx::prelude::*;
@@ -71,7 +71,11 @@ struct ResInfo<B: Backend> {
 
 #[derive(Debug)]
 enum ResData<B: Backend> {
-    Image(B::Image, gfx::core::ImageLayout, gfx::core::ImageDescription),
+    Image(
+        B::Image,
+        gfx::core::ImageLayout,
+        gfx::core::ImageDescription,
+    ),
     Buffer(B::Buffer, gfx::core::BufferDescription),
 }
 
@@ -217,9 +221,9 @@ impl<B: Backend> TempResPool<B> {
         );
 
         let desc = self.pool[p].data.desc();
-        let ref mut free_res_list = self.free_res_list_map.entry(desc).or_insert_with(
-            Default::default,
-        );
+        let ref mut free_res_list = self.free_res_list_map
+            .entry(desc)
+            .or_insert_with(Default::default);
         free_res_list
             .accessor_mut(&mut self.pool, |r| &mut r.free_res_link)
             .push_back(p);
@@ -241,8 +245,8 @@ impl<B: Backend> TempResPool<B> {
                     ptr = None;
                 }
 
-                let last_use_frame_index = (self.pool[p].last_use_frame_id - self.start_frame_id) as
-                    usize;
+                let last_use_frame_index =
+                    (self.pool[p].last_use_frame_id - self.start_frame_id) as usize;
 
                 if last_use_frame_index == self.frames.len() {
                     // The resource was used in the current frame
@@ -368,7 +372,10 @@ impl<'a, B: Backend> TempResOp<'a, B> {
 
     pub fn stage_access_type_mut(
         &mut self,
-    ) -> (&mut gfx::core::PipelineStageFlags, &mut gfx::core::AccessTypeFlags) {
+    ) -> (
+        &mut gfx::core::PipelineStageFlags,
+        &mut gfx::core::AccessTypeFlags,
+    ) {
         let ref mut res_info: ResInfo<B> = self.0.pool[self.1];
         (&mut res_info.stage, &mut res_info.access_type)
     }

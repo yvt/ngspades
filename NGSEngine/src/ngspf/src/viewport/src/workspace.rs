@@ -10,13 +10,12 @@ use winit::{self, EventsLoop};
 use ngsenumflags::BitFlags;
 use cgmath::Vector2;
 
-use context::{Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame,
-              ProducerDataCell, ProducerFrame, PropertyAccessor, PropertyError, UpdateId,
-              WoProperty};
+use core::{Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame,
+           ProducerDataCell, ProducerFrame, PropertyAccessor, PropertyError, UpdateId, WoProperty};
 use super::{Window, WindowActionBit, WindowFlagsBit};
 // use super::compositor::{CompositeContext, Compositor, CompositorWindow};
 // use super::uploader::Uploader;
-use prelude::*;
+use core::prelude::*;
 
 use super::wsi;
 
