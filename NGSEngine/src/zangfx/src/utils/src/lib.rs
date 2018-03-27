@@ -14,6 +14,7 @@ pub mod cbstatetracker;
 mod device;
 pub mod smartref;
 pub mod uploader;
+mod uploaderutils;
 
 #[doc(no_inline)]
 pub use cbstatetracker::*;
