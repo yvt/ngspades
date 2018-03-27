@@ -136,6 +136,7 @@ define_object! { pass::RenderPassBuilder }
 define_object! { pass::RenderPassTarget }
 define_object! { pass::RenderTargetTableBuilder }
 define_object! { pipeline::ComputePipelineBuilder }
+define_object! { pipeline::RenderPipelineBuilder }
 define_object! { resources::ImageBuilder }
 define_object! { resources::BufferBuilder }
 define_object! { sampler::SamplerBuilder }
