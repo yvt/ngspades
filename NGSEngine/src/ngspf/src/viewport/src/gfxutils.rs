@@ -19,7 +19,7 @@ pub struct HeapSet {
     dynamic_heap_size: gfx::DeviceSize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HeapSetAlloc {
     /// A pointer to an item in `HeapSet::heaps`.
     heap_ptr: PoolPtr,
@@ -97,12 +97,13 @@ impl HeapSet {
         let mut result = None;
 
         for (heap_ptr, heap) in self.dynamic_heap_list
-            .accessor(&self.heaps, |x| &x.dynamic_heap_link)
-            .iter()
+            .accessor_mut(&mut self.heaps, |x| &mut x.dynamic_heap_link)
+            .iter_mut()
         {
             let alloc = heap.gfx_heap.bind(resource_ref)?;
             if let Some(alloc) = alloc {
                 // The allocation was successful
+                heap.use_count += 1;
                 result = Some((alloc, heap_ptr));
                 break;
             }
@@ -193,7 +194,7 @@ pub struct MultiHeapSet {
     heap_sets: Vec<HeapSet>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MultiHeapSetAlloc {
     memory_type: gfx::MemoryType,
     alloc: HeapSetAlloc,

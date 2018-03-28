@@ -4,6 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use std::sync::Arc;
+use std::rc::Rc;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 use winit::{self, EventsLoop};
@@ -13,8 +15,7 @@ use cgmath::Vector2;
 use core::{Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame,
            ProducerDataCell, ProducerFrame, PropertyAccessor, PropertyError, UpdateId, WoProperty};
 use super::{Window, WindowActionBit, WindowFlagsBit};
-// use super::compositor::{CompositeContext, Compositor, CompositorWindow};
-// use super::uploader::Uploader;
+use super::compositor::{CompositeContext, Compositor, CompositorWindow};
 use core::prelude::*;
 
 use super::wsi;
@@ -364,31 +365,28 @@ impl WindowSet {
             }
         }
 
-        self.wm.update();
+        self.wm.update(frame);
     }
 }
 
-use std::sync::mpsc;
-use zangfx::base as gfx;
-use zangfx::prelude::*;
-
-/// Stub implementation of `Painter` -- will later be replaced with the real
-/// compositor
 #[derive(Debug)]
-struct Painter {}
+struct Painter;
 
 impl Painter {
     fn new() -> Self {
-        Self {}
+        Painter
     }
 }
 
 #[derive(Debug)]
 struct PainterDeviceData {
-    device_active_send: mpsc::SyncSender<()>,
-    device_active_recv: mpsc::Receiver<()>,
-    main_queue: wsi::GfxQueue,
-    cmd_pool: Box<gfx::CmdPool>,
+    compositor: Rc<RefCell<Compositor>>,
+}
+
+#[derive(Debug)]
+struct PainterSurfaceData {
+    node_ref: NodeRef,
+    compositor_window: CompositorWindow,
 }
 
 impl wsi::Painter for Painter {
@@ -396,51 +394,54 @@ impl wsi::Painter for Painter {
 
     type SurfaceParam = NodeRef;
 
-    type SurfaceData = NodeRef;
+    type SurfaceData = PainterSurfaceData;
+
+    type UpdateParam = PresenterFrame;
 
     fn add_device(&mut self, device: &wsi::WmDevice) -> Self::DeviceData {
-        let main_queue = device.main_queue.clone();
-
-        let cmd_pool = device.main_queue.queue.new_cmd_pool().unwrap();
-
-        let (send, recv) = mpsc::sync_channel(0);
+        use port::GfxObjects;
+        let compositor = Compositor::new(&GfxObjects {
+            device: device.device.clone(),
+            main_queue: device.main_queue.clone(),
+            copy_queue: device.copy_queue.clone(),
+        }).unwrap();
 
         PainterDeviceData {
-            device_active_send: send,
-            device_active_recv: recv,
-            main_queue,
-            cmd_pool,
+            compositor: Rc::new(RefCell::new(compositor)),
         }
     }
 
-    fn remove_device(&mut self, _device: &wsi::WmDevice, data: Self::DeviceData) {
-        use std::mem::drop;
-
-        drop(data.device_active_send);
-
-        // This will block until all command buffers complete the execution
-        let _ = data.device_active_recv.recv();
-    }
+    fn remove_device(&mut self, _device: &wsi::WmDevice, _data: Self::DeviceData) {}
 
     fn add_surface(
         &mut self,
+        _device: &wsi::WmDevice,
+        device_data: &mut Self::DeviceData,
         _surface: &wsi::SurfaceRef,
         param: Self::SurfaceParam,
         _surface_props: &wsi::SurfaceProps,
     ) -> Self::SurfaceData {
-        param
+        let compositor_window = CompositorWindow::new(device_data.compositor.clone()).unwrap();
+        PainterSurfaceData {
+            node_ref: param,
+            compositor_window,
+        }
     }
 
     fn remove_surface(
         &mut self,
+        _device: &wsi::WmDevice,
+        _device_data: &mut Self::DeviceData,
         _surface: &wsi::SurfaceRef,
         data: Self::SurfaceData,
     ) -> Self::SurfaceParam {
-        data
+        data.node_ref
     }
 
     fn update_surface(
         &mut self,
+        _device: &wsi::WmDevice,
+        _device_data: &mut Self::DeviceData,
         _surface: &wsi::SurfaceRef,
         _data: &mut Self::SurfaceData,
         _surface_props: &wsi::SurfaceProps,
@@ -450,22 +451,32 @@ impl wsi::Painter for Painter {
     fn paint(
         &mut self,
         _device: &wsi::WmDevice,
-        device_data: &mut Self::DeviceData,
+        _device_data: &mut Self::DeviceData,
         _surface: &wsi::SurfaceRef,
-        _surface_data: &mut Self::SurfaceData,
+        surface_data: &mut Self::SurfaceData,
+        update_param: &Self::UpdateParam,
         drawable: &mut wsi::Drawable,
     ) {
-        let mut cmd_buffer = device_data.cmd_pool.begin_cmd_buffer().unwrap();
+        let frame = update_param;
 
-        drawable.encode_prepare_present(&mut *cmd_buffer, device_data.main_queue.queue_family);
-        let device_active_send = device_data.device_active_send.clone();
+        let window: &Window = surface_data
+            .node_ref
+            .downcast_ref()
+            .expect("The property 'windows' must specify a set of window nodes");
 
-        cmd_buffer.on_complete(Box::new(move || {
-            let _ = device_active_send;
-        }));
-        cmd_buffer.commit().unwrap();
+        let window_root = window.child.read_presenter(frame).unwrap();
 
-        device_data.main_queue.queue.flush();
-        drawable.enqueue_present();
+        surface_data
+            .compositor_window
+            .composite(
+                &mut CompositeContext {
+                    schedule_next_frame: false,
+                    pixel_ratio: 1.0, // TODO
+                },
+                window_root,
+                frame,
+                drawable,
+            )
+            .unwrap();
     }
 }

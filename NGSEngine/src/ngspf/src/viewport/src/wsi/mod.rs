@@ -44,6 +44,9 @@ pub trait Painter {
     /// Type of an object associated with each surface.
     type SurfaceData;
 
+    /// Passed by the owner of `WindowManager`.
+    type UpdateParam;
+
     /// Prepare the painter for a newly discovered ZanGFX device.
     fn add_device(&mut self, device: &WmDevice) -> Self::DeviceData;
 
@@ -52,6 +55,8 @@ pub trait Painter {
     /// Prepare the painter for a newly created surface.
     fn add_surface(
         &mut self,
+        device: &WmDevice,
+        device_data: &mut Self::DeviceData,
         surface: &SurfaceRef,
         param: Self::SurfaceParam,
         surface_props: &SurfaceProps,
@@ -59,6 +64,8 @@ pub trait Painter {
 
     fn remove_surface(
         &mut self,
+        device: &WmDevice,
+        device_data: &mut Self::DeviceData,
         surface: &SurfaceRef,
         data: Self::SurfaceData,
     ) -> Self::SurfaceParam;
@@ -66,6 +73,8 @@ pub trait Painter {
     /// Notify the change of `SurfaceProps`.
     fn update_surface(
         &mut self,
+        device: &WmDevice,
+        device_data: &mut Self::DeviceData,
         surface: &SurfaceRef,
         data: &mut Self::SurfaceData,
         surface_props: &SurfaceProps,
@@ -78,6 +87,7 @@ pub trait Painter {
         device_data: &mut Self::DeviceData,
         surface: &SurfaceRef,
         surface_data: &mut Self::SurfaceData,
+        update_param: &Self::UpdateParam,
         drawable: &mut Drawable,
     );
 }

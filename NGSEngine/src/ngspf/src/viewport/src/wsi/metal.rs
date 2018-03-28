@@ -106,8 +106,12 @@ impl<P: Painter> Drop for WindowManager<P> {
 
         // Remove all surfaces first
         for (surface_ref, surface) in self.surfaces.drain() {
-            self.painter
-                .remove_surface(&surface_ref, surface.surface_data);
+            self.painter.remove_surface(
+                &self.wm_device,
+                &mut self.device_data,
+                &surface_ref,
+                surface.surface_data,
+            );
         }
 
         // Remove the device from the painter
@@ -250,7 +254,13 @@ impl<P: Painter> WindowManager<P> {
 
             resize_drawable(&layer, &window);
             let surface_props = surface_props_from_layer(&layer);
-            let surface_data = self.painter.add_surface(&surface_id, param, &surface_props);
+            let surface_data = self.painter.add_surface(
+                &self.wm_device,
+                &mut self.device_data,
+                &surface_id,
+                param,
+                &surface_props,
+            );
 
             let surface = Surface {
                 surface_data,
@@ -265,15 +275,19 @@ impl<P: Painter> WindowManager<P> {
 
     pub fn remove_surface(&mut self, surface_ref: SurfaceRef) {
         let surface = self.surfaces.remove(&surface_ref).unwrap();
-        self.painter
-            .remove_surface(&surface_ref, surface.surface_data);
+        self.painter.remove_surface(
+            &self.wm_device,
+            &mut self.device_data,
+            &surface_ref,
+            surface.surface_data,
+        );
     }
 
     pub fn get_winit_window(&self, surface_ref: SurfaceRef) -> Option<&Window> {
         self.surfaces.get(&surface_ref).map(|s| &s.window)
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, update_param: &P::UpdateParam) {
         let needs_update = self.refresh_state
             .needs_update
             .swap(false, Ordering::Relaxed);
@@ -334,6 +348,8 @@ impl<P: Painter> WindowManager<P> {
                     // The window was resized -- send a notification
                     surface_props = surface_props_from_layer(&layer);
                     self.painter.update_surface(
+                        &self.wm_device,
+                        &mut self.device_data,
                         surface_ref,
                         &mut surface.surface_data,
                         &surface_props,
@@ -360,6 +376,7 @@ impl<P: Painter> WindowManager<P> {
                         &mut self.device_data,
                         surface_ref,
                         &mut surface.surface_data,
+                        update_param,
                         &mut drawable,
                     );
                 }

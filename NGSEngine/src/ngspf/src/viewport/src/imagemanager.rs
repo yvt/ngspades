@@ -151,6 +151,10 @@ impl ImageManager {
         })
     }
 
+    pub fn uploader_mut(&mut self) -> &mut uploader::Uploader {
+        &mut self.uploader
+    }
+
     pub fn new_ref_table(&self) -> ImageRefTable {
         ImageRefTable {
             image_ptrs: HashSet::new(),
@@ -240,9 +244,9 @@ impl ImageManager {
     }
 
     /// Initiate the upload of queued images.
-    pub fn upload(&mut self, frame: &PresenterFrame) -> Result<()> {
+    pub fn upload(&mut self, frame: &PresenterFrame) -> Result<uploader::SessionId> {
         if self.new_images_list.len() == 0 {
-            return Ok(());
+            return Ok(0);
         }
 
         // Create image objects
@@ -426,7 +430,7 @@ impl ImageManager {
             }
         }
 
-        Ok(())
+        Ok(session_id)
     }
 
     pub fn get(&self, image_ref: &ImageRef) -> Option<ResidentImage> {
@@ -444,11 +448,11 @@ impl ImageManager {
 }
 
 impl<'a> ResidentImage<'a> {
-    pub fn image(&self) -> &gfx::Image {
+    pub fn image(&self) -> &'a gfx::Image {
         &self.data.image
     }
 
-    pub fn image_view(&self) -> &gfx::ImageView {
+    pub fn image_view(&self) -> &'a gfx::ImageView {
         &self.data.image_view
     }
 

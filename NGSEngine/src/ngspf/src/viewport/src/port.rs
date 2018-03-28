@@ -11,13 +11,16 @@ use refeq::RefEqArc;
 use zangfx::base as gfx;
 
 use core::PresenterFrame;
+pub use wsi::GfxQueue;
 
 /// ZanGFX objects passed to ports.
+///
+/// TODO: Merge with `wsi::GfxObjects`
 #[derive(Debug, Clone)]
 pub struct GfxObjects {
     pub device: Arc<gfx::Device>,
-    pub main_queue: Arc<gfx::CmdQueue>,
-    pub copy_queue: Option<Arc<gfx::CmdQueue>>,
+    pub main_queue: GfxQueue,
+    pub copy_queue: Option<GfxQueue>,
 }
 
 /// Trait for creating `PortInstance` for a specific NgsGFX device.

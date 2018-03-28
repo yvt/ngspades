@@ -20,13 +20,16 @@ extern crate ngsenumflags_derive;
 extern crate ngspf_core as core;
 pub extern crate zangfx;
 
+#[macro_use]
+extern crate include_data;
+
 #[cfg(target_os = "macos")]
 extern crate cocoa;
 #[cfg(target_os = "macos")]
 #[macro_use]
 extern crate objc;
 
-// mod compositor;
+mod compositor;
 // mod device;
 mod image;
 mod imagemanager;
