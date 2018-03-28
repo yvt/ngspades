@@ -336,7 +336,7 @@ where
     let options = metal::MTLResourceOptions::from_bits(
         (storage_mode as u64) << metal::MTLResourceStorageModeShift,
     ).unwrap() | metal::MTLResourceHazardTrackingModeUntracked;
-    let metal_buffer = OCPtr::new(allocator(size, options));
+    let metal_buffer = unsafe { OCPtr::from_raw(allocator(size, options)) };
 
     if let Some(metal_buffer) = metal_buffer {
         let metal_buffer_ptr = *metal_buffer;
@@ -363,7 +363,7 @@ where
 
     assert_eq!(storage_mode, metal::MTLStorageMode::Private);
 
-    let metal_texture = OCPtr::new(allocator(my_image.prototype_metal_desc()));
+    let metal_texture = unsafe { OCPtr::from_raw(allocator(my_image.prototype_metal_desc())) };
 
     if let Some(metal_texture) = metal_texture {
         let metal_texture_ptr = *metal_texture;
