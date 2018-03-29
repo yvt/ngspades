@@ -298,6 +298,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fast_msg_send"
+version = "0.1.0"
+dependencies = [
+ "objc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
