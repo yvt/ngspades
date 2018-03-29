@@ -12,9 +12,6 @@ pub trait Destroy {
     fn destroy(&self, device: &base::Device);
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct GfxDeleter;
-
 impl Destroy for base::Buffer {
     fn destroy(&self, device: &base::Device) {
         device.borrow().destroy_buffer(self).unwrap();
