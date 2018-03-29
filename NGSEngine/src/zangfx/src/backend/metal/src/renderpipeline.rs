@@ -183,7 +183,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             if let &Some(ref vertex_attr) = vertex_attr {
                 let metal_va_desc = metal_va_array.object_at(i as _);
                 assert!(!metal_va_desc.is_null());
-                vertex_attr.populate(metal_va_desc);
+                vertex_attr.populate(metal_va_desc, vb_start_index as usize);
             }
         }
 
@@ -362,8 +362,8 @@ impl VertexAttrBinding {
         }
     }
 
-    fn populate(&self, metal_desc: metal::MTLVertexAttributeDescriptor) {
-        metal_desc.set_buffer_index(self.buffer as u64);
+    fn populate(&self, metal_desc: metal::MTLVertexAttributeDescriptor, vb_start_index: usize) {
+        metal_desc.set_buffer_index((self.buffer + vb_start_index) as u64);
         metal_desc.set_offset(self.offset as u64);
         metal_desc.set_format(self.format);
     }

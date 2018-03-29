@@ -7,19 +7,19 @@ extern crate cgmath;
 extern crate ngspf;
 
 use std::thread;
-use std::sync::{Arc, mpsc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 
-use cgmath::{Vector2, Point2, Matrix4, vec3};
+use cgmath::{Matrix4, Point2, Vector2, vec3};
 use cgmath::prelude::*;
 
-use ngspf::context::GroupRef;
-use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, ImageRef, ImageData, ImageFormat,
-                      LayerContents, WindowFlagsBit, WindowRef, WindowEvent, RootRef,
-                      ImageWrapMode, LayerRef, VirtualKeyCode};
+use ngspf::core::GroupRef;
+use ngspf::viewport::{ImageData, ImageFormat, ImageRef, ImageWrapMode, LayerBuilder,
+                      LayerContents, LayerRef, RootRef, VirtualKeyCode, WindowBuilder,
+                      WindowEvent, WindowFlagsBit, WindowRef, Workspace};
 use ngspf::prelude::*;
 use ngspf::ngsbase::Box2;
 use ngspf::ngsbase::prelude::*;
-use ngspf::rgb::RGBA;
+use ngspf::viewport::rgb::RGBA;
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
 
@@ -36,9 +36,9 @@ fn main() {
         let mut image_data = ImageData::new(Vector2::new(128, 128), ImageFormat::SrgbRgba8);
         for i in 0..128 * 128 {
             let rgba = &IMAGE[i * 4..];
-            image_data.pixels_u32_mut()[i] = rgba[0] as u32 | ((rgba[1] as u32) << 8) |
-                ((rgba[2] as u32) << 16) |
-                ((rgba[3] as u32) << 24);
+            image_data.pixels_u32_mut()[i] = rgba[0] as u32 | ((rgba[1] as u32) << 8)
+                | ((rgba[2] as u32) << 16)
+                | ((rgba[3] as u32) << 24);
         }
         let image_ref = ImageRef::new_immutable(image_data);
 
@@ -77,9 +77,9 @@ fn main() {
             })))
             .build(&context);
 
-        let mut frame = context.lock_producer_frame().expect(
-            "failed to acquire a producer frame",
-        );
+        let mut frame = context
+            .lock_producer_frame()
+            .expect("failed to acquire a producer frame");
         ws.root()
             .windows()
             .set(&mut frame, Some(window.clone().into_node_ref()))
@@ -112,9 +112,9 @@ fn main() {
                 }
 
                 {
-                    let mut frame = context.lock_producer_frame().expect(
-                        "failed to acquire a producer frame",
-                    );
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .expect("failed to acquire a producer frame");
 
                     window
                         .title()
@@ -132,7 +132,6 @@ fn main() {
         .unwrap();
 
     // Start the main loop
-    ws.enter_main_loop().expect(
-        "error occured while running the main loop",
-    );
+    ws.enter_main_loop()
+        .expect("error occured while running the main loop");
 }

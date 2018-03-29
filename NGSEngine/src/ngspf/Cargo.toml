@@ -4,24 +4,17 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-ngscom = { path = "../ngscom" }
-ngsgfx = { path = "../ngsgfx" }
 ngsbase = { path = "../ngsbase" }
-arclock = { path = "../support/arclock" }
-refeq = { path = "../support/refeq", features = ["nightly"] }
-tokenlock = { path = "../support/tokenlock" }
-iterpool = { path = "../support/iterpool" }
-ngsenumflags = { path = "../support/ngsenumflags" }
-ngsenumflags_derive = { path = "../support/ngsenumflags/ngsenumflags_derive" }
-include_data = { path = "../support/include_data" }
-cgmath = "0.15.0"
-winit = "0.7"
-atomic_refcell = "0.1.0"
-rgb = "0.7.2"
-lazy_static = "0.2"
-
-[build-dependencies]
-prebuild-glslang = { path = "../support/prebuild-glslang" }
+ngspf_core = { path = "src/core" }
+ngspf_viewport = { path = "src/viewport" }
+ngspf_com = { path = "src/com" }
 
 [dev-dependencies]
 rand = "0.3.16"
+cgmath = "0.15.0"
+ngsenumflags = { path = "../support/ngsenumflags" }
+include_data = { path = "../support/include_data" }
+refeq = { path = "../support/refeq" }
+
+[build-dependencies]
+prebuild-glslang = { path = "../support/prebuild-glslang" }

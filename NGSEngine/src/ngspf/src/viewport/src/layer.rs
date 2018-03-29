@@ -7,15 +7,16 @@
 use std::sync::Arc;
 
 use ngsenumflags::BitFlags;
-use cgmath::{Matrix4, Point2};
+use cgmath::{Matrix4, Point2, Vector2};
 use cgmath::prelude::*;
 use refeq::RefEqArc;
 use rgb::RGBA;
 
 use ngsbase::Box2;
 use ngsbase::prelude::*;
-use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor, Node};
-use super::{ImageRef, Port};
+use core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, PropertyAccessor};
+use super::ImageRef;
+use super::Port;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]

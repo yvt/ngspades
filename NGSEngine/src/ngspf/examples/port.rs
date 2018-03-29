@@ -3,19 +3,21 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate atomic_refcell;
 extern crate cgmath;
 #[macro_use]
 extern crate include_data;
-extern crate ngsgfx as gfx;
 extern crate ngspf;
 extern crate refeq;
-use gfx::core;
+#[macro_use]
+extern crate ngsenumflags;
+
+use ngspf::viewport::zangfx::base as gfx;
+use ngspf::viewport::zangfx::utils as gfxut;
 
 use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
 
-use cgmath::{Matrix4, Point2, vec3};
+use cgmath::{Matrix4, Point2, vec2, vec3};
 use cgmath::prelude::*;
 
 use refeq::RefEqArc;
@@ -26,10 +28,7 @@ use ngspf::prelude::*;
 use ngspf::ngsbase::Box2;
 use ngspf::ngsbase::prelude::*;
 
-mod common;
-
 mod triangle {
-
     use include_data;
 
     static SPIRV_FRAG: include_data::DataView =
@@ -37,239 +36,134 @@ mod triangle {
     static SPIRV_VERT: include_data::DataView =
         include_data!(concat!(env!("OUT_DIR"), "/triangle.vert.spv"));
 
-    use {cgmath, core};
-    use core::{Backend, DebugMarker, ScalarFormat, VectorWidth, VertexFormat};
-    use gfx::backends::DefaultBackend;
+    use gfx;
     use gfx::prelude::*;
-    use atomic_refcell::AtomicRefCell;
-
-    use cgmath::vec2;
+    use gfxut::DeviceUtils;
 
     use std::sync::Arc;
     use std::mem;
 
-    use ngspf::context::PresenterFrame;
-    use ngspf::viewport::{Port, PortInstance, PortMountContext, PortRenderContext};
-
-    use common::*;
+    use ngspf::core::PresenterFrame;
+    use ngspf::viewport::{GfxObjects, GfxQueue, Port, PortInstance, PortRenderContext};
 
     #[repr(C)]
+    #[derive(Debug, Clone, Copy)]
     struct Vertex {
         position: [f32; 3],
         color: [f32; 3],
     }
 
-    const VERTEX_ATTRIBUTE_POSITION: core::VertexAttributeLocation = 0;
-    const VERTEX_ATTRIBUTE_COLOR: core::VertexAttributeLocation = 1;
+    const VERTEX_BUFFER_MAIN: gfx::VertexBufferIndex = 0;
+
+    const VERTEX_ATTR_POSITION: gfx::VertexAttrIndex = 0;
+    const VERTEX_ATTR_COLOR: gfx::VertexAttrIndex = 1;
+
+    const RT_FORMAT: gfx::ImageFormat = gfx::ImageFormat::SrgbRgba8;
 
     #[derive(Debug)]
     pub struct MyPort;
 
     impl Port for MyPort {
-        fn mount(&self, context: &mut PortMountContext) {
-            if let Some(mut context) = context.downcast_mut::<DefaultBackend>() {
-                let inst = MyPortInstance::new(context.workspace_device().objects().gfx_device());
-                context.set_instance(Box::new(inst));
-            } else {
-                panic!("Unknown backend");
-            }
+        fn mount(&self, objects: &GfxObjects) -> Box<PortInstance> {
+            Box::new(MyPortInstance::new(objects))
         }
     }
 
     #[derive(Debug)]
-    struct MyPortInstance<B: Backend> {
-        device: Arc<B::Device>,
-        vertex_buffer: B::Buffer,
-        pipeline: B::GraphicsPipeline,
-        render_pass: B::RenderPass,
-        command_buffer: Arc<AtomicRefCell<B::CommandBuffer>>,
-
-        rt_extents: cgmath::Vector2<u32>,
-        rt_image: B::Image,
-        rt_image_view: B::ImageView,
-        rt_framebuffer: B::Framebuffer,
+    struct MyPortInstance {
+        device: Arc<gfx::Device>,
+        main_queue: GfxQueue,
+        heap: Box<gfx::Heap>,
+        vertex_buffer: gfx::Buffer,
+        pipeline: gfx::RenderPipeline,
+        render_pass: gfx::RenderPass,
+        cmd_pool: Box<gfx::CmdPool>,
     }
 
-    impl<B: Backend> MyPortInstance<B> {
-        fn new(device: &Arc<B::Device>) -> Self {
-            let mut heap = device.factory().make_universal_heap().unwrap();
+    impl MyPortInstance {
+        fn new(gfx_objects: &GfxObjects) -> Self {
+            let device = gfx_objects.device.clone();
+            let main_queue = gfx_objects.main_queue.clone();
 
-            let rt_extents = vec2::<u32>(256, 256);
-            let rt_format = core::ImageFormat::SrgbRgba8;
-
-            let vertex_buffer = Self::make_vertex_buffer(&device, &mut heap);
-            let render_pass = Self::make_render_pass(&device, rt_format);
-            let pipeline = Self::make_pipeline(&device, &render_pass);
-            let command_buffer = device
-                .main_queue()
-                .make_command_buffer()
-                .map(AtomicRefCell::new)
-                .map(Arc::new)
+            let heap = device
+                .build_dynamic_heap()
+                .memory_type(
+                    device
+                        .memory_type_for_buffer(
+                            flags![gfx::BufferUsage::{Vertex}],
+                            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+                            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+                        )
+                        .unwrap()
+                        .unwrap(),
+                )
+                .size(4096)
+                .build()
                 .unwrap();
 
-            let rt_image = heap.make_image(&core::ImageDescription {
-                usage: core::ImageUsage::Sampled | core::ImageUsage::ColorAttachment,
-                format: rt_format,
-                extent: rt_extents.extend(1),
-                ..Default::default()
-            }).unwrap()
-                .unwrap()
-                .1;
+            let vertex_buffer = Self::make_vertex_buffer(&*device, &*heap);
 
-            let rt_image_view = device
-                .factory()
-                .make_image_view(&core::ImageViewDescription {
-                    image_type: core::ImageType::TwoD,
-                    image: &rt_image,
-                    format: rt_format,
-                    range: core::ImageSubresourceRange::default(),
-                })
-                .unwrap();
+            let render_pass = {
+                let mut builder = device.build_render_pass();
+                builder
+                    .target(0)
+                    .set_format(RT_FORMAT)
+                    .set_store_op(gfx::StoreOp::Store);
+                builder.subpass_color_targets(&[Some((0, gfx::ImageLayout::RenderWrite))]);
+                builder.end();
+                builder.label("Port render pass");
+                builder.build().unwrap()
+            };
 
-            let rt_framebuffer = device
-                .factory()
-                .make_framebuffer(&core::FramebufferDescription {
-                    render_pass: &render_pass,
-                    attachments: &[
-                        core::FramebufferAttachmentDescription {
-                            image_view: &rt_image_view,
-                            clear_values: core::ClearValues::ColorFloat([0f32, 0f32, 0f32, 1f32]),
-                        },
-                    ],
-                    width: rt_extents.x,
-                    height: rt_extents.y,
-                    num_layers: 1,
-                })
-                .unwrap();
+            let pipeline = Self::make_pipeline(&*device, &render_pass);
 
-            render_pass.set_label(Some("main render pass"));
-            command_buffer
-                .borrow()
-                .set_label(Some("main primary command buffer"));
+            let cmd_pool = main_queue.queue.new_cmd_pool().unwrap();
 
             Self {
-                device: Arc::clone(device),
+                device,
+                main_queue,
+                heap,
                 vertex_buffer,
                 pipeline,
                 render_pass,
-                command_buffer,
-                rt_extents,
-                rt_image,
-                rt_image_view,
-                rt_framebuffer,
+                cmd_pool,
             }
         }
 
-        fn make_render_pass(
-            device: &B::Device,
-            drawable_format: core::ImageFormat,
-        ) -> B::RenderPass {
-            let factory = device.factory();
+        fn make_pipeline(
+            device: &gfx::Device,
+            render_pass: &gfx::RenderPass,
+        ) -> gfx::RenderPipeline {
+            let vertex_shader = device.new_library(SPIRV_VERT.as_u32_slice()).unwrap();
+            let fragment_shader = device.new_library(SPIRV_FRAG.as_u32_slice()).unwrap();
 
-            let desc = core::RenderPassDescription {
-                attachments: &[
-                    core::RenderPassAttachmentDescription {
-                        may_alias: false,
-                        format: drawable_format,
-                        load_op: core::AttachmentLoadOp::Clear,
-                        store_op: core::AttachmentStoreOp::Store,
-                        stencil_load_op: core::AttachmentLoadOp::DontCare,
-                        stencil_store_op: core::AttachmentStoreOp::DontCare,
-                        initial_layout: core::ImageLayout::Undefined,
-                        final_layout: core::ImageLayout::ShaderRead,
-                    },
-                ],
-                subpasses: &[
-                    core::RenderSubpassDescription {
-                        input_attachments: &[],
-                        color_attachments: &[
-                            core::RenderPassAttachmentReference {
-                                attachment_index: Some(0),
-                                layout: core::ImageLayout::ColorAttachment,
-                            },
-                        ],
-                        depth_stencil_attachment: None,
-                        preserve_attachments: &[],
-                    },
-                ],
-                dependencies: &[],
-            };
+            let root_sig = device.build_root_sig().build().unwrap();
 
-            factory.make_render_pass(&desc).unwrap()
+            let mut builder = device.build_render_pipeline();
+            builder
+                .vertex_shader(&vertex_shader, "main")
+                .fragment_shader(&fragment_shader, "main")
+                .root_sig(&root_sig)
+                .topology(gfx::PrimitiveTopology::Triangles)
+                .render_pass(render_pass, 0);
+            builder.vertex_buffer(VERTEX_BUFFER_MAIN, mem::size_of::<Vertex>() as _);
+            builder.vertex_attr(
+                VERTEX_ATTR_POSITION,
+                VERTEX_BUFFER_MAIN,
+                0,
+                <f32>::as_format() * 3,
+            );
+            builder.vertex_attr(
+                VERTEX_ATTR_COLOR,
+                VERTEX_BUFFER_MAIN,
+                12,
+                <f32>::as_format() * 3,
+            );
+            builder.rasterize();
+            builder.build().unwrap()
         }
 
-        fn make_pipeline(device: &B::Device, render_pass: &B::RenderPass) -> B::GraphicsPipeline {
-            let factory = device.factory();
-
-            let vertex_shader_desc = core::ShaderModuleDescription {
-                spirv_code: SPIRV_VERT.as_u32_slice(),
-            };
-            let vertex_shader = factory.make_shader_module(&vertex_shader_desc).unwrap();
-
-            let fragment_shader_desc = core::ShaderModuleDescription {
-                spirv_code: SPIRV_FRAG.as_u32_slice(),
-            };
-            let fragment_shader = factory.make_shader_module(&fragment_shader_desc).unwrap();
-
-            let layout_desc = core::PipelineLayoutDescription {
-                descriptor_set_layouts: &[],
-            };
-            let layout = factory.make_pipeline_layout(&layout_desc).unwrap();
-
-            let color_attachments = &[Default::default()];
-            let desc = core::GraphicsPipelineDescription {
-                label: Some("main graphics pipeline"),
-                shader_stages: &[
-                    core::ShaderStageDescription {
-                        stage: core::ShaderStage::Fragment,
-                        module: &fragment_shader,
-                        entry_point_name: "main",
-                    },
-                    core::ShaderStageDescription {
-                        stage: core::ShaderStage::Vertex,
-                        module: &vertex_shader,
-                        entry_point_name: "main",
-                    },
-                ],
-                vertex_buffers: &[
-                    core::VertexBufferLayoutDescription {
-                        binding: 0,
-                        stride: mem::size_of::<Vertex>() as u32,
-                        input_rate: core::VertexInputRate::Vertex,
-                    },
-                ],
-                vertex_attributes: &[
-                    core::VertexAttributeDescription {
-                        location: VERTEX_ATTRIBUTE_POSITION,
-                        binding: 0,
-                        format: VertexFormat(VectorWidth::Vector3, ScalarFormat::F32),
-                        offset: 0,
-                    },
-                    core::VertexAttributeDescription {
-                        location: VERTEX_ATTRIBUTE_COLOR,
-                        binding: 0,
-                        format: VertexFormat(VectorWidth::Vector3, ScalarFormat::F32),
-                        offset: 12,
-                    },
-                ],
-                topology: core::PrimitiveTopology::Triangles,
-                rasterizer: Some(core::GraphicsPipelineRasterizerDescription {
-                    viewport: core::StaticOrDynamic::Dynamic,
-                    cull_mode: core::CullMode::None,
-                    depth_write: false,
-                    depth_test: core::CompareFunction::Always,
-                    color_attachments,
-                    ..Default::default()
-                }),
-                pipeline_layout: &layout,
-                render_pass,
-                subpass_index: 0,
-            };
-
-            factory.make_graphics_pipeline(&desc).unwrap()
-        }
-
-        fn make_vertex_buffer(device: &B::Device, heap: &mut B::UniversalHeap) -> B::Buffer {
+        fn make_vertex_buffer(device: &gfx::Device, heap: &gfx::Heap) -> gfx::Buffer {
             let vertices = [
                 Vertex {
                     position: [-0.5f32, 0.5f32, 0f32],
@@ -285,67 +179,73 @@ mod triangle {
                 },
             ];
 
-            DeviceUtils::<B>::new(device)
-                .make_preinitialized_buffer(
-                    heap,
-                    &vertices,
-                    core::BufferUsage::VertexBuffer.into(),
-                    core::PipelineStage::VertexInput.into(),
-                    core::AccessType::VertexAttributeRead.into(),
-                    core::DeviceEngine::Universal,
-                )
-                .0
+            use std::mem::size_of_val;
+            use std::slice::from_raw_parts_mut;
+
+            let size = size_of_val(&vertices);
+
+            let buffer = device
+                .build_buffer()
+                .size(size as u64)
+                .usage(flags![gfx::BufferUsage::{Vertex}])
+                .build()
+                .unwrap();
+
+            let alloc = heap.bind((&buffer).into()).unwrap().unwrap();
+            let slice: &mut [Vertex] = unsafe {
+                from_raw_parts_mut(heap.as_ptr(&alloc).unwrap() as *mut Vertex, vertices.len())
+            };
+            slice.copy_from_slice(&vertices);
+
+            buffer
         }
     }
 
-    impl<B: Backend> PortInstance<B> for MyPortInstance<B> {
+    impl PortInstance for MyPortInstance {
+        fn image_extents(&self) -> [u32; 2] {
+            [128, 128]
+        }
+
         fn render(
             &mut self,
-            context: &mut PortRenderContext<B>,
-            frame: &PresenterFrame,
-        ) -> B::ImageView {
-            let ref rt_extents = self.rt_extents;
-            let viewport = core::Viewport {
+            context: &mut PortRenderContext,
+            _frame: &PresenterFrame,
+        ) -> gfx::Result<()> {
+            let ref extents = context.image_props.extents;
+            assert_eq!(context.image_props.format, RT_FORMAT);
+
+            let viewport = gfx::Viewport {
                 x: 0f32,
                 y: 0f32,
-                width: rt_extents.x as f32,
-                height: rt_extents.y as f32,
+                width: extents[0] as f32,
+                height: extents[1] as f32,
                 min_depth: 0f32,
                 max_depth: 1f32,
             };
 
+            let rtt = {
+                let mut builder = self.device.build_render_target_table();
+                builder.target(0, &context.image);
+                builder
+                    .render_pass(&self.render_pass)
+                    .extents(extents)
+                    .build()?
+            };
+
+            let mut buffer = self.cmd_pool.begin_cmd_buffer()?;
             {
-                let mut cb = self.command_buffer.borrow_mut();
+                let e = buffer.encode_render(&rtt);
+                e.bind_pipeline(&self.pipeline);
+                e.bind_vertex_buffers(0, &[(&self.vertex_buffer, 0)]);
+                e.set_viewports(0, &[viewport]);
+                e.draw(0..3, 0..1);
 
-                // TODO: use multiple buffers
-                cb.wait_completion().unwrap();
-
-                cb.begin_encoding();
-
-                cb.begin_render_pass(&self.rt_framebuffer, core::DeviceEngine::Universal);
-                {
-                    cb.begin_render_subpass(core::RenderPassContents::Inline);
-                    {
-                        cb.begin_debug_group(&DebugMarker::new("render a triangle"));
-                        cb.bind_graphics_pipeline(&self.pipeline);
-                        cb.set_viewport(&viewport);
-                        cb.bind_vertex_buffers(0, &[(&self.vertex_buffer, 0)]);
-                        cb.draw(0..3, 0..1);
-                        cb.end_debug_group();
-                    }
-                    cb.end_render_subpass();
-                }
-                cb.end_pass();
-
-                cb.end_encoding().unwrap();
+                e.update_fence(&context.fence, flags![gfx::Stage::{RenderOutput}]);
             }
+            buffer.commit();
 
-            context
-                .command_buffers
-                .push(Arc::clone(&self.command_buffer));
             context.schedule_next_frame = true;
-
-            self.rt_image_view.clone()
+            Ok(())
         }
     }
 }

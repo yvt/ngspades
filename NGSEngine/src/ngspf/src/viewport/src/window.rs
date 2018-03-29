@@ -7,9 +7,9 @@
 use refeq::RefEqArc;
 use ngsenumflags::BitFlags;
 use cgmath::Vector2;
-use context::{Context, KeyedProperty, NodeRef, PropertyAccessor, KeyedPropertyAccessor,
-              RoPropertyAccessor, RefPropertyAccessor, WoProperty, ProducerDataCell, UpdateId,
-              ProducerFrame, PropertyError, PropertyProducerWrite, Node};
+use core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, ProducerDataCell,
+           ProducerFrame, PropertyAccessor, PropertyError, PropertyProducerWrite,
+           RefPropertyAccessor, RoPropertyAccessor, UpdateId, WoProperty};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]
@@ -159,14 +159,18 @@ impl WindowRef {
             ) -> Result<(), PropertyError> {
                 let update_id = *(self.0).0.size_update_id.read_producer(frame)?;
 
-                let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
-                    let c = RefEqArc::clone(&(self.0).0);
-                    move |frame, value| {
-                        *c.size.write_presenter(frame).unwrap() = value;
-                        let a = c.action.write_presenter(frame).unwrap();
-                        *a = *a | WindowActionBit::ChangeSize;
-                    }
-                });
+                let new_id = frame.record_keyed_update(
+                    update_id,
+                    |_| new_value,
+                    || {
+                        let c = RefEqArc::clone(&(self.0).0);
+                        move |frame, value| {
+                            *c.size.write_presenter(frame).unwrap() = value;
+                            let a = c.action.write_presenter(frame).unwrap();
+                            *a = *a | WindowActionBit::ChangeSize;
+                        }
+                    },
+                );
 
                 *(self.0).0.size_update_id.write_producer(frame)? = new_id;
 
@@ -193,14 +197,18 @@ impl WindowRef {
             ) -> Result<(), PropertyError> {
                 let update_id = *(self.0).0.title_update_id.read_producer(frame)?;
 
-                let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
-                    let c = RefEqArc::clone(&(self.0).0);
-                    move |frame, value| {
-                        *c.title.write_presenter(frame).unwrap() = value;
-                        let a = c.action.write_presenter(frame).unwrap();
-                        *a = *a | WindowActionBit::ChangeTitle;
-                    }
-                });
+                let new_id = frame.record_keyed_update(
+                    update_id,
+                    |_| new_value,
+                    || {
+                        let c = RefEqArc::clone(&(self.0).0);
+                        move |frame, value| {
+                            *c.title.write_presenter(frame).unwrap() = value;
+                            let a = c.action.write_presenter(frame).unwrap();
+                            *a = *a | WindowActionBit::ChangeTitle;
+                        }
+                    },
+                );
 
                 *(self.0).0.title_update_id.write_producer(frame)? = new_id;
 
@@ -220,10 +228,16 @@ impl WindowRef {
             ) -> Result<(), PropertyError> {
                 let update_id = *(self.0).0.listener_update_id.read_producer(frame)?;
 
-                let new_id = frame.record_keyed_update(update_id, |_| new_value, || {
-                    let c = RefEqArc::clone(&(self.0).0);
-                    move |frame, value| { *c.listener.write_presenter(frame).unwrap() = value; }
-                });
+                let new_id = frame.record_keyed_update(
+                    update_id,
+                    |_| new_value,
+                    || {
+                        let c = RefEqArc::clone(&(self.0).0);
+                        move |frame, value| {
+                            *c.listener.write_presenter(frame).unwrap() = value;
+                        }
+                    },
+                );
 
                 *(self.0).0.listener_update_id.write_producer(frame)? = new_id;
 

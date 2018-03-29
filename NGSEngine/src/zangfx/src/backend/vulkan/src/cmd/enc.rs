@@ -129,6 +129,10 @@ impl CommonCmdEncoder {
              defined by `barrier` must be a subset of `src_stage`."
         );
 
+        if data.dst_stage_mask.is_empty() {
+            return;
+        }
+
         let device = self.device.vk_device();
         unsafe {
             device.fp_v1_0().cmd_wait_events(

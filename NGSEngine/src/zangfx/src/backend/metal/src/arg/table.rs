@@ -124,11 +124,8 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
 
         self.size = (self.size + align - 1) & !(align - 1);
 
-        if count > 1 {
-            self.size += ((size + align - 1) & !(align - 1)) * (count - 1);
-        }
+        self.size += ((size + align - 1) & !(align - 1)) * count;
 
-        self.size += size;
         self
     }
 

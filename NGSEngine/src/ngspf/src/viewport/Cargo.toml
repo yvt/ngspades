@@ -1,0 +1,26 @@
+[package]
+name = "ngspf_viewport"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+winit = "0.11"
+cgmath = "0.15.0"
+rgb = "0.7.2"
+include_data = { path = "../../../support/include_data" }
+refeq = { path = "../../../support/refeq", features = ["nightly"] }
+iterpool = { path = "../../../support/iterpool" }
+ngsenumflags = { path = "../../../support/ngsenumflags" }
+ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_derive" }
+ngsbase = { path = "../../../ngsbase" }
+zangfx = { path = "../../../zangfx" }
+ngspf_core = { path = "../core" }
+xdispatch = { path = "../../../xdispatch" }
+
+[target.'cfg(target_os="macos")'.dependencies]
+cocoa = "0.9"
+objc = "0.2"
+block = "0.1.5"
+
+[build-dependencies]
+prebuild-glslang = { path = "../../../support/prebuild-glslang" }

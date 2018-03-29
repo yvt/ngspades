@@ -1418,8 +1418,11 @@ void CompilerMSL::bind_indirect_arguments_and_vars() {
 							auto it = arg_buf.find(arg_index);
 
 							if (it != arg_buf.end()) {
-								if (it->second.var_id != 0) {
-									std::cerr << "**SPIRV-Cross** duplicate indirect argument location: " << to_expression(var_id) << std::endl;
+								if (it->second.var_id != 0 && (it->second.var_id != var_id || it->second.type != basetype)) {
+									std::cerr << "**SPIRV-Cross** duplicate indirect argument location: " << to_expression(var_id) << "; "
+										<< "the argument buffer location (" << p_res_bind->msl_argument_buffer << "," << arg_index << ") "
+										<< "was previously bound to " << to_expression(it->second.var_id) << " (" << it->second.var_id << ", type = " << it->second.type << ")" << ", but it "
+										<< "was rebound to " << to_expression(var_id) << " (" << var_id << ", type = " << basetype << ")" << "." << std::endl;
 								}
 								it->second.var_id = var_id;
 								it->second.type = basetype;
@@ -1438,6 +1441,12 @@ void CompilerMSL::bind_indirect_arguments_and_vars() {
 							bind(p_res_bind->msl_texture, SPIRType::Image);
 						}
 						if (type.basetype == SPIRType::Sampler || type.basetype == SPIRType::SampledImage) {
+							if (type.basetype == SPIRType::SampledImage && p_res_bind->msl_sampler == p_res_bind->msl_texture) {
+								std::cerr << "**SPIRV-Cross** resource binding (" << p_res_bind->desc_set << ", " << p_res_bind->binding << ") "
+									<< "specifies the identical location (" << p_res_bind->msl_sampler << ") for both of "
+									<< "texture and sampler. This is not allowed in argument buffers. "
+									<< "The variable " << to_expression(var_id) << " (" << var_id << ") has base type " << type.basetype << "." << std::endl;
+							}
 							bind(p_res_bind->msl_sampler, SPIRType::Sampler);
 						}
 

@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::{fmt, hash};
@@ -40,13 +40,11 @@ impl<B: Backend> WorkspaceDevice<B> {
 
         let inst = library.make_instance(self)?;
 
-        Ok(
-            self.libraries
-                .write()
-                .unwrap()
-                .get_or_create(library, || inst)
-                .clone(),
-        )
+        Ok(self.libraries
+            .write()
+            .unwrap()
+            .get_or_create(library, || inst)
+            .clone())
     }
 }
 
@@ -81,13 +79,12 @@ impl LibraryMap {
         F: FnOnce() -> T::Instance,
     {
         let type_id = TypeId::of::<T>();
-        let boxed_tlm = self.0.entry(type_id).or_insert_with(|| {
-            Box::new(HashMap::<T::LibraryId, Arc<T::Instance>>::new())
-        });
+        let boxed_tlm = self.0
+            .entry(type_id)
+            .or_insert_with(|| Box::new(HashMap::<T::LibraryId, Arc<T::Instance>>::new()));
         let tlm: &mut HashMap<T::LibraryId, Arc<T::Instance>> = boxed_tlm.downcast_mut().unwrap();
-        tlm.entry(library.id()).or_insert_with(
-            || Arc::new(factory()),
-        )
+        tlm.entry(library.id())
+            .or_insert_with(|| Arc::new(factory()))
     }
 }
 

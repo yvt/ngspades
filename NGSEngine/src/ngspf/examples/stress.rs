@@ -14,13 +14,13 @@ use std::sync::{Arc, mpsc, Mutex};
 
 use cgmath::{Point2, Vector3, Matrix4, vec3};
 
-use ngspf::context::{Context, GroupRef, ProducerFrame};
+use ngspf::core::{Context, GroupRef, ProducerFrame};
 use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, LayerContents, WindowFlags,
                       WindowRef, WindowEvent, RootRef, LayerRef, VirtualKeyCode};
 use ngspf::prelude::*;
 use ngspf::ngsbase::Box2;
 use ngspf::ngsbase::prelude::*;
-use ngspf::rgb::RGBA;
+use ngspf::viewport::rgb::RGBA;
 
 struct LorenzSystem {
     rho: f32,

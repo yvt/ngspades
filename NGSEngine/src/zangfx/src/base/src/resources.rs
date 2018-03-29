@@ -124,6 +124,15 @@ pub struct ImageLayerRange {
     pub layers: ops::Range<u32>,
 }
 
+impl From<ImageLayerRange> for ImageSubRange {
+    fn from(x: ImageLayerRange) -> Self {
+        Self {
+            mip_levels: Some(x.mip_level..x.mip_level + 1),
+            layers: Some(x.layers.clone()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ImageLayout {
     Undefined,

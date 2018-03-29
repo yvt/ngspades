@@ -10,4 +10,4 @@ ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_deriv
 itervalues = { path = "../../../support/itervalues" }
 itervalues_derive = { path = "../../../support/itervalues/itervalues_derive" }
 lazy_static = "0.2"
-query_interface = "0.3.3"
+query_interface = "0.3.4"

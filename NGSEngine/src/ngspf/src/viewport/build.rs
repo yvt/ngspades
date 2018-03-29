@@ -6,14 +6,13 @@
 extern crate prebuild_glslang;
 
 fn main() {
-    // TODO: call these only for example builds
     prebuild_glslang::Config::new()
-        .file("examples/triangle.frag")
+        .file("src/glsl/composite.frag")
         .flag("-V")
-        .compile("triangle.frag.spv");
+        .compile("composite.frag.spv");
 
     prebuild_glslang::Config::new()
-        .file("examples/triangle.vert")
+        .file("src/glsl/composite.vert")
         .flag("-V")
-        .compile("triangle.vert.spv");
+        .compile("composite.vert.spv");
 }

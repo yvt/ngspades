@@ -5,18 +5,18 @@
 //
 use std::sync::Arc;
 use atomic_refcell::AtomicRefCell;
-use {ngsbase, cgmath};
-use ngscom::{ComPtr, UnownedComPtr, HResult, hresults, IUnknown, IUnknownTrait, BString,
-             BStringRef};
+use {cgmath, ngsbase};
+use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
+             UnownedComPtr};
 
-use com::{INodeGroup, IWindow, ILayer, IWindowListener};
-use com::hresults::{E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE, E_PF_LOCKED};
-use {viewport, context};
-use prelude::*;
+use {ILayer, INodeGroup, IWindow, IWindowListener};
+use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE};
+use {core, viewport};
+use core::prelude::*;
 
-fn translate_context_error(e: context::ContextError) -> HResult {
+fn translate_context_error(e: core::ContextError) -> HResult {
     match e {
-        context::ContextError::LockFailed => E_PF_LOCKED,
+        core::ContextError::LockFailed => E_PF_LOCKED,
     }
 }
 
@@ -38,7 +38,7 @@ com_interface! {
         iid: IID_INODEREF,
         vtable: INodeRefVTable,
 
-        fn create_node_ref() -> context::NodeRef;
+        fn create_node_ref() -> core::NodeRef;
     }
 }
 
@@ -63,18 +63,22 @@ enum NodeDataState<P, M> {
 
 impl<P, M> NodeData<P, M> {
     fn new(x: P) -> Self {
-        Self { cell: AtomicRefCell::new(NodeDataInner::Partial(x)) }
+        Self {
+            cell: AtomicRefCell::new(NodeDataInner::Partial(x)),
+        }
     }
 
     fn with_materialized<C: FnOnce(P) -> M, F: FnOnce(&M) -> R, R>(&self, ctor: C, f: F) -> R {
-        self.with(move |state| if let Some(m) = state.materialized() {
-            Ok(f(m))
-        } else {
-            Err(f)
+        self.with(move |state| {
+            if let Some(m) = state.materialized() {
+                Ok(f(m))
+            } else {
+                Err(f)
+            }
         }).unwrap_or_else(move |f| {
-                self.materialize(ctor);
-                self.with(move |state| f(state.materialized().unwrap()))
-            })
+            self.materialize(ctor);
+            self.with(move |state| f(state.materialized().unwrap()))
+        })
     }
 
     fn materialize<C: FnOnce(P) -> M>(&self, ctor: C) {
@@ -129,7 +133,7 @@ com_impl! {
     class ComNodeGroup {
         inode_group: INodeGroup;
         inoderef: INodeRef;
-        @data: NodeData<Vec<context::NodeRef>, context::GroupRef>;
+        @data: NodeData<Vec<core::NodeRef>, core::GroupRef>;
     }
 }
 
@@ -157,9 +161,9 @@ impl ngsbase::INodeGroupTrait for ComNodeGroup {
 }
 
 impl INodeRefTrait for ComNodeGroup {
-    fn create_node_ref(&self) -> context::NodeRef {
+    fn create_node_ref(&self) -> core::NodeRef {
         self.data.with_materialized(
-            |p| context::GroupRef::new(p),
+            |p| core::GroupRef::new(p),
             |group_ref| group_ref.clone().into_node_ref(),
         )
     }
@@ -168,12 +172,12 @@ impl INodeRefTrait for ComNodeGroup {
 com_impl! {
     class ComLayer {
         ilayer: ILayer;
-        @data: (Arc<context::Context>, NodeData<Option<viewport::LayerBuilder>, viewport::LayerRef>);
+        @data: (Arc<core::Context>, NodeData<Option<viewport::LayerBuilder>, viewport::LayerRef>);
     }
 }
 
 impl ComLayer {
-    pub fn new(context: Arc<context::Context>) -> ComPtr<ILayer> {
+    pub fn new(context: Arc<core::Context>) -> ComPtr<ILayer> {
         ComPtr::from(&ComLayer::alloc((
             context,
             NodeData::new(Some(viewport::LayerBuilder::new())),
@@ -183,7 +187,7 @@ impl ComLayer {
 
 impl ngsbase::ILayerTrait for ComLayer {
     fn set_opacity(&self, value: f32) -> HResult {
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -193,9 +197,9 @@ impl ngsbase::ILayerTrait for ComLayer {
                     Ok(())
                 }
                 NodeDataState::Materialized(layer) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     layer.opacity().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -205,7 +209,7 @@ impl ngsbase::ILayerTrait for ComLayer {
     }
 
     fn set_transform(&self, value: cgmath::Matrix4<f32>) -> HResult {
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -215,9 +219,9 @@ impl ngsbase::ILayerTrait for ComLayer {
                     Ok(())
                 }
                 NodeDataState::Materialized(layer) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     layer.transform().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -232,7 +236,7 @@ impl ngsbase::ILayerTrait for ComLayer {
             value |= viewport::LayerFlagsBit::FlattenContents;
         }
 
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -242,9 +246,9 @@ impl ngsbase::ILayerTrait for ComLayer {
                     Ok(())
                 }
                 NodeDataState::Materialized(layer) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     layer.flags().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -254,7 +258,7 @@ impl ngsbase::ILayerTrait for ComLayer {
     }
 
     fn set_bounds(&self, value: ngsbase::Box2<f32>) -> HResult {
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -264,9 +268,9 @@ impl ngsbase::ILayerTrait for ComLayer {
                     Ok(())
                 }
                 NodeDataState::Materialized(layer) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     layer.bounds().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -286,7 +290,7 @@ impl ngsbase::ILayerTrait for ComLayer {
             Some(inoderef.create_node_ref())
         };
 
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -296,9 +300,9 @@ impl ngsbase::ILayerTrait for ComLayer {
                     Ok(())
                 }
                 NodeDataState::Materialized(layer) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     layer.child().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -318,7 +322,7 @@ impl ngsbase::ILayerTrait for ComLayer {
             Some(inoderef.create_node_ref())
         };
 
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -328,9 +332,9 @@ impl ngsbase::ILayerTrait for ComLayer {
                     Ok(())
                 }
                 NodeDataState::Materialized(layer) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     layer.mask().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -343,12 +347,12 @@ impl ngsbase::ILayerTrait for ComLayer {
 com_impl! {
     class ComWindow {
         iwindow: IWindow;
-        @data: (Arc<context::Context>, NodeData<Option<viewport::WindowBuilder>, viewport::WindowRef>);
+        @data: (Arc<core::Context>, NodeData<Option<viewport::WindowBuilder>, viewport::WindowRef>);
     }
 }
 
 impl ComWindow {
-    pub fn new(context: Arc<context::Context>) -> ComPtr<IWindow> {
+    pub fn new(context: Arc<core::Context>) -> ComPtr<IWindow> {
         ComPtr::from(&ComWindow::alloc((
             context,
             NodeData::new(Some(viewport::WindowBuilder::new())),
@@ -387,7 +391,7 @@ impl ngsbase::IWindowTrait for ComWindow {
     }
 
     fn set_size(&self, value: cgmath::Vector2<f32>) -> HResult {
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -397,9 +401,9 @@ impl ngsbase::IWindowTrait for ComWindow {
                     Ok(())
                 }
                 NodeDataState::Materialized(window) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     window.size().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -419,7 +423,7 @@ impl ngsbase::IWindowTrait for ComWindow {
             Some(inoderef.create_node_ref())
         };
 
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -429,9 +433,9 @@ impl ngsbase::IWindowTrait for ComWindow {
                     Ok(())
                 }
                 NodeDataState::Materialized(window) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     window.child().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -446,7 +450,7 @@ impl ngsbase::IWindowTrait for ComWindow {
         } else {
             String::new()
         };
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -456,9 +460,9 @@ impl ngsbase::IWindowTrait for ComWindow {
                     Ok(())
                 }
                 NodeDataState::Materialized(window) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     window.title().set(&mut frame, value).unwrap();
                     Ok(())
                 }
@@ -526,7 +530,7 @@ impl ngsbase::IWindowTrait for ComWindow {
         } else {
             None
         };
-        let ref context: context::Context = *self.data.0;
+        let ref context: core::Context = *self.data.0;
         self.data
             .1
             .with_mut(|s| match s {
@@ -536,9 +540,9 @@ impl ngsbase::IWindowTrait for ComWindow {
                     Ok(())
                 }
                 NodeDataState::Materialized(window) => {
-                    let mut frame = context.lock_producer_frame().map_err(
-                        translate_context_error,
-                    )?;
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
                     window.listener().set(&mut frame, value).unwrap();
                     Ok(())
                 }

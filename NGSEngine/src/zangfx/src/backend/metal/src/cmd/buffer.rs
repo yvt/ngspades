@@ -86,6 +86,12 @@ impl CmdBuffer {
             scheduler,
         })
     }
+
+    /// Return the underlying `MTLCommandBuffer` object. Returns `None` if the
+    /// command buffer is already committed.
+    pub fn metal_cmd_buffer(&self) -> Option<MTLCommandBuffer> {
+        self.uncommited.as_ref().map(|c| *c.metal_buffer)
+    }
 }
 
 impl fmt::Debug for CallbackSet {

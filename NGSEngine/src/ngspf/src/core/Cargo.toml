@@ -1,0 +1,10 @@
+[package]
+name = "ngspf_core"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+ngsbase = { path = "../../../ngsbase" }
+arclock = { path = "../../../support/arclock" }
+refeq = { path = "../../../support/refeq", features = ["nightly"] }
+tokenlock = { path = "../../../support/tokenlock" }

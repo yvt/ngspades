@@ -216,6 +216,7 @@
 //!
 pub extern crate zangfx_base as base;
 pub extern crate zangfx_common as common;
+pub extern crate zangfx_utils as utils;
 
 /// Includes a backend for each target API.
 pub mod backends {
@@ -229,6 +230,8 @@ pub mod backends {
 pub mod prelude {
     #[doc(no_inline)]
     pub use base::prelude::*;
+    #[doc(no_inline)]
+    pub use utils::prelude::*;
     #[doc(no_inline)]
     pub use common::{BinaryInteger, BinaryUInteger, FromWithPad, IntoWithPad};
 }

@@ -5,7 +5,7 @@
 //
 use refeq::RefEqArc;
 use cgmath::Vector2;
-use context::{RefPropertyAccessor, RoPropertyAccessor};
+use core::{RefPropertyAccessor, RoPropertyAccessor};
 
 /// Owned raster image data.
 #[derive(Debug, Clone)]

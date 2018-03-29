@@ -6,11 +6,10 @@
 use std::sync::Arc;
 
 use ngsbase;
-use ngscom::{ComPtr, HResult, hresults};
+use ngscom::{hresults, ComPtr, HResult};
 
-use com::{IPresentationContext, INodeGroup, IWindow, ILayer};
-use com::nodes;
-use context::Context;
+use {nodes, ILayer, INodeGroup, IPresentationContext, IWindow};
+use core::Context;
 
 com_impl! {
     #[derive(Debug)]

@@ -1,0 +1,13 @@
+[package]
+name = "ngspf_com"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+ngsbase = { path = "../../../ngsbase" }
+ngspf_core = { path = "../core" }
+ngspf_viewport = { path = "../viewport" }
+ngscom = { path = "../../../ngscom" }
+lazy_static = "0.2"
+atomic_refcell = "0.1.0"
+cgmath = "0.15.0"
