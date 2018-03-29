@@ -59,4 +59,4 @@ debug = true
 
 [profile.bench]
 lto = true
-# debug = true
+debug = true
