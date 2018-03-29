@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use refeq::RefEqArc;
 
@@ -44,6 +44,12 @@ pub struct PortRenderContext {
     ///
     /// The image must be transitioned to the `ShaderRead` layout after
     /// rendering. Its ownership must be transfered to `main_queue`.
+    ///
+    /// The image must not be accessed by GPU after `fence` was updated, nor by
+    /// CPU after the command buffer where `fence` is updated was committed.
+    /// (Internally, this image is allocated from `TempResPool` and is retained
+    /// by `TempResFrame`, which is recycled when the device completes the
+    /// execution of a command buffer.)
     pub image: gfx::Image,
     pub image_props: PortImageProps,
     /// The fence to be updated after rendering.
@@ -54,12 +60,34 @@ pub struct PortRenderContext {
 
 /// Trait for rendering custom contents as layer contents.
 pub trait PortInstance: fmt::Debug + Send + Sync + 'static {
-    /// The source stage flags used to update `PortRenderContext::fence`.
+    /// The source stage/access flags of the fence`.
     ///
-    /// The default implementation returns `flags![gfx::Stage::{RenderOutput}]`.
-    fn fence_src_stage(&self) -> gfx::StageFlags {
-        flags![gfx::Stage::{RenderOutput}]
+    /// The default implementation returns
+    ///`(flags![gfx::Stage::{RenderOutput}], flags![gfx::AccessType::{ColorWrite}])`.
+    fn fence_src(&self) -> (gfx::StageFlags, gfx::AccessTypeFlags) {
+        (
+            flags![gfx::Stage::{RenderOutput}],
+            flags![gfx::AccessType::{ColorWrite}],
+        )
     }
+
+    /// The usage of the backing store image (`PortRenderContext::image`).
+    fn image_usage(&self) -> gfx::ImageUsageFlags {
+        flags![gfx::ImageUsage::{Render}]
+    }
+
+    /// The format of the backing store image (`PortRenderContext::image`).
+    fn image_format(&self) -> gfx::ImageFormat {
+        gfx::ImageFormat::SrgbRgba8
+    }
+
+    /// The final image layout of the backing store image (`PortRenderContext::image`).
+    fn image_layout(&self) -> gfx::ImageLayout {
+        gfx::ImageLayout::ShaderRead
+    }
+
+    /// The size of the backing store image (`PortRenderContext::image`).
+    fn image_extents(&self) -> [u32; 2];
 
     fn render(
         &mut self,
@@ -77,7 +105,7 @@ pub(super) struct PortManager {
 
 #[derive(Debug)]
 struct PortMapping {
-    instance: Option<Box<PortInstance>>,
+    instance: Arc<Mutex<Box<PortInstance>>>,
     used_in_last_frame: bool,
 }
 
@@ -102,7 +130,7 @@ impl PortManager {
         &mut self,
         port: &RefEqArc<Port>,
         gfx_objects: &GfxObjects,
-    ) -> Option<&mut Box<PortInstance>> {
+    ) -> &Arc<Mutex<Box<PortInstance>>> {
         let ent = self.port_map.entry(RefEqArc::clone(port));
         let map = ent.or_insert_with(|| {
             // The port instance has not yet been created for the `Port`.
@@ -111,11 +139,11 @@ impl PortManager {
 
             // Save the created instance and return a reference to it
             PortMapping {
-                instance: Some(instance),
+                instance: Arc::new(Mutex::new(instance)),
                 used_in_last_frame: true,
             }
         });
         map.used_in_last_frame = true;
-        map.instance.as_mut()
+        &map.instance
     }
 }

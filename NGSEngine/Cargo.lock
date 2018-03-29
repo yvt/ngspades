@@ -701,6 +701,7 @@ dependencies = [
  "refeq 0.1.0",
  "rgb 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xdispatch 0.1.0",
  "zangfx 0.1.0",
 ]
 

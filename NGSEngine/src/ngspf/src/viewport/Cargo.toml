@@ -15,6 +15,7 @@ ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_deriv
 ngsbase = { path = "../../../ngsbase" }
 zangfx = { path = "../../../zangfx" }
 ngspf_core = { path = "../core" }
+xdispatch = { path = "../../../xdispatch" }
 
 [target.'cfg(target_os="macos")'.dependencies]
 cocoa = "0.9"

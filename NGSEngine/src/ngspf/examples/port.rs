@@ -17,7 +17,7 @@ use ngspf::viewport::zangfx::utils as gfxut;
 use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
 
-use cgmath::{Matrix4, Point2, vec3};
+use cgmath::{Matrix4, Point2, vec2, vec3};
 use cgmath::prelude::*;
 
 use refeq::RefEqArc;
@@ -202,6 +202,10 @@ mod triangle {
     }
 
     impl PortInstance for MyPortInstance {
+        fn image_extents(&self) -> [u32; 2] {
+            [128, 128]
+        }
+
         fn render(
             &mut self,
             context: &mut PortRenderContext,

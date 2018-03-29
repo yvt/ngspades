@@ -29,12 +29,15 @@ extern crate cocoa;
 #[macro_use]
 extern crate objc;
 
+extern crate xdispatch;
+
 mod compositor;
 // mod device;
 mod image;
 mod imagemanager;
 mod layer;
 mod port;
+mod portrender;
 mod temprespool;
 mod window;
 mod workspace;

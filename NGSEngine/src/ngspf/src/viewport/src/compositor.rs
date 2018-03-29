@@ -8,15 +8,18 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 
+use refeq::RefEqArc;
 use cgmath::{Matrix4, Vector2, Vector3, Vector4, prelude::*};
 use zangfx::{base as gfx, utils as gfxut, base::Result, prelude::*};
+use xdispatch;
 
 use core::{NodeRef, PresenterFrame, prelude::*};
 
 use layer::Layer;
 use temprespool::{TempResPool, TempResTable};
 use imagemanager::{ImageManager, ImageRefTable};
-use port::{GfxObjects, PortManager};
+use port::{GfxObjects, Port, PortManager};
+use portrender::PortRenderFrame;
 use image::ImageRef;
 use wsi;
 
@@ -32,6 +35,7 @@ pub struct Compositor {
     statesets: Vec<Stateset>,
     shaders: CompositorShaders,
     cmd_pool: Box<gfx::CmdPool>,
+    port_dispatch_queue: xdispatch::Queue,
 
     temp_res_pool: TempResPool,
     image_manager: ImageManager,
@@ -281,6 +285,11 @@ impl Compositor {
 
         let gfx_objects = gfx_objects.clone();
 
+        let port_dispatch_queue = xdispatch::Queue::create(
+            "com.Nightingales.NgsPF.Port",
+            xdispatch::QueueAttribute::Serial,
+        );
+
         Ok(Self {
             statesets: vec![
                 Stateset::new(&*device, &shaders, gfx::ImageFormat::SrgbBgra8)?,
@@ -289,6 +298,7 @@ impl Compositor {
             image_manager,
             temp_res_pool,
             cmd_pool,
+            port_dispatch_queue,
 
             box_vertices,
 
@@ -360,8 +370,6 @@ impl CompositorWindow {
         frame: &PresenterFrame,
         drawable: &mut wsi::Drawable,
     ) -> Result<()> {
-        self.port_manager.prepare_frame();
-
         self.frames.reserve(1);
 
         use std::mem::size_of_val;
@@ -387,6 +395,7 @@ impl CompositorWindow {
         enum ImageContents {
             Image(gfx::ImageView, gfx::Image),
             ManagedImage(ImageRef),
+            Port(RefEqArc<Port>),
         }
 
         impl From<(gfx::ImageView, gfx::Image)> for ImageContents {
@@ -397,7 +406,6 @@ impl CompositorWindow {
 
         struct LocalContext<'a> {
             compositor: &'a mut Compositor,
-            port_manager: &'a mut PortManager,
             frame: &'a PresenterFrame,
 
             sprites: Vec<composite::Sprite>,
@@ -492,30 +500,15 @@ impl CompositorWindow {
                     composite::SpriteFlags::empty(),
                     Vector4::new(rgba.r, rgba.g, rgba.b, 1.0) * (opacity * rgba.a),
                 )),
-                &Port(ref _port) => {
-                    unimplemented!()
-                    /*c.port_manager
-                        .get(port, &c.compositor.gfx_objects)
-                        .map(|port_instance| {
-                            port_instance.render(
-                                &mut PortRenderContext {
-                                    workspace_device: cc.workspace_device,
-                                    // FIXME: We need a way to retrieve this value
-                                    //        (after modified by the callee)
-                                    schedule_next_frame: false,
-                                },
-                                c.frame,
-                            )
-                        })
-                        .map(|image_view| {
-                            (
-                                (image_view, this.compositor.sampler_clamp.clone()),
-                                Matrix4::identity(),
-                                composite::SpriteFlags::empty(),
-                                Vector4::new(1.0, 1.0, 1.0, opacity),
-                            )
-                        }) */
-                }
+                &Port(ref port) => Some((
+                    (
+                        ImageContents::Port(port.clone()),
+                        c.compositor.sampler_clamp.clone(),
+                    ),
+                    Matrix4::identity(),
+                    composite::SpriteFlags::empty(),
+                    Vector4::new(1.0, 1.0, 1.0, opacity),
+                )),
                 &BackDrop => {
                     let backdrop = backdrop.expect("BackDrop used without FlattenContents");
                     Some((
@@ -809,16 +802,30 @@ impl CompositorWindow {
         }
 
         let mut compositor = self.compositor.borrow_mut();
+        let ref mut compositor = *compositor; // Enable partial borrows
 
         let surface_props = drawable.surface_props().clone();
         let dpi_width = surface_props.extents[0] as f32 / context.pixel_ratio;
         let dpi_height = surface_props.extents[1] as f32 / context.pixel_ratio;
 
-        let temp_res_table = compositor.temp_res_pool.new_table();
+        let mut temp_res_table = compositor.temp_res_pool.new_table();
         let image_ref_table = compositor.image_manager.new_ref_table();
 
+        // Scan for `Port`s first
+        self.port_manager.prepare_frame();
+
+        let port_frame = PortRenderFrame::new(
+            &mut compositor.port_dispatch_queue,
+            frame,
+            root,
+            &compositor.gfx_objects,
+            &mut compositor.temp_res_pool,
+            &mut temp_res_table,
+            compositor.backing_store_memory_type,
+            &mut self.port_manager,
+        )?;
+
         let mut c = LocalContext {
-            port_manager: &mut self.port_manager,
             compositor: &mut *compositor,
             frame,
             temp_res_table,
@@ -941,18 +948,16 @@ impl CompositorWindow {
                                 resident_image.image().clone(),
                             )
                         }
+                        ImageContents::Port(ref port) => {
+                            let port_output = port_frame.get_output(port).unwrap();
+                            (port_output.image_view.clone(), port_output.image.clone())
+                        }
                     },
                     match contents[1].0 {
                         ImageContents::Image(ref image_view, ref image) => {
                             (image_view.clone(), image.clone())
                         }
-                        ImageContents::ManagedImage(ref image_ref) => {
-                            let resident_image = compositor.image_manager.get(&image_ref).unwrap();
-                            (
-                                resident_image.image_view().clone(),
-                                resident_image.image().clone(),
-                            )
-                        }
+                        _ => unreachable!(),
                     },
                 ]
             })
@@ -1062,6 +1067,9 @@ impl CompositorWindow {
             compositor.retire_frame(self.frames.pop_front().unwrap())?;
         }
 
+        // Create an execution barrier
+        let simple_barrier = compositor.device.build_barrier().build()?;
+
         // Encode the command buffer
         let mut cb = compositor.cmd_pool.begin_cmd_buffer()?;
         let cb_state_tracker = gfxut::CbStateTracker::new(&mut *cb);
@@ -1087,8 +1095,7 @@ impl CompositorWindow {
                     enc = cb.encode_render(fb);
 
                     if let Some(ref fence) = fence.take() {
-                        let barrier = compositor.device.build_barrier().build()?;
-                        enc.wait_fence(fence, flags![gfx::Stage::{Copy}], &barrier);
+                        enc.wait_fence(fence, flags![gfx::Stage::{Copy}], &simple_barrier);
                     }
 
                     enc.bind_pipeline(&compositor.statesets[0].composite_pipeline);
@@ -1117,6 +1124,29 @@ impl CompositorWindow {
                             contents_i,
                             count,
                         } => {
+                            // If the image source is a `Port`, then insert a fence and image layout transition
+                            match c.contents[contents_i][0].0 {
+                                ImageContents::Port(ref port) => {
+                                    let port_output = port_frame.get_output(port).unwrap();
+                                    let (src_stage, src_access) = port_output.fence_src;
+
+                                    let barrier = compositor
+                                        .device
+                                        .build_barrier()
+                                        .image(
+                                            src_access,
+                                            flags![gfx::AccessType::{FragmentRead}],
+                                            &port_output.image,
+                                            port_output.image_layout,
+                                            gfx::ImageLayout::ShaderRead,
+                                            &Default::default(),
+                                        )
+                                        .build()?;
+
+                                    enc.wait_fence(&port_output.fence, src_stage, &barrier);
+                                }
+                                _ => {}
+                            }
                             enc.use_resource(
                                 gfx::ResourceUsage::Sample,
                                 &[

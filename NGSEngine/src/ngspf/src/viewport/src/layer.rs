@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use ngsenumflags::BitFlags;
-use cgmath::{Matrix4, Point2};
+use cgmath::{Matrix4, Point2, Vector2};
 use cgmath::prelude::*;
 use refeq::RefEqArc;
 use rgb::RGBA;
