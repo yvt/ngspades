@@ -44,7 +44,7 @@ mod triangle {
     use std::mem;
 
     use ngspf::core::PresenterFrame;
-    use ngspf::viewport::{GfxObjects, Port, PortInstance, PortRenderContext};
+    use ngspf::viewport::{GfxObjects, GfxQueue, Port, PortInstance, PortRenderContext};
 
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
@@ -72,7 +72,7 @@ mod triangle {
     #[derive(Debug)]
     struct MyPortInstance {
         device: Arc<gfx::Device>,
-        main_queue: Arc<gfx::CmdQueue>,
+        main_queue: GfxQueue,
         heap: Box<gfx::Heap>,
         vertex_buffer: gfx::Buffer,
         pipeline: gfx::RenderPipeline,
@@ -117,7 +117,7 @@ mod triangle {
 
             let pipeline = Self::make_pipeline(&*device, &render_pass);
 
-            let cmd_pool = main_queue.new_cmd_pool().unwrap();
+            let cmd_pool = main_queue.queue.new_cmd_pool().unwrap();
 
             Self {
                 device,
@@ -238,6 +238,7 @@ mod triangle {
 
                 e.update_fence(&context.fence, flags![gfx::Stage::{RenderOutput}]);
             }
+            buffer.commit();
 
             context.schedule_next_frame = true;
             Ok(())
