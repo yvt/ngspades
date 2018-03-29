@@ -59,6 +59,7 @@ where
 }
 
 #[derive(Eq, Copy, Clone, Hash)]
+#[repr(C)]
 pub struct BitFlags<T: EnumFlagSize> {
     val: T::Size,
 }

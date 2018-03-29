@@ -5,29 +5,32 @@ use ::ENetBuffer;
 pub type ENetSocket = c_int;
 
 #[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ENetSocketType {
-    ENET_SOCKET_TYPE_STREAM = 1,
-    ENET_SOCKET_TYPE_DATAGRAM = 2,
+    Stream = 1,
+    Datagram = 2,
 }
 
 #[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ENetSocketOption {
-    ENET_SOCKOPT_NONBLOCK = 1,
-    ENET_SOCKOPT_BROADCAST = 2,
-    ENET_SOCKOPT_RCVBUF = 3,
-    ENET_SOCKOPT_SNDBUF = 4,
-    ENET_SOCKOPT_REUSEADDR = 5,
-    ENET_SOCKOPT_RCVTIMEO = 6,
-    ENET_SOCKOPT_SNDTIMEO = 7,
-    ENET_SOCKOPT_ERROR = 8,
-    ENET_SOCKOPT_NODELAY = 9,
+    NonBlock = 1,
+    Broadcast = 2,
+    ReceiveBuffer = 3,
+    SendBuffer = 4,
+    ReuseAddress = 5,
+    ReceiveTimeOut = 6,
+    SendTimeOut = 7,
+    Error = 8,
+    NoDelay = 9,
 }
 
 #[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ENetSocketShutdown {
-    ENET_SOCKET_SHUTDOWN_READ = 0,
-    ENET_SOCKET_SHUTDOWN_WRITE = 1,
-    ENET_SOCKET_SHUTDOWN_READ_WRITE = 2,
+    Read = 0,
+    Write = 1,
+    ReadWrite = 2,
 }
 
 extern {

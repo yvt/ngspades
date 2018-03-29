@@ -128,6 +128,7 @@ fn gen_enumflags(ident: &Ident, item: &MacroInput, data: &Vec<Variant>) -> Token
     quote!{
         #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         #[doc(hidden)]
+        #[repr(C)]
         pub struct #inner_name(#ty);
 
         impl ::std::ops::BitOr for #inner_name{
