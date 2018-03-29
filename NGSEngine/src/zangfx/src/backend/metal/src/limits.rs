@@ -63,8 +63,8 @@ impl DeviceCaps {
             ],
             max_num_compute_workgroup_invocations: 256,
             max_compute_workgroup_count: [u32::max_value(); 3],
-            uniform_buffer_align: 256,
-            storage_buffer_align: 16,
+            uniform_buffer_align: ::UNIFORM_BUFFER_MIN_ALIGN,
+            storage_buffer_align: ::STORAGE_BUFFER_MIN_ALIGN,
         };
 
         let working_set_size = device.recommended_max_working_set_size();
