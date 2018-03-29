@@ -101,6 +101,12 @@ pub trait UseResources {
                     self.use_metal_heaps(metal_heaps.as_slice());
                     metal_heaps.clear();
                 }
+            } else if let Some(heap) = heap.query_ref::<BufferHeap>() {
+                metal_resources.push(*heap.metal_buffer());
+                if metal_resources.len() == metal_resources.capacity() {
+                    self.use_metal_resources(metal_resources.as_slice(), Read);
+                    metal_resources.clear();
+                }
             } else if let Some(heap) = heap.query_ref::<EmulatedHeap>() {
                 heap.for_each_metal_resources(&mut |metal_resource| {
                     metal_resources.push(metal_resource);
