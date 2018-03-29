@@ -13,6 +13,7 @@ bitflags = "0.7"
 libc = "0.2"
 objc-foundation = "0.1"
 block = "0.1.5"
+fast_msg_send = { path = "../../../../../../support/fast_msg_send" }
 
 [dependencies.objc]
 version = "0.2.1"
