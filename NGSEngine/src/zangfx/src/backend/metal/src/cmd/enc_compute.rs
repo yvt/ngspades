@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use metal::{MTLComputeCommandEncoder, MTLSize};
-use base::{command, handles, heap, ArgTableIndex, StageFlags, DeviceSize};
+use base::{command, handles, heap, ArgTableIndex, DeviceSize, StageFlags};
 
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
@@ -125,10 +125,11 @@ impl command::ComputeCmdEncoder for ComputeEncoder {
 
     fn dispatch_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.metal_encoder
             .dispatch_threadgroups_with_indirect_buffer(
-                buffer.metal_buffer(),
-                offset,
+                metal_buffer,
+                offset + buffer_offset,
                 self.threads_per_threadgroup,
             );
     }

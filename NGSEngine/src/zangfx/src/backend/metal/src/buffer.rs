@@ -15,6 +15,7 @@ use utils::OCPtr;
 pub struct BufferBuilder {
     size: Option<DeviceSize>,
     label: Option<String>,
+    usage: base::BufferUsageFlags,
 }
 
 zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, ::Debug, base::SetLabel }
@@ -25,6 +26,7 @@ impl BufferBuilder {
         Self {
             size: None,
             label: None,
+            usage: base::BufferUsage::default_flags(),
         }
     }
 }
@@ -40,14 +42,19 @@ impl resources::BufferBuilder for BufferBuilder {
         self.size = Some(v);
         self
     }
-    fn usage(&mut self, _v: resources::BufferUsageFlags) -> &mut resources::BufferBuilder {
+    fn usage(&mut self, v: resources::BufferUsageFlags) -> &mut resources::BufferBuilder {
+        self.usage = v;
         self
     }
 
     fn build(&mut self) -> Result<handles::Buffer> {
         let size = self.size
             .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "size"))?;
-        Ok(handles::Buffer::new(Buffer::new(size, self.label.clone())))
+        Ok(handles::Buffer::new(Buffer::new(
+            size,
+            self.label.clone(),
+            self.usage,
+        )))
     }
 }
 
@@ -65,15 +72,17 @@ unsafe impl Sync for Buffer {}
 #[derive(Debug)]
 struct BufferData {
     size: DeviceSize,
-    metal_buffer: Option<OCPtr<metal::MTLBuffer>>,
+    metal_buffer: Option<(OCPtr<metal::MTLBuffer>, base::DeviceSize, bool)>,
+    usage: base::BufferUsageFlags,
     label: Option<String>,
 }
 
 impl Buffer {
-    fn new(size: DeviceSize, label: Option<String>) -> Self {
+    fn new(size: DeviceSize, label: Option<String>, usage: base::BufferUsageFlags) -> Self {
         let data = BufferData {
             size,
             metal_buffer: None,
+            usage,
             label,
         };
 
@@ -88,7 +97,8 @@ impl Buffer {
     pub unsafe fn from_raw(metal_buffer: metal::MTLBuffer) -> Self {
         let data = BufferData {
             size: metal_buffer.length(),
-            metal_buffer: OCPtr::from_raw(metal_buffer),
+            metal_buffer: Some((OCPtr::from_raw(metal_buffer).unwrap(), 0, false)),
+            usage: base::BufferUsageFlags::all(),
             label: None,
         };
 
@@ -101,15 +111,14 @@ impl Buffer {
         &mut *self.data
     }
 
-    /// Return the underlying `MTLBuffer`. Returns `nil` for `Buffer`s in the
+    /// Return the underlying `MTLBuffer`. Returns `None` for `Buffer`s in the
     /// Prototype state (i.e. not allocated on a heap).
-    pub fn metal_buffer(&self) -> metal::MTLBuffer {
+    pub fn metal_buffer_and_offset(&self) -> Option<(metal::MTLBuffer, base::DeviceSize)> {
         unsafe {
-            if let Some(ref p) = self.data().metal_buffer {
-                **p
-            } else {
-                metal::MTLBuffer::nil()
-            }
+            self.data()
+                .metal_buffer
+                .as_ref()
+                .map(|&(ref p, offset, _)| (**p, offset))
         }
     }
 
@@ -117,20 +126,43 @@ impl Buffer {
         unsafe { self.data().size }
     }
 
-    pub(super) fn materialize(&self, metal_buffer: OCPtr<metal::MTLBuffer>) {
+    pub(super) fn is_subbuffer(&self) -> bool {
+        unsafe { self.data().metal_buffer.as_ref().unwrap().2 }
+    }
+
+    /// Assign a `MTLBuffer` to this `Buffer` object.
+    ///
+    /// `is_subbuffer` indicates whether `metal_buffer` is a subportion of a
+    /// larger `MTLBuffer` used to realize a heap.
+    pub(super) fn materialize(
+        &self,
+        metal_buffer: OCPtr<metal::MTLBuffer>,
+        offset: base::DeviceSize,
+        is_subbuffer: bool,
+    ) {
         let data = unsafe { self.data() };
-        data.metal_buffer = Some(metal_buffer);
+        data.metal_buffer = Some((metal_buffer, offset, is_subbuffer));
 
         if let Some(label) = data.label.take() {
-            data.metal_buffer.as_ref().unwrap().set_label(&label);
+            data.metal_buffer.as_ref().unwrap().0.set_label(&label);
         }
     }
 
     pub(super) fn memory_req(&self, metal_device: metal::MTLDevice) -> resources::MemoryReq {
-        let metal_req = metal_device.heap_buffer_size_and_align_with_length(
+        let mut metal_req = metal_device.heap_buffer_size_and_align_with_length(
             self.size(),
             metal::MTLResourceStorageModePrivate | metal::MTLResourceHazardTrackingModeUntracked,
         );
+
+        use std::cmp::max;
+        let usage = unsafe { self.data() }.usage;
+        if usage.contains(base::BufferUsage::Storage) {
+            metal_req.align = max(metal_req.align, ::STORAGE_BUFFER_MIN_ALIGN);
+        }
+        if usage.contains(base::BufferUsage::Uniform) {
+            metal_req.align = max(metal_req.align, ::UNIFORM_BUFFER_MIN_ALIGN);
+        }
+
         resources::MemoryReq {
             size: metal_req.size,
             align: metal_req.align,

@@ -12,6 +12,7 @@ use std::mem::transmute_copy;
 
 use super::{id, NSObjectPrototype, NSObjectProtocol};
 
+use device::MTLDevice;
 use buffer::MTLBuffer;
 use texture::{MTLTexture, MTLTextureDescriptor};
 
@@ -83,6 +84,12 @@ impl<'a> MTLResource {
         unsafe {
             let nslabel = NSString::from_str(label);
             msg_send![self.0, setLabel:transmute_copy::<_, *const ()>(&nslabel)]
+        }
+    }
+
+    pub fn device(&self) -> MTLDevice {
+        unsafe {
+            msg_send![self.0, device]
         }
     }
 

@@ -1044,8 +1044,9 @@ impl RenderStateManager {
     ) {
         for (i, &(buffer, offset)) in buffers.iter().enumerate() {
             let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
-            self.vb_buffers[i + index] = buffer.metal_buffer();
-            self.vb_offsets[i + index] = offset;
+            let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
+            self.vb_buffers[i + index] = metal_buffer;
+            self.vb_offsets[i + index] = offset + buffer_offset;
         }
         self.vb_dirty |= <u32>::ones(index as u32..(index + buffers.len()) as u32);
     }
@@ -1078,10 +1079,11 @@ impl RenderStateManager {
         format: base::IndexFormat,
     ) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
 
         // The applications must hold the reference by themselves
-        self.index_buffer = buffer.metal_buffer();
-        self.index_offset = offset;
+        self.index_buffer = metal_buffer;
+        self.index_offset = offset + buffer_offset;
         self.index_format = match format {
             base::IndexFormat::U16 => metal::MTLIndexType::UInt16,
             base::IndexFormat::U32 => metal::MTLIndexType::UInt32,
@@ -1146,21 +1148,23 @@ impl RenderStateManager {
 
     pub fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.flush_vertex_buffers();
         self.metal_encoder
-            .draw_indirect(self.primitive_type, buffer.metal_buffer(), offset);
+            .draw_indirect(self.primitive_type, metal_buffer, offset + buffer_offset);
     }
 
     pub fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.flush_vertex_buffers();
         self.metal_encoder.draw_indexed_indirect(
             self.primitive_type,
             self.index_format,
             self.index_buffer,
             self.index_offset,
-            buffer.metal_buffer(),
-            offset,
+            metal_buffer,
+            offset + buffer_offset,
         );
     }
 }

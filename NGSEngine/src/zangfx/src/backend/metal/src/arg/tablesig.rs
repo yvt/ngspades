@@ -297,12 +297,19 @@ impl ArgTableSig {
                                 .map(|&(_, obj)| {
                                     let my_obj: &Buffer =
                                         obj.downcast_ref().expect("bad buffer type");
-                                    my_obj.metal_buffer()
+                                    let (metal_buffer, _) =
+                                        my_obj.metal_buffer_and_offset().unwrap();
+                                    metal_buffer
                                 })
                                 .collect();
 
                             let offsets: ArrayVec<[_; 64]> = objs.iter()
-                                .map(|&(ref range, _)| range.start as _)
+                                .map(|&(ref range, obj)| {
+                                    let my_obj: &Buffer =
+                                        obj.downcast_ref().expect("bad buffer type");
+                                    let (_, offset) = my_obj.metal_buffer_and_offset().unwrap();
+                                    range.start + offset
+                                })
                                 .collect();
 
                             encoder.set_buffers(

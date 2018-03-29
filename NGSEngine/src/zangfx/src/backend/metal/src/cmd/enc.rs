@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use cmd::fence::Fence;
 use buffer::Buffer;
 use image::Image;
-use heap::{EmulatedHeap, Heap};
+use heap::{BufferHeap, EmulatedHeap, Heap};
 
 #[derive(Debug, Default)]
 pub struct CmdBufferFenceSet {
@@ -37,15 +37,18 @@ impl CmdBufferFenceSet {
     }
 }
 
-fn translate_resource(handle: handles::ResourceRef) -> metal::MTLResource {
+fn translate_resource(handle: handles::ResourceRef) -> (metal::MTLResource, bool) {
     match handle {
         handles::ResourceRef::Buffer(buffer) => {
             let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
-            *my_buffer.metal_buffer()
+            (
+                *my_buffer.metal_buffer_and_offset().unwrap().0,
+                my_buffer.is_subbuffer(),
+            )
         }
         handles::ResourceRef::Image(image) => {
             let my_image: &Image = image.downcast_ref().expect("bad image type");
-            *my_image.metal_texture()
+            (*my_image.metal_texture(), false)
         }
     }
 }
@@ -62,8 +65,26 @@ pub trait UseResources {
         };
 
         for objs in objs.chunks(256) {
-            let metal_resources: ArrayVec<[_; 256]> =
-                objs.iter().cloned().map(translate_resource).collect();
+            let mut metal_usage = metal_usage;
+            let metal_resources: ArrayVec<[_; 256]> = objs.iter()
+                .cloned()
+                .map(|r| {
+                    let (metal_resource, is_subbuffer) = translate_resource(r);
+                    if is_subbuffer {
+                        // This resource is a suballocated portion of
+                        // `BufferHeap`, a `MTLBuffer`-backed heap. The
+                        // application might call `use_resource` on multiple
+                        // resources from the heap with different resource usage
+                        // type.
+                        //
+                        // In such situations, the usage type is overwritten
+                        // every time `use_metal_resources` is called. To be
+                        // safe, use the `Write` usage type for such resources.
+                        metal_usage = metal::MTLResourceUsage::Write;
+                    }
+                    metal_resource
+                })
+                .collect();
             self.use_metal_resources(metal_resources.as_slice(), metal_usage);
         }
     }

@@ -5,8 +5,9 @@
 //
 //! Implementation of `Heap` for Metal.
 use metal;
-use iterpool::{IterablePool, PoolPtr};
+use iterpool::{IterablePool, Pool, PoolPtr};
 use parking_lot::Mutex;
+use xalloc::{SysTlsf, SysTlsfRegion};
 
 use base::{self, handles, heap, DeviceSize, MemoryType};
 use common::{Error, ErrorKind, Result};
@@ -70,10 +71,14 @@ impl HeapBuilder {
 
             Ok(Box::new(Heap::new(metal_heap, storage_mode)))
         } else {
-            // `MTLHeap` only supports the private storage mode
-            Ok(Box::new(unsafe {
-                EmulatedHeap::new(self.metal_device, storage_mode)
-            }))
+            // `MTLHeap` only supports the private storage mode. So create a
+            //  `MTLBuffer` and suballocate from it
+            let options =
+                metal::MTLResourceStorageModeShared | metal::MTLResourceHazardTrackingModeUntracked;
+            let metal_buffer = unsafe {
+                OCPtr::from_raw(self.metal_device.new_buffer(self.size, options))
+            }.ok_or(nil_error("MTLDevice newBufferWithLength:options:"))?;
+            Ok(Box::new(BufferHeap::new(metal_buffer)))
         }
     }
 }
@@ -214,7 +219,7 @@ impl heap::Heap for Heap {
     }
 }
 
-/// Implementation of `EmulatedHeapAlloc` for Metal. To be used with [`EmulatedHeap`].
+/// Implementation of `HeapAlloc` for Metal. To be used with [`EmulatedHeap`].
 ///
 /// [`EmulatedHeap`]: EmulatedHeap
 #[derive(Debug, Clone)]
@@ -232,8 +237,19 @@ zangfx_impl_handle! { EmulatedHeapAlloc, handles::HeapAlloc }
 unsafe impl Send for EmulatedHeapAlloc {}
 unsafe impl Sync for EmulatedHeapAlloc {}
 
-/// Emulated implementation of `Heap` for Metal. Does not `MTLHeap` and
+/// Emulated implementation of `Heap` for Metal. Does not use `MTLHeap` and
 /// allocates resources from `MTLDevice` directly.
+///
+/// Host-visible heap is superseded by `BufferHeap` and therefore this type of
+/// heap is **no longer** created by `HeapBuilder`.
+///
+/// Binding `MTLImage`s is not supported.
+///
+/// # Performance Quirks
+///
+/// `CmdEncoder::use_heap` runs much slower for this type of heaps because it
+/// has to iterate through all allocated resources.
+///
 #[derive(Debug)]
 pub struct EmulatedHeap {
     metal_device: metal::MTLDevice,
@@ -250,7 +266,7 @@ unsafe impl Send for EmulatedHeap {}
 unsafe impl Sync for EmulatedHeap {}
 
 impl EmulatedHeap {
-    unsafe fn new(metal_device: metal::MTLDevice, storage_mode: metal::MTLStorageMode) -> Self {
+    pub unsafe fn new(metal_device: metal::MTLDevice, storage_mode: metal::MTLStorageMode) -> Self {
         Self {
             metal_device,
             storage_mode,
@@ -342,7 +358,7 @@ where
         let metal_buffer_ptr = *metal_buffer;
 
         // Transition the buffer to the Allocated state
-        my_buffer.materialize(metal_buffer);
+        my_buffer.materialize(metal_buffer, 0, false);
 
         // Return `metal_buffer_ptr` for `HeapAlloc` creation
         Ok(Some(metal_buffer_ptr))
@@ -375,5 +391,140 @@ where
         Ok(Some(metal_texture_ptr))
     } else {
         Ok(None)
+    }
+}
+
+/// Implementation of `Heap` for Metal, backed by `MTLBuffer`.
+#[derive(Debug)]
+pub struct BufferHeap {
+    metal_buffer: OCPtr<metal::MTLBuffer>,
+    data: Mutex<BufferHeapData>,
+}
+
+zangfx_impl_object! { BufferHeap: heap::Heap, ::Debug }
+
+unsafe impl Send for BufferHeap {}
+unsafe impl Sync for BufferHeap {}
+
+#[derive(Debug)]
+struct BufferHeapData {
+    tlsf: SysTlsf<u32>,
+    pool: Pool<Option<SysTlsfRegion>>,
+}
+
+/// Implementation of `HeapAlloc` for Metal. To be used with [`BufferHeap`].
+///
+/// [`BufferHeap`]: BufferHeap
+#[derive(Debug, Clone)]
+pub struct BufferHeapAlloc {
+    /// The pointer to the resource's contents.
+    contents_ptr: *mut u8,
+
+    /// Associates this `BufferHeapAlloc` with an element of
+    /// `BufferHeapData::pool`.
+    pool_ptr: PoolPtr,
+}
+
+zangfx_impl_handle! { BufferHeapAlloc, handles::HeapAlloc }
+
+unsafe impl Send for BufferHeapAlloc {}
+unsafe impl Sync for BufferHeapAlloc {}
+
+impl BufferHeap {
+    fn new(metal_buffer: OCPtr<metal::MTLBuffer>) -> Self {
+        let size = metal_buffer.length();
+
+        // IINM Metal doesn't allow the creation of extremely large `MTLBuffer`s
+        assert!(size <= 0x80000000);
+
+        Self {
+            metal_buffer,
+            data: Mutex::new(BufferHeapData {
+                tlsf: SysTlsf::new(size as u32),
+                pool: Pool::new(),
+            }),
+        }
+    }
+
+    pub fn metal_buffer(&self) -> metal::MTLBuffer {
+        *self.metal_buffer
+    }
+}
+
+impl heap::Heap for BufferHeap {
+    fn bind(&self, obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
+        match obj {
+            handles::ResourceRef::Buffer(buffer) => {
+                let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+                let memory_req = my_buffer.memory_req(self.metal_buffer.device());
+
+                let contents_ptr = self.metal_buffer.contents() as *mut u8;
+                let mut data = self.data.lock();
+
+                // Allocate the region
+                if memory_req.size >= 0x8000_0000 {
+                    // Does not fit in 32 bits
+                    return Ok(None);
+                }
+                data.pool.reserve(1);
+                let result = data.tlsf
+                    .alloc_aligned(memory_req.size as u32, memory_req.align as u32);
+
+                if let Some((region, offset)) = result {
+                    let pool_ptr = data.pool.allocate(Some(region));
+
+                    // Transition the buffer to the Allocated state
+                    my_buffer.materialize(self.metal_buffer.clone(), offset as u64, true);
+
+                    let contents_ptr = contents_ptr.wrapping_offset(offset as isize);
+
+                    Ok(Some(
+                        BufferHeapAlloc {
+                            contents_ptr,
+                            pool_ptr,
+                        }.into(),
+                    ))
+                } else {
+                    Ok(None)
+                }
+            }
+
+            handles::ResourceRef::Image(_image) => {
+                return Err(Error::with_detail(
+                    ErrorKind::InvalidUsage,
+                    "BufferHeap does not support binding image resources",
+                ));
+            }
+        }
+    }
+
+    fn make_aliasable(&self, alloc: &handles::HeapAlloc) -> Result<()> {
+        let my_alloc: &BufferHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+        let mut data = self.data.lock();
+        let ref mut data = *data; // Enable split borrows
+        let ref mut region = data.pool[my_alloc.pool_ptr];
+        if let Some(region) = region.take() {
+            unsafe {
+                data.tlsf.dealloc_unchecked(region);
+            }
+        }
+        Ok(())
+    }
+
+    fn unbind(&self, alloc: &handles::HeapAlloc) -> Result<()> {
+        let my_alloc: &BufferHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+        let mut data = self.data.lock();
+        let region = data.pool.deallocate(my_alloc.pool_ptr).unwrap();
+        if let Some(region) = region {
+            unsafe {
+                data.tlsf.dealloc_unchecked(region);
+            }
+        }
+        Ok(())
+    }
+
+    fn as_ptr(&self, alloc: &handles::HeapAlloc) -> Result<*mut u8> {
+        let my_alloc: &BufferHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+        Ok(my_alloc.contents_ptr)
     }
 }

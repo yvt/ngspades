@@ -92,9 +92,10 @@ impl base::CopyCmdEncoder for CopyEncoder {
             return;
         }
         let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+        let (metal_buffer, buffer_offset) = my_buffer.metal_buffer_and_offset().unwrap();
         self.metal_encoder.fill_buffer(
-            my_buffer.metal_buffer(),
-            NSRange::new(range.start, range.end - range.start),
+            metal_buffer,
+            NSRange::new(range.start + buffer_offset, range.end - range.start),
             value,
         );
     }
@@ -110,12 +111,15 @@ impl base::CopyCmdEncoder for CopyEncoder {
         let my_src: &Buffer = src.downcast_ref().expect("bad source buffer type");
         let my_dst: &Buffer = dst.downcast_ref().expect("bad destination buffer type");
 
+        let (src_metal_buffer, src_buffer_offset) = my_src.metal_buffer_and_offset().unwrap();
+        let (dst_metal_buffer, dst_buffer_offset) = my_dst.metal_buffer_and_offset().unwrap();
+
         self.metal_encoder.copy_from_buffer_to_buffer(
-            my_src.metal_buffer(),
-            src_offset as u64,
-            my_dst.metal_buffer(),
-            dst_offset as u64,
-            size as u64,
+            src_metal_buffer,
+            src_offset + src_buffer_offset,
+            dst_metal_buffer,
+            dst_offset + dst_buffer_offset,
+            size,
         );
     }
 
@@ -136,12 +140,14 @@ impl base::CopyCmdEncoder for CopyEncoder {
         let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);
         let size: [u32; 3] = size.into_with_pad(1);
 
+        let (metal_buffer, buffer_offset) = my_src.metal_buffer_and_offset().unwrap();
+
         // TODO: `num_bytes_per_pixel` is incorrect for non-color images
         let pixel_size = my_dst.num_bytes_per_pixel();
         for i in dst_range.layers.clone() {
             self.metal_encoder.copy_from_buffer_to_image(
-                my_src.metal_buffer(),
-                src_range.offset
+                metal_buffer,
+                src_range.offset + buffer_offset
                     + src_range.plane_stride * pixel_size as u64
                         * (i - dst_range.layers.start) as u64,
                 src_range.row_stride * pixel_size as u64,
@@ -185,6 +191,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
         let src_origin: [u32; 3] = src_origin.into_with_pad(0);
         let size: [u32; 3] = size.into_with_pad(1);
 
+        let (metal_buffer, buffer_offset) = my_dst.metal_buffer_and_offset().unwrap();
+
         // TODO: `num_bytes_per_pixel` is incorrect for non-color images
         let pixel_size = my_src.num_bytes_per_pixel();
         for i in src_range.layers.clone() {
@@ -202,8 +210,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
                     height: size[1] as u64,
                     depth: size[2] as u64,
                 },
-                my_dst.metal_buffer(),
-                dst_range.offset
+                metal_buffer,
+                dst_range.offset + buffer_offset
                     + dst_range.plane_stride * pixel_size as u64
                         * (i - src_range.layers.start) as u64,
                 dst_range.row_stride * pixel_size as u64,
