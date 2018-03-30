@@ -82,6 +82,14 @@ impl Workspace {
 
         let events_loop_proxy = events_loop.create_proxy();
 
+        {
+            // Trigger window reconcilation whenever a new frame was submitted
+            let events_loop_proxy = events_loop_proxy.clone();
+            context.on_commit(move || {
+                let _ = events_loop_proxy.wakeup();
+            });
+        }
+
         Ok(Self {
             events_loop,
             context,

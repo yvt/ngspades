@@ -23,6 +23,8 @@ extern crate ngsbase;
 extern crate refeq;
 extern crate tokenlock;
 
+mod handler;
+
 use std::any::Any;
 use std::sync::Mutex;
 use std::{borrow, fmt, hash, ops};
@@ -38,6 +40,7 @@ pub struct Context {
     changelog: Mutex<Changelog>,
     producer_token_ref: TokenRef,
     presenter_token_ref: TokenRef,
+    on_commit: Mutex<handler::CommitHandlerList>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -66,6 +69,7 @@ impl Context {
             }),
             presenter_frame: ArcLock::new(PresenterFrameInner { presenter_token }),
             changelog: Mutex::default(),
+            on_commit: Mutex::new(handler::CommitHandlerList::new()),
         }
     }
 
@@ -86,6 +90,11 @@ impl Context {
         changelog.changesets.len()
     }
 
+    /// Register a commit handler.
+    pub fn on_commit<F: FnMut() + Send + 'static>(&self, handler: F) {
+        self.on_commit.lock().unwrap().push(handler);
+    }
+
     /// Finalize the current frame for presentation.
     ///
     /// If you have a lock on the current frame, it must be unlocked first (by
@@ -96,18 +105,22 @@ impl Context {
     /// **Panics** if too many frames were generated (> `2^64`) during the
     /// lifetime of the `Context`.
     pub fn commit(&self) -> Result<(), ContextError> {
-        use std::mem::swap;
-        let mut frame: ArcLockGuard<ProducerFrameInner> = self.producer_frame
-            .try_lock()
-            .map_err(|_| ContextError::LockFailed)?;
+        {
+            use std::mem::swap;
+            let mut frame: ArcLockGuard<ProducerFrameInner> = self.producer_frame
+                .try_lock()
+                .map_err(|_| ContextError::LockFailed)?;
 
-        frame.frame_id = frame.frame_id.checked_add(1).expect("frame ID overflow");
+            frame.frame_id = frame.frame_id.checked_add(1).expect("frame ID overflow");
 
-        let mut changelog = self.changelog.lock().unwrap();
+            let mut changelog = self.changelog.lock().unwrap();
 
-        let mut changeset = Vec::with_capacity(frame.changeset.len() * 2);
-        swap(&mut changeset, &mut frame.changeset);
-        changelog.changesets.push(changeset);
+            let mut changeset = Vec::with_capacity(frame.changeset.len() * 2);
+            swap(&mut changeset, &mut frame.changeset);
+            changelog.changesets.push(changeset);
+        }
+
+        self.on_commit.lock().unwrap().emit();
 
         Ok(())
     }
