@@ -49,6 +49,9 @@ impl base::BufferBuilder for BufferBuilder {
             .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "size"))?;
 
         let mut usage = vk::BufferUsageFlags::empty();
+        if self.usage.contains(base::BufferUsage::Vertex) {
+            usage |= vk::BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        }
         if self.usage.contains(base::BufferUsage::CopyRead) {
             usage |= vk::BUFFER_USAGE_TRANSFER_SRC_BIT;
         }
