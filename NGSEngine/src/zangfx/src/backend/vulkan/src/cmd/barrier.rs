@@ -11,8 +11,10 @@ use ash::vk;
 use base;
 use common::Result;
 
-use utils::{translate_access_type_flags, translate_pipeline_stage_flags};
+use utils::{translate_access_type_flags, translate_image_layout,
+            translate_image_subresource_range, translate_pipeline_stage_flags};
 use buffer::Buffer;
+use image::Image;
 
 /// Implementation of `BarrierBuilder` for Vulkan.
 #[derive(Debug)]
@@ -84,14 +86,42 @@ impl base::BarrierBuilder for BarrierBuilder {
 
     fn image(
         &mut self,
-        _src_access: base::AccessTypeFlags,
-        _dst_access: base::AccessTypeFlags,
-        _image: &base::Image,
-        _src_layout: base::ImageLayout,
-        _dst_layout: base::ImageLayout,
-        _range: &base::ImageSubRange,
+        src_access: base::AccessTypeFlags,
+        dst_access: base::AccessTypeFlags,
+        image: &base::Image,
+        src_layout: base::ImageLayout,
+        dst_layout: base::ImageLayout,
+        range: &base::ImageSubRange,
     ) -> &mut base::BarrierBuilder {
-        unimplemented!()
+        let my_image: &Image = image.downcast_ref().expect("bad image type");
+
+        let is_ds = my_image
+            .meta()
+            .image_aspects()
+            .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT);
+
+        self.data.image_barriers.push(vk::ImageMemoryBarrier {
+            s_type: vk::StructureType::ImageMemoryBarrier,
+            p_next: ::null(),
+            src_access_mask: translate_access_type_flags(src_access),
+            dst_access_mask: translate_access_type_flags(dst_access),
+            src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+            dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+            old_layout: translate_image_layout(src_layout, is_ds),
+            new_layout: translate_image_layout(dst_layout, is_ds),
+            image: my_image.vk_image(),
+            subresource_range: translate_image_subresource_range(
+                range,
+                my_image.meta().image_aspects(),
+            ),
+        });
+
+        self.data.src_stage_mask |=
+            translate_pipeline_stage_flags(base::AccessType::union_supported_stages(src_access));
+        self.data.dst_stage_mask |=
+            translate_pipeline_stage_flags(base::AccessType::union_supported_stages(dst_access));
+
+        self
     }
 
     fn build(&mut self) -> Result<base::Barrier> {
