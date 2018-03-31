@@ -68,7 +68,8 @@ pub struct StageImage<'a> {
     pub dst_image: &'a base::Image,
     pub dst_range: base::ImageLayerRange,
     pub dst_aspect: base::ImageAspect,
-    pub dst_layout: base::ImageLayout,
+    pub dst_old_layout: base::ImageLayout,
+    pub dst_new_layout: base::ImageLayout,
     pub dst_origin: [u32; 3],
     pub size: [u32; 3],
 }
@@ -94,7 +95,8 @@ impl<'a> StageImage<'a> {
                 layers: 0..1,
             },
             dst_aspect: base::ImageAspect::Color,
-            dst_layout: layout,
+            dst_old_layout: base::ImageLayout::Undefined,
+            dst_new_layout: layout,
             dst_origin: [0, 0, 0],
             size,
         }
@@ -129,10 +131,27 @@ impl UploaderUtils for uploader::Uploader {
                 staging_buffer: &base::Buffer,
                 staging_buffer_range: Range<base::DeviceSize>,
             ) -> Result<()> {
-                let staging_layout = match self.0.dst_layout {
-                    base::ImageLayout::CopyWrite | base::ImageLayout::General => self.0.dst_layout,
+                let staging_layout = match self.0.dst_new_layout {
+                    base::ImageLayout::CopyWrite | base::ImageLayout::General => {
+                        self.0.dst_new_layout
+                    }
                     _ => base::ImageLayout::CopyWrite,
                 };
+
+                if self.0.dst_old_layout != staging_layout {
+                    let barrier = self.1
+                        .build_barrier()
+                        .image(
+                            flags![base::AccessType::{}],
+                            flags![base::AccessType::{CopyWrite}],
+                            self.0.dst_image,
+                            self.0.dst_old_layout,
+                            staging_layout,
+                            &self.0.dst_range.clone().into(),
+                        )
+                        .build()?;
+                    encoder.barrier(&barrier);
+                }
 
                 encoder.copy_buffer_to_image(
                     staging_buffer,
@@ -149,7 +168,7 @@ impl UploaderUtils for uploader::Uploader {
                     &self.0.size,
                 );
 
-                if self.0.dst_layout != staging_layout {
+                if self.0.dst_new_layout != staging_layout {
                     let barrier = self.1
                         .build_barrier()
                         .image(
@@ -157,7 +176,7 @@ impl UploaderUtils for uploader::Uploader {
                             flags![base::AccessType::{}],
                             self.0.dst_image,
                             staging_layout,
-                            self.0.dst_layout,
+                            self.0.dst_new_layout,
                             &self.0.dst_range.clone().into(),
                         )
                         .build()?;
