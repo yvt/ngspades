@@ -247,7 +247,7 @@ impl Compositor {
         let box_vertices = device
             .build_buffer()
             .size(size_of_val(BOX_VERTICES) as u64)
-            .usage(flags![gfx::BufferUsage::{Vertex}])
+            .usage(flags![gfx::BufferUsage::{Vertex | CopyWrite}])
             .build()?;
         let box_vertices = gfxut::UniqueBuffer::new(device.clone(), box_vertices);
         {
