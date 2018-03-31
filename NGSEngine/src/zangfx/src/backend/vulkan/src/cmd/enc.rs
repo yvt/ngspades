@@ -139,8 +139,16 @@ impl CommonCmdEncoder {
                 self.vk_cmd_buffer,
                 1,
                 &fence.vk_event(),
-                translate_pipeline_stage_flags(src_stage),
-                data.dst_stage_mask,
+                if src_stage.is_empty() {
+                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                } else {
+                    translate_pipeline_stage_flags(src_stage)
+                },
+                if data.dst_stage_mask.is_empty() {
+                    vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                } else {
+                    data.dst_stage_mask
+                },
                 data.global_barriers.len() as u32,
                 data.global_barriers.as_ptr(),
                 data.buffer_barriers.len() as u32,
@@ -180,8 +188,16 @@ impl CommonCmdEncoder {
         unsafe {
             device.cmd_pipeline_barrier(
                 self.vk_cmd_buffer,
-                data.src_stage_mask,
-                data.dst_stage_mask,
+                if data.src_stage_mask.is_empty() {
+                    vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                } else {
+                    data.src_stage_mask
+                },
+                if data.dst_stage_mask.is_empty() {
+                    vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                } else {
+                    data.dst_stage_mask
+                },
                 vk::DependencyFlags::empty(),
                 &data.global_barriers,
                 &data.buffer_barriers,
