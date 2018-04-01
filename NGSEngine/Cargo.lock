@@ -525,7 +525,10 @@ dependencies = [
 name = "ngsgamegfx"
 version = "0.1.0"
 dependencies = [
+ "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngsenumflags 0.1.2",
  "ngspf 0.1.0",
+ "refeq 0.1.0",
  "zangfx 0.1.0",
 ]
 

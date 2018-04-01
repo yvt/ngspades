@@ -6,3 +6,8 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 zangfx = { path = "../zangfx" }
 ngspf = { path = "../ngspf" }
+ngsenumflags = { path = "../support/ngsenumflags" }
+
+[dev-dependencies]
+cgmath = "0.15.0"
+refeq = { path = "../support/refeq" }

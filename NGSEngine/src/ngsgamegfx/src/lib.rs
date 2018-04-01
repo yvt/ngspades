@@ -6,6 +6,8 @@
 //! NgsGameGFX — Nightingales Game GFX
 extern crate zangfx;
 extern crate ngspf;
+#[macro_use]
+extern crate ngsenumflags;
 
 mod passman;
 pub mod port;
