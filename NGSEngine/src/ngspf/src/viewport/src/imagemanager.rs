@@ -14,8 +14,8 @@ use zangfx::prelude::*;
 use zangfx::base::Result;
 use zangfx::utils::{self, uploader, DeviceUtils};
 
-use super::{ImageData, ImageRef, Layer, LayerContents};
-use core::{NodeRef, PresenterFrame};
+use super::{ImageData, ImageRef};
+use core::PresenterFrame;
 use core::prelude::*;
 
 use gfxutils::{HeapSet, HeapSetAlloc};
