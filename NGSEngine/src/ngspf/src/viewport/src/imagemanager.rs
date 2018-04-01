@@ -212,37 +212,6 @@ impl ImageManager {
         }
     }
 
-    /// Scan image uses in the specified node and call `use_image` for all found
-    /// images.
-    pub fn scan_nodes(
-        &mut self,
-        root: &NodeRef,
-        frame: &PresenterFrame,
-        ref_table: &mut ImageRefTable,
-    ) {
-        root.for_each_node(|node| {
-            if let Some(layer) = node.downcast_ref::<Layer>() {
-                // Scan recursively
-                if let &Some(ref child) = layer.child.read_presenter(frame).unwrap() {
-                    self.scan_nodes(child, frame, ref_table);
-                }
-
-                // Check the layer contents
-                match layer.contents.read_presenter(frame).unwrap() {
-                    &LayerContents::Image {
-                        image: ref image_ref,
-                        ..
-                    } => {
-                        self.use_image(image_ref, ref_table);
-                    }
-                    _ => {}
-                }
-            } else {
-                // Ignore an unknown node type
-            }
-        });
-    }
-
     /// Initiate the upload of queued images.
     pub fn upload(&mut self, frame: &PresenterFrame) -> Result<uploader::SessionId> {
         if self.new_images_list.len() == 0 {
@@ -471,6 +440,7 @@ impl<'a> ResidentImage<'a> {
         &self.data.image_view
     }
 
+    #[allow(dead_code)]
     pub fn session_id(&self) -> uploader::SessionId {
         self.data.session_id
     }

@@ -11,7 +11,7 @@ use refeq::RefEqArc;
 use core::{NodeRef, PresenterFrame};
 
 use layer::{Layer, LayerContents};
-use port::{GfxObjects, Port, PortImageProps, PortInstance, PortManager, PortRenderContext};
+use port::{GfxObjects, Port, PortImageProps, PortManager, PortRenderContext};
 use temprespool::{TempResPool, TempResTable};
 
 /// Manages rendering work on `Port`s in a certain frame.

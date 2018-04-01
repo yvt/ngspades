@@ -337,9 +337,7 @@ impl<P: Painter> Drop for PhysicalDevice<P> {
 
         // Alleviate some instabilities with error handling by inserting a device-global
         // sync here. (Usually, the device is supposed to be idle here)
-        unsafe {
-            let _ = self.vk_device.device_wait_idle();
-        }
+        let _ = self.vk_device.device_wait_idle();
     }
 }
 
