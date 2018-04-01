@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 
 use base;
 use common::{Error, ErrorKind, Result};
@@ -249,6 +249,17 @@ pub fn translate_rect2d_u32(value: &base::Rect2D<u32>) -> vk::Rect2D {
         extent: vk::Extent2D {
             width: value.max[0].saturating_sub(value.min[0]),
             height: value.max[1].saturating_sub(value.min[1]),
+        },
+    }
+}
+
+pub fn clip_rect2d_u31(value: vk::Rect2D) -> vk::Rect2D {
+    use std::cmp::min;
+    vk::Rect2D {
+        offset: value.offset,
+        extent: vk::Extent2D {
+            width: min(value.extent.width, 0x7fffffffu32 - value.offset.x as u32),
+            height: min(value.extent.height, 0x7fffffffu32 - value.offset.y as u32),
         },
     }
 }

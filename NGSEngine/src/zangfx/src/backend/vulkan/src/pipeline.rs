@@ -21,7 +21,7 @@ use renderpass::RenderPass;
 use formats::translate_vertex_format;
 use utils::{translate_bool, translate_color_channel_flags, translate_compare_op,
             translate_generic_error_unwrap, translate_sample_count, translate_shader_stage,
-            translate_rect2d_u32};
+            translate_rect2d_u32, clip_rect2d_u31};
 
 /// Constructs `vk::PipelineShaderStageCreateInfo`.
 ///
@@ -526,6 +526,7 @@ impl<'a> LlRasterizer<'a> {
                     .chain(repeat(default))
                     .take(builder.num_viewports)
                     .map(|s_or_d| s_or_d.static_value().unwrap())
+                    .map(clip_rect2d_u31)
                     .collect();
                 viewport_state.p_scissors = scissors.as_ptr();
                 scissors

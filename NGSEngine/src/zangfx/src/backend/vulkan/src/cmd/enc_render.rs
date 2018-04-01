@@ -3,21 +3,21 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::vk;
-use ash::version::*;
-use std::ops::Range;
 use arrayvec::ArrayVec;
+use ash::version::*;
+use ash::vk;
+use std::ops::Range;
 
 use base;
 use common::Rect2D;
 
-use device::DeviceRef;
-use pipeline::RenderPipeline;
-use buffer::Buffer;
-use utils::translate_rect2d_u32;
-use renderpass::RenderTargetTable;
 use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
 use super::fence::Fence;
+use buffer::Buffer;
+use device::DeviceRef;
+use pipeline::RenderPipeline;
+use renderpass::RenderTargetTable;
+use utils::{clip_rect2d_u31, translate_rect2d_u32};
 
 #[derive(Debug)]
 pub(super) struct RenderEncoder {
@@ -230,7 +230,11 @@ impl base::RenderCmdEncoder for RenderEncoder {
     fn set_scissors(&mut self, mut start_viewport: base::ViewportIndex, value: &[Rect2D<u32>]) {
         let vk_device = self.device.vk_device();
         for values in value.chunks(16) {
-            let rects: ArrayVec<[_; 16]> = values.iter().map(translate_rect2d_u32).collect();
+            let rects: ArrayVec<[_; 16]> = values
+                .iter()
+                .map(translate_rect2d_u32)
+                .map(clip_rect2d_u31)
+                .collect();
             unsafe {
                 vk_device.fp_v1_0().cmd_set_scissor(
                     self.vk_cmd_buffer,
