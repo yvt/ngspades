@@ -177,6 +177,10 @@ impl CmdQueue {
     fn scheduler(&self) -> &Arc<Scheduler> {
         self.scheduler.as_ref().unwrap()
     }
+
+    pub fn vk_queue(&self) -> vk::Queue {
+        self.vk_queue
+    }
 }
 
 impl base::CmdQueue for CmdQueue {

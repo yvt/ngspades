@@ -13,6 +13,14 @@ mod metal;
 #[cfg(target_os = "macos")]
 pub use self::metal::*;
 
+#[cfg(not(target_os = "macos"))]
+mod vulkan;
+#[cfg(not(target_os = "macos"))]
+pub use self::vulkan::*;
+
+mod autoreleasepool;
+pub use self::autoreleasepool::*;
+
 #[derive(Debug, Clone)]
 pub struct GfxQueue {
     pub queue: Arc<gfx::CmdQueue>,
@@ -102,7 +110,22 @@ pub trait Drawable {
     ///
     /// This must be called on the command buffer where the contents of the
     /// drawable image is written.
-    fn encode_prepare_present(&mut self, cmd_buffer: &mut gfx::CmdBuffer, qf: gfx::QueueFamily);
+    ///
+    /// The drawable image must be transitioned to the `Present` layout by the
+    /// end of the command buffer.
+    ///
+    /// - `queue_family` indicates the queue family where the drawable image
+    ///   was generated.
+    /// - `stage` indicates the pipeline stage where the drawable image was
+    ///   written.
+    ///
+    fn encode_prepare_present(
+        &mut self,
+        cmd_buffer: &mut gfx::CmdBuffer,
+        queue_family: gfx::QueueFamily,
+        stage: gfx::StageFlags,
+        access: gfx::AccessTypeFlags,
+    );
 
     /// Enqueue the presentation operation. Must be called *after* the command
     /// buffer on which `encode_present` was called was enqueued (i.e., the

@@ -27,26 +27,6 @@ use super::{GfxQueue, Painter, SurfaceProps, WmDevice};
 
 use super::cvdisplaylink::CVDisplayLink;
 
-pub fn autorelease_pool_scope<T, S>(cb: T) -> S
-where
-    T: FnOnce(&mut AutoreleasePool) -> S,
-{
-    let mut op = AutoreleasePool(Some(unsafe {
-        OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap()
-    }));
-    cb(&mut op)
-}
-
-pub struct AutoreleasePool(Option<OCPtr<metal::NSAutoreleasePool>>);
-
-impl AutoreleasePool {
-    pub fn drain(&mut self) {
-        self.0 = None;
-        self.0 =
-            Some(unsafe { OCPtr::from_raw(metal::NSAutoreleasePool::alloc().init()).unwrap() });
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SurfaceRef(u32);
 
@@ -321,6 +301,8 @@ impl<P: Painter> WindowManager<P> {
                 &mut self,
                 cmd_buffer: &mut gfx::CmdBuffer,
                 _: gfx::QueueFamily,
+                _: gfx::StageFlags,
+                _: gfx::AccessTypeFlags,
             ) {
                 let be_cb: &mut be::cmd::buffer::CmdBuffer =
                     cmd_buffer.query_mut().expect("bad command buffer type");
@@ -337,7 +319,7 @@ impl<P: Painter> WindowManager<P> {
             fn enqueue_present(&mut self) {}
         }
 
-        autorelease_pool_scope(|arp| {
+        super::autorelease_pool_scope(|arp| {
             for (surface_ref, surface) in self.surfaces.iter_mut() {
                 let ref layer = surface.layer;
                 let ref window = surface.window;

@@ -109,6 +109,12 @@ impl CmdBuffer {
 
         Ok(cmd_buffer)
     }
+
+    /// Return the underlying Vulkan command buffer. Returns `None` if the
+    /// command buffer is already committed (i.e. submitted to the queue).
+    pub fn vk_cmd_buffer(&self) -> Option<vk::CommandBuffer> {
+        self.uncommited.as_ref().map(|x| x.vk_cmd_buffer())
+    }
 }
 
 impl Uncommited {

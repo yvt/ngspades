@@ -50,4 +50,6 @@ use std::ptr::{null, null_mut};
 use std::ops::{Deref, DerefMut};
 pub type AshDevice = ash::Device<ash::version::V1_0>;
 
+pub use utils::translate_generic_error;
+
 pub const MAX_NUM_ARG_TABLES: usize = 32;
