@@ -200,6 +200,7 @@ impl Queue {
     /// Returns the serial dispatch `Queue` associated with the application's
     /// main thread.
     pub fn main() -> Self {
+        init::platform_init();
         let queue = dispatch_get_main_queue();
         unsafe {
             dispatch_retain(queue);
@@ -210,6 +211,7 @@ impl Queue {
     /// Returns a system-defined global concurrent `Queue` with the specified
     /// priority.
     pub fn global(priority: QueuePriority) -> Self {
+        init::platform_init();
         unsafe {
             let queue = dispatch_get_global_queue(priority.as_raw(), 0);
             dispatch_retain(queue);
@@ -219,6 +221,7 @@ impl Queue {
 
     /// Creates a new dispatch `Queue`.
     pub fn create(label: &str, attr: QueueAttribute) -> Self {
+        init::platform_init();
         let label = CString::new(label).unwrap();
         let queue = unsafe {
             dispatch_queue_create(label.as_ptr(), attr.as_raw())
@@ -233,6 +236,7 @@ impl Queue {
     /// their blocks will not be invoked concurrently.
     pub fn with_target_queue(label: &str, attr: QueueAttribute, target: &Queue)
             -> Self {
+        init::platform_init();
         let queue = Queue::create(label, attr);
         unsafe {
             dispatch_set_target_queue(queue.ptr, target.ptr);
