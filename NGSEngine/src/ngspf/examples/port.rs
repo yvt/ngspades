@@ -14,19 +14,19 @@ extern crate ngsenumflags;
 use ngspf::viewport::zangfx::base as gfx;
 use ngspf::viewport::zangfx::utils as gfxut;
 
-use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
 
-use cgmath::{Matrix4, Point2, vec2, vec3};
 use cgmath::prelude::*;
+use cgmath::{Matrix4, Point2, vec3};
 
 use refeq::RefEqArc;
 
-use ngspf::viewport::{LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder,
-                      WindowEvent, WindowFlagsBit, WindowRef, Workspace};
-use ngspf::prelude::*;
 use ngspf::ngsbase::Box2;
 use ngspf::ngsbase::prelude::*;
+use ngspf::prelude::*;
+use ngspf::viewport::{LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder,
+                      WindowEvent, WindowFlagsBit, WindowRef, Workspace};
 
 mod triangle {
     use include_data;
@@ -40,10 +40,11 @@ mod triangle {
     use gfx::prelude::*;
     use gfxut::DeviceUtils;
 
-    use std::sync::Arc;
     use std::mem;
+    use std::sync::Arc;
 
-    use ngspf::core::PresenterFrame;
+    use ngspf::core::{Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame,
+                      PropertyAccessor};
     use ngspf::viewport::{GfxObjects, GfxQueue, Port, PortInstance, PortRenderContext};
 
     #[repr(C)]
@@ -60,18 +61,43 @@ mod triangle {
 
     const RT_FORMAT: gfx::ImageFormat = gfx::ImageFormat::SrgbRgba8;
 
+    #[derive(Debug, Clone)]
+    pub struct MyPort {
+        data: Arc<PortData>,
+    }
+
     #[derive(Debug)]
-    pub struct MyPort;
+    struct PortData {
+        frame: KeyedProperty<u16>,
+    }
+
+    impl MyPort {
+        pub fn new(context: &Context) -> Self {
+            Self {
+                data: Arc::new(PortData {
+                    frame: KeyedProperty::new(context, 0),
+                }),
+            }
+        }
+
+        pub fn frame<'a>(&'a self) -> impl PropertyAccessor<u16> + 'a {
+            fn select(this: &Arc<PortData>) -> &KeyedProperty<u16> {
+                &this.frame
+            }
+            KeyedPropertyAccessor::new(&self.data, select)
+        }
+    }
 
     impl Port for MyPort {
         fn mount(&self, objects: &GfxObjects) -> Box<PortInstance> {
-            Box::new(MyPortInstance::new(objects))
+            Box::new(MyPortInstance::new(objects, self.data.clone()))
         }
     }
 
     #[derive(Debug)]
     struct MyPortInstance {
         device: Arc<gfx::Device>,
+        data: Arc<PortData>,
         main_queue: GfxQueue,
         heap: Box<gfx::Heap>,
         vertex_buffer: gfx::Buffer,
@@ -81,7 +107,7 @@ mod triangle {
     }
 
     impl MyPortInstance {
-        fn new(gfx_objects: &GfxObjects) -> Self {
+        fn new(gfx_objects: &GfxObjects, data: Arc<PortData>) -> Self {
             let device = gfx_objects.device.clone();
             let main_queue = gfx_objects.main_queue.clone();
 
@@ -108,6 +134,7 @@ mod triangle {
                 builder
                     .target(0)
                     .set_format(RT_FORMAT)
+                    .set_load_op(gfx::LoadOp::Clear)
                     .set_store_op(gfx::StoreOp::Store);
                 builder.subpass_color_targets(&[Some((0, gfx::ImageLayout::RenderWrite))]);
                 builder.end();
@@ -121,6 +148,7 @@ mod triangle {
 
             Self {
                 device,
+                data,
                 main_queue,
                 heap,
                 vertex_buffer,
@@ -209,8 +237,10 @@ mod triangle {
         fn render(
             &mut self,
             context: &mut PortRenderContext,
-            _frame: &PresenterFrame,
+            frame: &PresenterFrame,
         ) -> gfx::Result<()> {
+            let frame_index = *self.data.frame.read_presenter(frame).unwrap() as u32;
+
             let ref extents = context.image_props.extents;
             assert_eq!(context.image_props.format, RT_FORMAT);
 
@@ -225,7 +255,9 @@ mod triangle {
 
             let rtt = {
                 let mut builder = self.device.build_render_target_table();
-                builder.target(0, &context.image);
+                builder
+                    .target(0, &context.image)
+                    .clear_float(&[0.2, 0.2, 0.2, 1.0]);
                 builder
                     .render_pass(&self.render_pass)
                     .extents(extents)
@@ -238,11 +270,11 @@ mod triangle {
                 e.bind_pipeline(&self.pipeline);
                 e.bind_vertex_buffers(0, &[(&self.vertex_buffer, 0)]);
                 e.set_viewports(0, &[viewport]);
-                e.draw(0..3, 0..1);
+                e.draw(0..3, frame_index..frame_index + 1); // easiest way to pass a number
 
                 e.update_fence(&context.fence, flags![gfx::Stage::{RenderOutput}]);
             }
-            buffer.commit();
+            buffer.commit().unwrap();
 
             context.schedule_next_frame = true;
             Ok(())
@@ -259,9 +291,10 @@ fn main() {
     // Produce the first frame
     let root = RootRef::clone(ws.root());
     let window: WindowRef;
+    let port = RefEqArc::new(::triangle::MyPort::new(&context));
     {
         let image = LayerBuilder::new()
-            .contents(LayerContents::Port(RefEqArc::new(::triangle::MyPort)))
+            .contents(LayerContents::Port(port.clone()))
             .bounds(Box2::new(Point2::origin(), Point2::new(512.0, 512.0)))
             .transform(Matrix4::from_translation(vec3(10.0, 10.0, 0.0)))
             .build(&context);
@@ -314,9 +347,8 @@ fn main() {
                         .lock_producer_frame()
                         .expect("failed to acquire a producer frame");
 
-                    window
-                        .title()
-                        .set(&mut frame, format!("frame = {}", i))
+                    port.frame()
+                        .set(&mut frame, ((i * 100) & 0xffff) as u16)
                         .unwrap();
 
                     if exit {
