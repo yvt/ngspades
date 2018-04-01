@@ -6,20 +6,20 @@
 extern crate cgmath;
 extern crate ngspf;
 
-use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
 
-use cgmath::{Matrix4, Point2, Vector2, vec3};
 use cgmath::prelude::*;
+use cgmath::{Matrix4, Point2, Vector2, vec3};
 
 use ngspf::core::GroupRef;
+use ngspf::ngsbase::Box2;
+use ngspf::ngsbase::prelude::*;
+use ngspf::prelude::*;
+use ngspf::viewport::rgb::RGBA;
 use ngspf::viewport::{ImageData, ImageFormat, ImageRef, ImageWrapMode, LayerBuilder,
                       LayerContents, LayerRef, RootRef, VirtualKeyCode, WindowBuilder,
                       WindowEvent, WindowFlagsBit, WindowRef, Workspace};
-use ngspf::prelude::*;
-use ngspf::ngsbase::Box2;
-use ngspf::ngsbase::prelude::*;
-use ngspf::viewport::rgb::RGBA;
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
 
@@ -91,11 +91,8 @@ fn main() {
     thread::Builder::new()
         .spawn(move || {
             use std::time::Duration;
-            let mut i = 0;
             let mut exit = false;
             while !exit {
-                i += 1;
-
                 // Process window events
                 for event in rx.try_iter() {
                     match event {
@@ -115,11 +112,6 @@ fn main() {
                     let mut frame = context
                         .lock_producer_frame()
                         .expect("failed to acquire a producer frame");
-
-                    window
-                        .title()
-                        .set(&mut frame, format!("frame = {}", i))
-                        .unwrap();
 
                     if exit {
                         root.exit_loop(&mut frame).unwrap();
