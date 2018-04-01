@@ -55,7 +55,7 @@ namespace Ngs.Interop.CodeGen
                 GenerateType(typeGenerationQueue.Dequeue());
             }
 
-            return stringBuilder.ToString();
+            return stringBuilder.ToString().Replace("\r\n", "\n");
         }
 
         void EnqueueTypeGeneration(Type type)
