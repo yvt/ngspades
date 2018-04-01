@@ -173,6 +173,7 @@ impl base::ArgPool for ArgPool {
             match unsafe { device.vk_device().allocate_descriptor_sets(&info) } {
                 Ok(desc) => {
                     // The allocation was successful
+                    assert!(desc.len() >= chunk_size);
                     result_set
                         .1
                         .extend(desc.into_iter().map(|x| unsafe { ArgTable::new(x) }.into()))
@@ -186,7 +187,7 @@ impl base::ArgPool for ArgPool {
                     return Ok(None);
                 }
             }
-            remaining_count -= count;
+            remaining_count -= chunk_size;
         }
 
         Ok(Some(replace(&mut result_set.1, Vec::new())))
