@@ -296,6 +296,12 @@ impl base::RenderCmdEncoder for RenderEncoder {
     }
 
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
+        self.desc_set_binding_table.flush(
+            self.device,
+            self.vk_cmd_buffer,
+            vk::PipelineBindPoint::Graphics,
+        );
+
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.cmd_draw(
@@ -314,6 +320,12 @@ impl base::RenderCmdEncoder for RenderEncoder {
         vertex_offset: u32,
         instance_range: Range<u32>,
     ) {
+        self.desc_set_binding_table.flush(
+            self.device,
+            self.vk_cmd_buffer,
+            vk::PipelineBindPoint::Graphics,
+        );
+
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.cmd_draw_indexed(
@@ -328,6 +340,12 @@ impl base::RenderCmdEncoder for RenderEncoder {
     }
 
     fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+        self.desc_set_binding_table.flush(
+            self.device,
+            self.vk_cmd_buffer,
+            vk::PipelineBindPoint::Graphics,
+        );
+
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         unsafe {
@@ -336,6 +354,12 @@ impl base::RenderCmdEncoder for RenderEncoder {
     }
 
     fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+        self.desc_set_binding_table.flush(
+            self.device,
+            self.vk_cmd_buffer,
+            vk::PipelineBindPoint::Graphics,
+        );
+
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         unsafe {
