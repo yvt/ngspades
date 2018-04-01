@@ -8,7 +8,6 @@
 //!
 //! todo
 //!
-pub extern crate ngspf_com as com;
 pub extern crate ngspf_core as core;
 pub extern crate ngspf_viewport as viewport;
 

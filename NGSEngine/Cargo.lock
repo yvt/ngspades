@@ -660,7 +660,6 @@ dependencies = [
  "include_data 0.1.0",
  "ngsbase 0.1.0",
  "ngsenumflags 0.1.2",
- "ngspf_com 0.1.0",
  "ngspf_core 0.1.0",
  "ngspf_viewport 0.1.0",
  "prebuild-glslang 0.1.0",

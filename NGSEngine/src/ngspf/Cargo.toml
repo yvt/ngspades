@@ -7,7 +7,6 @@ authors = ["yvt <i@yvt.jp>"]
 ngsbase = { path = "../ngsbase" }
 ngspf_core = { path = "src/core" }
 ngspf_viewport = { path = "src/viewport" }
-ngspf_com = { path = "src/com" }
 
 [dev-dependencies]
 rand = "0.3.16"
