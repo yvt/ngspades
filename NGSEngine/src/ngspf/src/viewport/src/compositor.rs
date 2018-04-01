@@ -1167,9 +1167,18 @@ impl CompositorWindow {
             }
         }
 
-        drawable.encode_prepare_present(&mut *cb, compositor.gfx_objects.main_queue.queue_family);
+        drawable.encode_prepare_present(
+            &mut *cb,
+            compositor.gfx_objects.main_queue.queue_family,
+            flags![gfx::Stage::{RenderOutput}],
+            flags![gfx::AccessType::{ColorWrite}],
+        );
 
         cb.commit()?;
+
+        // Make sure ports' CBs are commited too
+        drop(port_frame);
+
         compositor.main_queue.flush();
 
         self.frames.push_back(CompositeFrame {
@@ -1178,6 +1187,8 @@ impl CompositorWindow {
             arg_pool,
             cb_state_tracker,
         });
+
+        drawable.enqueue_present();
 
         Ok(())
     }

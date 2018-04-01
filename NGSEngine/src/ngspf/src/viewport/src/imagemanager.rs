@@ -23,7 +23,7 @@ use gfxutils::{HeapSet, HeapSetAlloc};
 /// Manages residency of `ImageRef` on a ZanGFX device.
 ///
 ///  - First, uses of `ImageRef` are detected by the method `scan_nodes` which
-///    inspects the `contents` of every `Layer`. Those images are added to the
+///    inspects the `contents` of every presentation_cmd_pool`Layer`. Those images are added to the
 ///    `ImageRefTable`.
 ///
 ///  - TODO: persistent image group (manage ref-count collectively to maintain
@@ -343,6 +343,21 @@ impl ImageManager {
                 let size = image_data.size();
 
                 let resident: &ResidentImageData = self.image.resident.as_ref().unwrap();
+
+                {
+                    let barrier = self.device
+                        .build_barrier()
+                        .image(
+                            flags![gfx::AccessType::{}],
+                            flags![gfx::AccessType::{CopyWrite}],
+                            &resident.image,
+                            gfx::ImageLayout::Undefined,
+                            gfx::ImageLayout::CopyWrite,
+                            &Default::default(),
+                        )
+                        .build()?;
+                    encoder.barrier(&barrier);
+                }
 
                 encoder.copy_buffer_to_image(
                     staging_buffer,
