@@ -288,7 +288,7 @@ struct PhysicalDevice<P: Painter> {
 
     /// The queue used for presentation. Identical with `wm_device.main_queue`
     /// iff `presentation_queue_family == info.main_queue_family`
-    presentation_queue: Arc<gfx::CmdQueue>,
+    presentation_queue: ManuallyDrop<Arc<gfx::CmdQueue>>,
     /// The queue family index used for presentation.
     presentation_queue_family: gfx::QueueFamily,
     presentation_cmd_pool: ManuallyDrop<Box<gfx::CmdPool>>,
@@ -325,8 +325,15 @@ impl<P: Painter> Drop for PhysicalDevice<P> {
         unsafe {
             ManuallyDrop::drop(&mut self.presentation_cmd_pool);
             ManuallyDrop::drop(&mut self.swapchain_manager);
-            ManuallyDrop::drop(&mut self.wm_device);
+            ManuallyDrop::drop(&mut self.presentation_queue);
         }
+
+        // Drop objects in the right order
+        use std::ptr::read;
+        let wm_device = unsafe { read(&*self.wm_device) };
+        drop(wm_device.main_queue);
+        drop(wm_device.copy_queue);
+        drop(wm_device.device);
 
         // Alleviate some instabilities with error handling by inserting a device-global
         // sync here. (Usually, the device is supposed to be idle here)
@@ -472,7 +479,7 @@ impl<P: Painter> PhysicalDevice<P> {
 
             wm_device: ManuallyDrop::new(wm_device),
 
-            presentation_queue,
+            presentation_queue: ManuallyDrop::new(presentation_queue),
             presentation_queue_family,
             presentation_cmd_pool: ManuallyDrop::new(presentation_cmd_pool),
 
@@ -706,7 +713,7 @@ impl<P: Painter> PhysicalDevice<P> {
         let ref mut surfaces = self.surfaces;
         let ref wm_device = self.wm_device;
         let device_data = self.device_data.as_mut().unwrap();
-        let ref presentation_queue = self.presentation_queue;
+        let ref presentation_queue = &*self.presentation_queue;
         let presentation_queue_family = self.presentation_queue_family;
         let ref mut presentation_cmd_pool = self.presentation_cmd_pool;
         let ref swapchain_loader = self.swapchain_loader;
