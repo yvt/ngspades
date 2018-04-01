@@ -17,7 +17,6 @@
 //! See the documentation of [`KeyedPropertyAccessor`] for the usage.
 //!
 //! [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
-#![feature(conservative_impl_trait)]
 extern crate arclock;
 extern crate ngsbase;
 extern crate refeq;
