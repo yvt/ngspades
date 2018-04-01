@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 //! [NgsPF](../ngspf/index.html) Viewport API.
-#![feature(conservative_impl_trait)]
 extern crate cgmath;
 extern crate iterpool;
 extern crate ngsbase;
