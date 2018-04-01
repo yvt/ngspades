@@ -291,7 +291,7 @@ struct PhysicalDevice<P: Painter> {
     presentation_queue: Arc<gfx::CmdQueue>,
     /// The queue family index used for presentation.
     presentation_queue_family: gfx::QueueFamily,
-    presentation_cmd_pool: Box<gfx::CmdPool>,
+    presentation_cmd_pool: ManuallyDrop<Box<gfx::CmdPool>>,
 
     device_data: Option<P::DeviceData>,
 }
@@ -323,8 +323,15 @@ impl<P: Painter> Drop for PhysicalDevice<P> {
 
         // Drop the GFX `Device` before destroying `VkDevice`
         unsafe {
+            ManuallyDrop::drop(&mut self.presentation_cmd_pool);
             ManuallyDrop::drop(&mut self.swapchain_manager);
             ManuallyDrop::drop(&mut self.wm_device);
+        }
+
+        // Alleviate some instabilities with error handling by inserting a device-global
+        // sync here. (Usually, the device is supposed to be idle here)
+        unsafe {
+            let _ = self.vk_device.device_wait_idle();
         }
     }
 }
@@ -467,7 +474,7 @@ impl<P: Painter> PhysicalDevice<P> {
 
             presentation_queue,
             presentation_queue_family,
-            presentation_cmd_pool,
+            presentation_cmd_pool: ManuallyDrop::new(presentation_cmd_pool),
 
             device_data: Some(device_data),
         })
