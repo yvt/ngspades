@@ -525,8 +525,8 @@ dependencies = [
 name = "ngsgamegfx"
 version = "0.1.0"
 dependencies = [
- "ngsgfx 0.1.0",
  "ngspf 0.1.0",
+ "zangfx 0.1.0",
 ]
 
 [[package]]
