@@ -10,6 +10,9 @@ use super::ash::{self, vk, extensions::Surface, version::*};
 
 #[cfg(windows)]
 mod os {
+    extern crate winapi;
+    extern crate user32;
+
     use super::*;
 
     pub fn create_surface<E: EntryV1_0, I: InstanceV1_0>(
@@ -25,8 +28,8 @@ mod os {
             s_type: vk::StructureType::Win32SurfaceCreateInfoKhr,
             p_next: ::null(),
             flags: Default::default(),
-            hinstance: hinstance,
-            hwnd: hwnd as *const (),
+            hinstance: hinstance as *const _,
+            hwnd: hwnd as *const _,
         };
         let win32_surface_loader =
             Win32Surface::new(entry, instance).expect("Unable to load win32 surface");

@@ -23,5 +23,9 @@ cocoa = "0.9"
 objc = "0.2"
 block = "0.1.5"
 
+[target.'cfg(windows)'.dependencies]
+user32-sys = "0.2.0"
+winapi = "0.2.8"
+
 [build-dependencies]
 prebuild-glslang = { path = "../../../support/prebuild-glslang" }
