@@ -236,6 +236,8 @@ impl SwapchainManager {
             let mut active = false;
 
             for (&surface_id, swapchain) in self.swapchains.iter_mut() {
+                let mut timeout = 0;
+
                 if !swapchain.polling {
                     // This swapchain is not in the polling mode. We request the
                     // next image only if the fence is signaled.
@@ -247,6 +249,7 @@ impl SwapchainManager {
                         }
                         Err(x) => return Err(translate_generic_error_unwrap(x)),
                     }
+                    timeout = 50_000_000;
                 }
 
                 swapchain.polling = true;
@@ -259,7 +262,7 @@ impl SwapchainManager {
                 match unsafe {
                     self.ext_swapchain.acquire_next_image_khr(
                         swapchain.vk_swapchain,
-                        0,
+                        timeout,
                         swapchain.be_semaphore.vk_semaphore(),
                         swapchain.vk_fence,
                     )
@@ -283,6 +286,7 @@ impl SwapchainManager {
                         // `acquire_next_image_khr` won't return the image index in
                         // such a case
                         match e {
+                            vk::Result::NotReady |
                             vk::Result::Timeout => {
                                 // Enter the polling mode
                             }

@@ -13,9 +13,9 @@
 //! - `VkXXX`: Vulkan type, or something that pertains to it
 extern crate atomic_refcell;
 
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
-use std::collections::HashMap;
 use winit::{EventsLoopProxy, Window};
 
 use zangfx::{backends::vulkan::{self as be, ash::{self, extensions as ext, vk, version::*},
@@ -27,9 +27,9 @@ use zangfx::{backends::vulkan::{self as be, ash::{self, extensions as ext, vk, v
 use super::{GfxQueue, Painter, SurfaceProps, WmDevice};
 
 mod debugreport;
-mod utils;
 mod smartptr;
 mod swapmanager;
+mod utils;
 mod vksurface;
 use self::smartptr::{AutoPtr, UniqueDevice, UniqueInstance, UniqueSurfaceKHR, UniqueSwapchainKHR};
 use self::swapmanager::{PresentError, PresentInfo, SwapchainManager};
@@ -350,7 +350,7 @@ impl<P: Painter> PhysicalDevice<P> {
         let mut num_queues = [0u32; 32];
 
         macro_rules! push_queue {
-            ($queue_family: expr) => {{
+            ($queue_family:expr) => {{
                 config
                     .queues
                     .push(($queue_family, num_queues[$queue_family as usize]));
@@ -618,19 +618,31 @@ impl<P: Painter> PhysicalDevice<P> {
             };
             surface.last_error = None;
 
-            let new_props = surface
-                .optimal_props(
-                    if out_dated {
-                        None
-                    } else {
-                        Some(&surface.vk_props)
-                    },
-                    self.info.vk_phys_device,
-                    surface_loader,
-                )
-                .expect("Failed to compute the optimal surface properties.");
+            let mut new_props = surface.optimal_props(
+                if out_dated {
+                    None
+                } else {
+                    Some(&surface.vk_props)
+                },
+                self.info.vk_phys_device,
+                surface_loader,
+            );
+            if new_props.is_err() {
+                // TODO: Handle surface errors
+                // e.g., AMD driver seems to return ErrorInitializationFailed after the window is closed
+                if let Some(old_swapchain) = surface.swapchain.take() {
+                    self.swapchain_manager.remove_swapchain(surface_ref);
+                    unsafe {
+                        self.swapchain_loader
+                            .destroy_swapchain_khr(old_swapchain.vk_swapchain, None);
+                    }
+                }
 
-            if out_dated || new_props != surface.vk_props {
+                continue;
+            }
+            let new_props = new_props.unwrap();
+
+            if out_dated || new_props != surface.vk_props || surface.swapchain.is_none() {
                 // Recreate the swapchain
                 let base = surface
                     .swapchain
@@ -1171,7 +1183,8 @@ enum SurfaceError {
 
 impl From<vk::Result> for SurfaceError {
     fn from(x: vk::Result) -> Self {
-        if x == vk::Result::ErrorSurfaceLostKhr {
+        // Certain drivers return `InitializationFailed` when a surface is lost
+        if x == vk::Result::ErrorSurfaceLostKhr || x == vk::Result::ErrorInitializationFailed {
             SurfaceError::SurfaceLost
         } else {
             SurfaceError::Other(utils::translate_generic_error_unwrap(x))
