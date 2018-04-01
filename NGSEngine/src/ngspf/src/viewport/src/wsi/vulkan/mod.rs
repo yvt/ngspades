@@ -132,7 +132,7 @@ impl<P: Painter> WindowManager<P> {
                 .expect("Failed to load the entry points of the debug report extension.");
 
             let flags = flags![debugreport::DebugReportType::
-                {Information | Warning | PerformanceWarning | Error}];
+                {Warning | PerformanceWarning | Error}];
             report_conduit
                 .add_handler(flags, Arc::new(debugreport::PrintDebugReportHandler::new()));
 
