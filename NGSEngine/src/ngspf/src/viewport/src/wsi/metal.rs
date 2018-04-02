@@ -106,7 +106,18 @@ impl<P: Painter> Drop for WindowManager<P> {
 }
 
 fn resize_drawable(layer: &OCPtr<metal::CAMetalLayer>, window: &Window) -> bool {
-    let (mut w, mut h) = window.get_inner_size().unwrap();
+    // `Window::get_inner_size` is returning the size measured in points when
+    // it's supposed to be pixels (?). Ask `NSView` directly in case this
+    // behavior changes
+    let mut w;
+    let mut h;
+    let pixel_ratio = window.hidpi_factor() as f64;
+    unsafe {
+        let view: cocoa_id = mem::transmute(window.get_nsview());
+        let view_frame = NSView::frame(view);
+        w = (view_frame.size.width * pixel_ratio) as u32;
+        h = (view_frame.size.height * pixel_ratio) as u32;
+    }
     if w == 0 {
         w = 1;
     }
@@ -280,6 +291,7 @@ impl<P: Painter> WindowManager<P> {
             image: gfx::Image,
             surface_props: SurfaceProps,
             metal_drawable: Option<OCPtr<metal::CAMetalDrawable>>,
+            pixel_ratio: f32,
         }
 
         impl<'a> Drop for Drawable<'a> {
@@ -291,6 +303,10 @@ impl<P: Painter> WindowManager<P> {
         impl<'a> super::Drawable for Drawable<'a> {
             fn image(&self) -> &gfx::Image {
                 &self.image
+            }
+
+            fn pixel_ratio(&self) -> f32 {
+                self.pixel_ratio
             }
 
             fn surface_props(&self) -> &SurfaceProps {
@@ -351,6 +367,7 @@ impl<P: Painter> WindowManager<P> {
                         image: unsafe { be::image::Image::from_raw(metal_texture) }.into(),
                         surface_props,
                         metal_drawable: Some(OCPtr::new(metal_drawable).unwrap()),
+                        pixel_ratio: window.hidpi_factor(),
                     };
 
                     self.painter.paint(

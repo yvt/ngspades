@@ -105,6 +105,8 @@ pub trait Drawable {
     fn image(&self) -> &gfx::Image;
     fn surface_props(&self) -> &SurfaceProps;
 
+    fn pixel_ratio(&self) -> f32 { 1.0 }
+
     /// Encode commands into the command buffer that initiates the presentation
     /// operation.
     ///

@@ -4,6 +4,13 @@
 // This source code is a part of Nightingales.
 //
 //! [NgsPF](../ngspf/index.html) Viewport API.
+//!
+//! # Measurement Units
+//!
+//! All distances are measured in points / CSS pixels / device independent
+//! pixels, with the exceptions of the cases where the exact number of physical
+//! pixels is important.
+//!
 extern crate cgmath;
 extern crate iterpool;
 extern crate ngsbase;

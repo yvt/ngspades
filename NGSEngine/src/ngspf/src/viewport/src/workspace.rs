@@ -205,9 +205,13 @@ impl WindowSet {
             // Translate it to our `WindowEvent`
             let event = match winit_event {
                 winit::WindowEvent::Resized(w, h) => {
-                    Some(WindowEvent::Resized(Vector2::new(w, h).cast()))
+                    let ratio = winit_win.hidpi_factor();
+                    let size = Vector2::new(w, h).cast::<f32>();
+                    Some(WindowEvent::Resized(size / ratio))
                 }
                 winit::WindowEvent::Moved(x, y) => {
+                    // FIXME: Should be these coordinates divided by `ratio`? These are global
+                    //        coordinates, not client ...
                     Some(WindowEvent::Moved(Vector2::new(x, y).cast()))
                 }
                 winit::WindowEvent::Closed => Some(WindowEvent::Close),
@@ -227,7 +231,8 @@ impl WindowSet {
                     position: (x, y), ..
                 } => {
                     // Translate the coordinate to `MousePosition`
-                    let client = Vector2::new(x, y).cast();
+                    let ratio = winit_win.hidpi_factor();
+                    let client = Vector2::new(x, y).cast::<f32>() / ratio;
                     let (wx, wy) = winit_win.get_position().unwrap_or((0, 0));
                     let global = client + Vector2::new(wx, wy).cast();
                     let pos = Some(MousePosition { client, global });
@@ -479,7 +484,7 @@ impl wsi::Painter for Painter {
             .composite(
                 &mut CompositeContext {
                     schedule_next_frame: false,
-                    pixel_ratio: 1.0, // TODO
+                    pixel_ratio: drawable.pixel_ratio(),
                 },
                 window_root,
                 frame,
