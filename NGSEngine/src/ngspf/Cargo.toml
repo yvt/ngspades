@@ -6,6 +6,7 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 ngsbase = { path = "../ngsbase" }
 ngspf_core = { path = "src/core" }
+ngspf_canvas = { path = "src/canvas" }
 ngspf_viewport = { path = "src/viewport" }
 
 [dev-dependencies]

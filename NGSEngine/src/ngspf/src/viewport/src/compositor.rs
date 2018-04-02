@@ -20,7 +20,7 @@ use temprespool::{TempResPool, TempResTable};
 use imagemanager::{ImageManager, ImageRefTable};
 use port::{GfxObjects, Port, PortManager};
 use portrender::PortRenderFrame;
-use image::ImageRef;
+use canvas::ImageRef;
 use wsi;
 
 /// Compositor.

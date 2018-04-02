@@ -14,7 +14,7 @@ use zangfx::prelude::*;
 use zangfx::base::Result;
 use zangfx::utils::{self, uploader, DeviceUtils};
 
-use super::{ImageData, ImageRef};
+use canvas::{ImageData, ImageRef};
 use core::PresenterFrame;
 use core::prelude::*;
 

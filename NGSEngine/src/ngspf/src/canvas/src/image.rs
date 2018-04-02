@@ -3,9 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-use refeq::RefEqArc;
 use cgmath::Vector2;
 use core::{RefPropertyAccessor, RoPropertyAccessor};
+use refeq::RefEqArc;
 
 /// Owned raster image data.
 #[derive(Debug, Clone)]

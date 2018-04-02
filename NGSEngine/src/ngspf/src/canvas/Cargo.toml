@@ -1,0 +1,9 @@
+[package]
+name = "ngspf_canvas"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+ngspf_core = { path = "../core" }
+cgmath = "0.15.0"
+refeq = { path = "../../../support/refeq", features = ["nightly"] }

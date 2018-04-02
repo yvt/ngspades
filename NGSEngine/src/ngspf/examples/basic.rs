@@ -12,14 +12,15 @@ use std::thread;
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Point2, Vector2, vec3};
 
+use ngspf::canvas::{ImageData, ImageFormat, ImageRef};
 use ngspf::core::GroupRef;
 use ngspf::ngsbase::Box2;
 use ngspf::ngsbase::prelude::*;
 use ngspf::prelude::*;
 use ngspf::viewport::rgb::RGBA;
-use ngspf::viewport::{ImageData, ImageFormat, ImageRef, ImageWrapMode, LayerBuilder,
-                      LayerContents, LayerRef, RootRef, VirtualKeyCode, WindowBuilder,
-                      WindowEvent, WindowFlagsBit, WindowRef, Workspace};
+use ngspf::viewport::{ImageWrapMode, LayerBuilder, LayerContents, LayerRef, RootRef,
+                      VirtualKeyCode, WindowBuilder, WindowEvent, WindowFlagsBit, WindowRef,
+                      Workspace};
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
 

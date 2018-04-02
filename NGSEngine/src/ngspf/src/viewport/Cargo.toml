@@ -15,6 +15,7 @@ ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_deriv
 ngsbase = { path = "../../../ngsbase" }
 zangfx = { path = "../../../zangfx" }
 ngspf_core = { path = "../core" }
+ngspf_canvas = { path = "../canvas" }
 xdispatch = { path = "../../../xdispatch" }
 atomic_refcell = "0.1.0"
 

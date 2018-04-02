@@ -24,6 +24,7 @@ extern crate ngsenumflags;
 extern crate ngsenumflags_derive;
 
 extern crate ngspf_core as core;
+extern crate ngspf_canvas as canvas;
 pub extern crate zangfx;
 
 #[macro_use]
@@ -39,7 +40,6 @@ extern crate xdispatch;
 
 mod compositor;
 // mod device;
-mod image;
 mod imagemanager;
 mod layer;
 mod port;
@@ -50,7 +50,6 @@ mod workspace;
 mod wsi;
 
 // pub use device::*;
-pub use image::*;
 pub use layer::*;
 pub use port::*;
 pub use window::*;

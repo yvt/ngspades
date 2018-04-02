@@ -663,10 +663,20 @@ dependencies = [
  "include_data 0.1.0",
  "ngsbase 0.1.0",
  "ngsenumflags 0.1.2",
+ "ngspf_canvas 0.1.0",
  "ngspf_core 0.1.0",
  "ngspf_viewport 0.1.0",
  "prebuild-glslang 0.1.0",
  "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "refeq 0.1.0",
+]
+
+[[package]]
+name = "ngspf_canvas"
+version = "0.1.0"
+dependencies = [
+ "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ngspf_core 0.1.0",
  "refeq 0.1.0",
 ]
 
@@ -706,6 +716,7 @@ dependencies = [
  "ngsbase 0.1.0",
  "ngsenumflags 0.1.2",
  "ngsenumflags_derive 0.2.2",
+ "ngspf_canvas 0.1.0",
  "ngspf_core 0.1.0",
  "objc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prebuild-glslang 0.1.0",
