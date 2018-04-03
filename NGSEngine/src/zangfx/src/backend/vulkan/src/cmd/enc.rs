@@ -175,7 +175,11 @@ impl CommonCmdEncoder {
             device.fp_v1_0().cmd_set_event(
                 self.vk_cmd_buffer,
                 fence.vk_event(),
-                translate_pipeline_stage_flags(src_stage),
+                if src_stage.is_empty() {
+                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                } else {
+                    translate_pipeline_stage_flags(src_stage)
+                },
             );
         }
     }
@@ -189,7 +193,7 @@ impl CommonCmdEncoder {
             device.cmd_pipeline_barrier(
                 self.vk_cmd_buffer,
                 if data.src_stage_mask.is_empty() {
-                    vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
                 } else {
                     data.src_stage_mask
                 },
