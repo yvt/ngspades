@@ -617,7 +617,7 @@ dependencies = [
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",
- "xalloc 0.2.2",
+ "xalloc 0.2.3",
 ]
 
 [[package]]
@@ -1602,10 +1602,11 @@ dependencies = [
 
 [[package]]
 name = "xalloc"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "num-integer 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1771,7 +1772,7 @@ dependencies = [
  "rspirv 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "spirv_headers 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",
- "xalloc 0.2.2",
+ "xalloc 0.2.3",
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
  "zangfx_metal-rs 0.3.0",
@@ -1838,7 +1839,7 @@ dependencies = [
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
  "tokenlock 0.1.4",
- "xalloc 0.2.2",
+ "xalloc 0.2.3",
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
  "zangfx_test 0.1.0",
