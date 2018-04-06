@@ -11,9 +11,13 @@ extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;
 
+extern crate opaque_typedef;
+#[macro_use]
+extern crate opaque_typedef_macros;
+
 pub mod attr;
 pub mod text;
 mod macros;
 
 #[doc(no_inline)]
-pub use text::{Span, Text};
+pub use text::{Span, Text, TextBuf};

@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 
-/// Constructs a `Text` value.
+/// Constructs a `TextBuf` value.
 ///
 /// # Syntax
 ///
@@ -49,7 +49,7 @@
 ///     let default = None;
 ///     let em = Some("emphasize");
 ///
-///     let text: attrtext::Text<String, Option<&str>> =
+///     let text: attrtext::TextBuf<String, Option<&str>> =
 ///         text! { default; <>("Friendship ") {em; <>("is")} <>(" magic!") };
 ///
 ///     let unattr: Vec<_> = text.runs().map(|x| x.span().as_str()).collect();
@@ -59,7 +59,7 @@
 #[macro_export]
 macro_rules! text {
     ($attr:expr; $($rest:tt)*) => {{
-        let mut text = $crate::Text::new();
+        let mut text = $crate::TextBuf::new();
         {
             let _text = &mut text;
             text! { @push(_text, $attr) $($rest)* };

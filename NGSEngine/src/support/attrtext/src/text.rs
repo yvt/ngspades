@@ -74,7 +74,8 @@ impl Cursor {
     }
 }
 
-/// Text with character attributes. Conceptually equivalent to `Vec<(S, A)>`.
+/// Text with character attributes (akin to `str`). Conceptually and
+/// physically equivalent to `[(S, A)]`.
 ///
 /// # Type parameters
 ///
@@ -82,29 +83,22 @@ impl Cursor {
 ///    atributes. `String` would be a good candidate for this parameter.
 ///  - `A`: Attributes.
 ///
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Default)]
-pub struct Text<S, A> {
-    spans: Vec<(S, A)>,
-    len: usize,
-}
+#[derive(Debug, PartialEq, Eq, Hash, OpaqueTypedefUnsized)]
+#[repr(C)]
+#[opaque_typedef(allow_mut_ref)]
+#[opaque_typedef(derive(AsMutDeref, AsMutSelf, AsRefDeref, AsRefSelf, IntoInner, FromInner))]
+pub struct Text<S, A>([(S, A)]);
 
 impl<S, A> Text<S, A> {
-    pub fn new() -> Self {
-        Self {
-            spans: Vec::new(),
-            len: 0,
-        }
+    /// Directly wrap a span slice as a `Text`.
+    ///
+    /// This is a cost-free conversion.
+    pub fn new(x: &[(S, A)]) -> &Self {
+        <&Self>::from(x)
     }
 
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            spans: Vec::with_capacity(capacity),
-            len: 0,
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        self.len
+    pub fn num_spans(&self) -> usize {
+        self.0.len()
     }
 
     /// Construct a `Cursor` pointing the beginning of the text. Identical to
@@ -116,18 +110,42 @@ impl<S, A> Text<S, A> {
     /// Construct a `Cursor` pointing the end of the text.
     pub fn end(&self) -> Cursor {
         Cursor {
-            span_index: self.spans.len(),
+            span_index: self.0.len(),
             char_index: 0,
         }
+    }
+
+    /// Iterate through runs in `self`.
+    pub fn iter(&self) -> ::std::slice::Iter<(S, A)> {
+        self.0.iter()
+    }
+
+    /// Mutablly iterate through runs in `self`.
+    pub fn iter_mut(&mut self) -> ::std::slice::IterMut<(S, A)> {
+        self.0.iter_mut()
+    }
+
+    /// Return the contents as a slice.
+    pub fn as_slice(&self) -> &[(S, A)] {
+        &self.0
+    }
+
+    /// Return the contents as a mutable slice.
+    pub fn as_slice_mut(&mut self) -> &mut [(S, A)] {
+        &mut self.0
     }
 }
 
 impl<S: Span, A> Text<S, A> {
     /// Iterate through `Run`s in this `Text`.
+    ///
+    /// The difference from `iter` on the deref-ed slice is that this method
+    /// provides additional information such as the position of each returned
+    /// run.
     pub fn runs<'a>(&'a self) -> impl Iterator<Item = Run<&'a S, &'a A>> + 'a {
         use itertools::unfold;
         unfold(
-            (0, self.spans.iter().enumerate()),
+            (0, self.0.iter().enumerate()),
             |&mut (ref mut position, ref mut iter)| {
                 iter.next().map(|(span_index, &(ref span, ref attribute))| {
                     let len = span.len();
@@ -153,7 +171,7 @@ impl<S: Span, A> Text<S, A> {
     /// Construct a `Cursor` by offseting a given one. Returns `None` if the
     /// result is out of bounds.
     pub fn offset(&self, mut cursor: Cursor, offs: isize) -> Option<Cursor> {
-        let ref spans = self.spans[..];
+        let ref spans = self.0[..];
         assert!(cursor.span_index <= spans.len());
         if offs < 0 {
             let mut offs = (-offs) as usize;
@@ -204,7 +222,7 @@ impl<S: Span, A> Text<S, A> {
             debug_assert!(cursor <= reference);
 
             let mut distance = 0;
-            let ref spans = self.spans[..];
+            let ref spans = self.0[..];
 
             assert!(reference.span_index <= spans.len());
 
@@ -239,7 +257,7 @@ impl<S: Subspan, A> Text<S, A> {
             (0, range.start),
             move |&mut (ref mut cur_position, ref mut cursor)| {
                 if *cursor != range.end {
-                    let (ref span, ref attribute) = self.spans[cursor.span_index];
+                    let (ref span, ref attribute) = self.0[cursor.span_index];
 
                     let run_start = *cursor;
                     let run_end;
@@ -277,66 +295,11 @@ impl<S: Subspan, A> Text<S, A> {
     }
 }
 
-impl<S: EditSpan, A> Text<S, A> {
-    /// Append a span of attributed text contents.
-    pub fn push(&mut self, text: S, attr: A) {
-        let len = text.len();
-        self.spans.push((text, attr));
-        self.len += len;
-    }
-}
-
-impl<S: Span, A> From<(S, A)> for Text<S, A> {
-    fn from(x: (S, A)) -> Self {
-        let len = x.0.len();
-        Self {
-            spans: vec![x],
-            len,
-        }
-    }
-}
-
-impl<S: Span, A> iter::FromIterator<(S, A)> for Text<S, A> {
-    fn from_iter<T: iter::IntoIterator<Item = (S, A)>>(iter: T) -> Self {
-        let mut len = 0;
-        let spans: Vec<_> = iter.into_iter()
-            .inspect(|x| {
-                len += x.0.len();
-            })
-            .collect();
-        Self { spans, len }
-    }
-}
-
-impl<S, A> iter::IntoIterator for Text<S, A> {
-    type Item = (S, A);
-    type IntoIter = <Vec<(S, A)> as iter::IntoIterator>::IntoIter;
+impl<'a, S, A> iter::IntoIterator for &'a Text<S, A> {
+    type Item = &'a (S, A);
+    type IntoIter = ::std::slice::Iter<'a, (S, A)>;
     fn into_iter(self) -> Self::IntoIter {
-        self.spans.into_iter()
-    }
-}
-
-impl<S: EditSpan, A: Default> Text<S, A> {
-    /// Append a span of unattributed text contents using the lastly occuring
-    /// attributes. If `self` is empty, the newly inserted contents are given
-    /// the default attributes.
-    pub fn push_text(&mut self, text: S) {
-        let len = text.len();
-
-        if let Some(x) = self.spans.last_mut() {
-            x.0.append(&text);
-            self.len += len;
-            return;
-        }
-
-        self.spans.push((text, Default::default()));
-        self.len += len;
-    }
-}
-
-impl<S: Span, A: Default> From<S> for Text<S, A> {
-    fn from(x: S) -> Self {
-        (x, A::default()).into()
+        self.iter()
     }
 }
 
@@ -369,5 +332,72 @@ impl<S, A> Run<S, A> {
 
     pub fn len(&self) -> usize {
         self.position().len()
+    }
+}
+
+/// An owned text with character attributes (akin to `String`).
+#[derive(Debug, PartialEq, Eq, Hash, OpaqueTypedef)]
+#[opaque_typedef(allow_mut_ref)]
+#[opaque_typedef(derive(AsMutDeref, AsMutSelf, AsRefDeref, AsRefSelf, IntoInner, FromInner))]
+pub struct TextBuf<S, A>(Vec<(S, A)>);
+
+impl<S, A> Default for TextBuf<S, A> {
+    fn default() -> Self {
+        TextBuf(Vec::default())
+    }
+}
+
+impl<S, A> TextBuf<S, A> {
+    /// Construct an empty `TextBuf`.
+    pub fn new() -> Self {
+        TextBuf(Vec::new())
+    }
+
+    /// Construct an empty `TextBuf` with a given capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        TextBuf(Vec::with_capacity(capacity))
+    }
+
+    /// Remove all contents.
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
+
+    /// Append a span of attributed text contents.
+    pub fn push(&mut self, text: S, attr: A) {
+        self.0.push((text, attr));
+    }
+}
+
+impl<S: EditSpan, A: Default> TextBuf<S, A> {
+    /// Append a span of unattributed text contents using the lastly occuring
+    /// attributes. If `self` is empty, the newly inserted contents are given
+    /// the default attributes.
+    pub fn push_text(&mut self, text: S) {
+        if let Some(x) = self.0.last_mut() {
+            x.0.append(&text);
+            return;
+        }
+
+        self.0.push((text, Default::default()));
+    }
+}
+
+impl<S, A> From<(S, A)> for TextBuf<S, A> {
+    fn from(x: (S, A)) -> Self {
+        TextBuf(vec![x])
+    }
+}
+
+impl<S, A> iter::FromIterator<(S, A)> for TextBuf<S, A> {
+    fn from_iter<T: iter::IntoIterator<Item = (S, A)>>(iter: T) -> Self {
+        TextBuf(Vec::from_iter(iter))
+    }
+}
+
+impl<S, A> ops::Deref for TextBuf<S, A> {
+    type Target = Text<S, A>;
+    fn deref(&self) -> &Self::Target {
+        Text::new(&self.0)
     }
 }
