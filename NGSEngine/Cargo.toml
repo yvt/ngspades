@@ -23,6 +23,7 @@ members = [
     "src/ngspf/src/viewport",
     "src/ngsterrain",
     "src/support/arclock",
+    "src/support/attrtext",
     "src/support/fast_msg_send",
     "src/support/itervalues",
     "src/support/itervalues/itervalues_derive",

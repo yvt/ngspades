@@ -10,6 +10,7 @@ extern crate refeq;
 
 extern crate ngspf_core as core;
 
+mod text;
 mod image;
 
 pub use self::image::*;
