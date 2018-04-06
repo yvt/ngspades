@@ -5,22 +5,33 @@
 //
 use std::{iter, ops};
 
-/// An unattributed editable text fragment.
+/// An unattributed text fragment.
 pub trait Span: Clone {
     /// Get the length of the span.
     ///
     /// The definition of the length varies from one implementation to another.
     /// For `String`, it's defined to be a number of bytes.
     fn len(&self) -> usize;
+}
 
-    fn append(&mut self, o: &Self);
+impl<'a> Span for &'a str {
+    fn len(&self) -> usize {
+        (*self).len()
+    }
 }
 
 impl Span for String {
     fn len(&self) -> usize {
         self.as_str().len()
     }
+}
 
+/// Editable `Span`.
+pub trait EditSpan: Span {
+    fn append(&mut self, o: &Self);
+}
+
+impl EditSpan for String {
     fn append(&mut self, o: &Self) {
         *self += o;
     }
@@ -112,13 +123,6 @@ impl<S, A> Text<S, A> {
 }
 
 impl<S: Span, A> Text<S, A> {
-    /// Append a span of attributed text contents.
-    pub fn push(&mut self, text: S, attr: A) {
-        let len = text.len();
-        self.spans.push((text, attr));
-        self.len += len;
-    }
-
     /// Iterate through `Run`s in this `Text`.
     pub fn runs<'a>(&'a self) -> impl Iterator<Item = Run<&'a S, &'a A>> + 'a {
         use itertools::unfold;
@@ -273,6 +277,15 @@ impl<S: Subspan, A> Text<S, A> {
     }
 }
 
+impl<S: EditSpan, A> Text<S, A> {
+    /// Append a span of attributed text contents.
+    pub fn push(&mut self, text: S, attr: A) {
+        let len = text.len();
+        self.spans.push((text, attr));
+        self.len += len;
+    }
+}
+
 impl<S: Span, A> From<(S, A)> for Text<S, A> {
     fn from(x: (S, A)) -> Self {
         let len = x.0.len();
@@ -303,7 +316,7 @@ impl<S, A> iter::IntoIterator for Text<S, A> {
     }
 }
 
-impl<S: Span, A: Default> Text<S, A> {
+impl<S: EditSpan, A: Default> Text<S, A> {
     /// Append a span of unattributed text contents using the lastly occuring
     /// attributes. If `self` is empty, the newly inserted contents are given
     /// the default attributes.
