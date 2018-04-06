@@ -24,7 +24,7 @@
 ///
 /// A span is denoted using one of the above three formats.
 ///
-///  - `#(expr)`: `expr` is pushed into the resulting `Text` directly.
+///  - `#(expr)`: `expr` is pushed into the resulting `TextBuf` directly.
 ///  - `<Type>(expr)`: `expr` is converted to `Type` using the
 ///    `std::convert::From` trait.
 ///  - `<>(expr)`: Similar to the above, but doesn't explicitly specify the type.
@@ -49,11 +49,14 @@
 ///     let default = None;
 ///     let em = Some("emphasize");
 ///
-///     let text: attrtext::TextBuf<String, Option<&str>> =
+///     let text: attrtext::TextBuf<&str, Option<&str>> =
+///         text! { default; #("Friendship ") {em; #("is")} #(" magic!") };
+///
+///     let owned: attrtext::TextBuf<String, Option<&str>> =
 ///         text! { default; <>("Friendship ") {em; <>("is")} <>(" magic!") };
 ///
-///     let unattr: Vec<_> = text.runs().map(|x| x.span().as_str()).collect();
-///     assert_eq!(unattr.concat(), "Friendship is magic!");
+///     assert_eq!(text.to_string(), "Friendship is magic!");
+///     assert_eq!(owned.to_string(), "Friendship is magic!");
 ///     # }
 ///
 #[macro_export]

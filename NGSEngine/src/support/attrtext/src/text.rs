@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::{iter, ops};
+use std::{fmt, iter, ops};
 
 /// An unattributed text fragment.
 pub trait Span: Clone {
@@ -133,6 +133,16 @@ impl<S, A> Text<S, A> {
     /// Return the contents as a mutable slice.
     pub fn as_slice_mut(&mut self) -> &mut [(S, A)] {
         &mut self.0
+    }
+}
+
+impl<S: fmt::Display, A> Text<S, A> {
+    /// Return the contents as `String`, ignoring the attributes.
+    ///
+    /// This method uses the `Display` implementation of each span.
+    pub fn to_string(&self) -> String {
+        use itertools::Itertools;
+        self.iter().map(|x| &x.0).join("")
     }
 }
 
