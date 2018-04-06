@@ -377,6 +377,11 @@ impl<S, A> TextBuf<S, A> {
     pub fn push(&mut self, text: S, attr: A) {
         self.0.push((text, attr));
     }
+
+    /// Consume `self` and extract a `Vec`.
+    pub fn into_vec(self) -> Vec<(S, A)> {
+        self.0
+    }
 }
 
 impl<S: EditSpan, A: Default> TextBuf<S, A> {
