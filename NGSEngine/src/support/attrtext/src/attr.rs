@@ -26,14 +26,24 @@ impl<T: Clone> Override for Option<T> {
     }
 }
 
-/// A set of character styles.
+/// A set of common character styles. Largely based on CSS (the *Cascading Style
+/// Sheets* language).
+///
+/// Although we provide rough meanings of these properties as a guideline, the
+/// precise definitions of them are up to the application.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct CharStyle {
-    pub font_family: String,
+    /// A list of font family names, sorted according to the priority.
+    pub font_family: Vec<String>,
+    /// The weight of the font.
     pub font_weight: Option<u16>,
+    /// The style of the font.
     pub font_style: Option<FontStyle>,
+    /// Specifies the appearance of decorative lines used on the text.
     pub text_decoration: Option<TextDecorationFlags>,
+    /// The size of the font.
     pub font_size: Option<f32>,
+    /// The color of the text.
     pub color: Option<RGBA16>,
 }
 

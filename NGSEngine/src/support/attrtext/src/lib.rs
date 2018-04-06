@@ -20,4 +20,7 @@ pub mod text;
 mod macros;
 
 #[doc(no_inline)]
+pub use attr::*;
+
+#[doc(no_inline)]
 pub use text::{Span, Text, TextBuf};
