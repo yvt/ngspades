@@ -346,7 +346,7 @@ impl<S, A> Run<S, A> {
 }
 
 /// An owned text with character attributes (akin to `String`).
-#[derive(Debug, PartialEq, Eq, Hash, OpaqueTypedef)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, OpaqueTypedef)]
 #[opaque_typedef(allow_mut_ref)]
 #[opaque_typedef(derive(AsMutDeref, AsMutSelf, AsRefDeref, AsRefSelf, IntoInner, FromInner))]
 pub struct TextBuf<S, A>(Vec<(S, A)>);
