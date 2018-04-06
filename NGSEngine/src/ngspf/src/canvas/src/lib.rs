@@ -7,10 +7,13 @@
 //! [NgsPF](../ngspf/index.html).
 extern crate cgmath;
 extern crate refeq;
+extern crate attrtext;
+extern crate rgb;
+extern crate harfbuzz;
 
 extern crate ngspf_core as core;
 
-mod text;
+pub mod text;
 mod image;
 
 pub use self::image::*;

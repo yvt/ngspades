@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-ngspf_core = { path = "../core" }
 cgmath = "0.15.0"
+unicode-bidi = "0.3.4"
+xi-unicode = "0.1.0"
+harfbuzz = "0.1.2"
+rgb = "0.7.2"
 refeq = { path = "../../../support/refeq", features = ["nightly"] }
+attrtext = { path = "../../../support/attrtext" }
+ngspf_core = { path = "../core" }
