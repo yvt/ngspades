@@ -32,11 +32,11 @@
 //!     The BiDi level of each byte in the text is analyzed by [`unicode-bidi`].
 //!     The paragraph embedding level is determined from
 //!     `ParagraphStyle::direction`.
-//!     Finally, the text is broken into a series of *font clusters*, each of
+//!     Finally, the text is broken into a series of *shaping clusters*, each of
 //!     which contains a sequence of characters sharing an identical set of
 //!     font styles and the same BiDi run direction.
 //!
-//!  3. Font shaping is performed by HarfBuzz on each font cluster.
+//!  3. Font shaping is performed by HarfBuzz on each shaping cluster.
 //!
 //!  4. The result is examined for glyphs lying over character style boundaries.
 //!     If such glyphs were found, explicit invisible separators are inserted
@@ -53,7 +53,7 @@
 //!  6. Word wrapping is performed using the information obtained in the
 //!     previous step. The output contains a byte range for each line generated.
 //!
-//!  7. For every line, a sequence of font clusters (after shaping), ordered
+//!  7. For every line, a sequence of shaping clusters (after shaping), ordered
 //!     by the display order as determined by rules L1–L4 (as implemented by
 //!     `unicode-bidi`), is generated.
 //!
