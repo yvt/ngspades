@@ -271,6 +271,9 @@ impl FontConfig {
             start_flattened: usize,
             x_coord_range: Range<f64>,
             y_coord: f64,
+            /// Is this line terminated by a hard line break? End-of-text counts
+            /// as a hard line break.
+            hard_break: bool,
         }
         let mut lines = Vec::new();
 
@@ -283,6 +286,7 @@ impl FontConfig {
                 start_flattened: 0,
                 x_coord_range: 0.0..0.0,
                 y_coord: 0.0,
+                hard_break: true,
             });
             for (i, hard) in LineBreakIterator::new(flattened) {
                 if hard {
@@ -292,6 +296,7 @@ impl FontConfig {
                             start_flattened: i,
                             x_coord_range: 0.0..0.0,
                             y_coord: 0.0, // TODO: compute Y coord
+                            hard_break: true,
                         });
                     }
                 }
@@ -344,7 +349,7 @@ impl FontConfig {
             .with_range(flattened.len(), |x| x.start_flattened)
             .map(|(mut flattened_range, line)| {
                 // Ignore trailing spaces (but not line break characters nor EOT)
-                if flattened_range.end < flattened.len() {
+                if !line.hard_break {
                     let bytes = flattened.as_bytes();
                     while flattened_range.end > flattened_range.start {
                         if bytes[flattened_range.end - 1] == 0x20 {
@@ -419,7 +424,7 @@ impl FontConfig {
                 // Compute the position of the line
                 let mut offs = [0.0f64; 2];
 
-                let line_width = || -> f64 {
+                let mut line_width: f64 =
                     clusters.iter().map(|cluster| {
                         let ref shaping_cluster = shaping_clusters[cluster.shaping_cluster_id];
                         let ref hb_buffer = hb_buffers[cluster.shaping_cluster_id];
@@ -454,10 +459,54 @@ impl FontConfig {
                                 }
                             }
                         }
-                    }).sum()
+                    }).sum();
+
+                fn starts_with_space(s: &str) -> bool {
+                    let bytes = s.as_bytes();
+                    bytes.len() >= 1 && bytes[0] == 0x20 ||
+                    bytes.len() >= 2 && bytes[0] == 0xc2 &&  bytes[1] == 0xa0
+                }
+
+                let is_glyph_info_expansible = |x: &harfbuzz::hb_glyph_info_t| {
+                    starts_with_space(&flattened[x.cluster as usize..])
                 };
 
-                // TODO: justification
+                let expansion;
+
+                let try_justification = match (line.hard_break, para_style.text_align) {
+                    (_, TextAlign::JustifyAll) |
+                    (false, TextAlign::Justify) => boundary.is_some(),
+                    _ => false,
+                };
+                if try_justification {
+                    // Perform justification. First, find the number of the
+                    // expansion points.
+                    let num_flex_points: usize = clusters.iter().map(|cluster| {
+                        let ref hb_buffer = hb_buffers[cluster.shaping_cluster_id];
+
+                        if cluster.glyph_range.len() > 0 {
+                            let glyph_infos = hb_buffer.as_ref().unwrap().glyph_infos();
+
+                            glyph_infos[cluster.glyph_range.clone()].iter()
+                                .filter(|x| is_glyph_info_expansible(*x)).count()
+                        } else {
+                            0
+                        }
+                    }).sum();
+
+                    if num_flex_points == 0 {
+                        // Justifciation is impossible because there are no
+                        // expansion points.
+                        expansion = None;
+                    } else {
+                        // We got this
+                        let container_width = line.x_coord_range.end - line.x_coord_range.start;
+                        expansion = Some(container_width / num_flex_points as f64);
+                        line_width = container_width;
+                    }
+                } else {
+                    expansion = None;
+                }
 
                 match (default_bidi_level.is_rtl(), para_style.text_align) {
                     (false, TextAlign::Start) |
@@ -473,12 +522,12 @@ impl FontConfig {
                     (true, TextAlign::Justify) |
                     (true, TextAlign::JustifyAll) => {
                         // Right-aligned
-                        offs[0] = line.x_coord_range.end - line_width();
+                        offs[0] = line.x_coord_range.end - line_width;
                         offs[1] = line.y_coord;
                     }
                     (_, TextAlign::Center) => {
                         // Center-aligned
-                        offs[0] = line.x_coord_range.start + (line.x_coord_range.end - line_width()) * 0.5;
+                        offs[0] = line.x_coord_range.start + (line.x_coord_range.end - line_width) * 0.5;
                         offs[1] = line.y_coord;
                     }
                 }
@@ -523,6 +572,16 @@ impl FontConfig {
 
                             offs[0] += pos.x_advance as f64 * scale;
                             offs[1] += pos.y_advance as f64 * scale;
+
+                            if let Some(expansion) = expansion {
+                                if is_glyph_info_expansible(info) {
+                                    if is_vertical {
+                                        offs[1] += expansion;
+                                    } else {
+                                        offs[0] += expansion;
+                                    }
+                                }
+                            }
                         }
                     } else {
                         match shaping_cluster.contents {
