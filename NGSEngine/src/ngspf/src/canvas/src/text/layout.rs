@@ -355,11 +355,6 @@ impl FontConfig {
                         if bytes[flattened_range.end - 1] == 0x20 {
                             // U+0020 Space
                             flattened_range.end -= 1;
-                        } else if flattened_range.end > flattened_range.start + 1 &&
-                            bytes[flattened_range.end - 1] == 0xa0 &&
-                            bytes[flattened_range.end - 2] == 0xc2 {
-                            // U+00A0 No-Break Space
-                            flattened_range.end -= 2;
                         } else {
                             break;
                         }
