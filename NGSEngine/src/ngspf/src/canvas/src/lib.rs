@@ -8,9 +8,12 @@
 extern crate attrtext;
 extern crate cgmath;
 extern crate freetype;
-extern crate harfbuzz;
+extern crate harfbuzz_sys as harfbuzz;
+extern crate itertools;
 extern crate refeq;
 extern crate rgb;
+extern crate unicode_bidi;
+extern crate xi_unicode;
 #[macro_use]
 extern crate lazy_static;
 
@@ -24,3 +27,6 @@ mod image;
 pub mod text;
 
 pub use self::image::*;
+
+// Utilities
+mod iterutils;

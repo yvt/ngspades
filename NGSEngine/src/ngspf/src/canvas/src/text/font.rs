@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{ftutils, hbutils};
+use super::{ftutils, hbutils, CharStyle, FONT_SCALE};
 use attrtext::FontStyle;
 use harfbuzz;
 use std::cell::RefCell;
@@ -65,13 +65,22 @@ struct FontFamily {
 pub(crate) struct FontFace {
     props: FontFaceProps,
     ft_face: ftutils::MemoryFace,
-    hb_font: hbutils::Font,
+    pub hb_font: hbutils::Font,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FontFaceProps {
     weight: u16,
     style: FontStyle,
+}
+
+impl FontFaceProps {
+    pub fn from_char_style(style: &CharStyle) -> Self {
+        Self {
+            weight: style.font_weight.expect("weight is missing"),
+            style: style.font_style.expect("style is missing"),
+        }
+    }
 }
 
 impl FontConfig {
@@ -105,7 +114,9 @@ impl FontConfig {
         // by `ft_face.1`
         let hb_blob = unsafe { hbutils::Blob::new_pinned(font.data.as_slice()) };
         let hb_face = hbutils::Face::new(&hb_blob, face_index as u32);
-        let hb_font = hbutils::Font::new(&hb_face);
+        let mut hb_font = hbutils::Font::new(&hb_face);
+
+        hb_font.set_scale(FONT_SCALE as _, FONT_SCALE as _);
 
         // Allocate a font family ID (if it's new)
         let family_id = {
@@ -242,9 +253,7 @@ impl FontFaceProps {
 impl FontFace {
     fn contains(&self, x: char) -> bool {
         let mut glyph: harfbuzz::hb_codepoint_t = 0;
-        unsafe {
-            harfbuzz::RUST_hb_font_get_glyph(self.hb_font.get(), x as u32, 0, &mut glyph) != 0
-        }
+        unsafe { harfbuzz::hb_font_get_glyph(self.hb_font.get(), x as u32, 0, &mut glyph) != 0 }
     }
 }
 

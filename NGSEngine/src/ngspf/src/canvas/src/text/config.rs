@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
+//! Character and paragraphy styles.
 use attrtext;
-use harfbuzz;
 use rgb::RGBA;
 use std::ops::Range;
 
@@ -16,7 +16,7 @@ pub use attrtext::{FontStyle, TextDecoration, TextDecorationFlags};
 pub struct ParagraphStyle {
     pub line_height: LineHeight,
     pub direction: Direction,
-    pub alignment: Alignment,
+    pub text_align: TextAlign,
 
     pub word_wrap_mode: WordWrapMode,
 
@@ -41,7 +41,7 @@ impl ParagraphStyle {
                 factor: 1.0,
             },
             direction: Direction::LeftToRight,
-            alignment: Alignment::Start,
+            text_align: TextAlign::Start,
             word_wrap_mode: WordWrapMode::MinNumLines,
             char_style: CharStyle::new(),
         }
@@ -71,11 +71,19 @@ pub struct LineHeight {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Alignment {
+pub enum TextAlign {
     Start,
     End,
     Center,
+
+    /// Justifies every line except the last one.
+    ///
+    /// This value is invalid for point type and interpreted as `Start`.
     Justify,
+
+    /// Justifies every line.
+    ///
+    /// This value is invalid for point type and interpreted as `Start`.
     JustifyAll,
 }
 
@@ -98,7 +106,7 @@ impl Direction {
     }
 }
 
-/// Defines the boundary shape of the text container.
+/// Defines the boundary shape of the text container of area type.
 pub trait Boundary {
     /// Compute the available width for a specific line of a text.
     ///
@@ -122,10 +130,11 @@ impl BoxBoundary {
     pub fn new(range: Range<f64>) -> Self {
         Self { range }
     }
+}
 
-    /// Construct a `BoxBoundary` with an infinitely large containing box.
-    pub fn infinite() -> Self {
-        Self::new(0.0..::std::f64::INFINITY)
+impl Boundary for ! {
+    fn line_range(&self, _: Range<f64>, _: usize) -> Option<Range<f64>> {
+        *self
     }
 }
 
@@ -199,62 +208,7 @@ impl attrtext::Override for CharStyle {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub struct Language(harfbuzz::hb_language_t);
-
-unsafe impl Sync for Language {}
-unsafe impl Send for Language {}
-
-impl Language {
-    pub unsafe fn from_raw(x: harfbuzz::hb_language_t) -> Self {
-        Language(x)
-    }
-
-    pub fn from_iso639(x: &str) -> Option<Self> {
-        let x = unsafe {
-            harfbuzz::RUST_hb_language_from_string(x.as_ptr() as *mut u8 as *mut _, x.len() as _)
-        };
-        use std::ptr::null_mut;
-        if x == null_mut() {
-            None
-        } else {
-            Some(Language(x))
-        }
-    }
-}
-
-impl Default for Language {
-    fn default() -> Self {
-        Language(unsafe { harfbuzz::RUST_hb_language_get_default() })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub struct Script(harfbuzz::hb_script_t);
-
-impl Script {
-    pub unsafe fn from_raw(x: harfbuzz::hb_script_t) -> Self {
-        Script(x)
-    }
-
-    pub fn from_iso15924(x: &str) -> Option<Self> {
-        let x = unsafe {
-            harfbuzz::RUST_hb_script_from_string(x.as_ptr() as *mut u8 as *mut _, x.len() as _)
-        };
-        if x == harfbuzz::HB_SCRIPT_INVALID {
-            None
-        } else {
-            Some(Script(x))
-        }
-    }
-}
-
-impl Default for Script {
-    /// Return `Script::from_raw(harfbuzz::HB_SCRIPT_COMMON)`.
-    fn default() -> Self {
-        Script(harfbuzz::HB_SCRIPT_COMMON)
-    }
-}
+pub use super::hbutils::{Language, Script};
 
 #[cfg(test)]
 mod tests {
@@ -263,7 +217,5 @@ mod tests {
     #[test]
     fn default_values() {
         CharStyle::new();
-        Language::default();
-        Script::default();
     }
 }
