@@ -122,6 +122,20 @@ impl Font {
             harfbuzz::hb_font_set_scale(self.0, x, y);
         }
     }
+
+    pub fn glyph_extents(&self, glyph: u32) -> Option<harfbuzz::hb_glyph_extents_t> {
+        let mut extents = harfbuzz::hb_glyph_extents_t {
+            x_bearing: 0,
+            y_bearing: 0,
+            width: 0,
+            height: 0,
+        };
+        if unsafe { harfbuzz::hb_font_get_glyph_extents(self.0, glyph, &mut extents) } != 0 {
+            Some(extents)
+        } else {
+            None
+        }
+    }
 }
 
 impl Drop for Font {

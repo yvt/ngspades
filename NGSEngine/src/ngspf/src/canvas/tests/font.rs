@@ -41,4 +41,5 @@ fn layout() {
         config.layout_point_text([("Hello, world! مرحبا ", ())][..].into(), &para_style);
 
     println!("{:#?}", layout);
+    println!("Visual bounds = {:#?}", layout.visual_bounds());
 }

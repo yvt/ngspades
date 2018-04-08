@@ -61,6 +61,7 @@
 //! [`unicode-bidi`]: https://crates.io/crates/unicode-bidi
 //! [UAX14]: http://www.unicode.org/reports/tr14/
 use attrtext::{Override, Text};
+use cgmath::{Vector2, vec2};
 use harfbuzz;
 use std::borrow::Cow;
 use std::ops::Range;
@@ -550,19 +551,26 @@ impl FontConfig {
                         } else {
                             unreachable!()
                         };
+                        let face_id = props.face_id.unwrap();
+                        let face = self.font_face(face_id);
                         let scale = props.size * (1.0 / FONT_SCALE);
 
                         for (info, pos) in glyph_infos[range.clone()].iter()
                             .zip(glyph_positions[range.clone()].iter()) {
 
+                            let hb_glyph_extents = face.hb_font.glyph_extents(info.codepoint);
+                            // FIXME: `glyph_extents` returns `None` for some fonts even if the glyph
+                            //        is not empty
+
                             output_glyphs.push(GlyphLayout {
-                                position: [
+                                position: vec2(
                                     offs[0] + pos.x_offset as f64 * scale,
                                     offs[1] + pos.y_offset as f64 * scale,
-                                ],
+                                ),
                                 scale,
-                                face_id: props.face_id.unwrap(),
+                                face_id,
                                 glyph_id: info.codepoint,
+                                glyph_extents: hb_glyph_extents.as_ref().map(GlyphExtents::from_hb_glyph_extents),
                             });
 
                             offs[0] += pos.x_advance as f64 * scale;
@@ -639,15 +647,59 @@ pub struct TextLayout {
     glyphs: Vec<GlyphLayout>,
 }
 
+impl TextLayout {
+    pub fn visual_bounds(&self) -> [Vector2<f64>; 2] {
+        use std::f64::{INFINITY, NEG_INFINITY};
+        self.glyphs.iter().fold(
+            [vec2(INFINITY, INFINITY), vec2(NEG_INFINITY, NEG_INFINITY)],
+            |ret, glyph| {
+                if let Some(bounds) = glyph.bounds() {
+                    [
+                        vec2(ret[0].x.min(bounds[0].x), ret[0].y.min(bounds[0].y)),
+                        vec2(ret[1].x.max(bounds[1].x), ret[1].y.max(bounds[1].y)),
+                    ]
+                } else {
+                    ret
+                }
+            },
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
-pub struct LineLayout {
+struct LineLayout {
     // nothing so far
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct GlyphLayout {
-    position: [f64; 2],
+struct GlyphLayout {
+    position: Vector2<f64>,
     scale: f64,
+    glyph_extents: Option<GlyphExtents>,
     face_id: FontFaceId,
     glyph_id: u32,
+}
+
+impl GlyphLayout {
+    fn bounds(&self) -> Option<[Vector2<f64>; 2]> {
+        self.glyph_extents.map(|e| {
+            let origin = self.position + e.origin.cast::<f64>() * self.scale;
+            [origin, origin + e.size.cast::<f64>() * self.scale]
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct GlyphExtents {
+    origin: Vector2<i32>,
+    size: Vector2<i32>,
+}
+
+impl GlyphExtents {
+    fn from_hb_glyph_extents(x: &harfbuzz::hb_glyph_extents_t) -> Self {
+        Self {
+            origin: vec2(x.x_bearing, -x.y_bearing),
+            size: vec2(x.width, -x.height),
+        }
+    }
 }
