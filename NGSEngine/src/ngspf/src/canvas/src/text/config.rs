@@ -142,7 +142,7 @@ pub struct CharStyle {
     /// A list of font family names, sorted according to the priority.
     pub font_family: Vec<String>,
     /// The weight of the font.
-    pub font_weight: Option<f64>,
+    pub font_weight: Option<u16>,
     /// The style of the font.
     pub font_style: Option<FontStyle>,
     /// Specifies the appearance of decorative lines used on the text.
@@ -169,7 +169,7 @@ impl CharStyle {
     pub fn new() -> Self {
         Self {
             font_family: Vec::new(),
-            font_weight: Some(400.0),
+            font_weight: Some(400),
             font_style: Some(FontStyle::Normal),
             text_decoration: Some(TextDecorationFlags::empty()),
             font_size: Some(16.0),
