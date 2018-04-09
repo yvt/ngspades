@@ -12,9 +12,12 @@ ysr2_spatializer = { path = "src/spatializer" }
 
 [dev-dependencies]
 portaudio = "0.7.0"
-rimd = "0.0.1"
 clap = "2.26.0"
 cgmath = "0.15.0"
 hound = "3.1.0"
 byteorder = "1.1.0"
 ngsterrain = { path = "../ngsterrain" }
+
+[dev-dependencies.rimd]
+git = "https://github.com/RustAudio/rimd.git"
+rev = "6e623dbce990605df95635648710d3f0675a615c"
