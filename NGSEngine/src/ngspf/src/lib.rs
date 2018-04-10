@@ -15,5 +15,10 @@ pub extern crate ngspf_viewport as viewport;
 pub extern crate ngsbase;
 
 /// The NgsPF prelude.
-#[doc(no_inline)]
-pub use core::prelude;
+pub mod prelude {
+    #[doc(no_inline)]
+    pub use core::prelude::*;
+
+    #[doc(no_inline)]
+    pub use canvas::prelude::*;
+}

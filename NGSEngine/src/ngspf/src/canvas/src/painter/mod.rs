@@ -45,12 +45,14 @@ pub trait Painter: ::Debug {
     fn fill_text_layout(&mut self, layout: &TextLayout, config: &FontConfig, colored: bool);
 }
 
-impl Painter {
+pub trait PainterUtils: Painter {
     /// Scale the current transformation matrix by the specified factor.
-    pub fn scale(&mut self, x: f64) {
+    fn scale(&mut self, x: f64) {
         self.nonuniform_scale(x, x)
     }
 }
+
+impl<T: Painter + ?Sized> PainterUtils for T {}
 
 mod image;
 mod text;

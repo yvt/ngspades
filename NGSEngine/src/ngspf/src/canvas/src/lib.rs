@@ -33,3 +33,9 @@ pub use self::transform2d::*;
 
 // Utilities
 mod iterutils;
+
+pub mod prelude {
+    #[doc(no_inline)]
+    pub use painter::PainterUtils;
+}
+
