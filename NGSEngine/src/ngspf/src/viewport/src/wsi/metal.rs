@@ -106,18 +106,8 @@ impl<P: Painter> Drop for WindowManager<P> {
 }
 
 fn resize_drawable(layer: &OCPtr<metal::CAMetalLayer>, window: &Window) -> bool {
-    // `Window::get_inner_size` is returning the size measured in points when
-    // it's supposed to be pixels (?). Ask `NSView` directly in case this
-    // behavior changes
-    let mut w;
-    let mut h;
-    let pixel_ratio = window.hidpi_factor() as f64;
-    unsafe {
-        let view: cocoa_id = mem::transmute(window.get_nsview());
-        let view_frame = NSView::frame(view);
-        w = (view_frame.size.width * pixel_ratio) as u32;
-        h = (view_frame.size.height * pixel_ratio) as u32;
-    }
+    // we're sure the window exists
+    let (mut w, mut h) = window.get_inner_size().unwrap();
     if w == 0 {
         w = 1;
     }

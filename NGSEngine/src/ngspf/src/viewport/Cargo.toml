@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-winit = "0.11.3"
+winit = "0.12.0"
 cgmath = "0.15.0"
 rgb = "0.7.2"
 include_data = { path = "../../../support/include_data" }
