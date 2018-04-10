@@ -757,6 +757,7 @@ dependencies = [
  "prebuild-glslang 0.1.0",
  "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
+ "ttf-noto-sans 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

@@ -64,7 +64,7 @@ struct FontFamily {
 #[derive(Debug)]
 pub(crate) struct FontFace {
     props: FontFaceProps,
-    ft_face: ftutils::MemoryFace,
+    pub ft_face: ftutils::MemoryFace,
     pub hb_font: hbutils::Font,
 }
 
@@ -107,6 +107,10 @@ impl FontConfig {
         assert!(face_index < font.num_faces());
         let ft_face = ftutils::Library::global()
             .new_memory_face(font.data.clone(), face_index as i32)
+            .unwrap();
+
+        ft_face
+            .set_char_size(FONT_SCALE as _, FONT_SCALE as _, 72, 72)
             .unwrap();
 
         // Create a HarfBuzz font object

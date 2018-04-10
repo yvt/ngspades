@@ -19,6 +19,7 @@ pub struct ImageData {
 pub enum ImageFormat {
     /// Represents a pixel format with a 8-bit red/green/blue/alpha channels in
     /// the sRGB encoding and in BGRA order.
+    /// The alpha value is not pre-multiplied.
     SrgbRgba8,
 }
 

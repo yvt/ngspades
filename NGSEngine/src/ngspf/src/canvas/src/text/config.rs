@@ -159,7 +159,7 @@ pub struct CharStyle {
     /// The size of the font.
     pub font_size: Option<f64>,
     /// The color of the text.
-    pub color: Option<RGBA<f64>>,
+    pub color: Option<RGBA<f32>>,
     /// The language of the text.
     pub language: Option<Language>,
     /// The script of the text.

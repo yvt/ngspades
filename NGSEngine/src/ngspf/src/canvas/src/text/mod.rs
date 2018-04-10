@@ -20,16 +20,15 @@
 //!
 mod config;
 mod font;
+mod layout;
 mod model;
 pub use self::config::*;
 pub use self::font::*;
+pub use self::layout::TextLayout;
 pub use self::model::*;
 
-// Only contains `impl`s
-mod layout;
-
 // Utilities
-mod ftutils;
+pub(crate) mod ftutils;
 mod hbutils;
 
 /// The constant font scale value for internally stored font objects.

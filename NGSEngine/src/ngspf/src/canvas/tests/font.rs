@@ -3,10 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
+extern crate cgmath;
 extern crate ngspf_canvas as canvas;
 extern crate ttf_noto_sans;
 
-use canvas::text::*;
+use canvas::{*, painter::*, text::*};
+use cgmath::Vector2;
 
 const BEHDAD_REGULAR: &[u8] = include_bytes!("fonts/Behdad-Regular.otf");
 
@@ -31,7 +33,7 @@ fn invalid_font() {
 }
 
 #[test]
-fn layout() {
+fn render_text() {
     let mut config = FontConfig::new();
     config.insert(&load_behdad_regular(), 0, "Behdad", FontStyle::Normal, 400);
     config.insert(&load_noto_sans(), 0, "Noto Sans", FontStyle::Normal, 400);
@@ -42,4 +44,9 @@ fn layout() {
 
     println!("{:#?}", layout);
     println!("Visual bounds = {:#?}", layout.visual_bounds());
+
+    let mut image = ImageData::new(Vector2::new(640, 480), ImageFormat::SrgbRgba8);
+    let mut painter = new_painter_for_image_data(&mut image);
+    painter.translate(Vector2::new(160.0, 240.0));
+    painter.fill_text_layout(&layout, &config, false);
 }

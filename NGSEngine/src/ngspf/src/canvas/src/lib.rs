@@ -6,7 +6,7 @@
 //! Manipulates 2D raster image data. This crate is a part of the
 //! [NgsPF](../ngspf/index.html).
 extern crate attrtext;
-extern crate cgmath;
+pub extern crate cgmath;
 extern crate freetype;
 extern crate harfbuzz_sys as harfbuzz;
 extern crate itertools;
@@ -24,9 +24,12 @@ use std::ops::Deref;
 use std::ptr::{null, null_mut};
 
 mod image;
+pub mod painter;
 pub mod text;
+mod transform2d;
 
 pub use self::image::*;
+pub use self::transform2d::*;
 
 // Utilities
 mod iterutils;
