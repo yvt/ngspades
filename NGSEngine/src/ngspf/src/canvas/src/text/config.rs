@@ -27,7 +27,7 @@ pub struct ParagraphStyle {
     /// look at the values specified here. If the values cannot be found
     /// at this point yet, the layout engine will trigger a panic.
     ///
-    /// `font_family` is optional.
+    /// `font_family`, `language`, and `script` is optional.
     pub char_style: CharStyle,
 }
 
@@ -183,8 +183,8 @@ impl CharStyle {
             text_decoration: Some(TextDecorationFlags::empty()),
             font_size: Some(16.0),
             color: Some(RGBA::new(0.0, 0.0, 0.0, 1.0)),
-            language: Some(Default::default()),
-            script: Some(Default::default()),
+            language: None,
+            script: None,
         }
     }
 }

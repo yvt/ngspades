@@ -203,6 +203,12 @@ impl Buffer {
         }
     }
 
+    pub fn guess_segment_properties(&mut self) {
+        unsafe {
+            harfbuzz::hb_buffer_guess_segment_properties(self.0);
+        }
+    }
+
     pub fn glyph_infos(&self) -> &[harfbuzz::hb_glyph_info_t] {
         let mut len = 0;
         let ptr = unsafe { harfbuzz::hb_buffer_get_glyph_infos(self.0, &mut len) };

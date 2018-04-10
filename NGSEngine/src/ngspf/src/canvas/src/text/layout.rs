@@ -154,8 +154,8 @@ impl FontConfig {
             face_id: Option<FontFaceId>,
             size: f64,
             bidi_level: unicode_bidi::Level,
-            script: hbutils::Script,
-            language: hbutils::Language,
+            script: Option<hbutils::Script>,
+            language: Option<hbutils::Language>,
         }
 
         let shaping_clusters = {
@@ -185,8 +185,8 @@ impl FontConfig {
 
                         let face_props = FontFaceProps::from_char_style(&char_style);
                         let size = char_style.font_size.expect("font size is missing");
-                        let script = char_style.script.expect("script is missing");
-                        let language = char_style.language.expect("language is missing");
+                        let script = char_style.script;
+                        let language = char_style.language;
 
                         for c in x.chars() {
                             let face_id = selector.optimal_font_face(c, &face_props);
@@ -237,8 +237,12 @@ impl FontConfig {
 
                     let mut hb_buffer = hbutils::Buffer::new();
                     hb_buffer.set_content_type(harfbuzz::HB_BUFFER_CONTENT_TYPE_UNICODE);
-                    hb_buffer.set_language(shaping_props.language);
-                    hb_buffer.set_script(shaping_props.script);
+                    if let Some(x) = shaping_props.language {
+                        hb_buffer.set_language(x);
+                    }
+                    if let Some(x) = shaping_props.script {
+                        hb_buffer.set_script(x);
+                    }
                     hb_buffer.set_direction(match (is_vertical, shaping_props.bidi_level.is_rtl()) {
                         (false, false) => harfbuzz::HB_DIRECTION_LTR,
                         (false, true) => harfbuzz::HB_DIRECTION_RTL,
@@ -248,6 +252,10 @@ impl FontConfig {
                     for (i, c) in flattened[flattened_range.clone()].char_indices() {
                         // The cluster value is a byte index into `flattened`
                         hb_buffer.add(c, (i + flattened_range.start) as u32);
+                    }
+
+                    if shaping_props.language.is_none() || shaping_props.script.is_none() {
+                        hb_buffer.guess_segment_properties();
                     }
 
                     face.hb_font.shape(&mut hb_buffer);
