@@ -8,11 +8,5 @@ rgb = "0.7.2"
 itertools = "0.7.8"
 ngsenumflags = { path = "../ngsenumflags" }
 ngsenumflags_derive = { path = "../ngsenumflags/ngsenumflags_derive" }
-
-[dependencies.opaque_typedef]
-git = "https://github.com/lo48576/opaque_typedef"
-rev = "e6a4c1ac3b960577521db4799a908a65647c2599"
-
-[dependencies.opaque_typedef_macros]
-git = "https://github.com/lo48576/opaque_typedef"
-rev = "e6a4c1ac3b960577521db4799a908a65647c2599"
+opaque_typedef = "0.0.2"
+opaque_typedef_macros = "0.0.2"
