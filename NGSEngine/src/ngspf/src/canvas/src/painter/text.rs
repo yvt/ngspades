@@ -26,9 +26,9 @@ pub(crate) fn rasterize_text_layout<R: RasterPort>(
 
     let clip_box = FT_BBox {
         xMin: 0,
-        xMax: (size.x as c_long) << 6,
+        xMax: size.x as c_long,
         yMin: 0,
-        yMax: (size.y as c_long) << 6,
+        yMax: size.y as c_long,
     };
 
     for glyph in layout.glyphs.iter() {
