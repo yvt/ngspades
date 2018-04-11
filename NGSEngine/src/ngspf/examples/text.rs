@@ -6,19 +6,21 @@
 extern crate cgmath;
 extern crate ngspf;
 extern crate ttf_noto_sans;
+#[macro_use]
+extern crate attrtext;
 
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2, Vector2, vec3};
+use cgmath::{vec3, Matrix4, Point2, Vector2};
 
-use ngspf::{canvas::{ImageData, ImageFormat, ImageRef, painter::new_painter_for_image_data,
-                     text},
-            ngsbase::{Box2, prelude::*}, prelude::*, viewport::rgb::RGBA,
-            viewport::{ImageWrapMode, LayerBuilder, LayerContents, RootRef,
-                       VirtualKeyCode, WindowBuilder, WindowEvent, WindowFlagsBit, WindowRef,
-                       Workspace}};
+use ngspf::{canvas::{painter::new_painter_for_image_data, text, ImageData, ImageFormat, ImageRef},
+            ngsbase::{prelude::*, Box2},
+            prelude::*,
+            viewport::rgb::RGBA,
+            viewport::{ImageWrapMode, LayerBuilder, LayerContents, RootRef, VirtualKeyCode,
+                       WindowBuilder, WindowEvent, WindowFlagsBit, WindowRef, Workspace}};
 
 fn main() {
     let mut ws = Workspace::new().expect("failed to create a workspace");
@@ -57,27 +59,34 @@ fn main() {
 
         let para_style = text::ParagraphStyle::new();
 
-        let layout = font_config
-            .layout_point_text([("Hello, world! مرحبا ", ())][..].into(), &para_style);
+        let body = text::CharStyle::default();
+        let emph = text::CharStyle {
+            color: Some(RGBA::new(1.0, 1.0, 0.0, 1.0)),
+            ..Default::default()
+        };
+
+        let text = text! {{ body; {emph; ("Hello")} (", world! مرحبا ") }};
+
+        let layout = font_config.layout_point_text(&text, &para_style);
 
         painter.set_fill_color(RGBA::new(1.0, 1.0, 1.0, 1.0));
 
         painter.save();
         painter.translate(Vector2::new(40.0, 60.0));
         painter.scale(1.0);
-        painter.fill_text_layout(&layout, &font_config, false);
+        painter.fill_text_layout(&layout, &font_config, true);
         painter.restore();
 
         painter.save();
         painter.translate(Vector2::new(40.0, 150.0));
         painter.scale(4.0);
-        painter.fill_text_layout(&layout, &font_config, false);
+        painter.fill_text_layout(&layout, &font_config, true);
         painter.restore();
 
         painter.save();
         painter.translate(Vector2::new(40.0, 400.0));
         painter.scale(16.0);
-        painter.fill_text_layout(&layout, &font_config, false);
+        painter.fill_text_layout(&layout, &font_config, true);
         painter.restore();
     }
 

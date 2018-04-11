@@ -178,6 +178,13 @@ impl<S: Span, A> Text<S, A> {
         )
     }
 
+    /// Get the attribute of the character right after the cursor.
+    ///
+    /// Triggers a panic if `cursor` is invalid or equals to `self.end()`.
+    pub fn attribute_at(&self, cursor: Cursor) -> &A {
+        &self.0[cursor.span_index].1
+    }
+
     /// Construct a `Cursor` by offseting a given one. Returns `None` if the
     /// result is out of bounds.
     pub fn offset(&self, mut cursor: Cursor, offs: isize) -> Option<Cursor> {

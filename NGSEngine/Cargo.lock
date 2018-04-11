@@ -751,6 +751,7 @@ dependencies = [
 name = "ngspf"
 version = "0.1.0"
 dependencies = [
+ "attrtext 0.1.0",
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "include_data 0.1.0",
  "ngsbase 0.1.0",

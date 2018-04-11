@@ -14,6 +14,7 @@ rand = "0.3.16"
 cgmath = "0.15.0"
 ngsenumflags = { path = "../support/ngsenumflags" }
 include_data = { path = "../support/include_data" }
+attrtext = { path = "../support/attrtext" }
 refeq = { path = "../support/refeq" }
 ttf-noto-sans = "0.1.1"
 

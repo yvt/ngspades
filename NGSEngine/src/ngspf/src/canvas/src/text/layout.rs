@@ -60,9 +60,10 @@
 //!
 //! [`unicode-bidi`]: https://crates.io/crates/unicode-bidi
 //! [UAX14]: http://www.unicode.org/reports/tr14/
-use attrtext::{Override, Text};
+use attrtext::{text::Cursor, Override, Span, Text};
 use cgmath::{Point2, Vector2};
 use harfbuzz;
+use rgb::RGBA;
 use std::borrow::Cow;
 use std::ops::Range;
 use unicode_bidi::{self, BidiInfo, ParagraphInfo};
@@ -82,7 +83,7 @@ impl FontConfig {
         boundary: &B,
     ) -> TextLayout
     where
-        S: AsElementRef,
+        S: AsElementRef + Span,
         CharStyle: Override<A>,
         B: Boundary,
     {
@@ -96,7 +97,7 @@ impl FontConfig {
         para_style: &ParagraphStyle,
     ) -> TextLayout
     where
-        S: AsElementRef,
+        S: AsElementRef + Span,
         CharStyle: Override<A>,
     {
         self.layout_text::<S, A, !>(text, para_style, None)
@@ -110,7 +111,7 @@ impl FontConfig {
         boundary: Option<&B>,
     ) -> TextLayout
     where
-        S: AsElementRef,
+        S: AsElementRef + Span,
         CharStyle: Override<A>,
         B: Boundary,
     {
@@ -140,6 +141,8 @@ impl FontConfig {
         struct ShapingCluster<'a> {
             /// The starting byte offset in `flattened`
             start_flattened: usize,
+            /// The starting position in `text`
+            start_text: Cursor,
             contents: ClusterContents<'a>,
         }
         #[derive(Debug)]
@@ -161,21 +164,22 @@ impl FontConfig {
         let shaping_clusters = {
             let mut clusters = Vec::new();
 
-            let mut index_input: usize = 0;
             let mut index_flattened: usize = 0;
 
             let mut selector = self.selector();
 
             let mut last_text = None;
 
-            for &(ref span, ref attr) in text.iter() {
+            for run in text.runs() {
+                let span = *run.span();
+                let attr = *run.attribute();
                 match span.as_element_ref() {
                     ElementRef::Foreign(x) => {
                         clusters.push(ShapingCluster {
                             start_flattened: index_flattened,
+                            start_text: run.cursor().start,
                             contents: ClusterContents::Foreign(x),
                         });
-                        index_input += x.len();
                         index_flattened += FOREIGN_MARKER_STR.len();
                         last_text = None;
                     }
@@ -188,7 +192,7 @@ impl FontConfig {
                         let script = char_style.script;
                         let language = char_style.language;
 
-                        for c in x.chars() {
+                        for (offset, c) in x.char_indices() {
                             let face_id = selector.optimal_font_face(c, &face_props);
 
                             let bidi_level = bidi_info.levels[index_flattened];
@@ -203,13 +207,14 @@ impl FontConfig {
                             if Some(shaping_props) != last_text {
                                 clusters.push(ShapingCluster {
                                     start_flattened: index_flattened,
+                                    start_text: text.offset(run.cursor().start, offset as isize)
+                                        .unwrap(),
                                     contents: ClusterContents::Text(shaping_props),
                                 });
                                 last_text = Some(shaping_props);
                             }
 
                             let len_utf8 = c.len_utf8();
-                            index_input += len_utf8;
                             index_flattened += len_utf8;
                         }
                     }
@@ -553,6 +558,9 @@ impl FontConfig {
                         let glyph_positions = hb_buffer.as_ref().unwrap().glyph_positions();
                         let ref range = cluster.glyph_range;
 
+                        // Prepare to retrieve a cursor into the original text
+                        let mut reel = Reel::new(text, shaping_cluster.start_text);
+
                         // Multiply by the font size
                         let props = if let ClusterContents::Text(ref props) = shaping_cluster.contents {
                             props
@@ -566,6 +574,17 @@ impl FontConfig {
                         for (info, pos) in glyph_infos[range.clone()].iter()
                             .zip(glyph_positions[range.clone()].iter()) {
 
+                            // Find out the glyph's style. `cluster` = absolute byte offset in `flattened`
+                            let offset_flattened = (info.cluster as usize - shaping_cluster.start_flattened) as isize;
+                            // A byte offset inside a text of `flattened` directly translates to that of `text`
+                            let cursor = reel.get(offset_flattened);
+                            let char_style = text.attribute_at(cursor);
+
+                            // FIXME: This is extremely inefficient as it clones the `Vec` `font_family`
+                            let char_style = para_style.char_style.override_with(char_style);
+                            let color = char_style.color;
+
+                            // Get the extents of the glyph for bounds calculation
                             let hb_glyph_extents = face.hb_font.glyph_extents(info.codepoint);
                             // FIXME: `glyph_extents` returns `None` for some fonts even if the glyph
                             //        is not empty
@@ -579,6 +598,7 @@ impl FontConfig {
                                 face_id,
                                 glyph_id: info.codepoint,
                                 glyph_extents: hb_glyph_extents.as_ref().map(GlyphExtents::from_hb_glyph_extents),
+                                color,
                             });
 
                             offs[0] += pos.x_advance as f64 * scale;
@@ -649,6 +669,33 @@ fn flatten_text<S: AsElementRef, A>(text: &Text<S, A>) -> Cow<str> {
     }
 }
 
+/// An utility type for efficient navigation of `Text` around a provided origin
+/// point.
+#[derive(Debug)]
+struct Reel<'a, S: 'a, A: 'a> {
+    text: &'a Text<S, A>,
+    last: (Cursor, isize),
+}
+
+impl<'a, S: 'a + Span, A: 'a> Reel<'a, S, A> {
+    fn new(text: &'a Text<S, A>, origin: Cursor) -> Self {
+        Self {
+            text,
+            last: (origin, 0),
+        }
+    }
+
+    /// Get a `Cursor` using a offset relative to `origin`.
+    fn get(&mut self, offset: isize) -> Cursor {
+        let (last_cursor, last_offset) = self.last;
+        self.last = (
+            self.text.offset(last_cursor, offset - last_offset).unwrap(),
+            offset,
+        );
+        self.last.0
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TextLayout {
     lines: Vec<LineLayout>,
@@ -689,6 +736,7 @@ pub(crate) struct GlyphLayout {
     glyph_extents: Option<GlyphExtents>,
     pub face_id: FontFaceId,
     pub glyph_id: u32,
+    pub color: Option<RGBA<f32>>,
 }
 
 impl GlyphLayout {

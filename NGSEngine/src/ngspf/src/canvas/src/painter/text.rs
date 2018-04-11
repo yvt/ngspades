@@ -56,7 +56,7 @@ pub(crate) fn rasterize_text_layout<R: RasterPort>(
 
         // Compute the color of the glyph
         let color = if colored {
-            unimplemented!()
+            glyph.color.unwrap_or(fill_color)
         } else {
             fill_color
         };

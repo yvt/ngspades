@@ -40,8 +40,9 @@ pub trait Painter: ::Debug {
     /// rendering or a panic.
     ///
     /// If `colored` is set to `true`, the color information embedded in
-    /// `layout` will be used to color the text. Otherwise, the current fill
-    /// style will be used.
+    /// `layout` will be used to color the text if available. Otherwise
+    /// (`colored` is `false` or the character style has no color specified),
+    /// the current fill style will be used.
     fn fill_text_layout(&mut self, layout: &TextLayout, config: &FontConfig, colored: bool);
 }
 
