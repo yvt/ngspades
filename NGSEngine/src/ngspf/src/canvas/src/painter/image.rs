@@ -85,9 +85,9 @@ fn linear_to_srgb(x: f32) -> f32 {
 }
 
 fn pack_u8x4(a: RGBA<f32>) -> u32 {
-    let x = (a.b * 256.0).min(255.0) as u32;
+    let x = (a.r * 256.0).min(255.0) as u32;
     let y = (a.g * 256.0).min(255.0) as u32;
-    let z = (a.r * 256.0).min(255.0) as u32;
+    let z = (a.b * 256.0).min(255.0) as u32;
     let w = (a.a * 256.0).min(255.0) as u32;
     x | (y << 8) | (z << 16) | (w << 24)
 }
@@ -98,9 +98,9 @@ fn unpack_u8x4(a: u32) -> RGBA<f32> {
     let z = (a & 0x00ff0000u32) as f32;
     let w = (a & 0xff000000u32) as f32;
     RGBA::new(
-        z * (1.0 / 0x000000ffu32 as f32),
+        x * (1.0 / 0x000000ffu32 as f32),
         y * (1.0 / 0x0000ff00u32 as f32),
-        x * (1.0 / 0x00ff0000u32 as f32),
+        z * (1.0 / 0x00ff0000u32 as f32),
         w * (1.0 / 0xff000000u32 as f32),
     )
 }
