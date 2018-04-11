@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{BaseFloat, Matrix3, Point2, Rad, Vector2, num_traits::NumCast, prelude::*};
+use cgmath::{num_traits::NumCast, prelude::*, BaseFloat, Matrix3, Point2, Rad, Vector2};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// 2 x 3 matrix representing a 2D affine transformation.

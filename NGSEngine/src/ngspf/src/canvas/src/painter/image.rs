@@ -3,11 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{Vector2, prelude::*};
+use cgmath::{prelude::*, Vector2};
 use rgb::RGBA;
 use std::ops::Range;
 
-use painter::{Painter, text::rasterize_text_layout};
+use painter::{text::rasterize_text_layout, Painter};
 use text::{FontConfig, TextLayout};
 use {Affine2, ImageData};
 

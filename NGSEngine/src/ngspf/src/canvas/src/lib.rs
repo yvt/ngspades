@@ -38,4 +38,3 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use painter::PainterUtils;
 }
-
