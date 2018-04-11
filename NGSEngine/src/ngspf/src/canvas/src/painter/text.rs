@@ -4,13 +4,13 @@
 // This source code is a part of Nightingales.
 //
 use cgmath::prelude::*;
-use freetype::freetype::{FT_BBox, FT_Matrix};
+use freetype::freetype::{self, FT_BBox, FT_Matrix};
 use rgb::RGBA;
 use std::os::raw::c_long;
 
-use Affine2;
 use painter::RasterPort;
-use text::{FontConfig, TextLayout, ftutils::Library};
+use text::{ftutils::Library, FontConfig, TextLayout};
+use Affine2;
 
 pub(crate) fn rasterize_text_layout<R: RasterPort>(
     port: &mut R,
@@ -35,7 +35,8 @@ pub(crate) fn rasterize_text_layout<R: RasterPort>(
         let face = config.font_face(glyph.face_id);
 
         let ref ft_face = face.ft_face;
-        ft_face.load_glyph(glyph.glyph_id, 0).unwrap();
+        let load_flags = freetype::FT_LOAD_NO_HINTING;
+        ft_face.load_glyph(glyph.glyph_id, load_flags as _).unwrap();
 
         // Compute the transformation applied to `FT_Outline`.
         let tx = transform * Affine2::from_translation(glyph.position.to_vec())
