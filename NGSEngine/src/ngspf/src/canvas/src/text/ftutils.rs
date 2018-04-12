@@ -81,7 +81,7 @@ impl Drop for Library {
     }
 }
 
-pub unsafe trait FaceBuffer: ::Debug {
+pub unsafe trait FaceBuffer: ::Debug + Sync + Send {
     /// Return the contents as a slice. The returned slice must **not** move
     /// throughout the lifetime of `self` (which is why this trait is marked as
     /// `unsafe`).
