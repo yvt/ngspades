@@ -533,6 +533,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "lipsum"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -754,6 +762,7 @@ dependencies = [
  "attrtext 0.1.0",
  "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "include_data 0.1.0",
+ "lipsum 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsbase 0.1.0",
  "ngsenumflags 0.1.2",
  "ngspf_canvas 0.1.0",
@@ -775,6 +784,7 @@ dependencies = [
  "harfbuzz-sys 0.2.0 (git+https://github.com/servo/rust-harfbuzz?rev=0abd7d7c91a2cd16e04c5813321239b457539891)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lipsum 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngspf_core 0.1.0",
  "refeq 0.1.0",
  "rgb 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2124,6 +2134,7 @@ dependencies = [
 "checksum libc 0.2.40 (registry+https://github.com/rust-lang/crates.io-index)" = "6fd41f331ac7c5b8ac259b8bf82c75c0fb2e469bbf37d2becbba9a6a2221965b"
 "checksum libloading 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "0a020ac941774eb37e9d13d418c37b522e76899bfc4e7b1a600d529a53f83a66"
 "checksum libloading 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9c3ad660d7cb8c5822cd83d10897b0f1f1526792737a179e73896152f85b88c2"
+"checksum lipsum 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bccb3237c84870b9e49be7cfe8e5e5a70587650957f2edab3ee111865e226c9f"
 "checksum malloc_buf 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
 "checksum matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "100aabe6b8ff4e4a7e32c1c13523379802df0772b82466207ac25b013f193376"
 "checksum memmap 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "69253224aa10070855ea8fe9dbe94a03fc2b1d7930bb340c9e586a7513716fea"

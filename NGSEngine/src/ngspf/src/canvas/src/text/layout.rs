@@ -70,7 +70,8 @@ use unicode_bidi::{self, BidiInfo, ParagraphInfo};
 use xi_unicode::LineBreakIterator;
 
 use super::{hbutils, AsCharStyleRef, AsElementRef, Boundary, Direction, ElementRef, FontConfig,
-            FontFaceId, FontFaceProps, ForeignObject, ParagraphStyle, TextAlign, FONT_SCALE};
+            FontFaceId, FontFaceProps, ForeignObject, ParagraphStyle, TextAlign, WordWrapMode,
+            FONT_SCALE};
 
 const FOREIGN_MARKER_STR: &str = "\u{f8ff}";
 
@@ -258,6 +259,10 @@ impl FontConfig {
                         (true, true) => harfbuzz::HB_DIRECTION_BTT,
                     });
                     for (i, c) in flattened[flattened_range.clone()].char_indices() {
+                        // FIXME: Probably we should skip other control characters as well
+                        if c == '\r' || c == '\n' {
+                            continue;
+                        }
                         // The cluster value is a byte index into `flattened`
                         hb_buffer.add(c, (i + flattened_range.start) as u32);
                     }
@@ -286,7 +291,9 @@ impl FontConfig {
         // Lines
         struct Line {
             start_flattened: usize,
+            /// Container width obtained by `Boundary::line_range`.
             x_coord_range: Range<f64>,
+            /// The Y coordinate of the baseline.
             y_coord: f64,
             /// Is this line terminated by a hard line break? End-of-text counts
             /// as a hard line break.
@@ -295,8 +302,272 @@ impl FontConfig {
         let mut lines = Vec::new();
 
         if let Some(boundary) = boundary {
-            // TODO: Word-wrapping
-            unimplemented!();
+            // Area type - perform word-wrapping
+            use super::wordwrap;
+            use itertools::unfold;
+            use std::iter::Peekable;
+
+            let mut start = LineBreakIterator::new(flattened);
+            let mut start_flattened = 0;
+
+            // `Iterator<Item = (Range<usize>, (&ShapingCluster, &Option<hbutils::Buffer>))>`
+            let mut clusters = shaping_clusters
+                .iter()
+                .zip(hb_buffers.iter())
+                // Generate `flattened_range`, a byte range in `flattened`
+                .with_range(flattened.len(), |x| x.0.start_flattened)
+                .peekable();
+
+            fn get_cluster_start_glyph_index(
+                (shaping_cluster, hb_buffer): (&ShapingCluster, &Option<hbutils::Buffer>),
+            ) -> usize {
+                if let ClusterContents::Text(ref props) = shaping_cluster.contents {
+                    if props.bidi_level.is_rtl() {
+                        hb_buffer.as_ref().unwrap().glyph_infos().len()
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            }
+
+            #[derive(Debug, Copy, Clone)]
+            enum GlyphOrForeign<'a> {
+                Glyph(
+                    &'a harfbuzz::hb_glyph_info_t,
+                    &'a harfbuzz::hb_glyph_position_t,
+                    &'a ShapingProps,
+                ),
+                Foreign(&'a ForeignObject),
+            }
+
+            /// Advance `(clusters, glyph_index)` until a glyph with the `flattened`
+            /// offset value `index_flattened` is met. Returns whether
+            /// `index_flattened` fell into a glyph boundary. Calls `cb` for
+            /// each glyph passed by.
+            fn clusters_advance_until<'a, I, F>(
+                clusters: &mut Peekable<I>,
+                glyph_index: &mut usize,
+                index_flattened: usize,
+                mut cb: F,
+            ) -> bool
+            where
+                I: Iterator<
+                    Item = (
+                        Range<usize>,
+                        (&'a ShapingCluster<'a>, &'a Option<hbutils::Buffer>),
+                    ),
+                >,
+                F: FnMut(GlyphOrForeign),
+            {
+                loop {
+                    if let Some(cluster) = clusters.peek() {
+                        let &(ref range, (shaping_cluster, hb_buffer)) = cluster;
+
+                        if range.start >= index_flattened {
+                            return range.start == index_flattened;
+                        }
+
+                        match shaping_cluster.contents {
+                            ClusterContents::Text(ref props) => {
+                                let glyph_infos = hb_buffer.as_ref().unwrap().glyph_infos();
+                                let glyph_positions = hb_buffer.as_ref().unwrap().glyph_positions();
+
+                                assert!(glyph_positions.len() == glyph_infos.len());
+
+                                if props.bidi_level.is_rtl() {
+                                    assert!(*glyph_index <= glyph_infos.len());
+                                    while *glyph_index > 0 {
+                                        let i = glyph_infos[*glyph_index - 1].cluster as usize;
+                                        if i >= index_flattened {
+                                            return i == index_flattened;
+                                        }
+
+                                        *glyph_index -= 1;
+                                        cb(GlyphOrForeign::Glyph(
+                                            &glyph_infos[*glyph_index],
+                                            &glyph_positions[*glyph_index],
+                                            props,
+                                        ));
+                                    }
+                                } else {
+                                    while *glyph_index < glyph_infos.len() {
+                                        let i = glyph_infos[*glyph_index].cluster as usize;
+                                        if i >= index_flattened {
+                                            return i == index_flattened;
+                                        }
+
+                                        cb(GlyphOrForeign::Glyph(
+                                            &glyph_infos[*glyph_index],
+                                            &glyph_positions[*glyph_index],
+                                            props,
+                                        ));
+                                        *glyph_index += 1;
+                                    }
+                                }
+                            }
+                            ClusterContents::Foreign(foreign) => {
+                                cb(GlyphOrForeign::Foreign(foreign));
+                            }
+                        }
+                    } else {
+                        // By definition we're supposed to return `true` if `index_flattened`
+                        // is `flattened.len()`, but on practical it doesn't matter
+                        return false;
+                    }
+
+                    clusters.next();
+                    *glyph_index = if let Some(cluster) = clusters.peek() {
+                        get_cluster_start_glyph_index(cluster.1)
+                    } else {
+                        0
+                    };
+                }
+            }
+
+            let mut glyph_index = if let Some(cluster) = clusters.peek() {
+                get_cluster_start_glyph_index(cluster.1)
+            } else {
+                0
+            };
+
+            let mut initial_y = 0.0f64;
+
+            while start_flattened < flattened.len() {
+                struct State<'a, T> {
+                    active: bool,
+                    start_flattened: usize,
+                    line_break_it: LineBreakIterator<'a>,
+                    cluster_it: T,
+                    glyph_index: usize,
+                }
+                // Construct a list of `Word`s in the current line.
+                //
+                // Since `LineBreakIterator` doesn't return the starting point
+                // of each word, we have to maintain it using the state variable
+                // of `unfold`.
+                let mut words = unfold(
+                    State {
+                        active: true,
+                        start_flattened,
+                        line_break_it: start,
+                        cluster_it: clusters,
+                        glyph_index,
+                    },
+                    |st| {
+                        if !st.active {
+                            return None;
+                        }
+
+                        let start_flattened = st.start_flattened;
+
+                        let mut word_width = 0.0f64;
+                        let mut spacing_width = 0.0f64;
+                        let mut max_size = 0.0f64;
+
+                        // Locate the next break opportunity
+                        let (end_flattened, hard) = loop {
+                            let (end_flattened, hard) = st.line_break_it.next().unwrap();
+
+                            // Count succeeding whitespaces
+                            let mut start_ws = end_flattened;
+                            while start_ws > 0 && flattened.as_bytes()[start_ws - 1] == 0x20 {
+                                start_ws -= 1;
+                            }
+
+                            // Check if we can really insert a break at `end_flattened`
+                            // Specifically, are we at a middle of a glyph there?
+                            //
+                            // Calculate the word width at the same time.
+                            let mut okay = clusters_advance_until(
+                                &mut st.cluster_it,
+                                &mut st.glyph_index,
+                                end_flattened,
+                                |glyph_or_foreign| match glyph_or_foreign {
+                                    GlyphOrForeign::Glyph(glyph_info, glyph_pos, shaping_props) => {
+                                        let scale = shaping_props.size * (1.0 / FONT_SCALE);
+
+                                        max_size = max_size.max(shaping_props.size);
+
+                                        let advance = if is_vertical {
+                                            glyph_pos.y_advance
+                                        } else {
+                                            glyph_pos.x_advance
+                                        };
+
+                                        let advance = advance as f64 * scale;
+
+                                        let i = glyph_info.cluster as usize;
+                                        if i >= start_ws {
+                                            spacing_width += advance;
+                                        } else {
+                                            word_width += advance;
+                                        }
+                                    }
+                                    GlyphOrForeign::Foreign(foreign) => {
+                                        let extents = foreign.extents();
+                                        if is_vertical {
+                                            word_width += extents[1];
+                                        } else {
+                                            word_width += extents[0];
+                                        }
+                                    }
+                                },
+                            );
+
+                            if okay || hard {
+                                break (end_flattened, hard);
+                            } else {
+                                word_width += spacing_width;
+                                spacing_width = 0.0;
+                            }
+                        };
+
+                        st.start_flattened = end_flattened;
+                        if hard {
+                            // Found a hard break; stop iteration
+                            st.active = false;
+                        }
+
+                        let line_height = (max_size * para_style.line_height.factor)
+                            .max(para_style.line_height.minimum);
+
+                        Some(wordwrap::Word {
+                            width: word_width,
+                            spacing: spacing_width,
+                            line_height,
+                            value: start_flattened,
+                        })
+                    },
+                );
+
+                // Perform word-wrapping
+                match para_style.word_wrap_mode {
+                    WordWrapMode::MinNumLines => {
+                        for line in wordwrap::word_wrap_greedy(&mut words, boundary, initial_y) {
+                            initial_y = line.y_coord;
+                            lines.push(Line {
+                                start_flattened: line.start_value,
+                                x_coord_range: line.x_coord_range,
+                                y_coord: line.y_coord,
+                                hard_break: false,
+                            });
+                        }
+                    }
+                    WordWrapMode::MinRaggedness => unimplemented!(),
+                }
+
+                lines.last_mut().unwrap().hard_break = true;
+
+                // Find the next hard break and go on to the next line
+                let state = words.state;
+                assert!(!state.active);
+                start_flattened = state.start_flattened;
+                start = state.line_break_it;
+                clusters = state.cluster_it;
+                glyph_index = state.glyph_index;
+            }
         } else {
             // Point type - simply break lines at hard breaks
             lines.push(Line {
@@ -513,7 +784,7 @@ impl FontConfig {
                     } else {
                         // We got this
                         let container_width = line.x_coord_range.end - line.x_coord_range.start;
-                        expansion = Some(container_width / num_flex_points as f64);
+                        expansion = Some((container_width - line_width) / num_flex_points as f64);
                         line_width = container_width;
                     }
                 } else {

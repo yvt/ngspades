@@ -30,6 +30,7 @@ pub use self::model::*;
 // Utilities
 pub(crate) mod ftutils;
 mod hbutils;
+mod wordwrap;
 
 /// The constant font scale value for internally stored font objects.
 const FONT_SCALE: f64 = 65536.0;

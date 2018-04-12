@@ -129,10 +129,11 @@ pub trait Boundary {
     /// specified position.
     ///
     /// Variable-width text layouting using this method is currently
-    /// **not implemented**. This means that if `constant_line_range` returns
-    /// `None`, the layout engine will panic and `line_range` is never used.
-    fn line_range(&self, line_position: Range<f64>, line: usize) -> Option<Range<f64>> {
-        None
+    /// **not fully implemented**. This means that if `constant_line_range`
+    /// returns `None`, the layout engine may panic and `line_range` is never
+    /// used.
+    fn line_range(&self, _line_position: Range<f64>, _line: usize) -> Option<Range<f64>> {
+        self.constant_line_range()
     }
 }
 
@@ -152,18 +153,10 @@ impl Boundary for ! {
     fn constant_line_range(&self) -> Option<Range<f64>> {
         *self
     }
-
-    fn line_range(&self, _: Range<f64>, _: usize) -> Option<Range<f64>> {
-        *self
-    }
 }
 
 impl Boundary for BoxBoundary {
     fn constant_line_range(&self) -> Option<Range<f64>> {
-        Some(self.range.clone())
-    }
-
-    fn line_range(&self, _: Range<f64>, _: usize) -> Option<Range<f64>> {
         Some(self.range.clone())
     }
 }
@@ -282,7 +275,7 @@ impl<'a> attrtext::Override for CharStyleRef<'a> {
     }
 }
 
-impl<'a> CharStyleRef<'a> {
+impl<'a> Default for CharStyleRef<'a> {
     fn default() -> Self {
         ().as_char_style_ref()
     }

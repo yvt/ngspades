@@ -21,3 +21,4 @@ rev = "0abd7d7c91a2cd16e04c5813321239b457539891"
 
 [dev-dependencies]
 ttf-noto-sans = "0.1.1"
+lipsum = "0.4.0"
