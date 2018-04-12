@@ -18,7 +18,6 @@ pub(crate) fn rasterize_text_layout<R: RasterPort>(
     fill_color: RGBA<f32>,
     layout: &TextLayout,
     config: &FontConfig,
-    colored: bool,
 ) {
     let ft_library = Library::global();
 
@@ -55,11 +54,7 @@ pub(crate) fn rasterize_text_layout<R: RasterPort>(
         outline.translate(to_fixed_26_6(m.z.x), to_fixed_26_6(m.z.y));
 
         // Compute the color of the glyph
-        let color = if colored {
-            glyph.color.unwrap_or(fill_color)
-        } else {
-            fill_color
-        };
+        let color = glyph.color.unwrap_or(fill_color);
 
         outline
             .render_direct(&ft_library, Some(clip_box), |y, spans| {

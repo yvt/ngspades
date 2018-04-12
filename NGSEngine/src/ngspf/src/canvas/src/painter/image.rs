@@ -56,14 +56,13 @@ impl<'a> Painter for ImagePainter<'a> {
         self.fill_color = color;
     }
 
-    fn fill_text_layout(&mut self, layout: &TextLayout, config: &FontConfig, colored: bool) {
+    fn fill_text_layout(&mut self, layout: &TextLayout, config: &FontConfig) {
         rasterize_text_layout(
             &mut SrgbRgba8RasterPort(self.image),
             self.transform,
             self.fill_color,
             layout,
             config,
-            colored,
         )
     }
 }

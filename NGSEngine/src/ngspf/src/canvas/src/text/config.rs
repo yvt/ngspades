@@ -108,7 +108,7 @@ impl Direction {
 
 /// Defines the boundary shape of the text container of area type.
 pub trait Boundary {
-    /// Compute the available width for a specific line of a text.
+    /// Compute the available width for a text.
     ///
     /// For horizontally rendered texts (i.e. uses `Direction::LeftToRight` or,
     /// `Direction::RightToLeft`), `line_position` specifies the range of the Y
@@ -117,7 +117,23 @@ pub trait Boundary {
     ///
     /// For vertically rendered texts, the roles of the X and Y coordinates are
     /// swapped.
-    fn line_range(&self, line_position: Range<f64>, line: usize) -> Option<Range<f64>>;
+    ///
+    /// The return value `None` indicates the container width is variable
+    /// depending on the vertical position, and should be computed by
+    /// `line_range`.
+    fn constant_line_range(&self) -> Option<Range<f64>>;
+
+    /// Compute the available width for a specific line of a text.
+    ///
+    /// The return value `None` indicates that a line cannot be placed at the
+    /// specified position.
+    ///
+    /// Variable-width text layouting using this method is currently
+    /// **not implemented**. This means that if `constant_line_range` returns
+    /// `None`, the layout engine will panic and `line_range` is never used.
+    fn line_range(&self, line_position: Range<f64>, line: usize) -> Option<Range<f64>> {
+        None
+    }
 }
 
 pub struct BoxBoundary {
@@ -133,12 +149,20 @@ impl BoxBoundary {
 }
 
 impl Boundary for ! {
+    fn constant_line_range(&self) -> Option<Range<f64>> {
+        *self
+    }
+
     fn line_range(&self, _: Range<f64>, _: usize) -> Option<Range<f64>> {
         *self
     }
 }
 
 impl Boundary for BoxBoundary {
+    fn constant_line_range(&self) -> Option<Range<f64>> {
+        Some(self.range.clone())
+    }
+
     fn line_range(&self, _: Range<f64>, _: usize) -> Option<Range<f64>> {
         Some(self.range.clone())
     }

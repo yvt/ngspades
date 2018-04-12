@@ -48,5 +48,5 @@ fn render_text() {
     let mut image = ImageData::new(Vector2::new(640, 480), ImageFormat::SrgbRgba8);
     let mut painter = new_painter_for_image_data(&mut image);
     painter.translate(Vector2::new(160.0, 240.0));
-    painter.fill_text_layout(&layout, &config, false);
+    painter.fill_text_layout(&layout, &config);
 }

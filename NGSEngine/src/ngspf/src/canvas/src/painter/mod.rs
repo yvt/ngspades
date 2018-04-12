@@ -39,11 +39,10 @@ pub trait Painter: ::Debug {
     /// created. Specifying a wrong `FontConfig` may result in corrupted
     /// rendering or a panic.
     ///
-    /// If `colored` is set to `true`, the color information embedded in
-    /// `layout` will be used to color the text if available. Otherwise
-    /// (`colored` is `false` or the character style has no color specified),
-    /// the current fill style will be used.
-    fn fill_text_layout(&mut self, layout: &TextLayout, config: &FontConfig, colored: bool);
+    /// The text color is determined from the current fill style. This can be
+    /// overridden on a by-character basis by the character style
+    /// (`CharStyle::color`).
+    fn fill_text_layout(&mut self, layout: &TextLayout, config: &FontConfig);
 }
 
 pub trait PainterUtils: Painter {

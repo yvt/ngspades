@@ -74,19 +74,19 @@ fn main() {
         painter.save();
         painter.translate(Vector2::new(40.0, 60.0));
         painter.scale(1.0);
-        painter.fill_text_layout(&layout, &font_config, true);
+        painter.fill_text_layout(&layout, &font_config);
         painter.restore();
 
         painter.save();
         painter.translate(Vector2::new(40.0, 150.0));
         painter.scale(4.0);
-        painter.fill_text_layout(&layout, &font_config, true);
+        painter.fill_text_layout(&layout, &font_config);
         painter.restore();
 
         painter.save();
         painter.translate(Vector2::new(40.0, 400.0));
         painter.scale(16.0);
-        painter.fill_text_layout(&layout, &font_config, true);
+        painter.fill_text_layout(&layout, &font_config);
         painter.restore();
     }
 
