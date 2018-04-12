@@ -371,39 +371,41 @@ impl FontConfig {
 
                         match shaping_cluster.contents {
                             ClusterContents::Text(ref props) => {
-                                let glyph_infos = hb_buffer.as_ref().unwrap().glyph_infos();
-                                let glyph_positions = hb_buffer.as_ref().unwrap().glyph_positions();
+                                if let &Some(ref hb_buffer) = hb_buffer {
+                                    let glyph_infos = hb_buffer.glyph_infos();
+                                    let glyph_positions = hb_buffer.glyph_positions();
 
-                                assert!(glyph_positions.len() == glyph_infos.len());
+                                    assert!(glyph_positions.len() == glyph_infos.len());
 
-                                if props.bidi_level.is_rtl() {
-                                    assert!(*glyph_index <= glyph_infos.len());
-                                    while *glyph_index > 0 {
-                                        let i = glyph_infos[*glyph_index - 1].cluster as usize;
-                                        if i >= index_flattened {
-                                            return i == index_flattened;
+                                    if props.bidi_level.is_rtl() {
+                                        assert!(*glyph_index <= glyph_infos.len());
+                                        while *glyph_index > 0 {
+                                            let i = glyph_infos[*glyph_index - 1].cluster as usize;
+                                            if i >= index_flattened {
+                                                return i == index_flattened;
+                                            }
+
+                                            *glyph_index -= 1;
+                                            cb_glyph(GlyphOrForeign::Glyph(
+                                                &glyph_infos[*glyph_index],
+                                                &glyph_positions[*glyph_index],
+                                                props,
+                                            ));
                                         }
+                                    } else {
+                                        while *glyph_index < glyph_infos.len() {
+                                            let i = glyph_infos[*glyph_index].cluster as usize;
+                                            if i >= index_flattened {
+                                                return i == index_flattened;
+                                            }
 
-                                        *glyph_index -= 1;
-                                        cb_glyph(GlyphOrForeign::Glyph(
-                                            &glyph_infos[*glyph_index],
-                                            &glyph_positions[*glyph_index],
-                                            props,
-                                        ));
-                                    }
-                                } else {
-                                    while *glyph_index < glyph_infos.len() {
-                                        let i = glyph_infos[*glyph_index].cluster as usize;
-                                        if i >= index_flattened {
-                                            return i == index_flattened;
+                                            cb_glyph(GlyphOrForeign::Glyph(
+                                                &glyph_infos[*glyph_index],
+                                                &glyph_positions[*glyph_index],
+                                                props,
+                                            ));
+                                            *glyph_index += 1;
                                         }
-
-                                        cb_glyph(GlyphOrForeign::Glyph(
-                                            &glyph_infos[*glyph_index],
-                                            &glyph_positions[*glyph_index],
-                                            props,
-                                        ));
-                                        *glyph_index += 1;
                                     }
                                 }
                             }
