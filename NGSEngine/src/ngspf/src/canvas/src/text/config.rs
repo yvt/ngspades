@@ -190,6 +190,27 @@ pub struct CharStyle {
     pub script: Option<Script>,
 }
 
+/// A set of reference to the properties of `CharStyle`.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct CharStyleRef<'a> {
+    /// A list of font family names, sorted according to the priority.
+    pub font_family: &'a Vec<String>,
+    /// The weight of the font.
+    pub font_weight: Option<u16>,
+    /// The style of the font.
+    pub font_style: Option<FontStyle>,
+    /// Specifies the appearance of decorative lines used on the text.
+    pub text_decoration: Option<TextDecorationFlags>,
+    /// The size of the font.
+    pub font_size: Option<f64>,
+    /// The color of the text.
+    pub color: Option<RGBA<f32>>,
+    /// The language of the text.
+    pub language: Option<Language>,
+    /// The script of the text.
+    pub script: Option<Script>,
+}
+
 impl CharStyle {
     /// Construct a `CharStyle` with reasonable default values.
     ///
@@ -214,11 +235,41 @@ impl CharStyle {
 
 impl attrtext::Override for CharStyle {
     fn override_with(&self, x: &CharStyle) -> CharStyle {
+        self.as_char_style_ref()
+            .override_with(&x.as_char_style_ref())
+            .to_owned()
+    }
+}
+
+impl<'a> attrtext::Override<CharStyleRef<'a>> for CharStyle {
+    fn override_with(&self, x: &CharStyleRef<'a>) -> CharStyle {
+        self.as_char_style_ref().override_with(x).to_owned()
+    }
+}
+
+impl<'a> CharStyleRef<'a> {
+    /// Construct a `CharStyle` by cloning the property values.
+    pub fn to_owned(&self) -> CharStyle {
         CharStyle {
+            font_family: self.font_family.clone(),
+            font_weight: self.font_weight,
+            font_style: self.font_style,
+            text_decoration: self.text_decoration,
+            font_size: self.font_size,
+            color: self.color,
+            language: self.language,
+            script: self.script,
+        }
+    }
+}
+
+impl<'a> attrtext::Override for CharStyleRef<'a> {
+    fn override_with(&self, x: &CharStyleRef<'a>) -> CharStyleRef<'a> {
+        CharStyleRef {
             font_family: if x.font_family.is_empty() {
-                self.font_family.clone()
+                self.font_family
             } else {
-                x.font_family.clone()
+                x.font_family
             },
             font_weight: x.font_weight.or(self.font_weight),
             font_style: x.font_style.or(self.font_style),
@@ -227,6 +278,51 @@ impl attrtext::Override for CharStyle {
             color: x.color.or(self.color),
             language: x.language.or(self.language),
             script: x.script.or(self.script),
+        }
+    }
+}
+
+impl<'a> CharStyleRef<'a> {
+    fn default() -> Self {
+        ().as_char_style_ref()
+    }
+}
+
+/// Construct a `CharStyleRef` referencing the properties of `self`.
+pub trait AsCharStyleRef {
+    /// Construct a `CharStyleRef` referencing the properties of `self`.
+    fn as_char_style_ref(&self) -> CharStyleRef;
+}
+
+impl AsCharStyleRef for CharStyle {
+    fn as_char_style_ref(&self) -> CharStyleRef {
+        CharStyleRef {
+            font_family: &self.font_family,
+            font_weight: self.font_weight,
+            font_style: self.font_style,
+            text_decoration: self.text_decoration,
+            font_size: self.font_size,
+            color: self.color,
+            language: self.language,
+            script: self.script,
+        }
+    }
+}
+
+impl AsCharStyleRef for () {
+    fn as_char_style_ref(&self) -> CharStyleRef {
+        lazy_static! {
+            static ref EMPTY: Vec<String> = Vec::new();
+        }
+        CharStyleRef {
+            font_family: &EMPTY,
+            font_weight: None,
+            font_style: None,
+            text_decoration: None,
+            font_size: None,
+            color: None,
+            language: None,
+            script: None,
         }
     }
 }

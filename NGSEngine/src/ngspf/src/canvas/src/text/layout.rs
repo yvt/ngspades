@@ -69,7 +69,7 @@ use std::ops::Range;
 use unicode_bidi::{self, BidiInfo, ParagraphInfo};
 use xi_unicode::LineBreakIterator;
 
-use super::{hbutils, AsElementRef, Boundary, CharStyle, Direction, ElementRef, FontConfig,
+use super::{hbutils, AsCharStyleRef, AsElementRef, Boundary, Direction, ElementRef, FontConfig,
             FontFaceId, FontFaceProps, ForeignObject, ParagraphStyle, TextAlign, FONT_SCALE};
 
 const FOREIGN_MARKER_STR: &str = "\u{f8ff}";
@@ -84,7 +84,7 @@ impl FontConfig {
     ) -> TextLayout
     where
         S: AsElementRef + Span,
-        CharStyle: Override<A>,
+        A: AsCharStyleRef,
         B: Boundary,
     {
         self.layout_text(text, para_style, Some(boundary))
@@ -98,7 +98,7 @@ impl FontConfig {
     ) -> TextLayout
     where
         S: AsElementRef + Span,
-        CharStyle: Override<A>,
+        A: AsCharStyleRef,
     {
         self.layout_text::<S, A, !>(text, para_style, None)
     }
@@ -112,7 +112,7 @@ impl FontConfig {
     ) -> TextLayout
     where
         S: AsElementRef + Span,
-        CharStyle: Override<A>,
+        A: AsCharStyleRef,
         B: Boundary,
     {
         let flattened = flatten_text(text);
@@ -184,8 +184,11 @@ impl FontConfig {
                         last_text = None;
                     }
                     ElementRef::Text(x) => {
-                        let char_style = para_style.char_style.override_with(attr);
-                        selector.set_font_families(&char_style.font_family);
+                        let char_style = para_style
+                            .char_style
+                            .as_char_style_ref()
+                            .override_with(&attr.as_char_style_ref());
+                        selector.set_font_families(char_style.font_family);
 
                         let face_props = FontFaceProps::from_char_style(&char_style);
                         let size = char_style.font_size.expect("font size is missing");
@@ -580,8 +583,9 @@ impl FontConfig {
                             let cursor = reel.get(offset_flattened);
                             let char_style = text.attribute_at(cursor);
 
-                            // FIXME: This is extremely inefficient as it clones the `Vec` `font_family`
-                            let char_style = para_style.char_style.override_with(char_style);
+                            let char_style = para_style.char_style
+                                .as_char_style_ref()
+                                .override_with(&char_style.as_char_style_ref());
                             let color = char_style.color;
 
                             // Get the extents of the glyph for bounds calculation

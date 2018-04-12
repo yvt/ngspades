@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{ftutils, hbutils, CharStyle, FONT_SCALE};
+use super::{ftutils, hbutils, CharStyleRef, FONT_SCALE};
 use attrtext::FontStyle;
 use harfbuzz;
 use std::cell::RefCell;
@@ -75,7 +75,7 @@ pub(crate) struct FontFaceProps {
 }
 
 impl FontFaceProps {
-    pub fn from_char_style(style: &CharStyle) -> Self {
+    pub fn from_char_style(style: &CharStyleRef) -> Self {
         Self {
             weight: style.font_weight.expect("weight is missing"),
             style: style.font_style.expect("style is missing"),
