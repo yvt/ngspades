@@ -150,8 +150,8 @@ impl FontConfig {
         enum ClusterContents<'a> {
             /// One or more text spans.
             Text(ShapingProps),
-            /// A foreign object.
-            Foreign(&'a ForeignObject),
+            /// A foreign object. The second value is font size.
+            Foreign(&'a ForeignObject, f64),
         }
         #[derive(Debug, Clone, Copy, PartialEq)]
         struct ShapingProps {
@@ -174,25 +174,28 @@ impl FontConfig {
             for run in text.runs() {
                 let span = *run.span();
                 let attr = *run.attribute();
+
+                let char_style = para_style
+                    .char_style
+                    .as_char_style_ref()
+                    .override_with(&attr.as_char_style_ref());
+
+                let size = char_style.font_size.expect("font size is missing");
+
                 match span.as_element_ref() {
                     ElementRef::Foreign(x) => {
                         clusters.push(ShapingCluster {
                             start_flattened: index_flattened,
                             start_text: run.cursor().start,
-                            contents: ClusterContents::Foreign(x),
+                            contents: ClusterContents::Foreign(x, size),
                         });
                         index_flattened += FOREIGN_MARKER_STR.len();
                         last_text = None;
                     }
                     ElementRef::Text(x) => {
-                        let char_style = para_style
-                            .char_style
-                            .as_char_style_ref()
-                            .override_with(&attr.as_char_style_ref());
                         selector.set_font_families(char_style.font_family);
 
                         let face_props = FontFaceProps::from_char_style(&char_style);
-                        let size = char_style.font_size.expect("font size is missing");
                         let script = char_style.script;
                         let language = char_style.language;
 
@@ -334,26 +337,33 @@ impl FontConfig {
                     &'a harfbuzz::hb_glyph_position_t,
                     &'a ShapingProps,
                 ),
-                Foreign(&'a ForeignObject),
+                Foreign(&'a ForeignObject, f64),
             }
 
             /// Advance `(clusters, glyph_index)` until a glyph with the `flattened`
-            /// offset value `index_flattened` is met. Returns whether
-            /// `index_flattened` fell into a glyph boundary. Calls `cb` for
-            /// each glyph passed by.
-            fn clusters_advance_until<'a, I, F>(
+            /// offset value `index_flattened` is met.
+            ///
+            /// Returns whether `index_flattened` fell into a glyph boundary.
+            ///
+            /// Calls `cb_glyph` for each glyph passed by. Calls `cb_cluster`
+            /// for each cluster passed by.
+            fn clusters_advance_until<'a, I, F1, F2>(
                 clusters: &mut Peekable<I>,
                 glyph_index: &mut usize,
                 index_flattened: usize,
-                mut cb: F,
+                mut cb_glyph: F1,
+                mut cb_cluster: F2,
             ) -> bool
             where
                 I: Iterator<Item = (&'a ShapingCluster<'a>, &'a Option<hbutils::Buffer>)>,
-                F: FnMut(GlyphOrForeign),
+                F1: FnMut(GlyphOrForeign),
+                F2: FnMut(&ShapingCluster, &Option<hbutils::Buffer>),
             {
                 loop {
                     if let Some(cluster) = clusters.peek() {
                         let &(shaping_cluster, hb_buffer) = cluster;
+
+                        cb_cluster(shaping_cluster, hb_buffer);
 
                         if shaping_cluster.start_flattened >= index_flattened {
                             return shaping_cluster.start_flattened == index_flattened;
@@ -375,7 +385,7 @@ impl FontConfig {
                                         }
 
                                         *glyph_index -= 1;
-                                        cb(GlyphOrForeign::Glyph(
+                                        cb_glyph(GlyphOrForeign::Glyph(
                                             &glyph_infos[*glyph_index],
                                             &glyph_positions[*glyph_index],
                                             props,
@@ -388,7 +398,7 @@ impl FontConfig {
                                             return i == index_flattened;
                                         }
 
-                                        cb(GlyphOrForeign::Glyph(
+                                        cb_glyph(GlyphOrForeign::Glyph(
                                             &glyph_infos[*glyph_index],
                                             &glyph_positions[*glyph_index],
                                             props,
@@ -397,8 +407,8 @@ impl FontConfig {
                                     }
                                 }
                             }
-                            ClusterContents::Foreign(foreign) => {
-                                cb(GlyphOrForeign::Foreign(foreign));
+                            ClusterContents::Foreign(foreign, size) => {
+                                cb_glyph(GlyphOrForeign::Foreign(foreign, size));
                             }
                         }
                     } else {
@@ -478,8 +488,6 @@ impl FontConfig {
                                     GlyphOrForeign::Glyph(glyph_info, glyph_pos, shaping_props) => {
                                         let scale = shaping_props.size * (1.0 / FONT_SCALE);
 
-                                        max_size = max_size.max(shaping_props.size);
-
                                         let advance = if is_vertical {
                                             glyph_pos.y_advance
                                         } else {
@@ -495,12 +503,23 @@ impl FontConfig {
                                             word_width += advance;
                                         }
                                     }
-                                    GlyphOrForeign::Foreign(foreign) => {
+                                    GlyphOrForeign::Foreign(foreign, _) => {
                                         let extents = foreign.extents();
                                         if is_vertical {
                                             word_width += extents[1];
                                         } else {
                                             word_width += extents[0];
+                                        }
+                                    }
+                                },
+                                |shaping_cluster, _| {
+                                    // Record the maximum font size in this range
+                                    match shaping_cluster.contents {
+                                        ClusterContents::Text(ref props) => {
+                                            max_size = max_size.max(props.size);
+                                        }
+                                        ClusterContents::Foreign(_, size) => {
+                                            max_size = max_size.max(size);
                                         }
                                     }
                                 },
@@ -722,7 +741,7 @@ impl FontConfig {
                         } else {
                             match shaping_cluster.contents {
                                 ClusterContents::Text(_) => 0.0,
-                                ClusterContents::Foreign(x) => {
+                                ClusterContents::Foreign(x, _) => {
                                     let extents = x.extents();
                                     if is_vertical {
                                         extents[1]
@@ -882,7 +901,7 @@ impl FontConfig {
                     } else {
                         match shaping_cluster.contents {
                             ClusterContents::Text(_) => {},
-                            ClusterContents::Foreign(x) => {
+                            ClusterContents::Foreign(x, _) => {
                                 let extents = x.extents();
                                 // TODO: Export the position of foreign objects
                                 if is_vertical {
