@@ -82,6 +82,11 @@ impl Workspace {
 
         let events_loop_proxy = events_loop.create_proxy();
 
+        // Work-around for the issue caused by calling
+        // `EventsLoopProxy::wakeup()` too early from a background thread.
+        // (See: https://github.com/tomaka/winit/pull/456)
+        let _ = events_loop_proxy.wakeup();
+
         {
             // Trigger window reconcilation whenever a new frame was submitted
             let events_loop_proxy = events_loop_proxy.clone();
