@@ -661,7 +661,11 @@ impl FontConfig {
                 }
 
                 // Compute the display order
-                let (levels, level_runs) = bidi_info.visual_runs(&bidi_para_info, flattened_range.clone());
+                let (levels, level_runs) = if flattened_range.len() != 0 {
+                    bidi_info.visual_runs(&bidi_para_info, flattened_range.clone())
+                } else {
+                    (Vec::new(), Vec::new())
+                };
 
                 // Collect shaping clusters in the line
                 struct LineCluster {
