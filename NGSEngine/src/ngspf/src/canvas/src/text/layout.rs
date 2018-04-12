@@ -311,12 +311,7 @@ impl FontConfig {
             let mut start_flattened = 0;
 
             // `Iterator<Item = (Range<usize>, (&ShapingCluster, &Option<hbutils::Buffer>))>`
-            let mut clusters = shaping_clusters
-                .iter()
-                .zip(hb_buffers.iter())
-                // Generate `flattened_range`, a byte range in `flattened`
-                .with_range(flattened.len(), |x| x.0.start_flattened)
-                .peekable();
+            let mut clusters = shaping_clusters.iter().zip(hb_buffers.iter()).peekable();
 
             fn get_cluster_start_glyph_index(
                 (shaping_cluster, hb_buffer): (&ShapingCluster, &Option<hbutils::Buffer>),
@@ -353,20 +348,15 @@ impl FontConfig {
                 mut cb: F,
             ) -> bool
             where
-                I: Iterator<
-                    Item = (
-                        Range<usize>,
-                        (&'a ShapingCluster<'a>, &'a Option<hbutils::Buffer>),
-                    ),
-                >,
+                I: Iterator<Item = (&'a ShapingCluster<'a>, &'a Option<hbutils::Buffer>)>,
                 F: FnMut(GlyphOrForeign),
             {
                 loop {
                     if let Some(cluster) = clusters.peek() {
-                        let &(ref range, (shaping_cluster, hb_buffer)) = cluster;
+                        let &(shaping_cluster, hb_buffer) = cluster;
 
-                        if range.start >= index_flattened {
-                            return range.start == index_flattened;
+                        if shaping_cluster.start_flattened >= index_flattened {
+                            return shaping_cluster.start_flattened == index_flattened;
                         }
 
                         match shaping_cluster.contents {
@@ -418,16 +408,16 @@ impl FontConfig {
                     }
 
                     clusters.next();
-                    *glyph_index = if let Some(cluster) = clusters.peek() {
-                        get_cluster_start_glyph_index(cluster.1)
+                    *glyph_index = if let Some(&cluster) = clusters.peek() {
+                        get_cluster_start_glyph_index(cluster)
                     } else {
                         0
                     };
                 }
             }
 
-            let mut glyph_index = if let Some(cluster) = clusters.peek() {
-                get_cluster_start_glyph_index(cluster.1)
+            let mut glyph_index = if let Some(&cluster) = clusters.peek() {
+                get_cluster_start_glyph_index(cluster)
             } else {
                 0
             };
