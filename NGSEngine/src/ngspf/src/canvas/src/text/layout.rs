@@ -594,10 +594,55 @@ impl FontConfig {
                         lines.push(Line {
                             start_flattened: i,
                             x_coord_range: 0.0..0.0,
-                            y_coord: 0.0, // TODO: compute Y coord
+                            y_coord: 0.0, // set later
                             hard_break: true,
                         });
                     }
+                }
+            }
+
+            // Compute the Y coord of lines
+            if lines.len() > 1 {
+                let mut clusters = shaping_clusters
+                    .iter()
+                    .with_range(flattened.len(), |x| x.start_flattened)
+                    .peekable();
+
+                let lines = lines
+                    .iter_mut()
+                    .with_range(flattened.len(), |x| x.start_flattened);
+
+                let mut initial_y = 0.0f64;
+
+                for (line_range, line) in lines {
+                    let mut max_size = 0.0f64;
+
+                    while let Some((range, shaping_cluster)) = clusters.peek().cloned() {
+                        if range.end >= line_range.end {
+                            break;
+                        }
+
+                        match shaping_cluster.contents {
+                            ClusterContents::Text(ref props) => {
+                                max_size = max_size.max(props.size);
+                            }
+                            ClusterContents::Foreign(_, size) => {
+                                max_size = max_size.max(size);
+                            }
+                        }
+
+                        clusters.next();
+                    }
+
+                    if line_range.start == 0 {
+                        // Skip the first line
+                        continue;
+                    }
+
+                    let line_height = (max_size * para_style.line_height.factor)
+                        .max(para_style.line_height.minimum);
+                    initial_y += line_height;
+                    line.y_coord = initial_y;
                 }
             }
         }
