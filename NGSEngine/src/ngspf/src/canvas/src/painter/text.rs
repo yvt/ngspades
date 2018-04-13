@@ -56,14 +56,14 @@ pub(crate) fn rasterize_text_layout<R: RasterPort>(
         // Compute the color of the glyph
         let color = glyph.color.unwrap_or(fill_color);
 
+        let fast_color = port.to_fast_color(color);
+
         outline
             .render_direct(&ft_library, Some(clip_box), |y, spans| {
                 for span in spans.iter() {
                     let x1 = span.x as usize;
                     let x2 = x1 + span.len as usize;
-                    let mut span_color = color;
-                    span_color.a *= span.coverage as f32 * (1.0 / 255.0);
-                    port.fill_span(y as usize, x1..x2, span_color);
+                    port.fill_span_cov(y as usize, x1..x2, fast_color, span.coverage);
                 }
             })
             .unwrap();

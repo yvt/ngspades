@@ -1038,6 +1038,7 @@ pub struct TextLayout {
 }
 
 impl TextLayout {
+    /// Compute the visual bounding rectangle of the layouted text.
     pub fn visual_bounds(&self) -> [Point2<f64>; 2] {
         use std::f64::{INFINITY, NEG_INFINITY};
         self.glyphs.iter().fold(

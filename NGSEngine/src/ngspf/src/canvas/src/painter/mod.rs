@@ -54,6 +54,7 @@ pub trait PainterUtils: Painter {
 
 impl<T: Painter + ?Sized> PainterUtils for T {}
 
+mod blend;
 mod image;
 mod text;
 pub use self::image::*;

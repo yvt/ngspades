@@ -67,67 +67,34 @@ impl<'a> Painter for ImagePainter<'a> {
     }
 }
 
-fn srgb_to_linear(x: f32) -> f32 {
-    if x <= 0.04045 {
-        x * (1.0 / 12.92)
-    } else {
-        ((x + 0.055) * (1.0 / 1.055)).powf(2.4)
-    }
+use super::blend;
+
+fn pack_u8x4(a: [u8; 4]) -> u32 {
+    unsafe { ::std::mem::transmute(a) }
 }
 
-fn linear_to_srgb(x: f32) -> f32 {
-    if x < 0.0031308 {
-        12.92 * x.max(0.0)
-    } else {
-        1.055 * x.min(1.0).powf(0.41666) - 0.055
-    }
-}
-
-fn pack_u8x4(a: RGBA<f32>) -> u32 {
-    let x = (a.r * 256.0).min(255.0) as u32;
-    let y = (a.g * 256.0).min(255.0) as u32;
-    let z = (a.b * 256.0).min(255.0) as u32;
-    let w = (a.a * 256.0).min(255.0) as u32;
-    x | (y << 8) | (z << 16) | (w << 24)
-}
-
-fn unpack_u8x4(a: u32) -> RGBA<f32> {
-    let x = (a & 0x000000ffu32) as f32;
-    let y = (a & 0x0000ff00u32) as f32;
-    let z = (a & 0x00ff0000u32) as f32;
-    let w = (a & 0xff000000u32) as f32;
-    RGBA::new(
-        x * (1.0 / 0x000000ffu32 as f32),
-        y * (1.0 / 0x0000ff00u32 as f32),
-        z * (1.0 / 0x00ff0000u32 as f32),
-        w * (1.0 / 0xff000000u32 as f32),
-    )
-}
-
-/// Blend `y` over `x`.
-fn alpha_over_premul(x: RGBA<f32>, y: RGBA<f32>) -> RGBA<f32> {
-    RGBA::new(
-        x.r * (1.0 - y.a) + y.r,
-        x.g * (1.0 - y.a) + y.g,
-        x.b * (1.0 - y.a) + y.b,
-        x.a * (1.0 - y.a) + y.a,
-    )
-}
-
-fn to_alpha_premul(x: RGBA<f32>) -> RGBA<f32> {
-    RGBA::new(x.r * x.a, x.g * x.a, x.b * x.a, x.a)
-}
-
-fn from_alpha_premul(x: RGBA<f32>) -> RGBA<f32> {
-    let factor = if x.a == 0.0 { 1.0 } else { x.a.recip() };
-    RGBA::new(x.r * factor, x.g * factor, x.b * factor, x.a)
+fn unpack_u8x4(a: u32) -> [u8; 4] {
+    unsafe { ::std::mem::transmute(a) }
 }
 
 pub(crate) trait RasterPort {
     fn size(&self) -> Vector2<usize>;
 
+    /// The color type used by the intermediate calculation.
+    type FastColor: Copy;
+
     /// `color` is not alpha pre-multiplied
-    fn fill_span(&mut self, y: usize, x_range: Range<usize>, color: RGBA<f32>);
+    fn to_fast_color(&self, color: RGBA<f32>) -> Self::FastColor;
+
+    /// Fill a span with a given color. The alpha value is multiplied by
+    /// the coverage value.
+    fn fill_span_cov(
+        &mut self,
+        y: usize,
+        x_range: Range<usize>,
+        color: Self::FastColor,
+        coverage: u8,
+    );
 }
 
 struct SrgbRgba8RasterPort<'a>(&'a mut ImageData);
@@ -137,7 +104,19 @@ impl<'a> RasterPort for SrgbRgba8RasterPort<'a> {
         self.0.size()
     }
 
-    fn fill_span(&mut self, y: usize, x_range: Range<usize>, color: RGBA<f32>) {
+    type FastColor = blend::Srgb8InternalColor;
+
+    fn to_fast_color(&self, color: RGBA<f32>) -> Self::FastColor {
+        blend::srgb8_color_to_internal(color)
+    }
+
+    fn fill_span_cov(
+        &mut self,
+        y: usize,
+        x_range: Range<usize>,
+        color: Self::FastColor,
+        coverage: u8,
+    ) {
         let stride = self.0.size().x;
         let offset_y = y * stride;
 
@@ -146,16 +125,11 @@ impl<'a> RasterPort for SrgbRgba8RasterPort<'a> {
 
         let pixels = self.0.pixels_u32_mut();
 
-        let src_lin_pm = to_alpha_premul(color);
+        let src_int = blend::srgb8_internal_mask(color, coverage);
 
         for pixel in pixels[offset_y + x_range.start..offset_y + x_range.end].iter_mut() {
             let dst_srgb = unpack_u8x4(*pixel);
-            let dst_lin = dst_srgb.map_rgb(srgb_to_linear);
-            let dst_lin_pm = to_alpha_premul(dst_lin);
-
-            let out_lin_pm = alpha_over_premul(dst_lin_pm, src_lin_pm);
-            let out_lin = from_alpha_premul(out_lin_pm);
-            let out_srgb = out_lin.map_rgb(linear_to_srgb);
+            let out_srgb = blend::srgb8_alpha_over(src_int, dst_srgb);
             *pixel = pack_u8x4(out_srgb);
         }
     }
