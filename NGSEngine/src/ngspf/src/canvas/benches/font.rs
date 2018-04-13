@@ -40,6 +40,6 @@ fn render_text(b: &mut test::Bencher) {
     painter.translate(Vector2::new(40.0, 400.0));
     painter.scale(8.0);
     b.iter(move || {
-        painter.fill_text_layout(&layout, &config, false);
+        painter.fill_text_layout(&layout, &config);
     });
 }
