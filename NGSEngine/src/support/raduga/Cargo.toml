@@ -1,0 +1,13 @@
+[package]
+name = "raduga"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+
+[dependencies]
+num-traits = "0.2.2"
+
+# Official master branch has issues with the lastest Nightly rustc:
+#   https://github.com/rust-lang-nursery/stdsimd/issues/404#issuecomment-378482971
+[dependencies.stdsimd]
+git = "https://github.com/AdamNiederer/stdsimd.git"
+rev = "d6874383653c8b93832d53092078a41b146be941"
