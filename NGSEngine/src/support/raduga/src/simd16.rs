@@ -528,12 +528,7 @@ mod generic {
                 let lo_15 = vendor::_mm_srli_epi16(lo, 15);
                 vendor::_mm_slli_epi16(hi, 1) + lo_15 + lo_14
             }
-            unsafe {
-                Simd16I16(
-                    vendor::_mm_mulhrs_epi16(self.0, rhs.0),
-                    vendor::_mm_mulhrs_epi16(self.1, rhs.1),
-                )
-            }
+            unsafe { Simd16I16(mulhrs_epi16(self.0, rhs.0), mulhrs_epi16(self.1, rhs.1)) }
         }
     }
 }
