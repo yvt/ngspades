@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use raduga::{prelude::*, SimdMode};
 use rgb::RGBA;
 
 mod table {
@@ -36,82 +37,78 @@ pub fn srgb8_internal_mask(x: Srgb8InternalColor, coverage: u8) -> Srgb8Internal
     [f(x[0]), f(x[1]), f(x[2]), f(x[3])]
 }
 
-/// Perform a table look-up. Skips bounds check on release builds.
-unsafe fn lut<T: Copy>(slice: &[T], index: usize) -> T {
-    if cfg!(debug_assertions) {
-        slice[index]
-    } else {
-        *slice.get_unchecked(index)
-    }
-}
-
 /// Blend `src` over `dst`.
-pub fn srgb8_alpha_over(src: Srgb8InternalColor, dst: [u8; 4]) -> [u8; 4] {
+pub fn srgb8_alpha_over<M: SimdMode>(src: Srgb8InternalColor, dst: [M::U8; 4]) -> [M::U8; 4] {
     // TODO: Use SIMD intrinsics to accelerate the rendering
 
     // [0, 255], alpha
     let dst_alpha = dst[3];
 
     // Convert to linear
-    let dst_lin = unsafe {
+    let dst_lin: [M::U16; 3] = unsafe {
         [
             // [0, 4095 * 2], linear color
-            lut(&table::DECODE_SRGB, dst[0] as usize),
-            lut(&table::DECODE_SRGB, dst[1] as usize),
-            lut(&table::DECODE_SRGB, dst[2] as usize),
+            table::DECODE_SRGB.gather32_unchecked(dst[0].as_u32(), 1),
+            table::DECODE_SRGB.gather32_unchecked(dst[1].as_u32(), 1),
+            table::DECODE_SRGB.gather32_unchecked(dst[2].as_u32(), 1),
         ]
     };
 
     // Pre-multiply alpha
+    let dst_alpha_7p = dst_alpha.as_i16() << 7;
     let dst_pm = [
         // [0, 4095 * 2 * 255 / 256], linear color (premul by `dst_alpha`)
-        (dst_lin[0] as u32 * dst_alpha as u32 + 128) >> 8,
-        (dst_lin[1] as u32 * dst_alpha as u32 + 128) >> 8,
-        (dst_lin[2] as u32 * dst_alpha as u32 + 128) >> 8,
+        dst_lin[0].as_i16().mul_hrs_epi16(dst_alpha_7p).as_u16(),
+        dst_lin[1].as_i16().mul_hrs_epi16(dst_alpha_7p).as_u16(),
+        dst_lin[2].as_i16().mul_hrs_epi16(dst_alpha_7p).as_u16(),
     ];
 
     // Multiply the destination factor
-    let dst_factor = (32768 - src[3]) as u32;
+    let dst_factor_p1 = M::I16::splat(((32768 - src[3]) >> 1) as i16);
     let dst_pm = [
         // [0, 4095 * 255 / 256], linear color (premul by `dst_alpha`)
-        (dst_pm[0] * dst_factor + 32768) >> 16,
-        (dst_pm[1] * dst_factor + 32768) >> 16,
-        (dst_pm[2] * dst_factor + 32768) >> 16,
+        dst_pm[0].as_i16().mul_hrs_epi16(dst_factor_p1).as_u16(),
+        dst_pm[1].as_i16().mul_hrs_epi16(dst_factor_p1).as_u16(),
+        dst_pm[2].as_i16().mul_hrs_epi16(dst_factor_p1).as_u16(),
     ];
 
     // [0, 4080]
-    let dst_alpha = (dst_alpha as u32 * dst_factor + 1024) >> 11;
+    let dst_factor_p3 = M::I16::splat(((32768 - src[3]) >> 3) as i16);
+    let dst_alpha = dst_alpha_7p.as_i16().mul_hrs_epi16(dst_factor_p3).as_u16();
 
     // Combine
     let out_pm = [
         // [0, 4095 * 255 / 256], linear color (premul by `out_alpha`)
-        dst_pm[0] + src[0] as u32,
-        dst_pm[1] + src[1] as u32,
-        dst_pm[2] + src[2] as u32,
+        dst_pm[0] + M::U16::splat(src[0]),
+        dst_pm[1] + M::U16::splat(src[1]),
+        dst_pm[2] + M::U16::splat(src[2]),
     ];
     // [0, 4080]
     let src_factor = src[3] as u32;
-    let out_alpha = dst_alpha + ((255 * src_factor + 1024) >> 11);
+    let out_alpha = dst_alpha + M::U16::splat(((255 * src_factor + 1024) >> 11) as _);
 
     // De-pre-multiply alpha
-    let depm_values = unsafe { lut(&table::DIV_4096, out_alpha as usize) };
-    let depm_mantissa = depm_values & 0xffff;
+    let depm_values: M::U32 = unsafe { table::DIV_4096.gather32_unchecked(out_alpha.as_u32(), 1) };
+    let depm_mantissa = depm_values.as_u16();
     let depm_exponent = depm_values >> 16;
+
+    // Better to keep `depm_exponent` as `u32` since AVX2 includes
+    // variable left shift only for `epi32` (the `epi16` variant requires AVX512VL)
 
     let out_lin = [
         // [0, 4095], linear color
-        ((out_pm[0] << depm_exponent) * depm_mantissa + 32768) >> 16,
-        ((out_pm[1] << depm_exponent) * depm_mantissa + 32768) >> 16,
-        ((out_pm[2] << depm_exponent) * depm_mantissa + 32768) >> 16,
+        out_pm[0].shl_var(depm_exponent).mul_hi_epu16(depm_mantissa),
+        out_pm[1].shl_var(depm_exponent).mul_hi_epu16(depm_mantissa),
+        out_pm[2].shl_var(depm_exponent).mul_hi_epu16(depm_mantissa),
     ];
 
     // Convert to sRGB
     unsafe {
         [
-            lut(&table::ENCODE_SRGB, out_lin[0] as usize),
-            lut(&table::ENCODE_SRGB, out_lin[1] as usize),
-            lut(&table::ENCODE_SRGB, out_lin[2] as usize),
-            (out_alpha >> 4) as u8,
+            table::ENCODE_SRGB.gather32_unchecked(out_lin[0].as_u32(), 1),
+            table::ENCODE_SRGB.gather32_unchecked(out_lin[1].as_u32(), 1),
+            table::ENCODE_SRGB.gather32_unchecked(out_lin[2].as_u32(), 1),
+            (out_alpha >> 4).as_u8(),
         ]
     }
 }
@@ -197,6 +194,8 @@ mod srgb8_tests {
 
     #[test]
     fn alpha_over() {
+        use raduga::ScalarMode;
+
         // Try many permutations
         let r_map: [u8; 4] = [0, 64, 192, 255];
         let g_map: [u8; 4] = [253, 1, 64, 192];
@@ -216,7 +215,7 @@ mod srgb8_tests {
             let src_internal = srgb8_color_to_internal(src_f32);
 
             // fast version
-            let out = srgb8_alpha_over(src_internal, dst);
+            let out = srgb8_alpha_over::<ScalarMode>(src_internal, dst);
 
             // reference
             let out_f32 = from_alpha_premul(alpha_over_premul(

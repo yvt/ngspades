@@ -117,6 +117,8 @@ impl<'a> RasterPort for SrgbRgba8RasterPort<'a> {
         color: Self::FastColor,
         coverage: u8,
     ) {
+        use raduga::ScalarMode;
+
         let stride = self.0.size().x;
         let offset_y = y * stride;
 
@@ -129,7 +131,7 @@ impl<'a> RasterPort for SrgbRgba8RasterPort<'a> {
 
         for pixel in pixels[offset_y + x_range.start..offset_y + x_range.end].iter_mut() {
             let dst_srgb = unpack_u8x4(*pixel);
-            let out_srgb = blend::srgb8_alpha_over(src_int, dst_srgb);
+            let out_srgb = blend::srgb8_alpha_over::<ScalarMode>(src_int, dst_srgb);
             *pixel = pack_u8x4(out_srgb);
         }
     }

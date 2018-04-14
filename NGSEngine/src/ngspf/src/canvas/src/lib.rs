@@ -16,6 +16,7 @@ extern crate unicode_bidi;
 extern crate xi_unicode;
 #[macro_use]
 extern crate lazy_static;
+extern crate raduga;
 
 extern crate ngspf_core as core;
 

@@ -36,8 +36,10 @@ fn main() {
         }
     }
 
-    writeln!(&mut table_src, "pub static DECODE_SRGB: [u16; 256] = [").unwrap();
-    for i in 0..256 {
+    // 1 extra element is needed due to `raduga::Packed::gather32_unchecked`'s
+    // requirements.
+    writeln!(&mut table_src, "pub static DECODE_SRGB: [u16; 259] = [").unwrap();
+    for i in 0..259 {
         write!(
             &mut table_src,
             "{}, ",
@@ -46,8 +48,9 @@ fn main() {
     }
     writeln!(&mut table_src, "];").unwrap();
 
-    writeln!(&mut table_src, "pub static ENCODE_SRGB: [u8; 4097] = [").unwrap();
-    for i in 0..4097 {
+    // 3 extra elements are needed due to the same reason.
+    writeln!(&mut table_src, "pub static ENCODE_SRGB: [u8; 4100] = [").unwrap();
+    for i in 0..4100 {
         write!(
             &mut table_src,
             "{}, ",
