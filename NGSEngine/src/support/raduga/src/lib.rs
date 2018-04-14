@@ -14,10 +14,12 @@ extern crate stdsimd;
 mod packed;
 pub use packed::*;
 
+pub mod kernel;
 pub mod simd16;
 pub mod utils;
 
 pub mod prelude {
     #[doc(no_inline)]
-    pub use {utils::*, IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
+    pub use {kernel::*, utils::*, IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8,
+             SimdMode};
 }

@@ -117,22 +117,37 @@ impl<'a> RasterPort for SrgbRgba8RasterPort<'a> {
         color: Self::FastColor,
         coverage: u8,
     ) {
-        use raduga::ScalarMode;
+        use raduga::prelude::*;
 
         let stride = self.0.size().x;
         let offset_y = y * stride;
 
-        debug_assert!(y < self.0.size().y);
-        debug_assert!(x_range.end <= self.0.size().x);
-
-        let pixels = self.0.pixels_u32_mut();
+        assert!(y < self.0.size().y);
+        assert!(x_range.end <= self.0.size().x);
+        if x_range.start >= x_range.end {
+            return;
+        }
 
         let src_int = blend::srgb8_internal_mask(color, coverage);
 
-        for pixel in pixels[offset_y + x_range.start..offset_y + x_range.end].iter_mut() {
-            let dst_srgb = unpack_u8x4(*pixel);
-            let out_srgb = blend::srgb8_alpha_over::<ScalarMode>(src_int, dst_srgb);
-            *pixel = pack_u8x4(out_srgb);
+        let pixels_u32 = self.0.pixels_u32_mut();
+        let pixels_u8 = pixels_u32.as_mut_ptr() as *mut u8;
+
+        use std::slice::from_raw_parts_mut;
+        let span_start = (offset_y + x_range.start) * 4;
+        let span_len = x_range.len() * 4;
+        let span_pixels_u8 =
+            unsafe { from_raw_parts_mut(pixels_u8.wrapping_offset(span_start as isize), span_len) };
+
+        struct Kernel {
+            src_int: blend::Srgb8InternalColor,
         }
+        impl MapU8x4InplaceKernel for Kernel {
+            fn apply<M: SimdMode>(&self, x: [M::U8; 4]) -> [M::U8; 4] {
+                blend::srgb8_alpha_over::<M>(self.src_int, x)
+            }
+        }
+
+        Kernel { src_int }.dispatch(span_pixels_u8);
     }
 }
