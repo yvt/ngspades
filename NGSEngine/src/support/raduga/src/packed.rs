@@ -34,6 +34,7 @@ pub unsafe trait Packed:
     /// Extract an element of a vector.
     unsafe fn get_unchecked(self, i: usize) -> Self::Scalar;
     /// Extract an element of a vector.
+    #[inline]
     fn get(self, i: usize) -> Self::Scalar {
         assert!(i < Self::WIDTH);
         unsafe { self.get_unchecked(i) }
@@ -41,33 +42,40 @@ pub unsafe trait Packed:
 
     /// Apply a function on each element and construct a new vector of a
     /// different type.
+    #[inline]
     fn map_to<T: Packed, F: FnMut(Self::Scalar) -> T::Scalar>(self, mut f: F) -> T {
         unsafe { T::table(|i| f(self.get_unchecked(i))) }
     }
     /// Apply a function on each element and construct a new vector of the same
     /// type.
+    #[inline]
     fn map<F: FnMut(Self::Scalar) -> Self::Scalar>(self, f: F) -> Self {
         self.map_to(f)
     }
 
+    #[inline]
     fn splat(x: Self::Scalar) -> Self {
         Self::table(|_| x)
     }
 
     /// Cast each element to `u8` and construct a new vector.
+    #[inline]
     fn as_u8(self) -> <Self::Mode as SimdMode>::U8 {
         self.map_to(|x| x.as_())
     }
     /// Cast each element to `u16` and construct a new vector.
+    #[inline]
     fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
         self.map_to(|x| x.as_())
     }
     /// Cast each element to `u32` and construct a new vector.
+    #[inline]
     fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
         self.map_to(|x| x.as_())
     }
 
     /// Cast each element to `i16` and construct a new vector.
+    #[inline]
     fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {
         self.map_to(|x| x.as_())
     }
@@ -79,6 +87,7 @@ pub unsafe trait Packed:
     /// The load may be implemented by 4-byte sized loads. This means that if
     /// the scalar type is `u8`, 3 bytes following the specified location may
     /// be actually accessed.
+    #[inline]
     unsafe fn gather32_ptr(
         base: *const Self::Scalar,
         offset: <Self::Mode as SimdMode>::U32,
@@ -91,6 +100,7 @@ pub unsafe trait Packed:
     /// Bounds check is only performed on debug builds.
     ///
     /// The load index is computed as `slice[offset * scale]`.
+    #[inline]
     unsafe fn gather32_unchecked(
         slice: &[Self::Scalar],
         offset: <Self::Mode as SimdMode>::U32,
@@ -118,6 +128,7 @@ pub trait IntPacked:
     + ops::ShlAssign<u32>
 {
     /// Perform a left shift by a variable amount on each component.
+    #[inline]
     fn shl_var(self, rhs: <Self::Mode as SimdMode>::U32) -> Self
     where
         Self::Scalar: ops::Shl<u32, Output = Self::Scalar>,
@@ -129,6 +140,7 @@ pub trait IntPacked:
 pub trait PackedU8: Packed<Scalar = u8> + IntPacked {}
 pub trait PackedU16: Packed<Scalar = u16> + IntPacked {
     /// Multiply and extract the 16 most significant bits of the 32-bit result.
+    #[inline]
     fn mul_hi_epu16(self, rhs: Self) -> Self {
         Self::table(|i| unsafe {
             ((self.get_unchecked(i) as u32 * rhs.get_unchecked(i) as u32) >> 16) as u16
@@ -143,6 +155,7 @@ pub trait PackedI16: Packed<Scalar = i16> + IntPacked {
     /// This operation can be explained as following: Treat operands as signed
     /// 1.15 fixed point numbers. Multiply them together with correct
     /// rounding.
+    #[inline]
     fn mul_hrs_epi16(self, rhs: Self) -> Self {
         Self::table(|i| unsafe {
             ((self.get_unchecked(i) as i32 * rhs.get_unchecked(i) as i32 + 16384) >> 15) as i16
@@ -175,9 +188,11 @@ macro_rules! impl_scalar {
             type Mode = ScalarMode;
             const WIDTH: usize = 1;
 
+            #[inline]
             fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
                 f(0)
             }
+            #[inline]
             unsafe fn get_unchecked(self, _: usize) -> Self::Scalar {
                 self
             }
@@ -207,22 +222,26 @@ macro_rules! impl_packed_ops {
     ($type:tt, $($field:tt),*) => {
         impl ::std::ops::Add for $type {
             type Output = Self;
+            #[inline]
             fn add(self, rhs: Self) -> Self {
                 $type($(self.$field + rhs.$field),*)
             }
         }
         impl ::std::ops::Sub for $type {
             type Output = Self;
+            #[inline]
             fn sub(self, rhs: Self) -> Self {
                 $type($(self.$field - rhs.$field),*)
             }
         }
         impl ::std::ops::AddAssign for $type {
+            #[inline]
             fn add_assign(&mut self, rhs: Self) {
                 *self = *self + rhs;
             }
         }
         impl ::std::ops::SubAssign for $type {
+            #[inline]
             fn sub_assign(&mut self, rhs: Self) {
                 *self = *self - rhs;
             }
@@ -236,22 +255,26 @@ macro_rules! impl_int_packed_ops {
     ($type:tt, $($field:tt),*) => {
         impl ::std::ops::Shr<u32> for $type {
             type Output = Self;
+            #[inline]
             fn shr(self, rhs: u32) -> Self {
                 $type($(self.$field >> rhs),*)
             }
         }
         impl ::std::ops::Shl<u32> for $type {
             type Output = Self;
+            #[inline]
             fn shl(self, rhs: u32) -> Self {
                 $type($(self.$field << rhs),*)
             }
         }
         impl ::std::ops::ShlAssign<u32> for $type {
+            #[inline]
             fn shl_assign(&mut self, rhs: u32) {
                 *self = *self << rhs;
             }
         }
         impl ::std::ops::ShrAssign<u32> for $type {
+            #[inline]
             fn shr_assign(&mut self, rhs: u32) {
                 *self = *self >> rhs;
             }

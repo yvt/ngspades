@@ -28,6 +28,7 @@ unsafe impl Packed for Simd16U8 {
     type Mode = Simd16Mode;
     const WIDTH: usize = 16;
 
+    #[inline]
     fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
         Simd16U8(simd::u8x16::new(
             f(0),
@@ -71,6 +72,7 @@ unsafe impl Packed for Simd16U8 {
         self.as_u16().as_i16()
     }
 
+    #[inline]
     #[cfg(target_feature = "avx2")]
     unsafe fn gather32_ptr(
         base: *const Self::Scalar,
@@ -113,6 +115,7 @@ mod avx2 {
     impl_int_packed_ops!(Simd16U16, 0);
 
     impl Simd16U16 {
+        #[inline]
         pub(super) fn from_u8(x: Simd16U8) -> Self {
             unsafe { Simd16U16(vendor::_mm256_cvtepu8_epi16(x.0.into()).into()) }
         }
@@ -123,6 +126,7 @@ mod avx2 {
         type Mode = Simd16Mode;
         const WIDTH: usize = 16;
 
+        #[inline]
         fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
             Simd16U16(simd::u16x16::new(
                 f(0),
@@ -150,6 +154,7 @@ mod avx2 {
             Simd16U16(simd::u16x16::splat(x))
         }
 
+        #[inline]
         fn as_u8(self) -> <Self::Mode as SimdMode>::U8 {
             unsafe {
                 // Discard upper 8 bits so they don't affect the result of
@@ -174,6 +179,7 @@ mod avx2 {
             Simd16I16(self.0.into())
         }
 
+        #[inline]
         unsafe fn gather32_ptr(
             base: *const Self::Scalar,
             offset: <Self::Mode as SimdMode>::U32,
@@ -221,6 +227,7 @@ mod avx2 {
     impl_int_packed_ops!(Simd16U32, 0, 1);
 
     impl Simd16U32 {
+        #[inline]
         pub(super) fn from_u8(x: Simd16U8) -> Self {
             unsafe {
                 let hi = vendor::_mm_shuffle_epi32(x.0.into(), 0b_11_10_11_10);
@@ -237,12 +244,14 @@ mod avx2 {
         type Mode = Simd16Mode;
         const WIDTH: usize = 16;
 
+        #[inline]
         fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
             Simd16U32(
                 simd::u32x8::new(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7)),
                 simd::u32x8::new(f(8), f(9), f(10), f(11), f(12), f(13), f(14), f(15)),
             )
         }
+        #[inline]
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
             if i < 8 {
                 self.0.extract_unchecked(i as u32)
@@ -264,6 +273,11 @@ mod avx2 {
             self
         }
 
+        fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {
+            self.as_u16().as_i16()
+        }
+
+        #[inline]
         unsafe fn gather32_ptr(
             base: *const Self::Scalar,
             offset: <Self::Mode as SimdMode>::U32,
@@ -285,6 +299,7 @@ mod avx2 {
     }
 
     impl IntPacked for Simd16U32 {
+        #[inline]
         fn shl_var(self, rhs: <Self::Mode as SimdMode>::U32) -> Self {
             unsafe {
                 Simd16U32(
@@ -307,6 +322,7 @@ mod avx2 {
         type Mode = Simd16Mode;
         const WIDTH: usize = 16;
 
+        #[inline]
         fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
             Simd16I16(simd::i16x16::new(
                 f(0),
@@ -359,6 +375,7 @@ mod avx2 {
 
     impl IntPacked for Simd16I16 {}
     impl PackedI16 for Simd16I16 {
+        #[inline]
         #[cfg(target_feature = "ssse3")]
         fn mul_hrs_epi16(self, rhs: Self) -> Self {
             unsafe { Simd16I16(vendor::_mm256_mulhrs_epi16(self.0, rhs.0)) }
@@ -384,12 +401,14 @@ mod generic {
         type Mode = Simd16Mode;
         const WIDTH: usize = 16;
 
+        #[inline]
         fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
             Simd16U16(
                 simd::u16x8::new(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7)),
                 simd::u16x8::new(f(8), f(9), f(10), f(11), f(12), f(13), f(14), f(15)),
             )
         }
+        #[inline]
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
             if i < 8 {
                 self.0.extract_unchecked(i as u32)
@@ -412,6 +431,7 @@ mod generic {
 
     impl IntPacked for Simd16U16 {}
     impl PackedU16 for Simd16U16 {
+        #[inline]
         #[cfg(target_feature = "sse2")]
         fn mul_hi_epu16(self, rhs: Self) -> Self {
             unsafe {
@@ -439,6 +459,7 @@ mod generic {
         type Mode = Simd16Mode;
         const WIDTH: usize = 16;
 
+        #[inline]
         fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
             Simd16U32(
                 simd::u32x4::new(f(0), f(1), f(2), f(3)),
@@ -447,6 +468,7 @@ mod generic {
                 simd::u32x4::new(f(12), f(13), f(14), f(15)),
             )
         }
+        #[inline]
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
             if i < 4 {
                 self.0.extract_unchecked(i as u32)
@@ -486,6 +508,7 @@ mod generic {
         type Mode = Simd16Mode;
         const WIDTH: usize = 16;
 
+        #[inline]
         fn table<F: FnMut(usize) -> Self::Scalar>(mut f: F) -> Self {
             Simd16I16(
                 simd::i16x8::new(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7)),
