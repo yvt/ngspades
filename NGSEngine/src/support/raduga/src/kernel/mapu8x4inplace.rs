@@ -172,12 +172,12 @@ pub trait MapU8x4InplaceKernelExt: MapU8x4InplaceKernel {
         let c0 = vendor::_mm256_permutevar8x32_epi32(b0, transpose4x2).into(); // 3210 hgfedcba
         let c1 = vendor::_mm256_permutevar8x32_epi32(b1, transpose4x2).into(); // 3210 ponmlkji
 
-        let d0 = vendor::_mm256_unpacklo_epi64(c0, c1).into(); // 10 ponmlkjihgfedcba
-        let d1 = vendor::_mm256_unpackhi_epi64(c0, c1).into(); // 32 ponmlkjihgfedcba
+        let d0 = vendor::_mm256_unpacklo_epi64(c0, c1).into(); // 20 ponmlkjihgfedcba
+        let d1 = vendor::_mm256_unpackhi_epi64(c0, c1).into(); // 31 ponmlkjihgfedcba
 
         let e0 = vendor::_mm256_extractf128_si256(d0, 0).into(); // 0 ponmlkjihgfedcba
-        let e1 = vendor::_mm256_extractf128_si256(d0, 1).into(); // 1 ponmlkjihgfedcba
-        let e2 = vendor::_mm256_extractf128_si256(d1, 0).into(); // 2 ponmlkjihgfedcba
+        let e1 = vendor::_mm256_extractf128_si256(d1, 0).into(); // 1 ponmlkjihgfedcba
+        let e2 = vendor::_mm256_extractf128_si256(d0, 1).into(); // 2 ponmlkjihgfedcba
         let e3 = vendor::_mm256_extractf128_si256(d1, 1).into(); // 3 ponmlkjihgfedcba
 
         let f = self.apply::<simd16::Simd16Mode>([
