@@ -3,7 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-//! SIMD wrapper similar to [`faster`], but with more explicit developer control.
+//! Raduga (радуга; rainbow) is a SIMD wrapper similar to [`faster`], but with
+//! more explicit developer control.
+//!
+//! <a href="https://derpibooru.org/1155840">![Радуга Дэш](https://derpicdn.net/img/2016/5/17/1155840/large.png)</a>
 //!
 //! [`faster`]: https://docs.adamniederer.com/faster/index.html
 #![feature(cfg_target_feature)]
