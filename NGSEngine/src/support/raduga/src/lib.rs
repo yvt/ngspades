@@ -10,6 +10,9 @@
 extern crate num_traits;
 extern crate stdsimd;
 
+#[allow(dead_code)]
+mod intrin;
+
 #[macro_use]
 mod packed;
 pub use packed::*;

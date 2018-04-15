@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use intrin;
 use stdsimd::{simd, vendor};
 use {IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
 
@@ -80,23 +81,11 @@ unsafe impl Packed for Simd16U8 {
         scale: u8,
     ) -> Self {
         // Load 4-byte values
-        let data0 = vendor::_mm256_i32gather_epi32(base as *const _, offset.0.into(), scale as i32);
-        let data1 = vendor::_mm256_i32gather_epi32(base as *const _, offset.1.into(), scale as i32);
+        let data0 = intrin::mm256_i32gather_epi32(base as *const _, offset.0.into(), scale as i32);
+        let data1 = intrin::mm256_i32gather_epi32(base as *const _, offset.1.into(), scale as i32);
 
-        // Discard upper 24 bits so they don't affect the result of
-        // `_mm256_packus_epi32` (which casts `i32` to `u16` with saturation)
-        // and  `_mm256_packus_epi16` (which casts `i16` to `u8` with saturation)
-        let data0 = data0 & simd::i32x8::splat(0xff);
-        let data1 = data1 & simd::i32x8::splat(0xff);
-
-        let i16s = vendor::_mm256_packus_epi32(data0, data1);
-        let i16s = vendor::_mm256_permute4x64_epi64(i16s.into(), 0b_11_01_10_00);
-
-        // Split into two `m128i`s
-        let lo = vendor::_mm256_extractf128_si256(i16s.into(), 0).into();
-        let hi = vendor::_mm256_extractf128_si256(i16s.into(), 1).into();
-
-        Simd16U8(vendor::_mm_packus_epi16(lo, hi))
+        // Throw away the extra 24 MSBs
+        Simd16U32(data0.into(), data1.into()).as_u8()
     }
 }
 
@@ -172,7 +161,15 @@ mod avx2 {
             self
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
-            unimplemented!()
+            unsafe {
+                let lo = vendor::_mm256_extractf128_si256(self.0.into(), 0).into();
+                let hi = vendor::_mm256_extractf128_si256(self.0.into(), 1).into();
+
+                Simd16U32(
+                    vendor::_mm256_cvtepu16_epi32(lo).into(),
+                    vendor::_mm256_cvtepu16_epi32(hi).into(),
+                )
+            }
         }
 
         fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {
@@ -186,25 +183,19 @@ mod avx2 {
             scale: u8,
         ) -> Self {
             // Load 4-byte values
-            let data0 = vendor::_mm256_i32gather_epi32(
+            let data0 = intrin::mm256_i32gather_epi32(
                 base as *const _,
                 offset.0.into(),
                 (scale * 2) as i32,
             );
-            let data1 = vendor::_mm256_i32gather_epi32(
+            let data1 = intrin::mm256_i32gather_epi32(
                 base as *const _,
                 offset.1.into(),
                 (scale * 2) as i32,
             );
 
-            // Discard upper 16 bits so they don't affect the result of
-            // `_mm256_packus_epi32` (which casts `i32` to `u16` with saturation)
-            let data0 = data0 & simd::i32x8::splat(0xffff);
-            let data1 = data1 & simd::i32x8::splat(0xffff);
-
-            let i16s = vendor::_mm256_packus_epi32(data0, data1);
-            let i16s = vendor::_mm256_permute4x64_epi64(i16s.into(), 0b_11_01_10_00);
-            Simd16U16(i16s.into())
+            // Throw away the extra 16 MSBs
+            Simd16U32(data0.into(), data1.into()).as_u16()
         }
     }
 
@@ -264,10 +255,34 @@ mod avx2 {
         }
 
         fn as_u8(self) -> <Self::Mode as SimdMode>::U8 {
-            unimplemented!()
+            unsafe {
+                // Discard upper 24 bits so they don't affect the result of
+                // `_mm256_packus_epi32` (which casts `i32` to `u16` with saturation)
+                // and  `_mm256_packus_epi16` (which casts `i16` to `u8` with saturation)
+                let data0 = self.0 & simd::u32x8::splat(0xff);
+                let data1 = self.1 & simd::u32x8::splat(0xff);
+
+                let i16s = vendor::_mm256_packus_epi32(data0.into(), data1.into());
+                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into(), 0b_11_01_10_00);
+
+                // Split into two `m128i`s
+                let lo = vendor::_mm256_extractf128_si256(i16s.into(), 0).into();
+                let hi = vendor::_mm256_extractf128_si256(i16s.into(), 1).into();
+
+                Simd16U8(vendor::_mm_packus_epi16(lo, hi))
+            }
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
-            unimplemented!()
+            unsafe {
+                // Discard upper 16 bits so they don't affect the result of
+                // `_mm256_packus_epi32` (which casts `i32` to `u16` with saturation)
+                let data0 = self.0 & simd::u32x8::splat(0xffff);
+                let data1 = self.1 & simd::u32x8::splat(0xffff);
+
+                let i16s = vendor::_mm256_packus_epi32(data0.into(), data1.into());
+                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into(), 0b_11_01_10_00);
+                Simd16U16(i16s.into())
+            }
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
             self
@@ -284,12 +299,12 @@ mod avx2 {
             scale: u8,
         ) -> Self {
             Simd16U32(
-                vendor::_mm256_i32gather_epi32(
+                intrin::mm256_i32gather_epi32(
                     base as *const _,
                     offset.0.into(),
                     (scale * 4) as i32,
                 ).into(),
-                vendor::_mm256_i32gather_epi32(
+                intrin::mm256_i32gather_epi32(
                     base as *const _,
                     offset.1.into(),
                     (scale * 4) as i32,
@@ -526,8 +541,14 @@ mod generic {
             Simd16I16(simd::i16x8::splat(x), simd::i16x8::splat(x))
         }
 
+        fn as_u8(self) -> <Self::Mode as SimdMode>::U8 {
+            self.as_u16().as_u8()
+        }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
             Simd16U16(self.0.into(), self.1.into())
+        }
+        fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
+            self.as_u16().as_u32()
         }
 
         fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {

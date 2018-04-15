@@ -1197,6 +1197,7 @@ version = "0.1.0"
 dependencies = [
  "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "stdsimd 0.0.4-1 (git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941)",
+ "x86intrin 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1846,6 +1847,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "x86intrin"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "xalloc"
 version = "0.2.3"
 dependencies = [
@@ -2273,6 +2279,7 @@ dependencies = [
 "checksum winit 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a282d348b2a57f74617972c08dda0ff74a7383c9fe4f861a882e6fbba46a6521"
 "checksum winit 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)" = "238df88e5264f09b6d03021143ac914558fe09673b685d98f9c43210a1d4c284"
 "checksum x11-dl 2.17.5 (registry+https://github.com/rust-lang/crates.io-index)" = "3235540540fde1ae074c8df49054166c0e070407f1c6e1ee17b8c87c2c7bcc7d"
+"checksum x86intrin 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "e8ec523721fe879b70e9d17f3e2c771fcdc3a759fbab81e954a336c6beb0df1e"
 "checksum xi-unicode 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "12ea8eda4b1eb72f02d148402e23832d56a33f55d8c1b2d5bcdde91d79d47cb1"
 "checksum xml-rs 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e1945e12e16b951721d7976520b0832496ef79c31602c7a29d950de79ba74621"
 "checksum xml-rs 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3c1cb601d29fe2c2ac60a2b2e5e293994d87a1f6fa9687a31a15270f909be9c2"

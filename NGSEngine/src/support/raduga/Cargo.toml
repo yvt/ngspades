@@ -5,6 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 num-traits = "0.2.2"
+x86intrin = "0.4.5"
 
 # Official master branch has issues with the lastest Nightly rustc:
 #   https://github.com/rust-lang-nursery/stdsimd/issues/404#issuecomment-378482971
