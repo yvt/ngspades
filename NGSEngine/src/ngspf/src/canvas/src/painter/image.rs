@@ -135,6 +135,7 @@ impl<'a> RasterPort for SrgbRgba8RasterPort<'a> {
             src_int: blend::Srgb8InternalColor,
         }
         impl MapU8x4InplaceKernel for Kernel {
+            #[inline]
             fn apply<M: SimdMode>(&self, x: [M::U8; 4]) -> [M::U8; 4] {
                 blend::srgb8_alpha_over::<M>(self.src_int, x)
             }

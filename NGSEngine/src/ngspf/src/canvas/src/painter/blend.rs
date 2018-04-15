@@ -38,6 +38,7 @@ pub fn srgb8_internal_mask(x: Srgb8InternalColor, coverage: u8) -> Srgb8Internal
 }
 
 /// Blend `src` over `dst`.
+#[inline]
 pub fn srgb8_alpha_over<M: SimdMode>(src: Srgb8InternalColor, dst: [M::U8; 4]) -> [M::U8; 4] {
     // TODO: Use SIMD intrinsics to accelerate the rendering
 
