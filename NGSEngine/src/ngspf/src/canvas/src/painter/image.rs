@@ -69,14 +69,6 @@ impl<'a> Painter for ImagePainter<'a> {
 
 use super::blend;
 
-fn pack_u8x4(a: [u8; 4]) -> u32 {
-    unsafe { ::std::mem::transmute(a) }
-}
-
-fn unpack_u8x4(a: u32) -> [u8; 4] {
-    unsafe { ::std::mem::transmute(a) }
-}
-
 pub(crate) trait RasterPort {
     fn size(&self) -> Vector2<usize>;
 
