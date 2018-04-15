@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use simd16;
 use stdsimd::{simd, vendor};
+use {intrin, simd16};
 use {ScalarMode, SimdMode};
 
 /// Kernels that apply a function on an interleaved array of `[u8; 4]`s.
@@ -94,17 +94,16 @@ pub trait MapU8x4InplaceKernelExt: MapU8x4InplaceKernel {
     }
 
     #[doc(hidden)]
-    #[cfg(target_feature = "sse2")]
+    #[cfg(all(target_feature = "sse2", not(target_feature = "avx2")))]
     fn dispatch_simd16_unaligned(&self, slice: &mut [u8]) -> bool {
         let mut p = slice.as_mut_ptr();
         let mut i = 0;
         while i + 63 < slice.len() {
             unsafe {
-                // [ 3d 2d 1d 0d ] [ 3c 2c 1c 0c ] [ 3b 2b 1b 0b ] [ 3a 2a 1a 0a ]
-                let a0 = vendor::_mm_loadu_si128(p as *const simd::__m128i).into(); // 3210 dcba
-                let a1 = vendor::_mm_loadu_si128(p.offset(16) as *const simd::__m128i).into(); // 3210 hgfe
-                let a2 = vendor::_mm_loadu_si128(p.offset(32) as *const simd::__m128i).into(); // 3210 lkji
-                let a3 = vendor::_mm_loadu_si128(p.offset(48) as *const simd::__m128i).into(); // 3210 ponm
+                let a0 = vendor::_mm_loadu_si128(p as *const simd::__m128i).into();
+                let a1 = vendor::_mm_loadu_si128(p.offset(16) as *const simd::__m128i).into();
+                let a2 = vendor::_mm_loadu_si128(p.offset(32) as *const simd::__m128i).into();
+                let a3 = vendor::_mm_loadu_si128(p.offset(48) as *const simd::__m128i).into();
 
                 let f = self.dispatch_simd16_m128([a0, a1, a2, a3]);
 
@@ -112,6 +111,30 @@ pub trait MapU8x4InplaceKernelExt: MapU8x4InplaceKernel {
                 vendor::_mm_storeu_si128(p.offset(16) as *mut simd::__m128i, f[1]);
                 vendor::_mm_storeu_si128(p.offset(32) as *mut simd::__m128i, f[2]);
                 vendor::_mm_storeu_si128(p.offset(48) as *mut simd::__m128i, f[3]);
+
+                p = p.offset(64);
+                i += 64;
+            }
+        }
+
+        self.dispatch_scalar(&mut slice[i..]);
+        true
+    }
+
+    #[doc(hidden)]
+    #[cfg(target_feature = "avx2")]
+    fn dispatch_simd16_unaligned(&self, slice: &mut [u8]) -> bool {
+        let mut p = slice.as_mut_ptr();
+        let mut i = 0;
+        while i + 63 < slice.len() {
+            unsafe {
+                let a0 = vendor::_mm256_loadu_si256(p as *const simd::__m256i).into();
+                let a1 = vendor::_mm256_loadu_si256(p.offset(32) as *const simd::__m256i).into();
+
+                let f = self.dispatch_simd16_m256([a0, a1]);
+
+                vendor::_mm256_storeu_si256(p as *mut simd::__m256i, f[0]);
+                vendor::_mm256_storeu_si256(p.offset(32) as *mut simd::__m256i, f[1]);
 
                 p = p.offset(64);
                 i += 64;
@@ -132,27 +155,72 @@ pub trait MapU8x4InplaceKernelExt: MapU8x4InplaceKernel {
     #[cfg(target_feature = "avx2")]
     #[inline(always)]
     unsafe fn dispatch_simd16_m256(&self, a: [simd::__m256i; 2]) -> [simd::__m256i; 2] {
-        let b0 = vendor::_mm256_extractf128_si256(a[0], 0).into();
-        let b1 = vendor::_mm256_extractf128_si256(a[0], 1).into();
-        let b2 = vendor::_mm256_extractf128_si256(a[1], 0).into();
-        let b3 = vendor::_mm256_extractf128_si256(a[1], 1).into();
+        // ... [ 3d 2d 1d 0d ] [ 3c 2c 1c 0c ] [ 3b 2b 1b 0b ] [ 3a 2a 1a 0a ]
+        let a0 = a[0]; // hgfedcba 3210
+        let a1 = a[1]; // ponmlkji 3210
 
-        let c = self.dispatch_simd16_m128([b0, b1, b2, b3]);
+        let transpose4x4 = simd::u8x32::new(
+            0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 0, 4, 8, 12, 1, 5, 9, 13, 2, 6,
+            10, 14, 3, 7, 11, 15,
+        );
 
-        let d0 = vendor::_mm256_set_m128i(c[1].into(), c[0].into());
-        let d1 = vendor::_mm256_set_m128i(c[3].into(), c[2].into());
+        let b0 = vendor::_mm256_shuffle_epi8(a0.into(), transpose4x4).into(); // 3210 hgfe / 3210 dcba
+        let b1 = vendor::_mm256_shuffle_epi8(a1.into(), transpose4x4).into(); // 3210 ponm / 3210 lkji
 
-        [d0, d1]
+        let transpose4x2 = simd::u32x8::new(0, 4, 1, 5, 2, 6, 3, 7);
+
+        let c0 = vendor::_mm256_permutevar8x32_epi32(b0, transpose4x2).into(); // 3210 hgfedcba
+        let c1 = vendor::_mm256_permutevar8x32_epi32(b1, transpose4x2).into(); // 3210 ponmlkji
+
+        let d0 = vendor::_mm256_unpacklo_epi64(c0, c1).into(); // 10 ponmlkjihgfedcba
+        let d1 = vendor::_mm256_unpackhi_epi64(c0, c1).into(); // 32 ponmlkjihgfedcba
+
+        let e0 = vendor::_mm256_extractf128_si256(d0, 0).into(); // 0 ponmlkjihgfedcba
+        let e1 = vendor::_mm256_extractf128_si256(d0, 1).into(); // 1 ponmlkjihgfedcba
+        let e2 = vendor::_mm256_extractf128_si256(d1, 0).into(); // 2 ponmlkjihgfedcba
+        let e3 = vendor::_mm256_extractf128_si256(d1, 1).into(); // 3 ponmlkjihgfedcba
+
+        let f = self.apply::<simd16::Simd16Mode>([
+            simd16::Simd16U8(e0),
+            simd16::Simd16U8(e1),
+            simd16::Simd16U8(e2),
+            simd16::Simd16U8(e3),
+        ]);
+
+        let f0 = f[0].0.into();
+        let f1 = f[1].0.into();
+        let f2 = f[2].0.into();
+        let f3 = f[3].0.into();
+
+        let g0 = vendor::_mm256_set_m128i(f1, f0).into(); // 10 ponmlkjihgfedcba
+        let g1 = vendor::_mm256_set_m128i(f3, f2).into(); // 32 ponmlkjihgfedcba
+
+        let h0 = vendor::_mm256_permute4x64_epi64(g0, 0b11_01_10_00).into(); // 10 ponmlkji / 10 hgfedcba
+        let h1 = vendor::_mm256_permute4x64_epi64(g1, 0b11_01_10_00).into(); // 32 ponmlkji / 32 hgfedcba
+
+        let i0 = intrin::mm256_permute2x128_si256(h0, h1, 0b0010_0000).into(); // 3210 hgfedcba
+        let i1 = intrin::mm256_permute2x128_si256(h0, h1, 0b0011_0001).into(); // 3210 ponmlkji
+
+        let transpose2x4 = simd::u32x8::new(0, 2, 4, 6, 1, 3, 5, 7);
+
+        let j0 = vendor::_mm256_permutevar8x32_epi32(i0, transpose2x4).into(); // 3210 hgfe / 3210 dcba
+        let j1 = vendor::_mm256_permutevar8x32_epi32(i1, transpose2x4).into(); // 3210 ponm / 3210 lkji
+
+        let k0 = vendor::_mm256_shuffle_epi8(j0, transpose4x4).into(); // hgfedcba 3210
+        let k1 = vendor::_mm256_shuffle_epi8(j1, transpose4x4).into(); // ponmlkji 3210
+
+        [k0, k1]
     }
 
     #[doc(hidden)]
     #[cfg(target_feature = "sse2")]
     #[inline(always)]
     unsafe fn dispatch_simd16_m128(&self, x: [simd::__m128i; 4]) -> [simd::__m128i; 4] {
-        let a0 = x[0].into();
-        let a1 = x[1].into();
-        let a2 = x[2].into();
-        let a3 = x[3].into();
+        // [ 3d 2d 1d 0d ] [ 3c 2c 1c 0c ] [ 3b 2b 1b 0b ] [ 3a 2a 1a 0a ]
+        let a0 = x[0].into(); // dcba 3210
+        let a1 = x[1].into(); // hgfe 3210
+        let a2 = x[2].into(); // lkji 3210
+        let a3 = x[3].into(); // ponm 3210
 
         // [ 3f 3b ] [ 2f 2b ] [ 1f 1b ] [ 0f 0b ] [ 3e 3a ] [ 2e 2a ] [ 1e 1a ] [ 0e 0a ]
         let b0 = vendor::_mm_unpacklo_epi8(a0, a1).into(); // 3210 fb / 3210 ea
