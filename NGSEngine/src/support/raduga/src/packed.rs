@@ -135,6 +135,8 @@ pub trait IntPacked:
     {
         Self::table(|i| unsafe { self.get_unchecked(i) << rhs.get_unchecked(i) })
     }
+
+    // TODO: Wrapping add/sub
 }
 
 pub trait PackedU8: Packed<Scalar = u8> + IntPacked {}

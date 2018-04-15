@@ -285,3 +285,60 @@ pub trait MapU8x4InplaceKernelExt: MapU8x4InplaceKernel {
 }
 
 impl<T: MapU8x4InplaceKernel + ?Sized> MapU8x4InplaceKernelExt for T {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prelude::*;
+
+    struct Xorshift32(u32);
+
+    impl Xorshift32 {
+        fn next(&mut self) -> u32 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 17;
+            self.0 ^= self.0 << 5;
+            self.0
+        }
+    }
+
+    #[test]
+    fn dispatchers_agree() {
+        struct Kernel;
+        impl MapU8x4InplaceKernel for Kernel {
+            #[inline]
+            fn apply<M: SimdMode>(&self, x: [M::U8; 4]) -> [M::U8; 4] {
+                [
+                    x[0] + M::U8::splat(64) + x[1] + x[2] + x[3] + M::U8::splat(11),
+                    x[0] + M::U8::splat(64) - x[1] + x[2] - x[3] + M::U8::splat(45),
+                    x[0] + M::U8::splat(64) + x[1] - x[2] - x[3] + M::U8::splat(1),
+                    x[0] + M::U8::splat(64) - x[1] - x[2] + x[3] + M::U8::splat(4),
+                ]
+            }
+        }
+
+        let mut state = Xorshift32(12345);
+        let input: Vec<_> = (0..256).map(|_| state.next() as u8 >> 3).collect();
+
+        for &range_start in [0, 4, 16, 17, 128].iter() {
+            for &range_end in [128, 132, 255, 256].iter() {
+                let range = range_start..range_end;
+
+                println!("Range = {:?}", range);
+
+                let mut reference = input.clone();
+                Kernel.dispatch_scalar(&mut reference[range.clone()]);
+
+                let mut result = input.clone();
+                if Kernel.dispatch_simd16_masked(&mut result[range.clone()]) {
+                    assert_eq!(result, reference);
+                }
+
+                let mut result = input.clone();
+                if Kernel.dispatch_simd16_unaligned(&mut result[range.clone()]) {
+                    assert_eq!(result, reference);
+                }
+            }
+        }
+    }
+}
