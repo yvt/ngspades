@@ -5,14 +5,12 @@
 //
 using System;
 
-namespace Ngs.Engine.Presentation
-{
+namespace Ngs.Engine.Presentation {
     /// <summary>
     /// Specifies properties of a layer.
     /// </summary>
     [Flags]
-    public enum LayerFlags
-    {
+    public enum LayerFlags {
         /// <summary>
         /// <para>
         /// Instructs to rasterize the contents of the layer.

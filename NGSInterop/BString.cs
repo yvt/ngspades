@@ -4,13 +4,11 @@
 // This source code is a part of Nightingales.
 //
 using System;
-using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Reflection.Emit;
-namespace Ngs.Interop
-{
-    public static partial class NgscomMarshal
-    {
+using System.Runtime.InteropServices;
+namespace Ngs.Interop {
+    public static partial class NgscomMarshal {
 
         /*
          * BString in NgsCOM is completely different from XPCOM/MSCOM's BSTR and
@@ -28,80 +26,69 @@ namespace Ngs.Interop
          *          operator delete(this);
          *      }
          *
-		 *      union {
+         *      union {
          *      	int32_t const m_length;
-		 *			size_t const m_pad;
-		 *		};
+         *			size_t const m_pad;
+         *		};
          *      char m_data[1]; // variable length, UTF-8 encoded
          *  };
          */
 
-        delegate void BStringDestruct(IntPtr ptr);
+        delegate void BStringDestruct (IntPtr ptr);
 
         [System.Security.SecurityCritical]
-        private static class BStringVTable
-        {
+        private static class BStringVTable {
             public static readonly IntPtr[] vtable = new IntPtr[1];
-            static readonly object sync = new object();
+            static readonly object sync = new object ();
             static GCHandle gcHandle;
             static int refCount = 0;
 
-            public static void BStringDestructor(IntPtr ptr)
-            {
-                Marshal.FreeHGlobal(ptr);
-                ReleaseVTable();
+            public static void BStringDestructor (IntPtr ptr) {
+                Marshal.FreeHGlobal (ptr);
+                ReleaseVTable ();
             }
 
-            static BStringVTable()
-            {
+            static BStringVTable () {
                 // FIXME: ahead-of-time generation of this for Mono's Full AOT
-                var dynamicMethod = new DynamicMethod("GetBStringDestructorFPtr",
-                    typeof(IntPtr), new Type[] { });
-                var gen = dynamicMethod.GetILGenerator();
-                gen.Emit(OpCodes.Ldftn, typeof(BStringVTable)
-                    .GetRuntimeMethod("BStringDestructor", new[] { typeof(IntPtr) }));
-                gen.Emit(OpCodes.Ret);
-                var dlg = (Func<IntPtr>)dynamicMethod.CreateDelegate(typeof(Func<IntPtr>));
-                vtable[0] = dlg();
+                var dynamicMethod = new DynamicMethod ("GetBStringDestructorFPtr",
+                    typeof (IntPtr), new Type[] { });
+                var gen = dynamicMethod.GetILGenerator ();
+                gen.Emit (OpCodes.Ldftn, typeof (BStringVTable)
+                    .GetRuntimeMethod ("BStringDestructor", new [] { typeof (IntPtr) }));
+                gen.Emit (OpCodes.Ret);
+                var dlg = (Func<IntPtr>) dynamicMethod.CreateDelegate (typeof (Func<IntPtr>));
+                vtable[0] = dlg ();
             }
 
-            static IntPtr GetVTable()
-            {
-                lock (sync)
-                {
-                    if (refCount == 0)
-                    {
-                        gcHandle = GCHandle.Alloc(vtable, GCHandleType.Pinned);
+            static IntPtr GetVTable () {
+                lock (sync) {
+                    if (refCount == 0) {
+                        gcHandle = GCHandle.Alloc (vtable, GCHandleType.Pinned);
                     }
                     ++refCount;
-                    return gcHandle.AddrOfPinnedObject();
+                    return gcHandle.AddrOfPinnedObject ();
                 }
             }
 
-            static void ReleaseVTable()
-            {
-                lock (sync)
-                {
+            static void ReleaseVTable () {
+                lock (sync) {
                     --refCount;
-                    if (refCount == 0)
-                    {
-                        gcHandle.Free();
+                    if (refCount == 0) {
+                        gcHandle.Free ();
                     }
                 }
             }
 
-            public unsafe static IntPtr Create(int length)
-            {
-                if (length < 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(length));
+            public unsafe static IntPtr Create (int length) {
+                if (length < 0) {
+                    throw new ArgumentOutOfRangeException (nameof (length));
                 }
-                var ptr = Marshal.AllocHGlobal(length + sizeof(IntPtr) * 2 + 1);
-                byte* bptr = (byte*)ptr.ToPointer();
-                *((IntPtr*)bptr) = GetVTable();
-                *((IntPtr*)(bptr + sizeof(IntPtr))) = IntPtr.Zero;
-                *((int*)(bptr + sizeof(IntPtr))) = length;
-                bptr[sizeof(IntPtr) * 2 + length] = 0; // null terminator
+                var ptr = Marshal.AllocHGlobal (length + sizeof (IntPtr) * 2 + 1);
+                byte * bptr = (byte * ) ptr.ToPointer ();
+                *((IntPtr * ) bptr) = GetVTable ();
+                *((IntPtr * ) (bptr + sizeof (IntPtr))) = IntPtr.Zero;
+                *((int * ) (bptr + sizeof (IntPtr))) = length;
+                bptr[sizeof (IntPtr) * 2 + length] = 0; // null terminator
                 return ptr;
             }
         }
@@ -112,9 +99,8 @@ namespace Ngs.Interop
         /// <param name="length">The length of the string measured in bytes.</param>
         /// <returns>A pointer to the newly allocated <c>BString</c>.</returns>
         [System.Security.SecurityCritical]
-        public unsafe static IntPtr AllocZeroBString(int length)
-        {
-            return BStringVTable.Create(length);
+        public unsafe static IntPtr AllocZeroBString (int length) {
+            return BStringVTable.Create (length);
         }
 
         /// <summary>
@@ -123,16 +109,14 @@ namespace Ngs.Interop
         /// <param name="str">The contents to initialize the allocated <c>BString</c> with.</param>
         /// <returns>A pointer to the newly allocated <c>BString</c>.</returns>
         [System.Security.SecurityCritical]
-        public unsafe static IntPtr AllocBString(string str)
-        {
-            if (str == null)
-            {
+        public unsafe static IntPtr AllocBString (string str) {
+            if (str == null) {
                 return IntPtr.Zero;
             }
-            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(str);
-            var bstr = BStringVTable.Create(bytes.Length);
-            byte* dataptr = GetBStringDataPtr(bstr);
-            Marshal.Copy(bytes, 0, (IntPtr)dataptr, bytes.Length);
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes (str);
+            var bstr = BStringVTable.Create (bytes.Length);
+            byte * dataptr = GetBStringDataPtr (bstr);
+            Marshal.Copy (bytes, 0, (IntPtr) dataptr, bytes.Length);
             return bstr;
         }
 
@@ -142,9 +126,8 @@ namespace Ngs.Interop
         /// <param name="ptr">The pointer to a <c>BString</c>. Must not be a null pointer.</param>
         /// <returns>The pointer to the UTF-8 encoded contents of the string.</returns>
         [System.Security.SecurityCritical]
-        public unsafe static byte* GetBStringDataPtr(IntPtr ptr)
-        {
-            return (byte*)ptr + sizeof(IntPtr) * 2;
+        public unsafe static byte * GetBStringDataPtr (IntPtr ptr) {
+            return (byte * ) ptr + sizeof (IntPtr) * 2;
         }
 
         /// <summary>
@@ -153,9 +136,8 @@ namespace Ngs.Interop
         /// <param name="ptr">The pointer to a <c>BString</c>. Must not be a null pointer.</param>
         /// <returns>The length of string measured in bytes.</returns>
         [System.Security.SecurityCritical]
-        public unsafe static int GetBStringLength(IntPtr ptr)
-        {
-            return *(int*)((byte*)ptr + sizeof(IntPtr));
+        public unsafe static int GetBStringLength (IntPtr ptr) {
+            return *(int * ) ((byte * ) ptr + sizeof (IntPtr));
         }
 
         /// <summary>
@@ -167,19 +149,17 @@ namespace Ngs.Interop
         /// was a null pointer.
         /// </returns>
         [System.Security.SecurityCritical]
-        public unsafe static string BStringToString(IntPtr ptr)
-        {
-            if (ptr == (IntPtr)0)
-            {
+        public unsafe static string BStringToString (IntPtr ptr) {
+            if (ptr == (IntPtr) 0) {
                 return null;
             }
-            byte[] bytes = new byte[GetBStringLength(ptr)];
-            Marshal.Copy((IntPtr)GetBStringDataPtr(ptr), bytes, 0, bytes.Length);
-            return System.Text.Encoding.UTF8.GetString(bytes);
+            byte[] bytes = new byte[GetBStringLength (ptr)];
+            Marshal.Copy ((IntPtr) GetBStringDataPtr (ptr), bytes, 0, bytes.Length);
+            return System.Text.Encoding.UTF8.GetString (bytes);
         }
 
         [System.Security.SecurityCritical]
-        delegate void DestructIndirect(IntPtr fnptr, IntPtr ptr);
+        delegate void DestructIndirect (IntPtr fnptr, IntPtr ptr);
 
         /// <summary>
         /// Deallocates a <c>BString</c>.
@@ -190,27 +170,22 @@ namespace Ngs.Interop
         /// </remarks>
         /// <param name="ptr">The pointer to a <c>BString</c>.</param>
         [System.Security.SecurityCritical]
-        public unsafe static void FreeBString(IntPtr ptr)
-        {
+        public unsafe static void FreeBString (IntPtr ptr) {
             var releaseDelegate = DelegateRuntimeInfo<DestructIndirect>.RcfpwDelegate;
-            if (ptr == (IntPtr)0)
-            {
+            if (ptr == (IntPtr) 0) {
                 return;
             }
 
-            IntPtr* vtable = *((IntPtr**)ptr);
+            IntPtr * vtable = * ((IntPtr * * ) ptr);
 
             // call destructor
             IntPtr releaseFunctionPtr = vtable[0];
-            if (releaseFunctionPtr == BStringVTable.vtable[0])
-            {
+            if (releaseFunctionPtr == BStringVTable.vtable[0]) {
                 // calli on a function ptr created by GetFunctionPointerForDelegate crashes
                 // on .NET Core for some reason
-                BStringVTable.BStringDestructor(ptr);
-            }
-            else
-            {
-                releaseDelegate(releaseFunctionPtr, ptr);
+                BStringVTable.BStringDestructor (ptr);
+            } else {
+                releaseDelegate (releaseFunctionPtr, ptr);
             }
         }
     }
@@ -220,8 +195,7 @@ namespace Ngs.Interop
     /// Wraps a pointer to a <c>BString</c> and provides an access to various
     /// operations on it.
     /// </summary>
-    public struct BStringRef
-    {
+    public struct BStringRef {
         /// <summary>
         /// Retrieves a pointer to the <c>BString</c>.
         /// </summary>
@@ -233,8 +207,7 @@ namespace Ngs.Interop
         /// </summary>
         /// <param name="address">The pointer to a <c>BString</c>.</param>
         [System.Security.SecurityCritical]
-        BStringRef(IntPtr address)
-        {
+        BStringRef (IntPtr address) {
             this.Address = address;
         }
 
@@ -242,13 +215,13 @@ namespace Ngs.Interop
         /// Retrieves whether the pointer is null.
         /// </summary>
         /// <returns><c>true</c> if the pointer is null. <c>false</c> otherwise.</returns>
-        public bool IsNull => Address == (IntPtr)0;
+        public bool IsNull => Address == (IntPtr) 0;
 
         /// <summary>
         /// Retrieves a <see cref="BStringRef" /> with a null pointer.
         /// </summary>
         /// <returns>A <see cref="BStringRef" /> with a null pointer.</returns>
-        public static BStringRef Empty => new BStringRef();
+        public static BStringRef Empty => new BStringRef ();
 
         /// <summary>
         /// Creates a <see cref="BStringRef" /> with a pointer to a <c>BString</c>
@@ -258,9 +231,8 @@ namespace Ngs.Interop
         /// <returns>
         /// A <see cref="BStringRef" /> pointing the newly created <c>BString</c>.
         /// </returns>
-        public static BStringRef Create(string str)
-        {
-            return new BStringRef(NgscomMarshal.AllocBString(str));
+        public static BStringRef Create (string str) {
+            return new BStringRef (NgscomMarshal.AllocBString (str));
         }
 
         /// <summary>
@@ -271,24 +243,22 @@ namespace Ngs.Interop
         /// this method was called.
         /// </remarks>
         [System.Security.SecurityCritical]
-        public void Free()
-        {
-            NgscomMarshal.FreeBString(Address);
+        public void Free () {
+            NgscomMarshal.FreeBString (Address);
         }
 
         /// <summary>
         /// Retrieves the length of the <c>BString</c> measured in bytes.
         /// </summary>
         /// <returns>The length of the <c>BString</c> measured in bytes.</returns>
-        public int ByteLength => NgscomMarshal.GetBStringLength(Address);
+        public int ByteLength => NgscomMarshal.GetBStringLength (Address);
 
         /// <summary>
         /// Retrieves the contents of the <c>BString</c>.
         /// </summary>
         /// <returns>The contents of the <c>BString</c>.</returns>
-        public override string ToString()
-        {
-            return NgscomMarshal.BStringToString(Address);
+        public override string ToString () {
+            return NgscomMarshal.BStringToString (Address);
         }
     }
 }

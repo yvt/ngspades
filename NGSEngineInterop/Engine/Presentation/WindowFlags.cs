@@ -5,14 +5,12 @@
 //
 using System;
 
-namespace Ngs.Engine.Presentation
-{
+namespace Ngs.Engine.Presentation {
     /// <summary>
     /// Specifies properties of a window.
     /// </summary>
     [Flags]
-    public enum WindowFlags
-    {
+    public enum WindowFlags {
         /// <summary>
         /// <para>
         /// Specifies that the window can be resized by the user.

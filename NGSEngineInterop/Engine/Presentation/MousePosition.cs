@@ -6,14 +6,12 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace Ngs.Engine.Presentation
-{
+namespace Ngs.Engine.Presentation {
     /// <summary>
     /// Position data associated with a mouse input event.
     /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct MousePosition
-    {
+    [StructLayout (LayoutKind.Sequential)]
+    public struct MousePosition {
         private Vector2 client;
         private Vector2 global;
 
@@ -21,8 +19,7 @@ namespace Ngs.Engine.Presentation
         /// Sets or retrives the mouse cursor position (measured in device independent pixels)
         /// in the client coordinate space.
         /// </summary>
-        public Vector2 Client
-        {
+        public Vector2 Client {
             get { return this.client; }
             set { this.client = value; }
         }
@@ -35,8 +32,7 @@ namespace Ngs.Engine.Presentation
         /// The global coordinate space is a coordinate space that is invariant regard to
         /// the window's position.
         /// </remarks>
-        public Vector2 Global
-        {
+        public Vector2 Global {
             get { return this.global; }
             set { this.global = value; }
         }

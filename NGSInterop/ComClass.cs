@@ -8,8 +8,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Threading;
 
-namespace Ngs.Interop
-{
+namespace Ngs.Interop {
     /*
     Imagine this:
     struct ComClassHeader
@@ -35,8 +34,7 @@ namespace Ngs.Interop
     /// provides a better creation performance.
     /// </para>
     /// </remarks>
-    public abstract class ComClass : IUnknown
-    {
+    public abstract class ComClass : IUnknown {
         IntPtr[] headers;
         GCHandle headersHandle;
 
@@ -48,36 +46,32 @@ namespace Ngs.Interop
         /// <summary>
         /// Creates an instance of <see cref="ComClass" />.
         /// </summary>
-        public ComClass()
-        {
-            Initialize(new ComClassRuntimeInfo(GetType()));
+        public ComClass () {
+            Initialize (new ComClassRuntimeInfo (GetType ()));
         }
 
-        internal ComClass(ComClassRuntimeInfo info)
-        {
-            Initialize(info);
+        internal ComClass (ComClassRuntimeInfo info) {
+            Initialize (info);
         }
 
-        void Initialize(ComClassRuntimeInfo info)
-        {
-            headerInfos = info.Headers;
-            headers = new IntPtr[headerInfos.Length * 2];
-            for (int i = 0; i < headerInfos.Length; ++i)
-            {
-                var headerInfo = headerInfos[i];
-                headers[i * 2] = headerInfo.VTablePtr; // vtable
-                headers[i * 2 + 1] = IntPtr.Zero; // handle to this
+        void Initialize (ComClassRuntimeInfo info) {
+                headerInfos = info.Headers;
+                headers = new IntPtr[headerInfos.Length * 2];
+                for (int i = 0; i < headerInfos.Length; ++i) {
+                    var headerInfo = headerInfos[i];
+                    headers[i * 2] = headerInfo.VTablePtr; // vtable
+                    headers[i * 2 + 1] = IntPtr.Zero; // handle to this
+                }
+
+                headersHandle = GCHandle.Alloc (headers, GCHandleType.Pinned);
             }
 
-            headersHandle = GCHandle.Alloc(headers, GCHandleType.Pinned);
-        }
-        /// <summary>
-        /// Releases all the resources used by the <see cref="ComClass" /> class.
-        /// </summary>
-        ~ComClass()
-        {
-            headersHandle.Free();
-        }
+            /// <summary>
+            /// Releases all the resources used by the <see cref="ComClass" /> class.
+            /// </summary>
+            ~ComClass () {
+                headersHandle.Free ();
+            }
 
         /// <summary>
         /// Implements <see cref="IUnknown.QueryNativeInterface(ref Guid)" />.
@@ -86,20 +80,17 @@ namespace Ngs.Interop
         /// The pointer to the requested interface.
         /// </returns>
         [SecurityCritical]
-        public unsafe IntPtr QueryNativeInterface([In] ref Guid guid)
-        {
+        public unsafe IntPtr QueryNativeInterface ([In] ref Guid guid) {
             var theGuid = guid;
-            for (int i = 0; i < headerInfos.Length; ++i)
-            {
+            for (int i = 0; i < headerInfos.Length; ++i) {
                 var guids = headerInfos[i].Guids;
-                if (Array.IndexOf(guids, theGuid) >= 0)
-                {
-                    AddRef();
-                    return IntPtr.Add(headersHandle.AddrOfPinnedObject(), IntPtr.Size * 2 * i);
+                if (Array.IndexOf (guids, theGuid) >= 0) {
+                    AddRef ();
+                    return IntPtr.Add (headersHandle.AddrOfPinnedObject (), IntPtr.Size * 2 * i);
                 }
             }
-            const int E_NOINTERFACE = unchecked((int)0x80004002);
-            throw new COMException("The specified interface is not available.", E_NOINTERFACE);
+            const int E_NOINTERFACE = unchecked ((int) 0x80004002);
+            throw new COMException ("The specified interface is not available.", E_NOINTERFACE);
         }
 
         /// <summary>
@@ -107,22 +98,17 @@ namespace Ngs.Interop
         /// </summary>
         /// <returns>The new reference count.</returns>
         [SecurityCritical]
-        public uint AddRef()
-        {
-            int newCount = Interlocked.Increment(ref refCount);
-            if (newCount == 1)
-            {
-                for (int i = 1; i < headers.Length; i += 2)
-                {
-                    headers[i] = (IntPtr)GCHandle.Alloc(this);
+        public uint AddRef () {
+            int newCount = Interlocked.Increment (ref refCount);
+            if (newCount == 1) {
+                for (int i = 1; i < headers.Length; i += 2) {
+                    headers[i] = (IntPtr) GCHandle.Alloc (this);
                 }
-            }
-            else if (newCount <= 0)
-            {
+            } else if (newCount <= 0) {
                 // something is wrong...
-                throw new InvalidOperationException();
+                throw new InvalidOperationException ();
             }
-            return (uint)newCount;
+            return (uint) newCount;
         }
 
         /// <summary>
@@ -130,22 +116,17 @@ namespace Ngs.Interop
         /// </summary>
         /// <returns>The new reference count.</returns>
         [SecurityCritical]
-        public uint Release()
-        {
-            int newCount = Interlocked.Decrement(ref refCount);
-            if (newCount == 0)
-            {
-                for (int i = 1; i < headers.Length; i += 2)
-                {
-                    ((GCHandle)headers[i]).Free();
+        public uint Release () {
+            int newCount = Interlocked.Decrement (ref refCount);
+            if (newCount == 0) {
+                for (int i = 1; i < headers.Length; i += 2) {
+                    ((GCHandle) headers[i]).Free ();
                 }
-            }
-            else if (newCount < 0)
-            {
+            } else if (newCount < 0) {
                 // something is wrong...
-                throw new InvalidOperationException();
+                throw new InvalidOperationException ();
             }
-            return (uint)newCount;
+            return (uint) newCount;
         }
     }
 
@@ -161,11 +142,10 @@ namespace Ngs.Interop
     /// </para>
     /// </remarks>
     /// <typeparam name="T">The type of the derived class.</typeparam>
-    public abstract class ComClass<T> : ComClass where T : ComClass
-    {
+    public abstract class ComClass<T> : ComClass where T : ComClass {
         /// <summary>
         /// Creates an instance of <see cref="ComClass&lt;T&gt;" />.
         /// </summary>
-        public ComClass() : base(ComClassRuntimeInfo<T>.Instance) { }
+        public ComClass () : base (ComClassRuntimeInfo<T>.Instance) { }
     }
 }

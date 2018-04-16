@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright 2017 yvt, all rights reserved.
 //
 // This source code is a part of Nightingales.
@@ -6,17 +6,15 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace Ngs.Utils
-{
+namespace Ngs.Utils {
     /// <summary>
     /// Represents a three-dimensional axis-aligned bounding box (AABB).
     /// </summary>
     /// <remarks>
     /// An AABB is represented by the minimum and maximum (corner) coordinates.
     /// </remarks>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Box3
-    {
+    [StructLayout (LayoutKind.Sequential)]
+    public struct Box3 {
         /// <summary>
         /// The minimum coordinate.
         /// </summary>
@@ -32,8 +30,7 @@ namespace Ngs.Utils
         /// </summary>
         /// <param name="min">The minimum coordinate.</param>
         /// <param name="max">The maximum coordinate.</param>
-        public Box3(Vector3 min, Vector3 max)
-        {
+        public Box3 (Vector3 min, Vector3 max) {
             Min = min;
             Max = max;
         }

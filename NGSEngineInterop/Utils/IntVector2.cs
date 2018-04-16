@@ -1,18 +1,16 @@
-﻿//
+//
 // Copyright 2017 yvt, all rights reserved.
 //
 // This source code is a part of Nightingales.
 //
 using System.Runtime.InteropServices;
 
-namespace Ngs.Utils
-{
+namespace Ngs.Utils {
     /// <summary>
     /// Represents a vector with two integer values.
     /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct IntVector2
-    {
+    [StructLayout (LayoutKind.Sequential)]
+    public struct IntVector2 {
         /// <summary>
         /// The X component of the vector.
         /// </summary>
@@ -28,8 +26,7 @@ namespace Ngs.Utils
         /// </summary>
         /// <param name="x">The value to assign to the <see cref="X" /> field.</param>
         /// <param name="y">The value to assign to the <see cref="Y" /> field.</param>
-        public IntVector2(int x, int y)
-        {
+        public IntVector2 (int x, int y) {
             X = x;
             Y = y;
         }

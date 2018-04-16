@@ -4,18 +4,16 @@
 // This source code is a part of Nightingales.
 //
 using System;
-using System.Reflection;
-using System.Xml;
 using System.Collections.Generic;
 using System.IO;
-namespace Ngs.Interop.CodeGen
-{
+using System.Reflection;
+using System.Xml;
+namespace Ngs.Interop.CodeGen {
     /// <summary>
     /// An exception thrown when an error occured while reading a Microsoft
     /// XML documentation file.
     /// </summary>
-    public class MsXmlDocumentationException : Exception
-    {
+    public class MsXmlDocumentationException : Exception {
         /// <summary>
         /// Initializes a new instance of the <see cref="MsXmlDocumentationException" />
         /// class with a specified error message and the exception that is the
@@ -25,9 +23,6 @@ namespace Ngs.Interop.CodeGen
         /// <param name="innerException">
         /// The exception that is the cause of the current exception.
         /// </param>
-        public MsXmlDocumentationException(string message, Exception innerException)
-        : base(message, innerException)
-        {
-        }
+        public MsXmlDocumentationException (string message, Exception innerException) : base (message, innerException) { }
     }
 }

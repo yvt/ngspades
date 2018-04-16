@@ -5,14 +5,12 @@
 //
 using System;
 
-namespace Ngs.Engine.Presentation
-{
+namespace Ngs.Engine.Presentation {
     /// <summary>
     /// Indicates the state of modifier keys.
     /// </summary>
     [Flags]
-    public enum KeyModifierFlags
-    {
+    public enum KeyModifierFlags {
         /// <summary>
         /// The "Shift" key.
         /// </summary>

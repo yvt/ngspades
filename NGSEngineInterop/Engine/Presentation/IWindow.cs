@@ -8,8 +8,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 
-namespace Ngs.Engine.Presentation
-{
+namespace Ngs.Engine.Presentation {
     /// <summary>
     /// Represents a window node.
     /// </summary>
@@ -17,9 +16,8 @@ namespace Ngs.Engine.Presentation
     /// Window nodes are created from an <see cref="IPresentationContext" /> and
     /// are associated with the context from which they were created.
     /// </remarks>
-    [Guid("1fd3658b-e4ac-49bb-9609-a0e578022cbc")]
-    public interface IWindow : IUnknown
-    {
+    [Guid ("1fd3658b-e4ac-49bb-9609-a0e578022cbc")]
+    public interface IWindow : IUnknown {
         /// <summary>
         /// Sets the flags specifying the properties of the window.
         /// </summary>

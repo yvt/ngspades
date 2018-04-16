@@ -1,25 +1,19 @@
-﻿//
+//
 // Copyright 2017 yvt, all rights reserved.
 //
 // This source code is a part of Nightingales.
 //
 using System.Collections.Generic;
 
-namespace Ngs.Interop.Utils
-{
-    sealed class UniqueNameGenerator
-    {
-        Dictionary<string, int> generatedNames = new Dictionary<string, int>();
+namespace Ngs.Interop.Utils {
+    sealed class UniqueNameGenerator {
+        Dictionary<string, int> generatedNames = new Dictionary<string, int> ();
 
-        public UniqueNameGenerator()
-        {
-        }
+        public UniqueNameGenerator () { }
 
-        public string Uniquify(string template)
-        {
+        public string Uniquify (string template) {
             int lastIndex;
-            if (generatedNames.TryGetValue(template, out lastIndex))
-            {
+            if (generatedNames.TryGetValue (template, out lastIndex)) {
                 ++lastIndex;
                 generatedNames[template] = lastIndex;
 

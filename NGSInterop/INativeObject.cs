@@ -5,10 +5,8 @@
 //
 using System;
 
-namespace Ngs.Interop
-{
-    public interface INativeObject<out T> : IUnknown where T : class, IUnknown
-    {
+namespace Ngs.Interop {
+    public interface INativeObject<out T> : IUnknown where T : class, IUnknown {
         IntPtr NativeInterfacePtr { get; }
         IntPtr NativeIUnknownPtr { get; }
 
