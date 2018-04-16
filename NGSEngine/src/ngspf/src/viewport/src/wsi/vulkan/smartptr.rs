@@ -3,10 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::ash::{self, extensions as ext, vk, version::*};
-use std::ops::Deref;
+use super::ash::{self, extensions as ext, version::*, vk};
 use std::borrow::Borrow;
 use std::mem::forget;
+use std::ops::Deref;
 
 pub trait AutoPtr<T>: Deref<Target = T> + Sized {
     fn into_inner(self) -> T;

@@ -3,10 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
+use super::ash::{self, extensions, version::*, vk};
+use ngsenumflags::BitFlags;
 use std::sync::Arc;
 use std::{fmt, ptr};
-use ngsenumflags::BitFlags;
-use super::ash::{self, extensions, vk, version::*};
 
 use super::utils::translate_generic_error_unwrap;
 

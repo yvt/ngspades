@@ -3,27 +3,27 @@
 //
 // This source code is a part of Nightingales.
 //
+use self::metal::NSObjectProtocol;
+use std::collections::HashMap;
 use std::mem::{self, ManuallyDrop};
 use std::os::raw::c_void;
 use std::ptr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::collections::HashMap;
-use winit::{EventsLoopProxy, Window};
+use std::sync::Arc;
 use winit::os::macos::WindowExt;
+use winit::{EventsLoopProxy, Window};
 use zangfx::backends::metal::metal;
-use self::metal::NSObjectProtocol;
 
-use objc::runtime::YES;
+use cocoa::appkit::{NSView, NSWindow};
 use cocoa::base::id as cocoa_id;
 use cocoa::foundation::{NSSize, NSString};
-use cocoa::appkit::{NSView, NSWindow};
+use objc::runtime::YES;
 
-use zangfx::base as gfx;
 use zangfx::backends::metal as be;
+use zangfx::base as gfx;
 
-use metalutils::OCPtr;
 use super::{GfxQueue, Painter, SurfaceProps, WmDevice};
+use metalutils::OCPtr;
 
 use super::cvdisplaylink::CVDisplayLink;
 

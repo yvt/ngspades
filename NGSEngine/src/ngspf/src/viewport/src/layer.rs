@@ -6,17 +6,17 @@
 //! Layer node.
 use std::sync::Arc;
 
-use ngsenumflags::BitFlags;
-use cgmath::{Matrix4, Point2};
 use cgmath::prelude::*;
+use cgmath::{Matrix4, Point2};
+use ngsenumflags::BitFlags;
 use refeq::RefEqArc;
 use rgb::RGBA;
 
-use ngsbase::Box2;
-use ngsbase::prelude::*;
-use core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, PropertyAccessor};
-use canvas::ImageRef;
 use super::Port;
+use canvas::ImageRef;
+use core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, PropertyAccessor};
+use ngsbase::prelude::*;
+use ngsbase::Box2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]

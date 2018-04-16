@@ -4,12 +4,12 @@
 // This source code is a part of Nightingales.
 //
 //! Window node.
-use refeq::RefEqArc;
-use ngsenumflags::BitFlags;
 use cgmath::Vector2;
 use core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, ProducerDataCell,
            ProducerFrame, PropertyAccessor, PropertyError, PropertyProducerWrite,
            RefPropertyAccessor, RoPropertyAccessor, UpdateId, WoProperty};
+use ngsenumflags::BitFlags;
+use refeq::RefEqArc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]

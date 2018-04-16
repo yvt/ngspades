@@ -3,10 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
+use refeq::RefEqArc;
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
-use refeq::RefEqArc;
 
 use zangfx::base as gfx;
 

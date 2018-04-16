@@ -3,24 +3,24 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::Arc;
-use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::rc::Rc;
+use std::sync::Arc;
 
+use cgmath::{prelude::*, Matrix4, Vector2, Vector3, Vector4};
 use refeq::RefEqArc;
-use cgmath::{Matrix4, Vector2, Vector3, Vector4, prelude::*};
-use zangfx::{base as gfx, utils as gfxut, base::Result, prelude::*};
 use xdispatch;
+use zangfx::{base as gfx, base::Result, prelude::*, utils as gfxut};
 
-use core::{NodeRef, PresenterFrame, prelude::*};
+use core::{prelude::*, NodeRef, PresenterFrame};
 
-use layer::Layer;
-use temprespool::{TempResPool, TempResTable};
+use canvas::{ImageFormat, ImageRef};
 use imagemanager::{ImageManager, ImageRefTable};
+use layer::Layer;
 use port::{GfxObjects, Port, PortManager};
 use portrender::PortRenderFrame;
-use canvas::{ImageRef, ImageFormat};
+use temprespool::{TempResPool, TempResTable};
 use wsi;
 
 /// Compositor.
@@ -66,10 +66,10 @@ struct CompositorShaders {
 static BOX_VERTICES: &[[u16; 2]] = &[[0, 0], [1, 0], [0, 1], [1, 1]];
 
 mod composite {
-    use include_data;
-    use zangfx::base::*;
     use cgmath::{Matrix4, Vector4};
+    use include_data;
     use ngsenumflags::BitFlags;
+    use zangfx::base::*;
 
     pub static SPIRV_FRAG: include_data::DataView =
         include_data!(concat!(env!("OUT_DIR"), "/composite.frag.spv"));
@@ -229,14 +229,12 @@ impl Compositor {
 
             let uploader = image_manager.uploader_mut();
             uploader.stage_images(
-                [
-                    StageImage::new_default(
-                        &*white_image,
-                        gfx::ImageLayout::ShaderRead,
-                        &[0xffffffffu32],
-                        &[1, 1],
-                    ),
-                ].iter()
+                [StageImage::new_default(
+                    &*white_image,
+                    gfx::ImageLayout::ShaderRead,
+                    &[0xffffffffu32],
+                    &[1, 1],
+                )].iter()
                     .cloned(),
             )?;
         }
@@ -291,9 +289,11 @@ impl Compositor {
         );
 
         Ok(Self {
-            statesets: vec![
-                Stateset::new(&*device, &shaders, gfx::ImageFormat::SrgbBgra8)?,
-            ],
+            statesets: vec![Stateset::new(
+                &*device,
+                &shaders,
+                gfx::ImageFormat::SrgbBgra8,
+            )?],
             shaders,
             image_manager,
             temp_res_pool,
@@ -374,8 +374,8 @@ impl CompositorWindow {
 
         use std::mem::size_of_val;
 
-        use ngsbase::Box2;
         use ngsbase::prelude::*;
+        use ngsbase::Box2;
 
         enum Cmd {
             BeginPass {
@@ -449,8 +449,8 @@ impl CompositorWindow {
             opacity: f32,
             backdrop: Option<BackDropInfo>,
         ) -> Result<()> {
-            use super::LayerContents::*;
             use super::ImageWrapMode::*;
+            use super::LayerContents::*;
 
             let contents = layer.contents.read_presenter(c.frame).unwrap();
             let bounds: Box2<f32> = *layer.bounds.read_presenter(c.frame).unwrap();
@@ -743,12 +743,10 @@ impl CompositorWindow {
 
                     let mask_rt_i = c.rts.len() - 1;
 
-                    c.cmds.push(vec![
-                        Cmd::BeginPass {
-                            pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_SHADER_READ,
-                            rt_i: mask_rt_i,
-                        },
-                    ]);
+                    c.cmds.push(vec![Cmd::BeginPass {
+                        pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_SHADER_READ,
+                        rt_i: mask_rt_i,
+                    }]);
                     let mask_cmd_group_i = c.cmds.len() - 1;
 
                     {
@@ -843,12 +841,10 @@ impl CompositorWindow {
             cmds: Vec::with_capacity(self.num_cmds * 2),
             rts: Vec::with_capacity(self.num_rts * 2),
         };
-        c.cmds.push(vec![
-            Cmd::BeginPass {
-                pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_PRESENT,
-                rt_i: 0,
-            },
-        ]);
+        c.cmds.push(vec![Cmd::BeginPass {
+            pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_PRESENT,
+            rt_i: 0,
+        }]);
         c.rts.push(RenderTarget {
             image: drawable.image().clone(),
             extents: Vector2::from(surface_props.extents),
@@ -997,13 +993,11 @@ impl CompositorWindow {
             compositor.device.update_arg_table(
                 &shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL],
                 &at_global,
-                &[
-                    (
-                        composite::ARG_G_SPRITE_PARAMS,
-                        0,
-                        [(0..sprites_size, &sprites_buf)][..].into(),
-                    ),
-                ],
+                &[(
+                    composite::ARG_G_SPRITE_PARAMS,
+                    0,
+                    [(0..sprites_size, &sprites_buf)][..].into(),
+                )],
             )?;
 
             at_contents = arg_pool

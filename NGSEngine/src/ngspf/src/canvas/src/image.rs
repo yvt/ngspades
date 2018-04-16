@@ -37,7 +37,6 @@ pub enum ImageFormat {
     ///
     /// [`painter`]: painter
     SrgbRgba8Premul,
-
 }
 
 impl ImageData {

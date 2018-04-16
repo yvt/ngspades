@@ -3,12 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::ffi::{CStr, CString};
-use std::collections::HashSet;
-use zangfx::{base::Device, common::Error};
-use zangfx::backends::vulkan::translate_generic_error;
-use super::ash::{self, vk, version::*};
+use super::ash::{self, version::*, vk};
 use super::be;
+use std::collections::HashSet;
+use std::ffi::{CStr, CString};
+use zangfx::backends::vulkan::translate_generic_error;
+use zangfx::{base::Device, common::Error};
 
 use super::smartptr::{UniqueDevice, UniqueInstance};
 
@@ -98,7 +98,7 @@ impl<'a> InstanceBuilder<'a> {
         let extensions: Vec<_> = extensions.iter().map(|x| x.as_ptr()).collect();
 
         macro_rules! vk_make_version {
-            ($major: expr, $minor: expr, $patch: expr) => {
+            ($major:expr, $minor:expr, $patch:expr) => {
                 (($major as u32) << 22) | (($minor as u32) << 12) | $patch as u32
             };
         }

@@ -24,11 +24,11 @@ extern crate tokenlock;
 
 mod handler;
 
+use arclock::{ArcLock, ArcLockGuard};
+use refeq::RefEqArc;
 use std::any::Any;
 use std::sync::Mutex;
 use std::{borrow, fmt, hash, ops};
-use refeq::RefEqArc;
-use arclock::{ArcLock, ArcLockGuard};
 use tokenlock::{Token, TokenLock, TokenRef};
 
 /// Maintains a single timeline of node property modifications.
@@ -560,15 +560,13 @@ pub trait PropertyPresenterRead<T> {
 }
 
 /// Dynamic property accessor traits.
-pub trait PropertyAccessor<T>
-    : PropertyProducerRead<T> + PropertyProducerWrite<T> + PropertyPresenterRead<T>
-    {
+pub trait PropertyAccessor<T>:
+    PropertyProducerRead<T> + PropertyProducerWrite<T> + PropertyPresenterRead<T>
+{
 }
 
 /// Read-only dynamic property accessor traits.
-pub trait RoPropertyAccessor<T>
-    : PropertyProducerRead<T> + PropertyPresenterRead<T> {
-}
+pub trait RoPropertyAccessor<T>: PropertyProducerRead<T> + PropertyPresenterRead<T> {}
 
 /// Dynamic property accessor for `KeyedProperty`.
 ///

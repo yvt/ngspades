@@ -4,14 +4,14 @@
 // This source code is a part of Nightingales.
 //
 //! Platform-specific code for surface creation.
-use winit;
+use super::ash::{self, extensions::Surface, version::*, vk};
 use super::utils::InstanceBuilder;
-use super::ash::{self, vk, extensions::Surface, version::*};
+use winit;
 
 #[cfg(windows)]
 mod os {
-    extern crate winapi;
     extern crate user32;
+    extern crate winapi;
 
     use super::*;
 
@@ -87,11 +87,11 @@ mod os {
         window: &winit::Window,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
         use self::ash::extensions::MacOSSurface;
-        use winit::os::macos::WindowExt;
-        use objc::runtime::YES;
-        use cocoa::base::id as cocoa_id;
         use cocoa::appkit::{NSView, NSWindow};
+        use cocoa::base::id as cocoa_id;
+        use objc::runtime::YES;
         use std::mem::transmute;
+        use winit::os::macos::WindowExt;
         use zangfx::backends::metal::metal;
 
         let view;

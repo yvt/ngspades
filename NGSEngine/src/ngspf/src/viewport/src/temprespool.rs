@@ -5,8 +5,8 @@
 //
 use std::sync::Arc;
 
-use zangfx::base as gfx;
 use self::gfx::Result;
+use zangfx::base as gfx;
 
 use gfxutils::{MultiHeapSet, MultiHeapSetAlloc};
 

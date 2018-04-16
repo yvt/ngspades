@@ -6,9 +6,9 @@
 // (excerpted from `ngsgfx/examples/common/utils.rs`)
 use std::sync::Arc;
 
-use zangfx::base as gfx;
 use self::gfx::Result;
 use iterpool::{intrusive_list, Pool, PoolPtr};
+use zangfx::base as gfx;
 
 #[derive(Debug)]
 pub struct HeapSet {

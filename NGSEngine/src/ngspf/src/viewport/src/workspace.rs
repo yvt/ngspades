@@ -3,20 +3,20 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::Arc;
-use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
+use std::sync::Arc;
 
-use winit::{self, EventsLoop};
-use ngsenumflags::BitFlags;
 use cgmath::Vector2;
+use ngsenumflags::BitFlags;
+use winit::{self, EventsLoop};
 
+use super::compositor::{CompositeContext, Compositor, CompositorWindow};
+use super::{Window, WindowActionBit, WindowFlagsBit};
+use core::prelude::*;
 use core::{Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame,
            ProducerDataCell, ProducerFrame, PropertyAccessor, PropertyError, UpdateId, WoProperty};
-use super::{Window, WindowActionBit, WindowFlagsBit};
-use super::compositor::{CompositeContext, Compositor, CompositorWindow};
-use core::prelude::*;
 
 use super::wsi;
 

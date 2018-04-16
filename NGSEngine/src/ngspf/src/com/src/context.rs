@@ -8,8 +8,8 @@ use std::sync::Arc;
 use ngsbase;
 use ngscom::{hresults, ComPtr, HResult};
 
-use {nodes, ILayer, INodeGroup, IPresentationContext, IWindow};
 use core::Context;
+use {nodes, ILayer, INodeGroup, IPresentationContext, IWindow};
 
 com_impl! {
     #[derive(Debug)]

@@ -23,8 +23,8 @@ extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;
 
-extern crate ngspf_core as core;
 extern crate ngspf_canvas as canvas;
+extern crate ngspf_core as core;
 pub extern crate zangfx;
 
 #[macro_use]

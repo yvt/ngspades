@@ -18,10 +18,13 @@ use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use winit::{EventsLoopProxy, Window};
 
-use zangfx::{backends::vulkan::{self as be, ash::{self, extensions as ext, vk, version::*},
+use zangfx::{backends::vulkan::{self as be,
+                                ash::{self, extensions as ext, version::*, vk},
                                 cmd::queue::CmdQueue as BeCmdQueue,
                                 cmd::semaphore::Semaphore as BeSemaphore},
-             base::{self as gfx, Result as GfxResult}, common::{Error, ErrorKind}, prelude::*,
+             base::{self as gfx, Result as GfxResult},
+             common::{Error, ErrorKind},
+             prelude::*,
              utils::CbStateTracker};
 
 use super::{GfxQueue, Painter, SurfaceProps, WmDevice};

@@ -3,9 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::{Arc, Mutex, RwLock};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
 use std::{fmt, hash};
 
 use gfx;

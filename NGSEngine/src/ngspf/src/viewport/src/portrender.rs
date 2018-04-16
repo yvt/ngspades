@@ -3,10 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
+use refeq::RefEqArc;
 use std::collections::HashMap;
 use xdispatch;
 use zangfx::{base as gfx, base::Result, prelude::*};
-use refeq::RefEqArc;
 
 use core::{NodeRef, PresenterFrame};
 
@@ -147,7 +147,8 @@ impl<'a> PortRenderFrame<'a> {
                             port_instance
                                 .lock()
                                 .unwrap()
-                                .render(&mut render_context, frame).unwrap();
+                                .render(&mut render_context, frame)
+                                .unwrap();
                         });
                     }
 

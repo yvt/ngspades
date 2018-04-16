@@ -3,16 +3,16 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::Arc;
 use atomic_refcell::AtomicRefCell;
-use {cgmath, ngsbase};
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
              UnownedComPtr};
+use std::sync::Arc;
+use {cgmath, ngsbase};
 
-use {ILayer, INodeGroup, IWindow, IWindowListener};
+use core::prelude::*;
 use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE};
 use {core, viewport};
-use core::prelude::*;
+use {ILayer, INodeGroup, IWindow, IWindowListener};
 
 fn translate_context_error(e: core::ContextError) -> HResult {
     match e {

@@ -3,9 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
+use self::metal::{id, NSObjectProtocol};
 use std::ops::Deref;
 use zangfx::backends::metal::metal;
-use self::metal::{id, NSObjectProtocol};
 
 /// Smart pointer for Objective-C objects.
 #[derive(Debug, PartialEq, Eq, Hash)]

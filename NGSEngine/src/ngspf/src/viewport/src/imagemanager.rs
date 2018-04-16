@@ -3,20 +3,20 @@
 //
 // This source code is a part of Nightingales.
 //
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::sync::Arc;
-use std::collections::{HashMap, HashSet};
 
 use iterpool::{Pool, PoolPtr};
 
 use zangfx::base as gfx;
-use zangfx::prelude::*;
 use zangfx::base::Result;
+use zangfx::prelude::*;
 use zangfx::utils::{self, uploader, DeviceUtils};
 
 use canvas::{ImageData, ImageRef};
-use core::PresenterFrame;
 use core::prelude::*;
+use core::PresenterFrame;
 
 use gfxutils::{HeapSet, HeapSetAlloc};
 

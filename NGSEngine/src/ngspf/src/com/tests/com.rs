@@ -7,11 +7,11 @@ extern crate ngscom;
 extern crate ngspf_com;
 extern crate ngspf_core;
 
-use std::sync::Arc;
-use ngscom::{ComPtr, UnownedComPtr};
 use ngscom::hresults::E_OK;
+use ngscom::{ComPtr, UnownedComPtr};
 use ngspf_com as com;
 use ngspf_core as core;
+use std::sync::Arc;
 
 #[test]
 fn create_context() {

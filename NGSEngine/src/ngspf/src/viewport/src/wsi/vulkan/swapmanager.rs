@@ -3,20 +3,20 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::Arc;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
-use std::thread;
-use std::mem::ManuallyDrop;
 use std::collections::HashMap;
+use std::mem::ManuallyDrop;
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
+use std::sync::Arc;
+use std::thread;
 use winit::EventsLoopProxy;
 
-use super::ash::{extensions as ext, vk, version::*};
+use super::ash::{extensions as ext, version::*, vk};
 use super::atomic_refcell::AtomicRefCell;
 
-use zangfx::{base as gfx, common::Result as GfxResult, prelude::*};
 use super::be::cmd::semaphore::Semaphore as BeSemaphore;
 use super::smartptr::{AutoPtr, UniqueFence};
 use super::utils::{translate_generic_error_unwrap, vk_device_from_gfx};
+use zangfx::{base as gfx, common::Result as GfxResult, prelude::*};
 
 pub type SurfaceId = super::SurfaceRef;
 
@@ -286,8 +286,7 @@ impl SwapchainManager {
                         // `acquire_next_image_khr` won't return the image index in
                         // such a case
                         match e {
-                            vk::Result::NotReady |
-                            vk::Result::Timeout => {
+                            vk::Result::NotReady | vk::Result::Timeout => {
                                 // Enter the polling mode
                             }
                             vk::Result::SuboptimalKhr => {
