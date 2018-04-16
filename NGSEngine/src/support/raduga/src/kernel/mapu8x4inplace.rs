@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+#![allow(unused_imports)]
 use stdsimd::{simd, vendor};
 use {intrin, simd16};
 use {ScalarMode, SimdMode};

@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+#![allow(unused_imports)]
 extern crate x86intrin;
 
 use std::mem::transmute;

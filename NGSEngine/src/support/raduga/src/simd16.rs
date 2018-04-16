@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+#[allow(unused_imports)]
 use intrin;
 use stdsimd::{simd, vendor};
 use {IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
