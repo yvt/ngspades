@@ -263,17 +263,57 @@ namespace Ngs.Interop.CodeGen {
 
             stringBuilder.AppendLine ("com_interface! {");
 
-            var doc = options.RustdocEntrySource?.GetEntryForType (type);
-            GenerateDocComment (doc, "\t");
+            var methods = info.ComMethodInfos
+                .Where ((cmi) => cmi.MethodInfo.DeclaringType == info.Type)
+                .Select ((cmi) => new RustInterfaceMethodInfo (this, cmi)).ToArray ();
+
+            // Emit the documentation comment
+            {
+                var doc = options.RustdocEntrySource?.GetEntryForType (type);
+                if (doc.HasValue) {
+                    GenerateDocComment (doc, "\t");
+                } else {
+                    stringBuilder.AppendLine ($"\t/// `{type.FullName}`");
+                }
+                stringBuilder.AppendLine ("\t///");
+                stringBuilder.AppendLine ("\t/// # COM interop");
+                stringBuilder.AppendLine ($"\t/// This type was generated automatically from `{type.FullName}`.");
+
+                // Emit the template code here
+                stringBuilder.AppendLine ("\t///");
+                stringBuilder.AppendLine ($"\t/// Use the following template code to create a COM class");
+                stringBuilder.AppendLine ($"\t/// that implements `{name}`:");
+                stringBuilder.AppendLine ("\t///");
+                stringBuilder.AppendLine ("\t/// ```ignore");
+                stringBuilder.AppendLine ("\t/// com_impl! {");
+                stringBuilder.AppendLine ("\t///     class MyClassName {");
+                stringBuilder.AppendLine ($"\t///         {lowerSnakeCaseName}: {name};");
+                stringBuilder.AppendLine ("\t///         @data: MyClassNameData;");
+                stringBuilder.AppendLine ("\t///     }");
+                stringBuilder.AppendLine ("\t/// }");
+                stringBuilder.AppendLine ("\t///");
+                stringBuilder.AppendLine ($"\t/// impl {name}Trait for MyClassName {{");
+                stringBuilder.AppendLine ("\t///");
+                foreach (var rimi in methods) {
+                    stringBuilder.AppendLine ($"\t///     {rimi.GetSignature(false)} {{");
+                    if (rimi.ComMethodInfo.ReturnsHresult) {
+                        stringBuilder.AppendLine ("\t///         \thresults::E_NOTIMPL");
+                    } else {
+                        stringBuilder.AppendLine ("\t///         \tunimplemented!()");
+                    }
+                    stringBuilder.AppendLine ("\t///     }");
+                    stringBuilder.AppendLine ("\t///");
+                }
+                stringBuilder.AppendLine ("\t/// }");
+                stringBuilder.AppendLine ("\t/// ```");
+                stringBuilder.AppendLine ("\t///");
+            }
 
             stringBuilder.AppendLine ($"\tinterface ({name}, {name}Trait): {string.Join(", ", baseDeclarations)} {{");
             stringBuilder.AppendLine ($"\t\tiid: {iidIdt},");
             stringBuilder.AppendLine ($"\t\tvtable: {name}Vtbl,");
             stringBuilder.AppendLine ();
 
-            var methods = info.ComMethodInfos
-                .Where ((cmi) => cmi.MethodInfo.DeclaringType == info.Type)
-                .Select ((cmi) => new RustInterfaceMethodInfo (this, cmi)).ToArray ();
             foreach (var rimi in methods) {
                 GenerateDocComment (rimi.RustdocEntry, "\t\t");
 
@@ -282,34 +322,6 @@ namespace Ngs.Interop.CodeGen {
 
             stringBuilder.AppendLine ("\t}");
             stringBuilder.AppendLine ("}");
-            stringBuilder.AppendLine ();
-
-            // emit template code
-            stringBuilder.AppendLine ("/*");
-            stringBuilder.AppendLine ($"  Use the following template code to create a COM class");
-            stringBuilder.AppendLine ($"  that implements {name}:");
-            stringBuilder.AppendLine ();
-            stringBuilder.AppendLine ("com_impl! {");
-            stringBuilder.AppendLine ("\tclass MyClassName {");
-            stringBuilder.AppendLine ($"\t\t{lowerSnakeCaseName}: {name};");
-            stringBuilder.AppendLine ("\t\t@data: MyClassNameData;");
-            stringBuilder.AppendLine ("\t}");
-            stringBuilder.AppendLine ("}");
-            stringBuilder.AppendLine ();
-            stringBuilder.AppendLine ($"impl {name}Trait for MyClassName {{");
-            stringBuilder.AppendLine ();
-            foreach (var rimi in methods) {
-                stringBuilder.AppendLine ($"\t{rimi.GetSignature(false)} {{");
-                if (rimi.ComMethodInfo.ReturnsHresult) {
-                    stringBuilder.AppendLine ("\t\thresults::E_NOTIMPL");
-                } else {
-                    stringBuilder.AppendLine ("\t\tunimplemented!()");
-                }
-                stringBuilder.AppendLine ("\t}");
-                stringBuilder.AppendLine ();
-            }
-            stringBuilder.AppendLine ("}");
-            stringBuilder.AppendLine ("*/");
             stringBuilder.AppendLine ();
         }
 
@@ -326,7 +338,15 @@ namespace Ngs.Interop.CodeGen {
 
         void GenerateStruct (Type type) {
             var doc = options.RustdocEntrySource?.GetEntryForType (type);
-            GenerateDocComment (doc, "");
+            if (doc.HasValue) {
+                GenerateDocComment (doc, "");
+            } else {
+                stringBuilder.AppendLine ($"/// `{type.FullName}`");
+            }
+
+            stringBuilder.AppendLine ("///");
+            stringBuilder.AppendLine ("/// # COM interop");
+            stringBuilder.AppendLine ($"/// This type was generated automatically from `{type.FullName}`.");
 
             stringBuilder.AppendLine ("#[repr(C)]");
             stringBuilder.AppendLine ("#[derive(Debug, Clone, Copy)]");
@@ -348,6 +368,9 @@ namespace Ngs.Interop.CodeGen {
             bool isFlags = type.GetCustomAttribute (typeof (FlagsAttribute)) != null;
 
             stringBuilder.AppendLine ($"/// Valid values for `{type.Name}`.");
+            stringBuilder.AppendLine ("///");
+            stringBuilder.AppendLine ("/// # COM interop");
+            stringBuilder.AppendLine ($"/// This type was generated automatically from `{type.FullName}`.");
             stringBuilder.AppendLine ($"#[repr({ut})]");
             if (isFlags) {
                 stringBuilder.AppendLine ($"#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, {options.EnumFlagsDeriveName})]");
@@ -368,7 +391,15 @@ namespace Ngs.Interop.CodeGen {
             stringBuilder.AppendLine ();
 
             var doc = options.RustdocEntrySource?.GetEntryForType (type);
-            GenerateDocComment (doc, "");
+            if (doc.HasValue) {
+                GenerateDocComment (doc, "");
+            } else {
+                stringBuilder.AppendLine ($"/// `{type.FullName}`");
+            }
+
+            stringBuilder.AppendLine ("///");
+            stringBuilder.AppendLine ("/// # COM interop");
+            stringBuilder.AppendLine ($"/// This type was generated automatically from `{type.FullName}`.");
 
             if (isFlags) {
                 // TODO: Maybe remove the bit validity guarantee from ngsenumflags::BitFlags?
