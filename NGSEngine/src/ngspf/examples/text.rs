@@ -90,7 +90,7 @@ fn main() {
     // Create image
     let mut image_data;
     {
-        image_data = ImageData::new(Vector2::new(480, 480), ImageFormat::SrgbRgba8);
+        image_data = ImageData::new(Vector2::new(480, 480), ImageFormat::SrgbRgba8Premul);
         let mut painter = new_painter_for_image_data(&mut image_data);
 
         let para_style = text::ParagraphStyle::new();

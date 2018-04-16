@@ -49,8 +49,10 @@ fn main() {
     writeln!(&mut table_src, "];").unwrap();
 
     // 3 extra elements are needed due to the same reason.
-    writeln!(&mut table_src, "pub static ENCODE_SRGB: [u8; 4100] = [").unwrap();
-    for i in 0..4100 {
+    // Has a double number of elements because some intermediate value of
+    // `srgb8_premul_alpha_over` can be greater than `1`.
+    writeln!(&mut table_src, "pub static ENCODE_SRGB: [u8; 8200] = [").unwrap();
+    for i in 0..8200 {
         write!(
             &mut table_src,
             "{}, ",
