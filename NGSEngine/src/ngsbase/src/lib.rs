@@ -22,8 +22,8 @@ mod geom;
 pub use interop::*;
 pub use geom::*;
 
+/// The NgsBase prelude.
 pub mod prelude {
-    pub use geom::AxisAlignedBox;
-    pub use geom::ElementWiseOp;
-    pub use geom::ElementWisePartialOrd;
+    #[doc(no_inline)]
+    pub use geom::{AxisAlignedBox, ElementWiseOp, ElementWisePartialOrd};
 }
