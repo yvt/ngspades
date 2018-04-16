@@ -9,18 +9,19 @@
 // This source code is a part of Nightingales.
 //
 
-#[macro_use] extern crate ngscom;
+#[macro_use]
+extern crate ngscom;
 extern crate cgmath;
-extern crate num_traits;
 extern crate ngsenumflags;
+extern crate num_traits;
 #[macro_use]
 extern crate ngsenumflags_derive;
 
-mod interop;
 mod geom;
+mod interop;
 
-pub use interop::*;
 pub use geom::*;
+pub use interop::*;
 
 /// The NgsBase prelude.
 pub mod prelude {

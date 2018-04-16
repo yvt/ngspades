@@ -5,9 +5,9 @@
 //
 
 use cgmath::prelude::*;
-use cgmath::{Point2, Point3, BaseNum};
+use cgmath::{BaseNum, Point2, Point3};
 
-use super::{ElementWiseOp, ElementWisePartialOrd, BoolArray};
+use super::{BoolArray, ElementWiseOp, ElementWisePartialOrd};
 
 pub trait AxisAlignedBox<T>: Sized {
     type Point: EuclideanSpace + ElementWiseOp + ElementWisePartialOrd;
@@ -64,7 +64,11 @@ pub trait AxisAlignedBox<T>: Sized {
             self.min().element_wise_max(&other.min()),
             self.max().element_wise_min(&other.max()),
         );
-        if s.is_empty() { None } else { Some(s) }
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
     }
 }
 

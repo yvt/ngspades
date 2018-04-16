@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
+use cgmath::{BaseNum, Point2, Point3};
 use std::cmp::Ordering;
-use cgmath::{Point2, Point3, BaseNum};
 
 pub trait BoolArray {
     fn any(&self) -> bool;
@@ -28,9 +28,7 @@ pub trait ElementWisePartialOrd {
 #[inline]
 fn num_min<T: BaseNum>(x: T, y: T) -> T {
     match x.partial_cmp(&y) {
-        None |
-        Some(Ordering::Equal) |
-        Some(Ordering::Less) => x,
+        None | Some(Ordering::Equal) | Some(Ordering::Less) => x,
         Some(Ordering::Greater) => y,
     }
 }
@@ -38,9 +36,7 @@ fn num_min<T: BaseNum>(x: T, y: T) -> T {
 #[inline]
 fn num_max<T: BaseNum>(x: T, y: T) -> T {
     match x.partial_cmp(&y) {
-        None |
-        Some(Ordering::Equal) |
-        Some(Ordering::Greater) => x,
+        None | Some(Ordering::Equal) | Some(Ordering::Greater) => x,
         Some(Ordering::Less) => y,
     }
 }
