@@ -9,7 +9,7 @@ use std::ops::Range;
 
 use painter::{text::rasterize_text_layout, Painter};
 use text::{FontConfig, TextLayout};
-use {Affine2, ImageData};
+use {Affine2, ImageData, ImageFormat};
 
 #[derive(Debug)]
 pub(super) struct ImagePainter<'a> {
@@ -27,6 +27,10 @@ pub(super) struct ImagePainter<'a> {
 pub fn new_painter_for_image_data<'a>(
     image_data: &'a mut ImageData,
 ) -> Box<Painter + Sync + Send + 'a> {
+    if image_data.format() != ImageFormat::SrgbRgba8 {
+        unimplemented!();
+    }
+
     Box::new(ImagePainter {
         image: image_data,
         transform: One::one(),

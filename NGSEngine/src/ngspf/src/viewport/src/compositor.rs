@@ -20,7 +20,7 @@ use temprespool::{TempResPool, TempResTable};
 use imagemanager::{ImageManager, ImageRefTable};
 use port::{GfxObjects, Port, PortManager};
 use portrender::PortRenderFrame;
-use canvas::ImageRef;
+use canvas::{ImageRef, ImageFormat};
 use wsi;
 
 /// Compositor.
@@ -467,15 +467,19 @@ impl CompositorWindow {
                         Repeat => c.compositor.sampler_repeat.clone(),
                         Clamp => c.compositor.sampler_clamp.clone(),
                     };
-                    let size = image
-                        .image_data()
-                        .get_presenter_ref(c.frame)
-                        .unwrap()
-                        .size();
+                    let image_data = image.image_data();
+                    let image_data = image_data.get_presenter_ref(c.frame).unwrap();
+
+                    let size = image_data.size();
                     let size_f = size.cast::<f32>();
                     let uv_matrix =
                         Matrix4::from_nonuniform_scale(1.0 / size_f.x, 1.0 / size_f.y, 1.0)
                             * model_mat_for_bounds(source);
+
+                    let premul = match image_data.format() {
+                        ImageFormat::SrgbRgba8 => false,
+                        ImageFormat::SrgbRgba8Premul => true,
+                    };
 
                     c.compositor
                         .image_manager
@@ -484,7 +488,11 @@ impl CompositorWindow {
                     Some((
                         (ImageContents::ManagedImage(image.clone()), sampler),
                         uv_matrix,
-                        composite::SpriteFlagsBit::StraightAlpha.into(),
+                        if premul {
+                            flags![composite::SpriteFlagsBit::{}]
+                        } else {
+                            flags![composite::SpriteFlagsBit::{StraightAlpha}]
+                        },
                         Vector4::new(1.0, 1.0, 1.0, opacity),
                     ))
                 }

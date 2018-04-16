@@ -19,8 +19,25 @@ pub struct ImageData {
 pub enum ImageFormat {
     /// Represents a pixel format with a 8-bit red/green/blue/alpha channels in
     /// the sRGB encoding and in BGRA order.
-    /// The alpha value is not pre-multiplied.
+    /// The alpha value is not premultiplied.
+    ///
+    /// This is the most common representation used by image file formats. In
+    /// most cases you can interpret external image files directly as this
+    /// format.
     SrgbRgba8,
+    /// Represents a pixel format with a 8-bit red/green/blue/alpha channels in
+    /// the sRGB encoding and in BGRA order.
+    /// The alpha value is premultiplied.
+    ///
+    /// Premultiplied alpha formats require fewer operations to manipulate
+    /// compared to non-premultiplied alpha formats. Therefore this format
+    /// provides a superior drawing performance compared to `SrgbRgba8`. This
+    /// difference is especially notable when you are manipulating images using
+    /// software-based renderer like those defined in the [`painter`] module.
+    ///
+    /// [`painter`]: painter
+    SrgbRgba8Premul,
+
 }
 
 impl ImageData {
