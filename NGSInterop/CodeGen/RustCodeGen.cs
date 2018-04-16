@@ -463,7 +463,7 @@ namespace Ngs.Interop.CodeGen
                 {
                     var name = Enum.GetName(type, field);
                     var value = Convert.ToInt32(field);
-                    stringBuilder.AppendLine($"\t\tif self.0 = {value} {{");
+                    stringBuilder.AppendLine($"\t\tif self.0 == {value} {{");
                     stringBuilder.AppendLine($"\t\t\treturn Some({type.Name}Item::{name});");
                     stringBuilder.AppendLine("\t\t}");
                 }
