@@ -21,10 +21,6 @@ impl Error {
             Err(Error(x))
         }
     }
-
-    pub fn raw(&self) -> freetype::FT_Error {
-        self.0
-    }
 }
 
 #[derive(Debug)]

@@ -169,10 +169,6 @@ impl Buffer {
         unsafe { Self::from_raw(raw) }
     }
 
-    pub fn get(&self) -> *mut harfbuzz::hb_buffer_t {
-        self.0
-    }
-
     pub fn set_direction(&mut self, x: harfbuzz::hb_direction_t) {
         unsafe {
             harfbuzz::hb_buffer_set_direction(self.0, x);
