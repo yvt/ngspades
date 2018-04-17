@@ -17,7 +17,7 @@ namespace Ngs.Engine {
         /// <summary>
         /// Creates a workspace.
         /// </summary>
-        /// <returns>A new <see cref="Ngs.Presentation.IWorkspace" />.</returns>
+        /// <returns>A new <see cref="Ngs.Engine.Presentation.IWorkspace" />.</returns>
         Presentation.IWorkspace CreateWorkspace ();
 
         /// <summary>

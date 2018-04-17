@@ -13,8 +13,16 @@ namespace Ngs.Engine.Presentation {
     /// </summary>
     [Guid ("605d9976-ab88-47cf-b68b-e1c2dfeaaa99")]
     public interface IWorkspace : IUnknown {
+        /// <summary>
+        /// Retrieves the associated presentation context.
+        /// </summary>
+        /// <returns>The presentation context managed by this workspace.</returns>
         IPresentationContext Context { get; }
 
+        /// <summary>
+        /// Captures the current state of presentation nodes and submit it for
+        /// presentation.
+        /// </summary>
         void CommitFrame ();
     }
 }
