@@ -18,16 +18,16 @@ The following softwares must be installed to build this project.
 
 ### Game Engine Core
 
-    $ cd NGSEngine/src/ngsengine
+    $ cd EngineCore/src/ngsengine
     $ cargo build
-       Compiling ngsbase v0.1.0 (file:///home/who/where/NGSEngine/src/ngsbase)
+       Compiling ngsbase v0.1.0 (file:///home/who/where/EngineCore/src/ngsbase)
     ...
-       Compiling ngsengine v0.1.0 (file:///home/who/where/NGSEngine/src/ngsengine)
+       Compiling ngsengine v0.1.0 (file:///home/who/where/EngineCore/src/ngsengine)
         Finished dev [unoptimized + debuginfo] target(s) in 23.45 secs
 
 ### Game Code
 
-    $ cd NGSMain
+    $ cd Ngs.Application
 
     $ dotnet build
     Microsoft (R) Build Engine version 15.5.179.9764 for .NET Core

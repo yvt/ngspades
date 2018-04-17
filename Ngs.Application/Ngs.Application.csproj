@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>Ngs.Application</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\EngineCore\target\debug\libngsengine.dylib" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
+    <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
+  </ItemGroup>
+
+</Project>

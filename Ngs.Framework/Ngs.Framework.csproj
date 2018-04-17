@@ -5,6 +5,6 @@
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NGSEngineInterop\NGSEngineInterop.csproj" />
+    <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
   </ItemGroup>
 </Project>

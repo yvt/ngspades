@@ -15,7 +15,7 @@ HTML_DIR=Derived/MonodocHtml
 
 MONODOC_FLAGS="--delete --fno-assembly-versions"
 
-for p in NGSInterop NGSEngineInterop NGSGameFramework; do
+for p in Ngs.Interop Ngs.Engine.Facade Ngs.Framework; do
     dotnet build "$p/$p.csproj"
     MONODOC_FLAGS="$MONODOC_FLAGS $p/bin/Debug/netstandard2.0/$p.dll -i $p/bin/Debug/netstandard2.0/$p.xml"
 done

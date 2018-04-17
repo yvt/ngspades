@@ -5,7 +5,7 @@
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NGSInterop\NGSInterop.csproj" />
+    <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Numerics.Vectors" Version="4.4.0" />

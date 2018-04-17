@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSMain", "NGSMain\NGSMain.csproj", "{E6A87091-F8B1-4E83-A650-89422EA39CC5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Application", "Ngs.Application\Ngs.Application.csproj", "{E6A87091-F8B1-4E83-A650-89422EA39CC5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSInterop", "NGSInterop\NGSInterop.csproj", "{2A569CFF-AD0F-47BE-9004-BE34623F02E4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Interop", "Ngs.Interop\Ngs.Interop.csproj", "{2A569CFF-AD0F-47BE-9004-BE34623F02E4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSEngineInterop", "NGSEngineInterop\NGSEngineInterop.csproj", "{C8059EE0-3813-4AFA-AF60-12F4A1BFF4E6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Facade", "Ngs.Engine.Facade\Ngs.Engine.Facade.csproj", "{C8059EE0-3813-4AFA-AF60-12F4A1BFF4E6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSRustInteropGen", "NGSRustInteropGen\NGSRustInteropGen.csproj", "{62DCB741-9DFA-4476-8DDE-C070F334D406}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.RustInteropGen", "Ngs.RustInteropGen\Ngs.RustInteropGen.csproj", "{62DCB741-9DFA-4476-8DDE-C070F334D406}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGSInterop.Tests", "NGSInterop.Tests\NGSInterop.Tests.csproj", "{821D0D12-E801-4409-B243-320F87E77E2B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Interop.Tests", "Ngs.Interop.Tests\Ngs.Interop.Tests.csproj", "{821D0D12-E801-4409-B243-320F87E77E2B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

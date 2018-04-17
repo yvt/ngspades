@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\NGSInterop\NGSInterop.csproj" />
-    <ProjectReference Include="..\NGSEngineInterop\NGSEngineInterop.csproj" />
+    <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
+    <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.CommandLineUtils" Version="1.1.0" />

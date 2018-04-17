@@ -10,6 +10,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NGSInterop\NGSInterop.csproj" />
+    <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
   </ItemGroup>
 </Project>
