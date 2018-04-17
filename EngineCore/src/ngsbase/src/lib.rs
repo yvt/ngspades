@@ -16,6 +16,7 @@ extern crate ngsenumflags;
 extern crate num_traits;
 #[macro_use]
 extern crate ngsenumflags_derive;
+extern crate rgb;
 
 mod geom;
 mod interop;

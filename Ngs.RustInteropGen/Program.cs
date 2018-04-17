@@ -43,6 +43,7 @@ namespace Ngs.Interop.Shell {
                 options.TypeMapping[typeof(Ngs.Utils.IntVector4)] = "::cgmath::Vector4<i32>";
                 options.TypeMapping[typeof(Ngs.Utils.Box2)] = "super::Box2<f32>";
                 options.TypeMapping[typeof(Ngs.Utils.Box3)] = "super::Box3<f32>";
+                options.TypeMapping[typeof(Ngs.Utils.Rgba)] = "::rgb::RGBA<f32>";
 
                 var codegen = new Ngs.Interop.CodeGen.RustCodeGen(options);
 
