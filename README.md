@@ -35,6 +35,11 @@ The following softwares must be installed to build this project.
     ...
     Build succeeded.
 
+    $ ln -s ../EngineCore/target/debug/libngsengine.dylib
+    $ dotnet run
+    Checking if the engine core was successfully loaded
+    $
+
 ## License
 
 Copyright 2018 yvt, all rights reserved.

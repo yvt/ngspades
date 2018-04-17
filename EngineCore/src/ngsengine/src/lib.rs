@@ -9,7 +9,8 @@ extern crate ngscom;
 #[macro_use]
 extern crate lazy_static;
 extern crate ngsbase;
+extern crate cgmath;
 
-mod test;
+mod entry;
 
-pub use self::test::create_test_instance;
+pub use self::entry::ngsengine_create;

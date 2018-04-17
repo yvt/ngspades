@@ -602,13 +602,11 @@ dependencies = [
 name = "ngsengine"
 version = "0.1.0"
 dependencies = [
+ "cgmath 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "enet 0.1.0",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsbase 0.1.0",
  "ngscom 0.1.0",
- "ngsgfx 0.1.0",
- "xdispatch 0.1.0",
- "yfft 0.1.0",
 ]
 
 [[package]]

@@ -12,13 +12,13 @@ namespace Ngs.Engine {
     /// <summary>
     /// Provides an entry point to access the game engine's features.
     /// </summary>
-    [Guid ("d8104475-a3b1-4221-9133-935c157f3f92")]
+    [Guid("d8104475-a3b1-4221-9133-935c157f3f92")]
     public interface IEngine : IUnknown {
         /// <summary>
         /// Creates a workspace.
         /// </summary>
         /// <returns>A new <see cref="Ngs.Engine.Presentation.IWorkspace" />.</returns>
-        Presentation.IWorkspace CreateWorkspace ();
+        Presentation.IWorkspace CreateWorkspace();
 
         /// <summary>
         /// Creates a bitmap.
@@ -26,6 +26,6 @@ namespace Ngs.Engine {
         /// <param name="size">The size of the bitmap, measured in pixels.</param>
         /// <param name="format">The pixel representation format of the bitmap.</param>
         /// <returns>An newly created empty bitmap.</returns>
-        Canvas.IBitmap CreateBitmap (IntVector2 size, Canvas.PixelFormat format);
+        Canvas.IBitmap CreateBitmap(IntVector2 size, Canvas.PixelFormat format);
     }
 }

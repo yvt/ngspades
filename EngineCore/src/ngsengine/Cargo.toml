@@ -11,6 +11,4 @@ enet = { path = "../enet" }
 lazy_static = { version = "0.2" }
 ngsbase = { path = "../ngsbase" }
 ngscom = { path = "../ngscom" }
-ngsgfx = { path = "../ngsgfx" }
-yfft = { path = "../yfft" }
-xdispatch = { path = "../xdispatch" }
+cgmath = "0.15.0"

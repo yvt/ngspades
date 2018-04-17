@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\EngineCore\target\debug\libngsengine.dylib" CopyToOutputDirectory="Always" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
     <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
   </ItemGroup>
