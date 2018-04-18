@@ -22,8 +22,8 @@ use cgmath::{Matrix4, Point2, vec3};
 
 use refeq::RefEqArc;
 
-use ngspf::ngsbase::Box2;
-use ngspf::ngsbase::prelude::*;
+use ngspf::cggeom::Box2;
+use ngspf::cggeom::prelude::*;
 use ngspf::prelude::*;
 use ngspf::viewport::{LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder,
                       WindowEvent, WindowFlagsBit, WindowRef, Workspace};

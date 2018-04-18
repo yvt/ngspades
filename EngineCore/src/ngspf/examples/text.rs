@@ -18,7 +18,7 @@ use cgmath::{vec3, Matrix4, Point2, Vector2};
 
 use ngspf::{canvas::{painter::new_painter_for_image_data, text, ImageData, ImageFormat, ImageRef},
             core::GroupRef,
-            ngsbase::{prelude::*, Box2},
+            cggeom::{prelude::*, Box2},
             prelude::*,
             viewport::rgb::RGBA,
             viewport::{ImageWrapMode, LayerBuilder, LayerContents, LayerRef, RootRef,

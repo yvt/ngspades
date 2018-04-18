@@ -374,8 +374,8 @@ impl CompositorWindow {
 
         use std::mem::size_of_val;
 
-        use ngsbase::prelude::*;
-        use ngsbase::Box2;
+        use cggeom::prelude::*;
+        use cggeom::Box2;
 
         enum Cmd {
             BeginPass {

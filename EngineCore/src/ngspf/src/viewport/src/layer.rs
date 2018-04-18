@@ -15,8 +15,8 @@ use rgb::RGBA;
 use super::Port;
 use canvas::ImageRef;
 use core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, PropertyAccessor};
-use ngsbase::prelude::*;
-use ngsbase::Box2;
+use cggeom::prelude::*;
+use cggeom::Box2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
 #[repr(u8)]

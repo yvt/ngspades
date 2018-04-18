@@ -7,7 +7,7 @@ use atomic_refcell::AtomicRefCell;
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
              UnownedComPtr};
 use std::sync::Arc;
-use {cgmath, ngsbase};
+use {cgmath, cggeom, ngsbase};
 
 use core::prelude::*;
 use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE};
@@ -257,7 +257,7 @@ impl ngsbase::ILayerTrait for ComLayer {
             .unwrap_or(hresults::E_OK)
     }
 
-    fn set_bounds(&self, value: ngsbase::Box2<f32>) -> HResult {
+    fn set_bounds(&self, value: cggeom::Box2<f32>) -> HResult {
         let ref context: core::Context = *self.data.0;
         self.data
             .1

@@ -13,7 +13,7 @@
 //!
 extern crate cgmath;
 extern crate iterpool;
-extern crate ngsbase;
+extern crate cggeom;
 extern crate refeq;
 pub extern crate rgb;
 extern crate winit;

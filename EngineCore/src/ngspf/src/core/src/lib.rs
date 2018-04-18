@@ -18,7 +18,6 @@
 //!
 //! [`KeyedPropertyAccessor`]: struct.KeyedPropertyAccessor.html
 extern crate arclock;
-extern crate ngsbase;
 extern crate refeq;
 extern crate tokenlock;
 

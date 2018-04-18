@@ -14,8 +14,8 @@ use cgmath::{Matrix4, Point2, Vector2, vec3};
 
 use ngspf::canvas::{ImageData, ImageFormat, ImageRef};
 use ngspf::core::GroupRef;
-use ngspf::ngsbase::Box2;
-use ngspf::ngsbase::prelude::*;
+use ngspf::cggeom::Box2;
+use ngspf::cggeom::prelude::*;
 use ngspf::prelude::*;
 use ngspf::viewport::rgb::RGBA;
 use ngspf::viewport::{ImageWrapMode, LayerBuilder, LayerContents, LayerRef, RootRef,

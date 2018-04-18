@@ -12,7 +12,7 @@ pub extern crate ngspf_core as core;
 pub extern crate ngspf_canvas as canvas;
 pub extern crate ngspf_viewport as viewport;
 
-pub extern crate ngsbase;
+pub extern crate cggeom;
 
 /// The NgsPF prelude.
 pub mod prelude {

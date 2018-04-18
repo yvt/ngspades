@@ -18,8 +18,8 @@ use ngspf::core::{Context, GroupRef, ProducerFrame};
 use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, LayerContents, WindowFlags,
                       WindowRef, WindowEvent, RootRef, LayerRef, VirtualKeyCode};
 use ngspf::prelude::*;
-use ngspf::ngsbase::Box2;
-use ngspf::ngsbase::prelude::*;
+use ngspf::cggeom::Box2;
+use ngspf::cggeom::prelude::*;
 use ngspf::viewport::rgb::RGBA;
 
 struct LorenzSystem {

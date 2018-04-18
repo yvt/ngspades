@@ -10,6 +10,7 @@ extern crate cgmath;
 extern crate lazy_static;
 
 extern crate ngsbase;
+extern crate cggeom;
 #[macro_use]
 extern crate ngscom;
 extern crate ngspf_core as core;
