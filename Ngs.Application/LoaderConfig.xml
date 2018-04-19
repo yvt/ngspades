@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LoaderConfig>
+    <!-- TODO: Make a pipeline to build these optimized binary images -->
+    <Image Path="libngsengine-fma3.dylib">
+        <SupportsPlatform>OSX</SupportsPlatform>
+        <RequiresProcessorFeature>FMA3</RequiresProcessorFeature>
+        <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
+    </Image>
+    <Image Path="libngsengine-avx2.dylib">
+        <SupportsPlatform>OSX</SupportsPlatform>
+        <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
+    </Image>
+    <Image Path="libngsengine-avx.dylib">
+        <SupportsPlatform>OSX</SupportsPlatform>
+        <RequiresProcessorFeature>AVX</RequiresProcessorFeature>
+    </Image>
+
+    <Image Path="libngsengine-fma3.so">
+        <SupportsPlatform>Linux</SupportsPlatform>
+        <RequiresProcessorFeature>FMA3</RequiresProcessorFeature>
+        <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
+    </Image>
+    <Image Path="libngsengine-avx2.so">
+        <SupportsPlatform>Linux</SupportsPlatform>
+        <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
+    </Image>
+    <Image Path="libngsengine-avx.so">
+        <SupportsPlatform>Linux</SupportsPlatform>
+        <RequiresProcessorFeature>AVX</RequiresProcessorFeature>
+    </Image>
+
+    <Image Path="libngsengine-fma3.dll">
+        <SupportsPlatform>Windows</SupportsPlatform>
+        <RequiresProcessorFeature>FMA3</RequiresProcessorFeature>
+        <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
+    </Image>
+    <Image Path="libngsengine-avx2.dll">
+        <SupportsPlatform>Windows</SupportsPlatform>
+        <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
+    </Image>
+    <Image Path="libngsengine-avx.dll">
+        <SupportsPlatform>Windows</SupportsPlatform>
+        <RequiresProcessorFeature>AVX</RequiresProcessorFeature>
+    </Image>
+
+    <!-- The generic version that requires minimum features -->
+    <Image Path="libngsengine.dylib">
+        <SupportsPlatform>OSX</SupportsPlatform>
+    </Image>
+    <Image Path="libngsengine.so">
+        <SupportsPlatform>Linux</SupportsPlatform>
+    </Image>
+    <Image Path="libngsengine.dll">
+        <SupportsPlatform>Windows</SupportsPlatform>
+    </Image>
+</LoaderConfig>

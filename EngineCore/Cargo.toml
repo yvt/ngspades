@@ -4,6 +4,7 @@ members = [
     "src/ngsbase",
     "src/ngscom",
     "src/ngsengine",
+    "src/ngsloader",
     "src/ngsgamegfx",
     "src/ngsgfx",
     "src/ngsgfx/src/backend/metal",

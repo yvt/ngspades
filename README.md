@@ -25,6 +25,11 @@ The following softwares must be installed to build this project.
        Compiling ngsengine v0.1.0 (file:///home/who/where/EngineCore/src/ngsengine)
         Finished dev [unoptimized + debuginfo] target(s) in 23.45 secs
 
+### Game Engine Loader Helper
+
+    $ cd EngineCore/src/ngsloader
+    $ cargo build
+
 ### Game Code
 
     $ cd Ngs.Application
@@ -35,7 +40,9 @@ The following softwares must be installed to build this project.
     ...
     Build succeeded.
 
+    $ export NGS_ENGINE_PATH=$(pwd)
     $ ln -s ../EngineCore/target/debug/libngsengine.dylib
+    $ ln -s ../EngineCore/target/debug/libngsloader.dylib
     $ dotnet run
     Checking if the engine core was successfully loaded
     $
