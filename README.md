@@ -14,7 +14,7 @@ The following softwares must be installed to build this project.
 [LunarG Vulkan SDK]: https://www.lunarg.com/vulkan-sdk/
 [glslang]: https://github.com/KhronosGroup/glslang
 
-## Building
+## Building for development
 
 ### Game Engine Core
 
@@ -46,6 +46,21 @@ The following softwares must be installed to build this project.
     $ dotnet run
     Checking if the engine core was successfully loaded
     $
+
+## Building as a stand-alone application
+
+We utilize .NET Core's [Self-contained deployment](https://docs.microsoft.com/en-us/dotnet/core/deploying/#self-contained-deployments-scd) feature to create a stand-alone application package. The result is an executable along with a bunch of dependent libraries (which mostly originate from the .NET Core standard library). To reduce the size of it further, we execute [.NET IL Linker](https://github.com/dotnet/core/blob/master/samples/linker-instructions.md) as a part of the build pipeline.
+
+    $ cd Ngs.Application
+
+    # Create a self-contained deployment
+    $ dotnet publish -c Release -r osx-x64 -o ../Derived/Scd/
+
+    # This process might left some garbage files that we can delete safely
+    $ rm -R _ Optimize
+
+    # Copy native libraries
+    $ cp LoaderConfig.xml ../EngineCore/target/debug/libngs*.dylib ../Derived/Scd/
 
 ## License
 
