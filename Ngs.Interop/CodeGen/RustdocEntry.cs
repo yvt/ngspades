@@ -21,7 +21,7 @@ namespace Ngs.Interop.CodeGen {
         /// <param name="text">
         /// The comment text formatted in the Markdown format.
         /// </param>
-        public RustdocEntry (string text) {
+        public RustdocEntry(string text) {
             Text = text;
         }
     }

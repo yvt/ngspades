@@ -14,33 +14,33 @@ namespace Ngs.Interop.Marshaller {
         public TypeInfo TypeInfo { get; }
         public Guid ComGuid { get; }
 
-        public InterfaceInfo (Type type) {
+        public InterfaceInfo(Type type) {
             if (type == null) {
-                throw new ArgumentNullException (nameof (type));
+                throw new ArgumentNullException(nameof(type));
             }
 
             Type = type;
-            TypeInfo = type.GetTypeInfo ();
+            TypeInfo = type.GetTypeInfo();
 
             if (!TypeInfo.IsInterface) {
-                throw new ArgumentException ($"The specified type {type.FullName} is not an interface type.", nameof (type));
+                throw new ArgumentException($"The specified type {type.FullName} is not an interface type.", nameof(type));
             }
-            if (!typeof (IUnknown).GetTypeInfo ().IsAssignableFrom (TypeInfo)) {
-                throw new ArgumentException ($"The specified type {type.FullName} is not marshallable.", nameof (type));
+            if (!typeof(IUnknown).GetTypeInfo().IsAssignableFrom(TypeInfo)) {
+                throw new ArgumentException($"The specified type {type.FullName} is not marshallable.", nameof(type));
             }
 
-            var guidAttr = type.GetTypeInfo ().GetCustomAttribute<System.Runtime.InteropServices.GuidAttribute> ();
+            var guidAttr = type.GetTypeInfo().GetCustomAttribute<System.Runtime.InteropServices.GuidAttribute>();
             if (guidAttr != null) {
-                ComGuid = new Guid (guidAttr.Value);
+                ComGuid = new Guid(guidAttr.Value);
             }
         }
 
         IEnumerable<Type> allImplementedInterfaces;
 
-        private static void BuildAllImplementedInterfaces (HashSet<Type> types, Type type) {
-            if (types.Add (type)) {
-                foreach (var t in type.GetTypeInfo ().ImplementedInterfaces) {
-                    BuildAllImplementedInterfaces (types, t);
+        private static void BuildAllImplementedInterfaces(HashSet<Type> types, Type type) {
+            if (types.Add(type)) {
+                foreach (var t in type.GetTypeInfo().ImplementedInterfaces) {
+                    BuildAllImplementedInterfaces(types, t);
                 }
             }
         }
@@ -50,9 +50,9 @@ namespace Ngs.Interop.Marshaller {
                 var ret = allImplementedInterfaces;
 
                 if (ret == null) {
-                    var typeSet = new HashSet<Type> ();
-                    BuildAllImplementedInterfaces (typeSet, Type);
-                    ret = allImplementedInterfaces = typeSet.ToArray ();
+                    var typeSet = new HashSet<Type>();
+                    BuildAllImplementedInterfaces(typeSet, Type);
+                    ret = allImplementedInterfaces = typeSet.ToArray();
                 }
 
                 return ret;
@@ -61,19 +61,19 @@ namespace Ngs.Interop.Marshaller {
 
         IEnumerable<ComMethodInfo> comMethodInfos;
 
-        private static void BuildComMethodInfos (HashSet<Type> processedTypeSet, Type type, ref int vtableOffset, List<ComMethodInfo> outMethods) {
-            var typeInfo = type.GetTypeInfo ();
+        private static void BuildComMethodInfos(HashSet<Type> processedTypeSet, Type type, ref int vtableOffset, List<ComMethodInfo> outMethods) {
+            var typeInfo = type.GetTypeInfo();
 
             foreach (var t in typeInfo.ImplementedInterfaces) {
-                BuildComMethodInfos (processedTypeSet, t, ref vtableOffset, outMethods);
+                BuildComMethodInfos(processedTypeSet, t, ref vtableOffset, outMethods);
             }
 
-            if (processedTypeSet.Contains (type)) {
+            if (processedTypeSet.Contains(type)) {
                 return;
             }
 
-            foreach (var method in type.GetTypeInfo ().DeclaredMethods) {
-                outMethods.Add (new ComMethodInfo (method, vtableOffset++, ComMethodType.RcwMethod));
+            foreach (var method in type.GetTypeInfo().DeclaredMethods) {
+                outMethods.Add(new ComMethodInfo(method, vtableOffset++, ComMethodType.RcwMethod));
             }
         }
 
@@ -85,11 +85,11 @@ namespace Ngs.Interop.Marshaller {
                 var ret = comMethodInfos;
 
                 if (ret == null) {
-                    var processedTypeSet = new HashSet<Type> ();
+                    var processedTypeSet = new HashSet<Type>();
                     int vtableOffset = 0;
-                    var methods = new List<ComMethodInfo> ();
-                    BuildComMethodInfos (new HashSet<Type> (), Type, ref vtableOffset, methods);
-                    comMethodInfos = ret = methods.ToArray ();
+                    var methods = new List<ComMethodInfo>();
+                    BuildComMethodInfos(new HashSet<Type>(), Type, ref vtableOffset, methods);
+                    comMethodInfos = ret = methods.ToArray();
                 }
 
                 return ret;
@@ -109,13 +109,13 @@ namespace Ngs.Interop.Marshaller {
         public bool PreserveSig { get; }
         public ComMethodType MethodType { get; }
 
-        public ComMethodInfo (MethodInfo baseMethod, int vtableOffset, ComMethodType methodType) {
+        public ComMethodInfo(MethodInfo baseMethod, int vtableOffset, ComMethodType methodType) {
             MethodInfo = baseMethod;
             VTableOffset = vtableOffset;
             MethodType = methodType;
 
             if (methodType == ComMethodType.FunctionPtrThunk ||
-                baseMethod.GetCustomAttribute<System.Runtime.InteropServices.PreserveSigAttribute> () != null) {
+                baseMethod.GetCustomAttribute<System.Runtime.InteropServices.PreserveSigAttribute>() != null) {
                 PreserveSig = true;
             }
         }
@@ -124,11 +124,11 @@ namespace Ngs.Interop.Marshaller {
 
         public bool IsFirstNativeParameterInterfacePtr => MethodType == ComMethodType.RcwMethod;
 
-        public bool HasReturnValueParameter => !PreserveSig && MethodInfo.ReturnType != typeof (void);
+        public bool HasReturnValueParameter => !PreserveSig && MethodInfo.ReturnType != typeof(void);
 
         public bool ReturnsHresult => !PreserveSig;
 
-        public bool ReturnsReturnValue => PreserveSig && MethodInfo.ReturnType != typeof (void);
+        public bool ReturnsReturnValue => PreserveSig && MethodInfo.ReturnType != typeof(void);
 
         private IEnumerable<ComMethodParameterInfo> parameterInfos;
 
@@ -139,17 +139,17 @@ namespace Ngs.Interop.Marshaller {
             get {
                 var ret = parameterInfos;
                 if (ret == null) {
-                    var list = MethodInfo.GetParameters ().Select ((p) => new ComMethodParameterInfo (this, p)).ToList ();
+                    var list = MethodInfo.GetParameters().Select((p) => new ComMethodParameterInfo(this, p)).ToList();
 
                     if (IsFirstParameterFunctionPtr) {
-                        list.RemoveAt (0);
+                        list.RemoveAt(0);
                     }
 
                     if (HasReturnValueParameter) {
-                        list.Add (new ComMethodParameterInfo (this, null));
+                        list.Add(new ComMethodParameterInfo(this, null));
                     }
 
-                    ret = parameterInfos = list.ToArray ();
+                    ret = parameterInfos = list.ToArray();
                 }
                 return ret;
             }
@@ -161,14 +161,14 @@ namespace Ngs.Interop.Marshaller {
             get {
                 var ret = returnValueMarshaller;
                 if (ret == null && ReturnsReturnValue) {
-                    ret = returnValueMarshaller = ValueMarshaller.GetMarshaller (MethodInfo.ReturnType);
+                    ret = returnValueMarshaller = ValueMarshaller.GetMarshaller(MethodInfo.ReturnType);
                 }
                 return ret;
             }
         }
 
-        public Type NativeReturnType => ReturnsHresult ? typeof (int) :
-            ReturnValueMarshaller?.NativeParameterType ?? typeof (void);
+        public Type NativeReturnType => ReturnsHresult ? typeof(int) :
+            ReturnValueMarshaller?.NativeParameterType ?? typeof(void);
     }
 
     sealed class ComMethodParameterInfo {
@@ -180,7 +180,7 @@ namespace Ngs.Interop.Marshaller {
         public bool IsOut => IsReturnValue ? true : IsMissingInOut ? IsByRef : ParameterInfo.IsOut;
         public bool IsIn => IsReturnValue ? false : IsMissingInOut ? true : ParameterInfo.IsIn;
 
-        public ComMethodParameterInfo (ComMethodInfo methodInfo, ParameterInfo paramInfo) {
+        public ComMethodParameterInfo(ComMethodInfo methodInfo, ParameterInfo paramInfo) {
             this.ComMethodInfo = methodInfo;
             this.ParameterInfo = paramInfo;
         }
@@ -191,7 +191,7 @@ namespace Ngs.Interop.Marshaller {
                 var ret = valueMarshaller;
 
                 if (ret == null) {
-                    ret = valueMarshaller = ValueMarshaller.GetMarshaller (Type);
+                    ret = valueMarshaller = ValueMarshaller.GetMarshaller(Type);
                 }
 
                 return ret;
@@ -200,12 +200,12 @@ namespace Ngs.Interop.Marshaller {
 
         /** For by-ref parameters, this returns a non-by-ref type. */
         public Type Type => IsReturnValue ? ComMethodInfo.MethodInfo.ReturnType :
-            IsByRef ? ParameterInfo.ParameterType.GetElementType () :
+            IsByRef ? ParameterInfo.ParameterType.GetElementType() :
             ParameterInfo.ParameterType;
 
         Type NativeTypeWithoutRef => ValueMarshaller.NativeParameterType;
 
         // FIXME: this is, in a exact sense, not a native type (oh what have I done...)
-        public Type NativeType => (IsReturnValue || ParameterInfo.IsOut) ? Type.MakePointerType () : Type;
+        public Type NativeType => (IsReturnValue || ParameterInfo.IsOut) ? Type.MakePointerType() : Type;
     }
 }

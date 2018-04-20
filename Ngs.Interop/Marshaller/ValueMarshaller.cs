@@ -23,37 +23,37 @@ namespace Ngs.Interop.Marshaller {
             { typeof (string), new StringValueMarshaller () },
         };
 
-        public static ValueMarshaller GetMarshaller (Type type) {
+        public static ValueMarshaller GetMarshaller(Type type) {
             ValueMarshaller marshaller = null;
 
             lock (marshallers) {
-                if (marshallers.ContainsKey (type)) {
+                if (marshallers.ContainsKey(type)) {
                     return marshallers[type];
                 }
 
-                var typeInfo = type.GetTypeInfo ();
+                var typeInfo = type.GetTypeInfo();
 
-                if (typeInfo.IsSubclassOf (typeof (ValueType))) {
-                    marshaller = new SimpleValueMarshaller (type);
+                if (typeInfo.IsSubclassOf(typeof(ValueType))) {
+                    marshaller = new SimpleValueMarshaller(type);
                 }
 
                 if (typeInfo.IsInterface &&
-                    typeof (IUnknown).GetTypeInfo ().IsAssignableFrom (typeInfo)) {
-                    marshaller = new InterfaceValueMarshaller (type);
+                    typeof(IUnknown).GetTypeInfo().IsAssignableFrom(typeInfo)) {
+                    marshaller = new InterfaceValueMarshaller(type);
                 }
 
                 if (marshaller != null) {
-                    marshallers.Add (type, marshaller);
+                    marshallers.Add(type, marshaller);
                 } else {
-                    throw new InvalidOperationException ($"Don't know how to marshal {type.FullName}");
+                    throw new InvalidOperationException($"Don't know how to marshal {type.FullName}");
                 }
             }
 
             return marshaller;
         }
 
-        public abstract ValueToNativeMarshallerGenerator CreateToNativeGenerator (ILGenerator generator);
-        public abstract ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator (ILGenerator generator);
+        public abstract ValueToNativeMarshallerGenerator CreateToNativeGenerator(ILGenerator generator);
+        public abstract ValueToRuntimeMarshallerGenerator CreateToRuntimeGenerator(ILGenerator generator);
 
         public abstract Type NativeParameterType { get; }
     }
@@ -62,8 +62,8 @@ namespace Ngs.Interop.Marshaller {
         /**
          * Emits a code that converts a managed value into a native one.
          */
-        public abstract void EmitToNative (Storage inputStorage, Storage outputStorage);
-        public abstract void EmitDestructNativeValue (Storage nativeStorage);
+        public abstract void EmitToNative(Storage inputStorage, Storage outputStorage);
+        public abstract void EmitDestructNativeValue(Storage nativeStorage);
     }
 
     abstract class ValueToRuntimeMarshallerGenerator {
@@ -71,7 +71,7 @@ namespace Ngs.Interop.Marshaller {
          * Emits a code that converts a native value into a managed one.
          * The original native value can possibly be destroyed if `move` is true.
          */
-        public abstract void EmitToRuntime (Storage inputStorage, Storage outputStorage, bool move);
-        public abstract void EmitDestructNativeValue (Storage nativeStorage);
+        public abstract void EmitToRuntime(Storage inputStorage, Storage outputStorage, bool move);
+        public abstract void EmitDestructNativeValue(Storage nativeStorage);
     }
 }

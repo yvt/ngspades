@@ -10,7 +10,7 @@ namespace Ngs.Engine.Presentation {
     /// <summary>
     /// Position data associated with a mouse input event.
     /// </summary>
-    [StructLayout (LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct MousePosition {
         private Vector2 client;
         private Vector2 global;

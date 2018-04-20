@@ -16,7 +16,7 @@ namespace Ngs.Engine.Presentation {
     /// Layer nodes are created from an <see cref="IPresentationContext" /> and
     /// are associated with the context from which they were created.
     /// </remarks>
-    [Guid ("f6aff079-7478-4b34-9474-6f4960a2818f")]
+    [Guid("f6aff079-7478-4b34-9474-6f4960a2818f")]
     public interface ILayer : IUnknown {
         /// <summary>
         /// Sets the opacity of the layer.

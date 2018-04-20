@@ -12,7 +12,7 @@ namespace Ngs.Engine.Canvas {
     /// <summary>
     /// Represents a mutable bitmap image.
     /// </summary>
-    [Guid ("d9cd03d0-3d98-481e-8668-e80e35b1f0b8")]
+    [Guid("d9cd03d0-3d98-481e-8668-e80e35b1f0b8")]
     public interface IBitmap : IUnknown {
         /// <summary>
         /// Retrieves the size of the bitmap.
@@ -36,6 +36,6 @@ namespace Ngs.Engine.Canvas {
         /// after you are done with using it.
         /// </remarks>
         /// <returns>A newly created <see cref="IPainter" /></returns>
-        IPainter CreatePainter ();
+        IPainter CreatePainter();
     }
 }

@@ -23,6 +23,6 @@ namespace Ngs.Interop.CodeGen {
         /// <param name="innerException">
         /// The exception that is the cause of the current exception.
         /// </param>
-        public MsXmlDocumentationException (string message, Exception innerException) : base (message, innerException) { }
+        public MsXmlDocumentationException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

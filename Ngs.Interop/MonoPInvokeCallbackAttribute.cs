@@ -26,7 +26,7 @@ namespace Ngs.Interop {
     /// at the Unity 3D forum.
     /// </para>
     /// </remarks>
-    [AttributeUsage (AttributeTargets.Method)]
+    [AttributeUsage(AttributeTargets.Method)]
     public sealed class MonoPInvokeCallbackAttribute : Attribute {
         private Type type;
 
@@ -34,7 +34,7 @@ namespace Ngs.Interop {
         /// Initializes a new instance of the <see cref="MonoPInvokeCallbackAttribute" /> class.
         /// </summary>
         /// <param name="t">Delegate type.</param>
-        public MonoPInvokeCallbackAttribute (Type t) {
+        public MonoPInvokeCallbackAttribute(Type t) {
             type = t;
         }
     }
