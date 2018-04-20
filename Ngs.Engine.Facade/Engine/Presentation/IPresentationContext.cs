@@ -15,24 +15,30 @@ namespace Ngs.Engine.Presentation {
     /// Nodes (windows, layers, and node groups) are created from a specific presentation context.
     /// Once created, they only can be used within the same context.
     /// </remarks>
-    [Guid ("c2a47959-0d5d-46b4-ba83-68c9b69bee56")]
+    [Guid("c2a47959-0d5d-46b4-ba83-68c9b69bee56")]
     public interface IPresentationContext : IUnknown {
         /// <summary>
         /// Creates a node group.
         /// </summary>
         /// <returns>An <see cref="INodeGroup" /> object refering to the created node group.</returns>
-        INodeGroup CreateNodeGroup ();
+        INodeGroup CreateNodeGroup();
 
         /// <summary>
         /// Creates a window node.
         /// </summary>
         /// <returns>An <see cref="IWindow" /> object refering to the created window node.</returns>
-        IWindow CreateWindow ();
+        IWindow CreateWindow();
 
         /// <summary>
         /// Creates a layer node.
         /// </summary>
         /// <returns>An <see cref="ILayer" /> object refering to the created layer node.</returns>
-        ILayer CreateLayer ();
+        ILayer CreateLayer();
+
+        /// <summary>
+        /// Captures the current state of presentation nodes and submit it for
+        /// presentation.
+        /// </summary>
+        void CommitFrame();
     }
 }

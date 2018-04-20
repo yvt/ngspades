@@ -11,7 +11,7 @@ namespace Ngs.Shell {
     class MainClass {
         public static void Main(string[] args) {
             Console.WriteLine("Checking if the engine core was successfully loaded");
-            EngineInstance.EnsureLoaded();
+            EngineInstance.NativeEngine.CreateWorkspace();
         }
     }
 }

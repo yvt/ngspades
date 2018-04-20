@@ -5,8 +5,11 @@
 //
 #![allow(dead_code)] // For `Engine::data`
 use cgmath::Vector2;
+
 use ngsbase::{IBitmap, IEngine, IEngineTrait, IWorkspace, PixelFormat};
-use ngscom::{hresults, ComPtr, HResult};
+use ngscom::{hresults, to_hresult, ComPtr, HResult};
+
+use ngspf_com;
 
 com_impl! {
     class Engine {
@@ -25,8 +28,11 @@ impl Engine {
 }
 
 impl IEngineTrait for Engine {
-    fn create_workspace(&self, _retval: &mut ComPtr<IWorkspace>) -> HResult {
-        hresults::E_NOTIMPL
+    fn create_workspace(&self, retval: &mut ComPtr<IWorkspace>) -> HResult {
+        to_hresult(|| {
+            *retval = ngspf_com::ComWorkspace::new()?;
+            Ok(())
+        })
     }
 
     fn create_bitmap(

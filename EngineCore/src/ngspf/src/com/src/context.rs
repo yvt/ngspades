@@ -9,6 +9,7 @@ use ngsbase;
 use ngscom::{hresults, ComPtr, HResult};
 
 use core::Context;
+use nodes::translate_context_error;
 use {nodes, ILayer, INodeGroup, IPresentationContext, IWindow};
 
 com_impl! {
@@ -44,5 +45,14 @@ impl ngsbase::IPresentationContextTrait for ComContext {
     fn create_layer(&self, retval: &mut ComPtr<ILayer>) -> HResult {
         *retval = nodes::ComLayer::new(Arc::clone(&self.data.context));
         hresults::E_OK
+    }
+
+    fn commit_frame(&self) -> HResult {
+        self.data
+            .context
+            .commit()
+            .map_err(translate_context_error)
+            .err()
+            .unwrap_or(hresults::E_OK)
     }
 }

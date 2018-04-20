@@ -14,7 +14,7 @@ use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE};
 use {core, viewport};
 use {ILayer, INodeGroup, IWindow, IWindowListener};
 
-fn translate_context_error(e: core::ContextError) -> HResult {
+pub(crate) fn translate_context_error(e: core::ContextError) -> HResult {
     match e {
         core::ContextError::LockFailed => E_PF_LOCKED,
     }

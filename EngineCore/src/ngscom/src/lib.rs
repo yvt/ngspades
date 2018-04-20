@@ -155,6 +155,8 @@ mod comptr;
 mod iunknown;
 mod unownedcomptr;
 mod iany;
+mod utils;
+pub use utils::*;
 
 // Utility functions for macros
 #[doc(hidden)]

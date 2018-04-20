@@ -4,12 +4,15 @@
 // This source code is a part of Nightingales.
 //
 
-#[macro_use]
-extern crate ngscom;
+extern crate cgmath;
 #[macro_use]
 extern crate lazy_static;
+
+#[macro_use]
+extern crate ngscom;
 extern crate ngsbase;
-extern crate cgmath;
+extern crate ngspf;
+extern crate ngspf_com;
 
 mod entry;
 

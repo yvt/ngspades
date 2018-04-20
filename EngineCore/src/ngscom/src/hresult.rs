@@ -104,6 +104,7 @@ pub mod hresults {
     pub const E_NOINTERFACE: HResult = HResult(0x80004002u32 as i32);
     pub const E_POINTER: HResult = HResult(0x80004003u32 as i32);
     pub const E_INVALIDARG: HResult = HResult(0x80070057u32 as i32);
+    pub const E_UNEXPECTED: HResult = HResult(0x8000ffffu32 as i32);
 }
 
 /// `HResult` counterpart of the standard library's `try!` macro.

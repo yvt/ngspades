@@ -12,3 +12,4 @@ lazy_static = "0.2"
 atomic_refcell = "0.1.0"
 cgmath = "0.15.0"
 cggeom = { path = "../../../support/cggeom" }
+send-cell = "0.1.3"
