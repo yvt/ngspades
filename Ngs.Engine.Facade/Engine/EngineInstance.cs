@@ -50,14 +50,7 @@ namespace Ngs.Engine {
         static EngineInstance() {
             try {
                 // Load the loader config
-                string enginePath = Path.GetDirectoryName(
-                    System.Reflection.Assembly.GetExecutingAssembly().Location);
-
-                string envValue = Environment.GetEnvironmentVariable("NGS_ENGINE_PATH");
-                if (!string.IsNullOrWhiteSpace(envValue)) {
-                    enginePath = envValue;
-                }
-
+                string enginePath = EngineLoaderHelper.EnginePath;
                 string loaderConfigPath = Path.Combine(enginePath, "LoaderConfig.xml");
 
                 if (!File.Exists(loaderConfigPath)) {

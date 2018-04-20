@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 using Ngs.Utils;
@@ -11,19 +12,31 @@ using Ngs.Utils;
 namespace Ngs.Engine {
     delegate int NgsLoaderGetProcessorInfo(out IntPtr retval);
 
-    class EngineLoaderHelper {
+    static class EngineLoaderHelper {
         static DynamicLibrary dynamicLibrary;
         static Exception loadError;
+        public static string EnginePath { get; }
 
         static EngineLoaderHelper() {
+            EnginePath = Path.GetDirectoryName(
+                    System.Reflection.Assembly.GetExecutingAssembly().Location);
+
+            string envValue = Environment.GetEnvironmentVariable("NGS_ENGINE_PATH");
+            if (!string.IsNullOrWhiteSpace(envValue)) {
+                EnginePath = envValue;
+            }
+
             try {
+                string helperPath;
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                    dynamicLibrary = DynamicLibrary.Load("libngsloader.dll");
+                    helperPath = Path.Combine(EnginePath, "libngsloader.dll");
                 } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-                    dynamicLibrary = DynamicLibrary.Load("libngsloader.dylib");
+                    helperPath = Path.Combine(EnginePath, "libngsloader.dylib");
                 } else {
-                    dynamicLibrary = DynamicLibrary.Load("libngsloader.so");
+                    helperPath = Path.Combine(EnginePath, "libngsloader.so");
                 }
+
+                dynamicLibrary = DynamicLibrary.Load(helperPath);
             } catch (Exception ex) {
                 loadError = ex;
             }
