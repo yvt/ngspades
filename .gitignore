@@ -4,6 +4,7 @@
 # User preferences
 *.userprefs
 *.user
+/.vs/
 
 # Derived files
 BUILD
