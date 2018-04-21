@@ -72,7 +72,21 @@ namespace Ngs.Interop.Marshaller {
                 return;
             }
 
-            foreach (var method in type.GetTypeInfo().DeclaredMethods) {
+            MethodInfo[] methods;
+            if (type == typeof(IUnknown)) {
+                // Methods of `IUnknown` must be defined in a specific order.
+                methods = new[] {
+                    typeInfo.GetDeclaredMethod("QueryNativeInterface"),
+                    typeInfo.GetDeclaredMethod("AddRef"),
+                    typeInfo.GetDeclaredMethod("Release"),
+                };
+            } else {
+                // In .NET Core, the order of method in `DeclaredMethods` appears to be
+                // inconsistent. (It even changes throughout the application domain's lifetime!)
+                // As a work-around, we sort them by name.
+                methods = (from x in typeInfo.DeclaredMethods orderby x.Name select x).ToArray();
+            }
+            foreach (var method in methods) {
                 outMethods.Add(new ComMethodInfo(method, vtableOffset++, ComMethodType.RcwMethod));
             }
         }
