@@ -29,7 +29,7 @@ namespace Ngs.Engine {
             try {
                 string helperPath;
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                    helperPath = Path.Combine(EnginePath, "libngsloader.dll");
+                    helperPath = Path.Combine(EnginePath, "ngsloader.dll");
                 } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
                     helperPath = Path.Combine(EnginePath, "libngsloader.dylib");
                 } else {

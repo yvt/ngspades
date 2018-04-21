@@ -29,16 +29,16 @@
         <RequiresProcessorFeature>AVX</RequiresProcessorFeature>
     </Image>
 
-    <Image Path="libngsengine-fma3.dll">
+    <Image Path="ngsengine-fma3.dll">
         <SupportsPlatform>Windows</SupportsPlatform>
         <RequiresProcessorFeature>FMA3</RequiresProcessorFeature>
         <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
     </Image>
-    <Image Path="libngsengine-avx2.dll">
+    <Image Path="ngsengine-avx2.dll">
         <SupportsPlatform>Windows</SupportsPlatform>
         <RequiresProcessorFeature>AVX2</RequiresProcessorFeature>
     </Image>
-    <Image Path="libngsengine-avx.dll">
+    <Image Path="ngsengine-avx.dll">
         <SupportsPlatform>Windows</SupportsPlatform>
         <RequiresProcessorFeature>AVX</RequiresProcessorFeature>
     </Image>
@@ -50,7 +50,7 @@
     <Image Path="libngsengine.so">
         <SupportsPlatform>Linux</SupportsPlatform>
     </Image>
-    <Image Path="libngsengine.dll">
+    <Image Path="ngsengine.dll">
         <SupportsPlatform>Windows</SupportsPlatform>
     </Image>
 </LoaderConfig>
