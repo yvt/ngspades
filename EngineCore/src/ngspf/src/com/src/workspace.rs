@@ -6,6 +6,7 @@
 use send_cell::SendCell;
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex, TryLockError};
+use std::mem::ManuallyDrop;
 
 use ngscom::{hresults, to_hresult, ComPtr, HResult, IUnknown, UnownedComPtr};
 
@@ -30,13 +31,14 @@ com_impl! {
 }
 
 struct WorkspaceData {
-    workspace: Mutex<SendCell<RefCell<Workspace>>>,
+    // We can't drop `Workspace` from an arbitrary thread. For now we just
+    // forget its instance. This should be okay since in practice a workspace is
+    // a singleton object. FIXME: Do something about this?
+    workspace: ManuallyDrop<Mutex<SendCell<RefCell<Workspace>>>>,
     context: Arc<Context>,
     com_context: ComPtr<IPresentationContext>,
     root: RootRef,
 }
-
-// FIXME: Dropping `SendCell` from non-main thread results in a panic
 
 impl ComWorkspace {
     pub fn new() -> Result<ComPtr<IWorkspace>, HResult> {
@@ -46,7 +48,7 @@ impl ComWorkspace {
         let root = workspace.root().clone();
         let workspace = Mutex::new(SendCell::new(RefCell::new(workspace)));
         Ok((&Self::alloc(WorkspaceData {
-            workspace,
+            workspace: ManuallyDrop::new(workspace),
             context,
             com_context,
             root,
