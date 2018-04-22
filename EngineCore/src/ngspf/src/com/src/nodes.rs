@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use atomic_refcell::AtomicRefCell;
-use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
+use ngscom::{hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
              UnownedComPtr};
 use std::sync::Arc;
 use {cggeom, cgmath, ngsbase, rgb};
@@ -42,7 +42,8 @@ com_interface! {
     }
 }
 
-/// Thread-safe node data that has the partial and materialized states.
+/// Thread-safe node data that can be either in the partial state (being
+/// constructed) or in the materialized state.
 #[derive(Debug)]
 struct NodeData<P, M> {
     cell: AtomicRefCell<NodeDataInner<P, M>>,
@@ -68,6 +69,9 @@ impl<P, M> NodeData<P, M> {
         }
     }
 
+    /// Transition a `NodeData` to the materialized state using the first
+    /// supplied function. Call the second function on its materialized state
+    /// data.
     fn with_materialized<C: FnOnce(P) -> M, F: FnOnce(&M) -> R, R>(&self, ctor: C, f: F) -> R {
         self.with(move |state| {
             if let Some(m) = state.materialized() {
@@ -81,6 +85,8 @@ impl<P, M> NodeData<P, M> {
         })
     }
 
+    /// Transition a `NodeData` to the materialized state using a supplied
+    /// function that accepts the partial state data as its input.
     fn materialize<C: FnOnce(P) -> M>(&self, ctor: C) {
         use std::mem::replace;
         let mut state = self.cell.borrow_mut();
@@ -92,6 +98,8 @@ impl<P, M> NodeData<P, M> {
         *state = new_state;
     }
 
+    /// Acquire a lock on the state data and call a supplied function with its
+    /// partial or materialized state data.
     fn with<F: FnOnce(NodeDataState<&P, &M>) -> R, R>(&self, f: F) -> R {
         let state = self.cell.borrow();
         match *state {
@@ -101,6 +109,8 @@ impl<P, M> NodeData<P, M> {
         }
     }
 
+    /// Acquire a lock on the state data and call a supplied function with a
+    /// mutable reference to its partial or materialized state data.
     fn with_mut<F: FnOnce(NodeDataState<&mut P, &mut M>) -> R, R>(&self, f: F) -> R {
         let mut state = self.cell.borrow_mut();
         match *state {
@@ -128,6 +138,55 @@ impl<P, M> NodeDataState<P, M> {
     }
 }
 
+/// Set the property in a way depending on the state of `NodeData`.
+///
+///  - If `$node_data` is in the partial state, pass the value to a builder.
+///  - If `$node_data` is in the materialized state, acquire a lock on the
+///    producer frame using `$context` and set the property.
+macro_rules! node_data_set_prop {
+    ($context:expr, $node_data:expr, $name:ident = $value:expr) => {{
+        let value = $value;
+        let ref context: core::Context = $context;
+        $node_data.with_mut(|s| match s {
+            NodeDataState::Partial(builder) => {
+                // Since they are consuming type of builders, we must first
+                // `take` it
+                let b = builder.take().unwrap();
+                *builder = Some(b.$name(value));
+                Ok(())
+            }
+            NodeDataState::Materialized(obj_ref) => {
+                // `obj_ref`: `LayerRef`, etc.
+                let mut frame = context
+                    .lock_producer_frame()
+                    .map_err(translate_context_error)?;
+                obj_ref.$name().set(&mut frame, value).unwrap();
+                Ok(())
+            }
+        })
+    }};
+}
+
+/// Set the property in a way depending on the state of `NodeData`.
+///
+///  - If `$node_data` is in the partial state, pass the value to a builder.
+///  - If `$node_data` is in the materialized state, return `Err(E_PF_NODE_MATERIALIZED)`.
+macro_rules! node_data_set_prop_builder_only {
+    ($node_data:expr, $name:ident = $value:expr) => {{
+        let value = $value;
+        $node_data.with_mut(|s| match s {
+            NodeDataState::Partial(builder) => {
+                // Since they are consuming type of builders, we must first
+                // `take` it
+                let b = builder.take().unwrap();
+                *builder = Some(b.$name(value));
+                Ok(())
+            }
+            NodeDataState::Materialized(_) => Err(E_PF_NODE_MATERIALIZED),
+        })
+    }};
+}
+
 com_impl! {
     #[derive(Debug)]
     class ComNodeGroup {
@@ -139,7 +198,7 @@ com_impl! {
 
 impl ComNodeGroup {
     pub fn new() -> ComPtr<INodeGroup> {
-        ComPtr::from(&ComNodeGroup::alloc(NodeData::new(Vec::new())))
+        (&ComNodeGroup::alloc(NodeData::new(Vec::new()))).into()
     }
 }
 
@@ -148,7 +207,7 @@ impl ngsbase::INodeGroupTrait for ComNodeGroup {
         self.data.with_mut(|s| match s {
             NodeDataState::Materialized(_) => E_PF_NODE_MATERIALIZED,
             NodeDataState::Partial(p) => {
-                let inoderef = ComPtr::<INodeRef>::from(&*node);
+                let inoderef: ComPtr<INodeRef> = (&*node).into();
                 if inoderef.is_null() {
                     return E_PF_NOT_NODE;
                 }
@@ -179,56 +238,17 @@ com_impl! {
 
 impl ComLayer {
     pub fn new(context: Arc<core::Context>) -> ComPtr<ILayer> {
-        ComPtr::from(&ComLayer::alloc((
-            context,
-            NodeData::new(Some(viewport::LayerBuilder::new())),
-        )))
+        (&ComLayer::alloc((context, NodeData::new(Some(viewport::LayerBuilder::new()))))).into()
     }
 }
 
 impl ngsbase::ILayerTrait for ComLayer {
     fn set_opacity(&self, value: f32) -> HResult {
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::LayerBuilder = builder.take().unwrap();
-                    *builder = Some(b.opacity(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(layer) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    layer.opacity().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, opacity = value))
     }
 
     fn set_transform(&self, value: cgmath::Matrix4<f32>) -> HResult {
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::LayerBuilder = builder.take().unwrap();
-                    *builder = Some(b.transform(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(layer) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    layer.transform().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, transform = value))
     }
 
     fn set_flags(&self, flags: ngsbase::LayerFlags) -> HResult {
@@ -237,134 +257,44 @@ impl ngsbase::ILayerTrait for ComLayer {
             value |= viewport::LayerFlagsBit::FlattenContents;
         }
 
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::LayerBuilder = builder.take().unwrap();
-                    *builder = Some(b.flags(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(layer) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    layer.flags().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, flags = value))
     }
 
     fn set_bounds(&self, value: cggeom::Box2<f32>) -> HResult {
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::LayerBuilder = builder.take().unwrap();
-                    *builder = Some(b.bounds(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(layer) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    layer.bounds().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, bounds = value))
     }
 
     fn set_child(&self, value: UnownedComPtr<IUnknown>) -> HResult {
         let value = if value.is_null() {
             None
         } else {
-            let inoderef = ComPtr::<INodeRef>::from(&*value);
+            let inoderef: ComPtr<INodeRef> = (&*value).into();
             if inoderef.is_null() {
                 return E_PF_NOT_NODE;
             }
             Some(inoderef.create_node_ref())
         };
 
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::LayerBuilder = builder.take().unwrap();
-                    *builder = Some(b.child(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(layer) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    layer.child().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, child = value))
     }
 
     fn set_mask(&self, value: UnownedComPtr<IUnknown>) -> HResult {
         let value = if value.is_null() {
             None
         } else {
-            let inoderef = ComPtr::<INodeRef>::from(&*value);
+            let inoderef: ComPtr<INodeRef> = (&*value).into();
             if inoderef.is_null() {
                 return E_PF_NOT_NODE;
             }
             Some(inoderef.create_node_ref())
         };
 
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::LayerBuilder = builder.take().unwrap();
-                    *builder = Some(b.mask(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(layer) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    layer.mask().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, mask = value))
     }
 
     fn set_solid_color(&self, value: rgb::RGBA<f32>) -> HResult {
         let value = viewport::LayerContents::Solid(value);
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::LayerBuilder = builder.take().unwrap();
-                    *builder = Some(b.contents(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(layer) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    layer.contents().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, contents = value))
     }
 }
 
@@ -388,95 +318,47 @@ com_impl! {
 
 impl ComWindow {
     pub fn new(context: Arc<core::Context>) -> ComPtr<IWindow> {
-        ComPtr::from(&ComWindow::alloc((
-            context,
-            NodeData::new(Some(viewport::WindowBuilder::new())),
-        )))
+        (&ComWindow::alloc((context, NodeData::new(Some(viewport::WindowBuilder::new()))))).into()
     }
 }
 
 impl ngsbase::IWindowTrait for ComWindow {
     fn set_flags(&self, flags: ngsbase::WindowFlags) -> HResult {
-        let mut value = viewport::WindowFlags::empty();
-        if flags.contains(ngsbase::WindowFlagsItem::Resizable) {
-            value |= viewport::WindowFlagsBit::Resizable;
-        }
-        if flags.contains(ngsbase::WindowFlagsItem::Borderless) {
-            value |= viewport::WindowFlagsBit::Borderless;
-        }
-        if flags.contains(ngsbase::WindowFlagsItem::Transparent) {
-            value |= viewport::WindowFlagsBit::Transparent;
-        }
-        if flags.contains(ngsbase::WindowFlagsItem::DenyUserClose) {
-            value |= viewport::WindowFlagsBit::DenyUserClose;
-        }
+        to_hresult(|| {
+            let mut value = viewport::WindowFlags::empty();
+            if flags.contains(ngsbase::WindowFlagsItem::Resizable) {
+                value |= viewport::WindowFlagsBit::Resizable;
+            }
+            if flags.contains(ngsbase::WindowFlagsItem::Borderless) {
+                value |= viewport::WindowFlagsBit::Borderless;
+            }
+            if flags.contains(ngsbase::WindowFlagsItem::Transparent) {
+                value |= viewport::WindowFlagsBit::Transparent;
+            }
+            if flags.contains(ngsbase::WindowFlagsItem::DenyUserClose) {
+                value |= viewport::WindowFlagsBit::DenyUserClose;
+            }
 
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::WindowBuilder = builder.take().unwrap();
-                    *builder = Some(b.flags(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(_window) => Err(E_PF_NODE_MATERIALIZED),
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+            node_data_set_prop_builder_only!(self.data.1, flags = value)
+        })
     }
 
     fn set_size(&self, value: cgmath::Vector2<f32>) -> HResult {
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::WindowBuilder = builder.take().unwrap();
-                    *builder = Some(b.size(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(window) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    window.size().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, size = value))
     }
 
     fn set_child(&self, value: UnownedComPtr<IUnknown>) -> HResult {
         let value = if value.is_null() {
             None
         } else {
-            let inoderef = ComPtr::<INodeRef>::from(&*value);
+            let inoderef: ComPtr<INodeRef> = (&*value).into();
             if inoderef.is_null() {
                 return E_PF_NOT_NODE;
             }
             Some(inoderef.create_node_ref())
         };
 
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::WindowBuilder = builder.take().unwrap();
-                    *builder = Some(b.child(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(window) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    window.child().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, child = value))
     }
 
     fn set_title(&self, value: Option<&BString>) -> HResult {
@@ -485,25 +367,8 @@ impl ngsbase::IWindowTrait for ComWindow {
         } else {
             String::new()
         };
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::WindowBuilder = builder.take().unwrap();
-                    *builder = Some(b.title(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(window) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    window.title().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, title = value))
     }
 
     fn set_listener(&self, value: UnownedComPtr<IWindowListener>) -> HResult {
@@ -565,25 +430,8 @@ impl ngsbase::IWindowTrait for ComWindow {
         } else {
             None
         };
-        let ref context: core::Context = *self.data.0;
-        self.data
-            .1
-            .with_mut(|s| match s {
-                NodeDataState::Partial(builder) => {
-                    let b: viewport::WindowBuilder = builder.take().unwrap();
-                    *builder = Some(b.listener(value));
-                    Ok(())
-                }
-                NodeDataState::Materialized(window) => {
-                    let mut frame = context
-                        .lock_producer_frame()
-                        .map_err(translate_context_error)?;
-                    window.listener().set(&mut frame, value).unwrap();
-                    Ok(())
-                }
-            })
-            .err()
-            .unwrap_or(hresults::E_OK)
+
+        to_hresult(|| node_data_set_prop!(*self.data.0, self.data.1, listener = value))
     }
 }
 
