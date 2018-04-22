@@ -6,6 +6,7 @@
 //! NgsCOM bridges to [NgsPF](../ngspf/index.html).
 extern crate atomic_refcell;
 extern crate cgmath;
+extern crate rgb;
 #[macro_use]
 extern crate lazy_static;
 extern crate send_cell;

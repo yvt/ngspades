@@ -7,7 +7,7 @@ use atomic_refcell::AtomicRefCell;
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
              UnownedComPtr};
 use std::sync::Arc;
-use {cgmath, cggeom, ngsbase};
+use {cggeom, cgmath, ngsbase, rgb};
 
 use core::prelude::*;
 use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE};
@@ -172,6 +172,7 @@ impl INodeRefTrait for ComNodeGroup {
 com_impl! {
     class ComLayer {
         ilayer: ILayer;
+        inoderef: INodeRef;
         @data: (Arc<core::Context>, NodeData<Option<viewport::LayerBuilder>, viewport::LayerRef>);
     }
 }
@@ -342,11 +343,45 @@ impl ngsbase::ILayerTrait for ComLayer {
             .err()
             .unwrap_or(hresults::E_OK)
     }
+
+    fn set_solid_color(&self, value: rgb::RGBA<f32>) -> HResult {
+        let value = viewport::LayerContents::Solid(value);
+        let ref context: core::Context = *self.data.0;
+        self.data
+            .1
+            .with_mut(|s| match s {
+                NodeDataState::Partial(builder) => {
+                    let b: viewport::LayerBuilder = builder.take().unwrap();
+                    *builder = Some(b.contents(value));
+                    Ok(())
+                }
+                NodeDataState::Materialized(layer) => {
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .map_err(translate_context_error)?;
+                    layer.contents().set(&mut frame, value).unwrap();
+                    Ok(())
+                }
+            })
+            .err()
+            .unwrap_or(hresults::E_OK)
+    }
+}
+
+impl INodeRefTrait for ComLayer {
+    fn create_node_ref(&self) -> core::NodeRef {
+        let ref context = self.data.0;
+        self.data.1.with_materialized(
+            |p| p.unwrap().build(context),
+            |layer_ref| layer_ref.clone().into_node_ref(),
+        )
+    }
 }
 
 com_impl! {
     class ComWindow {
         iwindow: IWindow;
+        inoderef: INodeRef;
         @data: (Arc<core::Context>, NodeData<Option<viewport::WindowBuilder>, viewport::WindowRef>);
     }
 }
@@ -549,5 +584,15 @@ impl ngsbase::IWindowTrait for ComWindow {
             })
             .err()
             .unwrap_or(hresults::E_OK)
+    }
+}
+
+impl INodeRefTrait for ComWindow {
+    fn create_node_ref(&self) -> core::NodeRef {
+        let ref context = self.data.0;
+        self.data.1.with_materialized(
+            |p| p.unwrap().build(context),
+            |window_ref| window_ref.clone().into_node_ref(),
+        )
     }
 }

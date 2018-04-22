@@ -69,5 +69,10 @@ namespace Ngs.Engine.Presentation {
         /// as the mask image, or the <c>null</c> value indicating no mask image is used.
         /// </returns>
         IUnknown Mask { set; }
+
+        /// <summary>
+        /// Sets the contenst type to solid color, and use the given color.
+        /// </summary>
+        Rgba SolidColor { set; }
     }
 }
