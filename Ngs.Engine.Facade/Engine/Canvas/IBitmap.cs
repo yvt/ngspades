@@ -37,5 +37,32 @@ namespace Ngs.Engine.Canvas {
         /// </remarks>
         /// <returns>A newly created <see cref="IPainter" /></returns>
         IPainter CreatePainter();
+
+        /// <summary>
+        /// Creates a clone of the bitmap.
+        /// </summary>
+        /// <returns>A new bitmap containing the identical contents.</returns>
+        IBitmap Clone();
+
+        /// <summary>
+        /// Converts this bitmap to an immutable image, invaludating this bitmap object.
+        /// </summary>
+        /// <returns>A new image object containing the identical contents.</returns>
+        IUnknown IntoImage();
+
+        /// <summary>
+        /// Retrieves a pointer of the raw contents.
+        /// </summary>
+        IntPtr Contents { get; }
+
+        /// <summary>
+        /// Acquires a lock on the bitmap.
+        /// </summary>
+        void Lock();
+
+        /// <summary>
+        /// Releases a lock on the bitmap.
+        /// </summary>
+        void Unlock();
     }
 }
