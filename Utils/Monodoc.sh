@@ -16,8 +16,14 @@ HTML_DIR=Derived/MonodocHtml
 MONODOC_FLAGS="--delete --fno-assembly-versions"
 
 for p in Ngs.Interop Ngs.Engine.Facade Ngs.Framework; do
+    TARGET_FX=netcoreapp2.1
+
+    if [ "$p" == "Ngs.Interop" ]; then
+        TARGET_FX=netstandard2.0
+    fi
+
     dotnet build "$p/$p.csproj"
-    MONODOC_FLAGS="$MONODOC_FLAGS $p/bin/Debug/netstandard2.0/$p.dll -i $p/bin/Debug/netstandard2.0/$p.xml"
+    MONODOC_FLAGS="$MONODOC_FLAGS $p/bin/Debug/$TARGET_FX/$p.dll -i $p/bin/Debug/$TARGET_FX/$p.xml"
 done
 
 mdoc update --out $MONODOC_DIR $MONODOC_FLAGS || exit 1
