@@ -6,7 +6,7 @@ Nightingales
 The following softwares must be installed to build this project.
 
 - [Rust] 1.26 or later. The nightly build toolchain must be installed and selected using `rustup install nightly` and `rustup default nightly`.
-- [.NET Core] 2.0 or later
+- [.NET Core] 2.1 or later
 - [LunarG Vulkan SDK] 1.0 or later. [glslang], which is distributed as a part of it, must be in `$PATH` to build ZanGFX and the rendering engine. 
 
 [Rust]: https://www.rust-lang.org/en-US/
