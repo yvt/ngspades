@@ -15,6 +15,8 @@ namespace Ngs.Shell {
             var ws = engine.CreateWorkspace();
 
             // Create and display a window
+            ws.Context.Lock();
+
             var window = ws.Context.CreateWindow();
 
             var layer = ws.Context.CreateLayer();
@@ -23,6 +25,8 @@ namespace Ngs.Shell {
             window.Child = layer;
 
             ws.Windows = window;
+
+            ws.Context.Unlock();
             ws.Context.CommitFrame();
 
             new System.Threading.Thread(() => {

@@ -47,6 +47,16 @@ impl ngsbase::IPresentationContextTrait for ComContext {
         hresults::E_OK
     }
 
+    fn lock(&self) -> HResult {
+        // TODO: Implement locking using `stickylock`
+        hresults::E_OK
+    }
+
+    fn unlock(&self) -> HResult {
+        // TODO: Implement locking using `stickylock`
+        hresults::E_OK
+    }
+
     fn commit_frame(&self) -> HResult {
         self.data
             .context
