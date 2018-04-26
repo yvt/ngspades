@@ -36,6 +36,7 @@ members = [
     "src/support/raduga",
     "src/support/refeq",
     "src/support/retire",
+    "src/support/stickylock",
     "src/support/tokenlock",
     "src/yfft",
     "src/ysr2",
