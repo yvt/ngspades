@@ -23,6 +23,22 @@ namespace Ngs.Performance {
         }
 
         [Benchmark(OperationsPerInvoke = 10000)]
+        public void SetOpacityOnMaterializedLayer() {
+            for (long i = 0; i < 10000; ++i) {
+                materializedLayer.Opacity = 0.0f;
+            }
+        }
+
+        [Benchmark(OperationsPerInvoke = 10000)]
+        public void SetOpacityOnMaterializedLayerWithLock() {
+            workspace.Context.Lock();
+            for (long i = 0; i < 10000; ++i) {
+                materializedLayer.Opacity = 0.0f;
+            }
+            workspace.Context.Unlock();
+        }
+
+        [Benchmark(OperationsPerInvoke = 10000)]
         public void SetSolidColorOnMaterializedLayer() {
             for (long i = 0; i < 10000; ++i) {
                 materializedLayer.SolidColor = Rgba.TransparentBlack;
