@@ -252,6 +252,7 @@ impl<T: ?Sized> StickyMutex<T> {
         if self.borrowed.load(Ordering::Relaxed) {
             return None;
         }
+        self.borrowed.store(true, Ordering::Relaxed);
 
         Some(StickyMutexGuard(self, PhantomData))
     }
