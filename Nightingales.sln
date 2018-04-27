@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Interop.Tests", "Ngs.In
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Facade.Tests", "Ngs.Engine.Facade.Tests\Ngs.Engine.Facade.Tests.csproj", "{FC9D3F80-8675-433D-A72B-02A8FD64382F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Performance", "Ngs.Performance\Ngs.Performance.csproj", "{C9E1123E-C0B9-4A35-BD39-8F65552430DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -100,5 +102,17 @@ Global
 		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|x64.Build.0 = Release|Any CPU
 		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|x86.ActiveCfg = Release|Any CPU
 		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|x86.Build.0 = Release|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Debug|x64.Build.0 = Debug|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Debug|x86.Build.0 = Debug|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Release|x64.ActiveCfg = Release|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Release|x64.Build.0 = Release|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Release|x86.ActiveCfg = Release|Any CPU
+		{C9E1123E-C0B9-4A35-BD39-8F65552430DA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
