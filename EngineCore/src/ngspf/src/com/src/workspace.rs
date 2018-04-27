@@ -5,8 +5,8 @@
 //
 use send_cell::SendCell;
 use std::cell::RefCell;
-use std::sync::{Arc, Mutex, TryLockError};
 use std::mem::ManuallyDrop;
+use std::sync::{Arc, Mutex, TryLockError};
 
 use ngscom::{hresults, to_hresult, ComPtr, HResult, IUnknown, UnownedComPtr};
 
@@ -15,7 +15,7 @@ use hresults::{E_PF_LOCKED, E_PF_NOT_NODE, E_PF_THREAD};
 use ngsbase::{IPresentationContext, IWorkspace, IWorkspaceTrait};
 use nodes::{translate_context_error, INodeRef};
 use viewport::{RootRef, Workspace, WorkspaceError};
-use ComContext;
+use {ComContext, IComContext};
 
 fn translate_workspace_error(e: WorkspaceError) -> HResult {
     match e {
@@ -36,7 +36,7 @@ struct WorkspaceData {
     // a singleton object. FIXME: Do something about this?
     workspace: ManuallyDrop<Mutex<SendCell<RefCell<Workspace>>>>,
     context: Arc<Context>,
-    com_context: ComPtr<IPresentationContext>,
+    com_context: ComPtr<IComContext>,
     root: RootRef,
 }
 
@@ -54,11 +54,15 @@ impl ComWorkspace {
             root,
         })).into())
     }
+
+    fn com_context(&self) -> &ComContext {
+        unsafe { &*self.data.com_context.get_ptr() }
+    }
 }
 
 impl IWorkspaceTrait for ComWorkspace {
     fn get_context(&self, retval: &mut ComPtr<IPresentationContext>) -> HResult {
-        *retval = self.data.com_context.clone();
+        *retval = (&self.data.com_context).into();
         hresults::E_OK
     }
 
@@ -71,14 +75,12 @@ impl IWorkspaceTrait for ComWorkspace {
                 if inoderef.is_null() {
                     return Err(E_PF_NOT_NODE);
                 }
-                Some(inoderef.create_node_ref())
+                Some(inoderef.create_node_ref()?)
             };
 
-            let mut frame = self.data
-                .context
-                .lock_producer_frame()
-                .map_err(translate_context_error)?;
-            self.data.root.windows().set(&mut frame, value).unwrap();
+            let mut lock = self.com_context().lock_producer_frame()?;
+            let frame = lock.producer_frame_mut();
+            self.data.root.windows().set(frame, value).unwrap();
             Ok(())
         })
     }

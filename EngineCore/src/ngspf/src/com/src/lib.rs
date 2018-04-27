@@ -10,9 +10,11 @@ extern crate rgb;
 #[macro_use]
 extern crate lazy_static;
 extern crate send_cell;
+extern crate stickylock;
+extern crate tokenlock;
 
-extern crate ngsbase;
 extern crate cggeom;
+extern crate ngsbase;
 #[macro_use]
 extern crate ngscom;
 extern crate ngspf_core as core;
@@ -24,7 +26,8 @@ mod workspace;
 
 pub use ngsbase::{ILayer, INodeGroup, IPresentationContext, IWindow, IWindowListener, IWorkspace};
 
-pub use context::ComContext;
+pub use context::{ComContext, IComContext, IComContextTrait, ProducerFrameLockGuard,
+                  ProducerFrameRefMut};
 pub use nodes::{INodeRef, INodeRefTrait};
 pub use workspace::ComWorkspace;
 

@@ -16,7 +16,7 @@
 #[macro_export]
 #[doc(hidden)]
 macro_rules! com_vtable {
-    ( $vtable:ident, $vtable_type: ty, $interface_type:ty, $cls_type:ty, $offs:expr ) => (
+    ($vtable:ident, $vtable_type:ty, $interface_type:ty, $cls_type:ty, $offs:expr) => {
         lazy_static! {
             static ref $vtable: $vtable_type = {
                 struct Offset;
@@ -28,7 +28,7 @@ macro_rules! com_vtable {
                 <$interface_type>::fill_vtable::<$cls_type, Offset>()
             };
         }
-    )
+    };
 }
 
 #[macro_export]
@@ -76,6 +76,17 @@ macro_rules! com_impl {
                 });
                 let mut comptr: $crate::ComPtr<$crate::IUnknown> = ComPtr::new();
                 (*comptr.as_mut_ptr()) = ptr as *mut $crate::IUnknown;
+                comptr
+            }
+
+            /// Construct a `ComPtr<IUnknown>` pointing `self`.
+            #[allow(dead_code)]
+            pub fn as_com_ptr(&self) -> $crate::ComPtr<$crate::IUnknown> {
+                assert_ne!(self.ref_count.load($crate::detail::Ordering::Relaxed), 0, "can't resurrect an object");
+                $crate::IUnknownTrait::add_ref(self);
+
+                let mut comptr: $crate::ComPtr<$crate::IUnknown> = ComPtr::new();
+                unsafe { (*comptr.as_mut_ptr::<$crate::IUnknown>()) = ::std::mem::transmute(self); }
                 comptr
             }
         }

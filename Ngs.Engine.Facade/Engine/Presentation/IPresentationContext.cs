@@ -40,7 +40,7 @@ namespace Ngs.Engine.Presentation {
 
         /// <summary>
         /// Acquires a lock on the context state for exclusive access by the current thread.
-        /// Blocks the current thread if another thread currently holds a lock.
+        /// Fails thread if another thread currently holds a lock.
         /// </summary>
         /// <remarks>
         /// <para>Every property of a node is protected by a single mutex maintained by its parent
@@ -67,6 +67,10 @@ namespace Ngs.Engine.Presentation {
         /// Captures the current state of presentation nodes and submit it for
         /// presentation.
         /// </summary>
+        /// <remarks>
+        /// If you have a lock on the context state (acquired by <see cref="Lock" />), you must
+        /// release it first.
+        /// </remarks>
         void CommitFrame();
     }
 }
