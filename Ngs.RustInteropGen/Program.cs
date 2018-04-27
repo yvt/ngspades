@@ -19,7 +19,7 @@ namespace Ngs.Interop.Shell {
                 CommandOptionType.SingleValue);
             commandLineApplication.HelpOption("-? | -h | --help");
             commandLineApplication.OnExecute(() => {
-                var asm = typeof(Ngs.Engine.ITestInterface).GetTypeInfo().Assembly;
+                var asm = typeof(Ngs.Engine.IEngine).GetTypeInfo().Assembly;
                 var ifTypes = asm.GetTypes().Where((type) =>
                   type.GetTypeInfo().IsPublic &&
                   type.GetTypeInfo().IsInterface &&
