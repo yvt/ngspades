@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
@@ -12,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.RustInteropGen", "Ngs.RustInteropGen\Ngs.RustInteropGen.csproj", "{62DCB741-9DFA-4476-8DDE-C070F334D406}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Interop.Tests", "Ngs.Interop.Tests\Ngs.Interop.Tests.csproj", "{821D0D12-E801-4409-B243-320F87E77E2B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Facade.Tests", "Ngs.Engine.Facade.Tests\Ngs.Engine.Facade.Tests.csproj", "{FC9D3F80-8675-433D-A72B-02A8FD64382F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -86,5 +88,17 @@ Global
 		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|x64.Build.0 = Release|x64
 		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|x86.ActiveCfg = Release|x86
 		{821D0D12-E801-4409-B243-320F87E77E2B}.Release|x86.Build.0 = Release|x86
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Debug|x64.Build.0 = Debug|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Debug|x86.Build.0 = Debug|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|x64.ActiveCfg = Release|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|x64.Build.0 = Release|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|x86.ActiveCfg = Release|Any CPU
+		{FC9D3F80-8675-433D-A72B-02A8FD64382F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

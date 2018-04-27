@@ -1,0 +1,9 @@
+**Ngs.Engine.Facade.Tests Design Notes**
+
+This project contains xUnit tests for `Ngs.Engine.Facade`.
+
+- The directory structure does not follow the standard convention by design.
+  A test class `Ngs.Foo.Tests.Bar` would be placed in `Foo/Bar.cs`.
+- Since the tests requires an access to the engine core, the environment
+  variable `NGS_ENGINE_PATH` must be set appropriately.
+- Some of the tests might fail without GUI access.
