@@ -40,9 +40,10 @@ The following softwares must be installed to build this project.
     ...
     Build succeeded.
 
-    $ export NGS_ENGINE_PATH=$(pwd)
-    $ ln -s ../EngineCore/target/debug/libngsengine.dylib
-    $ ln -s ../EngineCore/target/debug/libngsloader.dylib
+    $ export NGS_ENGINE_PATH=$(pwd)/EngineCore/target/debug
+    $ pushd $NGS_ENGINE_PATH
+    $ ln -s ../../../Ngs.Application/LoaderConfig.xml
+    $ popd
     $ dotnet run
     Checking if the engine core was successfully loaded
     $
