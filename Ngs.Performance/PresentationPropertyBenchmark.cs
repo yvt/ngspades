@@ -44,7 +44,7 @@ namespace Ngs.Performance {
         [Benchmark(OperationsPerInvoke = 10000)]
         public void SetSolidColorOnMaterializedLayer() {
             for (long i = 0; i < 10000; ++i) {
-                materializedLayer.SolidColor = Rgba.TransparentBlack;
+                materializedLayer.SetContentsSolidColor(Rgba.TransparentBlack);
             }
         }
 
@@ -52,7 +52,7 @@ namespace Ngs.Performance {
         public void SetSolidColorOnMaterializedLayerWithLock() {
             workspace.Context.Lock();
             for (long i = 0; i < 10000; ++i) {
-                materializedLayer.SolidColor = Rgba.TransparentBlack;
+                materializedLayer.SetContentsSolidColor(Rgba.TransparentBlack);
             }
             workspace.Context.Unlock();
         }

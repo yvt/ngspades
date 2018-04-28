@@ -26,7 +26,7 @@ namespace Ngs.Shell {
 
             var layer = ws.Context.CreateLayer();
             layer.Bounds = new Box2(20, 20, 20, 20);
-            layer.SolidColor = Rgba.White;
+            layer.SetContentsSolidColor(Rgba.White);
             window.Child = layer;
 
             ws.Windows = window;

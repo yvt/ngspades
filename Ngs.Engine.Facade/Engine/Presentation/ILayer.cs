@@ -71,8 +71,28 @@ namespace Ngs.Engine.Presentation {
         IUnknown Mask { set; }
 
         /// <summary>
-        /// Sets the contenst type to solid color, and use the given color.
+        /// Sets the contents type to empty.
         /// </summary>
-        Rgba SolidColor { set; }
+        void SetContentsEmpty();
+
+        /// <summary>
+        /// Sets the contents type to solid color, and use the given color.
+        /// </summary>
+        void SetContentsSolidColor(Rgba color);
+
+        /// <summary>
+        /// Sets the contents type to back drop.
+        /// </summary>
+        void SetContentsBackDrop();
+
+        /// <summary>
+        /// Sets the contents type to image, and use the given image and parameters.
+        /// </summary>
+        void SetContentsImage(IUnknown image, Box2 source, ImageWrapMode wrapMode);
+
+        /// <summary>
+        /// Sets the contents type to port, and use the given port object.
+        /// </summary>
+        void SetContentsPort(IUnknown port);
     }
 }

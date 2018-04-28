@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngscom::{hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
-             UnownedComPtr, IAny};
+use ngscom::{hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IAny, IUnknown,
+             IUnknownTrait, UnownedComPtr};
 use tokenlock::TokenLock;
 use {cggeom, cgmath, ngsbase, rgb};
 
@@ -343,7 +343,44 @@ impl ngsbase::ILayerTrait for ComLayer {
         })
     }
 
-    fn set_solid_color(&self, value: rgb::RGBA<f32>) -> HResult {
+    fn set_contents_back_drop(&self) -> HResult {
+        let value = viewport::LayerContents::BackDrop;
+        to_hresult(|| node_data_set_prop!(self.data, contents = value))
+    }
+
+    fn set_contents_empty(&self) -> HResult {
+        let value = viewport::LayerContents::Empty;
+        to_hresult(|| node_data_set_prop!(self.data, contents = value))
+    }
+
+    fn set_contents_image(
+        &self,
+        image: UnownedComPtr<IUnknown>,
+        _source: cggeom::Box2<f32>,
+        wrap_mode: ngsbase::ImageWrapMode,
+    ) -> HResult {
+        to_hresult(|| {
+            if image.is_null() {
+                return Err(hresults::E_POINTER);
+            }
+            let _wrap_mode = wrap_mode.get().ok_or(hresults::E_INVALIDARG)?;
+
+            // We don't have an interface for getting an image yet
+            unimplemented!()
+        })
+    }
+
+    fn set_contents_port(&self, port: UnownedComPtr<IUnknown>) -> HResult {
+        to_hresult(|| {
+            if port.is_null() {
+                return Err(hresults::E_POINTER);
+            }
+            // We don't have an interface for getting a port yet
+            unimplemented!()
+        })
+    }
+
+    fn set_contents_solid_color(&self, value: rgb::RGBA<f32>) -> HResult {
         let value = viewport::LayerContents::Solid(value);
         to_hresult(|| node_data_set_prop!(self.data, contents = value))
     }
