@@ -16,7 +16,21 @@ namespace Ngs.Interop {
     public static class InterfaceRuntimeInfo<T> where T : class, IUnknown {
         private static readonly Marshaller.InterfaceInfo info = new Marshaller.InterfaceInfo(typeof(T));
         // private static readonly Dictionary<IntPtr, WeakReference<INativeObject<T>>> rcwInstances = new Dictionary<IntPtr, WeakReference<INativeObject<T>>>();
-        private static Marshaller.RcwFactory<T> rcwFactory;
+        private static readonly Lazy<Marshaller.RcwFactory<T>> rcwFactory =
+            new Lazy<Marshaller.RcwFactory<T>>(() => {
+                var rcwFactory = DynamicModuleInfo.Instance.RcwGenerator.CreateRcwFactory<T>().FactoryDelegate;
+
+                // debug
+#if false
+                var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
+                var saveMethod = asm.GetType ().GetRuntimeMethod ("Save", new Type[] { typeof (string) });
+                if (saveMethod != null) {
+                    saveMethod.Invoke (asm, new object[] { "DebugOutput.dll" });
+                }
+#endif
+
+                return rcwFactory;
+            });
 
         /// <summary>
         /// The GUID of the interface.
@@ -43,18 +57,7 @@ namespace Ngs.Interop {
         internal static T CreateRcw(IntPtr interfacePtr, bool addRef) {
             /* lock (rcwInstances) */
             {
-                if (rcwFactory == null) {
-                    rcwFactory = DynamicModuleInfo.Instance.RcwGenerator.CreateRcwFactory<T>().FactoryDelegate;
-
-                    // debug
-#if false
-                    var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
-                    var saveMethod = asm.GetType ().GetRuntimeMethod ("Save", new Type[] { typeof (string) });
-                    if (saveMethod != null) {
-                        saveMethod.Invoke (asm, new object[] { "DebugOutput.dll" });
-                    }
-#endif
-                }
+                var factory = rcwFactory.Value;
 
                 // WeakReference<INativeObject<T>> rcwref;
                 INativeObject<T> rcw;
@@ -69,7 +72,7 @@ namespace Ngs.Interop {
                 }
                 */
 
-                rcw = rcwFactory(interfacePtr);
+                rcw = factory(interfacePtr);
                 if (!addRef) {
                     rcw.Release();
                 }
