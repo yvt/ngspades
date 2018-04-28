@@ -8,41 +8,18 @@ use stickylock::{StickyMutex, StickyMutexGuard};
 use tokenlock::{Token, TokenRef};
 
 use ngsbase;
-use ngscom::{hresults, to_hresult, ComPtr, HResult, IUnknown, IUnknownTrait};
+use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
 
 use core::{Context, ProducerFrame};
 use hresults::{E_PF_LOCKED, E_PF_THREAD};
 use nodes::translate_context_error;
 use {nodes, ILayer, INodeGroup, IPresentationContext, IWindow};
 
-com_iid!(
-    IID_ICOM_CONTEXT = [
-        0xbc2a641c,
-        0x3a42,
-        0x4325,
-        [0xbb, 0x79, 0xee, 0xf7, 0x8d, 0x96, 0xa2, 0xe4],
-    ]
-);
-
-com_interface! {
-    /// COM interface that provides a method to get a reference to the native
-    /// `ComContext` object.
-    ///
-    /// This interface is not exported to .NET because it would have no use
-    /// outside the Rust environment.
-    interface (IComContext, IComContextTrait): (IUnknown, IUnknownTrait) {
-        iid: IID_ICOM_CONTEXT,
-        vtable: IComContextVTable,
-
-        fn get_ptr() -> *const ComContext;
-    }
-}
-
 com_impl! {
     #[derive(Debug)]
     class ComContext {
         ipresentation_context: IPresentationContext;
-        icom_context: IComContext;
+        iany: IAny;
         @data: ContextData;
     }
 }
@@ -87,8 +64,8 @@ pub struct ProducerFrameRefMut<'a> {
 }
 
 impl ComContext {
-    /// Construct a `ComContext` and get it as a `IComContext`.
-    pub fn new(context: Arc<Context>) -> ComPtr<IComContext> {
+    /// Construct a `ComContext` and get it as a `IUnknown`.
+    pub fn new(context: Arc<Context>) -> ComPtr<IUnknown> {
         let token = Token::new();
         let token_ref = TokenRef::from(&token);
         let producer_state = ProducerState {
@@ -96,11 +73,11 @@ impl ComContext {
             frame: None,
             token,
         };
-        (&Self::alloc(ContextData {
+        Self::alloc(ContextData {
             context,
             producer_state: StickyMutex::new(producer_state),
             token_ref,
-        })).into()
+        })
     }
 
     /// Retrieve the underlying `Context`.
@@ -123,12 +100,6 @@ impl ComContext {
         let mut producer_state = self.data.producer_state.try_lock().ok_or(E_PF_LOCKED)?;
         producer_state.stick(&self.data.context)?;
         Ok(ProducerFrameLockGuard(producer_state))
-    }
-}
-
-impl IComContextTrait for ComContext {
-    fn get_ptr(&self) -> *const ComContext {
-        self
     }
 }
 

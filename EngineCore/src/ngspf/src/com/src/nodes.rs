@@ -4,14 +4,14 @@
 // This source code is a part of Nightingales.
 //
 use ngscom::{hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IUnknown, IUnknownTrait,
-             UnownedComPtr};
+             UnownedComPtr, IAny};
 use tokenlock::TokenLock;
 use {cggeom, cgmath, ngsbase, rgb};
 
 use core::prelude::*;
 use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE};
 use {core, viewport};
-use {ComContext, IComContext, ILayer, INodeGroup, IWindow, IWindowListener};
+use {ComContext, ILayer, INodeGroup, IWindow, IWindowListener};
 
 pub(crate) fn translate_context_error(e: core::ContextError) -> HResult {
     match e {
@@ -47,7 +47,7 @@ com_interface! {
 /// The contained state is protected by a producer lock.
 #[derive(Debug)]
 struct NodeData<P, M> {
-    context: ComPtr<IComContext>,
+    context: ComPtr<IAny>,
     cell: TokenLock<NodeDataInner<P, M>>,
 }
 
@@ -65,15 +65,18 @@ enum NodeDataState<P, M> {
 }
 
 impl<P, M> NodeData<P, M> {
-    fn new(context: ComPtr<IComContext>, x: P) -> Self {
-        let context_ref = unsafe { &*context.get_ptr() };
-        let token_ref = context_ref.token_ref();
-        let cell = TokenLock::new(token_ref.clone(), NodeDataInner::Partial(x));
+    fn new(context: ComPtr<IAny>, x: P) -> Self {
+        let cell;
+        {
+            let context_ref: &ComContext = context.downcast_ref().unwrap();
+            let token_ref = context_ref.token_ref();
+            cell = TokenLock::new(token_ref.clone(), NodeDataInner::Partial(x));
+        }
         Self { cell, context }
     }
 
     fn com_context(&self) -> &ComContext {
-        unsafe { &*self.context.get_ptr() }
+        self.context.downcast_ref().unwrap()
     }
 
     fn context(&self) -> &core::Context {
@@ -240,7 +243,7 @@ com_impl! {
 }
 
 impl ComNodeGroup {
-    pub fn new(context: ComPtr<IComContext>) -> ComPtr<INodeGroup> {
+    pub fn new(context: ComPtr<IAny>) -> ComPtr<INodeGroup> {
         (&ComNodeGroup::alloc(NodeData::new(context, Vec::new()))).into()
     }
 }
@@ -282,7 +285,7 @@ com_impl! {
 }
 
 impl ComLayer {
-    pub fn new(context: ComPtr<IComContext>) -> ComPtr<ILayer> {
+    pub fn new(context: ComPtr<IAny>) -> ComPtr<ILayer> {
         (&ComLayer::alloc(NodeData::new(context, Some(viewport::LayerBuilder::new())))).into()
     }
 }
@@ -364,7 +367,7 @@ com_impl! {
 }
 
 impl ComWindow {
-    pub fn new(context: ComPtr<IComContext>) -> ComPtr<IWindow> {
+    pub fn new(context: ComPtr<IAny>) -> ComPtr<IWindow> {
         (&ComWindow::alloc(NodeData::new(context, Some(viewport::WindowBuilder::new())))).into()
     }
 }

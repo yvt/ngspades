@@ -26,8 +26,7 @@ mod workspace;
 
 pub use ngsbase::{ILayer, INodeGroup, IPresentationContext, IWindow, IWindowListener, IWorkspace};
 
-pub use context::{ComContext, IComContext, IComContextTrait, ProducerFrameLockGuard,
-                  ProducerFrameRefMut};
+pub use context::{ComContext, ProducerFrameLockGuard, ProducerFrameRefMut};
 pub use nodes::{INodeRef, INodeRefTrait};
 pub use workspace::ComWorkspace;
 

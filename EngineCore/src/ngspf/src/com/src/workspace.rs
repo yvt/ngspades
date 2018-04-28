@@ -8,14 +8,14 @@ use std::cell::RefCell;
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex, TryLockError};
 
-use ngscom::{hresults, to_hresult, BStringRef, ComPtr, HResult, IUnknown, UnownedComPtr};
+use ngscom::{hresults, to_hresult, BStringRef, ComPtr, HResult, IAny, IUnknown, UnownedComPtr};
 
 use core::{prelude::*, Context};
 use hresults::{E_PF_LOCKED, E_PF_NOT_NODE, E_PF_THREAD};
 use ngsbase::{IPresentationContext, IWorkspace, IWorkspaceListener, IWorkspaceTrait};
 use nodes::{translate_context_error, INodeRef};
 use viewport::{RootRef, Workspace, WorkspaceBuilder, WorkspaceError};
-use {ComContext, IComContext};
+use ComContext;
 
 fn translate_workspace_error(e: WorkspaceError) -> HResult {
     match e {
@@ -26,6 +26,7 @@ fn translate_workspace_error(e: WorkspaceError) -> HResult {
 com_impl! {
     class ComWorkspace {
         iworkspace: IWorkspace;
+        iany: IAny;
         @data: WorkspaceData;
     }
 }
@@ -36,7 +37,7 @@ struct WorkspaceData {
     // a singleton object. FIXME: Do something about this?
     workspace: ManuallyDrop<Mutex<SendCell<RefCell<Workspace>>>>,
     context: Arc<Context>,
-    com_context: ComPtr<IComContext>,
+    com_context: ComPtr<IAny>,
     root: RootRef,
 }
 
@@ -68,7 +69,7 @@ impl ComWorkspace {
             .build()
             .map_err(translate_workspace_error)?;
         let context = workspace.context().clone();
-        let com_context = ComContext::new(context.clone());
+        let com_context = (&ComContext::new(context.clone())).into();
         let root = workspace.root().clone();
         let workspace = Mutex::new(SendCell::new(RefCell::new(workspace)));
         Ok((&Self::alloc(WorkspaceData {
@@ -80,7 +81,7 @@ impl ComWorkspace {
     }
 
     fn com_context(&self) -> &ComContext {
-        unsafe { &*self.data.com_context.get_ptr() }
+        self.data.com_context.downcast_ref().unwrap()
     }
 }
 
