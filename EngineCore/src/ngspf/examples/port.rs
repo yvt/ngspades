@@ -26,7 +26,7 @@ use ngspf::cggeom::Box2;
 use ngspf::cggeom::prelude::*;
 use ngspf::prelude::*;
 use ngspf::viewport::{LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder,
-                      WindowEvent, WindowFlagsBit, WindowRef, Workspace};
+                      WindowEvent, WindowFlagsBit, WindowRef, WorkspaceBuilder};
 
 mod triangle {
     use include_data;
@@ -283,7 +283,11 @@ mod triangle {
 }
 
 fn main() {
-    let mut ws = Workspace::new().expect("failed to create a workspace");
+    let mut ws = WorkspaceBuilder::new()
+        .application_name("NgsPF Example: port")
+        .application_version(1, 0, 0)
+        .build()
+        .expect("failed to create a workspace");
     let context = Arc::clone(ws.context());
     let (tx, rx) = mpsc::channel();
     let tx = Mutex::new(tx);

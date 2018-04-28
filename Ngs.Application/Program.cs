@@ -4,15 +4,20 @@
 // This source code is a part of Nightingales.
 //
 using System;
-using Ngs.Engine;
+using Ngs.Engine.Presentation;
 using Ngs.Utils;
 
 namespace Ngs.Shell {
     class MainClass {
         public static void Main(string[] args) {
             Console.WriteLine("Displaying some window");
-            var engine = EngineInstance.NativeEngine;
-            var ws = engine.CreateWorkspace();
+            var ws = new Workspace(new ApplicationInfo()
+            {
+                Name = "Nightingales Test Application",
+                VersionMajor = 1,
+                VersionMinor = 0,
+                VersionRevision = 0,
+            });
 
             // Create and display a window
             ws.Context.Lock();

@@ -11,6 +11,7 @@ use zangfx::backends::vulkan::translate_generic_error;
 use zangfx::{base::Device, common::Error};
 
 use super::smartptr::{UniqueDevice, UniqueInstance};
+use super::AppInfo;
 
 pub fn vk_device_from_gfx(device: &Device) -> &ash::Device<V1_0> {
     let be_device: &be::device::Device = device.query_ref().unwrap();
@@ -84,7 +85,7 @@ impl<'a> InstanceBuilder<'a> {
         self.enabled_extensions.insert(name.to_owned());
     }
 
-    pub fn build(&self) -> Result<UniqueInstance, ash::InstanceError> {
+    pub fn build(&self, app_info: &AppInfo) -> Result<UniqueInstance, ash::InstanceError> {
         let layers: Vec<_> = self.enabled_layers
             .iter()
             .map(|x| CString::new(x.as_str()).unwrap())
@@ -103,6 +104,18 @@ impl<'a> InstanceBuilder<'a> {
             };
         }
 
+        let application_name = CString::new(app_info.name).unwrap();
+
+        let application_info = vk::ApplicationInfo {
+            s_type: vk::StructureType::ApplicationInfo,
+            p_next: ::null(),
+            p_application_name: application_name.as_ptr(),
+            application_version: app_info.version,
+            p_engine_name: b"Nightingales\0".as_ptr() as *const _,
+            engine_version: 0,
+            api_version: vk_make_version!(1, 0, 0),
+        };
+
         unsafe {
             self.entry
                 .create_instance(
@@ -110,15 +123,7 @@ impl<'a> InstanceBuilder<'a> {
                         s_type: vk::StructureType::InstanceCreateInfo,
                         p_next: ::null(),
                         flags: vk::InstanceCreateFlags::empty(),
-                        p_application_info: &vk::ApplicationInfo {
-                            s_type: vk::StructureType::ApplicationInfo,
-                            p_next: ::null(),
-                            p_application_name: b"Nightingales Application\0".as_ptr() as *const _,
-                            application_version: 1,
-                            p_engine_name: b"Nightingales\0".as_ptr() as *const _,
-                            engine_version: 0,
-                            api_version: vk_make_version!(1, 0, 0),
-                        },
+                        p_application_info: &application_info,
                         enabled_layer_count: layers.len() as u32,
                         pp_enabled_layer_names: layers.as_ptr() as *const _,
                         enabled_extension_count: extensions.len() as u32,

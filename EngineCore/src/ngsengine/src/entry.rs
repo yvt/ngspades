@@ -6,8 +6,8 @@
 #![allow(dead_code)] // For `Engine::data`
 use cgmath::Vector2;
 
-use ngsbase::{IBitmap, IEngine, IEngineTrait, IWorkspace, PixelFormat};
-use ngscom::{hresults, to_hresult, ComPtr, HResult};
+use ngsbase::{IBitmap, IEngine, IEngineTrait, IWorkspace, IWorkspaceListener, PixelFormat};
+use ngscom::{hresults, to_hresult, ComPtr, HResult, UnownedComPtr};
 
 use ngspf_com;
 
@@ -28,9 +28,13 @@ impl Engine {
 }
 
 impl IEngineTrait for Engine {
-    fn create_workspace(&self, retval: &mut ComPtr<IWorkspace>) -> HResult {
+    fn create_workspace(
+        &self,
+        listener: UnownedComPtr<IWorkspaceListener>,
+        retval: &mut ComPtr<IWorkspace>,
+    ) -> HResult {
         to_hresult(|| {
-            *retval = ngspf_com::ComWorkspace::new()?;
+            *retval = ngspf_com::ComWorkspace::new(listener.to_owned())?;
             Ok(())
         })
     }

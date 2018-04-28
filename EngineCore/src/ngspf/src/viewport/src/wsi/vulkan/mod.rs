@@ -27,7 +27,7 @@ use zangfx::{backends::vulkan::{self as be,
              prelude::*,
              utils::CbStateTracker};
 
-use super::{GfxQueue, Painter, SurfaceProps, WmDevice};
+use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WmDevice};
 
 mod debugreport;
 mod smartptr;
@@ -97,7 +97,7 @@ impl<P: Painter> Drop for WindowManager<P> {
 }
 
 impl<P: Painter> WindowManager<P> {
-    pub fn new(painter: P, events_loop_proxy: EventsLoopProxy) -> Self {
+    pub fn new(painter: P, events_loop_proxy: EventsLoopProxy, app_info: &AppInfo) -> Self {
         // Initialize Vulkan
         let entry = ash::Entry::new().expect("Failed to load the Vulkan runtime library");
 
@@ -125,7 +125,7 @@ impl<P: Painter> WindowManager<P> {
             vksurface::modify_instance_builder(&mut builder);
 
             instance = builder
-                .build()
+                .build(app_info)
                 .expect("Failed to create a Vulkan instance.");
         }
 

@@ -8,13 +8,13 @@ use std::cell::RefCell;
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex, TryLockError};
 
-use ngscom::{hresults, to_hresult, ComPtr, HResult, IUnknown, UnownedComPtr};
+use ngscom::{hresults, to_hresult, BStringRef, ComPtr, HResult, IUnknown, UnownedComPtr};
 
 use core::{prelude::*, Context};
 use hresults::{E_PF_LOCKED, E_PF_NOT_NODE, E_PF_THREAD};
-use ngsbase::{IPresentationContext, IWorkspace, IWorkspaceTrait};
+use ngsbase::{IPresentationContext, IWorkspace, IWorkspaceListener, IWorkspaceTrait};
 use nodes::{translate_context_error, INodeRef};
-use viewport::{RootRef, Workspace, WorkspaceError};
+use viewport::{RootRef, Workspace, WorkspaceBuilder, WorkspaceError};
 use {ComContext, IComContext};
 
 fn translate_workspace_error(e: WorkspaceError) -> HResult {
@@ -41,8 +41,32 @@ struct WorkspaceData {
 }
 
 impl ComWorkspace {
-    pub fn new() -> Result<ComPtr<IWorkspace>, HResult> {
-        let workspace = Workspace::new().map_err(translate_workspace_error)?;
+    pub fn new(listener: ComPtr<IWorkspaceListener>) -> Result<ComPtr<IWorkspace>, HResult> {
+        // Retrieve the application info
+        let mut app_name = BStringRef::new("");
+        let mut app_ver_major = 0;
+        let mut app_ver_minor = 0;
+        let mut app_ver_revision = 0;
+
+        listener
+            .get_application_info(
+                &mut app_name,
+                &mut app_ver_major,
+                &mut app_ver_minor,
+                &mut app_ver_revision,
+            )
+            .into_result()
+            .map_err(|x| x.into())?;
+
+        let workspace = WorkspaceBuilder::new()
+            .application_name(app_name.as_str())
+            .application_version(
+                app_ver_major as _,
+                app_ver_minor as _,
+                app_ver_revision as _,
+            )
+            .build()
+            .map_err(translate_workspace_error)?;
         let context = workspace.context().clone();
         let com_context = ComContext::new(context.clone());
         let root = workspace.root().clone();

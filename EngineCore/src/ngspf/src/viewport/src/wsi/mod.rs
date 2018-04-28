@@ -41,6 +41,14 @@ pub struct SurfaceProps {
     pub format: gfx::ImageFormat,
 }
 
+#[derive(Debug)]
+pub struct AppInfo<'a> {
+    /// The application name. Must not contain a null byte.
+    pub name: &'a str,
+    /// The application version.
+    pub version: u32,
+}
+
 /// Provides the graphics content of windows.
 pub trait Painter {
     /// Type of an object associated with each ZanGFX device.

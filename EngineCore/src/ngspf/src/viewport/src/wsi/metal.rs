@@ -22,7 +22,7 @@ use objc::runtime::YES;
 use zangfx::backends::metal as be;
 use zangfx::base as gfx;
 
-use super::{GfxQueue, Painter, SurfaceProps, WmDevice};
+use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WmDevice};
 use metalutils::OCPtr;
 
 use super::cvdisplaylink::CVDisplayLink;
@@ -134,7 +134,7 @@ fn surface_props_from_layer(layer: &OCPtr<metal::CAMetalLayer>) -> SurfaceProps 
 }
 
 impl<P: Painter> WindowManager<P> {
-    pub fn new(mut painter: P, events_loop_proxy: EventsLoopProxy) -> Self {
+    pub fn new(mut painter: P, events_loop_proxy: EventsLoopProxy, _app_info: &AppInfo) -> Self {
         let device = unsafe { be::device::Device::new_system_default().unwrap() };
         let device: Arc<gfx::Device> = Arc::new(device);
 

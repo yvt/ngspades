@@ -23,7 +23,7 @@ use ngspf::{canvas::{painter::new_painter_for_image_data, text, ImageData, Image
             viewport::rgb::RGBA,
             viewport::{ImageWrapMode, LayerBuilder, LayerContents, LayerRef, RootRef,
                        VirtualKeyCode, WindowBuilder, WindowEvent, WindowFlagsBit, WindowRef,
-                       Workspace}};
+                       WorkspaceBuilder}};
 
 fn render_second_image(font_config: &text::FontConfig, extents: [usize; 2]) -> ImageData {
     let mut image_data =
@@ -59,7 +59,11 @@ fn render_second_image(font_config: &text::FontConfig, extents: [usize; 2]) -> I
 }
 
 fn main() {
-    let mut ws = Workspace::new().expect("failed to create a workspace");
+    let mut ws = WorkspaceBuilder::new()
+        .application_name("NgsPF Example: text")
+        .application_version(1, 0, 0)
+        .build()
+        .expect("failed to create a workspace");
     let context = Arc::clone(ws.context());
     let (tx, rx) = mpsc::channel();
     let tx = Mutex::new(tx);

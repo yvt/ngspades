@@ -15,7 +15,7 @@ use std::sync::{Arc, mpsc, Mutex};
 use cgmath::{Point2, Vector3, Matrix4, vec3};
 
 use ngspf::core::{Context, GroupRef, ProducerFrame};
-use ngspf::viewport::{Workspace, WindowBuilder, LayerBuilder, LayerContents, WindowFlags,
+use ngspf::viewport::{WorkspaceBuilder, WindowBuilder, LayerBuilder, LayerContents, WindowFlags,
                       WindowRef, WindowEvent, RootRef, LayerRef, VirtualKeyCode};
 use ngspf::prelude::*;
 use ngspf::cggeom::Box2;
@@ -131,7 +131,11 @@ impl State {
 }
 
 fn main() {
-    let mut ws = Workspace::new().expect("failed to create a workspace");
+    let mut ws = WorkspaceBuilder::new()
+        .application_name("NgsPF Example: stress")
+        .application_version(1, 0, 0)
+        .build()
+        .expect("failed to create a workspace");
     let context = Arc::clone(ws.context());
     let (tx, rx) = mpsc::channel();
     let tx = Mutex::new(tx);

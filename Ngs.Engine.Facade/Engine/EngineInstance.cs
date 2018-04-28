@@ -8,6 +8,7 @@ using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
+using System.Security;
 using Ngs.Interop;
 using Ngs.Utils;
 
@@ -145,6 +146,7 @@ namespace Ngs.Engine {
         /// </summary>
         /// <returns>The raw <see cref="IEngine" /> object.</returns>
         public static IEngine NativeEngine {
+            [SecurityCritical]
             get {
                 EnsureLoaded();
                 return nativeEngine;

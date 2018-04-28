@@ -11,11 +11,14 @@ using Ngs.Engine.Presentation;
 
 namespace Ngs.Performance {
     public class PresentationPropertyBenchmark {
-        IWorkspace workspace;
+        Workspace workspace;
         ILayer materializedLayer;
 
         public PresentationPropertyBenchmark() {
-            workspace = EngineInstance.NativeEngine.CreateWorkspace();
+            workspace = new Workspace(new ApplicationInfo()
+            {
+                Name = "Ngs.Performance"
+            });
             materializedLayer = workspace.Context.CreateLayer();
 
             // For node materialization

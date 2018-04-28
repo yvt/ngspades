@@ -17,8 +17,10 @@ namespace Ngs.Engine {
         /// <summary>
         /// Creates a workspace.
         /// </summary>
+        /// <param name="listener">An application-provided listener object that will respond to
+        /// events from the newly created workspace.</param>
         /// <returns>A new <see cref="Ngs.Engine.Presentation.IWorkspace" />.</returns>
-        Presentation.IWorkspace CreateWorkspace();
+        Presentation.IWorkspace CreateWorkspace(Presentation.IWorkspaceListener listener);
 
         /// <summary>
         /// Creates a bitmap.

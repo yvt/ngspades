@@ -20,12 +20,16 @@ use ngspf::prelude::*;
 use ngspf::viewport::rgb::RGBA;
 use ngspf::viewport::{ImageWrapMode, LayerBuilder, LayerContents, LayerRef, RootRef,
                       VirtualKeyCode, WindowBuilder, WindowEvent, WindowFlagsBit, WindowRef,
-                      Workspace};
+                      WorkspaceBuilder};
 
 static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
 
 fn main() {
-    let mut ws = Workspace::new().expect("failed to create a workspace");
+    let mut ws = WorkspaceBuilder::new()
+        .application_name("NgsPF Example: basic")
+        .application_version(1, 0, 0)
+        .build()
+        .expect("failed to create a workspace");
     let context = Arc::clone(ws.context());
     let (tx, rx) = mpsc::channel();
     let tx = Mutex::new(tx);

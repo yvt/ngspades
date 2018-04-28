@@ -63,6 +63,56 @@ impl RootRef {
     }
 }
 
+/// The builder for `Workspace`.
+#[derive(Debug)]
+pub struct WorkspaceBuilder {
+    application_name: String,
+    application_version: u32,
+}
+
+impl WorkspaceBuilder {
+    /// Construct a `WorkspaceBuilder`.
+    pub fn new() -> Self {
+        Self {
+            application_name: "Nightingales Application".to_owned(),
+            application_version: 0,
+        }
+    }
+
+    /// Specify the application name. The application name must not contain a
+    /// null byte.
+    pub fn application_name<T: Into<String>>(&mut self, value: T) -> &mut Self {
+        let name = value.into();
+        assert!(name.find('\0').is_none());
+        self.application_name = name;
+        self
+    }
+
+    /// Specify the application version.
+    ///
+    ///  - `major` must be in range `[0, 1023]`.
+    ///  - `minor` must be in range `[0, 1023]`.
+    ///  - `revision` must be in range `[0, 4095]`.
+    ///
+    /// The current implementation packs the version triplet into a single `u32`
+    /// value so it can be consumed by the Vulkan instance.
+    pub fn application_version(&mut self, major: u32, minor: u32, revision: u32) -> &mut Self {
+        assert!(major < 1024);
+        assert!(minor < 1024);
+        assert!(revision < 4096);
+        self.application_version = (major << 22) | (minor << 12) | revision;
+        self
+    }
+
+    /// Build a `Workspace` using the properties specified via this builder.
+    pub fn build(&self) -> Result<Workspace, WorkspaceError> {
+        Workspace::new(&wsi::AppInfo {
+            name: &self.application_name,
+            version: self.application_version,
+        })
+    }
+}
+
 pub struct Workspace {
     events_loop: EventsLoop,
     context: Arc<Context>,
@@ -71,7 +121,7 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    pub fn new() -> Result<Self, WorkspaceError> {
+    fn new(app_info: &wsi::AppInfo) -> Result<Self, WorkspaceError> {
         let events_loop = EventsLoop::new();
         let context = Arc::new(Context::new());
         let root = Root {
@@ -98,7 +148,7 @@ impl Workspace {
         Ok(Self {
             events_loop,
             context,
-            window_set: WindowSet::new(events_loop_proxy),
+            window_set: WindowSet::new(events_loop_proxy, app_info),
             root: RootRef(Arc::new(root)),
         })
     }
@@ -189,10 +239,10 @@ impl ::Debug for WorkspaceWindow {
 }
 
 impl WindowSet {
-    fn new(events_loop_proxy: winit::EventsLoopProxy) -> Self {
+    fn new(events_loop_proxy: winit::EventsLoopProxy, app_info: &wsi::AppInfo) -> Self {
         WindowSet {
             windows: HashMap::new(),
-            wm: wsi::WindowManager::new(Painter::new(), events_loop_proxy),
+            wm: wsi::WindowManager::new(Painter::new(), events_loop_proxy, app_info),
         }
     }
 
