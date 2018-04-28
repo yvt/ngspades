@@ -12,6 +12,8 @@ extern crate lazy_static;
 extern crate send_cell;
 extern crate stickylock;
 extern crate tokenlock;
+extern crate arclock;
+extern crate owning_ref;
 
 extern crate cggeom;
 extern crate ngsbase;
@@ -19,14 +21,17 @@ extern crate ngsbase;
 extern crate ngscom;
 extern crate ngspf_core as core;
 extern crate ngspf_viewport as viewport;
+extern crate ngspf_canvas as canvas;
 
 mod context;
+mod image;
 mod nodes;
 mod workspace;
 
 pub use ngsbase::{ILayer, INodeGroup, IPresentationContext, IWindow, IWindowListener, IWorkspace};
 
 pub use context::{ComContext, ProducerFrameLockGuard, ProducerFrameRefMut};
+pub use image::{ComBitmap, ComImage};
 pub use nodes::{INodeRef, INodeRefTrait};
 pub use workspace::ComWorkspace;
 
@@ -52,4 +57,7 @@ pub mod hresults {
 
     /// The object is not owned by the current thread.
     pub const E_PF_THREAD: HResult = HResult(0x80410004u32 as i32);
+
+    /// Specified object is not an image.
+    pub const E_PF_NOT_IMAGE: HResult = HResult(0x80410005u32 as i32);
 }

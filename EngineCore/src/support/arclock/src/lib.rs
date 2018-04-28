@@ -5,6 +5,9 @@
 //
 //! Provides a container type `ArcLock` similar to `Mutex` but whose lock guard
 //! type is `'static`.
+#[cfg(feature = "owning_ref")]
+extern crate owning_ref;
+
 use std::fmt;
 use std::mem::transmute;
 use std::ops::{Deref, DerefMut};
@@ -126,6 +129,9 @@ impl<T: ?Sized> DerefMut for ArcLockGuard<T> {
         unsafe { &mut *self.inner.cell.get() }
     }
 }
+
+#[cfg(feature = "owning_ref")]
+unsafe impl<T: ?Sized> owning_ref::StableAddress for ArcLockGuard<T> {}
 
 #[test]
 fn drop_arclock() {

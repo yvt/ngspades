@@ -6,9 +6,11 @@
 #![allow(dead_code)] // For `Engine::data`
 use cgmath::Vector2;
 
-use ngsbase::{IBitmap, IEngine, IEngineTrait, IWorkspace, IWorkspaceListener, PixelFormat};
+use ngsbase::{IBitmap, IEngine, IEngineTrait, IWorkspace, IWorkspaceListener, PixelFormat,
+              PixelFormatItem};
 use ngscom::{hresults, to_hresult, ComPtr, HResult, UnownedComPtr};
 
+use ngspf::canvas::{ImageData, ImageFormat};
 use ngspf_com;
 
 com_impl! {
@@ -41,11 +43,20 @@ impl IEngineTrait for Engine {
 
     fn create_bitmap(
         &self,
-        _size: Vector2<i32>,
-        _format: PixelFormat,
-        _retval: &mut ComPtr<IBitmap>,
+        size: Vector2<i32>,
+        format: PixelFormat,
+        retval: &mut ComPtr<IBitmap>,
     ) -> HResult {
-        hresults::E_NOTIMPL
+        to_hresult(|| {
+            let size = size.cast::<usize>();
+            let format = match format.get().ok_or(hresults::E_INVALIDARG)? {
+                PixelFormatItem::SrgbRgba8 => ImageFormat::SrgbRgba8,
+                PixelFormatItem::SrgbRgba8Premul => ImageFormat::SrgbRgba8Premul,
+            };
+            let image_data = ImageData::new(size, format);
+            *retval = (&ngspf_com::ComBitmap::new(image_data)).into();
+            Ok(())
+        })
     }
 }
 

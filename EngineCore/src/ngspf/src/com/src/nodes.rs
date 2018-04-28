@@ -9,9 +9,9 @@ use tokenlock::TokenLock;
 use {cggeom, cgmath, ngsbase, rgb};
 
 use core::prelude::*;
-use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_NODE};
+use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_IMAGE, E_PF_NOT_NODE};
 use {core, viewport};
-use {ComContext, ILayer, INodeGroup, IWindow, IWindowListener};
+use {ComContext, ComImage, ILayer, INodeGroup, IWindow, IWindowListener};
 
 pub(crate) fn translate_context_error(e: core::ContextError) -> HResult {
     match e {
@@ -356,17 +356,32 @@ impl ngsbase::ILayerTrait for ComLayer {
     fn set_contents_image(
         &self,
         image: UnownedComPtr<IUnknown>,
-        _source: cggeom::Box2<f32>,
+        source: cggeom::Box2<f32>,
         wrap_mode: ngsbase::ImageWrapMode,
     ) -> HResult {
         to_hresult(|| {
             if image.is_null() {
                 return Err(hresults::E_POINTER);
             }
-            let _wrap_mode = wrap_mode.get().ok_or(hresults::E_INVALIDARG)?;
+            let image: ComPtr<IAny> = (&*image).into();
+            if image.is_null() {
+                return Err(E_PF_NOT_IMAGE);
+            }
+            let image: &ComImage = image.downcast_ref().ok_or(E_PF_NOT_IMAGE)?;
+            let image = image.image_ref().clone();
 
-            // We don't have an interface for getting an image yet
-            unimplemented!()
+            let wrap_mode = match wrap_mode.get().ok_or(hresults::E_INVALIDARG)? {
+                ngsbase::ImageWrapModeItem::Repeat => viewport::ImageWrapMode::Repeat,
+                ngsbase::ImageWrapModeItem::Clamp => viewport::ImageWrapMode::Clamp,
+            };
+
+            let value = viewport::LayerContents::Image {
+                image,
+                source,
+                wrap_mode,
+            };
+
+            node_data_set_prop!(self.data, contents = value)
         })
     }
 

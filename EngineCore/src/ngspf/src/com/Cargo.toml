@@ -7,6 +7,7 @@ authors = ["yvt <i@yvt.jp>"]
 ngsbase = { path = "../../../ngsbase" }
 ngspf_core = { path = "../core" }
 ngspf_viewport = { path = "../viewport" }
+ngspf_canvas = { path = "../canvas" }
 ngscom = { path = "../../../ngscom" }
 lazy_static = "0.2"
 atomic_refcell = "0.1.0"
@@ -16,3 +17,5 @@ stickylock = { path = "../../../support/stickylock" }
 send-cell = "0.1.3"
 rgb = "0.7.2"
 tokenlock = { path = "../../../support/tokenlock" }
+arclock = { path = "../../../support/arclock", features = ["owning_ref"] }
+owning_ref = "0.3.3"
