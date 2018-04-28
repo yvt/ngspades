@@ -17,5 +17,5 @@ stickylock = { path = "../../../support/stickylock" }
 send-cell = "0.1.3"
 rgb = "0.7.2"
 tokenlock = { path = "../../../support/tokenlock" }
-arclock = { path = "../../../support/arclock", features = ["owning_ref"] }
+arclock = { path = "../../../support/arclock", features = ["stable_deref_trait"] }
 owning_ref = "0.3.3"
