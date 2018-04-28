@@ -6,12 +6,13 @@
 use arclock::{ArcLock, ArcLockGuard};
 use cgmath::Vector2;
 use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
-use owning_ref::OwningRefMut;
+use owning_ref::{OwningHandle, OwningRefMut};
 use std::sync::Mutex;
 
-use canvas::{ImageData, ImageFormat, ImageRef};
+use canvas::{painter::new_painter_for_image_data, ImageData, ImageFormat, ImageRef};
 use hresults::E_PF_THREAD;
 use ngsbase::{self, IBitmap, IBitmapTrait, IPainter};
+use ComPainter;
 
 // The methods provided by `IBitmap` are inherently unsafe. This unsafeness is
 // hidden from partially-trusted assemblies using the .NET wrapper class `Bitmap`.
@@ -77,11 +78,39 @@ impl IBitmapTrait for ComBitmap {
         })
     }
 
-    fn create_painter(&self, _retval: &mut ComPtr<IPainter>) -> HResult {
+    fn create_painter(&self, retval: &mut ComPtr<IPainter>) -> HResult {
         to_hresult(|| {
-            self.lock_image_data().ok_or(hresults::E_UNEXPECTED)?;
-            // TODO: Create painter
-            Err(hresults::E_NOTIMPL)
+            let image_data = self.lock_image_data().ok_or(hresults::E_UNEXPECTED)?;
+
+            // `OwningRefMut` doesn't implement `StableAddress`, inhibiting its
+            // use with `OwningHandle::new_with_fn`. This is likely to be an
+            // oversight by the developer of `owning-ref`:
+            // https://github.com/Kimundi/owning-ref-rs/pull/38
+            // We work-around it by converting it to `OwningRef`.
+            let image_data = image_data.map(|x| x);
+
+            let painter_static = OwningHandle::new_with_fn(image_data, |image_data| unsafe {
+                let ref mut image_data_mut = *(image_data as *mut ImageData);
+                new_painter_for_image_data(image_data_mut)
+            });
+
+            // `OwningRefMut` doesn't implement `AsMut`. Make it implement `AsMut`
+            // by wrapping it with a newtype. (I think this is an oversight, too)
+            struct PainterAsMut<T>(T);
+            impl<T: ::Deref> AsRef<T::Target> for PainterAsMut<T> {
+                fn as_ref(&self) -> &T::Target {
+                    &*self.0
+                }
+            }
+            impl<T: ::Deref + ::DerefMut> AsMut<T::Target> for PainterAsMut<T> {
+                fn as_mut(&mut self) -> &mut T::Target {
+                    &mut *self.0
+                }
+            }
+
+            *retval = (&ComPainter::new(PainterAsMut(painter_static))).into();
+
+            Err(hresults::E_OK)
         })
     }
 

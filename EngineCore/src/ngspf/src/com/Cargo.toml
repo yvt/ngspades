@@ -13,7 +13,7 @@ lazy_static = "0.2"
 atomic_refcell = "0.1.0"
 cgmath = "0.15.0"
 cggeom = { path = "../../../support/cggeom" }
-stickylock = { path = "../../../support/stickylock" }
+stickylock = { path = "../../../support/stickylock", features = ["stable_deref_trait"] }
 send-cell = "0.1.3"
 rgb = "0.7.2"
 tokenlock = { path = "../../../support/tokenlock" }

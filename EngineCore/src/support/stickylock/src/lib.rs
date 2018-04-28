@@ -130,7 +130,15 @@
 //! `ReentrantMutex` or maintain a shadow copy of them to ensure the safety of
 //! `unstick` (note that `ReentrantMutex::raw_unlock` is `unsafe` while our
 //! `unstick` is not).
+//!
+//! # Feature Flags
+//!
+//!  - `stable_deref_trait`: Implements `stable_deref_trait::StableDeref` on
+//!    `StickyMutexGuard`.
+//!
 extern crate parking_lot;
+#[cfg(feature = "stable_deref_trait")]
+extern crate stable_deref_trait;
 
 mod mutex_core;
 use mutex_core::StickyMutexCore;
@@ -289,3 +297,6 @@ impl<'a, T: ?Sized + 'a> Drop for StickyMutexGuard<'a, T> {
         }
     }
 }
+
+#[cfg(feature = "stable_deref_trait")]
+unsafe impl<'a, T: ?Sized + 'a> stable_deref_trait::StableDeref for StickyMutexGuard<'a, T> {}

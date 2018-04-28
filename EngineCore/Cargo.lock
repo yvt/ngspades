@@ -20,7 +20,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "arclock"
 version = "0.1.0"
 dependencies = [
- "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stable_deref_trait 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1459,6 +1459,7 @@ name = "stickylock"
 version = "0.1.0"
 dependencies = [
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stable_deref_trait 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
