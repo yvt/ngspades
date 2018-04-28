@@ -9,11 +9,18 @@ using System.Reflection;
 #endif
 using System.Collections.Generic;
 namespace Ngs.Interop {
+    /// <summary>
+    /// NgsCOM infrastructure. Not intended to be used by an application.
+    /// </summary>
+    /// <typeparam name="T">An NgsCOM interface.</typeparam>
     public static class InterfaceRuntimeInfo<T> where T : class, IUnknown {
         private static readonly Marshaller.InterfaceInfo info = new Marshaller.InterfaceInfo(typeof(T));
         // private static readonly Dictionary<IntPtr, WeakReference<INativeObject<T>>> rcwInstances = new Dictionary<IntPtr, WeakReference<INativeObject<T>>>();
         private static Marshaller.RcwFactory<T> rcwFactory;
 
+        /// <summary>
+        /// The GUID of the interface.
+        /// </summary>
         public static Guid ComGuid => info.ComGuid;
 
         /*

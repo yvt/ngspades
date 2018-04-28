@@ -16,15 +16,15 @@ namespace Ngs.Interop {
         public CcwVtableCache(Type baseInterface) {
             var factory = DynamicModuleInfo.Instance.CcwGenerator.CreateCcwFactory(baseInterface).FactoryDelegate;
 
+#if false
             // debug
-            if (false) {
-                var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
-                var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] { typeof(string) });
-                if (saveMethod != null) {
-                    saveMethod.Invoke(asm, new object[] { "DebugOutput.dll" });
-                    throw new Exception("abort!!!");
-                }
+            var asm = DynamicModuleInfo.Instance.AssemblyBuilder;
+            var saveMethod = asm.GetType().GetRuntimeMethod("Save", new Type[] { typeof(string) });
+            if (saveMethod != null) {
+                saveMethod.Invoke(asm, new object[] { "DebugOutput.dll" });
+                throw new Exception("abort!!!");
             }
+#endif
 
             Vtable = factory();
         }

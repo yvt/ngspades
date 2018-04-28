@@ -12,6 +12,9 @@ using System.Runtime.InteropServices;
 using System.Security;
 
 namespace Ngs.Interop.Marshaller {
+    /// <summary>
+    /// NgsCOM infrastructure. Not intended to be used by an application.
+    /// </summary>
     [SecurityCriticalAttribute]
     public delegate INativeObject<T> RcwFactory<out T>(IntPtr interfacePtr) where T : class, IUnknown;
 
