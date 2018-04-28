@@ -36,25 +36,24 @@ namespace Ngs.Interop {
         }
 
         public static T QueryInterfaceOrNull<T>(IUnknown obj) where T : class, IUnknown {
-            var nativeObj = obj as INativeObject<T>;
-            if (nativeObj != null) {
+            var casted = obj as T;
+            if (casted == null) {
                 const int E_NOINTERFACE = unchecked((int)0x80004002);
                 try {
                     var guid = InterfaceRuntimeInfo<T>.ComGuid;
-                    var ptr = nativeObj.QueryNativeInterface(ref guid);
+                    var ptr = obj.QueryNativeInterface(ref guid);
                     return InterfaceRuntimeInfo<T>.CreateRcw(ptr, true);
                 } catch (COMException ex) when (ex.HResult == E_NOINTERFACE) {
                     return null;
                 }
             }
-            return obj as T;
+            return casted;
         }
 
         public static T QueryInterface<T>(IUnknown obj) where T : class, IUnknown {
-            var nativeObj = obj as INativeObject<T>;
-            if (nativeObj != null) {
+            if (!(obj is T)) {
                 var guid = InterfaceRuntimeInfo<T>.ComGuid;
-                var ptr = nativeObj.QueryNativeInterface(ref guid);
+                var ptr = obj.QueryNativeInterface(ref guid);
                 return InterfaceRuntimeInfo<T>.CreateRcw(ptr, true);
             }
             return (T)obj;
