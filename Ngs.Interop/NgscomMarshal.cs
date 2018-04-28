@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.Runtime.InteropServices;
 namespace Ngs.Interop {
     /// <summary>
     /// Provides a collection of method for interacting unmanaged code based on
@@ -35,28 +36,21 @@ namespace Ngs.Interop {
         }
 
         public static T QueryInterfaceOrNull<T>(IUnknown obj) where T : class, IUnknown {
-            // FIXME: rewrite this
             var nativeObj = obj as INativeObject<T>;
             if (nativeObj != null) {
+                const int E_NOINTERFACE = unchecked((int)0x80004002);
                 try {
                     var guid = InterfaceRuntimeInfo<T>.ComGuid;
                     var ptr = nativeObj.QueryNativeInterface(ref guid);
                     return InterfaceRuntimeInfo<T>.CreateRcw(ptr, true);
-                } catch (System.Runtime.InteropServices.COMException ex) // TODO: use C# 7.0 filter clause
-                {
-                    const int E_NOINTERFACE = unchecked((int)0x80004002);
-                    if (ex.HResult == E_NOINTERFACE) {
-                        return null;
-                    } else {
-                        throw;
-                    }
+                } catch (COMException ex) when (ex.HResult == E_NOINTERFACE) {
+                    return null;
                 }
             }
             return obj as T;
         }
 
         public static T QueryInterface<T>(IUnknown obj) where T : class, IUnknown {
-            // FIXME: rewrite this
             var nativeObj = obj as INativeObject<T>;
             if (nativeObj != null) {
                 var guid = InterfaceRuntimeInfo<T>.ComGuid;
