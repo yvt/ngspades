@@ -28,7 +28,7 @@ namespace Ngs.Engine.Canvas {
         /// a lock on this mutex is acquired every time you call a method. Since every lock
         /// operation incurs a moderate performance cost, you can alternatively choose to explicitly
         /// acquire a lock for an extended duration by using this method.</para>
-        /// <para>The acquired lock is linked to The calling thread owns, and lasts until
+        /// <para>The acquired lock will be linked to the current thread, and lasts until
         /// <see cref="Unlock" /> is called from the same thread.</para>
         /// </remarks>
         void Lock();

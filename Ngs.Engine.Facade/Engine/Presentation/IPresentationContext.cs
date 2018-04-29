@@ -39,7 +39,7 @@ namespace Ngs.Engine.Presentation {
         ILayer CreateLayer();
 
         /// <summary>
-        /// Acquires a lock on the context state for exclusive access by the current thread.
+        /// Acquires a lock on the context state for the current thread.
         /// Fails thread if another thread currently holds a lock.
         /// </summary>
         /// <remarks>
@@ -48,8 +48,8 @@ namespace Ngs.Engine.Presentation {
         /// access a property. Since every lock operation incurs a moderate performance cost,
         /// you can alternatively choose to explicitly acquire a lock for an extended duration
         /// by using this method.</para>
-        /// <para>The acquired lock is linked to The calling thread owns, and lasts until <see cref="Unlock" />
-        /// is called from the same thread.</para>
+        /// <para>The acquired lock will be linked to the current thread, and lasts until
+        /// <see cref="Unlock" /> is called from the same thread.</para>
         /// </remarks>
         void Lock();
 
