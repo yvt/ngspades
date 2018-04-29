@@ -19,7 +19,7 @@ namespace Ngs.Engine.Canvas.Tests {
         [Fact]
         public void Lock() {
             var bmp = new Bitmap(new IntVector2(64, 64), PixelFormat.SrgbRgba8);
-            bmp.Lock((Bitmap, span) => {
+            bmp.UsingContents((Bitmap, span) => {
                 Assert.Equal(64 * 64 * 4, span.Length);
                 var rng = new Random(1);
                 for (int i = 0; i < span.Length; ++i) {
@@ -27,7 +27,7 @@ namespace Ngs.Engine.Canvas.Tests {
                 }
                 return false;
             });
-            bmp.Lock((Bitmap, span) => {
+            bmp.UsingContents((Bitmap, span) => {
                 Assert.Equal(64 * 64 * 4, span.Length);
                 var rng = new Random(1);
                 for (int i = 0; i < span.Length; ++i) {
@@ -40,7 +40,7 @@ namespace Ngs.Engine.Canvas.Tests {
         [Fact]
         public void Clonable() {
             var bmp = new Bitmap(new IntVector2(64, 64), PixelFormat.SrgbRgba8);
-            bmp.Lock((Bitmap, span) => {
+            bmp.UsingContents((Bitmap, span) => {
                 Assert.Equal(64 * 64 * 4, span.Length);
                 var rng = new Random(1);
                 for (int i = 0; i < span.Length; ++i) {
@@ -49,7 +49,7 @@ namespace Ngs.Engine.Canvas.Tests {
                 return false;
             });
             bmp = bmp.Clone();
-            bmp.Lock((Bitmap, span) => {
+            bmp.UsingContents((Bitmap, span) => {
                 Assert.Equal(64 * 64 * 4, span.Length);
                 var rng = new Random(1);
                 for (int i = 0; i < span.Length; ++i) {

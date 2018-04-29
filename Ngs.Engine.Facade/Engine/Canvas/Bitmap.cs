@@ -38,6 +38,16 @@ namespace Ngs.Engine.Canvas {
             nativeBitmap = EngineInstance.NativeEngine.CreateBitmap(size, format);
         }
 
+        /// <summary>
+        /// Constructs a new instance of <see cref="Bitmap" />.
+        /// </summary>
+        /// <param name="width">The width of a newly created bitmap.</param>
+        /// <param name="height">The height of a newly created bitmap.</param>
+        /// <param name="format">The pixel format of a newly created bitmap.</param>
+        public Bitmap(int width, int height, PixelFormat format) :
+            this(new IntVector2(width, height), format) {
+        }
+
         internal Bitmap(IBitmap nativeBitmap) {
             this.nativeBitmap = nativeBitmap;
         }
@@ -55,6 +65,18 @@ namespace Ngs.Engine.Canvas {
         /// </summary>
         /// <returns>The size of the bitmap, measured in pixels.</returns>
         public IntVector2 Size { get => NativeBitmap.Size; }
+
+        /// <summary>
+        /// Retrieves the width of the bitmap.
+        /// </summary>
+        /// <returns>The width of the bitmap, measured in pixels.</returns>
+        public int Width { get => Size.X; }
+
+        /// <summary>
+        /// Retrieves the height of the bitmap.
+        /// </summary>
+        /// <returns>The height of the bitmap, measured in pixels.</returns>
+        public int Height { get => Size.Y; }
 
         /// <summary>
         /// Retrieves the pixel format of the bitmap.
@@ -112,7 +134,7 @@ namespace Ngs.Engine.Canvas {
         /// </summary>
         /// <remarks>
         /// <para>This method acquires an exclusive lock on the bitmap to access its raw
-        /// contents.</para>
+        /// contents. The lock is automatically released when the supplied function returns.</para>
         /// <para>The bitmap contents are located within an unmanaged memory region, and a memory
         /// error would result if its lifetime and ownership is not properly managed.
         /// This method ensures that the caller-supplied method <see paramref="callback" /> can
@@ -122,7 +144,7 @@ namespace Ngs.Engine.Canvas {
         /// as its argument.</param>
         /// <returns>A custom value returned by <see paramref="callback" />.</returns>
         [SecuritySafeCritical]
-        public unsafe T Lock<T>(BitmapContentsAccessor<T> callback) {
+        public unsafe T UsingContents<T>(BitmapContentsAccessor<T> callback) {
             var nativeBitmap = NativeBitmap;
             nativeBitmap.Lock();
             try {
