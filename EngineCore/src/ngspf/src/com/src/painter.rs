@@ -10,6 +10,7 @@ use rgb::RGBA;
 use stickylock::{StickyMutex, StickyMutexGuard};
 
 use canvas::painter::Painter;
+use hresults::E_PF_THREAD;
 use ngsbase::{IPainter, IPainterTrait};
 
 com_impl! {
@@ -55,10 +56,24 @@ impl ComPainter {
 }
 
 impl IPainterTrait for ComPainter {
-    fn end(&self) -> HResult {
+    fn finish(&self) -> HResult {
         to_hresult(|| {
             let mut painter_cell = self.data.painter.lock();
             *painter_cell = None;
+            Ok(())
+        })
+    }
+
+    fn lock(&self) -> HResult {
+        to_hresult(|| {
+            self.data.painter.stick();
+            Ok(())
+        })
+    }
+
+    fn unlock(&self) -> HResult {
+        to_hresult(|| {
+            self.data.painter.unstick().map_err(|_| E_PF_THREAD)?;
             Ok(())
         })
     }

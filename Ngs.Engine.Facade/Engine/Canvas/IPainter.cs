@@ -18,7 +18,25 @@ namespace Ngs.Engine.Canvas {
         /// <summary>
         /// Informs this painter that you have finished drawing using it.
         /// </summary>
-        void End();
+        void Finish();
+
+        /// <summary>
+        /// Acquires an exclusive lock for the current thread.
+        /// </summary>
+        /// <remarks>
+        /// <para>A painter is protected from concurrent accesses using a single mutex. By default,
+        /// a lock on this mutex is acquired every time you call a method. Since every lock
+        /// operation incurs a moderate performance cost, you can alternatively choose to explicitly
+        /// acquire a lock for an extended duration by using this method.</para>
+        /// <para>The acquired lock is linked to The calling thread owns, and lasts until
+        /// <see cref="Unlock" /> is called from the same thread.</para>
+        /// </remarks>
+        void Lock();
+
+        /// <summary>
+        /// Releases an exclusive lock.
+        /// </summary>
+        void Unlock();
 
         /// <summary>
         /// Saves the current drawing state to the stack.
