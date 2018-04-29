@@ -33,6 +33,7 @@ namespace Ngs.Engine.Canvas {
         /// </summary>
         /// <param name="size">The size of a newly created bitmap.</param>
         /// <param name="format">The pixel format of a newly created bitmap.</param>
+        [SecuritySafeCritical]
         public Bitmap(IntVector2 size, PixelFormat format) {
             nativeBitmap = EngineInstance.NativeEngine.CreateBitmap(size, format);
         }
@@ -66,12 +67,12 @@ namespace Ngs.Engine.Canvas {
         /// contents into this bitmap.
         /// </summary>
         /// <remarks>
-        /// The returned <see cref="IPainter" /> acquires an exclusive lock to
-        /// the contents of the bitmap. You must call <see cref="IPainter.End" />
+        /// The returned <see cref="IPainter" /> holds an exclusive lock to
+        /// the contents of the bitmap. You must call <see cref="Painter.Dispose" />
         /// after you are done with using it.
         /// </remarks>
         /// <returns>A newly created <see cref="IPainter" /></returns>
-        public IPainter CreatePainter() => NativeBitmap.CreatePainter();
+        public Painter CreatePainter() => new Painter(NativeBitmap.CreatePainter());
 
         /// <summary>
         /// Creates a clone of the bitmap.

@@ -32,7 +32,7 @@ namespace Ngs.Engine.Canvas {
         /// </summary>
         /// <remarks>
         /// The returned <see cref="IPainter" /> acquires an exclusive lock to
-        /// the contents of the bitmap. You must call <see cref="IPainter.End" />
+        /// the contents of the bitmap. You must call <see cref="IPainter.Finish" />
         /// after you are done with using it.
         /// </remarks>
         /// <returns>A newly created <see cref="IPainter" /></returns>
