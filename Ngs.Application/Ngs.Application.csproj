@@ -7,6 +7,12 @@
     <AssemblyName>Ngs.Application</AssemblyName>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Copyright>Copyright 2018 yvt, all rights reserved.</Copyright>
+    <Product>Nightingales</Product>
+    <Description>A Nightingales Application</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
     <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
