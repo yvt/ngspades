@@ -29,5 +29,11 @@ namespace Ngs.Engine.Native {
         /// <param name="format">The pixel representation format of the bitmap.</param>
         /// <returns>An newly created empty bitmap.</returns>
         INgsPFBitmap CreateBitmap(IntVector2 size, Canvas.PixelFormat format);
+
+        /// <summary>
+        /// Retrieves the singleton instance of <see cref="INgsPFFontFactory" />.
+        /// </summary>
+        /// <returns>The singleton instance of <see cref="INgsPFFontFactory" />.</returns>
+        INgsPFFontFactory FontFactory { get; }
     }
 }

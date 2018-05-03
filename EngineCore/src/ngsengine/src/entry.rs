@@ -6,8 +6,8 @@
 #![allow(dead_code)] // For `Engine::data`
 use cgmath::Vector2;
 
-use ngsbase::{INgsEngine, INgsEngineTrait, INgsPFBitmap, INgsPFWorkspace, INgsPFWorkspaceListener,
-              PixelFormat, PixelFormatItem};
+use ngsbase::{INgsEngine, INgsEngineTrait, INgsPFBitmap, INgsPFFontFactory, INgsPFWorkspace,
+              INgsPFWorkspaceListener, PixelFormat, PixelFormatItem};
 use ngscom::{hresults, to_hresult, ComPtr, HResult, UnownedComPtr};
 
 use ngspf::canvas::{ImageData, ImageFormat};
@@ -57,6 +57,10 @@ impl INgsEngineTrait for Engine {
             *retval = (&ngspf_com::ComBitmap::new(image_data)).into();
             Ok(())
         })
+    }
+
+    fn get_font_factory(&self, _retval: &mut ComPtr<INgsPFFontFactory>) -> HResult {
+        hresults::E_NOTIMPL
     }
 }
 

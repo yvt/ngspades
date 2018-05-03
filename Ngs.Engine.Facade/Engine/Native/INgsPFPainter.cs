@@ -68,6 +68,10 @@ namespace Ngs.Engine.Native {
         /// <param name="color">The color used for filling operations.</param>
         void SetFillColor(Rgba color);
 
-        // TODO: Text rendering
+        /// <summary>
+        /// Draws a given layouted text.
+        /// </summary>
+        /// <param name="textLayout">The layouted text to be drawn.</param>
+        void FillTextLayout(INgsPFTextLayout textLayout);
     }
 }

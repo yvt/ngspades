@@ -4,14 +4,14 @@
 // This source code is a part of Nightingales.
 //
 use cgmath::Vector2;
-use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
+use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown, UnownedComPtr};
 use owning_ref::OwningRefMut;
 use rgb::RGBA;
 use stickylock::{StickyMutex, StickyMutexGuard};
 
 use canvas::painter::Painter;
 use hresults::E_PF_THREAD;
-use ngsbase::{INgsPFPainter, INgsPFPainterTrait};
+use ngsbase::{INgsPFPainter, INgsPFPainterTrait, INgsPFTextLayout};
 
 com_impl! {
     /// A COM wrapper for `ngspf::canvas::Painter`.
@@ -116,5 +116,9 @@ impl INgsPFPainterTrait for ComPainter {
             painter.set_fill_color(color);
             Ok(())
         })
+    }
+
+    fn fill_text_layout(&self, _text_layout: UnownedComPtr<INgsPFTextLayout>) -> HResult {
+        hresults::E_NOTIMPL
     }
 }
