@@ -134,7 +134,7 @@ macro_rules! com_interface {
                 T: $trait_ident,
                 S: $crate::StaticOffset,
             {
-
+                #[allow(dead_code)]
                 struct Thunks;
 
                 impl Thunks {
