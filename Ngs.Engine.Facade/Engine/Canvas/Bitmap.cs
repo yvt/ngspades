@@ -7,6 +7,7 @@ using System;
 using System.Security;
 using Ngs.Utils;
 using Ngs.Interop;
+using Ngs.Engine.Native;
 
 namespace Ngs.Engine.Canvas {
     /// <summary>
@@ -21,12 +22,12 @@ namespace Ngs.Engine.Canvas {
     /// Represents a mutable bitmap image.
     /// </summary>
     /// <remarks>
-    /// <para>This class is a wrapper of <see cref="IBitmap" />.</para>
+    /// <para>This class is a wrapper of <see cref="INgsPFBitmap" />.</para>
     /// <para>All members of this class are thread-safe, with the exception of <see cref="ToImage" />
     /// and <see cref="IntoImage" /> that mutate the internal state of a native bitmap object.</para>
     /// </remarks>
     public sealed class Bitmap {
-        private IBitmap nativeBitmap;
+        private INgsPFBitmap nativeBitmap;
 
         /// <summary>
         /// Constructs a new instance of <see cref="Bitmap" />.
@@ -48,11 +49,11 @@ namespace Ngs.Engine.Canvas {
             this(new IntVector2(width, height), format) {
         }
 
-        internal Bitmap(IBitmap nativeBitmap) {
+        internal Bitmap(INgsPFBitmap nativeBitmap) {
             this.nativeBitmap = nativeBitmap;
         }
 
-        internal IBitmap NativeBitmap {
+        internal INgsPFBitmap NativeBitmap {
             get => nativeBitmap ??
                 throw new InvalidOperationException("The bitmap has already been destructively " +
                     "converted into an (immutable) image object.");
@@ -85,15 +86,15 @@ namespace Ngs.Engine.Canvas {
         public PixelFormat Format { get => NativeBitmap.Format; }
 
         /// <summary>
-        /// Create a <see cref="IPainter" /> that can be used to draw graphical
+        /// Create a <see cref="INgsPFPainter" /> that can be used to draw graphical
         /// contents into this bitmap.
         /// </summary>
         /// <remarks>
-        /// The returned <see cref="IPainter" /> holds an exclusive lock to
+        /// The returned <see cref="INgsPFPainter" /> holds an exclusive lock to
         /// the contents of the bitmap. You must call <see cref="Painter.Dispose" />
         /// after you are done with using it.
         /// </remarks>
-        /// <returns>A newly created <see cref="IPainter" /></returns>
+        /// <returns>A newly created <see cref="INgsPFPainter" /></returns>
         public Painter CreatePainter() => new Painter(NativeBitmap.CreatePainter());
 
         /// <summary>

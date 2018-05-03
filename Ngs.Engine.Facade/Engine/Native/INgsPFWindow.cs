@@ -7,17 +7,18 @@ using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
+using Ngs.Engine.Presentation;
 
-namespace Ngs.Engine.Presentation {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// Represents a window node.
     /// </summary>
     /// <remarks>
-    /// Window nodes are created from an <see cref="IPresentationContext" /> and
+    /// Window nodes are created from an <see cref="INgsPFContext" /> and
     /// are associated with the context from which they were created.
     /// </remarks>
     [Guid("1fd3658b-e4ac-49bb-9609-a0e578022cbc")]
-    public interface IWindow : IUnknown {
+    public interface INgsPFWindow : IUnknown {
         /// <summary>
         /// Sets the flags specifying the properties of the window.
         /// </summary>
@@ -45,11 +46,11 @@ namespace Ngs.Engine.Presentation {
         string Title { set; }
 
         /// <summary>
-        /// Sets the <see cref="IWindowListener" /> object that receives and handles window events.
+        /// Sets the <see cref="INgsPFWindowListener" /> object that receives and handles window events.
         /// </summary>
         /// <returns>
-        /// the <see cref="IWindowListener" /> object that receives and handles window events, or <c>null</c>.
+        /// the <see cref="INgsPFWindowListener" /> object that receives and handles window events, or <c>null</c>.
         /// </returns>
-        IWindowListener Listener { set; }
+        INgsPFWindowListener Listener { set; }
     }
 }

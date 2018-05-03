@@ -12,7 +12,7 @@ using Ngs.Engine.Presentation;
 namespace Ngs.Performance {
     public class PresentationPropertyBenchmark {
         Workspace workspace;
-        ILayer materializedLayer;
+        Ngs.Engine.Native.INgsPFLayer materializedLayer;
 
         public PresentationPropertyBenchmark() {
             workspace = new Workspace(new ApplicationInfo()

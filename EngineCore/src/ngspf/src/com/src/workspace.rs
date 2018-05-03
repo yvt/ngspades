@@ -12,7 +12,7 @@ use ngscom::{hresults, to_hresult, BStringRef, ComPtr, HResult, IAny, IUnknown, 
 
 use core::{prelude::*, Context};
 use hresults::{E_PF_LOCKED, E_PF_NOT_NODE, E_PF_THREAD};
-use ngsbase::{IPresentationContext, IWorkspace, IWorkspaceListener, IWorkspaceTrait};
+use ngsbase::{INgsPFContext, INgsPFWorkspace, INgsPFWorkspaceListener, INgsPFWorkspaceTrait};
 use nodes::{translate_context_error, INodeRef};
 use viewport::{RootRef, Workspace, WorkspaceBuilder, WorkspaceError};
 use ComContext;
@@ -25,7 +25,7 @@ fn translate_workspace_error(e: WorkspaceError) -> HResult {
 
 com_impl! {
     class ComWorkspace {
-        iworkspace: IWorkspace;
+        ingspf_workspace: INgsPFWorkspace;
         iany: IAny;
         @data: WorkspaceData;
     }
@@ -42,7 +42,9 @@ struct WorkspaceData {
 }
 
 impl ComWorkspace {
-    pub fn new(listener: ComPtr<IWorkspaceListener>) -> Result<ComPtr<IWorkspace>, HResult> {
+    pub fn new(
+        listener: ComPtr<INgsPFWorkspaceListener>,
+    ) -> Result<ComPtr<INgsPFWorkspace>, HResult> {
         // Retrieve the application info
         let mut app_name = BStringRef::new("");
         let mut app_ver_major = 0;
@@ -85,8 +87,8 @@ impl ComWorkspace {
     }
 }
 
-impl IWorkspaceTrait for ComWorkspace {
-    fn get_context(&self, retval: &mut ComPtr<IPresentationContext>) -> HResult {
+impl INgsPFWorkspaceTrait for ComWorkspace {
+    fn get_context(&self, retval: &mut ComPtr<INgsPFContext>) -> HResult {
         *retval = (&self.data.com_context).into();
         hresults::E_OK
     }

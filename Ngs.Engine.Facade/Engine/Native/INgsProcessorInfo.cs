@@ -8,12 +8,12 @@ using System.Runtime.InteropServices;
 using Ngs.Interop;
 using Ngs.Utils;
 
-namespace Ngs.Engine {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// Provides an information about the processor the application is running on.
     /// </summary>
     [Guid("af567d31-59c8-4c69-97a7-3586d72eecdd")]
-    public interface IProcessorInfo : IUnknown {
+    public interface INgsProcessorInfo : IUnknown {
         /// <summary>
         /// Retrieves the processor's vendor identification string.
         /// </summary>

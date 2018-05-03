@@ -11,6 +11,7 @@ using System.Xml.Serialization;
 using System.Security;
 using Ngs.Interop;
 using Ngs.Utils;
+using Ngs.Engine.Native;
 
 namespace Ngs.Engine {
     delegate int NgsEngineCreate(out IntPtr retval);
@@ -45,7 +46,7 @@ namespace Ngs.Engine {
     /// </remarks>
     public static class EngineInstance {
         static DynamicLibrary dynamicLibrary;
-        static IEngine nativeEngine;
+        static INgsEngine nativeEngine;
         static Exception loadError;
 
         static EngineInstance() {
@@ -117,7 +118,7 @@ namespace Ngs.Engine {
                 var entryDelegate = Marshal.GetDelegateForFunctionPointer<NgsEngineCreate>(entryPtr);
                 Marshal.ThrowExceptionForHR(entryDelegate(out var enginePtr));
 
-                nativeEngine = NgscomMarshal.GetRcwForInterfacePtr<IEngine>(enginePtr, false);
+                nativeEngine = NgscomMarshal.GetRcwForInterfacePtr<INgsEngine>(enginePtr, false);
                 dynamicLibrary = library;
             } catch (Exception ex) {
                 loadError = ex;
@@ -142,10 +143,10 @@ namespace Ngs.Engine {
         }
 
         /// <summary>
-        /// Retrieves the raw <see cref="IEngine" /> object.
+        /// Retrieves the raw <see cref="INgsEngine" /> object.
         /// </summary>
-        /// <returns>The raw <see cref="IEngine" /> object.</returns>
-        public static IEngine NativeEngine {
+        /// <returns>The raw <see cref="INgsEngine" /> object.</returns>
+        public static INgsEngine NativeEngine {
             [SecurityCritical]
             get {
                 EnsureLoaded();

@@ -7,16 +7,16 @@ using System;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 
-namespace Ngs.Engine.Presentation {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// Represents a node group.
     /// </summary>
     /// <remarks>
-    /// Node groups are created from an <see cref="IPresentationContext" /> and
+    /// Node groups are created from an <see cref="INgsPFContext" /> and
     /// are associated with the context from which they were created.
     /// </remarks>
     [Guid("77c92e07-8698-41d5-af4c-7f4fb7a4f328")]
-    public interface INodeGroup : IUnknown {
+    public interface INgsPFNodeGroup : IUnknown {
         /// <summary>
         /// Insert a node to the node group.
         /// </summary>

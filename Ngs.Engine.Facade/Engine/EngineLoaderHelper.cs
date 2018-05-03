@@ -8,6 +8,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 using Ngs.Utils;
+using Ngs.Engine.Native;
 
 namespace Ngs.Engine {
     delegate int NgsLoaderGetProcessorInfo(out IntPtr retval);
@@ -49,7 +50,7 @@ namespace Ngs.Engine {
             }
         }
 
-        public static IProcessorInfo ProcessorInfo {
+        public static INgsProcessorInfo ProcessorInfo {
             get {
                 EnsureLoaded();
 
@@ -61,7 +62,7 @@ namespace Ngs.Engine {
                 var entryDelegate = Marshal.GetDelegateForFunctionPointer<NgsLoaderGetProcessorInfo>(entryPtr);
                 Marshal.ThrowExceptionForHR(entryDelegate(out var processorInfoPtr));
 
-                return NgscomMarshal.GetRcwForInterfacePtr<IProcessorInfo>(processorInfoPtr, false);
+                return NgscomMarshal.GetRcwForInterfacePtr<INgsProcessorInfo>(processorInfoPtr, false);
             }
         }
     }

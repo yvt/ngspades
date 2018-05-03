@@ -9,19 +9,19 @@ extern crate cgmath;
 extern crate rgb;
 #[macro_use]
 extern crate lazy_static;
+extern crate arclock;
+extern crate owning_ref;
 extern crate send_cell;
 extern crate stickylock;
 extern crate tokenlock;
-extern crate arclock;
-extern crate owning_ref;
 
 extern crate cggeom;
 extern crate ngsbase;
 #[macro_use]
 extern crate ngscom;
+extern crate ngspf_canvas as canvas;
 extern crate ngspf_core as core;
 extern crate ngspf_viewport as viewport;
-extern crate ngspf_canvas as canvas;
 
 mod context;
 mod image;
@@ -29,7 +29,8 @@ mod nodes;
 mod painter;
 mod workspace;
 
-pub use ngsbase::{ILayer, INodeGroup, IPresentationContext, IWindow, IWindowListener, IWorkspace};
+pub use ngsbase::{INgsPFContext, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow, INgsPFWindowListener,
+                  INgsPFWorkspace};
 
 pub use context::{ComContext, ProducerFrameLockGuard, ProducerFrameRefMut};
 pub use image::{ComBitmap, ComImage};

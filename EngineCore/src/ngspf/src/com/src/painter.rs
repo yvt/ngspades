@@ -11,12 +11,12 @@ use stickylock::{StickyMutex, StickyMutexGuard};
 
 use canvas::painter::Painter;
 use hresults::E_PF_THREAD;
-use ngsbase::{IPainter, IPainterTrait};
+use ngsbase::{INgsPFPainter, INgsPFPainterTrait};
 
 com_impl! {
     /// A COM wrapper for `ngspf::canvas::Painter`.
     class ComPainter {
-        i_painter: IPainter;
+        ingspf_painter: INgsPFPainter;
         iany: IAny;
         @data: PainterData;
     }
@@ -55,7 +55,7 @@ impl ComPainter {
     }
 }
 
-impl IPainterTrait for ComPainter {
+impl INgsPFPainterTrait for ComPainter {
     fn finish(&self) -> HResult {
         to_hresult(|| {
             let mut painter_cell = self.data.painter.lock();

@@ -6,8 +6,8 @@
 #![allow(dead_code)] // For `Engine::data`
 use cgmath::Vector2;
 
-use ngsbase::{IBitmap, IEngine, IEngineTrait, IWorkspace, IWorkspaceListener, PixelFormat,
-              PixelFormatItem};
+use ngsbase::{INgsEngine, INgsEngineTrait, INgsPFBitmap, INgsPFWorkspace, INgsPFWorkspaceListener,
+              PixelFormat, PixelFormatItem};
 use ngscom::{hresults, to_hresult, ComPtr, HResult, UnownedComPtr};
 
 use ngspf::canvas::{ImageData, ImageFormat};
@@ -15,7 +15,7 @@ use ngspf_com;
 
 com_impl! {
     class Engine {
-        iengine: IEngine;
+        ings_engine: INgsEngine;
         @data: EngineData;
     }
 }
@@ -24,16 +24,16 @@ com_impl! {
 struct EngineData;
 
 impl Engine {
-    fn new() -> ComPtr<IEngine> {
+    fn new() -> ComPtr<INgsEngine> {
         (&Self::alloc(EngineData)).into()
     }
 }
 
-impl IEngineTrait for Engine {
+impl INgsEngineTrait for Engine {
     fn create_workspace(
         &self,
-        listener: UnownedComPtr<IWorkspaceListener>,
-        retval: &mut ComPtr<IWorkspace>,
+        listener: UnownedComPtr<INgsPFWorkspaceListener>,
+        retval: &mut ComPtr<INgsPFWorkspace>,
     ) -> HResult {
         to_hresult(|| {
             *retval = ngspf_com::ComWorkspace::new(listener.to_owned())?;
@@ -45,7 +45,7 @@ impl IEngineTrait for Engine {
         &self,
         size: Vector2<i32>,
         format: PixelFormat,
-        retval: &mut ComPtr<IBitmap>,
+        retval: &mut ComPtr<INgsPFBitmap>,
     ) -> HResult {
         to_hresult(|| {
             let size = size.cast::<usize>();
@@ -61,7 +61,7 @@ impl IEngineTrait for Engine {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ngsengine_create(retval: &mut ComPtr<IEngine>) -> HResult {
+pub unsafe extern "C" fn ngsengine_create(retval: &mut ComPtr<INgsEngine>) -> HResult {
     *retval = Engine::new();
     hresults::E_OK
 }

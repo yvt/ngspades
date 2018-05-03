@@ -9,12 +9,12 @@ extern crate raw_cpuid;
 
 use self::raw_cpuid::CpuId;
 
-use ngsbase::{IProcessorInfo, IProcessorInfoTrait};
+use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult};
 
 com_impl! {
     class ProcessorInfo {
-        iprocessor_info: IProcessorInfo;
+        iprocessor_info: INgsProcessorInfo;
         @data: ProcessorInfoData;
     }
 }
@@ -38,7 +38,7 @@ unsafe fn x86_get_xcr(xcr_no: u32) -> u64 {
 }
 
 impl ProcessorInfo {
-    pub fn new() -> ComPtr<IProcessorInfo> {
+    pub fn new() -> ComPtr<INgsProcessorInfo> {
         let cpuid = CpuId::new();
 
         let feature_info = cpuid.get_feature_info();
@@ -80,7 +80,7 @@ impl ProcessorInfo {
     }
 }
 
-impl IProcessorInfoTrait for ProcessorInfo {
+impl INgsProcessorInfoTrait for ProcessorInfo {
     fn get_vendor(&self, retval: &mut BStringRef) -> HResult {
         *retval = BStringRef::new(&self.data.vendor);
         hresults::E_OK

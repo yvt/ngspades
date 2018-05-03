@@ -8,12 +8,12 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 
-namespace Ngs.Engine.Presentation {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// Receives and handles workspace events.
     /// </summary>
     [Guid("44370e35-940c-4363-b11b-e5d93a87beb5")]
-    public interface IWorkspaceListener : IUnknown {
+    public interface INgsPFWorkspaceListener : IUnknown {
         /// <summary>
         /// Retrieves the information about the application.
         /// </summary>

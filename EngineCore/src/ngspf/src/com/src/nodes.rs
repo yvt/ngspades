@@ -11,7 +11,7 @@ use {cggeom, cgmath, ngsbase, rgb};
 use core::prelude::*;
 use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_IMAGE, E_PF_NOT_NODE};
 use {core, viewport};
-use {ComContext, ComImage, ILayer, INodeGroup, IWindow, IWindowListener};
+use {ComContext, ComImage, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow, INgsPFWindowListener};
 
 pub(crate) fn translate_context_error(e: core::ContextError) -> HResult {
     match e {
@@ -236,19 +236,19 @@ macro_rules! node_data_set_prop_builder_only {
 com_impl! {
     #[derive(Debug)]
     class ComNodeGroup {
-        inode_group: INodeGroup;
+        inode_group: INgsPFNodeGroup;
         inoderef: INodeRef;
         @data: NodeData<Vec<core::NodeRef>, core::GroupRef>;
     }
 }
 
 impl ComNodeGroup {
-    pub fn new(context: ComPtr<IAny>) -> ComPtr<INodeGroup> {
+    pub fn new(context: ComPtr<IAny>) -> ComPtr<INgsPFNodeGroup> {
         (&ComNodeGroup::alloc(NodeData::new(context, Vec::new()))).into()
     }
 }
 
-impl ngsbase::INodeGroupTrait for ComNodeGroup {
+impl ngsbase::INgsPFNodeGroupTrait for ComNodeGroup {
     fn insert(&self, node: UnownedComPtr<IUnknown>) -> HResult {
         to_hresult(|| {
             self.data.with_mut(|s, _| match s {
@@ -278,19 +278,19 @@ impl INodeRefTrait for ComNodeGroup {
 
 com_impl! {
     class ComLayer {
-        ilayer: ILayer;
+        ilayer: INgsPFLayer;
         inoderef: INodeRef;
         @data: NodeData<Option<viewport::LayerBuilder>, viewport::LayerRef>;
     }
 }
 
 impl ComLayer {
-    pub fn new(context: ComPtr<IAny>) -> ComPtr<ILayer> {
+    pub fn new(context: ComPtr<IAny>) -> ComPtr<INgsPFLayer> {
         (&ComLayer::alloc(NodeData::new(context, Some(viewport::LayerBuilder::new())))).into()
     }
 }
 
-impl ngsbase::ILayerTrait for ComLayer {
+impl ngsbase::INgsPFLayerTrait for ComLayer {
     fn set_opacity(&self, value: f32) -> HResult {
         to_hresult(|| node_data_set_prop!(self.data, opacity = value))
     }
@@ -412,19 +412,19 @@ impl INodeRefTrait for ComLayer {
 
 com_impl! {
     class ComWindow {
-        iwindow: IWindow;
+        iwindow: INgsPFWindow;
         inoderef: INodeRef;
         @data: NodeData<Option<viewport::WindowBuilder>, viewport::WindowRef>;
     }
 }
 
 impl ComWindow {
-    pub fn new(context: ComPtr<IAny>) -> ComPtr<IWindow> {
+    pub fn new(context: ComPtr<IAny>) -> ComPtr<INgsPFWindow> {
         (&ComWindow::alloc(NodeData::new(context, Some(viewport::WindowBuilder::new())))).into()
     }
 }
 
-impl ngsbase::IWindowTrait for ComWindow {
+impl ngsbase::INgsPFWindowTrait for ComWindow {
     fn set_flags(&self, flags: ngsbase::WindowFlags) -> HResult {
         to_hresult(|| {
             let mut value = viewport::WindowFlags::empty();
@@ -475,7 +475,7 @@ impl ngsbase::IWindowTrait for ComWindow {
         to_hresult(|| node_data_set_prop!(self.data, title = value))
     }
 
-    fn set_listener(&self, value: UnownedComPtr<IWindowListener>) -> HResult {
+    fn set_listener(&self, value: UnownedComPtr<INgsPFWindowListener>) -> HResult {
         fn trans_mouse_pos(p: viewport::MousePosition) -> ngsbase::MousePosition {
             ngsbase::MousePosition {
                 client: p.client,
@@ -483,7 +483,7 @@ impl ngsbase::IWindowTrait for ComWindow {
             }
         }
         let value: Option<viewport::WindowListener> = if !value.is_null() {
-            let listener: ComPtr<IWindowListener> = value.to_owned();
+            let listener: ComPtr<INgsPFWindowListener> = value.to_owned();
             Some(Box::new(move |e| {
                 use viewport::WindowEvent::*;
                 let result = match e {

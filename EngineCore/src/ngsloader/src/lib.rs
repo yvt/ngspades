@@ -25,7 +25,7 @@ extern crate lazy_static;
 extern crate ngscom;
 extern crate ngsbase;
 
-use ngsbase::IProcessorInfo;
+use ngsbase::INgsProcessorInfo;
 use ngscom::{hresults, ComPtr, HResult};
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -40,7 +40,7 @@ use generic::ProcessorInfo;
 
 #[no_mangle]
 pub unsafe extern "C" fn ngsloader_get_processor_info(
-    retval: &mut ComPtr<IProcessorInfo>,
+    retval: &mut ComPtr<INgsProcessorInfo>,
 ) -> HResult {
     *retval = ProcessorInfo::new();
     hresults::E_OK

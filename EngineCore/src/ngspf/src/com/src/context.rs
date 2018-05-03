@@ -13,12 +13,12 @@ use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
 use core::{Context, ProducerFrame};
 use hresults::{E_PF_LOCKED, E_PF_THREAD};
 use nodes::translate_context_error;
-use {nodes, ILayer, INodeGroup, IPresentationContext, IWindow};
+use {nodes, INgsPFContext, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow};
 
 com_impl! {
     #[derive(Debug)]
     class ComContext {
-        ipresentation_context: IPresentationContext;
+        ingspf_context: INgsPFContext;
         iany: IAny;
         @data: ContextData;
     }
@@ -103,18 +103,18 @@ impl ComContext {
     }
 }
 
-impl ngsbase::IPresentationContextTrait for ComContext {
-    fn create_node_group(&self, retval: &mut ComPtr<INodeGroup>) -> HResult {
+impl ngsbase::INgsPFContextTrait for ComContext {
+    fn create_node_group(&self, retval: &mut ComPtr<INgsPFNodeGroup>) -> HResult {
         *retval = nodes::ComNodeGroup::new((&self.as_com_ptr()).into());
         hresults::E_OK
     }
 
-    fn create_window(&self, retval: &mut ComPtr<IWindow>) -> HResult {
+    fn create_window(&self, retval: &mut ComPtr<INgsPFWindow>) -> HResult {
         *retval = nodes::ComWindow::new((&self.as_com_ptr()).into());
         hresults::E_OK
     }
 
-    fn create_layer(&self, retval: &mut ComPtr<ILayer>) -> HResult {
+    fn create_layer(&self, retval: &mut ComPtr<INgsPFLayer>) -> HResult {
         *retval = nodes::ComLayer::new((&self.as_com_ptr()).into());
         hresults::E_OK
     }

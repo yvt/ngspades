@@ -7,17 +7,18 @@ using System;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 using Ngs.Utils;
+using Ngs.Engine.Presentation;
 
-namespace Ngs.Engine.Presentation {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// Represents a layer node, the basic unit of composition.
     /// </summary>
     /// <remarks>
-    /// Layer nodes are created from an <see cref="IPresentationContext" /> and
+    /// Layer nodes are created from an <see cref="INgsPFContext" /> and
     /// are associated with the context from which they were created.
     /// </remarks>
     [Guid("f6aff079-7478-4b34-9474-6f4960a2818f")]
-    public interface ILayer : IUnknown {
+    public interface INgsPFLayer : IUnknown {
         /// <summary>
         /// Sets the opacity of the layer.
         /// </summary>

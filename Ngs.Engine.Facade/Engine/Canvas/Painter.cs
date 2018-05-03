@@ -9,20 +9,21 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 using Ngs.Utils;
+using Ngs.Engine.Native;
 
 namespace Ngs.Engine.Canvas {
     /// <summary>
     /// An abstract interface used to issue draw operations.
     /// </summary>
     /// <remarks>
-    /// <para>This struct is a wrapper of <see cref="IPainter" /> and provides additional
+    /// <para>This struct is a wrapper of <see cref="INgsPFPainter" /> and provides additional
     /// functionalities including:</para>
     /// <list type="bullet">
     ///     <item><term>
     ///     Overloaded methods provided for convenience.
     ///     </term></item>
     ///     <item><term>
-    ///     An <see cref="IDisposable" /> implementation that calls <see cref="IPainter.Finish" />,
+    ///     An <see cref="IDisposable" /> implementation that calls <see cref="INgsPFPainter.Finish" />,
     ///     which allows application developers to use C♯'s <c>using</c> directive (or
     ///     equivalent constructs of other languages) to ensure the correct use of painter objects.
     ///     </term></item>
@@ -30,9 +31,9 @@ namespace Ngs.Engine.Canvas {
     /// <para>All members of this class are thread-safe.</para>
     /// </remarks>
     public struct Painter : IDisposable {
-        private IPainter nativePainter;
+        private INgsPFPainter nativePainter;
 
-        internal Painter(IPainter nativePainter) {
+        internal Painter(INgsPFPainter nativePainter) {
             this.nativePainter = nativePainter;
         }
 
@@ -40,7 +41,7 @@ namespace Ngs.Engine.Canvas {
         /// Retrieves the underlying native painter object.
         /// </summary>
         /// <returns>The underlying native painter object.</returns>
-        internal IPainter NativePainter {
+        internal INgsPFPainter NativePainter {
             [SecurityCritical]
             get => nativePainter;
         }

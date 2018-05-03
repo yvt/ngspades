@@ -9,12 +9,12 @@ using System.Runtime.InteropServices;
 using Ngs.Interop;
 using Ngs.Utils;
 
-namespace Ngs.Engine.Canvas {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// An abstract interface used to issue draw operations.
     /// </summary>
     [Guid("009da12d-75f2-4714-9dfa-9ce0beeea97a")]
-    public interface IPainter : IUnknown {
+    public interface INgsPFPainter : IUnknown {
         /// <summary>
         /// Informs this painter that you have finished drawing using it.
         /// </summary>

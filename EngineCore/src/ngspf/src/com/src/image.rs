@@ -11,16 +11,16 @@ use std::sync::Mutex;
 
 use canvas::{painter::new_painter_for_image_data, ImageData, ImageFormat, ImageRef};
 use hresults::E_PF_THREAD;
-use ngsbase::{self, IBitmap, IBitmapTrait, IPainter};
+use ngsbase::{self, INgsPFBitmap, INgsPFBitmapTrait, INgsPFPainter};
 use ComPainter;
 
-// The methods provided by `IBitmap` are inherently unsafe. This unsafeness is
+// The methods provided by `INgsPFBitmap` are inherently unsafe. This unsafeness is
 // hidden from partially-trusted assemblies using the .NET wrapper class `Bitmap`.
 
 com_impl! {
     /// A COM wrapper for `ngspf::canvas::ImageData`.
     class ComBitmap {
-        ibitmap: IBitmap;
+        ingspf_bitmap: INgsPFBitmap;
         iany: IAny;
         @data: BitmapData;
     }
@@ -35,7 +35,7 @@ struct BitmapData {
     format: ngsbase::PixelFormat,
     size: Vector2<i32>,
 
-    /// Stores a lock guard obtained by `IBitmapTrait::lock`.
+    /// Stores a lock guard obtained by `INgsPFBitmapTrait::lock`.
     guard_cell: Mutex<Option<ArcLockGuard<Option<ImageData>>>>,
 }
 
@@ -68,8 +68,8 @@ impl ComBitmap {
     }
 }
 
-impl IBitmapTrait for ComBitmap {
-    fn clone(&self, retval: &mut ComPtr<IBitmap>) -> HResult {
+impl INgsPFBitmapTrait for ComBitmap {
+    fn clone(&self, retval: &mut ComPtr<INgsPFBitmap>) -> HResult {
         to_hresult(|| {
             let image_data = self.lock_image_data().ok_or(hresults::E_UNEXPECTED)?;
             let new_image_data = image_data.clone();
@@ -78,7 +78,7 @@ impl IBitmapTrait for ComBitmap {
         })
     }
 
-    fn create_painter(&self, retval: &mut ComPtr<IPainter>) -> HResult {
+    fn create_painter(&self, retval: &mut ComPtr<INgsPFPainter>) -> HResult {
         to_hresult(|| {
             let image_data = self.lock_image_data().ok_or(hresults::E_UNEXPECTED)?;
 

@@ -7,13 +7,14 @@ using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
+using Ngs.Engine.Presentation;
 
-namespace Ngs.Engine.Presentation {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// Receives and handles window events.
     /// </summary>
     [Guid("bca93091-5031-4b44-ab90-fedd2a6b6692")]
-    public interface IWindowListener : IUnknown {
+    public interface INgsPFWindowListener : IUnknown {
         /// <summary>
         /// The window was resized.
         /// </summary>

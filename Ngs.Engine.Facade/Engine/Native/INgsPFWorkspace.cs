@@ -7,17 +7,17 @@ using System;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 
-namespace Ngs.Engine.Presentation {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// An interface to the window system of the target system.
     /// </summary>
     [Guid("605d9976-ab88-47cf-b68b-e1c2dfeaaa99")]
-    public interface IWorkspace : IUnknown {
+    public interface INgsPFWorkspace : IUnknown {
         /// <summary>
         /// Retrieves the associated presentation context.
         /// </summary>
         /// <returns>The presentation context managed by this workspace.</returns>
-        IPresentationContext Context { get; }
+        INgsPFContext Context { get; }
 
         /// <summary>
         /// Sets the window node.
@@ -41,7 +41,7 @@ namespace Ngs.Engine.Presentation {
         /// </summary>
         /// <remarks>
         /// The exit request is a part of presentation properties. You must call
-        /// <see cref="IPresentationContext.CommitFrame" /> afterward for it to take effect.
+        /// <see cref="INgsPFContext.CommitFrame" /> afterward for it to take effect.
         /// </remarks>
         void Exit();
     }

@@ -4,12 +4,12 @@
 // This source code is a part of Nightingales.
 //
 #![allow(dead_code)] // For `ProcessorInfo::data`
-use ngsbase::{IProcessorInfo, IProcessorInfoTrait};
+use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult};
 
 com_impl! {
     class ProcessorInfo {
-        iprocessor_info: IProcessorInfo;
+        iprocessor_info: INgsProcessorInfo;
         @data: ProcessorInfoData;
     }
 }
@@ -18,12 +18,12 @@ com_impl! {
 struct ProcessorInfoData;
 
 impl ProcessorInfo {
-    pub fn new() -> ComPtr<IProcessorInfo> {
+    pub fn new() -> ComPtr<INgsProcessorInfo> {
         (&Self::alloc(ProcessorInfoData)).into()
     }
 }
 
-impl IProcessorInfoTrait for ProcessorInfo {
+impl INgsProcessorInfoTrait for ProcessorInfo {
     fn get_vendor(&self, retval: &mut BStringRef) -> HResult {
         *retval = BStringRef::new("Unknown");
         hresults::E_OK

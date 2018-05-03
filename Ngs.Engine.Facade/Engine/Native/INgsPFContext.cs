@@ -7,7 +7,7 @@ using System;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 
-namespace Ngs.Engine.Presentation {
+namespace Ngs.Engine.Native {
     /// <summary>
     /// Provides an access to the presentation context.
     /// </summary>
@@ -19,24 +19,24 @@ namespace Ngs.Engine.Presentation {
     /// incurred by the mutual exclusion.</para>
     /// </remarks>
     [Guid("c2a47959-0d5d-46b4-ba83-68c9b69bee56")]
-    public interface IPresentationContext : IUnknown {
+    public interface INgsPFContext : IUnknown {
         /// <summary>
         /// Creates a node group.
         /// </summary>
-        /// <returns>An <see cref="INodeGroup" /> object refering to the created node group.</returns>
-        INodeGroup CreateNodeGroup();
+        /// <returns>An <see cref="INgsPFNodeGroup" /> object refering to the created node group.</returns>
+        INgsPFNodeGroup CreateNodeGroup();
 
         /// <summary>
         /// Creates a window node.
         /// </summary>
-        /// <returns>An <see cref="IWindow" /> object refering to the created window node.</returns>
-        IWindow CreateWindow();
+        /// <returns>An <see cref="INgsPFWindow" /> object refering to the created window node.</returns>
+        INgsPFWindow CreateWindow();
 
         /// <summary>
         /// Creates a layer node.
         /// </summary>
-        /// <returns>An <see cref="ILayer" /> object refering to the created layer node.</returns>
-        ILayer CreateLayer();
+        /// <returns>An <see cref="INgsPFLayer" /> object refering to the created layer node.</returns>
+        INgsPFLayer CreateLayer();
 
         /// <summary>
         /// Acquires a lock on the context state for the current thread.

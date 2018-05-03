@@ -7,17 +7,18 @@ using System;
 using System.Runtime.InteropServices;
 using System.Security;
 using Ngs.Interop;
+using Ngs.Engine.Native;
 
 namespace Ngs.Engine.Presentation {
     /// <summary>
     /// An interface to the window system of the target system.
     /// </summary>
     public class Workspace {
-        IWorkspace nativeWorkspace;
+        INgsPFWorkspace nativeWorkspace;
 
         IUnknown windows;
 
-        private sealed class Listener : ComClass<Listener>, IWorkspaceListener {
+        private sealed class Listener : ComClass<Listener>, INgsPFWorkspaceListener {
             public ApplicationInfo applicationInfo;
 
             public void GetApplicationInfo(out string name, out int versionMajor, out int versionMinor, out int versionRevision) {
@@ -45,7 +46,7 @@ namespace Ngs.Engine.Presentation {
         /// Retrieves the underlying native workspace object.
         /// </summary>
         /// <returns>The underlying native workspace object.</returns>
-        public IWorkspace NativeWorkspace {
+        public INgsPFWorkspace NativeWorkspace {
             [SecurityCritical]
             get => nativeWorkspace;
         }
@@ -54,7 +55,7 @@ namespace Ngs.Engine.Presentation {
         /// Retrieves the associated presentation context.
         /// </summary>
         /// <returns>The presentation context managed by this workspace.</returns>
-        public IPresentationContext Context {
+        public INgsPFContext Context {
             [SecurityCritical]
             get => nativeWorkspace.Context;
         }
@@ -88,7 +89,7 @@ namespace Ngs.Engine.Presentation {
         /// </summary>
         /// <remarks>
         /// The exit request is a part of presentation properties. You must call
-        /// <see cref="IPresentationContext.CommitFrame" /> afterward for it to take effect.
+        /// <see cref="INgsPFContext.CommitFrame" /> afterward for it to take effect.
         /// </remarks>
         public void Exit() => nativeWorkspace.Exit();
     }
