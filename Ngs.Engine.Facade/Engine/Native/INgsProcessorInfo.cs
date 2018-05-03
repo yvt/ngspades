@@ -21,6 +21,13 @@ namespace Ngs.Engine.Native {
         string Vendor { get; }
 
         /// <summary>
+        /// Retrieves the processor's architecture name.
+        /// </summary>
+        /// <returns>The processor's architecture name. This value is derived from the first part of
+        /// the LLVM <see href="http://clang.llvm.org/docs/CrossCompilation.html#target-triple">target triple</see>.</returns>
+        string Architecture { get; }
+
+        /// <summary>
         /// Returns whether a specified feature is supported by the processor.
         /// </summary>
         /// <param name="name">The name of the feature.</param>

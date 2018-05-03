@@ -11,6 +11,7 @@ use self::raw_cpuid::CpuId;
 
 use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult};
+use ProcessorInfoCommon;
 
 com_impl! {
     class ProcessorInfo {
@@ -21,6 +22,7 @@ com_impl! {
 
 #[derive(Debug)]
 struct ProcessorInfoData {
+    common: ProcessorInfoCommon,
     vendor: String,
     mmx: bool,
     sse: bool,
@@ -67,6 +69,7 @@ impl ProcessorInfo {
         let fma3 = avx && feature_info.map(|x| x.has_fma()).unwrap_or(false);
 
         (&Self::alloc(ProcessorInfoData {
+            common: ProcessorInfoCommon::new(),
             vendor,
             mmx,
             sse,
@@ -81,6 +84,10 @@ impl ProcessorInfo {
 }
 
 impl INgsProcessorInfoTrait for ProcessorInfo {
+    fn get_architecture(&self, retval: &mut BStringRef) -> HResult {
+        self.data.common.get_architecture(retval)
+    }
+
     fn get_vendor(&self, retval: &mut BStringRef) -> HResult {
         *retval = BStringRef::new(&self.data.vendor);
         hresults::E_OK

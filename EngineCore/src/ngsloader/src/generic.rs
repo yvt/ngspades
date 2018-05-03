@@ -6,6 +6,7 @@
 #![allow(dead_code)] // For `ProcessorInfo::data`
 use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult};
+use ProcessorInfoCommon;
 
 com_impl! {
     class ProcessorInfo {
@@ -15,15 +16,23 @@ com_impl! {
 }
 
 #[derive(Debug)]
-struct ProcessorInfoData;
+struct ProcessorInfoData {
+    common: ProcessorInfoCommon,
+}
 
 impl ProcessorInfo {
     pub fn new() -> ComPtr<INgsProcessorInfo> {
-        (&Self::alloc(ProcessorInfoData)).into()
+        (&Self::alloc(ProcessorInfoData {
+            common: ProcessorInfoCommon::new(),
+        })).into()
     }
 }
 
 impl INgsProcessorInfoTrait for ProcessorInfo {
+    fn get_architecture(&self, retval: &mut BStringRef) -> HResult {
+        self.data.common.get_architecture(retval)
+    }
+
     fn get_vendor(&self, retval: &mut BStringRef) -> HResult {
         *retval = BStringRef::new("Unknown");
         hresults::E_OK
