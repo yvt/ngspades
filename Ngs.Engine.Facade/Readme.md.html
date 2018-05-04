@@ -1,0 +1,65 @@
+**Ngs.Engine.Facade**
+
+# Fundamental Components
+
+## Interop API
+
+COM interfaces serve as a conduit between a managed code and a native code (engine core). In most cases they are intended to be "internal-use only" and not designed with ergonomics or any design best practices in mind.
+
+## Wrapper (facade) API
+
+The wrapper types provide an API directly faced to the application developer. They are meant to have more stable interfaces compared to those of the raw interop API.
+
+## Common types
+
+This .NET assembly provides the definitions of commonly-used value types such as `Box2`. All of them are mapped to Rust types (see `/Ngs.RustInteropGen/Program.cs` for a comprehensive list of mappings).
+
+
+# Design goals
+
+## Security
+
+We design the engine for an application capable of loading a part of the managed code from an arbitrary, potentially hostile location. Therefore, we must make sure that a malicious code cannot perform harmful and/or unauthorized operations on the user's computer.
+
+It is possible verify that the loaded code does not perform any potentially harmful operations by running a static analysis on the code, for example, by performing the byte code verification procedure defined by the Common Language Infrastructure (CLI) specification, combined with a white list of the framework APIs that can be used safely, or with .NET security attributes. However, this static verification does not extend to the usage of the native engine APIs. Therefore, for this to be really effective, every API boundary must be designed for memory safety.
+
+## Why COM?
+
+KISS principle. COM is one of the most generic solution for object-oriented inter-language interop, while at the same time being the simplest in its essence. The overhead of interface methods calls are negligible in most cases. Furthermore, we can leverage many parts of the COM infrastructure already existent in .NET Framework.
+
+The original intention was to piggyback on Mono and CLR's built-in COM marshaling, but later it turned out to be too slow to use in a game engine. Also it wasn't clear what exact ABI do they implement. (I think there were more reasons, but I don't remember nor I don't have any records at that time.) To provide a consistent ABI and performant marshaling, `Ngs.Interop` was introduced.
+
+
+# Design rules
+
+## Passing pointers
+
+!!! Warning
+    Do not dereference a pointer passed by a managed code unless the method is marked with `[SecurityCritical]`.
+
+As a rule of thumb, a native code must **not** trust any pointer passed via an interface call. Note that a managed code can provide its own implementation of an arbitrary COM interface. However, this doesn't apply to references and strings as their validity is ensured by the CIL byte code verification and/or `Ngs.Interop`.
+
+When it's necessary, a COM interface may include a method accepting a native pointer as `IntPtr`. In this case, the method must be marked with `[SecurityCritical]`.
+
+!!! Warning
+    A pointer passed by a managed code should be treated as volatile.
+
+The contents of a native pointer passed by a managed code can change at any time. This means in most cases it's simply unsafe to dereference except for a limited number of situations. Its safe wrapper class may include a wrapper method that casts `Span&lt;T>` to `IntPtr` only if it's absolutely certain that doing so doesn't jeopardize the memory safety.
+
+A native code may expose a raw pointer, but its exposure should be minimized. A wrapper class in `Ngs.Engine.Facade` converts it to a memory-safe wrapper like `Span&lt;T>`.
+
+!!! Tip
+    A verifiable IL code (e.g., untrusted code) cannot dereference a raw pointer without the help of an unverifiable code.
+
+## Passing objects to a native code
+
+Some methods require that the input objects to be backed by specific native classes. In such a case:
+
+- The parameter that accepts such an object should have the type `IUnknown`.
+- Define a COM interface that is only visible to the native code. This COM interfaces would have a method to retrieve a reference to the underlying native object.
+- The method implementation should call `query_interface` to retrieve the interface defined in the previous step, and use its method to retrieve a reference to the underlying native object.
+
+**TODO:** Making a COM interface hidden doesn't make it unimplementable by a managed code. Maybe we can do something, by adding a static analysis step that checks an untrusted code doesn't contain a custom definition of a COM interface.
+
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="https://casual-effects.com/markdeep/latest/markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
