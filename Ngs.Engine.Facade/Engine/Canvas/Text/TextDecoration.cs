@@ -12,6 +12,10 @@ namespace Ngs.Engine.Canvas.Text {
     [Flags]
     public enum TextDecoration {
         /// <summary>
+        /// Specifies that no decorative lines are drawn.
+        /// </summary>
+        None = 0,
+        /// <summary>
         /// Specifies that a decorative line is drawn beneath each line of text.
         /// </summary>
         Underline = 1 << 0,

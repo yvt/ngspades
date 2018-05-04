@@ -141,5 +141,13 @@ namespace Ngs.Engine.Canvas {
         /// </summary>
         /// <param name="color">The color used for filling operations.</param>
         public void SetFillColor(Rgba color) => nativePainter.SetFillColor(color);
+
+        /// <summary>
+        /// Draws a given layouted text.
+        /// </summary>
+        /// <param name="textLayout">The layouted text to be drawn.</param>
+        [SecuritySafeCritical]
+        public void FillTextLayout(Text.TextLayout textLayout) =>
+            nativePainter.FillTextLayout(textLayout.NativeTextLayout);
     }
 }

@@ -18,9 +18,10 @@ namespace Ngs.Engine.Native {
         /// Creates a font object.
         /// </summary>
         /// <param name="bytes">A pointer to a TrueType or OpenType binary blob.</param>
+        /// <param name="length">The size of the binary blob.</param>
         /// <returns>A newly created font object.</returns>
         [System.Security.SecurityCritical]
-        INgsPFFont CreateFont(IntPtr bytes);
+        INgsPFFont CreateFont(IntPtr bytes, int length);
 
         /// <summary>
         /// Creates a font config object.

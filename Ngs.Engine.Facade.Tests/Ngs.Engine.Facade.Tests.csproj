@@ -17,4 +17,10 @@
     <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\EngineCore\src\ngspf\src\canvas\tests\fonts\Behdad-Regular.otf">
+      <LogicalName>Fonts.BehdadRegular</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

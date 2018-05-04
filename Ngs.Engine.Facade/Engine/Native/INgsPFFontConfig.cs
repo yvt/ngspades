@@ -21,12 +21,18 @@ namespace Ngs.Engine.Native {
         /// </summary>
         /// <param name="fontFace">The font face to be added.</param>
         /// <param name="fontFamily">The font family name associated with the font face.</param>
-        /// <param name="fontStyle">The font style associated with the font face. Mustn't be <c>Inherited<c/>.</param>
+        /// <param name="fontStyle">The font style associated with the font face. Mustn't be <c>Inherited</c>.</param>
         /// <param name="weight">The font weight associated with the font face.</param>
         void AddFontFace(INgsPFFontFace fontFace, string fontFamily, FontStyle fontStyle, int weight);
 
+        /// <summary>
+        /// Layout a point type.
+        /// </summary>
         INgsPFTextLayout LayoutPointString(string text, INgsPFParagraphStyle paragraphStyle);
 
+        /// <summary>
+        /// Layout an area type.
+        /// </summary>
         INgsPFTextLayout LayoutBoxAreaString(string text, INgsPFParagraphStyle paragraphStyle, float width);
 
         // TODO: Rich text
