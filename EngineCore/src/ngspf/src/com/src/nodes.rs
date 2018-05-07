@@ -251,15 +251,18 @@ impl ComNodeGroup {
 impl ngsbase::INgsPFNodeGroupTrait for ComNodeGroup {
     fn insert(&self, node: UnownedComPtr<IUnknown>) -> HResult {
         to_hresult(|| {
+            // `create_node_ref` acquires a lock on the producer frame
+            // internally, so this might be done outside `self.data.with_mut`
+            let inoderef: ComPtr<INodeRef> = (&*node).into();
+            if inoderef.is_null() {
+                return Err(E_PF_NOT_NODE);
+            }
+            let node_ref = inoderef.create_node_ref()?;
+
             self.data.with_mut(|s, _| match s {
                 NodeDataState::Materialized(_) => Err(E_PF_NODE_MATERIALIZED),
                 NodeDataState::Partial(p) => {
-                    let inoderef: ComPtr<INodeRef> = (&*node).into();
-                    if inoderef.is_null() {
-                        return Err(E_PF_NOT_NODE);
-                    }
-
-                    p.push(inoderef.create_node_ref()?);
+                    p.push(node_ref);
                     Ok(())
                 }
             })
