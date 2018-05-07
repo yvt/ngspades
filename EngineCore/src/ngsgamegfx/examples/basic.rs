@@ -8,7 +8,6 @@ extern crate ngsgamegfx;
 extern crate ngspf;
 extern crate refeq;
 
-
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
@@ -17,14 +16,19 @@ use cgmath::{Matrix4, Point2};
 
 use refeq::RefEqArc;
 
-use ngspf::cggeom::Box2;
 use ngspf::cggeom::prelude::*;
+use ngspf::cggeom::Box2;
 use ngspf::prelude::*;
-use ngspf::viewport::{LayerBuilder, LayerContents, LayerRef, RootRef, VirtualKeyCode,
-                      WindowBuilder, WindowEvent, WindowFlagsBit, WindowRef, Workspace};
+use ngspf::viewport::{
+    LayerBuilder, LayerContents, LayerRef, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent,
+    WindowFlagsBit, WindowRef, WorkspaceBuilder,
+};
 
 fn main() {
-    let mut ws = Workspace::new().expect("failed to create a workspace");
+    let mut ws = WorkspaceBuilder::new()
+        .application_name("NgsGameGFX example: basic")
+        .build()
+        .expect("failed to create a workspace");
     let context = Arc::clone(ws.context());
     let (tx, rx) = mpsc::channel();
     let tx = Mutex::new(tx);
