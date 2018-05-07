@@ -326,6 +326,10 @@ fn gen_enumflags(ident: &Ident, item: &MacroInput, data: &Vec<Variant>) -> Token
 
         impl ::ngsenumflags::EnumFlagSize for #ident {
             type Size = #inner_name;
+
+            fn values() -> &'static [Self] {
+                &[#(#names_ref :: #variants_ref,)*]
+            }
         }
     }
 }

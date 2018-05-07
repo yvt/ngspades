@@ -11,6 +11,7 @@
 //!  - `BitFlags` implements `Hash`.
 //!  - Generated `InnerXXX` types are now marked as `#[doc(hidden)]` and you
 //!    no longer have to hide them manually
+//!  - `BitFlags::iter()`
 //!  - Provides a helper macro named [`flags!`].
 //!
 //! [`flags!`]: flags
@@ -34,8 +35,11 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 use std::cmp;
 
-pub trait EnumFlagSize {
+pub trait EnumFlagSize: Sized + Clone {
     type Size: InnerBitFlags;
+
+    /// Get a slice containing the all possible values of `Self`.
+    fn values() -> &'static [Self];
 }
 
 pub trait InnerBitFlags: BitOr<Self> + cmp::PartialEq + cmp::Eq + Clone + Copy
@@ -154,6 +158,35 @@ where
 
     pub fn remove(&mut self, other: Self) {
         T::Size::remove(&mut self.val, other.val);
+    }
+
+    /// Iterate through flags that are set in this `BitFlags`.
+    ///
+    /// ## Examples
+    ///
+    ///     # #[macro_use]
+    ///     # extern crate ngsenumflags;
+    ///     # #[macro_use]
+    ///     # extern crate ngsenumflags_derive;
+    ///     # fn main() {
+    ///     #[derive(NgsEnumFlags, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+    ///     #[repr(u8)]
+    ///     pub enum Test {
+    ///         A = 0b0001,
+    ///         B = 0b0010,
+    ///         C = 0b0100,
+    ///     }
+    ///     let flags = flags![Test::{A | B}];
+    ///     let vec: Vec<_> = flags.iter().collect();
+    ///     assert_eq!(vec, vec![Test::A, Test::B]);
+    ///     # }
+    ///
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = T> + 'a
+    where
+        T: Into<BitFlags<T>> + 'static
+    {
+        let this = self.clone();
+        T::values().iter().cloned().filter(move |x| this.clone().contains(x.clone()))
     }
 }
 
