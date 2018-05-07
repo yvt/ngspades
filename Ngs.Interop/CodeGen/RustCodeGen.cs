@@ -383,6 +383,13 @@ namespace Ngs.Interop.CodeGen {
                 var name = Enum.GetName(type, field);
                 var value = Convert.ToInt32(field);
 
+                if (isFlags && value == 0) {
+                    // Do not generate "empty flags" fields. The `BitFlags` type already has a method
+                    // to return an empty flags vlaue. Also, the `EnumFlags` derive macro doesn't
+                    // allow definitions of such fields.
+                    continue;
+                }
+
                 var fdoc = options.RustdocEntrySource?.GetEntryForField(type.GetField(name));
                 GenerateDocComment(fdoc, "\t");
 
