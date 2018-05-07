@@ -15,17 +15,17 @@ use std::sync::Arc;
 
 #[test]
 fn create_context() {
-    let pc: ComPtr<com::IPresentationContext> =
-        com::ComContext::new(Arc::new(core::Context::new()));
+    let pc: ComPtr<com::INgsPFContext> =
+        (&com::ComContext::new(Arc::new(core::Context::new()))).into();
     assert!(!pc.is_null());
 }
 
 #[test]
 fn node_group() {
-    let pc: ComPtr<com::IPresentationContext> =
-        com::ComContext::new(Arc::new(core::Context::new()));
+    let pc: ComPtr<com::INgsPFContext> =
+        (&com::ComContext::new(Arc::new(core::Context::new()))).into();
     let create_group = || {
-        let mut g: ComPtr<com::INodeGroup> = ComPtr::null();
+        let mut g: ComPtr<com::INgsPFNodeGroup> = ComPtr::null();
         assert_eq!(pc.create_node_group(&mut g), E_OK);
         assert!(!g.is_null());
         g
