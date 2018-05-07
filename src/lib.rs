@@ -28,7 +28,7 @@
 //
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(not(debug_assertions), feature(slice_get_slice))]
-#![feature(platform_intrinsics, cfg_target_feature)]
+#![feature(platform_intrinsics)]
 
 extern crate num_complex;
 extern crate num_iter;
