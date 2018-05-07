@@ -294,11 +294,3 @@ pub fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::Colo
 
     mask
 }
-
-pub fn maybe_ptr<T>(x: &Option<T>) -> *const T {
-    if let &Some(ref x) = x {
-        x
-    } else {
-        ::null()
-    }
-}
