@@ -103,7 +103,6 @@ namespace Ngs.Interop.CodeGen {
         sealed class RustParameterInfo {
             public RustCodeGen RustCodeGen { get; }
             public Marshaller.ComMethodParameterInfo ComMethodParameterInfo { get; }
-            public string LifeTimeParameterName { get; set; }
             public string NativeName { get; }
 
             public RustParameterInfo(RustCodeGen gen, Marshaller.ComMethodParameterInfo cmpi) {
@@ -115,11 +114,7 @@ namespace Ngs.Interop.CodeGen {
                     SnakeCaseConverter.Join(DotNetCamelCaseConverter.Split(ComMethodParameterInfo.ParameterInfo.Name)).ToLowerInvariant();
             }
 
-            public bool NeedsLifeTimeParameter => RustCodeGen.NativeTypeNeedsLifeTimeParameter(ComMethodParameterInfo.NativeType,
-                ComMethodParameterInfo.IsByRef);
-
-            public string NativeTypeName => RustCodeGen.TranslateNativeType(ComMethodParameterInfo.NativeType, !ComMethodParameterInfo.IsOut, LifeTimeParameterName, ComMethodParameterInfo.IsByRef);
-            public string NativeTypeNameWithoutLifeTimeParameter => RustCodeGen.TranslateNativeType(ComMethodParameterInfo.NativeType, !ComMethodParameterInfo.IsOut, null, ComMethodParameterInfo.IsByRef);
+            public string NativeTypeName => RustCodeGen.TranslateNativeType(ComMethodParameterInfo.NativeType, !ComMethodParameterInfo.IsOut, ComMethodParameterInfo.IsByRef);
         }
 
         sealed class RustInterfaceMethodInfo {
@@ -128,7 +123,6 @@ namespace Ngs.Interop.CodeGen {
             public RustParameterInfo[] ParameterInfos { get; }
             public string NativeName { get; }
             public string NativeReturnTypeName { get; }
-            public string[] LifeTimeParameterNames { get; }
             public RustdocEntry? RustdocEntry { get; }
 
             public RustInterfaceMethodInfo(RustCodeGen gen, Marshaller.ComMethodInfo cmi) {
@@ -159,35 +153,16 @@ namespace Ngs.Interop.CodeGen {
                 if (cmi.ReturnsHresult) {
                     NativeReturnTypeName = $"{gen.options.NgscomCratePath}::HResult";
                 } else {
-                    if (RustCodeGen.NativeTypeNeedsLifeTimeParameter(cmi.NativeReturnType, false)) {
-                        throw new NotSupportedException($"Method {cmi.MethodInfo.Name} cannot return a reference type (which requires a lifetime parameter)");
-                    }
-                    NativeReturnTypeName = RustCodeGen.TranslateNativeType(cmi.NativeReturnType, false, null, false);
+                    NativeReturnTypeName = RustCodeGen.TranslateNativeType(cmi.NativeReturnType, false, false);
                 }
-
-                var ltpns = new List<string>();
-                foreach (var pi in ParameterInfos) {
-                    if (pi.NeedsLifeTimeParameter) {
-                        var ltpn = "abcdefghijklmnopqrstuvwxyz".Substring(ltpns.Count, 1);
-                        pi.LifeTimeParameterName = ltpn;
-                        ltpns.Add(ltpn);
-                    }
-                }
-                LifeTimeParameterNames = ltpns.ToArray();
             }
 
             public string GetSignature(bool isInterfaceDeclaration) {
                 var sb = new System.Text.StringBuilder();
-                sb.Append($"fn {NativeName}");
-                if (LifeTimeParameterNames.Length > 0 && !isInterfaceDeclaration) {
-                    sb.Append("<");
-                    sb.Append(string.Join(", ", LifeTimeParameterNames.Select((n) => "'" + n)));
-                    sb.Append(">");
-                }
-                sb.Append("(");
+                sb.Append($"fn {NativeName}(");
 
                 var paramDecl = ParameterInfos.Select((rpi) => {
-                    return $"{rpi.NativeName}: {(isInterfaceDeclaration ? rpi.NativeTypeNameWithoutLifeTimeParameter : rpi.NativeTypeName)}";
+                    return $"{rpi.NativeName}: {rpi.NativeTypeName}";
                 }).ToList();
                 if (!isInterfaceDeclaration) {
                     paramDecl.Insert(0, "&self");
@@ -357,7 +332,7 @@ namespace Ngs.Interop.CodeGen {
                 GenerateDocComment(doc, "\t");
 
                 var nativeName = SnakeCaseConverter.Join(DotNetCamelCaseConverter.Split(field.Name));
-                var nativeType = TranslateNativeType(field.FieldType, false, null, false);
+                var nativeType = TranslateNativeType(field.FieldType, false, false);
                 stringBuilder.AppendLine($"\tpub {nativeName}: {nativeType},");
             }
             stringBuilder.AppendLine("}");
@@ -449,17 +424,11 @@ namespace Ngs.Interop.CodeGen {
             }
         }
 
-        bool NativeTypeNeedsLifeTimeParameter(Type type, bool isByRefParam) {
-            return type == typeof(string) || type.IsByRef || type.GetTypeInfo().IsInterface ||
-                (type.IsPointer && isByRefParam);
-        }
-
-        string TranslateNativeType(Type type, bool isConstReference, string lifeTimeParameterName, bool isByRefParam) {
-            var lt = lifeTimeParameterName != null ? "'" + lifeTimeParameterName : "";
+        string TranslateNativeType(Type type, bool isConstReference, bool isByRefParam) {
             if (type == typeof(string)) {
-                return "Option<&" + lt + $" {options.NgscomCratePath}::BString>";
+                return $"Option<&{options.NgscomCratePath}::BString>";
             } else if (type.IsPointer && !isByRefParam) {
-                return "*mut " + TranslateNativeType(type.GetElementType(), false, null, false);
+                return "*mut " + TranslateNativeType(type.GetElementType(), false, false);
             } else if (type.IsByRef || (type.IsPointer && isByRefParam)) {
                 var elem = type.GetElementType();
                 string nativeElem;
@@ -468,19 +437,15 @@ namespace Ngs.Interop.CodeGen {
                 } else if (elem.GetTypeInfo().IsInterface) {
                     nativeElem = $"{options.NgscomCratePath}::ComPtr<" + GetOutputIdentifier(elem) + ">";
                 } else {
-                    nativeElem = TranslateNativeType(elem, false, null, false);
+                    nativeElem = TranslateNativeType(elem, false, false);
                 }
                 if (isConstReference) {
-                    return "&" + lt + " " + nativeElem;
+                    return "&" + nativeElem;
                 } else {
-                    return "&mut " + lt + " " + nativeElem;
+                    return "&mut " + nativeElem;
                 }
             } else if (type.GetTypeInfo().IsInterface) {
-                if (lt.Length == 0) {
-                    return $"{options.NgscomCratePath}::UnownedComPtr<" + GetOutputIdentifier(type) + ">";
-                } else {
-                    return $"{options.NgscomCratePath}::UnownedComPtr<" + lt + ", " + GetOutputIdentifier(type) + ">";
-                }
+                return $"{options.NgscomCratePath}::UnownedComPtr<" + GetOutputIdentifier(type) + ">";
             } else {
                 return GetOutputIdentifier(type);
             }
