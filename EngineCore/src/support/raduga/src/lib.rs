@@ -9,9 +9,8 @@
 //! <a href="https://derpibooru.org/1155840">![Радуга Дэш](https://derpicdn.net/img/2016/5/17/1155840/large.png)</a>
 //!
 //! [`faster`]: https://docs.adamniederer.com/faster/index.html
-#![feature(cfg_target_feature)]
+#![feature(stdsimd)]
 extern crate num_traits;
-extern crate stdsimd;
 
 #[allow(dead_code)]
 mod intrin;

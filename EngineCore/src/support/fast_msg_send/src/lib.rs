@@ -23,11 +23,13 @@
 //! test msg_send_1000 ... bench:     125,287 ns/iter (+/- 172,079)
 //! ```
 //!
-#![feature(macro_reexport)]
+#![feature(use_extern_macros)]
 #![feature(intrinsics)]
 
-#[macro_reexport(msg_send)]
 extern crate objc;
+
+// Just reuse `objc`'s `msg_send!`
+pub use objc::msg_send;
 
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 

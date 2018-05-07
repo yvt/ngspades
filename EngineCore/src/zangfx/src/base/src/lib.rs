@@ -6,7 +6,7 @@
 //! This crate is a part of [ZanGFX](../zangfx/index.html) and provides the base
 //! interface for backend implementations.
 #![feature(unsize)]
-#![feature(macro_reexport)]
+#![feature(use_extern_macros)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -21,8 +21,10 @@ extern crate itervalues;
 extern crate itervalues_derive;
 
 #[macro_use]
-#[macro_reexport(interfaces, vtable_for, mopo)] // FIXME: deprecated in favor of Macro 2.0
 extern crate query_interface;
+
+// Rexport macros from `query_interface`
+pub use query_interface::{interfaces, vtable_for, mopo};
 
 extern crate zangfx_common as common;
 

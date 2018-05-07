@@ -3,11 +3,13 @@
 //
 // This source code is a part of Nightingales.
 //
-
-extern crate coresimd;
 extern crate raw_cpuid;
-
 use self::raw_cpuid::CpuId;
+
+#[cfg(target_arch = "x86")]
+use std::arch::x86 as vendor;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64 as vendor;
 
 use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
 use ngscom::{hresults, BString, BStringRef, ComPtr, HResult};
@@ -36,7 +38,7 @@ struct ProcessorInfoData {
 
 #[target_feature(enable = "xsave")]
 unsafe fn x86_get_xcr(xcr_no: u32) -> u64 {
-    self::coresimd::vendor::_xgetbv(xcr_no)
+    vendor::_xgetbv(xcr_no)
 }
 
 impl ProcessorInfo {

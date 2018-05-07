@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-#![feature(platform_intrinsics, cfg_target_feature)]
+#![feature(platform_intrinsics)]
 
 #[cfg(feature = "xdispatch")]
 extern crate xdispatch;

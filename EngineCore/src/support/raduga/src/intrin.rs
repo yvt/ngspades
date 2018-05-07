@@ -7,7 +7,17 @@
 extern crate x86intrin;
 
 use std::mem::transmute;
-use stdsimd::simd::{__m256i, i32x8};
+
+#[cfg(target_arch = "x86")]
+use std::arch::x86 as vendor;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64 as vendor;
+
+#[cfg(target_feature = "avx2")]
+use self::vendor::__m256i;
+
+#[cfg(target_feature = "avx2")]
+use std::simd::i32x8;
 
 // A replacement for `stdsimd::vendor::_mm256_i32gather_epi32` which generates
 // horrible code for some reasons.

@@ -258,11 +258,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "coresimd"
-version = "0.0.4-1"
-source = "git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941#d6874383653c8b93832d53092078a41b146be941"
-
-[[package]]
 name = "derive_more"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -776,7 +771,6 @@ dependencies = [
 name = "ngsloader"
 version = "0.1.0"
 dependencies = [
- "coresimd 0.0.4-1 (git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941)",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsbase 0.1.0",
  "ngscom 0.1.0",
@@ -1226,7 +1220,6 @@ name = "raduga"
 version = "0.1.0"
 dependencies = [
  "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "stdsimd 0.0.4-1 (git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941)",
  "x86intrin 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1445,14 +1438,6 @@ dependencies = [
 name = "stable_deref_trait"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "stdsimd"
-version = "0.0.4-1"
-source = "git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941#d6874383653c8b93832d53092078a41b146be941"
-dependencies = [
- "coresimd 0.0.4-1 (git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941)",
-]
 
 [[package]]
 name = "stickylock"
@@ -2182,7 +2167,6 @@ dependencies = [
 "checksum core-foundation-sys 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "716c271e8613ace48344f723b60b900a93150271e5be206212d052bbc0883efa"
 "checksum core-graphics 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fb0ed45fdc32f9ab426238fba9407dfead7bacd7900c9b4dd3f396f46eafdae3"
 "checksum core-graphics 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9797d894882bbf37c0c1218a8d90333fae3c6b09d526534fd370aac2bc6efc21"
-"checksum coresimd 0.0.4-1 (git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941)" = "<none>"
 "checksum derive_more 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eb9fb0304adeff79ef58a0a22fe93718b96862addaae17d9e34aeb8653549d3e"
 "checksum dlib 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "148bce4ce1c36c4509f29cb54e62c2bd265551a9b00b38070fad551a851866ec"
 "checksum dlib 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "77e51249a9d823a4cb79e3eca6dcd756153e8ed0157b6c04775d04bf1b13b76a"
@@ -2284,7 +2268,6 @@ dependencies = [
 "checksum smallvec 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "44db0ecb22921ef790d17ae13a3f6d15784183ff5f2a01aa32098c7498d2b4b9"
 "checksum spirv_headers 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b5b6f9bacef23a3727d6a9848391e206ac35e52b59d3f0e020b326b41fbfb02c"
 "checksum stable_deref_trait 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "15132e0e364248108c5e2c02e3ab539be8d6f5d52a01ca9bbf27ed657316f02b"
-"checksum stdsimd 0.0.4-1 (git+https://github.com/AdamNiederer/stdsimd.git?rev=d6874383653c8b93832d53092078a41b146be941)" = "<none>"
 "checksum strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bb4f380125926a99e52bc279241539c018323fab05ad6368b56f93d9369ff550"
 "checksum strum 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "099e21b5dd6dd07b5adcf8c4b723a7c0b7efd7a9359bf963d58c0caae8532545"
 "checksum strum_macros 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0dd9bd569e88028750e3ae5c25616b8278ac16a8e61aba4339195c72396d49e1"

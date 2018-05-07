@@ -5,7 +5,12 @@
 //
 #[allow(unused_imports)]
 use intrin;
-use stdsimd::{simd, vendor};
+#[cfg(target_arch = "x86")]
+use std::arch::x86 as vendor;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64 as vendor;
+#[allow(unused_imports)]
+use std::simd::{self, IntoBits};
 use {IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
 
 #[derive(Debug, Copy, Clone)]
@@ -52,7 +57,7 @@ unsafe impl Packed for Simd16U8 {
         ))
     }
     unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
-        self.0.extract_unchecked(i as u32)
+        self.0.extract_unchecked(i)
     }
     fn splat(x: Self::Scalar) -> Self {
         Simd16U8(simd::u8x16::splat(x))
@@ -82,11 +87,13 @@ unsafe impl Packed for Simd16U8 {
         scale: u8,
     ) -> Self {
         // Load 4-byte values
-        let data0 = intrin::mm256_i32gather_epi32(base as *const _, offset.0.into(), scale as i32);
-        let data1 = intrin::mm256_i32gather_epi32(base as *const _, offset.1.into(), scale as i32);
+        let data0 =
+            intrin::mm256_i32gather_epi32(base as *const _, offset.0.into_bits(), scale as i32);
+        let data1 =
+            intrin::mm256_i32gather_epi32(base as *const _, offset.1.into_bits(), scale as i32);
 
         // Throw away the extra 24 MSBs
-        Simd16U32(data0.into(), data1.into()).as_u8()
+        Simd16U32(data0.into_bits(), data1.into_bits()).as_u8()
     }
 }
 
@@ -107,7 +114,7 @@ mod avx2 {
     impl Simd16U16 {
         #[inline]
         pub(super) fn from_u8(x: Simd16U8) -> Self {
-            unsafe { Simd16U16(vendor::_mm256_cvtepu8_epi16(x.0.into()).into()) }
+            unsafe { Simd16U16(vendor::_mm256_cvtepu8_epi16(x.0.into_bits()).into_bits()) }
         }
     }
 
@@ -138,7 +145,7 @@ mod avx2 {
             ))
         }
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
-            self.0.extract_unchecked(i as u32)
+            self.0.extract_unchecked(i)
         }
         fn splat(x: Self::Scalar) -> Self {
             Simd16U16(simd::u16x16::splat(x))
@@ -149,13 +156,13 @@ mod avx2 {
             unsafe {
                 // Discard upper 8 bits so they don't affect the result of
                 // `_mm256_packus_epi16` (which casts `i16` to `u8` with saturation)
-                let u16s = (self.0 & simd::u16x16::splat(0xff)).into();
+                let u16s = (self.0 & simd::u16x16::splat(0xff)).into_bits();
 
                 // Split into two `m128i`s
-                let lo = vendor::_mm256_extractf128_si256(u16s, 0).into();
-                let hi = vendor::_mm256_extractf128_si256(u16s, 1).into();
+                let lo = vendor::_mm256_extractf128_si256(u16s, 0).into_bits();
+                let hi = vendor::_mm256_extractf128_si256(u16s, 1).into_bits();
 
-                Simd16U8(vendor::_mm_packus_epi16(lo, hi))
+                Simd16U8(vendor::_mm_packus_epi16(lo, hi).into_bits())
             }
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
@@ -163,18 +170,18 @@ mod avx2 {
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
             unsafe {
-                let lo = vendor::_mm256_extractf128_si256(self.0.into(), 0).into();
-                let hi = vendor::_mm256_extractf128_si256(self.0.into(), 1).into();
+                let lo = vendor::_mm256_extractf128_si256(self.0.into_bits(), 0).into_bits();
+                let hi = vendor::_mm256_extractf128_si256(self.0.into_bits(), 1).into_bits();
 
                 Simd16U32(
-                    vendor::_mm256_cvtepu16_epi32(lo).into(),
-                    vendor::_mm256_cvtepu16_epi32(hi).into(),
+                    vendor::_mm256_cvtepu16_epi32(lo).into_bits(),
+                    vendor::_mm256_cvtepu16_epi32(hi).into_bits(),
                 )
             }
         }
 
         fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {
-            Simd16I16(self.0.into())
+            Simd16I16(self.0.into_bits())
         }
 
         #[inline]
@@ -186,17 +193,17 @@ mod avx2 {
             // Load 4-byte values
             let data0 = intrin::mm256_i32gather_epi32(
                 base as *const _,
-                offset.0.into(),
+                offset.0.into_bits(),
                 (scale * 2) as i32,
             );
             let data1 = intrin::mm256_i32gather_epi32(
                 base as *const _,
-                offset.1.into(),
+                offset.1.into_bits(),
                 (scale * 2) as i32,
             );
 
             // Throw away the extra 16 MSBs
-            Simd16U32(data0.into(), data1.into()).as_u16()
+            Simd16U32(data0.into_bits(), data1.into_bits()).as_u16()
         }
     }
 
@@ -208,7 +215,11 @@ mod avx2 {
     }
     impl PackedU16 for Simd16U16 {
         fn mul_hi_epu16(self, rhs: Self) -> Self {
-            unsafe { Simd16U16(vendor::_mm256_mulhi_epu16(self.0, rhs.0)) }
+            unsafe {
+                Simd16U16(
+                    vendor::_mm256_mulhi_epu16(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
+                )
+            }
         }
     }
 
@@ -222,10 +233,10 @@ mod avx2 {
         #[inline]
         pub(super) fn from_u8(x: Simd16U8) -> Self {
             unsafe {
-                let hi = vendor::_mm_shuffle_epi32(x.0.into(), 0b_11_10_11_10);
+                let hi = vendor::_mm_shuffle_epi32(x.0.into_bits(), 0b_11_10_11_10);
                 Simd16U32(
-                    vendor::_mm256_cvtepu8_epi32(x.0.into()).into(),
-                    vendor::_mm256_cvtepu8_epi32(hi.into()).into(),
+                    vendor::_mm256_cvtepu8_epi32(x.0.into_bits()).into_bits(),
+                    vendor::_mm256_cvtepu8_epi32(hi.into_bits()).into_bits(),
                 )
             }
         }
@@ -246,9 +257,9 @@ mod avx2 {
         #[inline]
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
             if i < 8 {
-                self.0.extract_unchecked(i as u32)
+                self.0.extract_unchecked(i)
             } else {
-                self.1.extract_unchecked(i as u32 - 8)
+                self.1.extract_unchecked(i - 8)
             }
         }
         fn splat(x: Self::Scalar) -> Self {
@@ -263,14 +274,14 @@ mod avx2 {
                 let data0 = self.0 & simd::u32x8::splat(0xff);
                 let data1 = self.1 & simd::u32x8::splat(0xff);
 
-                let i16s = vendor::_mm256_packus_epi32(data0.into(), data1.into());
-                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into(), 0b_11_01_10_00);
+                let i16s = vendor::_mm256_packus_epi32(data0.into_bits(), data1.into_bits());
+                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into_bits(), 0b_11_01_10_00);
 
                 // Split into two `m128i`s
-                let lo = vendor::_mm256_extractf128_si256(i16s.into(), 0).into();
-                let hi = vendor::_mm256_extractf128_si256(i16s.into(), 1).into();
+                let lo = vendor::_mm256_extractf128_si256(i16s.into_bits(), 0).into_bits();
+                let hi = vendor::_mm256_extractf128_si256(i16s.into_bits(), 1).into_bits();
 
-                Simd16U8(vendor::_mm_packus_epi16(lo, hi))
+                Simd16U8(vendor::_mm_packus_epi16(lo, hi).into_bits())
             }
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
@@ -280,9 +291,9 @@ mod avx2 {
                 let data0 = self.0 & simd::u32x8::splat(0xffff);
                 let data1 = self.1 & simd::u32x8::splat(0xffff);
 
-                let i16s = vendor::_mm256_packus_epi32(data0.into(), data1.into());
-                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into(), 0b_11_01_10_00);
-                Simd16U16(i16s.into())
+                let i16s = vendor::_mm256_packus_epi32(data0.into_bits(), data1.into_bits());
+                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into_bits(), 0b_11_01_10_00);
+                Simd16U16(i16s.into_bits())
             }
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
@@ -302,14 +313,14 @@ mod avx2 {
             Simd16U32(
                 intrin::mm256_i32gather_epi32(
                     base as *const _,
-                    offset.0.into(),
+                    offset.0.into_bits(),
                     (scale * 4) as i32,
-                ).into(),
+                ).into_bits(),
                 intrin::mm256_i32gather_epi32(
                     base as *const _,
-                    offset.1.into(),
+                    offset.1.into_bits(),
                     (scale * 4) as i32,
-                ).into(),
+                ).into_bits(),
             )
         }
     }
@@ -319,8 +330,8 @@ mod avx2 {
         fn shl_var(self, rhs: <Self::Mode as SimdMode>::U32) -> Self {
             unsafe {
                 Simd16U32(
-                    vendor::_mm256_sllv_epi32(self.0.into(), rhs.0.into()).into(),
-                    vendor::_mm256_sllv_epi32(self.1.into(), rhs.1.into()).into(),
+                    vendor::_mm256_sllv_epi32(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
+                    vendor::_mm256_sllv_epi32(self.1.into_bits(), rhs.1.into_bits()).into_bits(),
                 )
             }
         }
@@ -360,7 +371,7 @@ mod avx2 {
             ))
         }
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
-            self.0.extract_unchecked(i as u32)
+            self.0.extract_unchecked(i)
         }
         fn splat(x: Self::Scalar) -> Self {
             Simd16I16(simd::i16x16::splat(x))
@@ -370,7 +381,7 @@ mod avx2 {
             self.as_u16().as_u8()
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
-            Simd16U16(self.0.into())
+            Simd16U16(self.0.into_bits())
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
             self.as_u16().as_u32()
@@ -394,7 +405,11 @@ mod avx2 {
         #[inline]
         #[cfg(target_feature = "ssse3")]
         fn mul_hrs_epi16(self, rhs: Self) -> Self {
-            unsafe { Simd16I16(vendor::_mm256_mulhrs_epi16(self.0, rhs.0)) }
+            unsafe {
+                Simd16I16(
+                    vendor::_mm256_mulhrs_epi16(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
+                )
+            }
         }
     }
 }
@@ -427,9 +442,9 @@ mod generic {
         #[inline]
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
             if i < 8 {
-                self.0.extract_unchecked(i as u32)
+                self.0.extract_unchecked(i)
             } else {
-                self.1.extract_unchecked(i as u32 - 8)
+                self.1.extract_unchecked(i - 8)
             }
         }
         fn splat(x: Self::Scalar) -> Self {
@@ -441,7 +456,7 @@ mod generic {
         }
 
         fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {
-            Simd16I16(self.0.into(), self.1.into())
+            Simd16I16(self.0.into_bits(), self.1.into_bits())
         }
     }
 
@@ -452,8 +467,8 @@ mod generic {
         fn mul_hi_epu16(self, rhs: Self) -> Self {
             unsafe {
                 Simd16U16(
-                    vendor::_mm_mulhi_epu16(self.0, rhs.0),
-                    vendor::_mm_mulhi_epu16(self.1, rhs.1),
+                    vendor::_mm_mulhi_epu16(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
+                    vendor::_mm_mulhi_epu16(self.1.into_bits(), rhs.1.into_bits()).into_bits(),
                 )
             }
         }
@@ -487,13 +502,13 @@ mod generic {
         #[inline]
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
             if i < 4 {
-                self.0.extract_unchecked(i as u32)
+                self.0.extract_unchecked(i)
             } else if i < 8 {
-                self.1.extract_unchecked(i as u32 - 4)
+                self.1.extract_unchecked(i - 4)
             } else if i < 12 {
-                self.2.extract_unchecked(i as u32 - 8)
+                self.2.extract_unchecked(i - 8)
             } else {
-                self.3.extract_unchecked(i as u32 - 12)
+                self.3.extract_unchecked(i - 12)
             }
         }
         fn splat(x: Self::Scalar) -> Self {
@@ -533,9 +548,9 @@ mod generic {
         }
         unsafe fn get_unchecked(self, i: usize) -> Self::Scalar {
             if i < 8 {
-                self.0.extract_unchecked(i as u32)
+                self.0.extract_unchecked(i)
             } else {
-                self.1.extract_unchecked(i as u32 - 8)
+                self.1.extract_unchecked(i - 8)
             }
         }
         fn splat(x: Self::Scalar) -> Self {
@@ -546,7 +561,7 @@ mod generic {
             self.as_u16().as_u8()
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
-            Simd16U16(self.0.into(), self.1.into())
+            Simd16U16(self.0.into_bits(), self.1.into_bits())
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
             self.as_u16().as_u32()
@@ -563,12 +578,12 @@ mod generic {
         fn mul_hrs_epi16(self, rhs: Self) -> Self {
             #[cfg(target_feature = "ssse3")]
             unsafe fn mulhrs_epi16(x: simd::i16x8, y: simd::i16x8) -> simd::i16x8 {
-                vendor::_mm_mulhrs_epi16(x, y)
+                vendor::_mm_mulhrs_epi16(x.into_bits(), y.into_bits()).into_bits()
             }
             #[cfg(not(target_feature = "ssse3"))]
             unsafe fn mulhrs_epi16(x: simd::i16x8, y: simd::i16x8) -> simd::i16x8 {
-                let lo = vendor::_mm_mullo_epi16(x, y);
-                let hi = vendor::_mm_mulhi_epi16(x, y);
+                let lo = vendor::_mm_mullo_epi16(x.into_bits(), y.into_bits());
+                let hi = vendor::_mm_mulhi_epi16(x.into_bits(), y.into_bits());
                 let lo_14 = vendor::_mm_srli_epi16(vendor::_mm_slli_epi16(lo, 1), 15);
                 let lo_15 = vendor::_mm_srli_epi16(lo, 15);
                 vendor::_mm_slli_epi16(hi, 1) + lo_15 + lo_14

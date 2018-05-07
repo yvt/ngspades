@@ -12,7 +12,6 @@
 //!
 //! [`ngsengine`]: ../ngsengine/index.html
 //!
-#![feature(target_feature)]
 // Use the system allocator - we don't want two instances of jemalloc running
 // simultaneously! Besides, we don't care about the allocator's performance here.
 #![feature(alloc_system)]

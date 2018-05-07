@@ -5,6 +5,7 @@
 //
 //! Manipulates 2D raster image data. This crate is a part of the
 //! [NgsPF](../ngspf/index.html).
+#![feature(never_type)]
 extern crate attrtext;
 pub extern crate cgmath;
 extern crate freetype;

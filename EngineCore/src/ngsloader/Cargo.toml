@@ -14,9 +14,3 @@ ngscom = { path = "../ngscom" }
 [target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies.raw-cpuid]
 git = "https://github.com/gz/rust-cpuid.git"
 rev = "3c9612206576616859f0dd9bd12eed5130675f65"
-
-# Official master branch has issues with the lastest Nightly rustc:
-#   https://github.com/rust-lang-nursery/stdsimd/issues/404#issuecomment-378482971
-[dependencies.coresimd]
-git = "https://github.com/AdamNiederer/stdsimd.git"
-rev = "d6874383653c8b93832d53092078a41b146be941"
