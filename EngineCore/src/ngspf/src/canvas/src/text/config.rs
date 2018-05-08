@@ -224,6 +224,19 @@ impl CharStyle {
             script: None,
         }
     }
+
+    pub fn as_ref(&self) -> CharStyleRef {
+        CharStyleRef {
+            font_family: &self.font_family,
+            font_weight: self.font_weight,
+            font_style: self.font_style,
+            text_decoration: self.text_decoration,
+            font_size: self.font_size,
+            color: self.color,
+            language: self.language,
+            script: self.script,
+        }
+    }
 }
 
 impl attrtext::Override for CharStyle {

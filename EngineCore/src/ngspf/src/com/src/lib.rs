@@ -27,10 +27,13 @@ mod context;
 mod image;
 mod nodes;
 mod painter;
+pub mod text;
 mod workspace;
 
-pub use ngsbase::{INgsPFContext, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow, INgsPFWindowListener,
-                  INgsPFWorkspace};
+pub use ngsbase::{
+    INgsPFContext, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow, INgsPFWindowListener,
+    INgsPFWorkspace,
+};
 
 pub use context::{ComContext, ProducerFrameLockGuard, ProducerFrameRefMut};
 pub use image::{ComBitmap, ComImage};

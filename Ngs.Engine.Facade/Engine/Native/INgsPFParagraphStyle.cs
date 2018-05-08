@@ -20,6 +20,6 @@ namespace Ngs.Engine.Native {
         TextAlign TextAlign { get; set; }
         TextDirection TextDirection { get; set; }
         WordWrapMode WordWrapMode { get; set; }
-        INgsPFCharStyle CharStyle { get; set; }
+        INgsPFCharStyle CharStyle { get; }
     }
 }

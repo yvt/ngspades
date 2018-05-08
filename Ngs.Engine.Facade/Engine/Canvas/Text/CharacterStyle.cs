@@ -55,6 +55,21 @@ namespace Ngs.Engine.Canvas.Text {
         }
 
         /// <summary>
+        /// Copies properties from another instance of this class.
+        /// </summary>
+        /// <param name="from">The instance to copy property values from.</param>
+        [SecuritySafeCritical]
+        public void CopyFrom(CharacterStyle from) {
+            FontWeight = from.FontWeight;
+            FontStyle = from.FontStyle;
+            FontSize = from.FontSize;
+            Color = from.Color;
+            Language = from.Language;
+            Script = from.Script;
+            nativeObject.FontFamilies = from.nativeObject.FontFamilies;
+        }
+
+        /// <summary>
         /// Retrieves the comma-separated list of font family names.
         /// </summary>
         /// <returns>The font family names.</returns>

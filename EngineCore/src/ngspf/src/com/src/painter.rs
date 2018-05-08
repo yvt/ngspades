@@ -13,6 +13,8 @@ use canvas::painter::Painter;
 use hresults::E_PF_THREAD;
 use ngsbase::{INgsPFPainter, INgsPFPainterTrait, INgsPFTextLayout};
 
+use text::ComTextLayout;
+
 com_impl! {
     /// A COM wrapper for `ngspf::canvas::Painter`.
     class ComPainter {
@@ -38,6 +40,8 @@ impl ComPainter {
         })
     }
 
+    /// Acqure a lock on the contained painter. Fails iff `finish` already has
+    /// been called on `self`.
     fn lock_painter(
         &self,
     ) -> Option<
@@ -118,7 +122,19 @@ impl INgsPFPainterTrait for ComPainter {
         })
     }
 
-    fn fill_text_layout(&self, _text_layout: UnownedComPtr<INgsPFTextLayout>) -> HResult {
-        hresults::E_NOTIMPL
+    fn fill_text_layout(&self, text_layout: UnownedComPtr<INgsPFTextLayout>) -> HResult {
+        to_hresult(|| {
+            let layout: ComPtr<IAny> = (&*text_layout).into();
+            let layout = layout.non_null().ok_or(hresults::E_UNEXPECTED)?;
+            let layout: &ComTextLayout = layout.downcast_ref().ok_or(hresults::E_UNEXPECTED)?;
+
+            let mut painter = self.lock_painter().ok_or(hresults::E_UNEXPECTED)?;
+
+            layout.with_layout_config(|text_layout, font_config| {
+                painter.fill_text_layout(text_layout, font_config);
+            });
+
+            Ok(())
+        })
     }
 }

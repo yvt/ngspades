@@ -3,8 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngscom::{hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IAny, IUnknown,
-             IUnknownTrait, UnownedComPtr};
+use ngscom::{
+    hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IAny, IUnknown, IUnknownTrait,
+    UnownedComPtr,
+};
 use tokenlock::TokenLock;
 use {cggeom, cgmath, ngsbase, rgb};
 

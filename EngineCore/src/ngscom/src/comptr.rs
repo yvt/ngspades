@@ -149,6 +149,24 @@ impl<T: ComInterface> ComPtr<T> {
     pub fn iid(&self) -> IID {
         T::iid()
     }
+
+    /// Return `Some(self)` iff the contained interface pointer is not null.
+    pub fn non_null(self) -> Option<Self> {
+        if self.is_null() {
+            None
+        } else {
+            Some(self)
+        }
+    }
+
+    /// Return `Some(self)` iff the contained interface pointer is not null.
+    pub fn non_null_ref(&self) -> Option<&Self> {
+        if self.is_null() {
+            None
+        } else {
+            Some(self)
+        }
+    }
 }
 
 /// All types can be cast into `c_void` pointers.

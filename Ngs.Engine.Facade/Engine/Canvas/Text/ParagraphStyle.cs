@@ -19,9 +19,11 @@ namespace Ngs.Engine.Canvas.Text {
     /// </remarks>
     public class ParagraphStyle {
         private INgsPFParagraphStyle nativeObject;
+        private CharacterStyle characterStyle;
 
         internal ParagraphStyle(INgsPFParagraphStyle nativeObject) {
             this.nativeObject = nativeObject;
+            this.characterStyle = new CharacterStyle(nativeObject.CharStyle);
         }
 
         /// <summary>
@@ -35,15 +37,16 @@ namespace Ngs.Engine.Canvas.Text {
         /// </summary>
         /// <returns>A newly created instance of this class.</returns>
         public ParagraphStyle Clone() {
-            return new ParagraphStyle()
+            var ret = new ParagraphStyle()
             {
                 MinimumLineHeight = MinimumLineHeight,
                 LineHeightFactor = LineHeightFactor,
                 TextAlign = TextAlign,
                 TextDirection = TextDirection,
                 WordWrapMode = WordWrapMode,
-                CharStyle = CharStyle,
             };
+            ret.CharacterStyle.CopyFrom(CharacterStyle);
+            return ret;
         }
 
         internal INgsPFParagraphStyle NativeParagraphStyle {
@@ -76,9 +79,16 @@ namespace Ngs.Engine.Canvas.Text {
             set => nativeObject.WordWrapMode = value;
         }
 
-        public CharacterStyle CharStyle {
-            get => new CharacterStyle(nativeObject.CharStyle);
-            set => nativeObject.CharStyle = value.NativeCharStyle;
+        /// <summary>
+        /// Sets or retrieves the default character style.
+        /// </summary>
+        /// <remarks>
+        /// This property returns a `CharacterStyle` instance that can be used to access the default
+        /// character style stored within a paragraph style object.
+        /// </remarks>
+        /// <returns>The default character style.</returns>
+        public CharacterStyle CharacterStyle {
+            get => characterStyle;
         }
     }
 }
