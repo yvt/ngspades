@@ -70,15 +70,15 @@ namespace Ngs.Engine.Canvas.Text {
         }
 
         /// <summary>
-        /// Retrieves the comma-separated list of font family names.
+        /// Retrieves the list of font family names.
         /// </summary>
         /// <returns>The font family names.</returns>
         public string[] GetFontFamilies() => nativeObject.FontFamilies.Split(',');
 
         /// <summary>
-        /// Sets the comma-separated list of font family names.
+        /// Sets the list of font family names.
         /// </summary>
-        /// <param name="fontFamilies">The font family names. May not contain a comma.</param>
+        /// <param name="fontFamilies">The font family names. None of them may contain a comma.</param>
         public void SetFontFamilies(string[] fontFamilies) =>
             nativeObject.FontFamilies = fontFamilies != null ?
                 string.Join(',', fontFamilies) : null;
