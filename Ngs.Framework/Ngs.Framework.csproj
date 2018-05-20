@@ -1,10 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <RootNamespace>Ngs</RootNamespace>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <LangVersion>7.2</LangVersion>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <Copyright>Copyright 2018 yvt, all rights reserved.</Copyright>
+    <Product>Nightingales</Product>
+    <Description>Provides a framework for building games based on the Nightingales engine.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Numerics.Vectors" Version="4.4.0" />
+  </ItemGroup>
+
 </Project>
