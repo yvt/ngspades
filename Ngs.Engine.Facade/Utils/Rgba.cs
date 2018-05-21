@@ -65,5 +65,45 @@ namespace Ngs.Utils {
         /// Retrieves a <see cref="Rgba" /> representing a transparent white color.
         /// </summary>
         public static readonly Rgba TransparentWhite = new Rgba(1, 1, 1, 0);
+
+        /// <summary>
+        /// Overrides <see cref="System.Object.Equals(object)" />.
+        /// </summary>
+        public override bool Equals(object obj) {
+            if (obj is Rgba o) {
+                return this == o;
+            } else {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Overrides <see cref="System.Object.GetHashCode()" />.
+        /// </summary>
+        public override int GetHashCode() => unchecked(
+            Red.GetHashCode() ^ (Green.GetHashCode() * 3) ^
+            (Blue.GetHashCode() * 7) ^ (Alpha.GetHashCode() * 11)
+        );
+
+        /// <summary>
+        /// Indicates whether two values of this type are equal.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns><c>true</c> if <paramref name="a" /> is equal to <paramref name="b" />;
+        /// otherwise; <c>false</c>.</returns>
+        public static bool operator ==(Rgba a, Rgba b) =>
+            a.Red == b.Red && a.Green == b.Green && a.Blue == b.Blue && a.Alpha == b.Alpha;
+
+        /// <summary>
+        /// Indicates whether two values of this type are not equal.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns><c>true</c> if <paramref name="a" /> is not equal to <paramref name="b" />;
+        /// otherwise; <c>false</c>.</returns>
+        public static bool operator !=(Rgba a, Rgba b) =>
+            a.Red != b.Red || a.Green != b.Green || a.Blue != b.Blue || a.Alpha != b.Alpha;
+
     }
 }

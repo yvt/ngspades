@@ -120,5 +120,40 @@ namespace Ngs.Utils {
             get => Max.Y;
             set => Max.Y = value;
         }
+
+        /// <summary>
+        /// Overrides <see cref="System.Object.Equals(object)" />.
+        /// </summary>
+        public override bool Equals(object obj) {
+            if (obj is Box2 o) {
+                return this == o;
+            } else {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Overrides <see cref="System.Object.GetHashCode()" />.
+        /// </summary>
+        public override int GetHashCode() => unchecked(Min.GetHashCode() ^ (Max.GetHashCode() * 6));
+
+        /// <summary>
+        /// Indicates whether two values of this type are equal.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns><c>true</c> if <paramref name="a" /> is equal to <paramref name="b" />;
+        /// otherwise; <c>false</c>.</returns>
+        public static bool operator ==(Box2 a, Box2 b) => a.Min == b.Min && a.Max == b.Max;
+
+        /// <summary>
+        /// Indicates whether two values of this type are not equal.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns><c>true</c> if <paramref name="a" /> is not equal to <paramref name="b" />;
+        /// otherwise; <c>false</c>.</returns>
+        public static bool operator !=(Box2 a, Box2 b) => a.Min != b.Min || a.Max != b.Max;
+
     }
 }

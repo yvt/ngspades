@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
+    <ProjectReference Include="..\Ngs.Framework\Ngs.Framework.csproj" />
     <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
   </ItemGroup>
 

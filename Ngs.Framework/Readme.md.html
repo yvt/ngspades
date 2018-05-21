@@ -1,0 +1,113 @@
+<meta charset="utf-8">
+
+                            **Ngs.Framework**
+
+# GUI framework
+
+The `Ngs.UI` namespace provides a framework for creating a graphical user interface based on NgsPF.
+
+This framework is not thread-safe.
+
+## Concepts
+
+### Organization of an user interface
+
+*Workspaces* are ...
+
+!!! TODO: Yet to be written about...
+    Workspaces
+
+*Windows* are the root-level components of GUI and act as a boundary between a window manager (provided by an operating system) and an application.
+
+*Views* (`Ngs.UI.View`) are the functional basic-blocks of GUI. Views are capable of hosting zero or more *subviews*, forming a tree structure (*view tree*). Subviews are positioned using a *layout* object associated with their superview.
+
+!!! Tip
+    It's impossible to make a view without a layout have subviews. Subviews must be positioned somehow. Furthermore, subviews are managed by a layout at the implementation level.
+
+Every window has exactly one *contents view*, which serves as a root of the view tree.
+
+Views are finally converted to *layers*. Layers are purely presentational objects that are used to instruct the underlying compositing engine what to display on the screen.
+
+!!! Tip
+    Layers can be thought of as a series of render commands. In fact, layers are generated in this style through method calls done by an implementation of `Ngs.UI.View.Render`. However, they are represented using the retained mode graphics model (à la scene graph) in the composition engine, so they must first be converted to this form before being displayed. The framework employs various optimizations to minimize the number of operations required to modify the layer tree.
+
+!!! TODO: Yet to be written about...
+    Ports
+
+### Standard view components
+
+The framework provides the implementation of the following commonly used view types:
+
+*Forms* are a special type of views that provides a data binding facility. Data binding is done through automatic management of the lifetimes and properties of their subviews.
+
+!!! TODO: Yet to be written about...
+    Containers
+
+## Layouting
+
+The layouting process is based around the following things:
+
+- The *inherent layout properties* of each view. They describe layout constraints and preferred values regarding the size computation of the view on which they are defined. They are derived from the information available locally within each view. Especially, they are considered invariant to translation.
+
+*********************************************
+*                .--------+---+----+---> x
+*                |░░░░░░░░|   ┊    |░░░░
+*   minimum size +--------*   ┊    |░░░░
+*                |            ┊    |░░░░
+* preferred size +┄┄┄┄┄┄┄┄┄┄┄┄*    |░░░░
+*                |                 |░░░░
+*   maximum size +-----------------*░░░░
+*                v░░░░░░░░░░░░░░░░░░░░░░
+*                y
+*                        ░░ disallowed size
+*********************************************
+
+- An optional *layout* object associated with each view. A layout object decides the locations of subviews within their superview by accounting both of their inherent layout properties and a layout-specific set of properties.
+
+***************************************************
+*                       .-----+-----.
+*  *------.             |(0,0)|(0,1)|
+*  |      | *------.    +-----+-----+
+*  '------* |      |    |(1,0)~(1,1)|
+*           '------*    '-----------'
+*
+*   absolute layout     table layout
+***************************************************
+
+Layouting loosely follows the general principles shown below:
+
+- Preferred values might propagate throughout the hierarchy unless limited elsewhere. When a conflict occurs, we prefer the values from lower-level (closer to the root) views.
+
+Layouting is done in two steps:
+
+1. *Measurement*. The minimum/maximum/prefered sizes (called *measured sizes*) of each view are calculated in a bottom-up fashion.
+2. *Arrangement*. The *actual size* of each view is calculated based on its measured sizes in a top-down fashion. The *actual position* of each view is also determined during this process.
+
+## Rendering
+
+!!! TODO: Yet to be written about...
+    Rendering
+
+## Performance optimizations
+
+The framework attempts to skip the re-layout of views that did not change since the previous layout operation. To accomplish this, each view maintains flags indicating which layout step should be repeated before the next rendering. These flags are set via the following routes:
+
+- View implementations call `InvalidateInherentLayoutProps` when at least one of their inherent layout properties might have changed. Calling it provokes the measurement step.
+- Layout implementations call `InvalidateLayout` when some of layout-specific layout properties might have changed. Calling it provokes both of the measurement and positioning steps.
+
+A change in the actual size and position triggers re-rendering of the corresponding view. Conversely, re-rendering can be skipped if there is no change in the actual size or position.
+
+Similarly, the framework also attempts to minimize the number of re-rendered views.
+
+!!! TODO: Yet to be written about...
+    Optimization of rendering
+
+## Known issues
+
+- It is impossible to create a wrapping text block that adapts to the container width and changes its height dynamically.
+
+<!-- Markdeep footer -->
+    <style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style>
+    <script src="markdeep.min.js"></script>
+    <script src="https://casual-effects.com/markdeep/latest/markdeep.min.js"></script>
+    <script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>

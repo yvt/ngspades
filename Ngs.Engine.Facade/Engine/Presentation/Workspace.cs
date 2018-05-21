@@ -32,6 +32,10 @@ namespace Ngs.Engine.Presentation {
         /// <summary>
         /// Constructs a new instance of <see cref="Workspace" />.
         /// </summary>
+        /// <remarks>
+        /// The calling thread will be registered as the main thread by the underlying
+        /// implementation.
+        /// </remarks>
         /// <param name="applicationInfo">The information about the client application.</param>
         [SecuritySafeCritical]
         public Workspace(ApplicationInfo applicationInfo) {
@@ -79,8 +83,10 @@ namespace Ngs.Engine.Presentation {
         /// Enter the main loop.
         /// </summary>
         /// <remarks>
-        /// This method returns only if an exit request was made from another thread by calling
-        /// the <see cref="Exit" /> method.
+        /// <para>This method returns only if an exit request was made from another thread by
+        /// calling the <see cref="Exit" /> method.</para>
+        /// <para>This method only can be called by a main thread (the thread that created this
+        /// workspace).</para>
         /// </remarks>
         public void Start() => nativeWorkspace.Start();
 

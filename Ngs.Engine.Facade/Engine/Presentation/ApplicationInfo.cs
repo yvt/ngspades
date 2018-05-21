@@ -10,7 +10,7 @@ using Ngs.Interop;
 
 namespace Ngs.Engine.Presentation {
     /// <summary>
-    /// Contains an information about the client application.
+    /// Contains some information about the client application.
     /// </summary>
     /// <remarks>
     /// The application information can be used, for example, by graphics
