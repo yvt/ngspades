@@ -23,4 +23,10 @@
     <PackageReference Include="ILLink.Tasks" Version="0.1.5-preview-1461378" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\Assets\D-DIN.ttf">
+      <LogicalName>Fonts.DDin</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

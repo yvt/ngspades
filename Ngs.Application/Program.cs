@@ -4,8 +4,10 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.IO;
 using Ngs.UI;
 using Ngs.Engine.Presentation;
+using Ngs.Engine.Canvas.Text;
 using Ngs.Utils;
 
 namespace Ngs.Shell {
@@ -15,8 +17,31 @@ namespace Ngs.Shell {
             thisApp.Run();
         }
 
-        private Application() {
-            this.ApplicationInfo.Name = "Nightingales Test Application";
+        private Application() { }
+
+        protected override ApplicationInfo ApplicationInfo {
+            get => new ApplicationInfo()
+            {
+                Name = "Nightingales Test Application",
+            };
+        }
+
+        private static FontConfig CreateFontConfig() {
+            byte[] ReadAllBytes(Stream s) {
+                using (var ms = new MemoryStream()) {
+                    s.CopyTo(ms);
+                    return ms.ToArray();
+                }
+            }
+
+            var assembly = typeof(Application).Assembly;
+            var fontData = ReadAllBytes(assembly.GetManifestResourceStream("Fonts.DDin"));
+            var font = new Font(fontData);
+
+            var config = new FontConfig();
+            config.AddFontFace(font.FontFaces[0], "D-DIN", FontStyle.Normal, 300);
+
+            return config;
         }
 
         sealed class MainView : View {
@@ -33,9 +58,17 @@ namespace Ngs.Shell {
             Console.WriteLine("Displaying some window");
 
             this.UIQueue.Invoke(() => {
+                var label = new Ngs.UI.Widgets.Label()
+                {
+                    Text = "Hello!",
+                    TextColor = Rgba.White,
+                    FontConfig = CreateFontConfig(),
+                };
+                label.ParagraphStyle.CharacterStyle.FontSize = 72;
+
                 var window = new Window()
                 {
-                    ContentsView = new MainView(),
+                    ContentsView = label,
                 };
 
                 window.Visible = true;
