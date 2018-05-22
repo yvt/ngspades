@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\EngineCore\src\ngspf\src\canvas\tests\fonts\Behdad-Regular.otf">
-      <LogicalName>Fonts.BehdadRegular</LogicalName>
+    <EmbeddedResource Include="..\Assets\D-DIN.ttf">
+      <LogicalName>Fonts.DDin</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 

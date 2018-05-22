@@ -21,11 +21,11 @@ namespace Ngs.Engine.Canvas.Tests {
             }
 
             var assembly = typeof(TextTest).Assembly;
-            var fontData = ReadAllBytes(assembly.GetManifestResourceStream("Fonts.BehdadRegular"));
+            var fontData = ReadAllBytes(assembly.GetManifestResourceStream("Fonts.DDin"));
             var font = new Font(fontData);
 
             var config = new FontConfig();
-            config.AddFontFace(font.FontFaces[0], "Behdad", FontStyle.Normal, 300);
+            config.AddFontFace(font.FontFaces[0], "D-DIN", FontStyle.Normal, 300);
 
             return config;
         }
@@ -48,7 +48,7 @@ namespace Ngs.Engine.Canvas.Tests {
         [Fact]
         public void CanRenderFont() {
             var config = CreateFontConfig();
-            var layout = config.LayoutString("مرحبا", new ParagraphStyle());
+            var layout = config.LayoutString("Text", new ParagraphStyle());
 
             using (var painter = CreatePainterFromBitmap()) {
                 painter.Translate(20, 240);
