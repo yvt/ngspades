@@ -9,11 +9,23 @@ using Ngs.Engine.Native;
 using Ngs.Utils;
 
 namespace Ngs.UI {
-    // TODO: More `LayerInfo` derived classes
-
     /// <summary>
     /// Describes the properties of a native layer.
     /// </summary>
+    /// <remarks>
+    /// <para>This class represents an empty layer. Derive this class and override the
+    /// <see cref="UpdateLayer" /> method to generate a layer with graphical contents.
+    /// The framework provides the following derived classes:</para>
+    /// <list type="bullet">
+    ///     <item><term>
+    ///     <see cref="SolidColorLayerInfo" /> displays a box filled with a specified color.
+    ///     </term></item>
+    ///     <item><term>
+    ///     <see cref="CanvasLayerInfo" />.has abstract methods that can be implemented to paint
+    ///     custom graphical contents using <see cref="Ngs.Engine.Canvas.Painter" />.
+    ///     </term></item>
+    /// </list>
+    /// </remarks>
     public class LayerInfo {
         public Box2 Bounds { get; set; }
 

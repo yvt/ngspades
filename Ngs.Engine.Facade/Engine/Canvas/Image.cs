@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.Security;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
 using Ngs.Utils;
@@ -19,6 +20,9 @@ namespace Ngs.Engine.Canvas {
             this.nativeImage = nativeImage;
         }
 
-        internal IUnknown NativeImage { get => nativeImage; }
+        public IUnknown NativeImage {
+            [SecurityCritical]
+            get => nativeImage;
+        }
     }
 }

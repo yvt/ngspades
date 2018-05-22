@@ -70,6 +70,12 @@ namespace Ngs.Utils {
         public float Height { get => Max.Y - Min.Y; }
 
         /// <summary>
+        /// Retrieves the size of the box.
+        /// </summary>
+        /// <returns>The size of the box.</returns>
+        public Vector2 Size { get => Max - Min; }
+
+        /// <summary>
         /// Sets (without moving the edge of the opposite side) or retrieves the
         /// X coordinate of the left edge of the box.
         /// </summary>
