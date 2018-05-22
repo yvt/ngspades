@@ -86,7 +86,14 @@ namespace Ngs.UI.Widgets {
 
         Vector2 TextSize {
             // TODO: Use the logical size (a.k.a. selection bounds)
-            get => TextLayout?.VisualBounds.Size ?? Vector2.Zero;
+            get {
+                if (TextLayout == null) {
+                    return Vector2.Zero;
+                }
+
+                var bounds = TextLayout.VisualBounds;
+                return new Vector2(bounds.Max.X, -bounds.Min.Y);
+            }
         }
 
         /// <summary>

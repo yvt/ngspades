@@ -113,7 +113,7 @@ namespace Ngs.UI {
                 Box2 bounds = ContentBounds;
                 bounds.Max = Vector2.Max(bounds.Max, bounds.Min);
                 bounds.Min = new Vector2(MathF.Floor(bounds.Min.X), MathF.Floor(bounds.Min.Y));
-                bounds.Max = new Vector2(MathF.Ceiling(bounds.Min.X), MathF.Ceiling(bounds.Min.Y));
+                bounds.Max = new Vector2(MathF.Ceiling(bounds.Max.X), MathF.Ceiling(bounds.Max.Y));
 
                 // 1px margin for edge antialiasing
                 bounds.Min -= new Vector2(1, 1);
