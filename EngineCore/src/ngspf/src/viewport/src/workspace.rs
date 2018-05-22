@@ -269,7 +269,7 @@ impl WindowSet {
                     //        coordinates, not client ...
                     Some(WindowEvent::Moved(Vector2::new(x, y).cast()))
                 }
-                winit::WindowEvent::Closed => Some(WindowEvent::Close),
+                winit::WindowEvent::CloseRequested => Some(WindowEvent::Close),
                 winit::WindowEvent::MouseInput { state, button, .. } => {
                     win.mouse_pos.read_presenter(frame).unwrap().map(|pos| {
                         let button = match button {

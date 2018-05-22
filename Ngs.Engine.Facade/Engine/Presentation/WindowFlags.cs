@@ -30,15 +30,5 @@ namespace Ngs.Engine.Presentation {
         /// Makes the background of the window transparent.
         /// </summary>
         Transparent = 1 << 2,
-
-        /// <summary>
-        /// <para>
-        /// Disables the default behavior of the window's close button.
-        /// </para>
-        /// <para>
-        /// This flag is currently not implemented by NgsPF.
-        /// </para>
-        /// </summary>
-        DenyUserClose = 1 << 3,
     }
 }

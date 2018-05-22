@@ -442,9 +442,6 @@ impl ngsbase::INgsPFWindowTrait for ComWindow {
             if flags.contains(ngsbase::WindowFlagsItem::Transparent) {
                 value |= viewport::WindowFlagsBit::Transparent;
             }
-            if flags.contains(ngsbase::WindowFlagsItem::DenyUserClose) {
-                value |= viewport::WindowFlagsBit::DenyUserClose;
-            }
 
             node_data_set_prop_builder_only!(self.data, flags = value)
         })

@@ -24,11 +24,6 @@ pub enum WindowFlagsBit {
 
     /// Makes the background of the window transparent.
     Transparent = 0b0100,
-
-    /// Disables the default behavior of the window's close button.
-    ///
-    /// FIXME: implement this
-    DenyUserClose = 0b1000,
 }
 
 pub type WindowFlags = BitFlags<WindowFlagsBit>;
