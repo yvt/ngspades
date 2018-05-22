@@ -21,7 +21,10 @@ namespace Ngs.UI {
     ///     <see cref="SolidColorLayerInfo" /> displays a box filled with a specified color.
     ///     </term></item>
     ///     <item><term>
-    ///     <see cref="CanvasLayerInfo" />.has abstract methods that can be implemented to paint
+    ///     <see cref="ImageLayerInfo" /> displays an image (<see cref="Ngs.Engine.Canvas.Image"/>).
+    ///     </term></item>
+    ///     <item><term>
+    ///     <see cref="CanvasLayerInfo" /> has abstract methods that can be implemented to draw
     ///     custom graphical contents using <see cref="Ngs.Engine.Canvas.Painter" />.
     ///     </term></item>
     /// </list>

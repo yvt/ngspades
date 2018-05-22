@@ -45,10 +45,10 @@ namespace Ngs.UI {
         public new Box2 Bounds { get => base.Bounds; }
 
         /// <summary>
-        /// Indicates whether the contents should be repainted by comparing this instance to the
+        /// Indicates whether the contents should be repainted, by comparing this instance to the
         /// previous one (<paramref name="previous" />).
         /// </summary>
-        /// <param name="previous">The previous <see cref="CanvasLayerInfo" /> instance that drew
+        /// <param name="previous">The <see cref="CanvasLayerInfo" /> instance that drew
         /// the previous contents. The dynamic type must match that of <c>this</c>. Must not be
         /// <c>null</c>.</param>
         /// <returns><c>true</c> if the contents should be repainted; otherwise <c>false</c>.
