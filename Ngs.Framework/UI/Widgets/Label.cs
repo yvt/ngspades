@@ -16,6 +16,7 @@ namespace Ngs.UI.Widgets {
         FontConfig fontConfig;
         ParagraphStyle paragraphStyle = new ParagraphStyle();
         string text;
+        float? width;
         Rgba textColor = Rgba.White;
 
         /// <summary>
@@ -58,6 +59,22 @@ namespace Ngs.UI.Widgets {
         }
 
         /// <summary>
+        /// Sets or retrieves the width of this label.
+        /// </summary>
+        /// <returns>The width of this label. <c>null</c> indicates that the width is calculated
+        /// automatically to fit the text.</returns>
+        public float? Width {
+            get => width;
+            set {
+                if (width == value) {
+                    return;
+                }
+                width = value;
+                InvalidateTextLayout();
+            }
+        }
+
+        /// <summary>
         /// Sets or retrieves the text color.
         /// </summary>
         /// <returns>The text color.</returns>
@@ -69,6 +86,7 @@ namespace Ngs.UI.Widgets {
         }
 
         TextLayout textLayout;
+
         void InvalidateTextLayout() {
             textLayout = null;
             InvalidateInherentLayoutProps();
@@ -78,7 +96,11 @@ namespace Ngs.UI.Widgets {
         TextLayout TextLayout {
             get {
                 if (textLayout == null && fontConfig != null) {
-                    textLayout = fontConfig.LayoutString(text, paragraphStyle);
+                    if (this.width is float width) {
+                        textLayout = fontConfig.LayoutString(text, paragraphStyle, width);
+                    } else {
+                        textLayout = fontConfig.LayoutString(text, paragraphStyle);
+                    }
                 }
                 return textLayout;
             }
@@ -92,7 +114,7 @@ namespace Ngs.UI.Widgets {
                 }
 
                 var bounds = TextLayout.VisualBounds;
-                return new Vector2(bounds.Max.X, -bounds.Min.Y);
+                return new Vector2(width ?? bounds.Max.X, -bounds.Min.Y);
             }
         }
 
