@@ -451,6 +451,7 @@ namespace Ngs.UI {
             emitter.BeginLayer(null, new LayerInfo()
             {
                 // TODO: more props
+                Bounds = this.Bounds,
                 Opacity = this.Opacity,
             });
 

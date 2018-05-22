@@ -5,7 +5,10 @@
 //
 using System;
 using System.Security;
+using System.Numerics;
 using Ngs.Engine.Native;
+using Ngs.Engine.Presentation;
+using Ngs.Utils;
 
 namespace Ngs.UI {
     // TODO: Event handling and window attributes
@@ -16,6 +19,21 @@ namespace Ngs.UI {
     public class Window {
         Workspace workspace;
         INgsPFWindow pfWindow;
+
+        /// <summary>
+        /// Is the window already materialized?
+        /// </summary>
+        bool materialized;
+
+        /// <summary>
+        /// The size of the client region. <c>null</c> if not computed or specified yet
+        /// </summary>
+        Vector2? size;
+
+        /// <summary>
+        /// Should be the value of <see cref="size" /> pushed to the compositor?
+        /// </summary>
+        bool shouldPushSize;
 
         /// <summary>
         /// Initializes a new instance of this class.
@@ -40,6 +58,23 @@ namespace Ngs.UI {
             }
         }
 
+        bool borderless;
+
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether the window has a border provided by the
+        /// window system.
+        /// </summary>
+        /// <returns><c>true</c> is the window is borderless; otherwise, <c>false</c>.</returns>
+        public bool Borderless {
+            get => borderless;
+            set {
+                if (materialized) {
+                    throw new InvalidOperationException("The window is already materialized.");
+                }
+                borderless = value;
+            }
+        }
+
         /// <summary>
         /// Sets or retrieves a flag indicating whether this window is displayed on the screen.
         /// </summary>
@@ -56,11 +91,64 @@ namespace Ngs.UI {
             if (this.ContentsView is View view) {
                 view.BeforeLayout();
                 view.Measure();
-                // TODO: Reflect the measurement result to the window
+
+                if (!size.HasValue) {
+                    // The window size is not specified yet. Automatically derive it from the
+                    // measurement result.
+                    size = view.Measurement.PreferredSize;
+                    shouldPushSize = true;
+                } else {
+                    // Limit the size according to the measurement result.
+                    var measurement = view.Measurement;
+                    var newSize = Vector2.Clamp(size.Value,
+                        measurement.MinimumSize,
+                        measurement.MaximumSize);
+                    if (newSize != size) {
+                        size = newSize;
+                        shouldPushSize = true;
+                    }
+                }
+
+                view.Bounds = new Box2(Vector2.Zero, size.Value);
                 view.Arrange();
                 view.Render();
+            } else {
+                // Ditto, but without contents
+                if (!size.HasValue) {
+                    size = Vector2.Zero;
+                    shouldPushSize = true;
+                }
             }
+
+            if (!this.materialized) {
+                // Window flags can be set only if the window is not materialized yet.
+                // (This is a restriction imposed by the `winit` library.)
+                WindowFlags flags = WindowFlags.Resizable;
+
+                if (this.Borderless) {
+                    flags |= WindowFlags.Borderless | WindowFlags.Transparent;
+                }
+
+                // Deny resizing at all if the root view has the maximum size
+                if (this.ContentsView is View view2) {
+                    var maxSize = view2.Measurement.MaximumSize;
+                    if (!float.IsInfinity(maxSize.X) || !float.IsInfinity(maxSize.Y)) {
+                        flags &= ~WindowFlags.Resizable;
+                    }
+                }
+
+                this.pfWindow.Flags = flags;
+            }
+
+            if (shouldPushSize) {
+                this.pfWindow.Size = size.Value;
+                shouldPushSize = false;
+            }
+
+            // TODO: Repond to the resize event and re-render accordingly
+
             this.pfWindow.Child = this.ContentsView?.MainPFLayer;
+            this.materialized = true;
         }
     }
 }
