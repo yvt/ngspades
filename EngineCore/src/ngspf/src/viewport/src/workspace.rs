@@ -373,23 +373,24 @@ impl WindowSet {
 
             // Construct a `WorkspaceWindow`
             let flags = window.flags;
-            let size = window.size.read_presenter(&frame).unwrap().cast::<u32>();
             let title = window.title.read_presenter(&frame).unwrap().to_owned();
 
             let mut builder = winit::WindowBuilder::new()
                 .with_transparency(flags.contains(WindowFlagsBit::Transparent))
                 .with_decorations(!flags.contains(WindowFlagsBit::Borderless))
-                .with_dimensions(size.x, size.y)
                 .with_title(title);
-            if !flags.contains(WindowFlagsBit::Resizable) {
-                builder = builder.with_max_dimensions(size.x, size.y);
-                builder = builder.with_min_dimensions(size.x, size.y);
-            }
+
+            // TODO: Handle the lack of `WindowFlagsBit::Resizable`
 
             let winit_window = builder
                 .build(events_loop)
                 .expect("failed to instantiate a window.");
             let winit_window_id = winit_window.id();
+
+            let inner_size = (window.size.read_presenter(&frame).unwrap()
+                * winit_window.hidpi_factor())
+                .cast::<u32>();
+            winit_window.set_inner_size(inner_size.x, inner_size.y);
 
             let surface = self.wm.add_surface(winit_window, NodeRef::clone(new_node));
 
