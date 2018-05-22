@@ -14,7 +14,7 @@ namespace Ngs.UI {
     /// <summary>
     /// Describes the properties of a native layer with a solid color content.
     /// </summary>
-    public class ImageLayerInfo : LayerInfo {
+    public sealed class ImageLayerInfo : LayerInfo {
         /// <summary>
         /// Sets or retrieves the image.
         /// </summary>

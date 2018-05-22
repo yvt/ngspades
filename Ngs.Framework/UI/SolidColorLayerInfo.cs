@@ -12,7 +12,7 @@ namespace Ngs.UI {
     /// <summary>
     /// Describes the properties of a native layer with a solid color content.
     /// </summary>
-    public class SolidColorLayerInfo : LayerInfo {
+    public sealed class SolidColorLayerInfo : LayerInfo {
         /// <summary>
         /// Sets or retrieves the fill color.
         /// </summary>
