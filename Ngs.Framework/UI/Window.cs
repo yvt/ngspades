@@ -42,6 +42,9 @@ namespace Ngs.UI {
         public Window() {
             this.workspace = Application.EnsureInstance().Workspace;
             this.pfWindow = this.workspace.EngineWorkspace.Context.CreateWindow();
+
+            // Provide a default value for `Title`
+            this.title = Application.Instance.GetType().Assembly.GetName().Name;
         }
 
         readonly WindowContentsLayout dummyLayout = new WindowContentsLayout();
@@ -72,6 +75,21 @@ namespace Ngs.UI {
                     throw new InvalidOperationException("The window is already materialized.");
                 }
                 borderless = value;
+            }
+        }
+
+        string title;
+        bool shouldPushTitle = true;
+
+        /// <summary>
+        /// Sets or retrieves the window title.
+        /// </summary>
+        /// <returns>The window title.</returns>
+        public string Title {
+            get => title;
+            set {
+                title = value ?? "";
+                shouldPushTitle = true;
             }
         }
 
@@ -143,6 +161,11 @@ namespace Ngs.UI {
             if (shouldPushSize) {
                 this.pfWindow.Size = size.Value;
                 shouldPushSize = false;
+            }
+
+            if (shouldPushTitle) {
+                this.pfWindow.Title = title;
+                shouldPushTitle = false;
             }
 
             // TODO: Repond to the resize event and re-render accordingly
