@@ -104,7 +104,8 @@ namespace Ngs.UI {
         /// Performs the arrangement step of the layouting algorithm.
         /// </summary>
         /// <remarks>
-        /// The implementation must call <see cref="ArrangeContext.ArrangeSubview" /> on all
+        /// The implementation must retrieve the size of the associated view via
+        /// <c>View.Bounds.Size</c> and call <see cref="ArrangeContext.ArrangeSubview" /> on all
         /// subviews to arrange them.
         /// </remarks>
         public abstract void Arrange(ArrangeContext context);

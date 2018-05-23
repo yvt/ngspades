@@ -7,8 +7,16 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Ngs.UI.Utils;
+using Ngs.Utils;
 
 namespace Ngs.UI {
+    /// <summary>
+    /// Layouts subviews using absolute distance values relative to the view boundary.
+    /// </summary>
+    /// <remarks>
+    /// Each item (layouted view) in <see cref="AbsoluteLayout" /> is arranged independently using
+    /// the constraints specified by the corresponding <see cref="AbsoluteLayout.Item" />.
+    /// </remarks>
     public sealed class AbsoluteLayout : Layout {
         /// <summary>
         /// Represents a collection of <see cref="Item" /> objects in a <see cref="AbsoluteLayout" />.
@@ -33,11 +41,9 @@ namespace Ngs.UI {
         /// Represents an item (layouted view) in a <see cref="AbsoluteLayout" />.
         /// </summary>
         public sealed class Item {
-            private readonly AbsoluteLayout layout;
-            private float? left;
-            private float? top;
-            private float? right;
-            private float? bottom;
+            readonly AbsoluteLayout layout;
+            float? left, top, right, bottom;
+            float? width, height;
 
             internal Item(AbsoluteLayout layout, View view) {
                 this.layout = layout;
@@ -97,6 +103,32 @@ namespace Ngs.UI {
                     layout.InvalidateLayout();
                 }
             }
+
+            /// <summary>
+            /// Sets or retrieves the width of the item.
+            /// </summary>
+            /// <returns>The width of the item.
+            /// <c>null</c> indicates that the preferred value provided by the subview should
+            /// be used.</returns>
+            public float? Width {
+                get => width; set {
+                    width = value;
+                    layout.InvalidateLayout();
+                }
+            }
+
+            /// <summary>
+            /// Sets or retrieves the height of the item.
+            /// </summary>
+            /// <returns>The height of the item.
+            /// <c>null</c> indicates that the preferred value provided by the subview should
+            /// be used.</returns>
+            public float? Height {
+                get => height; set {
+                    height = value;
+                    layout.InvalidateLayout();
+                }
+            }
         }
 
         /// <summary>
@@ -121,14 +153,104 @@ namespace Ngs.UI {
         /// Implements <see cref="Layout.Measure" />.
         /// </summary>
         public override Measurement Measure() {
-            throw new NotImplementedException(); // TODO: Implement `AbsoluteLayout`
+            Vector2 minimum = new Vector2(0, 0);
+            Vector2 maximum = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+
+            // Take the mean for preferred size
+            Vector2 preferred = new Vector2(0, 0);
+            int preferredCountX = 0;
+            int preferredCountY = 0;
+
+            foreach (var item in Items) {
+                var measurement = item.View.Measurement;
+                Vector2 itemMinimum = measurement.MinimumSize;
+                Vector2 itemMaximum = measurement.MaximumSize;
+                Vector2 itemPreferred = measurement.PreferredSize;
+
+                if (item.Left.HasValue && item.Right.HasValue) {
+                    float pad = item.Left.Value + item.Right.Value;
+
+                    if (item.Width is float x) {
+                        itemPreferred.X = Math.Clamp(x, itemMinimum.X, itemMaximum.X);
+                    }
+
+                    minimum.X = Math.Max(minimum.X, itemMinimum.X + pad);
+                    maximum.X = Math.Min(maximum.X, itemMaximum.X + pad);
+                    preferred.X += itemPreferred.X + pad;
+                    preferredCountX += 1;
+                }
+
+                if (item.Top.HasValue && item.Bottom.HasValue) {
+                    float pad = item.Top.Value + item.Bottom.Value;
+
+                    if (item.Height is float x) {
+                        itemPreferred.Y = Math.Clamp(x, itemMinimum.Y, itemMaximum.Y);
+                    }
+
+                    minimum.Y = Math.Max(minimum.Y, itemMinimum.Y + pad);
+                    maximum.Y = Math.Min(maximum.Y, itemMaximum.Y + pad);
+                    preferred.Y += itemPreferred.Y + pad;
+                    preferredCountY += 1;
+                }
+            }
+
+            if (preferredCountX > 0) {
+                preferred.X /= preferredCountX;
+            }
+            if (preferredCountY > 0) {
+                preferred.Y /= preferredCountY;
+            }
+
+            return new Measurement()
+            {
+                MinimumSize = minimum,
+                MaximumSize = maximum,
+                PreferredSize = preferred,
+            };
         }
 
         /// <summary>
         /// Implements <see cref="Layout.Arrange" />.
         /// </summary>
         public override void Arrange(ArrangeContext context) {
-            throw new NotImplementedException(); // TODO: Implement `AbsoluteLayout`
+            Vector2 size = View.Bounds.Size;
+
+            foreach (var item in Items) {
+                var measurement = item.View.Measurement;
+                Vector2 itemMinimum = measurement.MinimumSize;
+                Vector2 itemMaximum = measurement.MaximumSize;
+                Vector2 itemPreferred = measurement.PreferredSize;
+
+                if (item.Width is float x) {
+                    itemPreferred.X = Math.Clamp(x, itemMinimum.X, itemMaximum.X);
+                }
+                if (item.Height is float y) {
+                    itemPreferred.Y = Math.Clamp(y, itemMinimum.Y, itemMaximum.Y);
+                }
+
+                Vector2 itemSize = itemPreferred;
+                Vector2 itemPosition;
+
+                if (item.Left.HasValue) {
+                    if (item.Right.HasValue) {
+                        itemSize.X = size.X - item.Left.Value - item.Right.Value;
+                    }
+                    itemPosition.X = item.Left.Value;
+                } else {
+                    itemPosition.X = size.X - itemSize.X - item.Right.Value;
+                }
+
+                if (item.Top.HasValue) {
+                    if (item.Bottom.HasValue) {
+                        itemSize.Y = size.Y - item.Top.Value - item.Bottom.Value;
+                    }
+                    itemPosition.Y = item.Top.Value;
+                } else {
+                    itemPosition.Y = size.Y - itemSize.X - item.Bottom.Value;
+                }
+
+                context.ArrangeSubview(item.View, new Box2(itemPosition, itemPosition + itemSize));
+            }
         }
     }
 }

@@ -77,6 +77,8 @@ The layouting process is based around the following things:
 Layouting loosely follows the general principles shown below:
 
 - Preferred values might propagate throughout the hierarchy unless limited elsewhere. When a conflict occurs, we prefer the values from lower-level (closer to the root) views.
+- In layouts where views compete for a region (such as a table layout), the subviews' preferred values are used to determine how much area is given to each view.
+- The result is undefined when constraints are unsatisfiable.
 
 Layouting is done in two steps:
 
