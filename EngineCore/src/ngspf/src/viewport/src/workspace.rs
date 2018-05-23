@@ -425,7 +425,9 @@ impl WindowSet {
                 BitFlags::empty(),
             );
             if action.contains(WindowActionBit::ChangeSize) {
-                let new_value = window.size.read_presenter(frame).unwrap().cast::<u32>();
+                let new_value = (window.size.read_presenter(frame).unwrap()
+                    * winit_window.hidpi_factor())
+                    .cast::<u32>();
                 winit_window.set_inner_size(new_value.x, new_value.y);
             }
             if action.contains(WindowActionBit::ChangeTitle) {

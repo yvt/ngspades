@@ -231,6 +231,10 @@ namespace Ngs.UI {
             }
 
             public void Resized(Vector2 size) {
+                InvokeOnWindow((window) => {
+                    window.size = size;
+                    window.workspace.SetNeedsUpdate();
+                });
             }
         }
 
