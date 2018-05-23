@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.ComponentModel;
 using System.Security;
 using System.Numerics;
 using Ngs.Engine.Native;
@@ -42,6 +43,7 @@ namespace Ngs.UI {
         public Window() {
             this.workspace = Application.EnsureInstance().Workspace;
             this.pfWindow = this.workspace.EngineWorkspace.Context.CreateWindow();
+            this.pfWindow.Listener = new Listener(this);
 
             // Provide a default value for `Title`
             this.title = Application.Instance.GetType().Assembly.GetName().Name;
@@ -172,6 +174,76 @@ namespace Ngs.UI {
 
             this.pfWindow.Child = this.ContentsView?.MainPFLayer;
             this.materialized = true;
+        }
+
+        sealed class Listener : Ngs.Interop.ComClass<Listener>, INgsPFWindowListener {
+            // Break the circular reference that cannot be handled by GC
+            // (`Window` -> native `Window` -> `Listener` -> `Window`)
+            readonly WeakReference<Window> window;
+
+            public Listener(Window window) => this.window = new WeakReference<Window>(window);
+
+            /// <summary>
+            /// Retrieves a strong reference to the owning window, and calls a given delegate
+            /// with it on the main thread.
+            /// </summary>
+            private void InvokeOnWindow(Action<Window> action) {
+                if (!this.window.TryGetTarget(out var window)) {
+                    return;
+                }
+
+                window.workspace.DispatchQueue.InvokeAsync(() => {
+                    action(window);
+                });
+            }
+
+            public void Close() {
+                InvokeOnWindow((window) => {
+                    var e = new CancelEventArgs();
+                    window.OnClose(e);
+                    if (!e.Cancel) {
+                        window.Visible = false;
+                    }
+                });
+            }
+
+            public void Focused(bool focused) {
+                // TODO: Handle focus events
+            }
+
+            public void KeyboardInput(string virtualKeyCode, bool pressed, KeyModifierFlags modifier) {
+                // TODO: Handle keyboard events
+            }
+
+            public void MouseButton(MousePosition position, byte button, bool pressed) {
+                // TODO: Handle mouse events
+            }
+
+            public void MouseLeave() {
+                // TODO: Handle mouse events
+            }
+
+            public void MouseMotion(MousePosition position) {
+                // TODO: Handle mouse events
+            }
+
+            public void Moved(Vector2 position) {
+            }
+
+            public void Resized(Vector2 size) {
+            }
+        }
+
+        /// <summary>
+        /// Occurs when a user clicks the close button of this window.
+        /// </summary>
+        public event EventHandler<CancelEventArgs> Close;
+
+        /// <summary>
+        /// Called when a user clicks the close button of this window.
+        /// </summary>
+        protected virtual void OnClose(CancelEventArgs e) {
+            Close?.Invoke(this, e);
         }
     }
 }

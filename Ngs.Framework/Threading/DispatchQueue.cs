@@ -18,6 +18,7 @@ namespace Ngs.Threading {
     public sealed class DispatchQueue {
         Thread thread;
         BlockingCollection<Work> queue = new BlockingCollection<Work>();
+        bool running = true;
 
         struct Work {
             public Action action;
@@ -31,7 +32,7 @@ namespace Ngs.Threading {
         }
 
         private void ThreadBody() {
-            while (true) {
+            while (running) {
                 var work = queue.Take();
                 ExecutionContext.Run(work.context, callActionDelegate, work.action);
                 if (work.doneEvent != null) {
@@ -53,6 +54,11 @@ namespace Ngs.Threading {
         /// otherwise, <c>false</c>.</returns>
         public bool IsCurrent {
             get => thread == Thread.CurrentThread;
+        }
+
+        internal void Exit() {
+            running = false;
+            InvokeAsync(() => { });
         }
 
         /// <summary>

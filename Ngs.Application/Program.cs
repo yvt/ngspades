@@ -13,8 +13,9 @@ using Ngs.Utils;
 namespace Ngs.Shell {
     sealed class Application : Ngs.Application {
         public static void Main(string[] args) {
-            var thisApp = new Application();
-            thisApp.Run();
+            using (var thisApp = new Application()) {
+                thisApp.Run();
+            }
         }
 
         private Application() { }
@@ -69,6 +70,10 @@ namespace Ngs.Shell {
                 var window = new Window()
                 {
                     ContentsView = label,
+                };
+
+                window.Close += (e, args) => {
+                    Exit();
                 };
 
                 window.Visible = true;

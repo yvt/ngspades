@@ -11,7 +11,7 @@ namespace Ngs {
     /// <summary>
     /// Represents an application based on the Nightingales engine.
     /// </summary>
-    public class Application {
+    public class Application : IDisposable {
         private object constructLock = new object();
 
         /// <summary>
@@ -91,7 +91,8 @@ namespace Ngs {
         /// Starts the main loop.
         /// </summary>
         /// <remarks>
-        /// <para>TODO: When does this method returns? Add <c>Exit</c> method?</para>
+        /// <para>This method returns only when the <see cref="Exit" /> method is called from
+        /// another thread.</para>
         /// <para>This method only can be called by a thread that created this instance.</para>
         /// </remarks>
         public void Start() {
@@ -101,6 +102,18 @@ namespace Ngs {
             UIQueue.Invoke(() => { });
 
             this.Workspace.EngineWorkspace.Start();
+        }
+
+        /// <summary>
+        /// Releases the resources used by <see cref="Application" />.
+        /// </summary>
+        public void Dispose() => UIQueue.Exit();
+
+        /// <summary>
+        /// Causes the main loop to terminate.
+        /// </summary>
+        public void Exit() {
+            this.Workspace.EngineWorkspace.Exit();
         }
     }
 }
