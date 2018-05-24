@@ -215,7 +215,7 @@ namespace Ngs.UI {
                 }.Invoke);
             }
 
-            public void Close() {
+            void INgsPFWindowListener.Close() {
                 InvokeOnWindow((window) => {
                     var e = new CancelEventArgs();
                     window.OnClose(e);
@@ -225,30 +225,30 @@ namespace Ngs.UI {
                 });
             }
 
-            public void Focused(bool focused) {
+            void INgsPFWindowListener.Focused(bool focused) {
                 // TODO: Handle focus events
             }
 
-            public void KeyboardInput(string virtualKeyCode, bool pressed, KeyModifierFlags modifier) {
+            void INgsPFWindowListener.KeyboardInput(string virtualKeyCode, bool pressed, KeyModifierFlags modifier) {
                 // TODO: Handle keyboard events
             }
 
-            public void MouseButton(MousePosition position, byte button, bool pressed) {
+            void INgsPFWindowListener.MouseButton(MousePosition position, byte button, bool pressed) {
                 // TODO: Handle mouse events
             }
 
-            public void MouseLeave() {
+            void INgsPFWindowListener.MouseLeave() {
                 // TODO: Handle mouse events
             }
 
-            public void MouseMotion(MousePosition position) {
+            void INgsPFWindowListener.MouseMotion(MousePosition position) {
                 // TODO: Handle mouse events
             }
 
-            public void Moved(Vector2 position) {
+            void INgsPFWindowListener.Moved(Vector2 position) {
             }
 
-            public void Resized(Vector2 size) {
+            void INgsPFWindowListener.Resized(Vector2 size) {
                 InvokeOnWindow((window) => {
                     window.size = size;
                     window.workspace.SetNeedsUpdate();
