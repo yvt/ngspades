@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.Diagnostics;
 using System.Numerics;
 using System.Security;
 using Ngs.Utils;
@@ -162,24 +163,29 @@ namespace Ngs.UI {
         /// <summary>
         /// Performs the measurement step of the layouting algorithm.
         /// </summary>
+        [DebuggerNonUserCode]
         internal void Measure() {
             var measurement = Measurement.Default;
             if (this.layout is Layout layout) {
                 measurement = layout.Measure();
             }
 
-            var min = this.MinimumSize;
-            var max = this.MaximumSize;
+            try {
+                var min = this.MinimumSize;
+                var max = this.MaximumSize;
 
-            measurement.MinimumSize = Vector2.Max(measurement.MinimumSize, min);
-            measurement.MaximumSize = Vector2.Min(measurement.MaximumSize, max);
+                measurement.MinimumSize = Vector2.Max(measurement.MinimumSize, min);
+                measurement.MaximumSize = Vector2.Min(measurement.MaximumSize, max);
 
-            if (this.PreferredSize is Vector2 x) {
-                measurement.PreferredSize = x;
+                if (this.PreferredSize is Vector2 x) {
+                    measurement.PreferredSize = x;
+                }
+
+                measurement.PreferredSize = Vector2.Clamp(measurement.PreferredSize,
+                    measurement.MinimumSize, measurement.MaximumSize);
+            } catch (Exception e) {
+                this.workspace.OnUnhandledException(e);
             }
-
-            measurement.PreferredSize = Vector2.Clamp(measurement.PreferredSize,
-                measurement.MinimumSize, measurement.MaximumSize);
 
             this.Measurement = measurement;
         }
@@ -187,9 +193,14 @@ namespace Ngs.UI {
         /// <summary>
         /// Performs the arranging step of the layouting algorithm.
         /// </summary>
+        [DebuggerNonUserCode]
         internal void Arrange() {
             if (this.layout is Layout layout) {
-                layout.ArrangeInternal();
+                try {
+                    layout.ArrangeInternal();
+                } catch (Exception e) {
+                    this.workspace.OnUnhandledException(e);
+                }
                 foreach (var child in layout.Subviews) {
                     child.Arrange();
                 }
@@ -443,6 +454,7 @@ namespace Ngs.UI {
             context.EmitSubviews();
         }
 
+        [DebuggerNonUserCode]
         internal void Render() {
             var emitter = this.layerEmitter;
             emitter.BeginUpdate();
@@ -456,7 +468,11 @@ namespace Ngs.UI {
             });
 
             // Emit the contents
-            this.RenderContents(new RenderContext(this));
+            try {
+                this.RenderContents(new RenderContext(this));
+            } catch (Exception e) {
+                this.workspace.OnUnhandledException(e);
+            }
 
             emitter.End();
 

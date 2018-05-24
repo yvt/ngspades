@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.Diagnostics;
 using System.Security;
 using System.Threading;
 using System.Collections.Concurrent;
@@ -20,31 +21,72 @@ namespace Ngs.Threading {
         BlockingCollection<Work> queue = new BlockingCollection<Work>();
         bool running = true;
 
-        struct Work {
+        sealed class Work {
             public Action action;
             public ExecutionContext context;
-            public ManualResetEventSlim doneEvent;
+            public ResultCell result;
         }
+
+        sealed class ResultCell {
+            public Exception exception;
+        }
+
+        /// <summary>
+        /// Indicates that operation was successful.
+        /// </summary>
+        readonly static Exception SUCCESS_TAG = new Exception();
 
         internal DispatchQueue() {
             thread = new Thread(ThreadBody);
             thread.Start();
         }
 
+        [DebuggerNonUserCode]
         private void ThreadBody() {
             while (running) {
                 var work = queue.Take();
-                ExecutionContext.Run(work.context, callActionDelegate, work.action);
-                if (work.doneEvent != null) {
-                    work.doneEvent.Set();
+                if (work.result is ResultCell result) {
+                    Exception outException = SUCCESS_TAG;
+                    try {
+                        InvokeWork(work);
+                    } catch (Exception e) {
+                        outException = e;
+                    }
+                    lock (result) {
+                        result.exception = outException;
+                        Monitor.Pulse(result);
+                    }
+                } else {
+                    try {
+                        InvokeWork(work);
+                    } catch (Exception e) when (TryHandleException(e)) {
+                    }
                 }
             }
         }
 
+        [DebuggerNonUserCode]
+        private void InvokeWork(in Work work) {
+            ExecutionContext.Run(work.context, callActionDelegate, work.action);
+        }
+
         private readonly ContextCallback callActionDelegate = new ContextCallback(CallAction);
+        [DebuggerNonUserCode]
         private static void CallAction(object state) {
             var action = (Action)state;
             action();
+        }
+
+        /// <summary>
+        /// Occurs when an unhandled exception occurs in a delegate passed to
+        /// <see cref="InvokeAsync" />.
+        /// </summary>
+        public event UnhandledExceptionEventHandler UnhandledException;
+
+        private bool TryHandleException(Exception exception) {
+            var e = new UnhandledExceptionEventArgs(exception, true);
+            UnhandledException?.Invoke(this, e);
+            return false;
         }
 
         /// <summary>
@@ -75,27 +117,49 @@ namespace Ngs.Threading {
         /// <summary>
         /// Calls a supplied delegate synchronously on this queue.
         /// </summary>
+        /// <remarks>
+        /// An exception that occured while calling the delegate will be propagated back to the
+        /// caller.
+        /// </remarks>
+        /// <exception name="System.Reflection.TargetInvocationException">
+        /// An exception was thrown while calling the delegate.</exception>
         /// <param name="action">The delegate to be called.</param>
+        [DebuggerNonUserCode]
         public void Invoke(Action action) {
             if (IsCurrent) {
                 action();
                 return;
             }
 
-            var doneEvent = new ManualResetEventSlim();
+            var resultCell = new ResultCell();
             queue.Add(new Work()
             {
                 action = action,
                 context = ExecutionContext.Capture().CreateCopy(),
-                doneEvent = doneEvent,
+                result = resultCell,
             });
-            doneEvent.Wait();
+
+            lock (resultCell) {
+                while (resultCell.exception == null) {
+                    Monitor.Wait(resultCell);
+                }
+
+                if (resultCell.exception != SUCCESS_TAG) {
+                    throw new System.Reflection.TargetInvocationException(resultCell.exception);
+                }
+            }
         }
 
         /// <summary>
         /// Calls a supplied delegate asynchronously on this queue.
         /// </summary>
+        /// <remarks>
+        /// An exception that occured while calling the delegate will result in an application
+        /// termination. The <see cref="UnhandledException" /> event is raised before the
+        /// application is terminated.
+        /// </remarks>
         /// <param name="action">The delegate to be called.</param>
+        [DebuggerNonUserCode]
         public void InvokeAsync(Action action) {
             queue.Add(new Work()
             {

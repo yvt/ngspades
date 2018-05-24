@@ -56,6 +56,32 @@ namespace Ngs.UI {
             SetNeedsUpdate();
         }
 
+        /// <summary>
+        /// Called when an unhandled exception was thrown by a component.
+        /// </summary>
+        /// <remarks>
+        /// This method either returns normally (the exception is ignored and/or reported somehow)
+        /// or never returns (terminates the application).
+        /// </remarks>
+        /// <param name="exception">The exception that was thrown.</param>
+        internal void OnUnhandledException(Exception exception) {
+            // TODO: Provide more options for error handling
+            Console.WriteLine($"Aborting due to an unhandled exception.: {exception.Message}");
+
+            // Cause the app domain to terminate by rethrowing the exception in another thread.
+            //
+            // (Rethrowing the exception is not allowed here as per this method's specification.
+            // For example, it may be translated into a COM error, which is passed to the native
+            // code that doesn't know how to handle such an error and just aborts, which complicates
+            // the debugging further.)
+            var thread = new System.Threading.Thread(() => {
+                throw new Exception("An unhandled exception was thrown by a component.", exception);
+            });
+            thread.Start();
+            thread.Join();
+            System.Environment.Exit(1);
+        }
+
         bool needsUpdate;
 
         /// <summary>

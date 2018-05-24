@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.Diagnostics;
 using System.ComponentModel;
 using System.Security;
 using System.Numerics;
@@ -183,6 +184,21 @@ namespace Ngs.UI {
 
             public Listener(Window window) => this.window = new WeakReference<Window>(window);
 
+            sealed class Trampoline {
+                public Action<Window> action;
+                public Window window;
+
+                // Do not execute the `catch` clause automatically when Just My Code is enabled
+                [DebuggerNonUserCode]
+                public void Invoke() {
+                    try {
+                        action(window);
+                    } catch (Exception e) {
+                        window.workspace.OnUnhandledException(e);
+                    }
+                }
+            }
+
             /// <summary>
             /// Retrieves a strong reference to the owning window, and calls a given delegate
             /// with it on the main thread.
@@ -192,9 +208,11 @@ namespace Ngs.UI {
                     return;
                 }
 
-                window.workspace.DispatchQueue.InvokeAsync(() => {
-                    action(window);
-                });
+                window.workspace.DispatchQueue.InvokeAsync(new Trampoline()
+                {
+                    action = action,
+                    window = window,
+                }.Invoke);
             }
 
             public void Close() {
