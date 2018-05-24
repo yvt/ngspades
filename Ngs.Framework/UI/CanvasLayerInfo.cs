@@ -107,20 +107,20 @@ namespace Ngs.UI {
         /// </summary>
         [SecuritySafeCritical]
         public override void UpdateLayer(INgsPFLayer layer, LayerInfo previous) {
+            // Compute the layer bounds by rounding the desired content bounds.
+            // TODO: Take DPI scaling into account
+            Box2 bounds = ContentBounds;
+            bounds.Max = Vector2.Max(bounds.Max, bounds.Min);
+            bounds.Min = new Vector2(MathF.Floor(bounds.Min.X), MathF.Floor(bounds.Min.Y));
+            bounds.Max = new Vector2(MathF.Ceiling(bounds.Max.X), MathF.Ceiling(bounds.Max.Y));
+
+            // 1px margin for edge antialiasing
+            bounds.Min -= new Vector2(1, 1);
+            bounds.Max += new Vector2(1, 1);
+
+            base.Bounds = new Box2(bounds.Min + Origin, bounds.Max + Origin);
+
             if (previous == null || ShouldUpdate(previous)) {
-                // Compute the layer bounds by rounding the desired content bounds.
-                // TODO: Take DPI scaling into account
-                Box2 bounds = ContentBounds;
-                bounds.Max = Vector2.Max(bounds.Max, bounds.Min);
-                bounds.Min = new Vector2(MathF.Floor(bounds.Min.X), MathF.Floor(bounds.Min.Y));
-                bounds.Max = new Vector2(MathF.Ceiling(bounds.Max.X), MathF.Ceiling(bounds.Max.Y));
-
-                // 1px margin for edge antialiasing
-                bounds.Min -= new Vector2(1, 1);
-                bounds.Max += new Vector2(1, 1);
-
-                base.Bounds = new Box2(bounds.Min + Origin, bounds.Max + Origin);
-
                 // Generate the content image
                 var imageSize = new IntVector2((int)bounds.Width, (int)bounds.Height);
                 imageSize.X = Math.Min(imageSize.X, 4096);
