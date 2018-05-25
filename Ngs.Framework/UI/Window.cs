@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.Security;
 using System.Numerics;
+using System.Collections.Generic;
 using Ngs.Engine.Native;
 using Ngs.Engine.Presentation;
 using Ngs.Utils;
@@ -46,11 +47,13 @@ namespace Ngs.UI {
             this.pfWindow = this.workspace.EngineWorkspace.Context.CreateWindow();
             this.pfWindow.Listener = new Listener(this);
 
+            this.dummyLayout = new WindowContentsLayout(this);
+
             // Provide a default value for `Title`
             this.title = Application.Instance.GetType().Assembly.GetName().Name;
         }
 
-        readonly WindowContentsLayout dummyLayout = new WindowContentsLayout();
+        readonly WindowContentsLayout dummyLayout;
 
         /// <summary>
         /// Sets or retrieves the contents (root) view of this window.
@@ -176,6 +179,107 @@ namespace Ngs.UI {
             this.pfWindow.Child = this.ContentsView?.MainPFLayer;
             this.materialized = true;
         }
+
+        #region Focus management
+
+        /// <summary>
+        /// The currently focused view. Can temporarily point an invalid view.
+        /// </summary>
+        View focusedView;
+
+        /// <summary>
+        /// The next view to be focused. The value of this property will be finalized
+        /// (i.e. copied to <see cref="focusedView" />) when the focus state is updated.
+        /// </summary>
+        View newFocusedView;
+
+        List<View> focusedViewPath = new List<View>();
+        List<View> newFocusedViewPath = new List<View>();
+        int focusedViewPathCommonPrefixLength;
+
+        /// <summary>
+        /// The currently focused view.
+        /// </summary>
+        internal View FocusedView {
+            get {
+                var view = focusedView;
+                if (view == null || !view.CanGetFocus) {
+                    return null;
+                } else {
+                    return view;
+                }
+            }
+            set {
+                if (value == focusedView) {
+                    return;
+                }
+                newFocusedView = value;
+                workspace.UpdateFocus();
+            }
+        }
+
+        internal void UpdateFocusEarly() {
+            var focusedViewPath = this.focusedViewPath;
+            var focusedView = this.focusedView;
+            var newFocusedViewPath = this.newFocusedViewPath;
+            var newFocusedView = this.newFocusedView;
+
+            newFocusedViewPath.Clear();
+
+            // Reject an invalid view
+            if (newFocusedView != null &&
+                (newFocusedView.Window != this || !newFocusedView.CanGetFocus)) {
+                this.newFocusedView = newFocusedView = null;
+            }
+
+            // Compute the path
+            if (newFocusedView != null) {
+                for (var view = newFocusedView; view != null; view = view.Superview) {
+                    newFocusedViewPath.Add(view);
+                }
+                newFocusedViewPath.Reverse();
+            }
+
+            // Compute the common prefix length
+            int commonPrefixLength = 0;
+            for (int limit = Math.Min(focusedViewPath.Count, newFocusedViewPath.Count);
+                commonPrefixLength < limit; ++commonPrefixLength) {
+                if (focusedViewPath[commonPrefixLength] != newFocusedViewPath[commonPrefixLength]) {
+                    break;
+                }
+            }
+            this.focusedViewPathCommonPrefixLength = commonPrefixLength;
+
+            // Call handlers
+            this.focusedView = newFocusedView;
+            for (int i = focusedViewPath.Count; i > commonPrefixLength; --i) {
+                if (i == focusedViewPath.Count) {
+                    focusedViewPath[i - 1].OnLostFocus(EventArgs.Empty);
+                }
+                focusedViewPath[i - 1].OnLeave(EventArgs.Empty);
+            }
+            focusedViewPath.Clear();
+        }
+
+        internal void UpdateFocusLate() {
+            var focusedViewPath = this.focusedViewPath;
+            var newFocusedViewPath = this.newFocusedViewPath;
+            int commonPrefixLength = this.focusedViewPathCommonPrefixLength;
+
+            // Call handlers
+            for (int i = commonPrefixLength; i < newFocusedViewPath.Count; ++i) {
+                newFocusedViewPath[i].OnEnter(EventArgs.Empty);
+                if (i == newFocusedViewPath.Count - 1) {
+                    newFocusedViewPath[i].OnGotFocus(EventArgs.Empty);
+                }
+            }
+
+            // Swap
+            this.focusedViewPath = newFocusedViewPath;
+            this.newFocusedViewPath = focusedViewPath;
+        }
+
+        #endregion
 
         sealed class Listener : Ngs.Interop.ComClass<Listener>, INgsPFWindowListener {
             // Break the circular reference that cannot be handled by GC

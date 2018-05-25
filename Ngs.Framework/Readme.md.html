@@ -104,6 +104,49 @@ Similarly, the framework also attempts to minimize the number of re-rendered vie
 !!! TODO: Yet to be written about...
     Optimization of rendering
 
+## Input event handling
+
+The input event handling is integrated into the core components.
+
+!!! Note: Design intention
+    For whatever the reason, it has been a common practice in popular GUI toolkits to integrate the mouse/touch event handling into the core functionality. Although this leads to a bloat of the core components, implementing such a common feature as a separate, pluggable functionality would make the framework harder to use in common use cases.
+
+### Focus management
+
+Each window maintains a variable pointing the currently focused view.
+
+Each view has the following properties that control its behavior regarding the focus management:
+
+- `AcceptsFocus` indicates the view's ability to accept a focus.
+- `DeniesFocus` is used to prohibit its descendant views from receiving a focus at all. This is useful, for example, for disabling a group of form controls.
+
+Each view can provide a set of event handlers to get notifications about the changes in the focus state of them and their descendants.
+
+Changes in the view hierarchy can affect the focus state. There are many ways this can happen, and tracking the focus state precisely and calling the appropriate event handlers would be both hard and inefficient (because each view has to traverse the view tree to calculate the relationship between itself). For this reason, calling the event handlers (done by `Workspace.UpdateFocus`) is deferred until the next update. This design has an additional advantage of enabling the event handler calling order to be consistent even in complicated cases.
+
+The following lists the events (in a broader sense) that can observed from each view:
+
+1. The changes in the values of `HasFocus` and `Focused`
+2. `OnEnter`
+3. `OnGotFocus`
+4. `OnLostFocus`
+5. `OnLeave`
+
+The framework guarantees that the order in which these events are observed by each view exactly follows the regular expression `(1*(2((31*4)|1*)5)*)*`, except in the cases where some views interfere this process, for example, by manipulating the focus state from their event handlers.
+
+!!! Tip
+    A regular expression is an alternative way to describe a state machine.
+
+### Mouse and touch inputs
+
+!!! TODO: Yet to be written about...
+    Mouse and touch inputs
+
+### Keyboard inputs
+
+!!! TODO: Yet to be written about...
+    Keyboard inputs
+
 ## Known issues
 
 - It is impossible to create a wrapping text block that adapts to the container width and changes its height dynamically.

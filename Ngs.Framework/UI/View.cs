@@ -15,10 +15,6 @@ namespace Ngs.UI {
     /// </summary>
     public class View {
 
-        public event EventHandler<MouseEventArgs> MouseMove;
-        public event EventHandler<MouseButtonEventArgs> MouseDown;
-        public event EventHandler<MouseButtonEventArgs> MouseUp;
-
         // TODO
 
         private Workspace workspace;
@@ -31,12 +27,6 @@ namespace Ngs.UI {
             this.workspace = Application.EnsureInstance().Workspace;
             this.layerEmitter = new LayerEmitter(this.workspace.EngineWorkspace.Context);
         }
-
-        #region Behavioural properties
-
-        public bool EnableMouseTracking { get; set; }
-
-        #endregion
 
         #region Presentational properties
 
@@ -130,6 +120,20 @@ namespace Ngs.UI {
         /// <returns>The superview or <c>null</c>.</returns>
         public View Superview {
             get => this.superviewLayout?.View;
+        }
+
+        /// <summary>
+        /// Retrieves the window where this view is located.
+        /// </summary>
+        /// <returns>The window where this view is located.</returns>
+        internal Window Window {
+            get {
+                if (this.superviewLayout is WindowContentsLayout winLayout) {
+                    return winLayout.Window;
+                } else {
+                    return this.Superview?.Window;
+                }
+            }
         }
 
         /// <summary>
@@ -480,6 +484,202 @@ namespace Ngs.UI {
         }
 
         internal Ngs.Interop.IUnknown MainPFLayer { get => this.layerEmitter.Root; }
+
+        #endregion
+
+        #region Focus management
+
+        private bool acceptsFocus;
+        private bool deniesFocus;
+
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether this view can have a focus.
+        /// </summary>
+        /// <remarks>
+        /// When this property is set to <c>false</c>, <see cref="Focused" /> is forced to be
+        /// <c>false</c>.
+        /// </remarks>
+        /// <returns><c>true</c> if this view can have a focus; otherwise, <c>false</c>.</returns>
+        protected internal bool AcceptsFocus {
+            get => acceptsFocus;
+            set {
+                if (acceptsFocus == value) {
+                    return;
+                }
+                acceptsFocus = value;
+                if (!value) {
+                    Focused = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether this view and its descendants can have a focus.
+        /// </summary>
+        /// <remarks>
+        /// When this property is set to <c>true</c>, <see cref="HasFocus" /> is forced to be
+        /// <c>false</c>.
+        /// </remarks>
+        /// <returns><c>true</c> if this and its descendants cannot have a focus; otherwise,
+        /// <c>false</c>.</returns>
+        protected internal bool DeniesFocus {
+            get => deniesFocus;
+            set {
+                if (deniesFocus == value) {
+                    return;
+                }
+                deniesFocus = value;
+                if (value) {
+                    HasFocus = false;
+                }
+            }
+        }
+
+        bool HasAncestorDenyingFocus {
+            get {
+                for (var view = this; view != null; view = view.Superview) {
+                    if (view.DeniesFocus) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        internal bool CanGetFocus {
+            get => AcceptsFocus && !HasAncestorDenyingFocus;
+        }
+
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether this view has a focus.
+        /// </summary>
+        /// <remarks>
+        /// Setting this property to <c>true</c> on a view that is not allowed to own a focus
+        /// (because its <see cref="AcceptsFocus" /> property is set to <c>false</c>,
+        /// its descendant's <see cref="DeniesFocus" /> property is set to <c>true</c>, or the view
+        /// is not located in a window) has no effects.
+        /// </remarks>
+        /// <returns><c>true</c> if this view is focused; otherwise, <c>false</c>.</returns>
+        protected bool Focused {
+            get => Window?.FocusedView == this;
+            set {
+                if (value == Focused) {
+                    return;
+                }
+
+                var window = Window;
+                if (window == null) {
+                    // The view is not located in a window - noop
+                    return;
+                }
+
+                if (value) {
+                    if (!CanGetFocus) {
+                        // This view can't get a focus
+                        return;
+                    }
+                    window.FocusedView = this;
+                } else {
+                    window.FocusedView = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether one of this view and its descendants has
+        /// a focus.
+        /// </summary>
+        /// <returns><c>true</c> if one of this view and its descendants is focused; otherwise,
+        /// <c>false</c>.</returns>
+        public bool HasFocus {
+            get {
+                for (var view = Window?.FocusedView; view != null; view = view.Superview) {
+                    if (view == this) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            set {
+                if (value == HasFocus) {
+                    return;
+                }
+
+                if (value) {
+                    if (DefaultFocusView is View view) {
+                        view.Focused = true;
+                    }
+                } else {
+                    Window.FocusedView.Focused = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the default (sub)view to acquire a focus when <see cref="HasFocus" /> was
+        /// set to <c>true</c>.
+        /// </summary>
+        /// <remarks>
+        /// The default implementation traverses the subview tree in the pre-order and returns
+        /// the first encountered view that accepts a focus.
+        /// </remarks>
+        /// <returns>The view to acquire a focus. Must be <c>this</c>, its descendant, or
+        /// <c>null</c>.</returns>
+        protected virtual View DefaultFocusView {
+            get {
+                if (CanGetFocus) {
+                    return this;
+                }
+                if (DeniesFocus) {
+                    return null;
+                }
+                if (Layout is Layout layout) {
+                    foreach (var subview in Layout.Subviews) {
+                        if (subview.DefaultFocusView is View view) {
+                            return view;
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Called when the view receives focus.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnGotFocus(EventArgs e) { }
+
+        /// <summary>
+        /// Called when the view or its descendants receive focus.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnEnter(EventArgs e) { }
+
+        /// <summary>
+        /// Called when the view loses focus.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnLostFocus(EventArgs e) { }
+
+        /// <summary>
+        /// Called when the view or its descendants lose focus.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnLeave(EventArgs e) { }
+
+        #endregion
+
+        #region Mouse/touch event handling
+
+        protected bool EnableMouseTracking { get; set; }
+
+        protected bool DeniesMouseInput { get; set; }
+
+        protected virtual void OnMouseMove(MouseEventArgs e) { }
+        protected virtual void OnMouseDown(MouseButtonEventArgs e) { }
+        protected virtual void OnMouseUp(MouseButtonEventArgs e) { }
+        protected virtual void OnMouseCancel(MouseButtonEventArgs e) { }
 
         #endregion
     }

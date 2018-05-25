@@ -20,7 +20,12 @@ namespace Ngs.UI {
     /// </para>
     /// </remarks>
     internal sealed class WindowContentsLayout : Layout {
+        public Window Window { get; }
         private View rootView;
+
+        public WindowContentsLayout(Window window) {
+            this.Window = window;
+        }
 
         public View ContentsView {
             get => this.rootView;

@@ -99,7 +99,32 @@ namespace Ngs.UI {
             DispatchQueue.InvokeAsync(Update);
         }
 
+        /// <summary>
+        /// Processes the requests to change the currently focused views and ensures the focus
+        /// event handlers are called accordingly.
+        /// </summary>
+        internal void UpdateFocus() {
+            // TODO: This method is not reentrant. Handle the recursive call
+
+            // We must ensure the focus handlers are called in the order expected by components,
+            // even if components were moved between windows.
+            // To ensure the consistent ordering, the update is broken into two phases.
+            foreach (var window in windows.Keys) {
+                window.UpdateFocusEarly();
+            }
+            foreach (var window in windows.Keys) {
+                window.UpdateFocusLate();
+            }
+        }
+
         void Update() {
+            // TODO: `UpdateFocus` has to be called only in the following situations:
+            //       (a) The setter of a property that modifies the focus state directly was
+            //           called and must apply the changes immediately.
+            //       (b) An operation that potentially modifies the view hierarchy was performed.
+            //           The assignment to the `View.Layout` property is an example of this case.
+            UpdateFocus();
+
             needsUpdate = false;
 
             var pfWorkspace = this.EngineWorkspace;
