@@ -137,6 +137,8 @@ The framework guarantees that the order in which these events are observed by ea
 !!! Tip
     A regular expression is an alternative way to describe a state machine.
 
+`OnEnter` and `OnLeave` have the corresponding events `Enter` and `Leave`, respectively, which can be added handlers to by the owner of a view. `OnGotFocus` and `OnLostFocus` are not exposed to the outside because doing so would defeat the encapsulation.
+
 ### Mouse and touch inputs
 
 !!! TODO: Yet to be written about...

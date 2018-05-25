@@ -645,6 +645,16 @@ namespace Ngs.UI {
         }
 
         /// <summary>
+        /// Occurs when the view or its descendants receive focus.
+        /// </summary>
+        public event EventHandler Enter;
+
+        /// <summary>
+        /// Occurs when the view or its descendants lose focus.
+        /// </summary>
+        public event EventHandler Leave;
+
+        /// <summary>
         /// Called when the view receives focus.
         /// </summary>
         /// <param name="e">The event data.</param>
@@ -654,7 +664,9 @@ namespace Ngs.UI {
         /// Called when the view or its descendants receive focus.
         /// </summary>
         /// <param name="e">The event data.</param>
-        protected internal virtual void OnEnter(EventArgs e) { }
+        protected internal virtual void OnEnter(EventArgs e) {
+            Enter?.Invoke(this, e);
+        }
 
         /// <summary>
         /// Called when the view loses focus.
@@ -666,7 +678,9 @@ namespace Ngs.UI {
         /// Called when the view or its descendants lose focus.
         /// </summary>
         /// <param name="e">The event data.</param>
-        protected internal virtual void OnLeave(EventArgs e) { }
+        protected internal virtual void OnLeave(EventArgs e) {
+            Leave?.Invoke(this, e);
+        }
 
         #endregion
 
