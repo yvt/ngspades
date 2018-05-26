@@ -157,9 +157,9 @@ namespace Ngs.Utils {
         /// <param name="v">The vector to transform.</param>
         /// <returns>The transformed vector.</returns>
         public Vector3 TransformPoint(Vector3 v) {
-            var factor = this * new Vector4(v.X, v.Y, v.Z, 1);
+            var factor = this * v.Extend(1);
             factor *= 1 / factor.W;
-            return new Vector3(factor.X, factor.Y, factor.Z);
+            return factor.Truncate();
         }
 
         /// <summary>
@@ -167,10 +167,7 @@ namespace Ngs.Utils {
         /// </summary>
         /// <param name="v">The vector to transform.</param>
         /// <returns>The transformed vector.</returns>
-        public Vector3 TransformVector(Vector3 v) {
-            var factor = this * new Vector4(v.X, v.Y, v.Z, 0);
-            return new Vector3(factor.X, factor.Y, factor.Z);
-        }
+        public Vector3 TransformVector(Vector3 v) => (this * v.Extend(0)).Truncate();
 
         /// <summary>
         /// Returns a flag indicating whether two specified matrices are equal.
