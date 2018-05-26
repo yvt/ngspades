@@ -30,9 +30,65 @@ namespace Ngs.UI {
 
         #region Presentational properties
 
-        public Matrix4x4 Transform { get; set; } = Matrix4x4.Identity;
-        public float Opacity { get; set; } = 1;
+        // TODO: Add `LayoutTransform`
 
+        private Matrix4 renderTransform = Matrix4.Identity;
+        private bool renderTransformIsIdentity = true;
+        private Vector2 renderTransformOrigin = new Vector2(0.5f, 0.5f);
+
+        /// <summary>
+        /// Sets or retrieves the transformation matrix applied to the layout box of this view.
+        /// </summary>
+        /// <returns>The transformation matrix.</returns>
+        /// <seealso cref="RenderTransformOrigin" />
+        public Matrix4 RenderTransform {
+            get => renderTransform;
+            set {
+                if (value == renderTransform) {
+                    return;
+                }
+                renderTransform = value;
+                renderTransformIsIdentity = value == Matrix4.Identity;
+                SetNeedsRender();
+            }
+        }
+
+        /// <summary>
+        /// Sets or retrieves the origin point used to apply <see cref="RenderTransform" />.
+        /// </summary>
+        /// <remarks>
+        /// The default value is <c>(0.5, 0.5)</c> (center of the laout box).
+        /// </remarks>
+        /// <returns>The origin point, specified in relative to the layout box of this view.
+        /// For example, <c>(0, 1)</c> and <c>(0.5, 0.5)</c> indicate the bottom-left corner and
+        /// center of the box, respectively.</returns>
+        public Vector2 RenderTransformOrigin {
+            get => renderTransformOrigin;
+            set {
+                if (value == renderTransformOrigin) {
+                    return;
+                }
+                renderTransformOrigin = value;
+                SetNeedsRender();
+            }
+        }
+
+        private float opacity = 1;
+
+        /// <summary>
+        /// Sets or retrieves the opacity of this view.
+        /// </summary>
+        /// <returns>The opacity specified in range <c>[0, 1]</c>.</returns>
+        public float Opacity {
+            get => opacity;
+            set {
+                if (value == opacity) {
+                    return;
+                }
+                opacity = Math.Clamp(value, 0, 1);
+                SetNeedsRender();
+            }
+        }
         #endregion
 
         #region Layouting
@@ -464,11 +520,24 @@ namespace Ngs.UI {
             emitter.BeginUpdate();
 
             // Emit the main layer (the root of the layer subtree emitted by this view).
+            Matrix4 mainLayerTransform;
+
+            if (renderTransformIsIdentity) {
+                mainLayerTransform = Matrix4.CreateTranslation(Bounds.Min.Extend(0));
+            } else {
+                Vector2 origin = renderTransformOrigin * Bounds.Size; // (wha...!?)
+                mainLayerTransform =
+                    Matrix4.CreateTranslation((Bounds.Min + origin).Extend(0)) *
+                    renderTransform *
+                    Matrix4.CreateTranslation((-origin).Extend(0));
+            }
+
             emitter.BeginLayer(null, new LayerInfo()
             {
-                // TODO: more props
-                Bounds = this.Bounds,
+                // TODO: Add `LayerFlags`?
                 Opacity = this.Opacity,
+                Bounds = new Box2(Vector2.Zero, Bounds.Size),
+                Transform = mainLayerTransform,
             });
 
             // Emit the contents

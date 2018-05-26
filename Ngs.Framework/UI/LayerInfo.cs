@@ -30,9 +30,24 @@ namespace Ngs.UI {
     /// </list>
     /// </remarks>
     public class LayerInfo {
+        /// <summary>
+        /// Sets or retrieves the bounding rectangle of the contents or an intermediate raster
+        /// image.
+        /// </summary>
+        /// <returns>The bounding rectangle of the contents or an intermediate raster image.</returns>
         public Box2 Bounds { get; set; }
 
+        /// <summary>
+        /// Sets or retrieves the opacity of the layer.
+        /// </summary>
+        /// <returns>The opacity specified in range <c>[0, 1]</c></returns>
         public float Opacity { get; set; } = 1;
+
+        /// <summary>
+        /// Sets or retrieves the transformation matrix of the layer.
+        /// </summary>
+        /// <returns>The transformation matrix.</returns>
+        public Matrix4 Transform { get; set; } = Matrix4.Identity;
 
         /// <summary>
         /// Updates the properties of a supplied native layer.
@@ -59,12 +74,18 @@ namespace Ngs.UI {
             if (previous == null) {
                 layer.Bounds = Bounds;
                 layer.Opacity = Opacity;
+                if (Transform != Matrix4.Identity) {
+                    layer.Transform = Transform;
+                }
             } else {
                 if (Bounds != previous.Bounds) {
                     layer.Bounds = Bounds;
                 }
                 if (Opacity != previous.Opacity) {
                     layer.Opacity = Opacity;
+                }
+                if (Transform != previous.Transform) {
+                    layer.Transform = Transform;
                 }
             }
         }
