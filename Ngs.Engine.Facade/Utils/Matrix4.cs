@@ -77,15 +77,13 @@ namespace Ngs.Utils {
         /// <param name="m1">The first matrix.</param>
         /// <param name="m2">The second matrix.</param>
         /// <returns>The addition result.</returns>
-        public static Matrix4 operator +(Matrix4 m1, Matrix4 m2) {
-            return new Matrix4()
-            {
-                C1 = m1.C1 + m2.C1,
-                C2 = m1.C2 + m2.C2,
-                C3 = m1.C3 + m2.C3,
-                C4 = m1.C4 + m2.C4,
-            };
-        }
+        public static Matrix4 operator +(Matrix4 m1, Matrix4 m2) => new Matrix4()
+        {
+            C1 = m1.C1 + m2.C1,
+            C2 = m1.C2 + m2.C2,
+            C3 = m1.C3 + m2.C3,
+            C4 = m1.C4 + m2.C4,
+        };
 
         /// <summary>
         /// Subtracts the second matrix from the first one.
@@ -93,15 +91,13 @@ namespace Ngs.Utils {
         /// <param name="m1">The first matrix.</param>
         /// <param name="m2">The second matrix.</param>
         /// <returns>The subtraction result.</returns>
-        public static Matrix4 operator -(Matrix4 m1, Matrix4 m2) {
-            return new Matrix4()
-            {
-                C1 = m1.C1 - m2.C1,
-                C2 = m1.C2 - m2.C2,
-                C3 = m1.C3 - m2.C3,
-                C4 = m1.C4 - m2.C4,
-            };
-        }
+        public static Matrix4 operator -(Matrix4 m1, Matrix4 m2) => new Matrix4()
+        {
+            C1 = m1.C1 - m2.C1,
+            C2 = m1.C2 - m2.C2,
+            C3 = m1.C3 - m2.C3,
+            C4 = m1.C4 - m2.C4,
+        };
 
         /// <summary>
         /// Multiplies two matricies.
@@ -170,6 +166,28 @@ namespace Ngs.Utils {
         public Vector3 TransformVector(Vector3 v) => (this * v.Extend(0)).Truncate();
 
         /// <summary>
+        /// Converts a <see cref="Matrix4" /> to <see cref="Matrix4x4" />.
+        /// </summary>
+        /// <param name="m">The <see cref="Matrix4" /> value to convert.</param>
+        public static explicit operator Matrix4x4(Matrix4 m) => new Matrix4x4(
+            m.C1.X, m.C2.X, m.C3.X, m.C4.X,
+            m.C1.Y, m.C2.Y, m.C3.Y, m.C4.Y,
+            m.C1.Z, m.C2.Z, m.C3.Z, m.C4.Z,
+            m.C1.Z, m.C2.Z, m.C3.Z, m.C4.Z
+        );
+
+        /// <summary>
+        /// Converts a <see cref="Matrix4x4" /> to <see cref="Matrix4" />.
+        /// </summary>
+        /// <param name="m">The <see cref="Matrix4x4" /> value to convert.</param>
+        public static explicit operator Matrix4(Matrix4x4 m) => new Matrix4(
+            m.M11, m.M12, m.M13, m.M14,
+            m.M21, m.M22, m.M23, m.M24,
+            m.M31, m.M32, m.M33, m.M34,
+            m.M41, m.M42, m.M43, m.M44
+        );
+
+        /// <summary>
         /// Returns a flag indicating whether two specified matrices are equal.
         /// </summary>
         /// <param name="m1">The first matrix.</param>
@@ -211,15 +229,13 @@ namespace Ngs.Utils {
         /// </summary>
         /// <param name="m">The matrix to transpose.</param>
         /// <returns>The transposed matrix.</returns>
-        public static Matrix4 Transpose(Matrix4 m) {
-            return new Matrix4()
-            {
-                C1 = new Vector4(m.C1.X, m.C2.X, m.C3.X, m.C4.X),
-                C2 = new Vector4(m.C1.Y, m.C2.Y, m.C3.Y, m.C4.Y),
-                C3 = new Vector4(m.C1.Z, m.C2.Z, m.C3.Z, m.C4.Z),
-                C4 = new Vector4(m.C1.W, m.C2.W, m.C3.W, m.C4.W),
-            };
-        }
+        public static Matrix4 Transpose(Matrix4 m) => new Matrix4()
+        {
+            C1 = new Vector4(m.C1.X, m.C2.X, m.C3.X, m.C4.X),
+            C2 = new Vector4(m.C1.Y, m.C2.Y, m.C3.Y, m.C4.Y),
+            C3 = new Vector4(m.C1.Z, m.C2.Z, m.C3.Z, m.C4.Z),
+            C4 = new Vector4(m.C1.W, m.C2.W, m.C3.W, m.C4.W),
+        };
 
         /// <summary>
         /// Gets the identity matrix.
@@ -238,14 +254,69 @@ namespace Ngs.Utils {
         /// </summary>
         /// <param name="position">The amount of translation.</param>
         /// <returns>The created translation matrix.</returns>
-        public static Matrix4 CreateTranslation(Vector3 position) {
-            return new Matrix4()
-            {
-                C1 = new Vector4(1, 0, 0, 0),
-                C2 = new Vector4(0, 1, 0, 0),
-                C3 = new Vector4(0, 0, 1, 0),
-                C4 = new Vector4(position.X, position.Y, position.Z, 1),
-            };
+        public static Matrix4 CreateTranslation(Vector3 position) => new Matrix4()
+        {
+            C1 = new Vector4(1, 0, 0, 0),
+            C2 = new Vector4(0, 1, 0, 0),
+            C3 = new Vector4(0, 0, 1, 0),
+            C4 = new Vector4(position.X, position.Y, position.Z, 1),
+        };
+
+        /// <summary>
+        /// Creates a translation matrix with the specified displacement vector.
+        /// </summary>
+        /// <param name="x">The X component of the translation amount.</param>
+        /// <param name="y">The Y component of the translation amount.</param>
+        /// <param name="z">The Z component of the translation amount.</param>
+        /// <returns>The created translation matrix.</returns>
+        public static Matrix4 CreateTranslation(float x, float y, float z) =>
+            CreateTranslation(new Vector3(x, y, z));
+
+        /// <summary>
+        /// Creates a scaling matrix with the specified scaling factors.
+        /// </summary>
+        /// <param name="factor">The scaling factor for each axis.</param>
+        /// <returns>The created scaling matrix.</returns>
+        public static Matrix4 CreateScale(Vector3 factor) => new Matrix4()
+        {
+            C1 = new Vector4(factor.X, 0, 0, 0),
+            C2 = new Vector4(0, factor.Y, 0, 0),
+            C3 = new Vector4(0, 0, factor.Z, 0),
+            C4 = new Vector4(0, 0, 0, 1),
+        };
+
+        /// <summary>
+        /// Creates a scaling matrix with the specified scaling factors.
+        /// </summary>
+        /// <param name="x">The scaling factor for the X axis.</param>
+        /// <param name="y">The scaling factor for the Y axis.</param>
+        /// <param name="z">The scaling factor for the Z axis.</param>
+        /// <returns>The created scaling matrix.</returns>
+        public static Matrix4 CreateScale(float x, float y, float z) =>
+            CreateScale(new Vector3(x, y, z));
+
+        /// <summary>
+        /// Creates a scaling matrix with the specified scaling factor.
+        /// </summary>
+        /// <param name="x">The scaling factor.</param>
+        /// <returns>The created scaling matrix.</returns>
+        public static Matrix4 CreateScale(float x) => CreateScale(new Vector3(x, x, x));
+
+        /// <summary>
+        /// Inverts the specified matrix.
+        /// </summary>
+        /// <param name="m">The matrix to invert.</param>
+        /// <param name="result">The inverted matrix.</param>
+        /// <returns><c>true</c> if the inversion was successfully; otherwise, <c>false</c>.
+        /// </returns>
+        public static bool Invert(Matrix4 m, out Matrix4 result) {
+            if (Matrix4x4.Invert((Matrix4x4)m, out var result4x4)) {
+                result = (Matrix4)result4x4;
+                return true;
+            } else {
+                result = default;
+                return false;
+            }
         }
     }
 }
