@@ -148,7 +148,8 @@ namespace Ngs.Utils {
             m.C1 * v.X + m.C2 * v.Y + m.C3 * v.Z + m.C4 * v.W;
 
         /// <summary>
-        /// Transforms a three-dimensional point represented by a specified vector by this matrix.
+        /// Transforms a three-dimensional point represented by a specified vector by this
+        /// transformation matrix.
         /// </summary>
         /// <param name="v">The vector to transform.</param>
         /// <returns>The transformed vector.</returns>
@@ -159,7 +160,7 @@ namespace Ngs.Utils {
         }
 
         /// <summary>
-        /// Transforms a three-dimensional (directional) vector by this matrix.
+        /// Transforms a three-dimensional (directional) vector by this transformation matrix.
         /// </summary>
         /// <param name="v">The vector to transform.</param>
         /// <returns>The transformed vector.</returns>
