@@ -7,7 +7,7 @@ using System;
 using System.Numerics;
 using Ngs.Utils;
 
-namespace Ngs.UI {
+namespace Ngs.UI.Widgets {
     /// <summary>
     /// A specialized view use to contain zero or more subviews.
     /// </summary>
