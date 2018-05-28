@@ -59,17 +59,31 @@ namespace Ngs.Shell {
             Console.WriteLine("Displaying some window");
 
             this.UIQueue.Invoke(() => {
-                var label = new Ngs.UI.Widgets.Label()
+                var layout = new AbsoluteLayout();
                 {
-                    Text = "Hello!",
-                    TextColor = Rgba.White,
-                    FontConfig = CreateFontConfig(),
+                    var label = new Ngs.UI.Widgets.Label()
+                    {
+                        Text = "Hello!",
+                        TextColor = Rgba.White,
+                        FontConfig = CreateFontConfig(),
+                    };
+                    label.ParagraphStyle.CharacterStyle.FontSize = 72;
+
+                    var item = layout.Items.Add(label);
+                    item.Left = 10;
+                    item.Top = 10;
+                    item.Right = 10;
+                    item.Bottom = 10;
+                }
+
+                var container = new Ngs.UI.Widgets.Container()
+                {
+                    Layout = layout,
                 };
-                label.ParagraphStyle.CharacterStyle.FontSize = 72;
 
                 var window = new Window()
                 {
-                    ContentsView = label,
+                    ContentsView = container,
                 };
 
                 window.Close += (e, args) => {
