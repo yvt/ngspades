@@ -72,6 +72,20 @@ namespace Ngs.Shell {
                     var item = layout.Items.Add(label);
                     item.Left = 10;
                     item.Top = 10;
+                }
+
+                {
+                    var label = new Ngs.UI.Widgets.Label()
+                    {
+                        Text = "This text is displayed using a label widget.",
+                        TextColor = Rgba.White,
+                        FontConfig = CreateFontConfig(),
+                    };
+                    label.ParagraphStyle.CharacterStyle.FontSize = 16;
+
+                    var item = layout.Items.Add(label);
+                    item.Left = 10;
+                    item.Top = 80;
                     item.Right = 10;
                     item.Bottom = 10;
                 }

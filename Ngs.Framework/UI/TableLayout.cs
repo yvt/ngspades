@@ -113,6 +113,16 @@ namespace Ngs.UI {
             /// Implements <see cref="LayoutItemCollection&lt;T&gt;.OnUpdate" />.
             /// </summary>
             protected override void OnUpdate() => layout.InvalidateLayout();
+
+            /// <summary>
+            /// Implements <see cref="LayoutItemCollection&lt;T&gt;.OnViewBeingAdded" />.
+            /// </summary>
+            protected override void OnViewBeingAdded(View view) => layout.AttachSubview(view);
+
+            /// <summary>
+            /// Implements <see cref="LayoutItemCollection&lt;T&gt;.OnViewBeingRemoved" />.
+            /// </summary>
+            protected override void OnViewBeingRemoved(View view) => layout.DetachSubview(view);
         }
 
         /// <summary>

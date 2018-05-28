@@ -25,6 +25,18 @@ namespace Ngs.UI.Utils {
         protected abstract void OnUpdate();
 
         /// <summary>
+        /// Called before a view is added to this collection.
+        /// </summary>
+        /// <param name="view">The view that is being added.</param>
+        protected abstract void OnViewBeingAdded(View view);
+
+        /// <summary>
+        /// Called before a view is removed from this collection.
+        /// </summary>
+        /// <param name="view">The view that is being removed.</param>
+        protected abstract void OnViewBeingRemoved(View view);
+
+        /// <summary>
         /// Requests to create a new instance of the item type.
         /// </summary>
         protected abstract T CreateItem(View view);
@@ -66,6 +78,8 @@ namespace Ngs.UI.Utils {
                 throw new ArgumentNullException(nameof(view));
             }
 
+            OnViewBeingAdded(view);
+
             var item = CreateItem(view);
             items.Add(view, item);
 
@@ -83,9 +97,11 @@ namespace Ngs.UI.Utils {
         /// <returns><c>true</c> if the view is successfully found and remove; otherwise,
         /// <c>false</c>.</returns>
         public bool Remove(View view) {
-            if (!items.Remove(view)) {
+            if (!items.ContainsKey(view)) {
                 return false;
             }
+            OnViewBeingRemoved(view);
+            items.Remove(view);
             OnUpdate();
             return true;
         }

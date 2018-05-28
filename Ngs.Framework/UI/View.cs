@@ -227,6 +227,9 @@ namespace Ngs.UI {
         internal void Measure() {
             var measurement = Measurement.Default;
             if (this.layout is Layout layout) {
+                foreach (var subview in layout.Subviews) {
+                    subview.Measure();
+                }
                 measurement = layout.Measure();
             }
 
@@ -469,7 +472,7 @@ namespace Ngs.UI {
             /// <exception name="InvalidOperationException">The specified view is not a subview of
             /// the current view.</exception>
             public void EmitSubview(View view) {
-                if (view.Superview != view) {
+                if (view.Superview != this.view) {
                     throw new InvalidOperationException("The view is not a subview of the current view.");
                 }
                 // TODO: Re-render only if necessary
