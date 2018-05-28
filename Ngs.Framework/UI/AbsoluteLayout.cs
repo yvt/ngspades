@@ -247,8 +247,10 @@ namespace Ngs.UI {
                         itemSize.X = size.X - item.Left.Value - item.Right.Value;
                     }
                     itemPosition.X = item.Left.Value;
-                } else {
+                } else if (item.Right.HasValue) {
                     itemPosition.X = size.X - itemSize.X - item.Right.Value;
+                } else {
+                    itemPosition.X = (size.X - itemSize.X) * 0.5f;
                 }
 
                 if (item.Top.HasValue) {
@@ -256,8 +258,10 @@ namespace Ngs.UI {
                         itemSize.Y = size.Y - item.Top.Value - item.Bottom.Value;
                     }
                     itemPosition.Y = item.Top.Value;
+                } else if (item.Bottom.HasValue) {
+                    itemPosition.Y = size.Y - itemSize.Y - item.Bottom.Value;
                 } else {
-                    itemPosition.Y = size.Y - itemSize.X - item.Bottom.Value;
+                    itemPosition.Y = (size.Y - itemSize.Y) * 0.5f;
                 }
 
                 context.ArrangeSubview(item.View, new Box2(itemPosition, itemPosition + itemSize));
