@@ -858,7 +858,7 @@ namespace Ngs.UI {
         /// <returns><c>true</c> if the point is within the tracking region; otherwise,
         /// <c>false</c>.</returns>
         public virtual bool MouseHitTestLocal(Vector2 point) =>
-            point.X >= 0 && point.Y >= 0 && point.Y < Bounds.Width && point.Y < Bounds.Height;
+            point.X >= 0 && point.Y >= 0 && point.X < Bounds.Width && point.Y < Bounds.Height;
 
         /// <summary></summary>
         /// <param name="point">A point in the view's local coordinate.</param>
