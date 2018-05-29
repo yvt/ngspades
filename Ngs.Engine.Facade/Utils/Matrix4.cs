@@ -174,7 +174,7 @@ namespace Ngs.Utils {
             m.C1.X, m.C2.X, m.C3.X, m.C4.X,
             m.C1.Y, m.C2.Y, m.C3.Y, m.C4.Y,
             m.C1.Z, m.C2.Z, m.C3.Z, m.C4.Z,
-            m.C1.Z, m.C2.Z, m.C3.Z, m.C4.Z
+            m.C1.W, m.C2.W, m.C3.W, m.C4.W
         );
 
         /// <summary>
