@@ -4,19 +4,18 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Security;
 using Ngs.Utils;
+using Ngs.UI.Utils;
 
 namespace Ngs.UI {
     /// <summary>
     /// A functional and presentational unit of a graphical user interface.
     /// </summary>
     public class View {
-
-        // TODO
-
         private Workspace workspace;
 
         /// <summary>
@@ -89,6 +88,95 @@ namespace Ngs.UI {
                 SetNeedsRender();
             }
         }
+        #endregion
+
+        #region Coordinate space
+
+        /// <summary>
+        /// Retrieves the transformation matrix that can be used to transform points from this
+        /// view's local coordinate space to that of the superview.
+        /// </summary>
+        /// <remarks>
+        /// The calculation of this property depends on <see cref="Bounds" />. This means that the
+        /// returned value is not valid before layouting is done.
+        /// </remarks>
+        /// <returns>The transformation matrix.</returns>
+        public Matrix4 LocalTransform {
+            get {
+                Matrix4 m = MainPFLayerTransform;
+                // TODO: Handle `FlattenContents`
+                //       m = m * Matrix4.CreateScale(1, 1, 0);
+                return m;
+            }
+        }
+
+        Matrix4 MainPFLayerTransform {
+            get {
+                Matrix4 m;
+                if (renderTransformIsIdentity) {
+                    m = Matrix4.CreateTranslation(Bounds.Min.Extend(0));
+                } else {
+                    Vector2 origin = renderTransformOrigin * Bounds.Size; // (wha...!?)
+                    m =
+                        Matrix4.CreateTranslation((Bounds.Min + origin).Extend(0)) *
+                        renderTransform *
+                        Matrix4.CreateTranslation((-origin).Extend(0));
+                }
+                return m;
+            }
+        }
+
+        /// <summary>
+        /// Calculates the transformation matrix that can be used to transform points from the
+        /// view's local coordinate space to the containing window's client coordinate space.
+        /// </summary>
+        /// <remarks>
+        /// The returned matrix projects all points on the plane <c>z = 0</c> (because window is 2D).
+        /// </remarks>
+        /// <returns>The calculated transformation matrix. <c>null</c> if this view does not
+        /// belong to a window.</returns>
+        public Matrix4? GetLocalToWindowClientTransform() {
+            if (this.Superview?.GetLocalToWindowClientTransform() is Matrix4 m) {
+                return m * this.LocalTransform;
+            } else if (IsWindowContentView) {
+                return Matrix4.CreateScale(1, 1, 0) * this.LocalTransform;
+            } else {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Calculates the transformation matrix that can be used to transform points from the
+        /// containing window's client coordinate space to the view's local coordinate space.
+        /// </summary>
+        /// <remarks>
+        /// <para>The returned transformation matrix disregards the Z component of the input
+        /// (because window is 2D) and projects all points on the plane <c>z = 0</c>.</para>
+        /// <para>This method returns an incorrect value if the transform of the opposite direction
+        /// is degenerate, i.e., more than one local points map to a single point on a window.</para>
+        /// </remarks>
+        /// <returns>The calculated transformation matrix. <c>null</c> if this view does not
+        /// belong to a window.</returns>
+        public Matrix3? GetWindowClientToLocalPlaneTransform() {
+            if (this.GetLocalToWindowClientTransform() is Matrix4 m) {
+                // Drop the Z component
+                Matrix3 xywM = new Matrix3(
+                    m.C1.X, m.C2.X, m.C4.X,
+                    m.C1.Y, m.C2.Y, m.C4.Y,
+                    m.C1.W, m.C2.W, m.C4.W
+                );
+
+                if (!Matrix3.Invert(xywM, out xywM)) {
+                    // Singular matrix - returns a dummy value
+                    return Matrix3.Identity;
+                }
+
+                return xywM;
+            } else {
+                return null;
+            }
+        }
+
         #endregion
 
         #region Layouting
@@ -191,6 +279,8 @@ namespace Ngs.UI {
                 }
             }
         }
+
+        internal bool IsWindowContentView { get => this.superviewLayout is WindowContentsLayout; }
 
         /// <summary>
         /// Marks that some of the inherent layout properties might have changed.
@@ -523,24 +613,12 @@ namespace Ngs.UI {
             emitter.BeginUpdate();
 
             // Emit the main layer (the root of the layer subtree emitted by this view).
-            Matrix4 mainLayerTransform;
-
-            if (renderTransformIsIdentity) {
-                mainLayerTransform = Matrix4.CreateTranslation(Bounds.Min.Extend(0));
-            } else {
-                Vector2 origin = renderTransformOrigin * Bounds.Size; // (wha...!?)
-                mainLayerTransform =
-                    Matrix4.CreateTranslation((Bounds.Min + origin).Extend(0)) *
-                    renderTransform *
-                    Matrix4.CreateTranslation((-origin).Extend(0));
-            }
-
             emitter.BeginLayer(null, new LayerInfo()
             {
                 // TODO: Add `LayerFlags`?
                 Opacity = this.Opacity,
                 Bounds = new Box2(Vector2.Zero, Bounds.Size),
-                Transform = mainLayerTransform,
+                Transform = MainPFLayerTransform,
             });
 
             // Emit the contents
@@ -758,14 +836,203 @@ namespace Ngs.UI {
 
         #region Mouse/touch event handling
 
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether this view can receive mouse events.
+        /// </summary>
+        /// <returns><c>true</c> if this view can receive mouse events; otherwise,
+        /// <c>false</c>.</returns>
         protected bool EnableMouseTracking { get; set; }
 
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether this view and its descendants can receive mouse events.
+        /// </summary>
+        /// <returns><c>true</c> if this and its descendants cannot receive mouse events; otherwise,
+        /// <c>false</c>.</returns>
         protected bool DeniesMouseInput { get; set; }
 
-        protected virtual void OnMouseMove(MouseEventArgs e) { }
-        protected virtual void OnMouseDown(MouseButtonEventArgs e) { }
-        protected virtual void OnMouseUp(MouseButtonEventArgs e) { }
-        protected virtual void OnMouseCancel(MouseButtonEventArgs e) { }
+        /// <summary>
+        /// Determines whether a specified point is within the tracking region of this view.
+        /// </summary>
+        /// <param name="point">A <see cref="Vector2" /> value representing a point, specified in
+        /// the view's local coordinate.</param>
+        /// <returns><c>true</c> if the point is within the tracking region; otherwise,
+        /// <c>false</c>.</returns>
+        public virtual bool MouseHitTestLocal(Vector2 point) =>
+            point.X >= 0 && point.Y >= 0 && point.Y < Bounds.Width && point.Y < Bounds.Height;
+
+        /// <summary></summary>
+        /// <param name="point">A point in the view's local coordinate.</param>
+        /// <returns>The view or <c>null</c> if none was found.</returns>
+        internal View MouseHitTest(Vector2 point) {
+            if (DeniesMouseInput) {
+                return null;
+            }
+
+            if (EnableMouseTracking) {
+                // This is costly (O(n²) in worst case where n is the number of views)
+                // but easy to maintain
+                // FIXME: Do something about this?
+                if (this.GetWindowClientToLocalPlaneTransform() is Matrix3 m) {
+                    Vector2 projected = m.TransformPoint(point);
+                    if (MouseHitTestLocal(projected)) {
+                        return this;
+                    }
+                    // TODO: Handle `FlattenContents`
+                }
+            }
+
+            View result = null;
+            if (Layout is Layout layout) {
+                foreach (var subview in layout.Subviews) {
+                    result = subview.MouseHitTest(point) ?? result;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Represents a mouse capture state.
+        /// </summary>
+        internal class MouseCapture : IDisposable {
+            Input.Point lastPoint;
+            List<Input.MouseButton> pressedButtons = new List<Input.MouseButton>();
+
+            public View View { get; private set; }
+
+            // I wish I could use `pub(super)` here
+            internal MouseCapture(View view) {
+                this.View = view;
+            }
+
+            void AddButton(Input.MouseButton button) {
+                this.pressedButtons.Add(button);
+            }
+
+            void RemoveButton(Input.MouseButton button) {
+                var i = this.pressedButtons.IndexOf(button);
+                if (i < 0) {
+                    throw new InvalidOperationException();
+                }
+                this.pressedButtons.SwapAndRemoveAt(i);
+            }
+
+            [DebuggerNonUserCode]
+            public void MouseDown(Input.MouseButtonEventArgs e) {
+                AddButton(e.Button);
+                this.lastPoint = e.Position;
+                try {
+                    this.View.OnMouseDown(e);
+                } catch (Exception ex) {
+                    this.View.workspace.OnUnhandledException(ex);
+                }
+            }
+
+            [DebuggerNonUserCode]
+            public void MouseMove(Input.MouseEventArgs e) {
+                try {
+                    this.View.OnMouseMove(e);
+                } catch (Exception ex) {
+                    this.View.workspace.OnUnhandledException(ex);
+                }
+            }
+
+            [DebuggerNonUserCode]
+            public void MouseUp(Input.MouseButtonEventArgs e) {
+                RemoveButton(e.Button);
+                try {
+                    this.View.OnMouseUp(e);
+                } catch (Exception ex) {
+                    this.View.workspace.OnUnhandledException(ex);
+                }
+            }
+
+            [DebuggerNonUserCode]
+            public void MouseCancel(Input.MouseButtonEventArgs e) {
+                RemoveButton(e.Button);
+                try {
+                    this.View.OnMouseCancel(e);
+                } catch (Exception ex) {
+                    this.View.workspace.OnUnhandledException(ex);
+                }
+            }
+
+            /// <summary>
+            /// Releases the mouse capture. All mouse presses are cancelled.
+            /// </summary>
+            [DebuggerNonUserCode]
+            public void Dispose() {
+                // Cancel all mouse button inputs
+                try {
+                    foreach (var button in this.pressedButtons) {
+                        this.View.OnMouseCancel(new Input.MouseButtonEventArgs(this.lastPoint, button));
+                    }
+                } catch (Exception ex) {
+                    this.View.workspace.OnUnhandledException(ex);
+                }
+
+                this.View.currentMouseCapturingDevice = null;
+
+                this.View = null;
+                this.lastPoint = null;
+                this.pressedButtons = null;
+            }
+        }
+
+        Input.MouseDevice currentMouseCapturingDevice;
+
+        /// <summary>
+        /// Attempts to mouse-capture this view.
+        /// </summary>
+        /// <remarks>
+        /// The caller must call <see cref="MouseCapture.Dispose" /> to release the mouse capture.
+        /// </remarks>
+        /// <param name="device">The mouse device attempting to capture this view.</param>
+        /// <returns>A mouse capture state object, or <c>null</c> on failure, which happens if
+        /// another mouse device already has a mouse capture on this view.</returns>
+        internal MouseCapture AcquireMouseCapture(Input.MouseDevice device) {
+            if (currentMouseCapturingDevice == null) {
+                currentMouseCapturingDevice = device;
+                return new MouseCapture(this);
+            } else {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Called when the mouse pointer moves in this view.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected virtual void OnMouseMove(Input.MouseEventArgs e) { }
+
+        /// <summary>
+        /// Called when a mouse button is pressed in this view.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected virtual void OnMouseDown(Input.MouseButtonEventArgs e) { }
+
+        /// <summary>
+        /// Called when a mouse button is released in this view.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected virtual void OnMouseUp(Input.MouseButtonEventArgs e) { }
+
+        /// <summary>
+        /// Called when a mouse button input was disrupted for an unknown reason.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected virtual void OnMouseCancel(Input.MouseButtonEventArgs e) { }
+
+        /// <summary>
+        /// Called when the mouse pointer enters to this view.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnMouseEnter(EventArgs e) { }
+
+        /// <summary>
+        /// Called when the mouse pointer leaves from this view.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnMouseLeave(EventArgs e) { }
 
         #endregion
     }

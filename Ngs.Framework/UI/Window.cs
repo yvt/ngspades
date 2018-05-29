@@ -49,6 +49,8 @@ namespace Ngs.UI {
 
             this.dummyLayout = new WindowContentsLayout(this);
 
+            this.systemMouseWindow = Input.SystemMouseDevice.Instance.CreateManagerForWindow(this);
+
             // Provide a default value for `Title`
             this.title = Application.Instance.GetType().Assembly.GetName().Name;
         }
@@ -180,6 +182,14 @@ namespace Ngs.UI {
             this.materialized = true;
         }
 
+        internal View MouseHitTest(Vector2 point) {
+            if (this.ContentsView is View view) {
+                return view.MouseHitTest(point);
+            } else {
+                return null;
+            }
+        }
+
         #region Focus management
 
         /// <summary>
@@ -281,6 +291,75 @@ namespace Ngs.UI {
 
         #endregion
 
+        #region Mouse input handling
+
+        private Input.SystemMouseDevice.WindowManager systemMouseWindow;
+
+        // FIXME: This part is very similar to "Focus management".
+        //        (Except that this one is more fragile against structural changes).
+        //        Should be deduped!
+        View hotView;
+
+        View HotView {
+            get => hotView;
+            set {
+                if (value == hotView) {
+                    return;
+                }
+
+                // Compute the path
+                var path = new List<View>();
+                var newPath = new List<View>();
+                if (value != null) {
+                    for (var view = value; view != null; view = view.Superview) {
+                        newPath.Add(view);
+                    }
+                    newPath.Reverse();
+                }
+                if (hotView != null) {
+                    for (var view = hotView; view != null; view = view.Superview) {
+                        path.Add(view);
+                    }
+                    path.Reverse();
+                }
+
+                // Compute the common prefix length
+                int commonPrefixLength = 0;
+                for (int limit = Math.Min(path.Count, newPath.Count);
+                    commonPrefixLength < limit; ++commonPrefixLength) {
+                    if (path[commonPrefixLength] != newPath[commonPrefixLength]) {
+                        break;
+                    }
+                }
+
+                // Call handlers
+                for (int i = path.Count; i > commonPrefixLength; --i) {
+                    path[i - 1].OnMouseLeave(EventArgs.Empty);
+                }
+                for (int i = commonPrefixLength; i < newPath.Count; ++i) {
+                    newPath[i].OnMouseEnter(EventArgs.Empty);
+                }
+
+                hotView = value;
+            }
+        }
+        internal void UpdateMouse() {
+            this.systemMouseWindow.Update();
+            if (hotView?.Window != this) {
+                hotView = null;
+            }
+        }
+
+        void UpdateHotTracking(MousePosition position) {
+            HotView = MouseHitTest(position.Client);
+        }
+
+        void HandleMouseLeave() {
+            HotView = null;
+        }
+
+        #endregion
+
         sealed class Listener : Ngs.Interop.ComClass<Listener>, INgsPFWindowListener {
             // Break the circular reference that cannot be handled by GC
             // (`Window` -> native `Window` -> `Listener` -> `Window`)
@@ -338,15 +417,29 @@ namespace Ngs.UI {
             }
 
             void INgsPFWindowListener.MouseButton(MousePosition position, byte button, bool pressed) {
-                // TODO: Handle mouse events
+                InvokeOnWindow((window) => {
+                    window.systemMouseWindow.HandleMouseButton(position, button, pressed);
+
+                    if (!window.systemMouseWindow.HasAnyButtonsPressed) {
+                        window.UpdateHotTracking(position);
+                    }
+                });
             }
 
             void INgsPFWindowListener.MouseLeave() {
-                // TODO: Handle mouse events
+                InvokeOnWindow((window) => {
+                    window.HandleMouseLeave();
+                });
             }
 
             void INgsPFWindowListener.MouseMotion(MousePosition position) {
-                // TODO: Handle mouse events
+                InvokeOnWindow((window) => {
+                    window.systemMouseWindow.HandleMouseMotion(position);
+
+                    if (!window.systemMouseWindow.HasAnyButtonsPressed) {
+                        window.UpdateHotTracking(position);
+                    }
+                });
             }
 
             void INgsPFWindowListener.Moved(Vector2 position) {

@@ -106,6 +106,9 @@ namespace Ngs.UI {
         internal void UpdateFocus() {
             // TODO: This method is not reentrant. Handle the recursive call
 
+            // TODO: Should handle the window destruction.
+            //       Otherwise some views may be never unfocused!
+
             // We must ensure the focus handlers are called in the order expected by components,
             // even if components were moved between windows.
             // To ensure the consistent ordering, the update is broken into two phases.
@@ -124,6 +127,12 @@ namespace Ngs.UI {
             //       (b) An operation that potentially modifies the view hierarchy was performed.
             //           The assignment to the `View.Layout` property is an example of this case.
             UpdateFocus();
+
+            // TODO: This is similar to above; `UpdateMouse` has to be called only in the above
+            //       situations.
+            foreach (var window in windows.Keys) {
+                window.UpdateMouse();
+            }
 
             needsUpdate = false;
 
