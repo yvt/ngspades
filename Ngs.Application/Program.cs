@@ -45,6 +45,54 @@ namespace Ngs.Shell {
             return config;
         }
 
+        sealed class LinkLabel : Ngs.UI.Widgets.Label {
+            bool hot, pressed;
+
+            public LinkLabel() {
+                EnableMouseTracking = true;
+                UpdateTextColor();
+            }
+
+            void UpdateTextColor() {
+                if (pressed) {
+                    TextColor = new Rgba(1, 0, 0, 1);
+                } else if (hot) {
+                    TextColor = new Rgba(1, 0.5f, 0, 1);
+                } else {
+                    TextColor = new Rgba(0, 1, 1, 1);
+                }
+            }
+
+            protected override void OnMouseDown(Ngs.UI.Input.MouseButtonEventArgs e) {
+                if (e.Button.Type == Ngs.UI.Input.MouseButtonType.Left) {
+                    pressed = true;
+                    UpdateTextColor();
+                }
+            }
+            protected override void OnMouseUp(Ngs.UI.Input.MouseButtonEventArgs e) {
+                if (e.Button.Type == Ngs.UI.Input.MouseButtonType.Left) {
+                    pressed = false;
+                    UpdateTextColor();
+                }
+            }
+            protected override void OnMouseCancel(Ngs.UI.Input.MouseButtonEventArgs e) {
+                if (e.Button.Type == Ngs.UI.Input.MouseButtonType.Left) {
+                    pressed = false;
+                    UpdateTextColor();
+                }
+            }
+
+            protected override void OnMouseEnter(EventArgs e) {
+                hot = true;
+                UpdateTextColor();
+            }
+
+            protected override void OnMouseLeave(EventArgs e) {
+                hot = false;
+                UpdateTextColor();
+            }
+        }
+
         sealed class MainView : View {
             protected override void RenderContents(RenderContext context) {
                 context.EmitLayer(new SolidColorLayerInfo()
@@ -75,10 +123,9 @@ namespace Ngs.Shell {
                 }
 
                 {
-                    var label = new Ngs.UI.Widgets.Label()
+                    var label = new LinkLabel()
                     {
                         Text = "This text is displayed using a label widget.",
-                        TextColor = Rgba.White,
                         FontConfig = CreateFontConfig(),
                     };
                     label.ParagraphStyle.CharacterStyle.FontSize = 16;
