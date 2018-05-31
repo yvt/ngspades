@@ -17,8 +17,10 @@ namespace Ngs.UI.Utils {
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class ResizableList<T> : IReadOnlyList<T> {
         readonly List<T> items = new List<T>();
+        readonly int maxCount;
 
-        internal ResizableList() {
+        internal ResizableList(int maxCount) {
+            this.maxCount = maxCount;
         }
 
         /// <summary>
@@ -43,10 +45,15 @@ namespace Ngs.UI.Utils {
         /// <summary>
         /// Sets and retrieves the number of items in this collection.
         /// </summary>
+        /// <exception name="ArgumentOutOfRangeException"><c>value</c> exceeds an
+        /// implementation-defined limit, or is less than zero.</exception>
         /// <returns>The number of items in this collection.</returns>
         public int Count {
             get => items.Count;
             set {
+                if (value < 0 || value > maxCount) {
+                    throw new ArgumentOutOfRangeException();
+                }
                 bool updated = value != items.Count;
                 while (value > items.Count) {
                     items.Add(CreateItem());
