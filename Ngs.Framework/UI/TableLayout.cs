@@ -380,99 +380,6 @@ namespace Ngs.UI {
         Line[] columnLines;
 
         /// <summary>
-        /// A special-purpose type representing a pair of a real value and an integer called "rank".
-        /// </summary>
-        /// <remarks>
-        /// A <c>RankedReal</c> represents <c>value * (Ω ** rank)</c> where <c>Ω</c> represents an
-        /// extremely large value.
-        /// </remarks>
-        readonly struct RankedFloat {
-            readonly float value;
-            readonly int rank;
-
-            public RankedFloat(float value, int rank = 0) {
-                if (value == 0) {
-                    rank = -4;
-                }
-
-                value *= MathF.Pow(100, rank);
-                rank = 0;
-
-                this.value = value;
-                this.rank = rank;
-            }
-
-            public override string ToString() => string.Format("{0,4}+[{1,2}]", value, rank);
-
-            public float FloatValue {
-                get {
-                    if (rank == 0) {
-                        return value;
-                    } else if (rank < 0) {
-                        return 0;
-                    } else {
-                        return value * float.PositiveInfinity;
-                    }
-                }
-            }
-
-            public bool IsNegative => value < 0;
-            public bool IsPositive => value > 0;
-            public bool IsZero => value == 0;
-
-            public static readonly RankedFloat Zero = default;
-
-            public static readonly RankedFloat Infinity =
-                new RankedFloat(float.PositiveInfinity, int.MaxValue);
-
-            public static RankedFloat operator +(RankedFloat a, RankedFloat b) {
-                if (a.rank > b.rank) {
-                    return a;
-                } else if (a.rank < b.rank) {
-                    return b;
-                } else {
-                    return new RankedFloat(a.value + b.value, a.rank);
-                }
-            }
-
-            public static RankedFloat operator -(RankedFloat a, RankedFloat b) {
-                if (a.rank > b.rank) {
-                    return a;
-                } else if (a.rank < b.rank) {
-                    return -b;
-                } else {
-                    return new RankedFloat(a.value - b.value, a.rank);
-                }
-            }
-
-            public static RankedFloat operator *(RankedFloat a, RankedFloat b) =>
-                new RankedFloat(a.value * b.value, a.rank + b.rank);
-
-            public static RankedFloat operator /(RankedFloat a, RankedFloat b) =>
-                new RankedFloat(a.value / b.value, a.rank - b.rank);
-
-            public static RankedFloat operator -(RankedFloat a) =>
-                new RankedFloat(-a.value, a.rank);
-
-            public static bool operator <(RankedFloat a, RankedFloat b) {
-                int minRank = Math.Min(a.rank, b.rank);
-                return new RankedFloat(a.value, a.rank - minRank).FloatValue
-                    < new RankedFloat(b.value, b.rank - minRank).FloatValue;
-            }
-
-            public static bool operator >(RankedFloat a, RankedFloat b) {
-                int minRank = Math.Min(a.rank, b.rank);
-                return new RankedFloat(a.value, a.rank - minRank).FloatValue
-                    > new RankedFloat(b.value, b.rank - minRank).FloatValue;
-            }
-        }
-
-        const int RANK_HARD_LIMIT = 4;
-        const int RANK_LAYOUT = 3;
-        const int RANK_VIEW = 2;
-        const int RANK_DEFAULT = 1;
-
-        /// <summary>
         /// Calculates the optimal values for <c>rowLines[n].size</c> and
         /// <c>columnLines[n].size</c> by applying a linear programming algorithm.
         /// </summary>
@@ -586,7 +493,7 @@ namespace Ngs.UI {
             int numVars = indexGoal;
             int numConstraints = cellCount + itemCount * 2 + maxConstrainedItemCount + (totalWidth.HasValue ? 1 : 0);
 
-            RankedFloat[] tableau = new RankedFloat[(numConstraints + 1) * (numVars + 1)];
+            double[] tableau = new double[(numConstraints + 1) * (numVars + 1)];
             var objectiveRow = tableau.AsSpan(0, numVars + 1);
             int rowConstraint1;
             int rowConstraint2;
@@ -599,25 +506,30 @@ namespace Ngs.UI {
                 {
                     var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
 
+                    const double OMEGA = 16384;
+                    const double RANK_HARD_LIMIT = OMEGA * OMEGA * OMEGA;
+                    const double RANK_LAYOUT = OMEGA * OMEGA;
+                    const double RANK_VIEW = OMEGA;
+
                     int index = 0;
-                    row[index++] = new RankedFloat(1);
+                    row[index++] = 1;
                     index += cellCount; // wᵢ
                     index += itemCount + maxConstrainedItemCount; // slackMinᵢ, slackMaxᵢ
                     // errorMinᵢ
                     for (int i = 0; i < itemCount; ++i) {
-                        row[index++] = new RankedFloat(1, RANK_HARD_LIMIT);
+                        row[index++] = RANK_HARD_LIMIT;
                     }
                     // W⁺ₙ, W⁻ₙ
                     for (int pm = 0; pm < 2; ++pm) {
                         for (int i = 0; i < cellCount; ++i) {
                             if (lines[i].preferredSize is float preferredSizeVal) {
                                 if (preferredSizeVal == 0) {
-                                    row[index++] = new RankedFloat(1, RANK_HARD_LIMIT);
+                                    row[index++] = RANK_HARD_LIMIT;
                                 } else {
-                                    row[index++] = new RankedFloat(1 / preferredSizeVal, RANK_LAYOUT);
+                                    row[index++] = RANK_LAYOUT / preferredSizeVal;
                                 }
                             } else {
-                                row[index++] = new RankedFloat(1, RANK_DEFAULT);
+                                row[index++] = 1;
                             }
                         }
                         foreach (var item in items) {
@@ -625,15 +537,15 @@ namespace Ngs.UI {
                                 .PreferredSize.GetElementAt(axis);
                             if (preferredSizeVal == 0) {
                                 // FIXME: I started to feel this is a bad idea
-                                row[index++] = new RankedFloat(1, RANK_HARD_LIMIT);
+                                row[index++] = RANK_HARD_LIMIT;
                             } else {
-                                row[index++] = new RankedFloat(1 / preferredSizeVal, RANK_VIEW);
+                                row[index++] = RANK_VIEW / preferredSizeVal;
                             }
                         }
                     }
                     // errorTotal
                     if (totalWidth is float totalWidthVal2) {
-                        row[index++] = new RankedFloat(1, RANK_HARD_LIMIT);
+                        row[index++] = RANK_HARD_LIMIT;
                     }
                 }
 
@@ -646,10 +558,10 @@ namespace Ngs.UI {
 
                         (int start, int count) = item.ColumnRowRange(axis);
 
-                        row.Slice(start + indexWidth, count).Fill(new RankedFloat(1));
-                        row[indexSlackMin + itemIndex] = new RankedFloat(-1);
-                        row[indexErrorMin + itemIndex] = new RankedFloat(1);
-                        row[indexGoal] = new RankedFloat(item.View.Measurement.MinimumSize.GetElementAt(axis));
+                        row.Slice(start + indexWidth, count).Fill(1);
+                        row[indexSlackMin + itemIndex] = -1;
+                        row[indexErrorMin + itemIndex] = 1;
+                        row[indexGoal] = item.View.Measurement.MinimumSize.GetElementAt(axis);
 
                         itemIndex += 1;
                     }
@@ -668,9 +580,9 @@ namespace Ngs.UI {
 
                             (int start, int count) = item.ColumnRowRange(axis);
 
-                            row.Slice(start + indexWidth, count).Fill(new RankedFloat(1));
-                            row[indexSlackMax + itemIndex] = new RankedFloat(1);
-                            row[indexGoal] = new RankedFloat(item.View.Measurement.MaximumSize.GetElementAt(axis));
+                            row.Slice(start + indexWidth, count).Fill(1);
+                            row[indexSlackMax + itemIndex] = 1;
+                            row[indexGoal] = item.View.Measurement.MaximumSize.GetElementAt(axis);
                             itemIndex += 1;
                         }
                     }
@@ -683,19 +595,19 @@ namespace Ngs.UI {
                 if (totalWidth is float totalWidthVal) {
                     var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
 
-                    row.Slice(indexWidth, cellCount).Fill(new RankedFloat(1));
-                    row[indexErrorTotal] = new RankedFloat(1);
-                    row[indexGoal] = new RankedFloat(totalWidthVal);
+                    row.Slice(indexWidth, cellCount).Fill(1);
+                    row[indexErrorTotal] = 1;
+                    row[indexGoal] = totalWidthVal;
                 }
 
                 // Constraint 5 (cell)
                 rowConstraint5 = rowIndex;
                 for (int i = 0; i < cellCount; ++i) {
                     var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
-                    row[indexWidth + i] = new RankedFloat(1);
-                    row[indexResiduePos + i] = new RankedFloat(-1);
-                    row[indexResidueNeg + i] = new RankedFloat(1);
-                    row[indexGoal] = new RankedFloat(lines[i].preferredSize ?? 0);
+                    row[indexWidth + i] = 1;
+                    row[indexResiduePos + i] = -1;
+                    row[indexResidueNeg + i] = 1;
+                    row[indexGoal] = lines[i].preferredSize ?? 0;
                 }
                 {
                     int itemIndex = 0;
@@ -704,11 +616,11 @@ namespace Ngs.UI {
 
                         (int start, int count) = item.ColumnRowRange(axis);
 
-                        row.Slice(start + indexWidth, count).Fill(new RankedFloat(1));
-                        row[indexWidth + cellCount + itemIndex] = new RankedFloat(1);
-                        row[indexResiduePos + cellCount + itemIndex] = new RankedFloat(-1);
-                        row[indexResidueNeg + cellCount + itemIndex] = new RankedFloat(1);
-                        row[indexGoal] = new RankedFloat(item.View.Measurement.PreferredSize.GetElementAt(axis));
+                        row.Slice(start + indexWidth, count).Fill(1);
+                        row[indexWidth + cellCount + itemIndex] = 1;
+                        row[indexResiduePos + cellCount + itemIndex] = -1;
+                        row[indexResidueNeg + cellCount + itemIndex] = 1;
+                        row[indexGoal] = item.View.Measurement.PreferredSize.GetElementAt(axis);
 
                         itemIndex += 1;
                     }
@@ -722,7 +634,7 @@ namespace Ngs.UI {
                 for (int k = 0; k < numConstraints + 1; ++k) {
                     var row = tableau.AsSpan(k * (numVars + 1), numVars + 1);
                     foreach (var e in row) {
-                        Console.Write(e.ToString());
+                        Console.Write("{0,6}", e);
                     }
                     Console.WriteLine();
                 }
@@ -753,11 +665,11 @@ namespace Ngs.UI {
                 ) {
                     var row = tableau.AsSpan(rowIndex * (numVars + 1), numVars + 1);
                     var factor = objectiveRow[varIndex];
-                    Debug.Assert(row[varIndex].FloatValue == 1);
+                    Debug.Assert(row[varIndex] == 1);
                     for (int k = 0; k < numVars + 1; ++k) {
                         objectiveRow[k] -= row[k] * factor;
                     }
-                    objectiveRow[varIndex] = RankedFloat.Zero;
+                    objectiveRow[varIndex] = 0;
                 }
             }
 
@@ -806,7 +718,7 @@ namespace Ngs.UI {
                 for (int k = 0; k < numConstraints + 1; ++k) {
                     var row = tableau.AsSpan(k * (numVars + 1), numVars + 1);
                     foreach (var e in row) {
-                        Console.Write(e.ToString());
+                        Console.Write("{0,6}", e);
                     }
                     Console.WriteLine();
                 }
@@ -817,7 +729,7 @@ namespace Ngs.UI {
                 // Mathematics of Operations Research. 2 (2): 103–107.
                 int enteringNBVIndex = 0;
                 for (; enteringNBVIndex < nonBasicVars.Length; ++enteringNBVIndex) {
-                    if (objectiveRow[nonBasicVars[enteringNBVIndex]].IsNegative) {
+                    if (objectiveRow[nonBasicVars[enteringNBVIndex]] < 0) {
                         break;
                     }
                 }
@@ -829,11 +741,11 @@ namespace Ngs.UI {
 
                 // Choose the leaving variable using the minimum ratio test.
                 int leavingBVIndex = -1;
-                RankedFloat minimumRatio = RankedFloat.Infinity;
+                double minimumRatio = double.PositiveInfinity;
                 for (int i = 0; i < basicVars.Length; ++i) {
                     var row = tableau.AsSpan(basicVarRows[i] * (numVars + 1), numVars + 1);
                     var a = row[enteringVarIndex];
-                    if (!a.IsPositive) {
+                    if (a <= 0) {
                         continue;
                     }
                     var b = row[indexGoal];
@@ -853,7 +765,7 @@ namespace Ngs.UI {
                     for (int i = 1; i < enteringVarIndex; ++i) {
                         pivotRow[i] /= t;
                     }
-                    pivotRow[enteringVarIndex] = new RankedFloat(1);
+                    pivotRow[enteringVarIndex] = 1;
                     for (int i = enteringVarIndex + 1; i < pivotRow.Length; ++i) {
                         pivotRow[i] /= t;
                     }
@@ -866,13 +778,13 @@ namespace Ngs.UI {
 
                     var row = tableau.AsSpan(k * (numVars + 1), numVars + 1);
                     var factor = row[enteringVarIndex];
-                    if (factor.IsZero) {
+                    if (factor == 0) {
                         continue;
                     }
                     for (int i = 1; i < enteringVarIndex; ++i) {
                         row[i] -= pivotRow[i] * factor;
                     }
-                    row[enteringVarIndex] = new RankedFloat(0);
+                    row[enteringVarIndex] = 0;
                     for (int i = enteringVarIndex + 1; i < row.Length; ++i) {
                         row[i] -= pivotRow[i] * factor;
                     }
@@ -892,9 +804,9 @@ namespace Ngs.UI {
                 int cell = basicVars[i] - indexWidth;
                 if (cell < cellCount) {
                     var row = tableau.AsSpan(basicVarRows[i] * (numVars + 1), numVars + 1);
-                    var size = row[indexGoal].FloatValue;
-                    Debug.Assert(float.IsFinite(size));
-                    lines[cell].size = size;
+                    var size = row[indexGoal];
+                    Debug.Assert(double.IsFinite(size));
+                    lines[cell].size = (float)size;
                 }
             }
 
