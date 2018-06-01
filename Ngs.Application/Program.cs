@@ -107,7 +107,11 @@ namespace Ngs.Shell {
             Console.WriteLine("Displaying some window");
 
             this.UIQueue.Invoke(() => {
-                var layout = new AbsoluteLayout();
+                var layout = new TableLayout()
+                {
+                    Padding = new Padding(10),
+                };
+
                 {
                     var label = new Ngs.UI.Widgets.Label()
                     {
@@ -117,9 +121,7 @@ namespace Ngs.Shell {
                     };
                     label.ParagraphStyle.CharacterStyle.FontSize = 72;
 
-                    var item = layout.Items.Add(label);
-                    item.Left = 10;
-                    item.Top = 10;
+                    layout.Items.Add(label);
                 }
 
                 {
@@ -131,10 +133,7 @@ namespace Ngs.Shell {
                     label.ParagraphStyle.CharacterStyle.FontSize = 16;
 
                     var item = layout.Items.Add(label);
-                    item.Left = 10;
-                    item.Top = 80;
-                    item.Right = 10;
-                    item.Bottom = 10;
+                    item.Row = 1;
                 }
 
                 var container = new Ngs.UI.Widgets.Container()

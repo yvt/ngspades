@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -44,5 +45,36 @@ namespace Ngs.Utils {
         /// <returns>The newly constructed three-dimensional vector.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 Truncate(this Vector4 v) => new Vector3(v.X, v.Y, v.Z);
+
+        /// <summary>
+        /// Retrieves an element of a supplied two-dimensional vector at a specified index.
+        /// </summary>
+        /// <param name="v">The input vector.</param>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <returns>The copy of an element of <paramref name="v" />.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float GetElementAt(this Vector2 v, int index) {
+            switch (index) {
+                case 0: return v.X;
+                case 1: return v.Y;
+                default: throw new IndexOutOfRangeException();
+            }
+        }
+
+        /// <summary>
+        /// Retrieves a reference to an element of a supplied two-dimensional vector at a
+        /// specified index.
+        /// </summary>
+        /// <param name="v">The input vector.</param>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <returns>The reference to an element of <paramref name="v" />.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref float ElementAt(this ref Vector2 v, int index) {
+            switch (index) {
+                case 0: return ref v.X;
+                case 1: return ref v.Y;
+                default: throw new IndexOutOfRangeException();
+            }
+        }
     }
 }
