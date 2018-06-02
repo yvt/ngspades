@@ -37,6 +37,7 @@ namespace Ngs {
 
             this.UIQueue = new Ngs.Threading.DispatchQueue();
             this.Workspace = new UI.Workspace(this.ApplicationInfo, this.UIQueue);
+            System.Threading.Thread.CurrentThread.Name = "Main";
         }
 
         /// <summary>

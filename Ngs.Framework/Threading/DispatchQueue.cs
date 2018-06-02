@@ -38,6 +38,7 @@ namespace Ngs.Threading {
 
         internal DispatchQueue() {
             thread = new Thread(ThreadBody);
+            thread.Name = "Ngs.UI dispatch queue";
             thread.Start();
         }
 
