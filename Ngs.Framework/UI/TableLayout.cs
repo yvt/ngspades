@@ -340,13 +340,6 @@ namespace Ngs.UI {
 
         bool itemListDirty;
 
-        enum PreferencePriority {
-            Unconstrained = 0,
-            Item = 1,
-            Layout = 2,
-            Theorem = 3,
-        }
-
         // Represents a row or column.
         struct Line {
             public float minimumPosition;
