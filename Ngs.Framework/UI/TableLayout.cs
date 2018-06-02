@@ -482,12 +482,16 @@ namespace Ngs.UI {
             Console.WriteLine($"indexGoal = {indexGoal}");
 #endif
 
+            System.Runtime.CompilerServices.RuntimeHelpers.EnsureSufficientExecutionStack();
+
             // Construct tableau
             int numVars = indexGoal;
             int numConstraints = cellCount + itemCount * 2 + maxConstrainedItemCount + (totalWidth.HasValue ? 1 : 0);
 
-            double[] tableau = new double[(numConstraints + 1) * (numVars + 1)];
-            var objectiveRow = tableau.AsSpan(0, numVars + 1);
+            int tableauSize = checked((numConstraints + 1) * (numVars + 1));
+            Span<double> tableau = tableauSize > 4096 ?
+                new double[tableauSize] : stackalloc double[tableauSize];
+            var objectiveRow = tableau.Slice(0, numVars + 1);
             int rowConstraint1;
             int rowConstraint2;
             int rowConstraint4;
@@ -497,7 +501,7 @@ namespace Ngs.UI {
                 int rowIndex = 0;
                 // Objective function
                 {
-                    var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice((rowIndex++) * (numVars + 1), numVars + 1);
 
                     const double OMEGA = 16384;
                     const double RANK_HARD_LIMIT = OMEGA * OMEGA * OMEGA;
@@ -547,7 +551,7 @@ namespace Ngs.UI {
                 {
                     int itemIndex = 0;
                     foreach (var item in items) {
-                        var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
+                        var row = tableau.Slice((rowIndex++) * (numVars + 1), numVars + 1);
 
                         (int start, int count) = item.ColumnRowRange(axis);
 
@@ -569,7 +573,7 @@ namespace Ngs.UI {
                             float.IsFinite(item.View.Measurement.MaximumSize.GetElementAt(axis)) &&
                             (item.Alignment & justifyMask) == justifyMask
                         ) {
-                            var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
+                            var row = tableau.Slice((rowIndex++) * (numVars + 1), numVars + 1);
 
                             (int start, int count) = item.ColumnRowRange(axis);
 
@@ -586,7 +590,7 @@ namespace Ngs.UI {
                 // Constraint 4
                 rowConstraint4 = rowIndex;
                 if (totalWidth is float totalWidthVal) {
-                    var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice((rowIndex++) * (numVars + 1), numVars + 1);
 
                     row.Slice(indexWidth, cellCount).Fill(1);
                     row[indexErrorTotal] = 1;
@@ -596,7 +600,7 @@ namespace Ngs.UI {
                 // Constraint 5 (cell)
                 rowConstraint5 = rowIndex;
                 for (int i = 0; i < cellCount; ++i) {
-                    var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice((rowIndex++) * (numVars + 1), numVars + 1);
                     row[indexWidth + i] = 1;
                     row[indexResiduePos + i] = -1;
                     row[indexResidueNeg + i] = 1;
@@ -605,7 +609,7 @@ namespace Ngs.UI {
                 {
                     int itemIndex = 0;
                     foreach (var item in items) {
-                        var row = tableau.AsSpan((rowIndex++) * (numVars + 1), numVars + 1);
+                        var row = tableau.Slice((rowIndex++) * (numVars + 1), numVars + 1);
 
                         (int start, int count) = item.ColumnRowRange(axis);
 
@@ -625,7 +629,7 @@ namespace Ngs.UI {
 #if false
             {
                 for (int k = 0; k < numConstraints + 1; ++k) {
-                    var row = tableau.AsSpan(k * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice(k * (numVars + 1), numVars + 1);
                     foreach (var e in row) {
                         Console.Write("{0,6}", e);
                     }
@@ -635,7 +639,6 @@ namespace Ngs.UI {
 #endif
 
             // Do "pricing out"
-            // TODO: Replace this with `stackalloc` when C♯ 7.3 arrives
             // Must be ordered by the variable index (the first element of the tuple)
             var initialBasicVarRanges = new[] {
                 (indexSlackMax, maxConstrainedItemCount, rowConstraint2, false),
@@ -656,7 +659,7 @@ namespace Ngs.UI {
                     i < count;
                     ++i, ++varIndex, ++rowIndex
                 ) {
-                    var row = tableau.AsSpan(rowIndex * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice(rowIndex * (numVars + 1), numVars + 1);
                     var factor = objectiveRow[varIndex];
                     Debug.Assert(row[varIndex] == 1);
                     for (int k = 0; k < numVars + 1; ++k) {
@@ -667,8 +670,10 @@ namespace Ngs.UI {
             }
 
             // The current set of basic variables
-            Span<int> basicVars = stackalloc int[numConstraints];
-            Span<int> basicVarRows = stackalloc int[numConstraints]; // row index (never 0)
+            Span<int> basicVars = numConstraints > 4096 ?
+                new int[numConstraints] : stackalloc int[numConstraints];
+            Span<int> basicVarRows = numConstraints > 4096 ?
+                new int[numConstraints] : stackalloc int[numConstraints]; // row index (never 0)
             {
                 int index = 0;
                 foreach ((int varStart, int count, int rowStart, _) in initialBasicVarRanges) {
@@ -709,7 +714,7 @@ namespace Ngs.UI {
             while (true) {
 #if false
                 for (int k = 0; k < numConstraints + 1; ++k) {
-                    var row = tableau.AsSpan(k * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice(k * (numVars + 1), numVars + 1);
                     foreach (var e in row) {
                         Console.Write("{0,6}", e);
                     }
@@ -736,7 +741,7 @@ namespace Ngs.UI {
                 int leavingBVIndex = -1;
                 double minimumRatio = double.PositiveInfinity;
                 for (int i = 0; i < basicVars.Length; ++i) {
-                    var row = tableau.AsSpan(basicVarRows[i] * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice(basicVarRows[i] * (numVars + 1), numVars + 1);
                     var a = row[enteringVarIndex];
                     if (a <= 0) {
                         continue;
@@ -752,7 +757,7 @@ namespace Ngs.UI {
 
                 // Perform the pivot operation
                 int pivotRowIndex = basicVarRows[leavingBVIndex];
-                var pivotRow = tableau.AsSpan(pivotRowIndex * (numVars + 1), numVars + 1);
+                var pivotRow = tableau.Slice(pivotRowIndex * (numVars + 1), numVars + 1);
                 {
                     var t = pivotRow[enteringVarIndex];
                     for (int i = 1; i < enteringVarIndex; ++i) {
@@ -769,7 +774,7 @@ namespace Ngs.UI {
                         continue;
                     }
 
-                    var row = tableau.AsSpan(k * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice(k * (numVars + 1), numVars + 1);
                     var factor = row[enteringVarIndex];
                     if (factor == 0) {
                         continue;
@@ -796,7 +801,7 @@ namespace Ngs.UI {
             for (int i = 0; i < basicVars.Length; ++i) {
                 int cell = basicVars[i] - indexWidth;
                 if (cell < cellCount) {
-                    var row = tableau.AsSpan(basicVarRows[i] * (numVars + 1), numVars + 1);
+                    var row = tableau.Slice(basicVarRows[i] * (numVars + 1), numVars + 1);
                     var size = row[indexGoal];
                     Debug.Assert(double.IsFinite(size));
                     lines[cell].size = (float)size;
