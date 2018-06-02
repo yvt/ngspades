@@ -76,5 +76,73 @@ namespace Ngs.Utils {
                 default: throw new IndexOutOfRangeException();
             }
         }
+
+        /// <summary>
+        /// Retrieves an element of a supplied three-dimensional vector at a specified index.
+        /// </summary>
+        /// <param name="v">The input vector.</param>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <returns>The copy of an element of <paramref name="v" />.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float GetElementAt(this Vector3 v, int index) {
+            switch (index) {
+                case 0: return v.X;
+                case 1: return v.Y;
+                case 2: return v.Z;
+                default: throw new IndexOutOfRangeException();
+            }
+        }
+
+        /// <summary>
+        /// Retrieves a reference to an element of a supplied three-dimensional vector at a
+        /// specified index.
+        /// </summary>
+        /// <param name="v">The input vector.</param>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <returns>The reference to an element of <paramref name="v" />.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref float ElementAt(this ref Vector3 v, int index) {
+            switch (index) {
+                case 0: return ref v.X;
+                case 1: return ref v.Y;
+                case 2: return ref v.Z;
+                default: throw new IndexOutOfRangeException();
+            }
+        }
+
+        /// <summary>
+        /// Retrieves an element of a supplied four-dimensional vector at a specified index.
+        /// </summary>
+        /// <param name="v">The input vector.</param>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <returns>The copy of an element of <paramref name="v" />.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float GetElementAt(this Vector4 v, int index) {
+            switch (index) {
+                case 0: return v.X;
+                case 1: return v.Y;
+                case 2: return v.Z;
+                case 3: return v.W;
+                default: throw new IndexOutOfRangeException();
+            }
+        }
+
+        /// <summary>
+        /// Retrieves a reference to an element of a supplied four-dimensional vector at a
+        /// specified index.
+        /// </summary>
+        /// <param name="v">The input vector.</param>
+        /// <param name="index">The index of the element to retrieve.</param>
+        /// <returns>The reference to an element of <paramref name="v" />.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref float ElementAt(this ref Vector4 v, int index) {
+            switch (index) {
+                case 0: return ref v.X;
+                case 1: return ref v.Y;
+                case 2: return ref v.Z;
+                case 3: return ref v.W;
+                default: throw new IndexOutOfRangeException();
+            }
+        }
     }
 }
