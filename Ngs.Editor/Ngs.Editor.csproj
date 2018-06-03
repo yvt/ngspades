@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>Ngs.Editor</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Copyright>Copyright 2018 yvt, all rights reserved.</Copyright>
+    <Product>Nightingales</Product>
+    <Description>Nightingales Editor</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
+    <ProjectReference Include="..\Ngs.Framework\Ngs.Framework.csproj" />
+    <ProjectReference Include="..\Ngs.Interop\Ngs.Interop.csproj" />
+  </ItemGroup>
+
+  <!--
+    Do not include `ILLink.Tasks`. We intend to load the user game assembly at runtime.
+    If we run ILLink on `Ngs.Editor`, some portion of .NET core libraries required by user
+    assemblies might end up being pruned.
+  -->
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\Assets\D-DIN.ttf">
+      <LogicalName>Fonts.DDin</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>
