@@ -15,7 +15,7 @@ namespace Ngs.UI.Widgets {
     public class Label : View {
         FontConfig fontConfig;
         ParagraphStyle paragraphStyle = new ParagraphStyle();
-        string text;
+        string text = "";
         float? width;
         Rgba textColor = Rgba.White;
 
