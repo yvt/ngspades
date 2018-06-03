@@ -23,8 +23,9 @@ namespace Ngs.Engine {
     /// <para>This class maintains a static reference to the game engine core. The initialization
     /// happens when a member of this class is used (explicitly or implicitly via wrapper classes)
     /// for the first time.</para>
-    /// <para>The engine loader configuration file (<c>LoaderConfig.xml</c>) is used to discover
-    /// the engine core image file (<c>libngsengine</c>) during the initialization process.
+    /// <para>The engine loader configuration file (refer to <see cref="LoaderConfigFileName" />
+    /// for its name) is used to discover the engine core image file (<c>libngsengine</c>)
+    /// during the initialization process.
     /// The configuration file is loaded from the engine path, which is determined using one of the
     /// following methods, with the later one taking precedence:</para>
     /// <list type="number">
@@ -49,14 +50,20 @@ namespace Ngs.Engine {
         static INgsEngine nativeEngine;
         static Exception loadError;
 
+        /// <summary>
+        /// Retrieves the name of the engine loader configuration file
+        /// (<c>NgsLoaderConfig.xml</c>).
+        /// </summary>
+        public static readonly string LoaderConfigFileName = "NgsLoaderConfig.xml";
+
         static EngineInstance() {
             try {
                 // Load the loader config
                 string enginePath = EngineLoaderHelper.EnginePath;
-                string loaderConfigPath = Path.Combine(enginePath, "LoaderConfig.xml");
+                string loaderConfigPath = Path.Combine(enginePath, LoaderConfigFileName);
 
                 if (!File.Exists(loaderConfigPath)) {
-                    throw new Exception("Could not locate the engine loader configuration file (LoaderConfig.xml).");
+                    throw new Exception($"Could not locate the engine loader configuration file ({LoaderConfigFileName}).");
                 }
 
                 EngineLoaderConfig loaderConfig;

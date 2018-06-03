@@ -12,8 +12,8 @@ namespace Ngs.Engine {
     /// </summary>
     /// <remarks>
     /// <see cref="EngineInstance" /> automatically loads this object from the loader
-    /// configuration file (<c>LoaderConfig.xml</c>) and uses it to discover the engine core image.
-    /// See the documentation of <see cref="EngineInstance" /> for details on the loading process.
+    /// configuration file and uses it to discover the engine core image. See the documentation of
+    /// <see cref="EngineInstance" /> for details on the loading process.
     /// </remarks>
     [XmlRoot("LoaderConfig", IsNullable = false)]
     public class EngineLoaderConfig {
