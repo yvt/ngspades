@@ -19,7 +19,7 @@ namespace Ngs.UI {
     /// <summary>
     /// Represents a window, the root-level component of an user interface.
     /// </summary>
-    public class Window {
+    public class Window : ISynchronizeInvoke {
         Workspace workspace;
         INgsPFWindow pfWindow;
 
@@ -343,6 +343,7 @@ namespace Ngs.UI {
                 hotView = value;
             }
         }
+
         internal void UpdateMouse() {
             this.systemMouseWindow.Update();
             if (hotView?.Window != this) {
@@ -464,5 +465,30 @@ namespace Ngs.UI {
         protected virtual void OnClose(CancelEventArgs e) {
             Close?.Invoke(this, e);
         }
+
+        #region ISynchronizeInvoke implementation
+        /// <summary>
+        /// Implemenets <see cref="ISynchronizeInvoke.InvokeRequired" />.
+        /// </summary>
+        public bool InvokeRequired => workspace.DispatchQueue.InvokeRequired;
+
+        /// <summary>
+        /// Implemenets <see cref="ISynchronizeInvoke.BeginInvoke(Delegate, object[])" />.
+        /// </summary>
+        public IAsyncResult BeginInvoke(Delegate method, object[] args) =>
+            workspace.DispatchQueue.BeginInvoke(method, args);
+
+        /// <summary>
+        /// Implemenets <see cref="ISynchronizeInvoke.EndInvoke(IAsyncResult)" />.
+        /// </summary>
+        public object EndInvoke(IAsyncResult result) =>
+            workspace.DispatchQueue.EndInvoke(result);
+
+        /// <summary>
+        /// Implements <see cref="ISynchronizeInvoke.Invoke(Delegate, object[])" />.
+        /// </summary>
+        public object Invoke(Delegate method, object[] args) =>
+            workspace.DispatchQueue.Invoke(method, args);
+        #endregion
     }
 }

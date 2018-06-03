@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
@@ -15,7 +16,7 @@ namespace Ngs.UI {
     /// <summary>
     /// A functional and presentational unit of a graphical user interface.
     /// </summary>
-    public class View {
+    public class View : ISynchronizeInvoke {
         private Workspace workspace;
 
         /// <summary>
@@ -1034,6 +1035,31 @@ namespace Ngs.UI {
         /// <param name="e">The event data.</param>
         protected internal virtual void OnMouseLeave(EventArgs e) { }
 
+        #endregion
+
+        #region ISynchronizeInvoke implementation
+        /// <summary>
+        /// Implemenets <see cref="ISynchronizeInvoke.InvokeRequired" />.
+        /// </summary>
+        public bool InvokeRequired => workspace.DispatchQueue.InvokeRequired;
+
+        /// <summary>
+        /// Implemenets <see cref="ISynchronizeInvoke.BeginInvoke(Delegate, object[])" />.
+        /// </summary>
+        public IAsyncResult BeginInvoke(Delegate method, object[] args) =>
+            workspace.DispatchQueue.BeginInvoke(method, args);
+
+        /// <summary>
+        /// Implemenets <see cref="ISynchronizeInvoke.EndInvoke(IAsyncResult)" />.
+        /// </summary>
+        public object EndInvoke(IAsyncResult result) =>
+            workspace.DispatchQueue.EndInvoke(result);
+
+        /// <summary>
+        /// Implements <see cref="ISynchronizeInvoke.Invoke(Delegate, object[])" />.
+        /// </summary>
+        public object Invoke(Delegate method, object[] args) =>
+            workspace.DispatchQueue.Invoke(method, args);
         #endregion
     }
 }
