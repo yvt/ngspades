@@ -1,13 +1,56 @@
 Nightingales
 ============
 
+## Project structure
+
+### Shared assets
+
+- `Assets` contains a font resource shared by some projects and unit tests.
+
+### Game engine
+
+- `EngineCore` contains the Rust part of the engine and its dependent crates (libraries).
+    - `ngsengine` is the engine core. It is compiled as a dynamic library which is loaded by the .NET part of the engine at runtime.
+    - `ngsloader` is another dynamic library required by the game engine. The engine loader uses this library to examine the capability of the processor on which it runs and chooses the appropriate version of the engine core.
+
+- `Ngs.Interop` is a .NET library for the NgsCOM (an ABI based on Component Object Model) interoperation. This library is essential for communication between the engine core and the .NET part of this engine.
+
+- `Ngs.Engine.Facade` is a .NET library that serves the following purposes:
+    - It defines NgsCOM interfaces (a kind of contract between softwares). Most of them are implemented by the engine core (look for crates whose names ending with `_com`) and consumed by the .NET part. There are some opposites cases.
+    - It provides basic data types such as `IntVector3` and `Rgba`.
+    - It provides a safe/user-friendly wrapper around the raw engine core interface.
+    - It provides the engine core loader, which locates and loads `ngsengine`, the engine core. This process is assisted by `ngsloader`, which is another native dynamic library.
+    - This project contains [a separate developer's documentation](./Ngs.Engine.Facade/Readme.md.html).
+
+- `Ngs.RustInteropGen` is a .NET application that generates Rust code from the NgsCOM interface definition in `Ngs.Engine.Facade`. The build script of the `ngsbase` crate calls this application during build. You can run this application directly to see its output.
+
+- `Ngs.Framework` is a framework that provides common functionalities for building applications based on the engine. This project contains [a separate developer's documentation](./Ngs.Framework/Readme.md.html).
+
+Some .NET projects are accompanied by xUnit test projects, which can be identified by the suffix `.Tests`.
+
+### Development tools
+
+- `Ngs.Performance` is a .NET application based on [Benchmark.NET], used for micro-benchmarking the performance of the game engine.
+
+- `Utils/Cloc.sh` calls [loc], a blazing-fast Rust port of the popular CLOC utility. As the name implies, it counts lines of code in the source tree.
+
+- `Utils/Monodoc.sh` calls Monodoc to generate HTML documentations of .NET assemblies.
+
+[Benchmark.NET]: http://benchmarkdotnet.org
+[loc]: https://crates.io/crates/loc
+
+### Applications
+
+ - `Ngs.Application` doesn't have an exact purpose. I primarily use this project to test the new functionalities of the engine.
+ - `Ngs.Editor`, also known as Nightingales Editor, is an application used for producing assets and game levels.
+
 ## Prerequisite
 
 The following softwares must be installed to build this project.
 
 - [Rust] 1.26 or later. The nightly build toolchain must be installed and selected using `rustup install nightly` and `rustup default nightly`.
 - [.NET Core] 2.1 or later
-- [LunarG Vulkan SDK] 1.0 or later. [glslang], which is distributed as a part of it, must be in `$PATH` to build ZanGFX and the rendering engine. 
+- [LunarG Vulkan SDK] 1.0 or later. [glslang], which is distributed as a part of it, must be in `$PATH` to build ZanGFX and the rendering engine.
 
 [Rust]: https://www.rust-lang.org/en-US/
 [.NET Core]: https://www.microsoft.com/net/download/
