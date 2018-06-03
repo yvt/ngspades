@@ -93,6 +93,22 @@ namespace Ngs.Shell {
             }
         }
 
+        sealed class Clock : Ngs.UI.Widgets.Label {
+            System.Timers.Timer timer = new System.Timers.Timer(1000);
+
+            public Clock() {
+                timer.SynchronizingObject = this;
+                timer.AutoReset = true;
+                timer.Elapsed += delegate { Update(); };
+                Update();
+                timer.Start();
+            }
+
+            private void Update() {
+                this.Text = DateTime.Now.ToString();
+            }
+        }
+
         sealed class MainView : View {
             protected override void RenderContents(RenderContext context) {
                 context.EmitLayer(new SolidColorLayerInfo()
@@ -125,6 +141,18 @@ namespace Ngs.Shell {
                 }
 
                 {
+                    var label = new Clock()
+                    {
+                        TextColor = new Rgba(0.5f, 0.5f, 0.5f, 1),
+                        FontConfig = CreateFontConfig(),
+                    };
+                    label.ParagraphStyle.CharacterStyle.FontSize = 16;
+
+                    var item = layout.Items.Add(label);
+                    item.Row = 1;
+                }
+
+                {
                     var label = new LinkLabel()
                     {
                         Text = "This text is displayed using a label widget.",
@@ -133,7 +161,7 @@ namespace Ngs.Shell {
                     label.ParagraphStyle.CharacterStyle.FontSize = 16;
 
                     var item = layout.Items.Add(label);
-                    item.Row = 1;
+                    item.Row = 2;
                 }
 
                 var container = new Ngs.UI.Widgets.Container()
