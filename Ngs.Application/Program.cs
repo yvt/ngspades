@@ -131,7 +131,7 @@ namespace Ngs.Shell {
                 {
                     var label = new Ngs.UI.Widgets.Label()
                     {
-                        Text = "Hello!",
+                        Text = "Hello world",
                         TextColor = Rgba.White,
                         FontConfig = CreateFontConfig(),
                     };
