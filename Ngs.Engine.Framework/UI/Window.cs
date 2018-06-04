@@ -11,7 +11,7 @@ using System.Numerics;
 using System.Collections.Generic;
 using Ngs.Engine.Native;
 using Ngs.Engine.Presentation;
-using Ngs.Utils;
+using Ngs.Engine;
 
 namespace Ngs.UI {
     // TODO: Event handling and window attributes

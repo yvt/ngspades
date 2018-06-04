@@ -5,7 +5,7 @@
 //
 using System;
 using System.Security;
-using Ngs.Utils;
+using Ngs.Engine;
 using Ngs.Interop;
 using Ngs.Engine.Native;
 

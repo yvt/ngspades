@@ -6,7 +6,7 @@
 using System;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
-using Ngs.Utils;
+using Ngs.Engine;
 using Ngs.Engine.Canvas;
 
 namespace Ngs.Engine.Native {

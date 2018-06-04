@@ -6,7 +6,7 @@
 using System;
 using Ngs.Engine.Presentation;
 using Ngs.Engine.Native;
-using Ngs.Utils;
+using Ngs.Engine;
 
 namespace Ngs.UI {
     /// <summary>

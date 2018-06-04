@@ -4,13 +4,12 @@
 // This source code is a part of Nightingales.
 //
 using System.Runtime.InteropServices;
-
-namespace Ngs.Utils {
+namespace Ngs.Engine {
     /// <summary>
-    /// Represents a vector with three integer values.
+    /// Represents a vector with four integer values.
     /// </summary>
     [StructLayout (LayoutKind.Sequential)]
-    public struct IntVector3 {
+    public struct IntVector4 {
         /// <summary>
         /// The X component of the vector.
         /// </summary>
@@ -27,15 +26,22 @@ namespace Ngs.Utils {
         public int Z;
 
         /// <summary>
-        /// Creates a <see cref="IntVector3" /> with the specified component values.
+        /// The W component of the vector.
+        /// </summary>
+        public int W;
+
+        /// <summary>
+        /// Creates a <see cref="IntVector4" /> with the specified component values.
         /// </summary>
         /// <param name="x">The value to assign to the <see cref="X" /> field.</param>
         /// <param name="y">The value to assign to the <see cref="Y" /> field.</param>
         /// <param name="z">The value to assign to the <see cref="Z" /> field.</param>
-        public IntVector3 (int x, int y, int z) {
+        /// <param name="w">The value to assign to the <see cref="W" /> field.</param>
+        public IntVector4 (int x, int y, int z, int w) {
             X = x;
             Y = y;
             Z = z;
+            W = w;
         }
     }
 }

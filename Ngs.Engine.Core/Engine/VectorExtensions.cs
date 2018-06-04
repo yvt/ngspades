@@ -7,7 +7,7 @@ using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace Ngs.Utils {
+namespace Ngs.Engine {
     /// <summary>
     /// Provides extensions methods for vector types in <see cref="System.Numerics" />.
     /// </summary>

@@ -7,7 +7,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Ngs.Utils {
+namespace Ngs.Engine {
     abstract class DynamicLibrary : IDisposable {
         public static DynamicLibrary Load(string path) {
             // TODO: Support Linux

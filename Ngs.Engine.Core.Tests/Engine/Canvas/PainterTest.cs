@@ -5,7 +5,7 @@
 //
 using System;
 using System.Numerics;
-using Ngs.Utils;
+using Ngs.Engine;
 using Xunit;
 
 namespace Ngs.Engine.Canvas.Tests {

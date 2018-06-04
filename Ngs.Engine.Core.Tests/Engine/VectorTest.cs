@@ -7,7 +7,7 @@ using System;
 using System.Numerics;
 using Xunit;
 
-namespace Ngs.Utils.Tests {
+namespace Ngs.Engine.Tests {
     public class VectorTest {
         [Fact]
         public void Vector2Extend() {

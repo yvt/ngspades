@@ -5,7 +5,7 @@
 //
 using System;
 using Ngs.Engine.Canvas.Text;
-using Ngs.Utils;
+using Ngs.Engine;
 
 namespace Ngs.UI.Widgets {
     sealed class TextLayoutLayerInfo : CanvasLayerInfo {

@@ -5,7 +5,6 @@
 //
 using System;
 using BenchmarkDotNet.Attributes;
-using Ngs.Utils;
 using Ngs.Engine;
 using Ngs.Engine.Presentation;
 

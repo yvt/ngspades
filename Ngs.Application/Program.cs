@@ -6,9 +6,9 @@
 using System;
 using System.IO;
 using Ngs.UI;
+using Ngs.Engine;
 using Ngs.Engine.Presentation;
 using Ngs.Engine.Canvas.Text;
-using Ngs.Utils;
 
 namespace Ngs.Shell {
     sealed class Application : Ngs.Application {

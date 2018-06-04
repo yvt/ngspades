@@ -6,7 +6,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace Ngs.Utils {
+namespace Ngs.Engine {
     /// <summary>
     /// Represents a 3x3 matrix.
     /// </summary>

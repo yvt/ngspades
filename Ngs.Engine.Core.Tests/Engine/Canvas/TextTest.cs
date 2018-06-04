@@ -6,7 +6,7 @@
 using System;
 using System.Numerics;
 using System.IO;
-using Ngs.Utils;
+using Ngs.Engine;
 using Ngs.Engine.Canvas.Text;
 using Xunit;
 

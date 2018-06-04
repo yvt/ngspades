@@ -37,13 +37,13 @@ namespace Ngs.Interop.Shell {
                 options.TypeMapping[typeof(Vector2)] = "::cgmath::Vector2<f32>";
                 options.TypeMapping[typeof(Vector3)] = "::cgmath::Vector3<f32>";
                 options.TypeMapping[typeof(Vector4)] = "::cgmath::Vector4<f32>";
-                options.TypeMapping[typeof(Ngs.Utils.Matrix4)] = "::cgmath::Matrix4<f32>";
-                options.TypeMapping[typeof(Ngs.Utils.IntVector2)] = "::cgmath::Vector2<i32>";
-                options.TypeMapping[typeof(Ngs.Utils.IntVector3)] = "::cgmath::Vector3<i32>";
-                options.TypeMapping[typeof(Ngs.Utils.IntVector4)] = "::cgmath::Vector4<i32>";
-                options.TypeMapping[typeof(Ngs.Utils.Box2)] = "::cggeom::Box2<f32>";
-                options.TypeMapping[typeof(Ngs.Utils.Box3)] = "::cggeom::Box3<f32>";
-                options.TypeMapping[typeof(Ngs.Utils.Rgba)] = "::rgb::RGBA<f32>";
+                options.TypeMapping[typeof(Ngs.Engine.Matrix4)] = "::cgmath::Matrix4<f32>";
+                options.TypeMapping[typeof(Ngs.Engine.IntVector2)] = "::cgmath::Vector2<i32>";
+                options.TypeMapping[typeof(Ngs.Engine.IntVector3)] = "::cgmath::Vector3<i32>";
+                options.TypeMapping[typeof(Ngs.Engine.IntVector4)] = "::cgmath::Vector4<i32>";
+                options.TypeMapping[typeof(Ngs.Engine.Box2)] = "::cggeom::Box2<f32>";
+                options.TypeMapping[typeof(Ngs.Engine.Box3)] = "::cggeom::Box3<f32>";
+                options.TypeMapping[typeof(Ngs.Engine.Rgba)] = "::rgb::RGBA<f32>";
 
                 var codegen = new Ngs.Interop.CodeGen.RustCodeGen(options);
 

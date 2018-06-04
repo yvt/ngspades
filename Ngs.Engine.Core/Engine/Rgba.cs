@@ -5,7 +5,7 @@
 //
 using System.Runtime.InteropServices;
 
-namespace Ngs.Utils {
+namespace Ngs.Engine {
     /// <summary>
     /// Represents a color value using four single precision floating point
     /// numbers.

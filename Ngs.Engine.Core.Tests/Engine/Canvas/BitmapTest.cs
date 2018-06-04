@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
-using Ngs.Utils;
+using Ngs.Engine;
 using Xunit;
 
 namespace Ngs.Engine.Canvas.Tests {

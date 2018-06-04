@@ -5,12 +5,12 @@
 //
 using System.Runtime.InteropServices;
 
-namespace Ngs.Utils {
+namespace Ngs.Engine {
     /// <summary>
-    /// Represents a vector with two integer values.
+    /// Represents a vector with three integer values.
     /// </summary>
     [StructLayout (LayoutKind.Sequential)]
-    public struct IntVector2 {
+    public struct IntVector3 {
         /// <summary>
         /// The X component of the vector.
         /// </summary>
@@ -22,13 +22,20 @@ namespace Ngs.Utils {
         public int Y;
 
         /// <summary>
-        /// Creates a <see cref="IntVector2" /> with the specified component values.
+        /// The Z component of the vector.
+        /// </summary>
+        public int Z;
+
+        /// <summary>
+        /// Creates a <see cref="IntVector3" /> with the specified component values.
         /// </summary>
         /// <param name="x">The value to assign to the <see cref="X" /> field.</param>
         /// <param name="y">The value to assign to the <see cref="Y" /> field.</param>
-        public IntVector2 (int x, int y) {
+        /// <param name="z">The value to assign to the <see cref="Z" /> field.</param>
+        public IntVector3 (int x, int y, int z) {
             X = x;
             Y = y;
+            Z = z;
         }
     }
 }

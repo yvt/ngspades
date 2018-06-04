@@ -7,7 +7,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using Ngs.Interop;
-using Ngs.Utils;
+using Ngs.Engine;
 using Ngs.Engine.Native;
 
 namespace Ngs.Engine {
