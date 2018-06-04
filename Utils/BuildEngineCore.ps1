@@ -87,11 +87,11 @@ else {
 }
 
 foreach ($featureLevel in $featureLevels) {
-    $cargoTargetDirectory = Join-PAth $cargoTargetRootDirectory $featureLevel.name
+    $cargoTargetDirectory = Join-Path $cargoTargetRootDirectory $featureLevel.name
 
     foreach ($crate in $featureLevel.crates) {
         $builtDylibPath = Join-Path $cargoTargetDirectory "release" "$dylibPrefix$crate$dylibSuffix"
-        $dylibOutputPath = Join-PAth $outputDirectory "$dylibPrefix$crate$($featureLevel.suffix)$dylibSuffix"
+        $dylibOutputPath = Join-Path $outputDirectory "$dylibPrefix$crate$($featureLevel.suffix)$dylibSuffix"
         Write-Output "$builtDylibPath -> $dylibOutputPath"
         Copy-Item -Path $builtDylibPath $dylibOutputPath
     }
