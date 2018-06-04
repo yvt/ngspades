@@ -15,16 +15,16 @@ Nightingales
 
 - `Ngs.Interop` is a .NET library for the NgsCOM (an ABI based on Component Object Model) interoperation. This library is essential for communication between the engine core and the .NET part of this engine.
 
-- `Ngs.Engine.Facade` is a .NET library that serves the following purposes:
+- `Ngs.Engine.Core` is a .NET library that serves the following purposes:
     - It defines NgsCOM interfaces (a kind of contract between softwares). Most of them are implemented by the engine core (look for crates whose names ending with `_com`) and consumed by the .NET part. There are some opposites cases.
     - It provides basic data types such as `IntVector3` and `Rgba`.
     - It provides a safe/user-friendly wrapper around the raw engine core interface.
     - It provides the engine core loader, which locates and loads `ngsengine`, the engine core. This process is assisted by `ngsloader`, which is another native dynamic library.
-    - This project contains [a separate developer's documentation](./Ngs.Engine.Facade/Readme.md.html).
+    - This project contains [a separate developer's documentation](./Ngs.Engine.Core/Readme.md.html).
 
-- `Ngs.RustInteropGen` is a .NET application that generates Rust code from the NgsCOM interface definition in `Ngs.Engine.Facade`. The build script of the `ngsbase` crate calls this application during build. You can run this application directly to see its output.
+- `Ngs.RustInteropGen` is a .NET application that generates Rust code from the NgsCOM interface definition in `Ngs.Engine.Core`. The build script of the `ngsbase` crate calls this application during build. You can run this application directly to see its output.
 
-- `Ngs.Framework` is a framework that provides common functionalities for building applications based on the engine. This project contains [a separate developer's documentation](./Ngs.Framework/Readme.md.html).
+- `Ngs.Engine.Framework` is a framework that provides common functionalities for building applications based on the engine. This project contains [a separate developer's documentation](./Ngs.Engine.Framework/Readme.md.html).
 
 Some .NET projects are accompanied by xUnit test projects, which can be identified by the suffix `.Tests`.
 
