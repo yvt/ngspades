@@ -1,7 +1,24 @@
 #!/usr/bin/env pwsh
 
-# This PowerShell script compiles the engine core for each processor feature level.
+<#
+.Synopsis
+    Generates the full release build of the engine core.
+.Description
+    This script builds the engine core dylib for every supported processor feature level.
+    This is accomplished by calling Cargo, the Rust programming language's package manager.
 
+    After all required dylibs are built, they are deployed to the output directory, along with the
+    engine loader configuration file, which contains the information required to locate the deployed
+    dylibs.
+.Parameter cargoTargetRootDirectory
+    Specifies where the intermediate build output should be stored.
+.Parameter outputDirectory
+    Specifies the output directory where the dylibs of the engine core should be stored.
+.Parameter cargoCommand
+    Specifies the command string used to invoke Cargo.
+#>
+
+[CmdletBinding()]
 param(
     [string]$cargoTargetRootDirectory,
     [string]$outputDirectory,
