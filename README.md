@@ -12,6 +12,7 @@ Nightingales
 - `EngineCore` contains the Rust part of the engine and its dependent crates (libraries).
     - `ngsengine` is the engine core. It is compiled as a dynamic library which is loaded by the .NET part of the engine at runtime.
     - `ngsloader` is another dynamic library required by the game engine. The engine loader uses this library to examine the capability of the processor on which it runs and chooses the appropriate version of the engine core.
+    - `NgsLoaderConfig.xml` contains an information required to locate the engine core dynamic library and must be deployed to the same directory as the dynamic library. This file is loaded by the engine loader of `Ngs.Engine.Core`.
 
 - `Ngs.Interop` is a .NET library for the NgsCOM (an ABI based on Component Object Model) interoperation. This library is essential for communication between the engine core and the .NET part of this engine.
 
@@ -88,7 +89,7 @@ The following softwares must be installed to build this project.
 
     $ export NGS_ENGINE_PATH=$(pwd)/EngineCore/target/debug
     $ pushd $NGS_ENGINE_PATH
-    $ ln -s ../../../Ngs.Application/LoaderConfig.xml
+    $ ln -s ../../../EngineCore/NgsLoaderConfig.xml
     $ popd
     $ dotnet run
     Checking if the engine core was successfully loaded
@@ -111,10 +112,10 @@ We utilize .NET Core's [Self-contained deployment](https://docs.microsoft.com/en
 
     # (Option 1: The full release build)
     $ ../Utils/BuildEngineCore.ps1
-    $ cp NgsLoaderConfig.xml ../Derived/EngineCore/*ngs* ../Derived/Scd/
+    $ cp ../Derived/EngineCore/*gs* ../Derived/Scd/
 
     # (Option 2: The debug build)
-    $ cp NgsLoaderConfig.xml ../EngineCore/target/debug/libngs*.dylib ../Derived/Scd/
+    $ cp ../EngineCore/NgsLoaderConfig.xml ../EngineCore/target/debug/libngs*.dylib ../Derived/Scd/
 
 TODO: Make a macOS application bundle
 

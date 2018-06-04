@@ -97,5 +97,11 @@ foreach ($featureLevel in $featureLevels) {
     }
 }
 
+$loaderConfigPath = Join-Path $sourceDirectory "EngineCore" "NgsLoaderConfig.xml"
+$loaderConfigOutputPath = Join-Path $outputDirectory "NgsLoaderConfig.xml"
+
+Write-Output "$loaderConfigPath -> $loaderConfigOutputPath"
+Copy-Item $loaderConfigPath $loaderConfigOutputPath
+
 Write-Output ""
 Write-Output "=============== BuildEngineCore done ==================="
