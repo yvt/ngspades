@@ -8,7 +8,7 @@ using Ngs.Engine.Presentation;
 using Ngs.Engine.Native;
 using Ngs.Engine;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Describes the properties of a native layer.
     /// </summary>

@@ -13,7 +13,7 @@ using Ngs.Engine.Native;
 using Ngs.Engine.Presentation;
 using Ngs.Engine;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     // TODO: Event handling and window attributes
 
     /// <summary>

@@ -6,7 +6,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// A layout object to be used to hold the root view of a window.
     /// </summary>

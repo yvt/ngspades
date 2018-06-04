@@ -5,7 +5,7 @@
 //
 using System;
 
-namespace Ngs.UI.Widgets {
+namespace Ngs.Engine.UI.Widgets {
     public abstract class Form : View {
         // TODO
 

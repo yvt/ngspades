@@ -7,7 +7,7 @@ using System;
 using System.Numerics;
 using Ngs.Engine;
 
-namespace Ngs.UI.Input {
+namespace Ngs.Engine.UI.Input {
     sealed class WindowPoint : Point {
         Window window;
         Vector2 clientPosition;

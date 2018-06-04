@@ -5,13 +5,13 @@
 //
 using System;
 using System.IO;
-using Ngs.UI;
+using Ngs.Engine.UI;
 using Ngs.Engine;
 using Ngs.Engine.Presentation;
 using Ngs.Engine.Canvas.Text;
 
 namespace Ngs.Shell {
-    sealed class Application : Ngs.Application {
+    sealed class Application : Ngs.Engine.Application {
         public static void Main(string[] args) {
             using (var thisApp = new Application()) {
                 thisApp.Run();
@@ -45,7 +45,7 @@ namespace Ngs.Shell {
             return config;
         }
 
-        sealed class LinkLabel : Ngs.UI.Widgets.Label {
+        sealed class LinkLabel : Ngs.Engine.UI.Widgets.Label {
             bool hot, pressed;
 
             public LinkLabel() {
@@ -63,20 +63,20 @@ namespace Ngs.Shell {
                 }
             }
 
-            protected override void OnMouseDown(Ngs.UI.Input.MouseButtonEventArgs e) {
-                if (e.Button.Type == Ngs.UI.Input.MouseButtonType.Left) {
+            protected override void OnMouseDown(Ngs.Engine.UI.Input.MouseButtonEventArgs e) {
+                if (e.Button.Type == Ngs.Engine.UI.Input.MouseButtonType.Left) {
                     pressed = true;
                     UpdateTextColor();
                 }
             }
-            protected override void OnMouseUp(Ngs.UI.Input.MouseButtonEventArgs e) {
-                if (e.Button.Type == Ngs.UI.Input.MouseButtonType.Left) {
+            protected override void OnMouseUp(Ngs.Engine.UI.Input.MouseButtonEventArgs e) {
+                if (e.Button.Type == Ngs.Engine.UI.Input.MouseButtonType.Left) {
                     pressed = false;
                     UpdateTextColor();
                 }
             }
-            protected override void OnMouseCancel(Ngs.UI.Input.MouseButtonEventArgs e) {
-                if (e.Button.Type == Ngs.UI.Input.MouseButtonType.Left) {
+            protected override void OnMouseCancel(Ngs.Engine.UI.Input.MouseButtonEventArgs e) {
+                if (e.Button.Type == Ngs.Engine.UI.Input.MouseButtonType.Left) {
                     pressed = false;
                     UpdateTextColor();
                 }
@@ -93,7 +93,7 @@ namespace Ngs.Shell {
             }
         }
 
-        sealed class Clock : Ngs.UI.Widgets.Label {
+        sealed class Clock : Ngs.Engine.UI.Widgets.Label {
             System.Timers.Timer timer = new System.Timers.Timer(1000);
 
             public Clock() {
@@ -129,7 +129,7 @@ namespace Ngs.Shell {
                 };
 
                 {
-                    var label = new Ngs.UI.Widgets.Label()
+                    var label = new Ngs.Engine.UI.Widgets.Label()
                     {
                         Text = "Hello world",
                         TextColor = Rgba.White,
@@ -164,7 +164,7 @@ namespace Ngs.Shell {
                     item.Row = 2;
                 }
 
-                var container = new Ngs.UI.Widgets.Container()
+                var container = new Ngs.Engine.UI.Widgets.Container()
                 {
                     Layout = layout,
                 };

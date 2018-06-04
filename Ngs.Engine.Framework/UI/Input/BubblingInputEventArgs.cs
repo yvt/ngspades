@@ -5,7 +5,7 @@
 //
 using System;
 
-namespace Ngs.UI.Input {
+namespace Ngs.Engine.UI.Input {
     /// <summary>
     /// Provides event data for input events that occured on <see cref="View" />.
     /// </summary>

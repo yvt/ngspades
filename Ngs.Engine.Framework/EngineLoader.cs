@@ -5,7 +5,7 @@
 //
 using System;
 
-namespace Ngs
+namespace Ngs.Engine
 {
     static class EngineLoader
     {

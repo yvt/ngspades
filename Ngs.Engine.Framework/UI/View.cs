@@ -10,9 +10,9 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Security;
 using Ngs.Engine;
-using Ngs.UI.Utils;
+using Ngs.Engine.UI.Utils;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// A functional and presentational unit of a graphical user interface.
     /// </summary>

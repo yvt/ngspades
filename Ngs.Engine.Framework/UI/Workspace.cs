@@ -8,9 +8,9 @@ using System.Numerics;
 using System.Collections.Generic;
 using Ngs.Engine.Presentation;
 using Ngs.Engine.Native;
-using Ngs.Threading;
+using Ngs.Engine.Threading;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Manages the windows owned by an application.
     /// </summary>
@@ -37,7 +37,7 @@ namespace Ngs.UI {
         /// Retrieves the dispatch queue used for the user interface event handling.
         /// </summary>
         /// <returns>A dispatch queue.</returns>
-        public Ngs.Threading.DispatchQueue DispatchQueue { get; }
+        public Ngs.Engine.Threading.DispatchQueue DispatchQueue { get; }
 
         Dictionary<Window, object> windows = new Dictionary<Window, object>();
 

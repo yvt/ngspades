@@ -8,7 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 
-namespace Ngs.UI.Utils {
+namespace Ngs.Engine.UI.Utils {
     /// <summary>
     /// Nightingales infrastructure. Not intended to be directly used by an application.
     /// Represents a collection that uses a framework-supplied trait type to instantiate its elements.

@@ -7,7 +7,7 @@ using System;
 using System.Numerics;
 using Ngs.Engine;
 
-namespace Ngs.UI.Input {
+namespace Ngs.Engine.UI.Input {
     /// <summary>
     /// Represents a point indicated by a pointing device, such as a mouse or touch screen.
     /// </summary>

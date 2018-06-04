@@ -11,7 +11,7 @@ using Ngs.Engine.Native;
 using Ngs.Engine.Canvas;
 using Ngs.Engine;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Describes the properties of a native layer with a custom-drawn content.
     /// </summary>

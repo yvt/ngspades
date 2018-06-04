@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 
-namespace Ngs.UI.Utils {
+namespace Ngs.Engine.UI.Utils {
     internal static class CollectionExtensions {
         /// <summary>
         /// Removes an item from a specified list in O(1) using the "swap and pop" technique.

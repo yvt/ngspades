@@ -5,13 +5,13 @@
 //
 using System;
 using System.IO;
-using Ngs.UI;
 using Ngs.Engine;
+using Ngs.Engine.UI;
 using Ngs.Engine.Presentation;
 using Ngs.Engine.Canvas.Text;
 
 namespace Ngs.Editor {
-    sealed class Application : Ngs.Application {
+    sealed class Application : Ngs.Engine.Application {
         public static void Main(string[] args) {
             using (var thisApp = new Application()) {
                 thisApp.Run();
@@ -51,7 +51,7 @@ namespace Ngs.Editor {
                 };
 
                 {
-                    var label = new Ngs.UI.Widgets.Label()
+                    var label = new Ngs.Engine.UI.Widgets.Label()
                     {
                         Text = "Hello world",
                         TextColor = Rgba.White,
@@ -62,7 +62,7 @@ namespace Ngs.Editor {
                     layout.Items.Add(label);
                 }
 
-                var container = new Ngs.UI.Widgets.Container()
+                var container = new Ngs.Engine.UI.Widgets.Container()
                 {
                     Layout = layout,
                 };

@@ -5,7 +5,7 @@
 //
 using System;
 
-namespace Ngs.UI.Input {
+namespace Ngs.Engine.UI.Input {
     /// <summary>
     /// Represents a (possibly emulated) mouse button.
     /// </summary>

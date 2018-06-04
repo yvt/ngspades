@@ -10,7 +10,7 @@ using System.Threading;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 
-namespace Ngs.Threading {
+namespace Ngs.Engine.Threading {
     /// <summary>
     /// Manages a work queue for a specific thread.
     /// </summary>

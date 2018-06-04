@@ -6,10 +6,10 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Ngs.UI.Utils;
+using Ngs.Engine.UI.Utils;
 using Ngs.Engine;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Layouts subviews using absolute distance values relative to the view boundary.
     /// </summary>

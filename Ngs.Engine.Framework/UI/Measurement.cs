@@ -6,7 +6,7 @@
 using System;
 using System.Numerics;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Represents a result of the measurement step of the layouting algorithm.
     /// </summary>

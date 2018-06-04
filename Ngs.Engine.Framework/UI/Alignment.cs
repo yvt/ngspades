@@ -5,7 +5,7 @@
 //
 using System;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Describes how to align a layout element within its containing box.
     /// </summary>

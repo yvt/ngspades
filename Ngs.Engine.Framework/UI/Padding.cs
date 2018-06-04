@@ -5,7 +5,7 @@
 //
 using System;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Represents a set of padding values of a box.
     /// </summary>

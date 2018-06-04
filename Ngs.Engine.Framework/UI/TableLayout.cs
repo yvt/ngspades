@@ -11,9 +11,9 @@ using System.Numerics;
 using System.ComponentModel;
 using System.Linq;
 using Ngs.Engine;
-using Ngs.UI.Utils;
+using Ngs.Engine.UI.Utils;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Layouts subviews using an imaginary table composed of rows and columns.
     /// </summary>

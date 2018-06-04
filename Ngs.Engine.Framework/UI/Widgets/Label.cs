@@ -8,7 +8,7 @@ using System.Numerics;
 using Ngs.Engine.Canvas.Text;
 using Ngs.Engine;
 
-namespace Ngs.UI.Widgets {
+namespace Ngs.Engine.UI.Widgets {
     /// <summary>
     /// Represents a label widget.
     /// </summary>

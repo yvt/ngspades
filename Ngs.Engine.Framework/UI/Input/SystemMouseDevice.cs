@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using Ngs.Engine.Presentation;
 
-namespace Ngs.UI.Input {
+namespace Ngs.Engine.UI.Input {
     /// <summary>
     /// Represents a system mouse device.
     /// </summary>

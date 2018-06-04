@@ -7,7 +7,7 @@ using System;
 using System.Security;
 using Ngs.Engine.Presentation;
 
-namespace Ngs {
+namespace Ngs.Engine {
     /// <summary>
     /// Represents an application based on the Nightingales engine.
     /// </summary>
@@ -35,7 +35,7 @@ namespace Ngs {
                 Instance = this;
             }
 
-            this.UIQueue = new Ngs.Threading.DispatchQueue();
+            this.UIQueue = new Ngs.Engine.Threading.DispatchQueue();
             this.Workspace = new UI.Workspace(this.ApplicationInfo, this.UIQueue);
             System.Threading.Thread.CurrentThread.Name = "Main";
         }
@@ -86,7 +86,7 @@ namespace Ngs {
         /// by the operating system.
         /// </remarks>
         /// <returns>A dispatch queue.</returns>
-        public Ngs.Threading.DispatchQueue UIQueue { get; }
+        public Ngs.Engine.Threading.DispatchQueue UIQueue { get; }
 
         /// <summary>
         /// Starts the main loop.

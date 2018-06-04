@@ -10,7 +10,7 @@ using Ngs.Engine.Native;
 using Ngs.Engine.Presentation;
 using Ngs.Interop;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Maintains a layer tree constructed from a series of commands describing the layer tree.
     /// Implements the layer reconciliation algorithm.

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Ngs.Engine;
 
-namespace Ngs.UI {
+namespace Ngs.Engine.UI {
     /// <summary>
     /// Represents a layout object, which describes how their subviews should be arranged within
     /// a view.

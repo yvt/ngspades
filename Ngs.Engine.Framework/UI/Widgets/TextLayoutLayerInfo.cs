@@ -7,7 +7,7 @@ using System;
 using Ngs.Engine.Canvas.Text;
 using Ngs.Engine;
 
-namespace Ngs.UI.Widgets {
+namespace Ngs.Engine.UI.Widgets {
     sealed class TextLayoutLayerInfo : CanvasLayerInfo {
         readonly TextLayout textLayout;
         readonly Rgba color;
