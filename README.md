@@ -38,6 +38,8 @@ Some .NET projects are accompanied by xUnit test projects, which can be identifi
 
 - `Utils/BuildEngineCore.ps1` creates the full release build of the engine core by automatically running `cargo build` for each target processor feature level.
 
+- `Utils/BuildMacOSAppBundle.ps1` publishes a .NET application project as a standard macOS application bundle. See the section "Building as a stand-alone application" for usage.
+
 [Benchmark.NET]: http://benchmarkdotnet.org
 [loc]: https://crates.io/crates/loc
 
@@ -95,7 +97,7 @@ The following softwares must be installed to build this project.
     Checking if the engine core was successfully loaded
     $
 
-## Building as a stand-alone application (TODO)
+## Building as a stand-alone application
 
 We utilize .NET Core's [Self-contained deployment](https://docs.microsoft.com/en-us/dotnet/core/deploying/#self-contained-deployments-scd) feature to create a stand-alone application package. The result is an executable along with a bunch of dependent libraries (which mostly originate from the .NET Core standard library). To reduce the size of it further, we execute [.NET IL Linker](https://github.com/dotnet/core/blob/master/samples/linker-instructions.md) as a part of the build pipeline.
 
@@ -117,7 +119,10 @@ We utilize .NET Core's [Self-contained deployment](https://docs.microsoft.com/en
     # (Option 2: The debug build)
     $ cp ../EngineCore/NgsLoaderConfig.xml ../EngineCore/target/debug/libngs*.dylib ../Derived/Scd/
 
-TODO: Make a macOS application bundle
+Use `BuildMacOSAppBundle.ps1` to create a macOS application bundle:
+
+    # (Note: By default, this script assumes that `BuildEngineCore.ps1` has been already run)
+    $ ../Utils/BuildMacOSAppBundle.ps1 -o ../Derived
 
 ## License
 
