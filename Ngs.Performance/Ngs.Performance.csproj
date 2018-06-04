@@ -6,7 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Ngs.Engine.Facade\Ngs.Engine.Facade.csproj" />
+    <ProjectReference Include="..\Ngs.Engine.Core\Ngs.Engine.Core.csproj" />
+    <ProjectReference Include="..\Ngs.Engine.Framework\Ngs.Engine.Framework.csproj" />
   </ItemGroup>
 
   <ItemGroup>

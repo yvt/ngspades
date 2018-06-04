@@ -7,19 +7,21 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Application", "Ngs.Appl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Interop", "Ngs.Interop\Ngs.Interop.csproj", "{2A569CFF-AD0F-47BE-9004-BE34623F02E4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Facade", "Ngs.Engine.Facade\Ngs.Engine.Facade.csproj", "{C8059EE0-3813-4AFA-AF60-12F4A1BFF4E6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Core", "Ngs.Engine.Core\Ngs.Engine.Core.csproj", "{C8059EE0-3813-4AFA-AF60-12F4A1BFF4E6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.RustInteropGen", "Ngs.RustInteropGen\Ngs.RustInteropGen.csproj", "{62DCB741-9DFA-4476-8DDE-C070F334D406}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Interop.Tests", "Ngs.Interop.Tests\Ngs.Interop.Tests.csproj", "{821D0D12-E801-4409-B243-320F87E77E2B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Facade.Tests", "Ngs.Engine.Facade.Tests\Ngs.Engine.Facade.Tests.csproj", "{FC9D3F80-8675-433D-A72B-02A8FD64382F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Core.Tests", "Ngs.Engine.Core.Tests\Ngs.Engine.Core.Tests.csproj", "{FC9D3F80-8675-433D-A72B-02A8FD64382F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Performance", "Ngs.Performance\Ngs.Performance.csproj", "{C9E1123E-C0B9-4A35-BD39-8F65552430DA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Framework", "Ngs.Framework\Ngs.Framework.csproj", "{F7590508-1790-49C1-B785-74466AFE119B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Framework", "Ngs.Engine.Framework\Ngs.Engine.Framework.csproj", "{F7590508-1790-49C1-B785-74466AFE119B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Editor", "Ngs.Editor\Ngs.Editor.csproj", "{0C88A17E-0B66-4124-987C-FEC7B852BBF0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ngs.Engine.Framework.Tests", "Ngs.Engine.Framework.Tests\Ngs.Engine.Framework.Tests.csproj", "{2AA17E14-DCFA-4C08-8998-7EF92356FE88}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -142,5 +144,17 @@ Global
 		{0C88A17E-0B66-4124-987C-FEC7B852BBF0}.Release|x64.Build.0 = Release|Any CPU
 		{0C88A17E-0B66-4124-987C-FEC7B852BBF0}.Release|x86.ActiveCfg = Release|Any CPU
 		{0C88A17E-0B66-4124-987C-FEC7B852BBF0}.Release|x86.Build.0 = Release|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Debug|x64.Build.0 = Debug|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Debug|x86.Build.0 = Debug|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|x64.ActiveCfg = Release|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|x64.Build.0 = Release|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|x86.ActiveCfg = Release|Any CPU
+		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
