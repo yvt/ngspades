@@ -35,6 +35,8 @@ Some .NET projects are accompanied by xUnit test projects, which can be identifi
 
 - `Utils/Monodoc.sh` calls Monodoc to generate HTML documentations of .NET assemblies.
 
+- `Utils/BuildEngineCore.ps1` creates the full release build of the engine core by automatically running `cargo build` for each target processor feature level.
+
 [Benchmark.NET]: http://benchmarkdotnet.org
 [loc]: https://crates.io/crates/loc
 
@@ -49,10 +51,12 @@ The following softwares must be installed to build this project.
 
 - [Rust] 1.26 or later. The nightly build toolchain must be installed and selected using `rustup install nightly` and `rustup default nightly`.
 - [.NET Core] 2.1 or later
+- [PowerShell Core] 6.0 or later
 - [LunarG Vulkan SDK] 1.0 or later. [glslang], which is distributed as a part of it, must be in `$PATH` to build ZanGFX and the rendering engine.
 
 [Rust]: https://www.rust-lang.org/en-US/
 [.NET Core]: https://www.microsoft.com/net/download/
+[PowerShell Core]: https://github.com/PowerShell/PowerShell
 [LunarG Vulkan SDK]: https://www.lunarg.com/vulkan-sdk/
 [glslang]: https://github.com/KhronosGroup/glslang
 
@@ -90,7 +94,7 @@ The following softwares must be installed to build this project.
     Checking if the engine core was successfully loaded
     $
 
-## Building as a stand-alone application
+## Building as a stand-alone application (TODO)
 
 We utilize .NET Core's [Self-contained deployment](https://docs.microsoft.com/en-us/dotnet/core/deploying/#self-contained-deployments-scd) feature to create a stand-alone application package. The result is an executable along with a bunch of dependent libraries (which mostly originate from the .NET Core standard library). To reduce the size of it further, we execute [.NET IL Linker](https://github.com/dotnet/core/blob/master/samples/linker-instructions.md) as a part of the build pipeline.
 
@@ -102,8 +106,17 @@ We utilize .NET Core's [Self-contained deployment](https://docs.microsoft.com/en
     # This process might left some garbage files that we can delete safely
     $ rm -R _ Optimize
 
-    # Copy native libraries
-    $ cp LoaderConfig.xml ../EngineCore/target/debug/libngs*.dylib ../Derived/Scd/
+    # Copy native libraries. Choose one of the following options depending on
+    # which version of the engine core you want to include:
+
+    # (Option 1: The full release build)
+    $ ../Utils/BuildEngineCore.ps1
+    $ cp NgsLoaderConfig.xml ../Derived/EngineCore/*ngs* ../Derived/Scd/
+
+    # (Option 2: The debug build)
+    $ cp NgsLoaderConfig.xml ../EngineCore/target/debug/libngs*.dylib ../Derived/Scd/
+
+TODO: Make a macOS application bundle
 
 ## License
 
