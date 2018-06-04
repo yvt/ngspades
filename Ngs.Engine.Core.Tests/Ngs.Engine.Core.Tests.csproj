@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
-    <RootNamespace>Ngs</RootNamespace>
+    <RootNamespace>Ngs.Engine</RootNamespace>
     <IsPackable>false</IsPackable>
     <LangVersion>7.2</LangVersion>
   </PropertyGroup>
@@ -16,12 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Ngs.Engine.Core\Ngs.Engine.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="..\Assets\D-DIN.ttf">
-      <LogicalName>Fonts.DDin</LogicalName>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
