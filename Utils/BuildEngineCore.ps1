@@ -22,85 +22,80 @@ if ($outputDirectory -eq "") {
 
 $featureLevels = @(
     @{
-        name="generic"; suffix="";
-        rustFlags=""; crates=@("ngsengine", "ngsloader")
+        name = "generic"; suffix = "";
+        rustFlags = ""; crates = @("ngsengine", "ngsloader")
     },
     @{
-        name="avx"; suffix="-avx";
-        rustFlags="-Ctarget-feature=+sse3,+avx"; crates=@("ngsengine")
+        name = "avx"; suffix = "-avx";
+        rustFlags = "-Ctarget-feature=+sse3,+avx"; crates = @("ngsengine")
     },
     @{
-        name="avx2"; suffix="-avx2";
-        rustFlags="-Ctarget-feature=+sse3,+avx,+avx2" ; crates=@("ngsengine")
+        name = "avx2"; suffix = "-avx2";
+        rustFlags = "-Ctarget-feature=+sse3,+avx,+avx2" ; crates = @("ngsengine")
     },
     @{
-        name="fma3"; suffix="-fma3";
-        rustFlags="-Ctarget-feature=+sse3,+avx,+avx2,+fma"; crates=@("ngsengine")
+        name = "fma3"; suffix = "-fma3";
+        rustFlags = "-Ctarget-feature=+sse3,+avx,+avx2,+fma"; crates = @("ngsengine")
     }
 )
 
-Echo "============= BuildEngineCore starting ================="
-Echo "  Output directory = $outputDirectory"
+Write-Output "============= BuildEngineCore starting ================="
+Write-Output "  Output directory = $outputDirectory"
 
-forEach ($featureLevel in $featureLevels) {
-    Echo ""
-    Echo "--------------------------------------------------------"
-    Echo ""
-    Echo "# Building binaries for the feature level '$($featureLevel.name)'"
+foreach ($featureLevel in $featureLevels) {
+    Write-Output ""
+    Write-Output "--------------------------------------------------------"
+    Write-Output ""
+    Write-Output "# Building binaries for the feature level '$($featureLevel.name)'"
 
     $cargoTargetDirectory = Join-PAth $cargoTargetRootDirectory $featureLevel.name
 
-    Echo ""
-    Echo "  Cargo target directory = $cargoTargetDirectory"
-    Echo ""
+    Write-Output ""
+    Write-Output "  Cargo target directory = $cargoTargetDirectory"
+    Write-Output ""
 
     [System.Environment]::SetEnvironmentVariable("RUSTFLAGS", $featureLevels.rustFlags)
     [System.Environment]::SetEnvironmentVariable("CARGO_TARGET_DIR", $cargoTargetDirectory)
 
-    forEach ($crate in $featureLevel.crates) {
-        Echo "## Building $crate"
+    foreach ($crate in $featureLevel.crates) {
+        Write-Output "## Building $crate"
         Set-Location -Path (Join-Path $engineCoreDirectory "src/$crate")
         &$cargoCommand build --release
-        Echo ""
+        Write-Output ""
     }
 }
-Echo ""
-Echo "--------------------------------------------------------"
-Echo ""
-Echo "# Collecting the outputs"
-Echo ""
+Write-Output ""
+Write-Output "--------------------------------------------------------"
+Write-Output ""
+Write-Output "# Collecting the outputs"
+Write-Output ""
 
-if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
-    [System.Runtime.InteropServices.OSPlatform]::Windows))
-{
+if ($IsWindows) {
     $dylibPrefix = ""
     $dylibSuffix = ".dll"
 }
-elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
-    [System.Runtime.InteropServices.OSPlatform]::OSX))
-{
+elseif ($IsMacOS) {
     $dylibPrefix = "lib"
     $dylibSuffix = ".dylib"
 }
-elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
-    [System.Runtime.InteropServices.OSPlatform]::Linux))
-{
+elseif ($IsLinux) {
     $dylibPrefix = "lib"
     $dylibSuffix = ".so"
-} else {
+}
+else {
     Throw "Unknown platform - cannot determine the dylib file name.";
 }
 
-forEach ($featureLevel in $featureLevels) {
+foreach ($featureLevel in $featureLevels) {
     $cargoTargetDirectory = Join-PAth $cargoTargetRootDirectory $featureLevel.name
 
-    forEach ($crate in $featureLevel.crates) {
+    foreach ($crate in $featureLevel.crates) {
         $builtDylibPath = Join-Path $cargoTargetDirectory "release" "$dylibPrefix$crate$dylibSuffix"
         $dylibOutputPath = Join-PAth $outputDirectory "$dylibPrefix$crate$($featureLevel.suffix)$dylibSuffix"
-        Echo "$builtDylibPath -> $dylibOutputPath"
+        Write-Output "$builtDylibPath -> $dylibOutputPath"
         Copy-Item -Path $builtDylibPath $dylibOutputPath
     }
 }
 
-Echo ""
-Echo "=============== BuildEngineCore done ==================="
+Write-Output ""
+Write-Output "=============== BuildEngineCore done ==================="
