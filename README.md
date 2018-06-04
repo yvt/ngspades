@@ -18,7 +18,6 @@ Nightingales
 - `Ngs.Engine.Core` is a .NET library that serves the following purposes:
     - It defines NgsCOM interfaces (a kind of contract between softwares). Most of them are implemented by the engine core (look for crates whose names ending with `_com`) and consumed by the .NET part. There are some opposites cases.
     - It provides basic data types such as `IntVector3` and `Rgba`.
-    - It provides a safe/user-friendly wrapper around the raw engine core interface.
     - It provides the engine core loader, which locates and loads `ngsengine`, the engine core. This process is assisted by `ngsloader`, which is another native dynamic library.
     - This project contains [a separate developer's documentation](./Ngs.Engine.Core/Readme.md.html).
 
