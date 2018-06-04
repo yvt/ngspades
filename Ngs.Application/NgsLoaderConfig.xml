@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <LoaderConfig>
-    <!-- TODO: Make a pipeline to build these optimized binary images -->
     <Image Path="libngsengine-fma3.dylib">
         <SupportsPlatform>OSX</SupportsPlatform>
         <RequiresProcessorFeature>FMA3</RequiresProcessorFeature>
