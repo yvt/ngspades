@@ -1,14 +1,10 @@
-**Ngs.Engine.Facade**
+**Ngs.Engine.Core**
 
 # Fundamental Components
 
 ## Interop API
 
 COM interfaces serve as a conduit between a managed code and a native code (engine core). In most cases they are intended to be "internal-use only" and not designed with ergonomics or any design best practices in mind.
-
-## Wrapper (facade) API
-
-The wrapper types provide an API directly faced to the application developer. They are meant to have more stable interfaces compared to those of the raw interop API.
 
 ## Common types
 
@@ -46,7 +42,7 @@ When it's necessary, a COM interface may include a method accepting a native poi
 
 The contents of a native pointer passed by a managed code can change at any time. This means in most cases it's simply unsafe to dereference except for a limited number of situations. Its safe wrapper class may include a wrapper method that casts `Span&lt;T>` to `IntPtr` only if it's absolutely certain that doing so doesn't jeopardize the memory safety.
 
-A native code may expose a raw pointer, but its exposure should be minimized. A wrapper class in `Ngs.Engine.Facade` converts it to a memory-safe wrapper like `Span&lt;T>`.
+A native code may expose a raw pointer, but its exposure should be minimized. The `Ngs.Engine.Framework` assembly provides wrapper classes that wrap raw pointers with a memory-safe wrapper like `Span&lt;T>`.
 
 !!! Tip
     A verifiable IL code (e.g., untrusted code) cannot dereference a raw pointer without the help of an unverifiable code.

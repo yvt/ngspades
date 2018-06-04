@@ -1,10 +1,14 @@
 <meta charset="utf-8">
 
-                            **Ngs.Framework**
+                          **Ngs.Engine.Framework**
+
+# Wrapper (facade) API
+
+The wrapper types provide an API directly faced to the application developer. They are meant to have more stable interfaces compared to those of the raw interop API.
 
 # GUI framework
 
-The `Ngs.UI` namespace provides a framework for creating a graphical user interface based on NgsPF.
+The `Ngs.Engine.UI` namespace provides a framework for creating a graphical user interface based on NgsPF.
 
 This framework is not thread-safe.
 
@@ -19,7 +23,7 @@ This framework is not thread-safe.
 
 *Windows* are the root-level components of GUI and act as a boundary between a window manager (provided by an operating system) and an application.
 
-*Views* (`Ngs.UI.View`) are the functional basic-blocks of GUI. Views are capable of hosting zero or more *subviews*, forming a tree structure (*view tree*). Subviews are positioned using a *layout* object associated with their superview.
+*Views* (`Ngs.Engine.UI.View`) are the functional basic-blocks of GUI. Views are capable of hosting zero or more *subviews*, forming a tree structure (*view tree*). Subviews are positioned using a *layout* object associated with their superview.
 
 !!! Tip
     It's impossible to make a view without a layout have subviews. Subviews must be positioned somehow. Furthermore, subviews are managed by a layout at the implementation level.
@@ -29,7 +33,7 @@ Every window has exactly one *contents view*, which serves as a root of the view
 Views are finally converted to *layers*. Layers are purely presentational objects that are used to instruct the underlying compositing engine what to display on the screen.
 
 !!! Tip
-    Layers can be thought of as a series of render commands. In fact, layers are generated in this style through method calls done by an implementation of `Ngs.UI.View.Render`. However, they are represented using the retained mode graphics model (à la scene graph) in the composition engine, so they must first be converted to this form before being displayed. The framework employs various optimizations to minimize the number of operations required to modify the layer tree.
+    Layers can be thought of as a series of render commands. In fact, layers are generated in this style through method calls done by an implementation of `Ngs.Engine.UI.View.Render`. However, they are represented using the retained mode graphics model (à la scene graph) in the composition engine, so they must first be converted to this form before being displayed. The framework employs various optimizations to minimize the number of operations required to modify the layer tree.
 
 !!! TODO: Yet to be written about...
     Ports
