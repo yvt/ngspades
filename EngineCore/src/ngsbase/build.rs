@@ -20,7 +20,7 @@ fn main() {
     let interopgen_csproj_path = interopgen_path.join("Ngs.RustInteropGen.csproj");
 
     // Interface definitions
-    let interop_path = project_path.join("Ngs.Engine.Facade");
+    let interop_path = project_path.join("Ngs.Engine.Core");
 
     // Output file
     let out_dir = env::var("OUT_DIR").unwrap();
