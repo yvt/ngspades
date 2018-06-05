@@ -471,7 +471,7 @@ impl CompositorWindow {
                     let image_data = image_data.get_presenter_ref(c.frame).unwrap();
 
                     let size = image_data.size();
-                    let size_f = size.cast::<f32>();
+                    let size_f = size.cast::<f32>().unwrap();
                     let uv_matrix =
                         Matrix4::from_nonuniform_scale(1.0 / size_f.x, 1.0 / size_f.y, 1.0)
                             * model_mat_for_bounds(source);
@@ -602,7 +602,7 @@ impl CompositorWindow {
 
                 // Dimensions of the flattened image
                 let size = bounds.size();
-                let mut pixel_size = (size * cc.pixel_ratio).cast::<u32>();
+                let mut pixel_size = (size * cc.pixel_ratio).cast::<u32>().unwrap();
                 if pixel_size.x == 0 {
                     pixel_size.x = 1;
                 }

@@ -54,7 +54,7 @@ impl INgsEngineTrait for Engine {
         retval: &mut ComPtr<INgsPFBitmap>,
     ) -> HResult {
         to_hresult(|| {
-            let size = size.cast::<usize>();
+            let size = size.cast::<usize>().ok_or(hresults::E_INVALIDARG)?;
             let format = match format.get().ok_or(hresults::E_INVALIDARG)? {
                 PixelFormatItem::SrgbRgba8 => ImageFormat::SrgbRgba8,
                 PixelFormatItem::SrgbRgba8Premul => ImageFormat::SrgbRgba8Premul,

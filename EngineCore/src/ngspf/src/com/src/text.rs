@@ -709,8 +709,8 @@ impl INgsPFTextLayoutTrait for ComTextLayout {
     fn get_visual_bounds(&self, retval: &mut Box2<f32>) -> HResult {
         let layout = self.data.0.lock().unwrap();
         let bounds = layout.visual_bounds();
-        retval.min = bounds[0].cast();
-        retval.max = bounds[1].cast();
+        retval.min = bounds[0].cast().unwrap();
+        retval.max = bounds[1].cast().unwrap();
         hresults::E_OK
     }
 }

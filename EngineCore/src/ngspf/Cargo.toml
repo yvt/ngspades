@@ -10,14 +10,14 @@ ngspf_viewport = { path = "src/viewport" }
 cggeom = { path = "../support/cggeom" }
 
 [dev-dependencies]
-rand = "0.3.16"
-cgmath = "0.15.0"
+rand = "0.5.0"
+cgmath = "0.16.1"
 ngsenumflags = { path = "../support/ngsenumflags" }
 include_data = { path = "../support/include_data" }
 attrtext = { path = "../support/attrtext" }
 refeq = { path = "../support/refeq" }
 ttf-noto-sans = "0.1.1"
-lipsum = "0.4.0"
+lipsum = "0.5.0"
 
 [build-dependencies]
 prebuild-glslang = { path = "../support/prebuild-glslang" }

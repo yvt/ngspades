@@ -233,7 +233,7 @@ impl ImageManager {
 
                 let gfx_image = device
                     .build_image()
-                    .extents(&image_data.size().cast::<u32>()[0..2])
+                    .extents(&image_data.size().cast::<u32>().unwrap()[0..2])
                     .format(gfx::ImageFormat::SrgbRgba8)
                     .usage(flags![gfx::ImageUsage::{CopyWrite | Sampled}])
                     .build()?;
@@ -343,7 +343,7 @@ impl ImageManager {
                         layers: 0..1,
                     },
                     &[0, 0],
-                    &size.cast::<u32>()[0..2],
+                    &size.cast::<u32>().unwrap()[0..2],
                 );
 
                 // Insert a image layout transition for all images in this

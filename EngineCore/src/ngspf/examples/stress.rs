@@ -44,12 +44,13 @@ struct State {
     layers: Vec<Vec<LayerRef>>,
     system: LorenzSystem,
     root: LayerRef,
-    rng: rand::XorShiftRng,
+    rng: rand::rngs::SmallRng,
     trail_i: usize,
 }
 
 impl State {
     fn new(context: Arc<Context>) -> Self {
+        use rand::FromEntropy;
         Self {
             points: Vec::new(),
             layers: Vec::new(),
@@ -61,7 +62,7 @@ impl State {
                 sigma: 10.0,
                 beta: 8.0 / 3.0,
             },
-            rng: rand::weak_rng(),
+            rng: rand::rngs::SmallRng::from_entropy(),
             trail_i: 0,
             context,
         }
@@ -69,16 +70,16 @@ impl State {
 
     fn resize(&mut self, frame: &mut ProducerFrame, num_points: usize, trail_len: usize) {
         // Resize `self.points`
-        use rand::distributions::IndependentSample;
+        use rand::distributions::Distribution;
         let dist = rand::distributions::Normal::new(0.0, 10.0);
         self.points.truncate(num_points);
         for _ in self.points.len()..num_points {
             self.points.push(
                 vec3(
-                    dist.ind_sample(&mut self.rng),
-                    dist.ind_sample(&mut self.rng),
-                    dist.ind_sample(&mut self.rng),
-                ).cast(),
+                    dist.sample(&mut self.rng),
+                    dist.sample(&mut self.rng),
+                    dist.sample(&mut self.rng),
+                ).cast().unwrap(),
             );
         }
 

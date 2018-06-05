@@ -37,7 +37,7 @@ pub enum RaytraceResult {
 /// `[-0x7fffffff, 0x7fffffff]`.
 pub fn raytrace(terrain: &Terrain, start: Vector3<f32>, to: Vector3<f32>) -> RaytraceResult {
     let size = terrain.size();
-    let size_f = size.cast::<f32>();
+    let size_f = size.cast::<f32>().unwrap();
 
     // Is the starting point inside a solid voxel?
     let start_inside = start.x >= 0.0 && start.y >= 0.0 && start.z >= 0.0 &&
@@ -65,7 +65,7 @@ pub fn raytrace(terrain: &Terrain, start: Vector3<f32>, to: Vector3<f32>) -> Ray
         if z_min >= size_f.z || z_max < 0.0 {
             return RaytraceResult::NoHit;
         }
-        let row_coord = start.truncate().cast();
+        let row_coord = start.truncate().cast().unwrap();
         let row = terrain.get_row(row_coord).unwrap();
         let z_hit = if to.z > start.z {
             cast_row(&row, z_min as usize, z_max as usize, true)

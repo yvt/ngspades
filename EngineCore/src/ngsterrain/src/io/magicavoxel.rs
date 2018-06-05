@@ -99,7 +99,7 @@ pub fn from_magicavoxel<T: Read + Seek>(reader: &mut T) -> Result<Terrain> {
             reader.read_u32::<LE>()?,
             reader.read_u32::<LE>()?,
             reader.read_u32::<LE>()?,
-        ).cast()
+        ).cast().unwrap()
     };
 
     if size.x == 0 || size.y == 0 || size.z == 0 ||

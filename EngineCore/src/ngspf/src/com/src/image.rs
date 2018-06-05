@@ -47,7 +47,7 @@ impl ComBitmap {
             ImageFormat::SrgbRgba8 => ngsbase::PixelFormatItem::SrgbRgba8,
             ImageFormat::SrgbRgba8Premul => ngsbase::PixelFormatItem::SrgbRgba8Premul,
         }.into();
-        let size = image_data.size().cast::<i32>();
+        let size = image_data.size().cast::<i32>().unwrap();
 
         Self::alloc(BitmapData {
             image_data: ArcLock::new(Some(image_data)),

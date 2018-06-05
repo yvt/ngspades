@@ -225,7 +225,7 @@ fn main() {
                         let new_image = render_second_image(&font_config, new_size);
 
                         // Set the new image
-                        let size = new_image.size().cast::<f32>();
+                        let size = new_image.size().cast::<f32>().unwrap();
                         let image_ref = ImageRef::new_immutable(new_image);
                         dyn_layer
                             .contents()

@@ -8,13 +8,13 @@ zangfx_common = { path = "../../common" }
 zangfx_base = { path = "../../base" }
 ngsenumflags = { path = "../../../../support/ngsenumflags" }
 ngsenumflags_derive = { path = "../../../../support/ngsenumflags/ngsenumflags_derive" }
-parking_lot = "0.4.4"
+parking_lot = "0.5.5"
 tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }
 refeq = { path = "../../../../support/refeq" }
 xalloc = { path = "../../../../support/xalloc-rs", features = ["nightly"] }
 arrayvec = "0.4.1"
-ash = "0.22.0"
+ash = "0.24.3"
 
 [dev-dependencies]
 zangfx_test = { path = "../../test" }

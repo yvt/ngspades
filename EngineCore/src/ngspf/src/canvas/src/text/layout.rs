@@ -1078,8 +1078,9 @@ pub(crate) struct GlyphLayout {
 impl GlyphLayout {
     fn bounds(&self) -> Option<[Point2<f64>; 2]> {
         self.glyph_extents.map(|e| {
-            let origin = self.position + e.origin.cast::<f64>() * self.scale;
-            [origin, origin + e.size.cast::<f64>() * self.scale]
+            let origin = self.position +
+                e.origin.cast::<f64>().unwrap() * self.scale;
+            [origin, origin + e.size.cast::<f64>().unwrap() * self.scale]
         })
     }
 }

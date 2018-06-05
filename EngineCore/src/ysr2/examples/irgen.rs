@@ -244,14 +244,14 @@ fn main() {
         let num_samples = (sampling_rate * 4.0) as usize;
 
         // Locate the source and listener
-        let size = terrain.size().cast::<f32>();
+        let size = terrain.size().cast::<f32>().unwrap();
         let mut listener_pos = vec3(size.x * 0.4, size.y * 0.4, size.z);
         let mut source_pos = vec3(size.x * 0.4, size.y * 0.6, size.z);
 
         while source_pos.z > 4.0 {
             let mut new_pos = source_pos;
             new_pos.z -= 2.0;
-            if terrain.get_voxel(new_pos.cast()).is_some() {
+            if terrain.get_voxel(new_pos.cast().unwrap()).is_some() {
                 break;
             }
             source_pos = new_pos;
@@ -261,7 +261,7 @@ fn main() {
         while listener_pos.z > 4.0 {
             let mut new_pos = listener_pos;
             new_pos.z -= 2.0;
-            if terrain.get_voxel(new_pos.cast()).is_some() {
+            if terrain.get_voxel(new_pos.cast().unwrap()).is_some() {
                 break;
             }
             listener_pos = new_pos;

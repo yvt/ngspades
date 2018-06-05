@@ -261,13 +261,13 @@ impl WindowSet {
             let event = match winit_event {
                 winit::WindowEvent::Resized(w, h) => {
                     let ratio = winit_win.hidpi_factor();
-                    let size = Vector2::new(w, h).cast::<f32>();
+                    let size = Vector2::new(w, h).cast::<f32>().unwrap();
                     Some(WindowEvent::Resized(size / ratio))
                 }
                 winit::WindowEvent::Moved(x, y) => {
                     // FIXME: Should be these coordinates divided by `ratio`? These are global
                     //        coordinates, not client ...
-                    Some(WindowEvent::Moved(Vector2::new(x, y).cast()))
+                    Some(WindowEvent::Moved(Vector2::new(x, y).cast().unwrap()))
                 }
                 winit::WindowEvent::CloseRequested => Some(WindowEvent::Close),
                 winit::WindowEvent::MouseInput { state, button, .. } => {
@@ -287,9 +287,9 @@ impl WindowSet {
                 } => {
                     // Translate the coordinate to `MousePosition`
                     let ratio = winit_win.hidpi_factor();
-                    let client = Vector2::new(x, y).cast::<f32>() / ratio;
+                    let client = Vector2::new(x, y).cast::<f32>().unwrap() / ratio;
                     let (wx, wy) = winit_win.get_position().unwrap_or((0, 0));
-                    let global = client + Vector2::new(wx, wy).cast();
+                    let global = client + Vector2::new(wx, wy).cast().unwrap();
                     let pos = Some(MousePosition { client, global });
 
                     // Update the internal cursor location
@@ -389,7 +389,8 @@ impl WindowSet {
 
             let inner_size = (window.size.read_presenter(&frame).unwrap()
                 * winit_window.hidpi_factor())
-                .cast::<u32>();
+                .cast::<u32>()
+                .unwrap();
             winit_window.set_inner_size(inner_size.x, inner_size.y);
 
             let surface = self.wm.add_surface(winit_window, NodeRef::clone(new_node));
@@ -427,7 +428,8 @@ impl WindowSet {
             if action.contains(WindowActionBit::ChangeSize) {
                 let new_value = (window.size.read_presenter(frame).unwrap()
                     * winit_window.hidpi_factor())
-                    .cast::<u32>();
+                    .cast::<u32>()
+                    .unwrap();
                 winit_window.set_inner_size(new_value.x, new_value.y);
             }
             if action.contains(WindowActionBit::ChangeTitle) {

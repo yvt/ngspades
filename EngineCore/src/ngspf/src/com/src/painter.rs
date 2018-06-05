@@ -85,7 +85,7 @@ impl INgsPFPainterTrait for ComPainter {
     fn translate(&self, offset: Vector2<f32>) -> HResult {
         to_hresult(|| {
             let mut painter = self.lock_painter().ok_or(hresults::E_UNEXPECTED)?;
-            painter.translate(offset.cast());
+            painter.translate(offset.cast().unwrap());
             Ok(())
         })
     }

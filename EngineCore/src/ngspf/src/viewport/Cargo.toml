@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-winit = "0.14.0"
-cgmath = "0.15.0"
-rgb = "0.7.2"
+winit = "0.15.0"
+cgmath = "0.16.1"
+rgb = "0.8.9"
 include_data = { path = "../../../support/include_data" }
 refeq = { path = "../../../support/refeq", features = ["nightly"] }
 iterpool = { path = "../../../support/iterpool" }
@@ -20,13 +20,13 @@ xdispatch = { path = "../../../xdispatch" }
 atomic_refcell = "0.1.0"
 
 [target.'cfg(target_os="macos")'.dependencies]
-cocoa = "0.9"
+cocoa = "0.15"
 objc = "0.2"
 block = "0.1.5"
 
 [target.'cfg(windows)'.dependencies]
 user32-sys = "0.2.0"
-winapi = "0.2.8"
+winapi = "0.3.5"
 
 [build-dependencies]
 prebuild-glslang = { path = "../../../support/prebuild-glslang" }

@@ -6,5 +6,5 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 ngsenumflags = { path = "../../../support/ngsenumflags" }
 ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_derive" }
-cgmath = "0.15.0"
+cgmath = "0.16.1"
 lazy_static = "0.2"

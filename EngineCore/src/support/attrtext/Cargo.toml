@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
-rgb = "0.7.2"
+rgb = "0.8.9"
 itertools = "0.7.8"
 ngsenumflags = { path = "../ngsenumflags" }
 ngsenumflags_derive = { path = "../ngsenumflags/ngsenumflags_derive" }
-opaque_typedef = "0.0.2"
-opaque_typedef_macros = "0.0.2"
+opaque_typedef = "0.0.4"
+opaque_typedef_macros = "0.0.4"

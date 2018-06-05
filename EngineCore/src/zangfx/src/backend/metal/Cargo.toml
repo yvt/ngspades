@@ -12,8 +12,8 @@ zangfx_spirv-cross = { path = "src/spirv-cross" }
 block = "0.1.5"
 rspirv = "0.5.1"
 spirv_headers = "1.1.5"
-cocoa = "0.9"
-parking_lot = "0.4.4"
+cocoa = "0.15"
+parking_lot = "0.5.5"
 tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }
 refeq = { path = "../../../../support/refeq" }

@@ -69,7 +69,7 @@ impl<S: BaseFloat> Affine2<S> {
 impl<S: NumCast + Copy> Affine2<S> {
     /// Cast each element to another type.
     pub fn cast<T: NumCast>(&self) -> Affine2<T> {
-        Affine2(self.0.cast::<T>())
+        Affine2(self.0.cast::<T>().unwrap())
     }
 }
 

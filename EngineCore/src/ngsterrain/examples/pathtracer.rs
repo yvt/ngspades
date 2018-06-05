@@ -26,7 +26,7 @@ struct State {
 
 impl State {
     fn new(terrain: &ngsterrain::Terrain) -> State {
-        let size = terrain.size().cast::<f32>();
+        let size = terrain.size().cast::<f32>().unwrap();
         State {
             eye: vec3(size.x * 0.5, size.y * 0.5, size.z),
             velocity: Vector3::zero(),
@@ -226,7 +226,8 @@ impl Renderer {
                 let tangent = vec3(normal.z, normal.x, normal.y);
                 let binormal = vec3(tangent.z, tangent.x, tangent.y);
 
-                let albedo = vec3(color[0], color[1], color[2]).cast() * (1.0 / 255.0);
+                let albedo = vec3(color[0], color[1], color[2]).cast().unwrap()
+                    * (1.0 / 255.0);
 
                 // 2.0 gamma
                 let albedo = albedo.mul_element_wise(albedo);
@@ -321,9 +322,9 @@ impl Renderer {
                 sampler.rng.reseed([x ^ y, x ^ y ^ 1, x ^ y ^ 2, x ^ y ^ 4]);
 
                 for x in 0..width / UNDERSAMPLE {
-                    let centered_pos = vec2(x * UNDERSAMPLE, y * UNDERSAMPLE).cast::<i32>() -
-                        vec2(width / 2, height / 2).cast::<i32>();
-                    let mut norm_pos = centered_pos.cast::<f32>() * factor;
+                    let centered_pos = vec2(x * UNDERSAMPLE, y * UNDERSAMPLE).cast::<i32>().unwrap() -
+                        vec2(width / 2, height / 2).cast::<i32>().unwrap();
+                    let mut norm_pos = centered_pos.cast::<f32>().unwrap() * factor;
                     norm_pos.y = -norm_pos.y;
                     let dir = params.primary_ray(norm_pos);
 
@@ -354,7 +355,7 @@ impl Renderer {
                     color.z = aces_film(color.z).sqrt();
                     color *= 255.0;
 
-                    let color_i: Vector3<u32> = color.cast();
+                    let color_i: Vector3<u32> = color.cast().unwrap();
 
                     let color_raw = 0xff000000 | color_i.z | (color_i.y << 8) | (color_i.x << 16);
 

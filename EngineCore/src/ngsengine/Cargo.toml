@@ -13,4 +13,4 @@ ngsbase = { path = "../ngsbase" }
 ngscom = { path = "../ngscom" }
 ngspf = { path = "../ngspf" }
 ngspf_com = { path = "../ngspf/src/com" }
-cgmath = "0.15.0"
+cgmath = "0.16.1"

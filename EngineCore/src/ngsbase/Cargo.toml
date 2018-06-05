@@ -8,9 +8,9 @@ ngscom = { path = "../ngscom", version = "0.1" }
 ngsenumflags = { path = "../support/ngsenumflags" }
 ngsenumflags_derive = { path = "../support/ngsenumflags/ngsenumflags_derive" }
 cggeom = { path = "../support/cggeom" }
-cgmath = "0.15.0"
-num-traits = "0.1.37"
-rgb = "0.7.2"
+cgmath = "0.16.1"
+num-traits = "0.2.4"
+rgb = "0.8.9"
 
 [build-dependencies]
-walkdir = "1"
+walkdir = "2.1"

@@ -8,4 +8,4 @@ readme = "README.md"
 
 [dependencies]
 libc = { version = "0.2.21" }
-lazy_static = { version = "0.2" }
+lazy_static = { version = "1.0.1" }
