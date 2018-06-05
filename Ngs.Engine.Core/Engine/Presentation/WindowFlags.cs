@@ -12,12 +12,7 @@ namespace Ngs.Engine.Presentation {
     [Flags]
     public enum WindowFlags {
         /// <summary>
-        /// <para>
         /// Specifies that the window can be resized by the user.
-        /// </para>
-        /// <para>
-        /// In the current implementation of NgsPF, fixed-sized windows do not work well.
-        /// </para>
         /// </summary>
         Resizable = 1 << 0,
 

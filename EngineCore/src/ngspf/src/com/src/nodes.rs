@@ -451,6 +451,19 @@ impl ngsbase::INgsPFWindowTrait for ComWindow {
         to_hresult(|| node_data_set_prop!(self.data, size = value))
     }
 
+    fn set_maximum_size(&self, value: cgmath::Vector2<f32>) -> HResult {
+        let value = if value.x.is_infinite() && value.y.is_infinite() {
+            None
+        } else {
+            Some(value)
+        };
+        to_hresult(|| node_data_set_prop!(self.data, max_size = value))
+    }
+
+    fn set_minimum_size(&self, value: cgmath::Vector2<f32>) -> HResult {
+        to_hresult(|| node_data_set_prop!(self.data, min_size = Some(value)))
+    }
+
     fn set_child(&self, value: UnownedComPtr<IUnknown>) -> HResult {
         to_hresult(|| {
             let value = if value.is_null() {
