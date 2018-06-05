@@ -71,7 +71,7 @@ foreach ($featureLevel in $featureLevels) {
     Write-Output "  Cargo target directory = $cargoTargetDirectory"
     Write-Output ""
 
-    [System.Environment]::SetEnvironmentVariable("RUSTFLAGS", $featureLevels.rustFlags)
+    [System.Environment]::SetEnvironmentVariable("RUSTFLAGS", $featureLevel.rustFlags)
     [System.Environment]::SetEnvironmentVariable("CARGO_TARGET_DIR", $cargoTargetDirectory)
 
     foreach ($crate in $featureLevel.crates) {
