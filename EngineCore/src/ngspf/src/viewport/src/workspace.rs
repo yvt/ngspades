@@ -373,28 +373,44 @@ impl WindowSet {
             let flags = window.flags;
             let title = window.title.read_presenter(&frame).unwrap().to_owned();
 
+            let inner_size = (window.size.read_presenter(&frame).unwrap())
+                .cast::<f64>()
+                .unwrap();
+
+            let min_size = (window.min_size.read_presenter(&frame))
+                .unwrap()
+                .map(|x| x.cast::<f64>().unwrap());
+            let max_size = (window.max_size.read_presenter(&frame))
+                .unwrap()
+                .map(|x| x.cast::<f64>().unwrap());
+
             let mut builder = winit::WindowBuilder::new()
                 .with_transparency(flags.contains(WindowFlagsBit::Transparent))
                 .with_decorations(!flags.contains(WindowFlagsBit::Borderless))
-                .with_title(title);
+                .with_resizable(flags.contains(WindowFlagsBit::Resizable))
+                .with_title(title)
+                .with_dimensions(winit::LogicalSize {
+                    width: inner_size.x,
+                    height: inner_size.y,
+                });
 
-            // TODO: Handle the lack of `WindowFlagsBit::Resizable`
+            if let Some(min_size) = min_size {
+                builder = builder.with_min_dimensions(winit::LogicalSize {
+                    width: min_size.x,
+                    height: min_size.y,
+                });
+            }
+            if let Some(max_size) = max_size {
+                builder = builder.with_max_dimensions(winit::LogicalSize {
+                    width: max_size.x,
+                    height: max_size.y,
+                });
+            }
 
             let winit_window = builder
                 .build(events_loop)
                 .expect("failed to instantiate a window.");
             let winit_window_id = winit_window.id();
-
-            let inner_size = window
-                .size
-                .read_presenter(&frame)
-                .unwrap()
-                .cast::<f64>()
-                .unwrap();
-            winit_window.set_inner_size(winit::LogicalSize {
-                width: inner_size.x,
-                height: inner_size.y,
-            });
 
             let surface = self.wm.add_surface(winit_window, NodeRef::clone(new_node));
 
@@ -429,16 +445,27 @@ impl WindowSet {
                 BitFlags::empty(),
             );
             if action.contains(WindowActionBit::ChangeSize) {
-                let new_value = window
-                    .size
-                    .read_presenter(frame)
-                    .unwrap()
+                let size = (window.size.read_presenter(frame).unwrap())
                     .cast::<f64>()
                     .unwrap();
+                let min_size = (window.min_size.read_presenter(&frame))
+                    .unwrap()
+                    .map(|x| x.cast::<f64>().unwrap());
+                let max_size = (window.max_size.read_presenter(&frame))
+                    .unwrap()
+                    .map(|x| x.cast::<f64>().unwrap());
                 winit_window.set_inner_size(winit::LogicalSize {
-                    width: new_value.x,
-                    height: new_value.y,
+                    width: size.x,
+                    height: size.y,
                 });
+                winit_window.set_min_dimensions(min_size.map(|t| winit::LogicalSize {
+                    width: t.x,
+                    height: t.y,
+                }));
+                winit_window.set_max_dimensions(max_size.map(|t| winit::LogicalSize {
+                    width: t.x,
+                    height: t.y,
+                }));
             }
             if action.contains(WindowActionBit::ChangeTitle) {
                 let new_value = window.title.read_presenter(frame).unwrap();

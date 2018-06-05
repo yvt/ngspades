@@ -15,8 +15,6 @@ use refeq::RefEqArc;
 #[repr(u8)]
 pub enum WindowFlagsBit {
     /// Specifies that the window can be resized by the user.
-    ///
-    /// FIXME: Fixed-sized window does not work well
     Resizable = 0b0001,
 
     /// Hides the window's decoration (title bar, border, etc.).
@@ -39,6 +37,8 @@ pub(super) enum WindowActionBit {
 pub struct WindowBuilder {
     flags: WindowFlags,
     size: Vector2<f32>,
+    min_size: Option<Vector2<f32>>,
+    max_size: Option<Vector2<f32>>,
     child: Option<NodeRef>,
     title: String,
     listener: Option<WindowListener>,
@@ -49,6 +49,8 @@ impl WindowBuilder {
         Self {
             flags: WindowFlags::empty(),
             size: Vector2::new(640f32, 480f32),
+            min_size: None,
+            max_size: None,
             child: None,
             title: "NgsPF Window".to_owned(),
             listener: None,
@@ -64,6 +66,14 @@ impl WindowBuilder {
 
     pub fn size(self, size: Vector2<f32>) -> Self {
         Self { size, ..self }
+    }
+
+    pub fn min_size(self, min_size: Option<Vector2<f32>>) -> Self {
+        Self { min_size, ..self }
+    }
+
+    pub fn max_size(self, max_size: Option<Vector2<f32>>) -> Self {
+        Self { max_size, ..self }
     }
 
     pub fn child(self, child: Option<NodeRef>) -> Self {
@@ -88,6 +98,8 @@ impl WindowBuilder {
             flags: self.flags,
 
             size: WoProperty::new(context, self.size),
+            min_size: WoProperty::new(context, self.min_size),
+            max_size: WoProperty::new(context, self.max_size),
             size_update_id: ProducerDataCell::new(context, UpdateId::new()),
 
             child: KeyedProperty::new(context, self.child),
@@ -115,6 +127,8 @@ pub(super) struct Window {
     pub flags: WindowFlags,
 
     pub size: WoProperty<Vector2<f32>>,
+    pub min_size: WoProperty<Option<Vector2<f32>>>,
+    pub max_size: WoProperty<Option<Vector2<f32>>>,
     pub size_update_id: ProducerDataCell<UpdateId>,
 
     pub child: KeyedProperty<Option<NodeRef>>,
@@ -161,6 +175,68 @@ impl WindowRef {
                         let c = RefEqArc::clone(&(self.0).0);
                         move |frame, value| {
                             *c.size.write_presenter(frame).unwrap() = value;
+                            let a = c.action.write_presenter(frame).unwrap();
+                            *a = *a | WindowActionBit::ChangeSize;
+                        }
+                    },
+                );
+
+                *(self.0).0.size_update_id.write_producer(frame)? = new_id;
+
+                Ok(())
+            }
+        }
+        Accessor(self)
+    }
+
+    pub fn min_size<'a>(&'a self) -> impl PropertyProducerWrite<Option<Vector2<f32>>> + 'a {
+        struct Accessor<'a>(&'a WindowRef);
+        impl<'a> PropertyProducerWrite<Option<Vector2<f32>>> for Accessor<'a> {
+            fn set(
+                &self,
+                frame: &mut ProducerFrame,
+                new_value: Option<Vector2<f32>>,
+            ) -> Result<(), PropertyError> {
+                let update_id = *(self.0).0.size_update_id.read_producer(frame)?;
+
+                let new_id = frame.record_keyed_update(
+                    update_id,
+                    |_| new_value,
+                    || {
+                        let c = RefEqArc::clone(&(self.0).0);
+                        move |frame, value| {
+                            *c.min_size.write_presenter(frame).unwrap() = value;
+                            let a = c.action.write_presenter(frame).unwrap();
+                            *a = *a | WindowActionBit::ChangeSize;
+                        }
+                    },
+                );
+
+                *(self.0).0.size_update_id.write_producer(frame)? = new_id;
+
+                Ok(())
+            }
+        }
+        Accessor(self)
+    }
+
+    pub fn max_size<'a>(&'a self) -> impl PropertyProducerWrite<Option<Vector2<f32>>> + 'a {
+        struct Accessor<'a>(&'a WindowRef);
+        impl<'a> PropertyProducerWrite<Option<Vector2<f32>>> for Accessor<'a> {
+            fn set(
+                &self,
+                frame: &mut ProducerFrame,
+                new_value: Option<Vector2<f32>>,
+            ) -> Result<(), PropertyError> {
+                let update_id = *(self.0).0.size_update_id.read_producer(frame)?;
+
+                let new_id = frame.record_keyed_update(
+                    update_id,
+                    |_| new_value,
+                    || {
+                        let c = RefEqArc::clone(&(self.0).0);
+                        move |frame, value| {
+                            *c.max_size.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
                             *a = *a | WindowActionBit::ChangeSize;
                         }
