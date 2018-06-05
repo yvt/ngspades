@@ -65,3 +65,6 @@ debug = true
 [profile.bench]
 lto = true
 debug = true
+
+[patch.crates-io]
+winit = { git = "https://github.com/francesca64/winit.git", rev = "dfe40b6cd474c4874440da3ac6502c6698b79524" }

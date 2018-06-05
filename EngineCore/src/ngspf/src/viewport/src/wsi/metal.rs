@@ -107,7 +107,9 @@ impl<P: Painter> Drop for WindowManager<P> {
 
 fn resize_drawable(layer: &OCPtr<metal::CAMetalLayer>, window: &Window) -> bool {
     // we're sure the window exists
-    let (mut w, mut h) = window.get_inner_size().unwrap();
+    let dpi_factor = window.get_hidpi_factor();
+    let (mut w, mut h) = (window.get_inner_size().unwrap())
+        .to_physical(dpi_factor).into();
     if w == 0 {
         w = 1;
     }
@@ -357,7 +359,7 @@ impl<P: Painter> WindowManager<P> {
                         image: unsafe { be::image::Image::from_raw(metal_texture) }.into(),
                         surface_props,
                         metal_drawable: Some(OCPtr::new(metal_drawable).unwrap()),
-                        pixel_ratio: window.hidpi_factor(),
+                        pixel_ratio: window.get_hidpi_factor() as f32,
                     };
 
                     self.painter.paint(

@@ -877,7 +877,7 @@ dependencies = [
  "rgb 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "user32-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "winit 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winit 0.15.0 (git+https://github.com/francesca64/winit.git?rev=dfe40b6cd474c4874440da3ac6502c6698b79524)",
  "xdispatch 0.1.0",
  "zangfx 0.1.0",
 ]
@@ -1889,7 +1889,7 @@ dependencies = [
 [[package]]
 name = "winit"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/francesca64/winit.git?rev=dfe40b6cd474c4874440da3ac6502c6698b79524#dfe40b6cd474c4874440da3ac6502c6698b79524"
 dependencies = [
  "android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "cocoa 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2350,7 +2350,7 @@ dependencies = [
 "checksum winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2d315eee3b34aca4797b2da6b13ed88266e6d612562a0c46390af8299fc699bc"
 "checksum winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 "checksum winapi-x86_64-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-"checksum winit 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "452e3331a6fb5b9d660efae533bf9ae022c528d36eb1e6278b37fc9319d58eff"
+"checksum winit 0.15.0 (git+https://github.com/francesca64/winit.git?rev=dfe40b6cd474c4874440da3ac6502c6698b79524)" = "<none>"
 "checksum winit 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)" = "238df88e5264f09b6d03021143ac914558fe09673b685d98f9c43210a1d4c284"
 "checksum x11-dl 2.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "931d8584b49771143af0c422f372d8aef4280afd5920dad39b0a95a8e51df1e9"
 "checksum x86intrin 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "e8ec523721fe879b70e9d17f3e2c771fcdc3a759fbab81e954a336c6beb0df1e"

@@ -259,14 +259,11 @@ impl WindowSet {
 
             // Translate it to our `WindowEvent`
             let event = match winit_event {
-                winit::WindowEvent::Resized(w, h) => {
-                    let ratio = winit_win.hidpi_factor();
-                    let size = Vector2::new(w, h).cast::<f32>().unwrap();
-                    Some(WindowEvent::Resized(size / ratio))
+                winit::WindowEvent::Resized(winit::LogicalSize { width, height }) => {
+                    let size = Vector2::new(width, height).cast::<f32>().unwrap();
+                    Some(WindowEvent::Resized(size))
                 }
-                winit::WindowEvent::Moved(x, y) => {
-                    // FIXME: Should be these coordinates divided by `ratio`? These are global
-                    //        coordinates, not client ...
+                winit::WindowEvent::Moved(winit::LogicalPosition { x, y }) => {
                     Some(WindowEvent::Moved(Vector2::new(x, y).cast().unwrap()))
                 }
                 winit::WindowEvent::CloseRequested => Some(WindowEvent::Close),
@@ -283,12 +280,12 @@ impl WindowSet {
                     })
                 }
                 winit::WindowEvent::CursorMoved {
-                    position: (x, y), ..
+                    position: winit::LogicalPosition { x, y }, ..
                 } => {
                     // Translate the coordinate to `MousePosition`
-                    let ratio = winit_win.hidpi_factor();
-                    let client = Vector2::new(x, y).cast::<f32>().unwrap() / ratio;
-                    let (wx, wy) = winit_win.get_position().unwrap_or((0, 0));
+                    let client = Vector2::new(x, y).cast::<f32>().unwrap();
+                    let winit::LogicalPosition { x: wx, y: wy } = winit_win
+                        .get_position().unwrap_or((0, 0).into());
                     let global = client + Vector2::new(wx, wy).cast().unwrap();
                     let pos = Some(MousePosition { client, global });
 
@@ -387,11 +384,13 @@ impl WindowSet {
                 .expect("failed to instantiate a window.");
             let winit_window_id = winit_window.id();
 
-            let inner_size = (window.size.read_presenter(&frame).unwrap()
-                * winit_window.hidpi_factor())
-                .cast::<u32>()
+            let inner_size = window.size.read_presenter(&frame).unwrap()
+                .cast::<f64>()
                 .unwrap();
-            winit_window.set_inner_size(inner_size.x, inner_size.y);
+            winit_window.set_inner_size(winit::LogicalSize {
+                width: inner_size.x,
+                height: inner_size.y,
+            });
 
             let surface = self.wm.add_surface(winit_window, NodeRef::clone(new_node));
 
@@ -426,11 +425,13 @@ impl WindowSet {
                 BitFlags::empty(),
             );
             if action.contains(WindowActionBit::ChangeSize) {
-                let new_value = (window.size.read_presenter(frame).unwrap()
-                    * winit_window.hidpi_factor())
-                    .cast::<u32>()
+                let new_value = window.size.read_presenter(frame).unwrap()
+                    .cast::<f64>()
                     .unwrap();
-                winit_window.set_inner_size(new_value.x, new_value.y);
+                winit_window.set_inner_size(winit::LogicalSize {
+                    width: new_value.x,
+                    height: new_value.y,
+                });
             }
             if action.contains(WindowActionBit::ChangeTitle) {
                 let new_value = window.title.read_presenter(frame).unwrap();
