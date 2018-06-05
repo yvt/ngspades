@@ -280,12 +280,13 @@ impl WindowSet {
                     })
                 }
                 winit::WindowEvent::CursorMoved {
-                    position: winit::LogicalPosition { x, y }, ..
+                    position: winit::LogicalPosition { x, y },
+                    ..
                 } => {
                     // Translate the coordinate to `MousePosition`
                     let client = Vector2::new(x, y).cast::<f32>().unwrap();
-                    let winit::LogicalPosition { x: wx, y: wy } = winit_win
-                        .get_position().unwrap_or((0, 0).into());
+                    let winit::LogicalPosition { x: wx, y: wy } =
+                        winit_win.get_position().unwrap_or((0, 0).into());
                     let global = client + Vector2::new(wx, wy).cast().unwrap();
                     let pos = Some(MousePosition { client, global });
 
@@ -384,7 +385,10 @@ impl WindowSet {
                 .expect("failed to instantiate a window.");
             let winit_window_id = winit_window.id();
 
-            let inner_size = window.size.read_presenter(&frame).unwrap()
+            let inner_size = window
+                .size
+                .read_presenter(&frame)
+                .unwrap()
                 .cast::<f64>()
                 .unwrap();
             winit_window.set_inner_size(winit::LogicalSize {
@@ -425,7 +429,10 @@ impl WindowSet {
                 BitFlags::empty(),
             );
             if action.contains(WindowActionBit::ChangeSize) {
-                let new_value = window.size.read_presenter(frame).unwrap()
+                let new_value = window
+                    .size
+                    .read_presenter(frame)
+                    .unwrap()
                     .cast::<f64>()
                     .unwrap();
                 winit_window.set_inner_size(winit::LogicalSize {
