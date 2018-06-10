@@ -161,5 +161,10 @@ namespace Ngs.Engine {
         /// otherwise; <c>false</c>.</returns>
         public static bool operator !=(Box2 a, Box2 b) => a.Min != b.Min || a.Max != b.Max;
 
+        /// <summary>
+        /// Retrieves a normalized (having non-negative width and height) rectangle.
+        /// </summary>
+        /// <returns>The normalized rectangle.</returns>
+        public Box2 Normalized => new Box2(Vector2.Min(Min, Max), Vector2.Max(Min, Max));
     }
 }
