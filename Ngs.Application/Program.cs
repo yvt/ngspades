@@ -38,51 +38,31 @@ namespace Ngs.Shell {
             return config;
         }
 
-        sealed class LinkLabel : Ngs.Engine.UI.Widgets.Label {
-            bool hot, pressed;
+        sealed class LinkLabel : Ngs.Engine.UI.Widgets.ButtonBase {
+            public readonly Ngs.Engine.UI.Widgets.Label Label = new Ngs.Engine.UI.Widgets.Label();
 
             public LinkLabel() {
-                EnableMouseTracking = true;
                 UpdateTextColor();
+
+                var layout = new AbsoluteLayout();
+                var item = layout.Items.Add(Label);
+                item.Left = 0;
+                item.Top = 0;
+                item.Right = 0;
+                item.Bottom = 0;
+                this.Layout = layout;
             }
+
+            protected override void OnButtonStateUpdated(EventArgs e) => UpdateTextColor();
 
             void UpdateTextColor() {
-                if (pressed) {
-                    TextColor = new Rgba(1, 0, 0, 1);
-                } else if (hot) {
-                    TextColor = new Rgba(1, 0.5f, 0, 1);
+                if (IsPressed && IsHovered) {
+                    Label.TextColor = new Rgba(1, 0, 0, 1);
+                } else if (IsHovered) {
+                    Label.TextColor = new Rgba(1, 0.5f, 0, 1);
                 } else {
-                    TextColor = new Rgba(0, 1, 1, 1);
+                    Label.TextColor = new Rgba(0, 1, 1, 1);
                 }
-            }
-
-            protected override void OnMouseDown(Ngs.Engine.UI.Input.MouseButtonEventArgs e) {
-                if (e.Button.Type == Ngs.Engine.UI.Input.MouseButtonType.Left) {
-                    pressed = true;
-                    UpdateTextColor();
-                }
-            }
-            protected override void OnMouseUp(Ngs.Engine.UI.Input.MouseButtonEventArgs e) {
-                if (e.Button.Type == Ngs.Engine.UI.Input.MouseButtonType.Left) {
-                    pressed = false;
-                    UpdateTextColor();
-                }
-            }
-            protected override void OnMouseCancel(Ngs.Engine.UI.Input.MouseButtonEventArgs e) {
-                if (e.Button.Type == Ngs.Engine.UI.Input.MouseButtonType.Left) {
-                    pressed = false;
-                    UpdateTextColor();
-                }
-            }
-
-            protected override void OnMouseEnter(EventArgs e) {
-                hot = true;
-                UpdateTextColor();
-            }
-
-            protected override void OnMouseLeave(EventArgs e) {
-                hot = false;
-                UpdateTextColor();
             }
         }
 
@@ -146,12 +126,10 @@ namespace Ngs.Shell {
                 }
 
                 {
-                    var label = new LinkLabel()
-                    {
-                        Text = "This text is displayed using a label widget.",
-                        FontConfig = CreateFontConfig(),
-                    };
-                    label.ParagraphStyle.CharacterStyle.FontSize = 16;
+                    var label = new LinkLabel();
+                    label.Label.Text = "This text is displayed using a label widget.";
+                    label.Label.FontConfig = CreateFontConfig();
+                    label.Label.ParagraphStyle.CharacterStyle.FontSize = 16;
 
                     var item = layout.Items.Add(label);
                     item.Row = 2;
