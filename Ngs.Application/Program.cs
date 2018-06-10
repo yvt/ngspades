@@ -20,13 +20,6 @@ namespace Ngs.Shell {
 
         private Application() { }
 
-        protected override ApplicationInfo ApplicationInfo {
-            get => new ApplicationInfo()
-            {
-                Name = "Nightingales Test Application",
-            };
-        }
-
         private static FontConfig CreateFontConfig() {
             byte[] ReadAllBytes(Stream s) {
                 using (var ms = new MemoryStream()) {

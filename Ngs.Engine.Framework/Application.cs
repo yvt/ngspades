@@ -65,12 +65,28 @@ namespace Ngs.Engine {
         /// drivers to perform optimizations specific to certain applications and game engines.
         /// </para>
         /// <para>This property is accessed by the constructor of the <see cref="Application" />
-        /// class. This means that the constructor of a derived class is not called at that point.
-        /// You must keep that in mind when overriding this property.
+        /// class. This means that the constructor of a derived class has not yet been called at
+        /// that point. You must keep that in mind when overriding this property.
+        /// </para>
+        /// <para>
+        /// The default value is derived from the name and version of the entry assembly of the
+        /// currently running <c>AppDomain</c>.
         /// </para>
         /// </remarks>
         /// <returns>The <see cref="ApplicationInfo" /> object.</returns>
-        protected virtual ApplicationInfo ApplicationInfo { get => new ApplicationInfo(); }
+        protected virtual ApplicationInfo ApplicationInfo {
+            get {
+                var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
+                var name = entryAssembly.GetName();
+                return new ApplicationInfo()
+                {
+                    Name = name.Name,
+                    VersionMajor = Math.Clamp(name.Version.Major, 0, 1023),
+                    VersionMinor = Math.Clamp(name.Version.Minor, 0, 1023),
+                    VersionRevision = Math.Clamp(name.Version.Revision, 0, 4095),
+                };
+            }
+        }
 
         /// <summary>
         /// Retrieves the global <see cref="UI.Workspace" /> object associated with this application.

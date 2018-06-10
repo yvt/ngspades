@@ -20,10 +20,13 @@ namespace Ngs.Editor {
 
         private Application() { }
 
-        protected override ApplicationInfo ApplicationInfo => new ApplicationInfo()
-        {
-            Name = "Nightingales Editor",
-        };
+        protected override ApplicationInfo ApplicationInfo {
+            get {
+                var info = base.ApplicationInfo;
+                info.Name = "Nightingales Editor";
+                return info;
+            }
+        }
 
         private static FontConfig CreateFontConfig() {
             byte[] ReadAllBytes(Stream s) {
