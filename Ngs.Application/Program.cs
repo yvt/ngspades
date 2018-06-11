@@ -102,7 +102,7 @@ namespace Ngs.Shell {
             this.UIQueue.Invoke(() => {
                 var layout = new TableLayout()
                 {
-                    Padding = new Padding(60),
+                    Padding = new Padding(50),
                 };
 
                 {
@@ -114,7 +114,8 @@ namespace Ngs.Shell {
                     };
                     label.ParagraphStyle.CharacterStyle.FontSize = 72;
 
-                    layout.Items.Add(label);
+                    var item = layout.Items.Add(label);
+                    item.Padding = new Padding(10);
                 }
 
                 {
@@ -127,6 +128,7 @@ namespace Ngs.Shell {
 
                     var item = layout.Items.Add(label);
                     item.Row = 1;
+                    item.Padding = new Padding(10);
                 }
 
                 {
@@ -137,6 +139,7 @@ namespace Ngs.Shell {
 
                     var item = layout.Items.Add(label);
                     item.Row = 2;
+                    item.Padding = new Padding(10);
                 }
 
                 var container = new MainView()
