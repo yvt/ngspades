@@ -74,11 +74,8 @@ impl sampler::SamplerBuilder for SamplerBuilder {
     }
 
     fn address_mode(&mut self, v: &[sampler::AddressMode]) -> &mut sampler::SamplerBuilder {
-        self.address_mode = [
-            v.get(0).cloned().unwrap_or(sampler::AddressMode::Repeat),
-            v.get(1).cloned().unwrap_or(sampler::AddressMode::Repeat),
-            v.get(2).cloned().unwrap_or(sampler::AddressMode::Repeat),
-        ];
+        use common::IntoWithPad;
+        self.address_mode = v.into_with_pad(v.last().cloned().unwrap_or(sampler::AddressMode::Repeat));
         self
     }
 

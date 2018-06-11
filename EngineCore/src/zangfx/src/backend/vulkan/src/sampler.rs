@@ -62,11 +62,8 @@ impl base::SamplerBuilder for SamplerBuilder {
     }
 
     fn address_mode(&mut self, v: &[base::AddressMode]) -> &mut base::SamplerBuilder {
-        self.address_mode = [
-            v.get(0).cloned().unwrap_or(base::AddressMode::Repeat),
-            v.get(1).cloned().unwrap_or(base::AddressMode::Repeat),
-            v.get(2).cloned().unwrap_or(base::AddressMode::Repeat),
-        ];
+        use common::IntoWithPad;
+        self.address_mode = v.into_with_pad(v.last().cloned().unwrap_or(base::AddressMode::Repeat));
         self
     }
 

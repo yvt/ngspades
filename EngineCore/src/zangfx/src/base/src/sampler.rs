@@ -44,7 +44,8 @@ pub trait SamplerBuilder: Object {
     /// Set the addressing mode for each axis of texture coordinates.
     ///
     /// When less than 3 elements are specified, the remaining ones are filled
-    /// by repeating the last one.
+    /// by repeating the last one. If the specified slice is empty, it is
+    /// assumed to be `[AddressMode::Repeat; 3]`.
     ///
     /// Defaults to `[AddressMode::Repeat; 3]`.
     ///
