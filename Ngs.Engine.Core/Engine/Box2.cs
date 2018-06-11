@@ -204,5 +204,13 @@ namespace Ngs.Engine {
         /// <param name="v">The translation amount.</param>
         /// <returns>The new <see cref="Box2" />.</returns>
         public Box2 GetTranslated(Vector2 v) => new Box2(Min + v, Max + v);
+
+        /// <summary>
+        /// Creates a new <see cref="Box2" /> by translating it by a specified displacement vector.
+        /// </summary>
+        /// <param name="x">The translation amount in the X direction.</param>
+        /// <param name="y">The translation amount in the Y direction.</param>
+        /// <returns>The new <see cref="Box2" />.</returns>
+        public Box2 GetTranslated(float x, float y) => GetTranslated(new Vector2(x, y));
     }
 }
