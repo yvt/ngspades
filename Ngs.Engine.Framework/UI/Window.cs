@@ -75,6 +75,8 @@ namespace Ngs.Engine.UI {
         /// Sets or retrieves a flag indicating whether the window has a border provided by the
         /// window system.
         /// </summary>
+        /// <exception name="InvalidOperationException">The window is already materialized.
+        /// </exception>
         /// <returns><c>true</c> is the window is borderless; otherwise, <c>false</c>.</returns>
         public bool Borderless {
             get => borderless;
@@ -83,6 +85,30 @@ namespace Ngs.Engine.UI {
                     throw new InvalidOperationException("The window is already materialized.");
                 }
                 borderless = value;
+            }
+        }
+
+        bool opaque = true;
+
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether the window content is opaque.
+        /// </summary>
+        /// <remarks>
+        /// <para>The window system uses this value as a hint to optimize the rendering of the
+        /// window. Set this property to <c>true</c> if you are sure that the window content is
+        /// fully opaque. Otherwise, set it to <c>false</c>.</para>
+        /// <para>The default value is <c>true</c>.</para>
+        /// </remarks>
+        /// <exception name="InvalidOperationException">The window is already materialized.
+        /// </exception>
+        /// <returns><c>true</c> is the window content is opaque; otherwise, <c>false</c>.</returns>
+        public bool Opaque {
+            get => opaque;
+            set {
+                if (materialized) {
+                    throw new InvalidOperationException("The window is already materialized.");
+                }
+                opaque = value;
             }
         }
 
@@ -152,7 +178,10 @@ namespace Ngs.Engine.UI {
                 WindowFlags flags = WindowFlags.Resizable;
 
                 if (this.Borderless) {
-                    flags |= WindowFlags.Borderless | WindowFlags.Transparent;
+                    flags |= WindowFlags.Borderless;
+                }
+                if (!this.Opaque) {
+                    flags |= WindowFlags.Transparent;
                 }
 
                 // Deny resizing at all if the root view has the maximum size
