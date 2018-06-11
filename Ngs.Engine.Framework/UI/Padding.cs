@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 using System;
+using System.Numerics;
 
 namespace Ngs.Engine.UI {
     /// <summary>
@@ -94,5 +95,53 @@ namespace Ngs.Engine.UI {
         public override string ToString() {
             return $"Left = {Left}, Top = {Top}, Right = {Right}, Bottom = {Bottom}";
         }
+
+        /// <summary>
+        /// Returns the sum of <see cref="Left" /> and <see cref="Right" />.
+        /// </summary>
+        /// <returns>The sum of <see cref="Left" /> and <see cref="Right" />.</returns>
+        public float TotalHorizontalSpacing => Left + Right;
+
+        /// <summary>
+        /// Returns the sum of <see cref="Top" /> and <see cref="Bottom" />.
+        /// </summary>
+        /// <returns>The sum of <see cref="Top" /> and <see cref="Bottom" />.</returns>
+        public float TotalVerticalSpacing => Top + Bottom;
+
+        /// <summary>
+        /// Returns a <see cref="Vector2" /> value each of whose component contains the sum of the
+        /// spacing values of the corresponding axis.
+        /// </summary>
+        /// <remarks>
+        /// The returned value, for example, can be used to calculate the outer size after adding
+        /// padding to it as shown in the following expression:
+        /// <c>innerSize + padding.TotalAxialSpacing</c>.
+        /// </remarks>
+        /// <returns>A <see cref="Vector2" /> value each of whose component contains the sum of the
+        /// spacing values of the corresponding axis.</returns>
+        public Vector2 TotalAxialSpacing => new Vector2(TotalHorizontalSpacing, TotalVerticalSpacing);
+
+        /// <summary>
+        /// Adds padding to a supplied <see cref="Box2" /> and returns the <see cref="Box2" />
+        /// including the padding.
+        /// </summary>
+        /// <param name="box">The <see cref="Box2" /> value to add padding to.</param>
+        /// <returns>The newly created <see cref="Box2" /> value that includes padding.</returns>
+        public Box2 Pad(Box2 box) => new Box2(
+            box.Min - new Vector2(Left, Top),
+            box.Max + new Vector2(Right, Bottom)
+        );
+
+        /// <summary>
+        /// Removes padding from a supplied <see cref="Box2" /> and returns the <see cref="Box2" />
+        /// not including the padding.
+        /// </summary>
+        /// <param name="box">The <see cref="Box2" /> value to remove padding from.</param>
+        /// <returns>The newly created <see cref="Box2" /> value that does not include padding.
+        /// </returns>
+        public Box2 Unpad(Box2 box) => new Box2(
+            box.Min + new Vector2(Left, Top),
+            box.Max - new Vector2(Right, Bottom)
+        );
     }
 }
