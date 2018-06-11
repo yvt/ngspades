@@ -393,7 +393,13 @@ impl WindowSet {
                 .unwrap();
             winit_window.set_inner_size(inner_size.x, inner_size.y);
 
-            let surface = self.wm.add_surface(winit_window, NodeRef::clone(new_node));
+            let wm_window_options = wsi::WindowOptions {
+                transparent: flags.contains(WindowFlagsBit::Transparent),
+            };
+
+            let surface =
+                self.wm
+                    .add_surface(winit_window, &wm_window_options, NodeRef::clone(new_node));
 
             let workspace_window = WorkspaceWindow {
                 winit_window_id,

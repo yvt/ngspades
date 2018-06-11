@@ -27,7 +27,7 @@ use zangfx::{backends::vulkan::{self as be,
              prelude::*,
              utils::CbStateTracker};
 
-use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WmDevice};
+use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WindowOptions, WmDevice};
 
 mod debugreport;
 mod smartptr;
@@ -189,8 +189,13 @@ impl<P: Painter> WindowManager<P> {
         &mut self.painter
     }
 
-    pub fn add_surface(&mut self, window: Window, param: P::SurfaceParam) -> SurfaceRef {
-        let vk_surface = vksurface::create_surface(&self.entry, &**self.instance, &window)
+    pub fn add_surface(
+        &mut self,
+        window: Window,
+        options: &WindowOptions,
+        param: P::SurfaceParam,
+    ) -> SurfaceRef {
+        let vk_surface = vksurface::create_surface(&self.entry, &**self.instance, &window, options)
             .expect("Failed to create a Vulkan surface.");
         let vk_surface = UniqueSurfaceKHR(&self.surface_loader, vk_surface);
 
@@ -244,6 +249,7 @@ impl<P: Painter> WindowManager<P> {
             .unwrap()
             .add_surface(
                 window,
+                options,
                 surface_ref,
                 param,
                 vk_surface,
@@ -514,6 +520,7 @@ impl<P: Painter> PhysicalDevice<P> {
     fn add_surface<S>(
         &mut self,
         window: Window,
+        options: &WindowOptions,
         surface_ref: SurfaceRef,
         surface_param: P::SurfaceParam,
         vk_surface: S,
@@ -524,6 +531,7 @@ impl<P: Painter> PhysicalDevice<P> {
     {
         let vk_props = optimal_props(
             &window,
+            options,
             *vk_surface,
             None,
             self.info.vk_phys_device,
@@ -574,6 +582,7 @@ impl<P: Painter> PhysicalDevice<P> {
             Surface {
                 vk_surface: vk_surface.into_inner(),
                 window,
+                window_options: options.clone(),
                 swapchain,
                 surface_data,
                 vk_props,
@@ -763,6 +772,7 @@ impl<P: Painter> PhysicalDevice<P> {
 struct Surface<P: Painter> {
     vk_surface: vk::SurfaceKHR,
     window: Window,
+    window_options: WindowOptions,
     swapchain: Option<Swapchain>,
     surface_data: P::SurfaceData,
     vk_props: VkSurfaceProps,
@@ -777,6 +787,7 @@ where
         fmt.debug_struct("Surface")
             .field("vk_surface", &self.vk_surface)
             .field("window", &())
+            .field("window_options", &self.window_options)
             .field("swapchain", &self.swapchain)
             .field("surface_data", &self.surface_data)
             .field("vk_props", &self.vk_props)
@@ -801,6 +812,7 @@ impl<P: Painter> Surface<P> {
     ) -> Result<VkSurfaceProps, SurfaceError> {
         optimal_props(
             &self.window,
+            &self.window_options,
             self.vk_surface,
             base,
             vk_phys_device,
@@ -1007,6 +1019,7 @@ impl Swapchain {
 /// are updated with fresh values.
 fn optimal_props(
     window: &Window,
+    options: &WindowOptions,
     vk_surface: vk::SurfaceKHR,
     base: Option<&VkSurfaceProps>,
     vk_phys_device: vk::PhysicalDevice,
@@ -1033,11 +1046,21 @@ fn optimal_props(
 
     let pre_transform = surface_caps.current_transform;
 
-    let composite_alpha = [
-        vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        vk::COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-        vk::COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-    ].iter()
+    let composite_alpha_candidates = if options.transparent {
+        &[
+            vk::COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+            vk::COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+            vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        ]
+    } else {
+        &[
+            vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            vk::COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+            vk::COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+        ]
+    };
+    let composite_alpha = composite_alpha_candidates
+        .iter()
         .cloned()
         .find(|&x| surface_caps.supported_composite_alpha.intersects(x))
         .expect("Failed to find a compatible composite alpha mode.");

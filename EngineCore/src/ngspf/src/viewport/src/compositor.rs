@@ -1088,7 +1088,7 @@ impl CompositorWindow {
                             builder
                                 .render_pass(&compositor.statesets[0].render_passes[pass_i])
                                 .extents(&rt_data.rt.extents[..]);
-                            builder.target(0, &rt_data.rt.image);
+                            builder.target(0, &rt_data.rt.image).clear_float(&[0f32; 4]);
                             *fb = Some(builder.build()?);
                         }
                     }

@@ -22,7 +22,7 @@ use objc::runtime::YES;
 use zangfx::backends::metal as be;
 use zangfx::base as gfx;
 
-use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WmDevice};
+use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WindowOptions, WmDevice};
 use metalutils::OCPtr;
 
 use super::cvdisplaylink::CVDisplayLink;
@@ -193,7 +193,7 @@ impl<P: Painter> WindowManager<P> {
         &mut self.painter
     }
 
-    pub fn add_surface(&mut self, window: Window, param: P::SurfaceParam) -> SurfaceRef {
+    pub fn add_surface(&mut self, window: Window, options: &WindowOptions, param: P::SurfaceParam) -> SurfaceRef {
         #[link(name = "ApplicationServices", kind = "framework")]
         extern "C" {
             fn CGColorSpaceCreateWithName(name: cocoa_id) -> *const c_void;
@@ -215,7 +215,7 @@ impl<P: Painter> WindowManager<P> {
 
             layer.set_edge_antialiasing_mask(0);
             layer.set_masks_to_bounds(true);
-            layer.set_opaque(true);
+            layer.set_opaque(!options.transparent);
             layer.set_colorspace(mem::transmute(colorspace));
             CGColorSpaceRelease(colorspace);
             // layer.set_magnification_filter(kCAFilterNearest);

@@ -6,6 +6,7 @@
 //! Platform-specific code for surface creation.
 use super::ash::{self, extensions::Surface, version::*, vk};
 use super::utils::InstanceBuilder;
+use super::super::WindowOptions;
 use winit;
 
 #[cfg(windows)]
@@ -19,6 +20,7 @@ mod os {
         entry: &E,
         instance: &I,
         window: &winit::Window,
+        _options: &WindowOptions,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
         use self::ash::extensions::Win32Surface;
         use winit::os::windows::WindowExt;
@@ -51,6 +53,7 @@ mod os {
         entry: &E,
         instance: &I,
         window: &winit::Window,
+        _options: &WindowOptions,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
         use self::ash::extensions::XlibSurface;
         use winit::os::unix::WindowExt;
@@ -85,6 +88,7 @@ mod os {
         entry: &E,
         instance: &I,
         window: &winit::Window,
+        options: &WindowOptions,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
         use self::ash::extensions::MacOSSurface;
         use cocoa::appkit::{NSView, NSWindow};
@@ -102,7 +106,7 @@ mod os {
 
             layer.set_edge_antialiasing_mask(0);
             layer.set_masks_to_bounds(true);
-            layer.set_opaque(true);
+            layer.set_opaque(!options.transparent);
             // layer.set_magnification_filter(kCAFilterNearest);
             // layer.set_minification_filter(kCAFilterNearest);
             layer.set_framebuffer_only(true);

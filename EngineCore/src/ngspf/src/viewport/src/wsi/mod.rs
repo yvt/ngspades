@@ -41,6 +41,12 @@ pub struct SurfaceProps {
     pub format: gfx::ImageFormat,
 }
 
+/// Properties about a `Window`, passed by the compositor.
+#[derive(Debug, Clone)]
+pub struct WindowOptions {
+    pub transparent: bool,
+}
+
 #[derive(Debug)]
 pub struct AppInfo<'a> {
     /// The application name. Must not contain a null byte.
