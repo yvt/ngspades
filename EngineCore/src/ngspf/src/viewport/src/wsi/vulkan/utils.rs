@@ -86,11 +86,13 @@ impl<'a> InstanceBuilder<'a> {
     }
 
     pub fn build(&self, app_info: &AppInfo) -> Result<UniqueInstance, ash::InstanceError> {
-        let layers: Vec<_> = self.enabled_layers
+        let layers: Vec<_> = self
+            .enabled_layers
             .iter()
             .map(|x| CString::new(x.as_str()).unwrap())
             .collect();
-        let extensions: Vec<_> = self.enabled_extensions
+        let extensions: Vec<_> = self
+            .enabled_extensions
             .iter()
             .map(|x| CString::new(x.as_str()).unwrap())
             .collect();
@@ -184,7 +186,8 @@ impl<'a> DeviceBuilder<'a> {
         queue_create_infos: &[vk::DeviceQueueCreateInfo],
         enabled_features: &vk::PhysicalDeviceFeatures,
     ) -> Result<UniqueDevice, ash::DeviceError> {
-        let extensions: Vec<_> = self.enabled_extensions
+        let extensions: Vec<_> = self
+            .enabled_extensions
             .iter()
             .map(|x| CString::new(x.as_str()).unwrap())
             .collect();

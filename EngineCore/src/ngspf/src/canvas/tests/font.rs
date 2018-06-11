@@ -156,11 +156,13 @@ fn layout_area_long() {
 
 #[test]
 fn layout_area_long_multi_line() {
-    layout_area_common(&[
-        lipsum::lipsum(16).as_str(),
-        "\n",
-        lipsum::lipsum(26).as_str(),
-        "\n",
-        lipsum::lipsum(64).as_str(),
-    ].concat());
+    layout_area_common(
+        &[
+            lipsum::lipsum(16).as_str(),
+            "\n",
+            lipsum::lipsum(26).as_str(),
+            "\n",
+            lipsum::lipsum(64).as_str(),
+        ].concat(),
+    );
 }

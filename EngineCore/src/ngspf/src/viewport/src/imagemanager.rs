@@ -221,7 +221,8 @@ impl ImageManager {
         // Create image objects
         let ref device = self.device;
         let ref mut images = self.images;
-        let gfx_images: Result<Vec<_>> = self.new_images_list
+        let gfx_images: Result<Vec<_>> = self
+            .new_images_list
             .iter()
             .map(|&image_ptr| {
                 let ref mut image: Image = images[image_ptr];
@@ -251,14 +252,16 @@ impl ImageManager {
         let allocs = self.image_heap.bind_multi(gfx_images.iter().map(to_res))?;
 
         // Store the allocated image (view) objects
-        for ((&image_ptr, alloc), gfx_image) in self.new_images_list
+        for ((&image_ptr, alloc), gfx_image) in self
+            .new_images_list
             .iter()
             .zip(allocs.into_iter())
             .zip(gfx_images.into_iter())
         {
             let ref mut image: Image = images[image_ptr];
 
-            let gfx_image_view = self.device
+            let gfx_image_view = self
+                .device
                 .new_image_view(&*gfx_image, gfx::ImageLayout::ShaderRead)?;
             let gfx_image_view = utils::UniqueImageView::new(&*self.device, gfx_image_view);
 
@@ -314,7 +317,8 @@ impl ImageManager {
                 let resident: &ResidentImageData = self.image.resident.as_ref().unwrap();
 
                 {
-                    let barrier = self.device
+                    let barrier = self
+                        .device
                         .build_barrier()
                         .image(
                             flags![gfx::AccessType::{}],
@@ -383,7 +387,8 @@ impl ImageManager {
                 Ok(())
             }
         }
-        let session_id = self.uploader
+        let session_id = self
+            .uploader
             .upload(self.new_images_list.iter().map(&|&image_ptr| {
                 let ref image: Image = images[image_ptr];
                 UploadRequest {

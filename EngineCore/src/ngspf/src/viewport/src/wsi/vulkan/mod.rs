@@ -18,14 +18,14 @@ use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use winit::{EventsLoopProxy, Window};
 
-use zangfx::{backends::vulkan::{self as be,
-                                ash::{self, extensions as ext, version::*, vk},
-                                cmd::queue::CmdQueue as BeCmdQueue,
-                                cmd::semaphore::Semaphore as BeSemaphore},
-             base::{self as gfx, Result as GfxResult},
-             common::{Error, ErrorKind},
-             prelude::*,
-             utils::CbStateTracker};
+use zangfx::{
+    backends::vulkan::{
+        self as be, ash::{self, extensions as ext, version::*, vk},
+        cmd::queue::CmdQueue as BeCmdQueue, cmd::semaphore::Semaphore as BeSemaphore,
+    },
+    base::{self as gfx, Result as GfxResult}, common::{Error, ErrorKind}, prelude::*,
+    utils::CbStateTracker,
+};
 
 use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WindowOptions, WmDevice};
 
@@ -212,7 +212,8 @@ impl<P: Painter> WindowManager<P> {
         if phys_device_id.is_none() {
             // Find a compatible `PhysicalDeviceInfo` and create a new
             // `PhysicalDevice`
-            let (info, queue_family) = self.phys_device_info_list
+            let (info, queue_family) = self
+                .phys_device_info_list
                 .iter()
                 .filter_map(|info| {
                     info.queue_family_compatible_with_surface(&self.surface_loader, *vk_surface)
@@ -902,7 +903,8 @@ impl Swapchain {
 
                 // Perform the releasing part of queue ownership transfer operation if needed
                 if self.needs_ownership_transfer.is_some() {
-                    let barrier = self.device
+                    let barrier = self
+                        .device
                         .device
                         .build_barrier()
                         .image(
@@ -926,12 +928,14 @@ impl Swapchain {
 
                 // Perform the acquiring part of queue ownership transfer operation if needed
                 if let Some(src_queue_family) = self.needs_ownership_transfer {
-                    let mut cmd_buffer = self.presentation_cmd_pool
+                    let mut cmd_buffer = self
+                        .presentation_cmd_pool
                         .begin_cmd_buffer()
                         .expect("Failed to create a command buffer.");
                     cmd_buffer.wait_semaphore(&gfx_semaphore, flags![gfx::Stage::{}]);
 
-                    let barrier = self.device
+                    let barrier = self
+                        .device
                         .device
                         .build_barrier()
                         .image(

@@ -88,7 +88,8 @@ impl HeapSet {
 
         if size > self.dynamic_heap_size / 2 {
             // Too big to fit in a dynamic heap
-            return Ok(self.bind_multi(Some(resource_ref).into_iter())?
+            return Ok(self
+                .bind_multi(Some(resource_ref).into_iter())?
                 .pop()
                 .unwrap());
         }
@@ -96,7 +97,8 @@ impl HeapSet {
         // Try to squeeze it into an existing dynamic heap
         let mut result = None;
 
-        for (heap_ptr, heap) in self.dynamic_heap_list
+        for (heap_ptr, heap) in self
+            .dynamic_heap_list
             .accessor_mut(&mut self.heaps, |x| &mut x.dynamic_heap_link)
             .iter_mut()
         {
@@ -111,7 +113,8 @@ impl HeapSet {
 
         if let Some((alloc, heap_ptr)) = result {
             // Move the heap to the front of the list
-            let mut list = self.dynamic_heap_list
+            let mut list = self
+                .dynamic_heap_list
                 .accessor_mut(&mut self.heaps, |x| &mut x.dynamic_heap_link);
             list.remove(heap_ptr);
             list.push_front(heap_ptr);
@@ -119,7 +122,8 @@ impl HeapSet {
         }
 
         // Create a new heap
-        let gfx_heap = self.device
+        let gfx_heap = self
+            .device
             .build_dynamic_heap()
             .memory_type(self.memory_type)
             .size(self.dynamic_heap_size)

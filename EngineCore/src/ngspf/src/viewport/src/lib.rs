@@ -11,9 +11,9 @@
 //! pixels, with the exceptions of the cases where the exact number of physical
 //! pixels is important.
 //!
+extern crate cggeom;
 extern crate cgmath;
 extern crate iterpool;
-extern crate cggeom;
 extern crate refeq;
 pub extern crate rgb;
 extern crate winit;

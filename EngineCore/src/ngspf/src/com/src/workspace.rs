@@ -128,7 +128,8 @@ impl INgsPFWorkspaceTrait for ComWorkspace {
 
     fn exit(&self) -> HResult {
         to_hresult(|| {
-            let mut frame = self.data
+            let mut frame = self
+                .data
                 .context
                 .lock_producer_frame()
                 .map_err(translate_context_error)?;

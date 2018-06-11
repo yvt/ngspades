@@ -87,8 +87,12 @@ impl<S: BaseFloat> Zero for Affine2<S> {
 
     #[inline]
     fn is_zero(&self) -> bool {
-        self.0.x.x.is_zero() && self.0.x.y.is_zero() && self.0.y.x.is_zero() && self.0.y.y.is_zero()
-            && self.0.z.x.is_zero() && self.0.z.y.is_zero()
+        self.0.x.x.is_zero()
+            && self.0.x.y.is_zero()
+            && self.0.y.x.is_zero()
+            && self.0.y.y.is_zero()
+            && self.0.z.x.is_zero()
+            && self.0.z.y.is_zero()
     }
 }
 

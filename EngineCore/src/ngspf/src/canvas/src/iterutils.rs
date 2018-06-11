@@ -117,7 +117,8 @@ mod tests {
     #[test]
     fn with_range_0() {
         let nums: [&'static str; 0] = [];
-        let ranges: Vec<_> = nums.iter()
+        let ranges: Vec<_> = nums
+            .iter()
             .cloned()
             .with_range(15, |x| x.parse::<u32>().unwrap())
             .collect();
@@ -127,7 +128,8 @@ mod tests {
     #[test]
     fn with_range_1() {
         let nums = ["1"];
-        let ranges: Vec<_> = nums.iter()
+        let ranges: Vec<_> = nums
+            .iter()
             .cloned()
             .with_range(15, |x| x.parse::<u32>().unwrap())
             .collect();
@@ -137,7 +139,8 @@ mod tests {
     #[test]
     fn with_range_4() {
         let nums = ["1", "5", "7", "10"];
-        let ranges: Vec<_> = nums.iter()
+        let ranges: Vec<_> = nums
+            .iter()
             .cloned()
             .with_range(15, |x| x.parse::<u32>().unwrap())
             .collect();

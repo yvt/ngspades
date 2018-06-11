@@ -40,7 +40,8 @@ impl<B: Backend> WorkspaceDevice<B> {
 
         let inst = library.make_instance(self)?;
 
-        Ok(self.libraries
+        Ok(self
+            .libraries
             .write()
             .unwrap()
             .get_or_create(library, || inst)
@@ -79,7 +80,8 @@ impl LibraryMap {
         F: FnOnce() -> T::Instance,
     {
         let type_id = TypeId::of::<T>();
-        let boxed_tlm = self.0
+        let boxed_tlm = self
+            .0
             .entry(type_id)
             .or_insert_with(|| Box::new(HashMap::<T::LibraryId, Arc<T::Instance>>::new()));
         let tlm: &mut HashMap<T::LibraryId, Arc<T::Instance>> = boxed_tlm.downcast_mut().unwrap();

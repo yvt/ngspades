@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Platform-specific code for surface creation.
+use super::super::WindowOptions;
 use super::ash::{self, extensions::Surface, version::*, vk};
 use super::utils::InstanceBuilder;
-use super::super::WindowOptions;
 use winit;
 
 #[cfg(windows)]

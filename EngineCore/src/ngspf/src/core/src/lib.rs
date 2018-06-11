@@ -105,7 +105,8 @@ impl Context {
     pub fn commit(&self) -> Result<(), ContextError> {
         {
             use std::mem::swap;
-            let mut frame: ArcLockGuard<ProducerFrameInner> = self.producer_frame
+            let mut frame: ArcLockGuard<ProducerFrameInner> = self
+                .producer_frame
                 .try_lock()
                 .map_err(|_| ContextError::LockFailed)?;
 
@@ -132,7 +133,8 @@ impl Context {
     /// If locking succeeds, it first applies all changes commited by the
     /// producer so far.
     pub fn lock_presenter_frame(&self) -> Result<PresenterFrame, ContextError> {
-        let frame_inner: ArcLockGuard<PresenterFrameInner> = self.presenter_frame
+        let frame_inner: ArcLockGuard<PresenterFrameInner> = self
+            .presenter_frame
             .try_lock()
             .map_err(|_| ContextError::LockFailed)?;
 
@@ -737,6 +739,8 @@ where
 /// The NgsPF prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use {PropertyAccessor, PropertyPresenterRead, PropertyProducerRead, PropertyProducerWrite,
-             RoPropertyAccessor};
+    pub use {
+        PropertyAccessor, PropertyPresenterRead, PropertyProducerRead, PropertyProducerWrite,
+        RoPropertyAccessor,
+    };
 }

@@ -193,7 +193,12 @@ impl<P: Painter> WindowManager<P> {
         &mut self.painter
     }
 
-    pub fn add_surface(&mut self, window: Window, options: &WindowOptions, param: P::SurfaceParam) -> SurfaceRef {
+    pub fn add_surface(
+        &mut self,
+        window: Window,
+        options: &WindowOptions,
+        param: P::SurfaceParam,
+    ) -> SurfaceRef {
         #[link(name = "ApplicationServices", kind = "framework")]
         extern "C" {
             fn CGColorSpaceCreateWithName(name: cocoa_id) -> *const c_void;
@@ -269,7 +274,8 @@ impl<P: Painter> WindowManager<P> {
     }
 
     pub fn update(&mut self, update_param: &P::UpdateParam) {
-        let needs_update = self.refresh_state
+        let needs_update = self
+            .refresh_state
             .needs_update
             .swap(false, Ordering::Relaxed);
         if !needs_update {
@@ -315,7 +321,8 @@ impl<P: Painter> WindowManager<P> {
 
                 let metal_cb = be_cb.metal_cmd_buffer().expect("CB is already committed");
 
-                let metal_drawable = self.metal_drawable
+                let metal_drawable = self
+                    .metal_drawable
                     .take()
                     .expect("can't prepare the presentation twice");
 

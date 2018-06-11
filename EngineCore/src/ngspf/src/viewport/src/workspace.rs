@@ -15,8 +15,10 @@ use winit::{self, EventsLoop};
 use super::compositor::{CompositeContext, Compositor, CompositorWindow};
 use super::{Window, WindowActionBit, WindowFlagsBit};
 use core::prelude::*;
-use core::{Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame,
-           ProducerDataCell, ProducerFrame, PropertyAccessor, PropertyError, UpdateId, WoProperty};
+use core::{
+    Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame, ProducerDataCell,
+    ProducerFrame, PropertyAccessor, PropertyError, UpdateId, WoProperty,
+};
 
 use super::wsi;
 
@@ -174,7 +176,8 @@ impl Workspace {
             });
 
             {
-                let mut frame = self.context
+                let mut frame = self
+                    .context
                     .lock_presenter_frame()
                     .expect("failed to acquire a presenter frame (locked by an external entity?)");
 

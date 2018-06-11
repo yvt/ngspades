@@ -69,9 +69,10 @@ use std::ops::Range;
 use unicode_bidi::{self, BidiInfo, ParagraphInfo};
 use xi_unicode::LineBreakIterator;
 
-use super::{hbutils, AsCharStyleRef, AsElementRef, Boundary, Direction, ElementRef, FontConfig,
-            FontFaceId, FontFaceProps, ForeignObject, ParagraphStyle, TextAlign, WordWrapMode,
-            FONT_SCALE};
+use super::{
+    hbutils, AsCharStyleRef, AsElementRef, Boundary, Direction, ElementRef, FontConfig, FontFaceId,
+    FontFaceProps, ForeignObject, ParagraphStyle, TextAlign, WordWrapMode, FONT_SCALE,
+};
 
 const FOREIGN_MARKER_STR: &str = "\u{f8ff}";
 
@@ -214,7 +215,8 @@ impl FontConfig {
                             if Some(shaping_props) != last_text {
                                 clusters.push(ShapingCluster {
                                     start_flattened: index_flattened,
-                                    start_text: text.offset(run.cursor().start, offset as isize)
+                                    start_text: text
+                                        .offset(run.cursor().start, offset as isize)
                                         .unwrap(),
                                     contents: ClusterContents::Text(shaping_props),
                                 });
@@ -982,13 +984,15 @@ impl FontConfig {
 /// Obviously, the resulting text would have a different length from that of
 /// the input text.
 fn flatten_text<S: AsElementRef, A>(text: &Text<S, A>) -> Cow<str> {
-    let needs_owned = text.iter()
+    let needs_owned = text
+        .iter()
         .enumerate()
         .any(|(i, x)| i > 0 || x.0.as_element_ref().foreign().is_some());
 
     if needs_owned {
         use itertools::Itertools;
-        let concatenated = text.iter()
+        let concatenated = text
+            .iter()
             .map(|x| match x.0.as_element_ref() {
                 ElementRef::Text(x) => x,
                 ElementRef::Foreign(_) => FOREIGN_MARKER_STR,
@@ -1078,8 +1082,7 @@ pub(crate) struct GlyphLayout {
 impl GlyphLayout {
     fn bounds(&self) -> Option<[Point2<f64>; 2]> {
         self.glyph_extents.map(|e| {
-            let origin = self.position +
-                e.origin.cast::<f64>().unwrap() * self.scale;
+            let origin = self.position + e.origin.cast::<f64>().unwrap() * self.scale;
             [origin, origin + e.size.cast::<f64>().unwrap() * self.scale]
         })
     }

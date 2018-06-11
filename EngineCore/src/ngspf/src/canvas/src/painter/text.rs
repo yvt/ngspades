@@ -38,7 +38,8 @@ pub(crate) fn rasterize_text_layout<R: RasterPort>(
         ft_face.load_glyph(glyph.glyph_id, load_flags as _).unwrap();
 
         // Compute the transformation applied to `FT_Outline`.
-        let tx = transform * Affine2::from_translation(glyph.position.to_vec())
+        let tx = transform
+            * Affine2::from_translation(glyph.position.to_vec())
             * Affine2::from_scale(glyph.scale * 64.0)
             * Affine2::from_nonuniform_scale(1.0, -1.0);
         let m = tx.as_matrix3();

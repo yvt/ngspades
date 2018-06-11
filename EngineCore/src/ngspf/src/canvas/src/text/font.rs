@@ -125,7 +125,8 @@ impl FontConfig {
         // Allocate a font family ID (if it's new)
         let family_id = {
             let ref mut families = self.families;
-            *self.familiy_names
+            *self
+                .familiy_names
                 .entry(family.to_owned())
                 .or_insert_with(|| {
                     let id = families.len();

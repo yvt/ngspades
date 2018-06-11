@@ -653,7 +653,8 @@ impl CompositorWindow {
                 }
 
                 // Create a backing store image
-                let image = c.compositor
+                let image = c
+                    .compositor
                     .device
                     .build_image()
                     .extents(&pixel_size[..])
@@ -669,7 +670,8 @@ impl CompositorWindow {
                     c.compositor.backing_store_memory_type,
                     &image,
                 )?;
-                let image_view = c.compositor
+                let image_view = c
+                    .compositor
                     .device
                     .new_image_view(&image, gfx::ImageLayout::ShaderRead)?;
                 c.compositor
@@ -713,7 +715,8 @@ impl CompositorWindow {
                 // Render the mask image
                 let mask_contents = if let &Some(ref mask) = mask {
                     // Create a mask image
-                    let mask_image = c.compositor
+                    let mask_image = c
+                        .compositor
                         .device
                         .build_image()
                         .extents(&pixel_size[..])
@@ -729,7 +732,8 @@ impl CompositorWindow {
                         c.compositor.backing_store_memory_type,
                         &mask_image,
                     )?;
-                    let mask_image_view = c.compositor
+                    let mask_image_view = c
+                        .compositor
                         .device
                         .new_image_view(&mask_image, gfx::ImageLayout::ShaderRead)?;
                     c.compositor
@@ -850,7 +854,8 @@ impl CompositorWindow {
             extents: Vector2::from(surface_props.extents),
         });
         if let &Some(ref root) = root {
-            let drawable_image_view = c.compositor
+            let drawable_image_view = c
+                .compositor
                 .device
                 .new_image_view(drawable.image(), gfx::ImageLayout::ShaderRead)?;
             c.compositor
@@ -886,7 +891,8 @@ impl CompositorWindow {
 
         let ref mut compositor = c.compositor;
 
-        let mut rt_data: Vec<_> = c.rts
+        let mut rt_data: Vec<_> = c
+            .rts
             .into_iter()
             .map(|rt| RtData {
                 viewport: gfx::Viewport {
@@ -937,7 +943,8 @@ impl CompositorWindow {
             .cloned();
 
         // Resolve all image view references
-        let contents_images: Vec<[(gfx::ImageView, gfx::Image); 2]> = c.contents
+        let contents_images: Vec<[(gfx::ImageView, gfx::Image); 2]> = c
+            .contents
             .iter()
             .map(|contents| {
                 [
