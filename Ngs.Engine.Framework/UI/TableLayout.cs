@@ -169,6 +169,8 @@ namespace Ngs.Engine.UI {
             private int row;
             private int columnSpan = 1;
             private int rowSpan = 1;
+            private Alignment alignment;
+            private Padding padding;
 
             internal Item(TableLayout layout, View view) {
                 this.layout = layout;
@@ -276,6 +278,19 @@ namespace Ngs.Engine.UI {
             /// <returns>The alignment flags.</returns>
             public Alignment Alignment { get; set; }
 
+            /// <summary>
+            /// Sets or retrieves padding values specifying the space between the cell border and
+            /// the associated subview.
+            /// </summary>
+            /// <returns>The padding values.</returns>
+            public Padding Padding {
+                get => padding;
+                set {
+                    padding = value;
+                    layout.InvalidateLayout();
+                }
+            }
+
             // ==== The following fields are internally used by `TableLayout` =====
 
             // Points the next item in a singly-linked list starting with `Line.originListFirst`.
@@ -285,6 +300,7 @@ namespace Ngs.Engine.UI {
             // `-1` if this item is the last;
             internal int columnOriginListNext;
 
+            internal Measurement measurementWithPad;
         }
 
         /// <summary>
@@ -458,7 +474,7 @@ namespace Ngs.Engine.UI {
                 Alignment.VerticalJustify : Alignment.HorizontalJustify;
 
             int maxConstrainedItemCount = items.Count((item) =>
-                float.IsFinite(item.View.Measurement.MaximumSize.GetElementAt(axis)) &&
+                float.IsFinite(item.measurementWithPad.MaximumSize.GetElementAt(axis)) &&
                 (item.Alignment & justifyMask) == justifyMask);
 
             // Variable indices
@@ -530,7 +546,7 @@ namespace Ngs.Engine.UI {
                             }
                         }
                         foreach (var item in items) {
-                            float preferredSizeVal = item.View.Measurement
+                            float preferredSizeVal = item.measurementWithPad
                                 .PreferredSize.GetElementAt(axis);
                             if (preferredSizeVal == 0) {
                                 // FIXME: I started to feel this is a bad idea
@@ -558,7 +574,7 @@ namespace Ngs.Engine.UI {
                         row.Slice(start + indexWidth, count).Fill(1);
                         row[indexSlackMin + itemIndex] = -1;
                         row[indexErrorMin + itemIndex] = 1;
-                        row[indexGoal] = item.View.Measurement.MinimumSize.GetElementAt(axis);
+                        row[indexGoal] = item.measurementWithPad.MinimumSize.GetElementAt(axis);
 
                         itemIndex += 1;
                     }
@@ -570,7 +586,7 @@ namespace Ngs.Engine.UI {
                     int itemIndex = 0;
                     foreach (var item in items) {
                         if (
-                            float.IsFinite(item.View.Measurement.MaximumSize.GetElementAt(axis)) &&
+                            float.IsFinite(item.measurementWithPad.MaximumSize.GetElementAt(axis)) &&
                             (item.Alignment & justifyMask) == justifyMask
                         ) {
                             var row = tableau.Slice((rowIndex++) * (numVars + 1), numVars + 1);
@@ -579,7 +595,7 @@ namespace Ngs.Engine.UI {
 
                             row.Slice(start + indexWidth, count).Fill(1);
                             row[indexSlackMax + itemIndex] = 1;
-                            row[indexGoal] = item.View.Measurement.MaximumSize.GetElementAt(axis);
+                            row[indexGoal] = item.measurementWithPad.MaximumSize.GetElementAt(axis);
                             itemIndex += 1;
                         }
                     }
@@ -617,7 +633,7 @@ namespace Ngs.Engine.UI {
                         row[indexWidth + cellCount + itemIndex] = 1;
                         row[indexResiduePos + cellCount + itemIndex] = -1;
                         row[indexResidueNeg + cellCount + itemIndex] = 1;
-                        row[indexGoal] = item.View.Measurement.PreferredSize.GetElementAt(axis);
+                        row[indexGoal] = item.measurementWithPad.PreferredSize.GetElementAt(axis);
 
                         itemIndex += 1;
                     }
@@ -861,6 +877,16 @@ namespace Ngs.Engine.UI {
                 ref var rowLine = ref rowLines[item.Row];
                 item.rowOriginListNext = rowLine.originListFirst;
                 rowLine.originListFirst = i;
+
+                // (And at the same time fill their fields)
+                var measurement = item.View.Measurement;
+                var pad = item.Padding.TotalAxialSpacing;
+                item.measurementWithPad = new Measurement()
+                {
+                    MinimumSize = measurement.MinimumSize + pad,
+                    MaximumSize = measurement.MaximumSize + pad,
+                    PreferredSize = measurement.PreferredSize + pad,
+                };
             }
 
             // Compute minimum/maximum widths
@@ -868,7 +894,7 @@ namespace Ngs.Engine.UI {
                 ref var columnLine = ref columnLines[i];
                 for (int index = columnLines[i].originListFirst; index != EOL;) {
                     var item = itemList[index];
-                    var measurement = item.View.Measurement;
+                    var measurement = item.measurementWithPad;
 
                     Debug.Assert(item.Column == i);
 
@@ -896,7 +922,7 @@ namespace Ngs.Engine.UI {
                 ref var rowLine = ref rowLines[i];
                 for (int index = rowLines[i].originListFirst; index != EOL;) {
                     var item = itemList[index];
-                    var measurement = item.View.Measurement;
+                    var measurement = item.measurementWithPad;
 
                     Debug.Assert(item.Row == i);
 
@@ -980,6 +1006,7 @@ namespace Ngs.Engine.UI {
             }
 
             foreach (var item in Items) {
+                var padding = item.Padding;
                 float x1 = columnLines[item.Column].position;
                 float x2 = columnLines[item.Column + item.ColumnSpan].position;
                 float y1 = rowLines[item.Row].position;
@@ -987,9 +1014,12 @@ namespace Ngs.Engine.UI {
                 var topLeft = new Vector2(x1, y1);
                 var bottomRight = new Vector2(x2, y2);
 
+                topLeft += new Vector2(padding.Left, padding.Top);
+                bottomRight -= new Vector2(padding.Right, padding.Bottom);
+
                 var hAlign = item.Alignment & Alignment.HorizontalMask;
                 var vAlign = item.Alignment & Alignment.VerticalMask;
-                var measurement = item.View.Measurement;
+                var measurement = item.measurementWithPad;
 
                 Vector2 cellSize = bottomRight - topLeft;
                 Vector2 size = cellSize;
