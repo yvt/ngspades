@@ -6,6 +6,7 @@
 using System;
 using System.IO;
 using Ngs.Engine.UI;
+using Ngs.Engine.UI.Theming;
 using Ngs.Engine;
 using Ngs.Engine.Presentation;
 using Ngs.Engine.Canvas.Text;
@@ -61,7 +62,7 @@ namespace Ngs.Shell {
                 } else if (IsHovered) {
                     Label.TextColor = new Rgba(1, 0.5f, 0, 1);
                 } else {
-                    Label.TextColor = new Rgba(0, 1, 1, 1);
+                    Label.TextColor = new Rgba(0, 0, 1, 1);
                 }
             }
         }
@@ -82,13 +83,16 @@ namespace Ngs.Shell {
             }
         }
 
-        sealed class MainView : View {
+        sealed class MainView : Ngs.Engine.UI.Widgets.Container {
             protected override void RenderContents(RenderContext context) {
-                context.EmitLayer(new SolidColorLayerInfo()
-                {
-                    Bounds = new Box2(20, 20, 20, 20),
-                    FillColor = Rgba.White,
-                });
+                Box2 boxBounds = LocalBounds.GetInflated(-40f);
+
+                BoxRenderer.EmitBoxFill(context, LocalBounds, new Rgba(0.9f, 0.9f, 0.9f, 1.0f));
+
+                BoxRenderer.EmitBoxFillShadow(context, boxBounds.GetTranslated(5, 10), 0.5f, 30f);
+                BoxRenderer.EmitBoxFill(context, boxBounds, new Rgba(0.8f, 0.8f, 0.8f, 1.0f));
+
+                base.RenderContents(context);
             }
         }
 
@@ -98,14 +102,14 @@ namespace Ngs.Shell {
             this.UIQueue.Invoke(() => {
                 var layout = new TableLayout()
                 {
-                    Padding = new Padding(10),
+                    Padding = new Padding(60),
                 };
 
                 {
                     var label = new Ngs.Engine.UI.Widgets.Label()
                     {
                         Text = "Hello world",
-                        TextColor = Rgba.White,
+                        TextColor = Rgba.Black,
                         FontConfig = CreateFontConfig(),
                     };
                     label.ParagraphStyle.CharacterStyle.FontSize = 72;
@@ -116,7 +120,7 @@ namespace Ngs.Shell {
                 {
                     var label = new Clock()
                     {
-                        TextColor = new Rgba(0.5f, 0.5f, 0.5f, 1),
+                        TextColor = new Rgba(0.05f, 0.05f, 0.05f, 1),
                         FontConfig = CreateFontConfig(),
                     };
                     label.ParagraphStyle.CharacterStyle.FontSize = 16;
@@ -135,7 +139,7 @@ namespace Ngs.Shell {
                     item.Row = 2;
                 }
 
-                var container = new Ngs.Engine.UI.Widgets.Container()
+                var container = new MainView()
                 {
                     Layout = layout,
                 };
