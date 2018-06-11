@@ -210,6 +210,16 @@ namespace Ngs.Engine.UI {
         public Box2 Bounds { get; internal set; }
 
         /// <summary>
+        /// Retrieves the bounding rectangle of this view within its local coordinate.
+        /// </summary>
+        /// <remarks>
+        /// This property is computed from <see cref="Bounds" /> using the following expression:
+        /// <c>new Box2(Vector2.Zero, Bounds.Size)</c>.
+        /// </remarks>
+        /// <returns>The bounding rectangle.</returns>
+        public Box2 LocalBounds => new Box2(Vector2.Zero, Bounds.Size);
+
+        /// <summary>
         /// Retrieves the result of the measurement step of the layout algorithm on this view.
         /// </summary>
         /// <remarks>
