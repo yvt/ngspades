@@ -276,7 +276,16 @@ namespace Ngs.Engine.UI {
             /// this item.
             /// </summary>
             /// <returns>The alignment flags.</returns>
-            public Alignment Alignment { get; set; }
+            public Alignment Alignment {
+                get => alignment;
+                set {
+                    if (value == alignment) {
+                        return;
+                    }
+                    alignment = value;
+                    layout.InvalidateLayout();
+                }
+            }
 
             /// <summary>
             /// Sets or retrieves padding values specifying the space between the cell border and
