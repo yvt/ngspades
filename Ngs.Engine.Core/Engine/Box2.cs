@@ -164,7 +164,45 @@ namespace Ngs.Engine {
         /// <summary>
         /// Retrieves a normalized (having non-negative width and height) rectangle.
         /// </summary>
+        /// <remarks>
+        /// A normalized rectangle is created by exchanging the values of <see cref="Min" /> and
+        /// <see cref="Max" /> as needed so they correctly represent the minimum and maximum
+        /// coordinates.
+        /// The resulting rectangle has the identical set of corner points as the original
+        /// rectangle does but has non-negative width and height values.
+        /// </remarks>
         /// <returns>The normalized rectangle.</returns>
         public Box2 Normalized => new Box2(Vector2.Min(Min, Max), Vector2.Max(Min, Max));
+
+        /// <summary>
+        /// Indicates whether the area represented by this <see cref="Box2" /> is empty.
+        /// </summary>
+        /// <returns><c>true</c> if either of this rectangle's width and height is not positive;
+        /// otherwise, <c>false</c>.</returns>
+        /// <seealso cref="Normalized" />
+        public bool IsEmpty => Max.X <= Min.X || Max.Y <= Min.Y;
+
+        /// <summary>
+        /// Indicates whether the rectangle is normalized (having non-negative width and height).
+        /// </summary>
+        /// <returns><c>true</c> if this rectangle has non-negative width and height);
+        /// <c>false</c> otherwise.</returns>
+        /// <seealso cref="Normalized" />
+        public bool IsValid => Max.X >= Min.X && Max.Y >= Min.Y;
+
+        /// <summary>
+        /// Creates a new <see cref="Box2" /> by inflating it by a specified amount.
+        /// </summary>
+        /// <param name="amount">The amount to inflate this box.</param>
+        /// <returns>The new <see cref="Box2" />.</returns>
+        public Box2 GetInflated(float amount) =>
+            new Box2(Min - new Vector2(amount), Max + new Vector2(amount));
+
+        /// <summary>
+        /// Creates a new <see cref="Box2" /> by translating it by a specified displacement vector.
+        /// </summary>
+        /// <param name="v">The translation amount.</param>
+        /// <returns>The new <see cref="Box2" />.</returns>
+        public Box2 GetTranslated(Vector2 v) => new Box2(Min + v, Max + v);
     }
 }
