@@ -36,21 +36,33 @@ static __thread struct event_buf iocp_buf;
  * Per-thread evt event buffer used to ferry data between
  * kevent_wait() and kevent_copyout().
  */
-#define iocp_buf (*( (struct event_buf*)TlsGetValue(event_buf_tls) ))
+#define iocp_buf (*get_iocp_buf())
 static DWORD event_buf_tls;
 
+struct event_buf *get_iocp_buf()
+{
+	struct event_buf *ev_buf = TlsGetValue(event_buf_tls);
+	if (!ev_buf) {
+		ev_buf = malloc(sizeof(struct event_buf));
+		assert(ev_buf);
+		TlsSetValue(event_buf_tls, ev_buf);
+	}
+	return ev_buf;
+}
 
 // workaround for implicit TLS initialization
 // bug on Windows prior to Windows Vista
 void libkqueue_thread_attach(){
-	struct event_buf* ev_buf = malloc(sizeof(struct event_buf));
-	assert(ev_buf);
-	TlsSetValue(event_buf_tls, ev_buf);
+	TlsSetValue(event_buf_tls, 0);
 }
 
 void libkqueue_thread_detach(){
 	struct event_buf* ev_buf = TlsGetValue(event_buf_tls);
-	assert(ev_buf);
+	if (!ev_buf) {
+		// Because the dylib is late-loaded, it's possible that `event_buf_tls`
+		// is not initialized on the current thread
+		return;
+	}
 	free(ev_buf);
 }
 
@@ -94,6 +106,7 @@ BOOL WINAPI DllMain(
 #endif
             if (libkqueue_init() < 0)
 				return (FALSE);
+			libkqueue_process_attach();
             break;
 
         case DLL_PROCESS_DETACH:

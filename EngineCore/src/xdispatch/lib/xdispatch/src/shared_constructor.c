@@ -51,7 +51,10 @@ BOOL WINAPI DllMain(
             FatalAppExit(0, "Failed to initialize xdispatch.");
 # else
             return FALSE;
-# endif
+#endif
+#if STATIC_KQUEUE
+		libkqueue_process_attach();
+#endif
         break;
 
     case DLL_PROCESS_DETACH:

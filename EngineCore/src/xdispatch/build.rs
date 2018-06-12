@@ -36,6 +36,7 @@ fn main() {
         let mut build = cc::Build::new();
         if target_parts[2] == "windows" {
             build
+                .define("MAKE_STATIC", None)
                 .file("lib/libkqueue/windows/platform.c")
                 .file("lib/libkqueue/windows/read.c")
                 .file("lib/libkqueue/windows/timer.c")
