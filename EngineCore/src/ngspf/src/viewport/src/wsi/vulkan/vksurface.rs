@@ -24,7 +24,7 @@ mod os {
     ) -> Result<vk::SurfaceKHR, vk::Result> {
         use self::ash::extensions::Win32Surface;
         use winit::os::windows::WindowExt;
-        let hwnd = window.get_hwnd() as *mut winapi::windef::HWND__;
+        let hwnd = window.get_hwnd() as *mut _;
         let hinstance = unsafe { user32::GetWindow(hwnd, 0) as *const () };
         let win32_create_info = vk::Win32SurfaceCreateInfoKHR {
             s_type: vk::StructureType::Win32SurfaceCreateInfoKhr,
