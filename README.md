@@ -81,6 +81,8 @@ The following softwares must be installed to build this project.
 
 ### Game Code
 
+Bash-like:
+
     $ cd Ngs.Application
 
     $ dotnet build
@@ -96,6 +98,37 @@ The following softwares must be installed to build this project.
     $ dotnet run
     Checking if the engine core was successfully loaded
     $
+
+PowerShell:
+
+    $ cd Ngs.Application
+
+    $ dotnet build
+    Microsoft (R) Build Engine version 15.5.179.9764 for .NET Core
+    Copyright (C) Microsoft Corporation. All rights reserved.
+    ...
+    Build succeeded.
+
+    $ . ../SetEnginePath.ps1
+    $ dotnet run
+    Checking if the engine core was successfully loaded
+    $
+
+Or, you can write `Ngs.Application/Properties/launchSettings.json` so you can run it from Visual Studio:
+
+```json
+{
+  "profiles": {
+    "Ngs.Application": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "NGS_ENGINE_PATH": "C:\\Users\\Purplesmart\\Documents\\Projects\\ngspades\\EngineCore\\target\\debug"
+      },
+      "nativeDebugging": true
+    }
+  }
+}
+```
 
 ## Building as a stand-alone application
 
