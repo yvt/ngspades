@@ -23,6 +23,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ngs.Editor", "Ngs.Editor\Ng
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ngs.Engine.Framework.Tests", "Ngs.Engine.Framework.Tests\Ngs.Engine.Framework.Tests.csproj", "{2AA17E14-DCFA-4C08-8998-7EF92356FE88}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EngineCore", "EngineCore\EngineCore.vcxproj", "{D7EB9822-E57A-486B-8D3F-AA10F30095E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,14 @@ Global
 		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|x64.Build.0 = Release|Any CPU
 		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|x86.ActiveCfg = Release|Any CPU
 		{2AA17E14-DCFA-4C08-8998-7EF92356FE88}.Release|x86.Build.0 = Release|Any CPU
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Debug|x64.ActiveCfg = Debug|x64
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Debug|x64.Build.0 = Debug|x64
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Debug|x86.ActiveCfg = Debug|x64
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Release|Any CPU.ActiveCfg = Release|x64
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Release|x64.ActiveCfg = Release|x64
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Release|x64.Build.0 = Release|x64
+		{D7EB9822-E57A-486B-8D3F-AA10F30095E7}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
