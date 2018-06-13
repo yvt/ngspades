@@ -129,6 +129,10 @@ namespace Ngs.Engine.UI {
         }
 
         void Update() {
+            foreach (var window in windows.Keys) {
+                window.UpdateAnimationFrame();
+            }
+
             // TODO: `UpdateFocus` has to be called only in the following situations:
             //       (a) The setter of a property that modifies the focus state directly was
             //           called and must apply the changes immediately.

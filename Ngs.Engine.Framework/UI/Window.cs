@@ -221,6 +221,12 @@ namespace Ngs.Engine.UI {
 
             this.pfWindow.Child = this.ContentsView?.MainPFLayer;
             this.materialized = true;
+
+            // Request the next frame immediately if `AnimationFrameRequest` event has a handler.
+            // TODO: Vertical sync
+            if (this.onAnimationFrameRequested != null) {
+                workspace.SetNeedsUpdate();
+            }
         }
 
         internal View MouseHitTest(Vector2 point) {
@@ -506,6 +512,35 @@ namespace Ngs.Engine.UI {
         protected virtual void OnClose(CancelEventArgs e) {
             Close?.Invoke(this, e);
         }
+
+        #region Animation timer
+
+        EventHandler onAnimationFrameRequested;
+
+        /// <summary>
+        /// Occurs when the graphics content must be updated for displaying animation.
+        /// </summary>
+        /// <remarks>
+        /// By registering an event handler to this event, the window enters the mode where the
+        /// contents are updated continuously.
+        /// </remarks>
+        public event EventHandler AnimationFrameRequested {
+            add {
+                workspace.DispatchQueue.VerifyAccess();
+                onAnimationFrameRequested += value;
+                workspace.SetNeedsUpdate();
+            }
+            remove {
+                workspace.DispatchQueue.VerifyAccess();
+                onAnimationFrameRequested -= value;
+            }
+        }
+
+        internal void UpdateAnimationFrame() {
+            this.onAnimationFrameRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        #endregion
 
         #region ISynchronizeInvoke implementation
         /// <summary>
