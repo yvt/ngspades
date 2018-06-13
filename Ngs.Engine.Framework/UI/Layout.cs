@@ -33,6 +33,8 @@ namespace Ngs.Engine.UI {
                 throw new InvalidOperationException("The view already already has been added to another layout.");
             }
             view.superviewLayout = this;
+
+            view.VisibilityTrackingTryMount();
         }
 
         /// <summary>
@@ -46,6 +48,8 @@ namespace Ngs.Engine.UI {
                 throw new InvalidOperationException("The view is not associated with this layout.");
             }
             view.superviewLayout = null;
+
+            view.VisibilityTrackingUnmount();
         }
 
         /// <summary>

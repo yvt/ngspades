@@ -110,12 +110,14 @@ Similarly, the framework also attempts to minimize the number of re-rendered vie
 !!! TODO: Yet to be written about...
     Optimization of rendering
 
-## Mounted/unmounted events (WIP)
+## Mounted/unmounted events
 
-Views can opt in to receive *mounted/unmounted events* whenever they are added to or removed from visible windows of a workspace. Views can make use of this opportunity, for example, to register and unregister event handlers that listen for external data sources (e.g., vertical sync).
+Views can opt in to receive *mounted/unmounted events* whenever they are added to or removed from visible windows of a workspace. Views can make use of this opportunity, for example, to register and unregister event handlers that listen for external data sources (e.g., vertical sync). A more precise definition of these events is shown below:
 
-!!! TODO: Yet to be written about...
-    Implementation
+- The *mounted* event occurs on a view when a new path from a visible window to the view was created, and before the layouting algorithm involving the view is executed.
+- The *unmounted* event occurs on a view when it becomes no-longer reachable from any visible windows.
+
+The process of tracking the changes in the mounted state of each view is called *visibility tracking*.
 
 ## Input event handling
 

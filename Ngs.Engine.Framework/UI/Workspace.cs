@@ -50,8 +50,16 @@ namespace Ngs.Engine.UI {
             DispatchQueue.VerifyAccess();
             if (visible) {
                 windows[window] = null;
+
+                if (window.ContentsView is View view) {
+                    view.VisibilityTrackingTryMount();
+                }
             } else {
                 windows.Remove(window);
+
+                if (window.ContentsView is View view) {
+                    view.VisibilityTrackingUnmount();
+                }
             }
             SetNeedsUpdate();
         }

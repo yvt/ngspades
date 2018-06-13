@@ -64,8 +64,20 @@ namespace Ngs.Engine.UI {
         public View ContentsView {
             get => dummyLayout.ContentsView;
             set {
+                if (dummyLayout.ContentsView == value) {
+                    return;
+                }
+
+                if (this.Visible) {
+                    dummyLayout.ContentsView?.VisibilityTrackingUnmount();
+                }
+
                 dummyLayout.ContentsView = value;
-                this.workspace.SetNeedsUpdate();
+
+                if (this.Visible) {
+                    this.workspace.SetNeedsUpdate();
+                    value?.VisibilityTrackingTryMount();
+                }
             }
         }
 

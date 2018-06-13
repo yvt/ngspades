@@ -255,6 +255,7 @@ namespace Ngs.Engine.UI {
                 }
 
                 if (this.layout != null) {
+                    VisibilityTrackingUnmountSubviews();
                     this.layout.view = null;
                     this.layout = null;
                 }
@@ -263,6 +264,15 @@ namespace Ngs.Engine.UI {
                 }
                 value.view = this;
                 this.layout = value;
+
+                if (value != null) {
+                    foreach (var subview in value.Subviews) {
+                        subview.VisibilityTrackingTryMount();
+                        if (subview.visibilityTrackingSubtreeEnabled) {
+                            VisibilityTrackingEnableForSubtree();
+                        }
+                    }
+                }
 
                 SetNeedsMeasure();
                 SetNeedsArrange();
@@ -1044,6 +1054,158 @@ namespace Ngs.Engine.UI {
         /// </summary>
         /// <param name="e">The event data.</param>
         protected internal virtual void OnMouseLeave(EventArgs e) { }
+
+        #endregion
+
+        #region Mount/unmount events
+
+        /// <summary>
+        /// Indicates whether this view receives the mounted/unmounted events.
+        /// </summary>
+        bool visibilityTrackingEnabled;
+
+        /// <summary>
+        /// Indicates whether this view or its subviews possibly receive the mounted/unmounted
+        /// events. False positives are allowed.
+        /// </summary>
+        bool visibilityTrackingSubtreeEnabled;
+
+        /// <summary>
+        /// The window on which this view is mounted on. This value is set only if
+        /// <c>visibilityTrackingEnabled</c> is <c>true</c>. Reflects <c>this.Window</c> in most
+        /// cases.
+        /// </summary>
+        Window visibilityTrackingWindow;
+
+        internal void VisibilityTrackingTryMount() {
+            if (!visibilityTrackingSubtreeEnabled) {
+                return;
+            }
+
+            var window = this.Window;
+            if (window != null && window.Visible) {
+                VisibilityTrackingMount(window);
+            }
+        }
+
+        /// <summary>
+        /// Traverses the view subtree and calls <see cref="OnMounted" /> on views on which it is
+        /// not called yet.
+        /// </summary>
+        [DebuggerNonUserCode]
+        void VisibilityTrackingMount(Window window) {
+            if (!visibilityTrackingSubtreeEnabled) {
+                return;
+            }
+
+            if (this.layout is Layout layout) {
+                foreach (var subview in layout.Subviews) {
+                    subview.VisibilityTrackingMount(window);
+                }
+            }
+
+            if (visibilityTrackingEnabled && this.visibilityTrackingWindow != window) {
+                Debug.Assert(this.visibilityTrackingWindow == null);
+                this.visibilityTrackingWindow = window;
+                try {
+                    OnMounted(new MountEventArgs(window));
+                } catch (Exception e) {
+                    workspace.OnUnhandledException(e);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Traverses the view subtree and calls <see cref="OnUnmounted" /> on every view (including
+        /// itself) which was previously known to be mounted.
+        /// </summary>
+        [DebuggerNonUserCode]
+        internal void VisibilityTrackingUnmount() {
+            if (!visibilityTrackingSubtreeEnabled) {
+                return;
+            }
+
+            if (visibilityTrackingEnabled && this.visibilityTrackingWindow != null) {
+                try {
+                    OnUnmounted(new MountEventArgs(this.visibilityTrackingWindow));
+                } catch (Exception e) {
+                    workspace.OnUnhandledException(e);
+                }
+                this.visibilityTrackingWindow = null;
+            }
+
+            VisibilityTrackingUnmountSubviews();
+        }
+
+        /// <summary>
+        /// Traverses the view subtree and calls <see cref="OnUnmounted" /> on every subview (but
+        /// not <c>this</c>) which was previously known to be mounted.
+        /// </summary>
+        void VisibilityTrackingUnmountSubviews() {
+            if (!visibilityTrackingSubtreeEnabled) {
+                return;
+            }
+
+            if (this.layout is Layout layout) {
+                foreach (var subview in layout.Subviews) {
+                    subview.VisibilityTrackingUnmount();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sets or retrieves a flag indicating whether the <see cref="OnMounted" /> and
+        /// <see cref="OnUnmounted" /> methods are called.
+        /// </summary>
+        /// <remarks>
+        /// <para>Setting this property to <c>true</c> enables visibility tracking for this
+        /// view.</para>
+        /// <para>It cannot be disabled once it is enabled.</para>
+        /// </remarks>
+        /// <returns><c>true</c> if the <see cref="OnMounted" /> and <see cref="OnUnmounted" />
+        /// methods can be called; otherwise, <c>false</c>.</returns>
+        protected bool WantsMountEvents {
+            get => visibilityTrackingEnabled;
+            set {
+                if (value == visibilityTrackingEnabled) {
+                    return;
+                }
+                if (!value) {
+                    return;
+                }
+                visibilityTrackingEnabled = true;
+                VisibilityTrackingEnableForSubtree();
+                VisibilityTrackingTryMount();
+            }
+        }
+
+        void VisibilityTrackingEnableForSubtree() {
+            if (visibilityTrackingSubtreeEnabled) {
+                return;
+            }
+            visibilityTrackingSubtreeEnabled = true;
+            if (Superview is View superview) {
+                superview.VisibilityTrackingEnableForSubtree();
+            }
+        }
+
+        /// <summary>
+        /// Called when the view is added to a visible window or the window whre the view is
+        /// located is made visible.
+        /// </summary>
+        /// <remarks>This method is called only when <see cref="WantsMountEvents" /> is set to
+        /// <c>true</c>.</remarks>
+        /// <param name="e">The event data.</param>
+        protected virtual void OnMounted(MountEventArgs e) { }
+
+        /// <summary>
+        /// Called when the view is removed from a visible window or the window whre the view is
+        /// located is made invisible.
+        /// </summary>
+        /// <remarks>This method is called only when <see cref="WantsMountEvents" /> is set to
+        /// <c>true</c>.</remarks>
+        /// <param name="e">The event data.</param>
+        protected virtual void OnUnmounted(MountEventArgs e) { }
 
         #endregion
 
