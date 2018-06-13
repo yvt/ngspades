@@ -50,6 +50,12 @@ namespace Ngs.Engine.UI {
         public Matrix4 Transform { get; set; } = Matrix4.Identity;
 
         /// <summary>
+        /// Sets or retrieves the layer flags.
+        /// </summary>
+        /// <returns>The layer flags.</returns>
+        public LayerFlags Flags { get; set; }
+
+        /// <summary>
         /// Updates the properties of a supplied native layer.
         /// </summary>
         /// <remarks>
@@ -77,6 +83,7 @@ namespace Ngs.Engine.UI {
                 if (Transform != Matrix4.Identity) {
                     layer.Transform = Transform;
                 }
+                layer.Flags = Flags;
             } else {
                 if (Bounds != previous.Bounds) {
                     layer.Bounds = Bounds;
@@ -86,6 +93,9 @@ namespace Ngs.Engine.UI {
                 }
                 if (Transform != previous.Transform) {
                     layer.Transform = Transform;
+                }
+                if (Flags != previous.Flags) {
+                    layer.Flags = Flags;
                 }
             }
         }

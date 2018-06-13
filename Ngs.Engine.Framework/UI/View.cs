@@ -520,6 +520,9 @@ namespace Ngs.Engine.UI {
             /// <remarks>
             /// <para>You can encode the mask contents after calling this method.
             /// A call to this method must be matched by a call to <see cref="EndMaskGroup" />.</para>
+            /// <para>Note that the current layer must have the
+            /// <see cref="Ngs.Engine.Presentation.LayerFlags.FlattenContents" /> flag for a mask
+            /// to take effect.</para>
             /// </remarks>
             /// <exception name="InvalidOperationException">(1) The current node is not a layer.
             /// That is, the current nesting level was not started by a call to one of the overloads
