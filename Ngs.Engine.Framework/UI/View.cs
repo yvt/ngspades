@@ -1060,6 +1060,22 @@ namespace Ngs.Engine.UI {
 
         #endregion
 
+        #region Keyboard event handling
+
+        /// <summary>
+        /// Called when a key is pressed when this view has a focus.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnKeyDown(Input.KeyEventArgs e) { }
+
+        /// <summary>
+        /// Called when a key is pressed when this view has a focus.
+        /// </summary>
+        /// <param name="e">The event data.</param>
+        protected internal virtual void OnKeyUp(Input.KeyEventArgs e) { }
+
+        #endregion
+
         #region Mount/unmount events
 
         /// <summary>

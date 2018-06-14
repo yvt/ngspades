@@ -204,8 +204,16 @@ In contrast to most of the existing implementations, a mouse device object direc
 
 ### Keyboard inputs
 
+*Key events* (*key down/up events*) received by the window are simply forwarded to the currently focused view. If no views are focused at the moment, it is forwarded to the root content view instead.
+
+Key events implement *bubbling*; if a view does not handle a given key event, the event is automatically propagated to its superview. This process is repeated until one of the ancestor views indicates that the key event was handled (by setting `KeyEventArgs.Handled` to `true`), or it reaches the root content view.
+
+!!! WARNING: Text input
+    Since key events disregard the influence of the user's system keyboard layout settings and input methods, key events cannot be used for text input.
+    They still can be used to implement, for example, caret navigation within a text box, however.
+
 !!! TODO: Yet to be written about...
-    Keyboard inputs
+    Hot keys, tab stop, and text input
 
 ## Known issues
 

@@ -461,7 +461,25 @@ namespace Ngs.Engine.UI {
             }
 
             void INgsPFWindowListener.KeyboardInput(string virtualKeyCode, bool pressed, KeyModifierFlags modifier) {
-                // TODO: Handle keyboard events
+                InvokeOnWindow((window) => {
+                    if (!Enum.TryParse<VirtualKeyCode>(virtualKeyCode, true, out var keyCode)) {
+                        return;
+                    }
+
+                    var e = new Input.KeyEventArgs(keyCode, modifier);
+
+                    // Choose the first view to forward the key event
+                    View view = window.focusedView ?? window.ContentsView;
+
+                    while (view != null && !e.Handled) {
+                        if (pressed) {
+                            view.OnKeyDown(e);
+                        } else {
+                            view.OnKeyUp(e);
+                        }
+                        view = view.Superview;
+                    }
+                });
             }
 
             void INgsPFWindowListener.MouseButton(MousePosition position, byte button, bool pressed) {
