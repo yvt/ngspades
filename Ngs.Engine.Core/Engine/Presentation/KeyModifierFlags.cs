@@ -12,22 +12,22 @@ namespace Ngs.Engine.Presentation {
     [Flags]
     public enum KeyModifierFlags {
         /// <summary>
-        /// The "Shift" key.
+        /// The shift key.
         /// </summary>
         Shift = 1 << 0,
 
         /// <summary>
-        /// The "Control" key.
+        /// The control key.
         /// </summary>
         Control = 1 << 1,
 
         /// <summary>
-        /// The "Alt" key.
+        /// The alt key.
         /// </summary>
         Alt = 1 << 2,
 
         /// <summary>
-        /// The "Meta" key (e.g., the Windows logo key in Windows, Command in macOS).
+        /// The meta key (e.g., the Windows logo key in Windows, Command in macOS).
         /// </summary>
         Meta = 1 << 3,
     }
