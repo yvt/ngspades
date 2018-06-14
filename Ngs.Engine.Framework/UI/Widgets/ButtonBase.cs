@@ -10,9 +10,9 @@ namespace Ngs.Engine.UI.Widgets {
     /// A base class for command button-like widgets.
     /// </summary>
     /// <remarks>
-    /// <para>This class provides and registers mouse event handlers in order to implement the basic
-    /// behavior of command buttons.
-    /// However, this class does not include any facilies to display visual elements by itself.
+    /// <para>This class provides and registers mouse and key event handlers in order to implement
+    /// the basic behavior of command buttons.
+    /// This class does not include any facilies to display visual elements by itself.
     /// Derived classes must implement their own rendering logics and/or delegate the rendering to
     /// subviews to display their contents.</para>
     /// <para>The current state of a button is indicated by the properties <see cref="IsPressed" />
@@ -126,6 +126,15 @@ namespace Ngs.Engine.UI.Widgets {
             if (hot) {
                 hot = false;
                 OnButtonStateUpdated(EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Overrides <see cref="View.OnKeyDown(Input.KeyEventArgs)" />
+        /// </summary>
+        protected internal override void OnKeyDown(Input.KeyEventArgs e) {
+            if (e.VirtualKeyCode == Presentation.VirtualKeyCode.Space) {
+                OnActivated(EventArgs.Empty);
             }
         }
     }
