@@ -9,7 +9,8 @@ using Ngs.Engine;
 
 namespace Ngs.Engine.UI.Widgets {
     /// <summary>
-    /// A specialized view use to contain zero or more subviews.
+    /// A specialized view for containing zero or more subviews using a layout supplied by the
+    /// view's owner.
     /// </summary>
     public class Container : View {
         /// <summary>
