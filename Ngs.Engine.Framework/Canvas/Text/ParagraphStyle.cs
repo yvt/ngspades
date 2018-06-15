@@ -31,6 +31,24 @@ namespace Ngs.Engine.Canvas.Text {
         }
 
         /// <summary>
+        /// Copies properties from a supplied <see cref="ReadOnlyParagraphStyle" /> instance.
+        /// </summary>
+        /// <param name="from">The <see cref="ReadOnlyParagraphStyle" /> instance to copy property
+        /// values from.</param>
+        public void CopyFrom(ReadOnlyParagraphStyle from) {
+            if (from == null) {
+                throw new ArgumentNullException(nameof(from));
+            }
+
+            MinimumLineHeight = from.MinimumLineHeight;
+            LineHeightFactor = from.LineHeightFactor;
+            TextAlign = from.TextAlign;
+            TextDirection = from.TextDirection;
+            WordWrapMode = from.WordWrapMode;
+            CharacterStyle.CopyFrom(from.CharacterStyle);
+        }
+
+        /// <summary>
         /// Creates a read-only wrapper for this object.
         /// </summary>
         /// <remarks>
@@ -39,7 +57,6 @@ namespace Ngs.Engine.Canvas.Text {
         /// </remarks>
         /// <returns>A read-only wrapper for this object.</returns>
         public ReadOnlyParagraphStyle AsReadOnly() => new ReadOnlyParagraphStyle(NativeParagraphStyle);
-
 
         public new float MinimumLineHeight {
             get => NativeParagraphStyle.MinimumLineHeight;

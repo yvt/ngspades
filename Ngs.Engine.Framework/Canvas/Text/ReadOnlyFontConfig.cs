@@ -38,6 +38,13 @@ namespace Ngs.Engine.Canvas.Text {
         /// <returns>The layouted text.</returns>
         [SecuritySafeCritical]
         public TextLayout LayoutString(string text, ReadOnlyParagraphStyle paragraphStyle) {
+            if (text == null) {
+                throw new ArgumentNullException(nameof(text));
+            }
+            if (paragraphStyle == null) {
+                throw new ArgumentNullException(nameof(paragraphStyle));
+            }
+
             return new TextLayout(nativeObject.LayoutPointString(text,
                 paragraphStyle.NativeParagraphStyle));
         }
@@ -53,6 +60,13 @@ namespace Ngs.Engine.Canvas.Text {
         /// <returns>The layouted text.</returns>
         [SecuritySafeCritical]
         public TextLayout LayoutString(string text, ReadOnlyParagraphStyle paragraphStyle, float width) {
+            if (text == null) {
+                throw new ArgumentNullException(nameof(text));
+            }
+            if (paragraphStyle == null) {
+                throw new ArgumentNullException(nameof(paragraphStyle));
+            }
+
             return new TextLayout(nativeObject.LayoutBoxAreaString(text,
                 paragraphStyle.NativeParagraphStyle, width));
         }

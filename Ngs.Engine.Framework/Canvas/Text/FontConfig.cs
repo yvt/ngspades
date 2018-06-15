@@ -34,9 +34,16 @@ namespace Ngs.Engine.Canvas.Text {
         /// <param name="weight">The font weight associated with the font face. Must be in range <c>[100, 1000]</c>.</param>
         [SecuritySafeCritical]
         public void AddFontFace(FontFace fontFace, string fontFamily, FontStyle fontStyle, int weight) {
+            if (fontFamily == null) {
+                throw new ArgumentNullException(nameof(fontFamily));
+            }
+            if (fontFace.NativeFontFace == null) {
+                throw new ArgumentException(nameof(fontFamily));
+            }
             if (weight < 100 || weight > 1000) {
                 throw new ArgumentOutOfRangeException(nameof(weight));
             }
+
             NativeFontConfig.AddFontFace(fontFace.NativeFontFace, fontFamily, fontStyle, weight);
         }
 

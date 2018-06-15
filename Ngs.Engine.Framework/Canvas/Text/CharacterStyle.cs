@@ -43,6 +43,10 @@ namespace Ngs.Engine.Canvas.Text {
         /// values from.</param>
         [SecuritySafeCritical]
         public void CopyFrom(ReadOnlyCharacterStyle from) {
+            if (from == null) {
+                throw new ArgumentNullException(nameof(from));
+            }
+
             FontWeight = from.FontWeight;
             FontStyle = from.FontStyle;
             FontSize = from.FontSize;
