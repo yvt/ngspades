@@ -21,7 +21,7 @@ namespace Ngs.Shell {
 
         private Application() { }
 
-        private static FontConfig CreateFontConfig() {
+        private static void LoadFonts(FontManager fontManager) {
             byte[] ReadAllBytes(Stream s) {
                 using (var ms = new MemoryStream()) {
                     s.CopyTo(ms);
@@ -33,10 +33,7 @@ namespace Ngs.Shell {
             var fontData = ReadAllBytes(assembly.GetManifestResourceStream("Fonts.DDin"));
             var font = new Font(fontData);
 
-            var config = new FontConfig();
-            config.AddFontFace(font.FontFaces[0], "D-DIN", FontStyle.Normal, 300);
-
-            return config;
+            fontManager.AddFontFace(font.FontFaces[0], "D-DIN", FontStyle.Normal, 300);
         }
 
         sealed class LinkLabel : Ngs.Engine.UI.Widgets.ButtonBase {
@@ -100,6 +97,8 @@ namespace Ngs.Shell {
             Console.WriteLine("Displaying some window");
 
             this.UIQueue.Invoke(() => {
+                LoadFonts(FontManager.Default);
+
                 var layout = new TableLayout()
                 {
                     Padding = new Padding(50),
@@ -110,9 +109,11 @@ namespace Ngs.Shell {
                     {
                         Text = "Hello world",
                         TextColor = Rgba.Black,
-                        FontConfig = CreateFontConfig(),
                     };
-                    label.ParagraphStyle.CharacterStyle.FontSize = 72;
+
+                    var style = FontManager.Default.DefaultParagraphStyle.Clone();
+                    style.CharacterStyle.FontSize *= 4;
+                    label.ParagraphStyle = style;
 
                     var item = layout.Items.Add(label);
                     item.Padding = new Padding(10);
@@ -122,9 +123,7 @@ namespace Ngs.Shell {
                     var label = new Clock()
                     {
                         TextColor = new Rgba(0.05f, 0.05f, 0.05f, 1),
-                        FontConfig = CreateFontConfig(),
                     };
-                    label.ParagraphStyle.CharacterStyle.FontSize = 16;
 
                     var item = layout.Items.Add(label);
                     item.Row = 1;
@@ -134,8 +133,6 @@ namespace Ngs.Shell {
                 {
                     var label = new LinkLabel();
                     label.Label.Text = "This text is displayed using a label widget.";
-                    label.Label.FontConfig = CreateFontConfig();
-                    label.Label.ParagraphStyle.CharacterStyle.FontSize = 16;
 
                     var item = layout.Items.Add(label);
                     item.Row = 2;

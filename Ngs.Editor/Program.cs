@@ -7,6 +7,7 @@ using System;
 using System.IO;
 using Ngs.Engine;
 using Ngs.Engine.UI;
+using Ngs.Engine.UI.Theming;
 using Ngs.Engine.Presentation;
 using Ngs.Engine.Canvas.Text;
 
@@ -28,7 +29,7 @@ namespace Ngs.Editor {
             }
         }
 
-        private static FontConfig CreateFontConfig() {
+        private static void LoadFonts(FontManager fontManager) {
             byte[] ReadAllBytes(Stream s) {
                 using (var ms = new MemoryStream()) {
                     s.CopyTo(ms);
@@ -40,14 +41,13 @@ namespace Ngs.Editor {
             var fontData = ReadAllBytes(assembly.GetManifestResourceStream("Fonts.DDin"));
             var font = new Font(fontData);
 
-            var config = new FontConfig();
-            config.AddFontFace(font.FontFaces[0], "D-DIN", FontStyle.Normal, 300);
-
-            return config;
+            fontManager.AddFontFace(font.FontFaces[0], "D-DIN", FontStyle.Normal, 300);
         }
 
         private void Run() {
             this.UIQueue.Invoke(() => {
+                LoadFonts(FontManager.Default);
+
                 var layout = new TableLayout()
                 {
                     Padding = new Padding(10),
@@ -58,9 +58,11 @@ namespace Ngs.Editor {
                     {
                         Text = "Hello world",
                         TextColor = Rgba.White,
-                        FontConfig = CreateFontConfig(),
                     };
-                    label.ParagraphStyle.CharacterStyle.FontSize = 72;
+
+                    var paraStyle = FontManager.Default.DefaultParagraphStyle.Clone();
+                    paraStyle.CharacterStyle.FontSize = 72;
+                    label.ParagraphStyle = paraStyle;
 
                     layout.Items.Add(label);
                 }

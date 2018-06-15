@@ -7,26 +7,86 @@ using System;
 using System.Numerics;
 using Ngs.Engine.Canvas.Text;
 using Ngs.Engine;
+using Ngs.Engine.UI.Theming;
 
 namespace Ngs.Engine.UI.Widgets {
     /// <summary>
     /// Represents a label widget.
     /// </summary>
     public class Label : View {
+        FontManager fontManager = FontManager.Default;
         ReadOnlyFontConfig fontConfig;
-        ReadOnlyParagraphStyle paragraphStyle = new ParagraphStyle();
+        ReadOnlyParagraphStyle paragraphStyle;
         string text = "";
         float? width;
         Rgba textColor = Rgba.White;
 
+        bool mounted;
+        bool hasFontConfigUpdatedHandlerRegistered;
+        bool hasParagraphStyleUpdatedHandlerRegistered;
+
+        void RegisterFontManagerUpdateHandlers(bool unregisterAll = false) {
+            var fontManager = this.fontManager;
+
+            if (!mounted) {
+                unregisterAll = true;
+            }
+
+            bool needsFontConfigUpdateHandler = !unregisterAll && fontConfig == null;
+            bool needsParagraphStyleUpdateHandler = !unregisterAll && paragraphStyle == null;
+
+            if (needsFontConfigUpdateHandler != hasFontConfigUpdatedHandlerRegistered) {
+                if (needsFontConfigUpdateHandler) {
+                    fontManager.FontConfigUpdated += HandleFontManagerUpdate;
+                } else {
+                    fontManager.FontConfigUpdated -= HandleFontManagerUpdate;
+                }
+                hasFontConfigUpdatedHandlerRegistered = needsFontConfigUpdateHandler;
+            }
+
+            if (needsParagraphStyleUpdateHandler != hasParagraphStyleUpdatedHandlerRegistered) {
+                if (needsParagraphStyleUpdateHandler) {
+                    fontManager.DefaultParagraphStyleUpdated += HandleFontManagerUpdate;
+                } else {
+                    fontManager.DefaultParagraphStyleUpdated -= HandleFontManagerUpdate;
+                }
+                hasParagraphStyleUpdatedHandlerRegistered = needsParagraphStyleUpdateHandler;
+            }
+        }
+
+        void HandleFontManagerUpdate(object sender, EventArgs e) {
+            InvalidateTextLayout();
+        }
+
+        /// <summary>
+        /// Sets or retrieves the font manager object used as a source of the default font config
+        /// and paragraph style objects when they are not specified by the
+        /// <see cref="FontConfig" /> and <see cref="ParagraphStyle" /> properties.
+        /// </summary>
+        /// <returns>The font manager object that provides default values.</returns>
+        public FontManager FontManager {
+            get => fontManager; set {
+                if (value == fontManager) {
+                    return;
+                }
+                if (value == null) {
+                    throw new ArgumentNullException();
+                }
+                RegisterFontManagerUpdateHandlers(true);
+                fontManager = value;
+                RegisterFontManagerUpdateHandlers();
+            }
+        }
+
         /// <summary>
         /// Sets or retrieves the font config object used to layout the text.
         /// </summary>
-        /// <returns>The font config object used to layout the text.</returns>
+        /// <returns>The font config object used to layout the text. <c>null</c> indicates that the
+        /// font config is provided by <see cref="FontManager" />.</returns>
         public ReadOnlyFontConfig FontConfig {
             get => fontConfig; set {
-                // FIXME: `FontConfig` is not immutable
                 fontConfig = value;
+                RegisterFontManagerUpdateHandlers();
                 InvalidateTextLayout();
             }
         }
@@ -34,11 +94,12 @@ namespace Ngs.Engine.UI.Widgets {
         /// <summary>
         /// Sets or retrieves the paragraph style object used to layout the text.
         /// </summary>
-        /// <returns>The paragraph style object used to layout the text.</returns>
+        /// <returns>The paragraph style object used to layout the text. <c>null</c> indicates that
+        /// the font config is provided by <see cref="FontManager" />.</returns>
         public ReadOnlyParagraphStyle ParagraphStyle {
             get => paragraphStyle; set {
-                // FIXME: `ParagraphStyle` is not immutable
-                paragraphStyle = value ?? new ParagraphStyle();
+                paragraphStyle = value;
+                RegisterFontManagerUpdateHandlers();
                 InvalidateTextLayout();
             }
         }
@@ -95,13 +156,15 @@ namespace Ngs.Engine.UI.Widgets {
 
         TextLayout TextLayout {
             get {
-                if (textLayout == null && fontConfig != null) {
-                    if (this.width is float width) {
-                        textLayout = fontConfig.LayoutString(text, paragraphStyle, width);
-                    } else {
-                        textLayout = fontConfig.LayoutString(text, paragraphStyle);
-                    }
+                var fontConfig = this.fontConfig ?? this.fontManager.FontConfig;
+                var paragraphStyle = this.paragraphStyle ?? this.fontManager.DefaultParagraphStyle;
+
+                if (this.width is float width) {
+                    textLayout = fontConfig.LayoutString(text, paragraphStyle, width);
+                } else {
+                    textLayout = fontConfig.LayoutString(text, paragraphStyle);
                 }
+
                 return textLayout;
             }
         }
@@ -145,5 +208,23 @@ namespace Ngs.Engine.UI.Widgets {
                 Origin = new Vector2(0, Bounds.Height),
             });
         }
+
+        /// <summary>
+        /// Overrides <see cref="View.OnMounted" />.
+        /// </summary>
+        protected virtual void OnMounted(EventArgs e) {
+            mounted = true;
+            RegisterFontManagerUpdateHandlers();
+            InvalidateTextLayout();
+        }
+
+        /// <summary>
+        /// Overrides <see cref="View.OnUnmounted" />.
+        /// </summary>
+        protected virtual void OnUnmounted(EventArgs e) {
+            mounted = false;
+            RegisterFontManagerUpdateHandlers(true);
+        }
+
     }
 }
