@@ -12,29 +12,18 @@ using Ngs.Engine.Native;
 
 namespace Ngs.Engine.Canvas.Text {
     /// <summary>
-    /// Maintains a set of fonts and their associated font style values which are
+    /// Maintains a mutable set of fonts and their associated font style values which are
     /// used to determine the optimal font for rendering given characters.
     /// </summary>
     /// <remarks>
     /// <para>This class is a wrapper of <see cref="INgsPFFontConfig" />.</para>
     /// </remarks>
-    public class FontConfig {
-        private INgsPFFontConfig nativeObject;
-
-        internal FontConfig(INgsPFFontConfig nativeObject) {
-            this.nativeObject = nativeObject;
-        }
-
+    public class FontConfig : ReadOnlyFontConfig {
         /// <summary>
         /// Initializes a new instance of <see cref="FontConfig" />.
         /// </summary>
         public FontConfig() :
-            this(EngineInstance.NativeEngine.FontFactory.CreateFontConfig()) { }
-
-        internal INgsPFFontConfig NativeFontConfig {
-            [SecurityCritical]
-            get => nativeObject;
-        }
+            base(EngineInstance.NativeEngine.FontFactory.CreateFontConfig()) { }
 
         /// <summary>
         /// Adds a font face into the font search list.
@@ -48,34 +37,17 @@ namespace Ngs.Engine.Canvas.Text {
             if (weight < 100 || weight > 1000) {
                 throw new ArgumentOutOfRangeException(nameof(weight));
             }
-            nativeObject.AddFontFace(fontFace.NativeFontFace, fontFamily, fontStyle, weight);
+            NativeFontConfig.AddFontFace(fontFace.NativeFontFace, fontFamily, fontStyle, weight);
         }
 
         /// <summary>
-        /// Layouts a given string as point type.
+        /// Creates a read-only wrapper for this font config.
         /// </summary>
-        /// <param name="text">The text to be layouted.</param>
-        /// <param name="paragraphStyle">The paragraph style.</param>
-        /// <returns>The layouted text.</returns>
-        [SecuritySafeCritical]
-        public TextLayout LayoutString(string text, ParagraphStyle paragraphStyle) {
-            return new TextLayout(nativeObject.LayoutPointString(text,
-                paragraphStyle.NativeParagraphStyle));
-        }
-
-        /// <summary>
-        /// Layouts a given string as area type.
-        /// </summary>
-        /// <param name="text">The text to be layouted.</param>
-        /// <param name="paragraphStyle">The paragraph style.</param>
-        /// <param name="width">The width of the bounding box. The axis used for this parameter is
-        /// dependent on the value of the <see cref="ParagraphStyle.TextDirection" /> property.</param>
-        /// <returns>The layouted text.</returns>
-        [SecuritySafeCritical]
-        public TextLayout LayoutString(string text, ParagraphStyle paragraphStyle, float width) {
-            return new TextLayout(nativeObject.LayoutBoxAreaString(text,
-                paragraphStyle.NativeParagraphStyle, width));
-        }
-
+        /// <remarks>
+        /// The returned read-only wrapper reflects the changes made to the original
+        /// <see cref="FontConfig" />.
+        /// </remarks>
+        /// <returns>A read-only wrapper for this font config.</returns>
+        public ReadOnlyFontConfig AsReadOnly() => new ReadOnlyFontConfig(NativeFontConfig);
     }
 }

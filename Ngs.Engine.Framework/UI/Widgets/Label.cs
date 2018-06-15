@@ -13,7 +13,7 @@ namespace Ngs.Engine.UI.Widgets {
     /// Represents a label widget.
     /// </summary>
     public class Label : View {
-        FontConfig fontConfig;
+        ReadOnlyFontConfig fontConfig;
         ParagraphStyle paragraphStyle = new ParagraphStyle();
         string text = "";
         float? width;
@@ -23,7 +23,7 @@ namespace Ngs.Engine.UI.Widgets {
         /// Sets or retrieves the font config object used to layout the text.
         /// </summary>
         /// <returns>The font config object used to layout the text.</returns>
-        public FontConfig FontConfig {
+        public ReadOnlyFontConfig FontConfig {
             get => fontConfig; set {
                 // FIXME: `FontConfig` is not immutable
                 fontConfig = value;
