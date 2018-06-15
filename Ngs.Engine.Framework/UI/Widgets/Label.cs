@@ -14,7 +14,7 @@ namespace Ngs.Engine.UI.Widgets {
     /// </summary>
     public class Label : View {
         ReadOnlyFontConfig fontConfig;
-        ParagraphStyle paragraphStyle = new ParagraphStyle();
+        ReadOnlyParagraphStyle paragraphStyle = new ParagraphStyle();
         string text = "";
         float? width;
         Rgba textColor = Rgba.White;
@@ -35,7 +35,7 @@ namespace Ngs.Engine.UI.Widgets {
         /// Sets or retrieves the paragraph style object used to layout the text.
         /// </summary>
         /// <returns>The paragraph style object used to layout the text.</returns>
-        public ParagraphStyle ParagraphStyle {
+        public ReadOnlyParagraphStyle ParagraphStyle {
             get => paragraphStyle; set {
                 // FIXME: `ParagraphStyle` is not immutable
                 paragraphStyle = value ?? new ParagraphStyle();

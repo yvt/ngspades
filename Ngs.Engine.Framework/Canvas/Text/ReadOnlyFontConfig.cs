@@ -37,7 +37,7 @@ namespace Ngs.Engine.Canvas.Text {
         /// <param name="paragraphStyle">The paragraph style.</param>
         /// <returns>The layouted text.</returns>
         [SecuritySafeCritical]
-        public TextLayout LayoutString(string text, ParagraphStyle paragraphStyle) {
+        public TextLayout LayoutString(string text, ReadOnlyParagraphStyle paragraphStyle) {
             return new TextLayout(nativeObject.LayoutPointString(text,
                 paragraphStyle.NativeParagraphStyle));
         }
@@ -48,10 +48,11 @@ namespace Ngs.Engine.Canvas.Text {
         /// <param name="text">The text to be layouted.</param>
         /// <param name="paragraphStyle">The paragraph style.</param>
         /// <param name="width">The width of the bounding box. The axis used for this parameter is
-        /// dependent on the value of the <see cref="ParagraphStyle.TextDirection" /> property.</param>
+        /// dependent on the value of the <see cref="ReadOnlyParagraphStyle.TextDirection" />
+        /// roperty.</param>
         /// <returns>The layouted text.</returns>
         [SecuritySafeCritical]
-        public TextLayout LayoutString(string text, ParagraphStyle paragraphStyle, float width) {
+        public TextLayout LayoutString(string text, ReadOnlyParagraphStyle paragraphStyle, float width) {
             return new TextLayout(nativeObject.LayoutBoxAreaString(text,
                 paragraphStyle.NativeParagraphStyle, width));
         }

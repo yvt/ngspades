@@ -12,19 +12,13 @@ using Ngs.Engine.Native;
 
 namespace Ngs.Engine.Canvas.Text {
     /// <summary>
-    /// A set of paragraph styles.
+    /// A mutable set of paragraph styles.
     /// </summary>
     /// <remarks>
     /// <para>This class is a wrapper of <see cref="INgsPFParagraphStyle" />.</para>
     /// </remarks>
-    public class ParagraphStyle {
-        private INgsPFParagraphStyle nativeObject;
+    public class ParagraphStyle : ReadOnlyParagraphStyle {
         private CharacterStyle characterStyle;
-
-        internal ParagraphStyle(INgsPFParagraphStyle nativeObject) {
-            this.nativeObject = nativeObject;
-            this.characterStyle = new CharacterStyle(nativeObject.CharStyle);
-        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="ParagraphStyle" />.
@@ -32,62 +26,55 @@ namespace Ngs.Engine.Canvas.Text {
         public ParagraphStyle() :
             this(EngineInstance.NativeEngine.FontFactory.CreateParagraphStyle()) { }
 
+        internal ParagraphStyle(INgsPFParagraphStyle nativeObject) : base(nativeObject) {
+            characterStyle = new CharacterStyle(nativeObject.CharStyle);
+        }
+
         /// <summary>
-        /// Creates a shallow copy of an instance of this class.
+        /// Creates a read-only wrapper for this object.
         /// </summary>
-        /// <returns>A newly created instance of this class.</returns>
-        public ParagraphStyle Clone() {
-            var ret = new ParagraphStyle()
-            {
-                MinimumLineHeight = MinimumLineHeight,
-                LineHeightFactor = LineHeightFactor,
-                TextAlign = TextAlign,
-                TextDirection = TextDirection,
-                WordWrapMode = WordWrapMode,
-            };
-            ret.CharacterStyle.CopyFrom(CharacterStyle);
-            return ret;
+        /// <remarks>
+        /// The returned read-only wrapper reflects the changes made to the original
+        /// <see cref="ParagraphStyle" />.
+        /// </remarks>
+        /// <returns>A read-only wrapper for this object.</returns>
+        public ReadOnlyParagraphStyle AsReadOnly() => new ReadOnlyParagraphStyle(NativeParagraphStyle);
+
+
+        public new float MinimumLineHeight {
+            get => NativeParagraphStyle.MinimumLineHeight;
+            set => NativeParagraphStyle.MinimumLineHeight = value;
         }
 
-        internal INgsPFParagraphStyle NativeParagraphStyle {
-            [SecurityCritical]
-            get => nativeObject;
+        public new float LineHeightFactor {
+            get => NativeParagraphStyle.LineHeightFactor;
+            set => NativeParagraphStyle.LineHeightFactor = value;
         }
 
-        public float MinimumLineHeight {
-            get => nativeObject.MinimumLineHeight;
-            set => nativeObject.MinimumLineHeight = value;
+        public new TextAlign TextAlign {
+            get => NativeParagraphStyle.TextAlign;
+            set => NativeParagraphStyle.TextAlign = value;
         }
 
-        public float LineHeightFactor {
-            get => nativeObject.LineHeightFactor;
-            set => nativeObject.LineHeightFactor = value;
+        public new TextDirection TextDirection {
+            get => NativeParagraphStyle.TextDirection;
+            set => NativeParagraphStyle.TextDirection = value;
         }
 
-        public TextAlign TextAlign {
-            get => nativeObject.TextAlign;
-            set => nativeObject.TextAlign = value;
-        }
-
-        public TextDirection TextDirection {
-            get => nativeObject.TextDirection;
-            set => nativeObject.TextDirection = value;
-        }
-
-        public WordWrapMode WordWrapMode {
-            get => nativeObject.WordWrapMode;
-            set => nativeObject.WordWrapMode = value;
+        public new WordWrapMode WordWrapMode {
+            get => NativeParagraphStyle.WordWrapMode;
+            set => NativeParagraphStyle.WordWrapMode = value;
         }
 
         /// <summary>
         /// Sets or retrieves the default character style.
         /// </summary>
         /// <remarks>
-        /// This property returns a `CharacterStyle` instance that can be used to access the default
-        /// character style stored within a paragraph style object.
+        /// This property returns a <see cref="CharacterStyle" /> instance that can be used to
+        /// retrieve and modify the default character style stored within a paragraph style object.
         /// </remarks>
         /// <returns>The default character style.</returns>
-        public CharacterStyle CharacterStyle {
+        public new CharacterStyle CharacterStyle {
             get => characterStyle;
         }
     }
