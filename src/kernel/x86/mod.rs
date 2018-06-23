@@ -50,8 +50,8 @@ mod x86avxf32radix4 {
 #[cfg(not(target_feature = "avx"))]
 mod x86avxf32realfft {
     pub fn new_x86_avx_f32_real_fft_pre_post_process_kernel<T>(
-        len: usize,
-        inverse: bool,
+        _len: usize,
+        _inverse: bool,
     ) -> Option<Box<super::Kernel<T>>> {
         None
     }
@@ -69,8 +69,8 @@ mod x86sse3f32radix4 {
 #[cfg(not(target_feature = "sse3"))]
 mod x86sse3f32realfft {
     pub fn new_x86_sse3_f32_real_fft_pre_post_process_kernel<T>(
-        len: usize,
-        inverse: bool,
+        _len: usize,
+        _inverse: bool,
     ) -> Option<Box<super::Kernel<T>>> {
         None
     }
