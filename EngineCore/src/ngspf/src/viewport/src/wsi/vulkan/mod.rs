@@ -742,6 +742,7 @@ impl<P: Painter> PhysicalDevice<P> {
                     let surface_props = surface.vk_props.to_wsi_surface_props();
                     swapchain.update(
                         image_index,
+                        surface.vk_props.pixel_ratio,
                         painter,
                         &wait_semaphore,
                         &surface_props,
@@ -847,6 +848,7 @@ impl Swapchain {
     fn update<P: Painter>(
         &mut self,
         image_index: usize,
+        pixel_ratio: f32,
         painter: &mut P,
         be_semaphore: &BeSemaphore,
         surface_props: &SurfaceProps,
@@ -866,6 +868,7 @@ impl Swapchain {
             vk_swapchain: vk::SwapchainKHR,
             image: gfx::Image,
             image_index: u32,
+            pixel_ratio: f32,
             surface_props: &'a SurfaceProps,
             be_semaphore: &'a BeSemaphore,
             presentation_queue: &'a Arc<gfx::CmdQueue>,
@@ -883,6 +886,10 @@ impl Swapchain {
 
             fn surface_props(&self) -> &SurfaceProps {
                 self.surface_props
+            }
+
+            fn pixel_ratio(&self) -> f32 {
+                self.pixel_ratio
             }
 
             fn encode_prepare_present(
@@ -993,6 +1000,7 @@ impl Swapchain {
             swapchain_loader,
             image: self.images[image_index].clone().into(),
             image_index: image_index as u32,
+            pixel_ratio,
             vk_swapchain: self.vk_swapchain,
             surface_props,
             be_semaphore,
@@ -1034,8 +1042,13 @@ fn optimal_props(
         .map_err(SurfaceError::from)?;
 
     let window_extents = window.get_inner_size().unwrap(); // we're sure the window exists
+    let pixel_ratio = window.get_hidpi_factor();
+    let phys_extents = window_extents.to_physical(pixel_ratio);
     let extents = match surface_caps.current_extent.width {
-        x if x == <u32>::max_value() => [window_extents.0, window_extents.1],
+        x if x == <u32>::max_value() => [
+            phys_extents.width as u32,
+            phys_extents.height as u32,
+        ],
         _ => [
             surface_caps.current_extent.width,
             surface_caps.current_extent.height,
@@ -1120,6 +1133,7 @@ fn optimal_props(
         present_mode,
         format,
         color_space,
+        pixel_ratio: pixel_ratio as f32,
     })
 }
 
@@ -1147,7 +1161,7 @@ where
         .nth(0)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 struct VkSurfaceProps {
     extents: [u32; 2],
     format: gfx::ImageFormat,
@@ -1156,6 +1170,7 @@ struct VkSurfaceProps {
     pre_transform: vk::SurfaceTransformFlagsKHR,
     composite_alpha: vk::CompositeAlphaFlagsKHR,
     present_mode: vk::PresentModeKHR,
+    pixel_ratio: f32,
 }
 
 impl VkSurfaceProps {
