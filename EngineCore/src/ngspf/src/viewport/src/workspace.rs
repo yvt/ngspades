@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use cgmath::Vector2;
 use ngsenumflags::BitFlags;
-use winit::{self, EventsLoop};
+use winit::{self, dpi::LogicalPosition, dpi::LogicalSize, EventsLoop};
 
 use super::compositor::{CompositeContext, Compositor, CompositorWindow};
 use super::{Window, WindowActionBit, WindowFlagsBit};
@@ -259,11 +259,11 @@ impl WindowSet {
 
             // Translate it to our `WindowEvent`
             let event = match winit_event {
-                winit::WindowEvent::Resized(winit::LogicalSize { width, height }) => {
+                winit::WindowEvent::Resized(LogicalSize { width, height }) => {
                     let size = Vector2::new(width, height).cast::<f32>().unwrap();
                     Some(WindowEvent::Resized(size))
                 }
-                winit::WindowEvent::Moved(winit::LogicalPosition { x, y }) => {
+                winit::WindowEvent::Moved(LogicalPosition { x, y }) => {
                     Some(WindowEvent::Moved(Vector2::new(x, y).cast().unwrap()))
                 }
                 winit::WindowEvent::CloseRequested => Some(WindowEvent::Close),
@@ -280,12 +280,12 @@ impl WindowSet {
                     })
                 }
                 winit::WindowEvent::CursorMoved {
-                    position: winit::LogicalPosition { x, y },
+                    position: LogicalPosition { x, y },
                     ..
                 } => {
                     // Translate the coordinate to `MousePosition`
                     let client = Vector2::new(x, y).cast::<f32>().unwrap();
-                    let winit::LogicalPosition { x: wx, y: wy } =
+                    let LogicalPosition { x: wx, y: wy } =
                         winit_win.get_position().unwrap_or((0, 0).into());
                     let global = client + Vector2::new(wx, wy).cast().unwrap();
                     let pos = Some(MousePosition { client, global });
@@ -389,19 +389,19 @@ impl WindowSet {
                 .with_decorations(!flags.contains(WindowFlagsBit::Borderless))
                 .with_resizable(flags.contains(WindowFlagsBit::Resizable))
                 .with_title(title)
-                .with_dimensions(winit::LogicalSize {
+                .with_dimensions(LogicalSize {
                     width: inner_size.x,
                     height: inner_size.y,
                 });
 
             if let Some(min_size) = min_size {
-                builder = builder.with_min_dimensions(winit::LogicalSize {
+                builder = builder.with_min_dimensions(LogicalSize {
                     width: min_size.x,
                     height: min_size.y,
                 });
             }
             if let Some(max_size) = max_size {
-                builder = builder.with_max_dimensions(winit::LogicalSize {
+                builder = builder.with_max_dimensions(LogicalSize {
                     width: max_size.x,
                     height: max_size.y,
                 });
@@ -454,15 +454,15 @@ impl WindowSet {
                 let max_size = (window.max_size.read_presenter(&frame))
                     .unwrap()
                     .map(|x| x.cast::<f64>().unwrap());
-                winit_window.set_inner_size(winit::LogicalSize {
+                winit_window.set_inner_size(LogicalSize {
                     width: size.x,
                     height: size.y,
                 });
-                winit_window.set_min_dimensions(min_size.map(|t| winit::LogicalSize {
+                winit_window.set_min_dimensions(min_size.map(|t| LogicalSize {
                     width: t.x,
                     height: t.y,
                 }));
-                winit_window.set_max_dimensions(max_size.map(|t| winit::LogicalSize {
+                winit_window.set_max_dimensions(max_size.map(|t| LogicalSize {
                     width: t.x,
                     height: t.y,
                 }));
