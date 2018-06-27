@@ -32,6 +32,18 @@ namespace Ngs.Engine.Native {
         Vector2 Size { set; }
 
         /// <summary>
+        /// Sets the maximum size of the window.
+        /// </summary>
+        /// <returns>The maximum size of the window measured in device independent pixels.</returns>
+        Vector2 MaximumSize { set; }
+
+        /// <summary>
+        /// Sets the minimum size of the window.
+        /// </summary>
+        /// <returns>The minimum size of the window measured in device independent pixels.</returns>
+        Vector2 MinimumSize { set; }
+
+        /// <summary>
         /// Sets the child layer(s) of the window.
         /// </summary>
         /// <returns>

@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use cgmath::Vector2;
 use ngsenumflags::BitFlags;
-use winit::{self, EventsLoop};
+use winit::{self, dpi::LogicalPosition, dpi::LogicalSize, EventsLoop};
 
 use super::compositor::{CompositeContext, Compositor, CompositorWindow};
 use super::{Window, WindowActionBit, WindowFlagsBit};
@@ -262,14 +262,11 @@ impl WindowSet {
 
             // Translate it to our `WindowEvent`
             let event = match winit_event {
-                winit::WindowEvent::Resized(w, h) => {
-                    let ratio = winit_win.hidpi_factor();
-                    let size = Vector2::new(w, h).cast::<f32>().unwrap();
-                    Some(WindowEvent::Resized(size / ratio))
+                winit::WindowEvent::Resized(LogicalSize { width, height }) => {
+                    let size = Vector2::new(width, height).cast::<f32>().unwrap();
+                    Some(WindowEvent::Resized(size))
                 }
-                winit::WindowEvent::Moved(x, y) => {
-                    // FIXME: Should be these coordinates divided by `ratio`? These are global
-                    //        coordinates, not client ...
+                winit::WindowEvent::Moved(LogicalPosition { x, y }) => {
                     Some(WindowEvent::Moved(Vector2::new(x, y).cast().unwrap()))
                 }
                 winit::WindowEvent::CloseRequested => Some(WindowEvent::Close),
@@ -286,12 +283,13 @@ impl WindowSet {
                     })
                 }
                 winit::WindowEvent::CursorMoved {
-                    position: (x, y), ..
+                    position: LogicalPosition { x, y },
+                    ..
                 } => {
                     // Translate the coordinate to `MousePosition`
-                    let ratio = winit_win.hidpi_factor();
-                    let client = Vector2::new(x, y).cast::<f32>().unwrap() / ratio;
-                    let (wx, wy) = winit_win.get_position().unwrap_or((0, 0));
+                    let client = Vector2::new(x, y).cast::<f32>().unwrap();
+                    let LogicalPosition { x: wx, y: wy } =
+                        winit_win.get_position().unwrap_or((0, 0).into());
                     let global = client + Vector2::new(wx, wy).cast().unwrap();
                     let pos = Some(MousePosition { client, global });
 
@@ -378,23 +376,44 @@ impl WindowSet {
             let flags = window.flags;
             let title = window.title.read_presenter(&frame).unwrap().to_owned();
 
+            let inner_size = (window.size.read_presenter(&frame).unwrap())
+                .cast::<f64>()
+                .unwrap();
+
+            let min_size = (window.min_size.read_presenter(&frame))
+                .unwrap()
+                .map(|x| x.cast::<f64>().unwrap());
+            let max_size = (window.max_size.read_presenter(&frame))
+                .unwrap()
+                .map(|x| x.cast::<f64>().unwrap());
+
             let mut builder = winit::WindowBuilder::new()
                 .with_transparency(flags.contains(WindowFlagsBit::Transparent))
                 .with_decorations(!flags.contains(WindowFlagsBit::Borderless))
-                .with_title(title);
+                .with_resizable(flags.contains(WindowFlagsBit::Resizable))
+                .with_title(title)
+                .with_dimensions(LogicalSize {
+                    width: inner_size.x,
+                    height: inner_size.y,
+                });
 
-            // TODO: Handle the lack of `WindowFlagsBit::Resizable`
+            if let Some(min_size) = min_size {
+                builder = builder.with_min_dimensions(LogicalSize {
+                    width: min_size.x,
+                    height: min_size.y,
+                });
+            }
+            if let Some(max_size) = max_size {
+                builder = builder.with_max_dimensions(LogicalSize {
+                    width: max_size.x,
+                    height: max_size.y,
+                });
+            }
 
             let winit_window = builder
                 .build(events_loop)
                 .expect("failed to instantiate a window.");
             let winit_window_id = winit_window.id();
-
-            let inner_size = (window.size.read_presenter(&frame).unwrap()
-                * winit_window.hidpi_factor())
-                .cast::<u32>()
-                .unwrap();
-            winit_window.set_inner_size(inner_size.x, inner_size.y);
 
             let wm_window_options = wsi::WindowOptions {
                 transparent: flags.contains(WindowFlagsBit::Transparent),
@@ -435,11 +454,27 @@ impl WindowSet {
                 BitFlags::empty(),
             );
             if action.contains(WindowActionBit::ChangeSize) {
-                let new_value = (window.size.read_presenter(frame).unwrap()
-                    * winit_window.hidpi_factor())
-                    .cast::<u32>()
+                let size = (window.size.read_presenter(frame).unwrap())
+                    .cast::<f64>()
                     .unwrap();
-                winit_window.set_inner_size(new_value.x, new_value.y);
+                let min_size = (window.min_size.read_presenter(&frame))
+                    .unwrap()
+                    .map(|x| x.cast::<f64>().unwrap());
+                let max_size = (window.max_size.read_presenter(&frame))
+                    .unwrap()
+                    .map(|x| x.cast::<f64>().unwrap());
+                winit_window.set_inner_size(LogicalSize {
+                    width: size.x,
+                    height: size.y,
+                });
+                winit_window.set_min_dimensions(min_size.map(|t| LogicalSize {
+                    width: t.x,
+                    height: t.y,
+                }));
+                winit_window.set_max_dimensions(max_size.map(|t| LogicalSize {
+                    width: t.x,
+                    height: t.y,
+                }));
             }
             if action.contains(WindowActionBit::ChangeTitle) {
                 let new_value = window.title.read_presenter(frame).unwrap();

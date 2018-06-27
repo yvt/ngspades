@@ -34,6 +34,16 @@ namespace Ngs.Engine.UI {
         Vector2? size;
 
         /// <summary>
+        /// The minimum size of the client region. <c>null</c> if not computed or specified yet
+        /// </summary>
+        Vector2? minSize;
+
+        /// <summary>
+        /// The maximum size of the client region. <c>null</c> if not computed or specified yet
+        /// </summary>
+        Vector2? maxSize;
+
+        /// <summary>
         /// Should be the value of <see cref="size" /> pushed to the compositor?
         /// </summary>
         bool shouldPushSize;
@@ -152,18 +162,21 @@ namespace Ngs.Engine.UI {
 
         internal void Render() {
             // TODO: Minimize the update
+            Vector2 minSize;
+            Vector2 maxSize;
+
             if (this.ContentsView is View view) {
                 view.BeforeLayout();
                 view.Measure();
 
+                var measurement = view.Measurement;
                 if (!size.HasValue) {
                     // The window size is not specified yet. Automatically derive it from the
                     // measurement result.
-                    size = view.Measurement.PreferredSize;
+                    size = measurement.PreferredSize;
                     shouldPushSize = true;
                 } else {
                     // Limit the size according to the measurement result.
-                    var measurement = view.Measurement;
                     var newSize = Vector2.Clamp(size.Value,
                         measurement.MinimumSize,
                         measurement.MaximumSize);
@@ -172,6 +185,9 @@ namespace Ngs.Engine.UI {
                         shouldPushSize = true;
                     }
                 }
+
+                minSize = measurement.MinimumSize;
+                maxSize = measurement.MaximumSize;
 
                 view.Bounds = new Box2(Vector2.Zero, size.Value);
                 view.Arrange();
@@ -182,6 +198,9 @@ namespace Ngs.Engine.UI {
                     size = Vector2.Zero;
                     shouldPushSize = true;
                 }
+
+                minSize = Vector2.Zero;
+                maxSize = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
             }
 
             if (!this.materialized) {
@@ -196,12 +215,8 @@ namespace Ngs.Engine.UI {
                     flags |= WindowFlags.Transparent;
                 }
 
-                // Deny resizing at all if the root view has the maximum size
-                if (this.ContentsView is View view2) {
-                    var maxSize = view2.Measurement.MaximumSize;
-                    if (!float.IsInfinity(maxSize.X) || !float.IsInfinity(maxSize.Y)) {
-                        flags &= ~WindowFlags.Resizable;
-                    }
+                if (maxSize.X <= minSize.X + 0.5 && maxSize.Y <= minSize.Y + 0.5) {
+                    flags &= ~WindowFlags.Resizable;
                 }
 
                 this.pfWindow.Flags = flags;
@@ -212,12 +227,17 @@ namespace Ngs.Engine.UI {
                 shouldPushSize = false;
             }
 
+            if (minSize != this.minSize || maxSize != this.maxSize) {
+                this.pfWindow.MinimumSize = minSize;
+                this.pfWindow.MaximumSize = maxSize;
+                this.minSize = minSize;
+                this.maxSize = maxSize;
+            }
+
             if (shouldPushTitle) {
                 this.pfWindow.Title = title;
                 shouldPushTitle = false;
             }
-
-            // TODO: Repond to the resize event and re-render accordingly
 
             this.pfWindow.Child = this.ContentsView?.MainPFLayer;
             this.materialized = true;
