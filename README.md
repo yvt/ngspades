@@ -50,18 +50,25 @@ Some .NET projects are accompanied by xUnit test projects, which can be identifi
 
 ## Prerequisite
 
-The following softwares must be installed to build this project.
+The following programs must be installed to build this project.
 
-- [Rust] 1.26 or later. The nightly build toolchain must be installed and selected using `rustup install nightly` and `rustup default nightly`.
+- [Rust] compiler 1.26 or later. The nightly build toolchain must be installed and selected using `rustup install nightly` and `rustup default nightly`.
 - [.NET Core] 2.1 or later
 - [PowerShell Core] 6.0 or later
 - [LunarG Vulkan SDK] 1.0 or later. [glslang], which is distributed as a part of it, must be in `$PATH` to build ZanGFX and the rendering engine.
+
+Furthermore, some dependent crates require the following programs:
+
+- [CMake]
+- automake and autoconf (Linux only?)
+- [Ragel](https://www.colm.net/open-source/ragel/) (Linux only?)
 
 [Rust]: https://www.rust-lang.org/en-US/
 [.NET Core]: https://www.microsoft.com/net/download/
 [PowerShell Core]: https://github.com/PowerShell/PowerShell
 [LunarG Vulkan SDK]: https://www.lunarg.com/vulkan-sdk/
 [glslang]: https://github.com/KhronosGroup/glslang
+[CMake]: https://cmake.org
 
 ## Building for development
 
