@@ -10,11 +10,11 @@ using System.Text;
 namespace Ngs.Engine {
     abstract class DynamicLibrary : IDisposable {
         public static DynamicLibrary Load(string path) {
-            // TODO: Support Linux
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 return new WindowsDynamicLibrary(path);
-            } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-                return new MacOSDynamicLibrary(path);
+            } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
+                RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
+                return new PosixDynamicLibrary(path);
             } else {
                 throw new Exception("Could not determine the current operating system type.");
             }
@@ -71,7 +71,7 @@ namespace Ngs.Engine {
         #endregion
     }
 
-    sealed class MacOSDynamicLibrary : DynamicLibrary {
+    sealed class PosixDynamicLibrary : DynamicLibrary {
         IntPtr handle;
 
         [DllImport("dl")]
@@ -82,6 +82,8 @@ namespace Ngs.Engine {
         static extern int dlclose(IntPtr handle);
         [DllImport("dl")]
         static extern IntPtr dlerror();
+
+        const int RTLD_NOW = 2;
 
         static UTF8Encoding utf8 = new UTF8Encoding();
 
@@ -94,9 +96,9 @@ namespace Ngs.Engine {
             }
         }
 
-        public MacOSDynamicLibrary(string path) {
+        public PosixDynamicLibrary(string path) {
             dlerror();
-            handle = dlopen(utf8.GetBytes(path + "\0"), 0);
+            handle = dlopen(utf8.GetBytes(path + "\0"), RTLD_NOW);
             if (handle == IntPtr.Zero) {
                 ThrowDlError();
             }
@@ -118,7 +120,7 @@ namespace Ngs.Engine {
             }
         }
 
-        ~MacOSDynamicLibrary() {
+        ~PosixDynamicLibrary() {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(false);
         }
