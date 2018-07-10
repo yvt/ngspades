@@ -584,9 +584,11 @@ mod generic {
             unsafe fn mulhrs_epi16(x: simd::i16x8, y: simd::i16x8) -> simd::i16x8 {
                 let lo = vendor::_mm_mullo_epi16(x.into_bits(), y.into_bits());
                 let hi = vendor::_mm_mulhi_epi16(x.into_bits(), y.into_bits());
-                let lo_14 = vendor::_mm_srli_epi16(vendor::_mm_slli_epi16(lo, 1), 15);
-                let lo_15 = vendor::_mm_srli_epi16(lo, 15);
-                vendor::_mm_slli_epi16(hi, 1) + lo_15 + lo_14
+                let hi_shifted: simd::i16x8 = vendor::_mm_slli_epi16(hi, 1).into_bits();
+                let lo_14: simd::i16x8 =
+                    vendor::_mm_srli_epi16(vendor::_mm_slli_epi16(lo, 1), 15).into_bits();
+                let lo_15: simd::i16x8 = vendor::_mm_srli_epi16(lo, 15).into_bits();
+                hi_shifted + lo_15 + lo_14
             }
             unsafe { Simd16I16(mulhrs_epi16(self.0, rhs.0), mulhrs_epi16(self.1, rhs.1)) }
         }
