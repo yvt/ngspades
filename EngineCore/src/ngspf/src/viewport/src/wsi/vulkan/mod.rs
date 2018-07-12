@@ -740,7 +740,7 @@ impl<P: Painter> PhysicalDevice<P> {
                     let swapchain = surface.swapchain.as_mut().unwrap();
 
                     let surface_props = surface.vk_props.to_wsi_surface_props();
-                    swapchain.update(
+                    let result = swapchain.update(
                         image_index,
                         surface.vk_props.pixel_ratio,
                         painter,
@@ -756,6 +756,14 @@ impl<P: Painter> PhysicalDevice<P> {
                         &mut surface.surface_data,
                         update_param,
                     );
+
+                    match result {
+                        Ok(()) => {}
+                        Err(SwapchainUpdateError::PresentError(e)) => {
+                            surface.last_error = Some(e);
+                        }
+                        Err(SwapchainUpdateError::Other(e)) => return Err(e),
+                    }
 
                     Ok(())
                 }
@@ -861,7 +869,7 @@ impl Swapchain {
         surface_ref: &SurfaceRef,
         surface_data: &mut P::SurfaceData,
         update_param: &P::UpdateParam,
-    ) {
+    ) -> Result<(), SwapchainUpdateError> {
         struct Drawable<'a> {
             device: &'a WmDevice,
             swapchain_loader: &'a ext::Swapchain,
@@ -875,7 +883,7 @@ impl Swapchain {
             presentation_queue_family: gfx::QueueFamily,
             presentation_cmd_pool: &'a mut Box<gfx::CmdPool>,
             needs_ownership_transfer: Option<gfx::QueueFamily>,
-            presented: bool,
+            queue_present_result: Option<Result<(), SwapchainUpdateError>>,
             cb_state_tracker: &'a mut Option<CbStateTracker>,
         }
 
@@ -985,13 +993,12 @@ impl Swapchain {
                     p_results: ::null_mut(),
                 };
 
-                unsafe {
+                let result = unsafe {
                     self.swapchain_loader
                         .queue_present_khr(be_presentation_queue.vk_queue(), &present_info)
-                }.map_err(SurfaceError::from)
-                    .expect("Failed to enqueue a present command.");
+                };
 
-                self.presented = true;
+                self.queue_present_result = Some(result.map_err(Into::into));
             }
         }
 
@@ -1008,7 +1015,7 @@ impl Swapchain {
             presentation_queue_family,
             presentation_cmd_pool,
             needs_ownership_transfer: None,
-            presented: false,
+            queue_present_result: None,
             cb_state_tracker: &mut self.cb_state_tracker,
         };
 
@@ -1021,7 +1028,8 @@ impl Swapchain {
             &mut drawable,
         );
 
-        assert!(drawable.presented);
+        // Return the result of the present command (whether it's an error or not)
+        drawable.queue_present_result.expect("enqueue_present was not called")
     }
 }
 
@@ -1222,6 +1230,29 @@ impl VkSurfaceProps {
             clipped: vk::VK_FALSE,
             old_swapchain,
         })
+    }
+}
+
+#[derive(Debug)]
+enum SwapchainUpdateError {
+    PresentError(PresentError),
+    Other(Error),
+}
+
+impl From<vk::Result> for SwapchainUpdateError {
+    fn from(x: vk::Result) -> Self {
+        match x {
+            vk::Result::ErrorOutOfDateKhr => {
+                SwapchainUpdateError::PresentError(PresentError::OutOfDate)
+            }
+            vk::Result::SuboptimalKhr => {
+                SwapchainUpdateError::PresentError(PresentError::Suboptimal)
+            }
+            vk::Result::ErrorSurfaceLostKhr => {
+                SwapchainUpdateError::PresentError(PresentError::SurfaceLost)
+            }
+            x => SwapchainUpdateError::Other(utils::translate_generic_error_unwrap(x)),
+        }
     }
 }
 

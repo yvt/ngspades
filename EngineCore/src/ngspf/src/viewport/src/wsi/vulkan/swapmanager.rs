@@ -226,7 +226,7 @@ impl SwapchainManager {
                 }
             }
 
-            // Keep it running in case of an error...
+            // Keep it running even if something goes wrong
             self.empty_fence_set = Some(FenceSet::new());
 
             let mut fence_set = fence_set.unwrap();
@@ -257,8 +257,6 @@ impl SwapchainManager {
                 unsafe { vk_device.reset_fences(&[swapchain.vk_fence]) }
                     .map_err(translate_generic_error_unwrap)?;
 
-                active = true;
-
                 match unsafe {
                     self.ext_swapchain.acquire_next_image_khr(
                         swapchain.vk_swapchain,
@@ -270,6 +268,8 @@ impl SwapchainManager {
                     Ok(image_index) => {
                         swapchain.polling = false;
                         fence_set.push(swapchain.vk_fence);
+
+                        active = true;
 
                         let wait_semaphore = swapchain.be_semaphore.clone().into();
                         if let Err(e) = f(PresentInfo::Present {
