@@ -47,6 +47,7 @@ mod os {
 
 #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
 mod os {
+    use self::ash::extensions::{WaylandSurface, XlibSurface};
     use super::*;
 
     pub fn create_surface<E: EntryV1_0, I: InstanceV1_0>(
@@ -55,8 +56,27 @@ mod os {
         window: &winit::Window,
         _options: &WindowOptions,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
-        use self::ash::extensions::XlibSurface;
         use winit::os::unix::WindowExt;
+
+        // Try Wayland first
+        let wl_display = window.get_wayland_display();
+        let wl_surface = window.get_wayland_surface();
+
+        if let (Some(wl_display), Some(wl_surface)) = (wl_display, wl_surface) {
+            let wl_create_info = vk::WaylandSurfaceCreateInfoKHR {
+                s_type: vk::StructureType::WaylandSurfaceCreateInfoKhr,
+                p_next: ::null(),
+                flags: Default::default(),
+                surface: wl_surface as *mut _,
+                display: wl_display as *mut _,
+            };
+            let wl_surface_loader =
+                WaylandSurface::new(entry, instance).expect("Unable to load Wayland surface");
+            unsafe {
+                return wl_surface_loader.create_wayland_surface_khr(&wl_create_info, None);
+            }
+        }
+
         let x11_display = window.get_xlib_display().unwrap();
         let x11_window = window.get_xlib_window().unwrap();
         let x11_create_info = vk::XlibSurfaceCreateInfoKHR {
@@ -72,9 +92,9 @@ mod os {
     }
 
     pub fn modify_instance_builder(builder: &mut InstanceBuilder) {
-        use self::ash::extensions::XlibSurface;
         builder.enable_extension(Surface::name().to_str().unwrap());
         builder.enable_extension(XlibSurface::name().to_str().unwrap());
+        builder.enable_extension(WaylandSurface::name().to_str().unwrap());
     }
 }
 
