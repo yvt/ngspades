@@ -18,15 +18,17 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2, vec3};
+use cgmath::{vec3, Matrix4, Point2};
 
 use refeq::RefEqArc;
 
-use ngspf::cggeom::Box2;
 use ngspf::cggeom::prelude::*;
+use ngspf::cggeom::Box2;
 use ngspf::prelude::*;
-use ngspf::viewport::{LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder,
-                      WindowEvent, WindowFlagsBit, WindowRef, WorkspaceBuilder};
+use ngspf::viewport::{
+    LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent,
+    WindowFlagsBit, WindowRef, WorkspaceBuilder,
+};
 
 mod triangle {
     use include_data;
@@ -43,8 +45,9 @@ mod triangle {
     use std::mem;
     use std::sync::Arc;
 
-    use ngspf::core::{Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame,
-                      PropertyAccessor};
+    use ngspf::core::{
+        Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor,
+    };
     use ngspf::viewport::{GfxObjects, GfxQueue, Port, PortInstance, PortRenderContext};
 
     #[repr(C)]

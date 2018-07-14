@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 #![feature(test)]
-extern crate test;
 extern crate ngspf;
+extern crate test;
 
 use self::test::Bencher;
 use ngspf::context::{Context, PropertyProducerWrite};

@@ -8,8 +8,8 @@
 //!
 //! todo
 //!
-pub extern crate ngspf_core as core;
 pub extern crate ngspf_canvas as canvas;
+pub extern crate ngspf_core as core;
 pub extern crate ngspf_viewport as viewport;
 
 pub extern crate cggeom;

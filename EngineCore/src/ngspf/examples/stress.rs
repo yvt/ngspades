@@ -9,18 +9,20 @@ extern crate cgmath;
 extern crate ngspf;
 extern crate rand;
 
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::sync::{Arc, mpsc, Mutex};
 
-use cgmath::{Point2, Vector3, Matrix4, vec3};
+use cgmath::{vec3, Matrix4, Point2, Vector3};
 
-use ngspf::core::{Context, GroupRef, ProducerFrame};
-use ngspf::viewport::{WorkspaceBuilder, WindowBuilder, LayerBuilder, LayerContents, WindowFlags,
-                      WindowRef, WindowEvent, RootRef, LayerRef, VirtualKeyCode};
-use ngspf::prelude::*;
-use ngspf::cggeom::Box2;
 use ngspf::cggeom::prelude::*;
+use ngspf::cggeom::Box2;
+use ngspf::core::{Context, GroupRef, ProducerFrame};
+use ngspf::prelude::*;
 use ngspf::viewport::rgb::RGBA;
+use ngspf::viewport::{
+    LayerBuilder, LayerContents, LayerRef, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent,
+    WindowFlags, WindowRef, WorkspaceBuilder,
+};
 
 struct LorenzSystem {
     rho: f32,
@@ -79,7 +81,8 @@ impl State {
                     dist.sample(&mut self.rng),
                     dist.sample(&mut self.rng),
                     dist.sample(&mut self.rng),
-                ).cast().unwrap(),
+                ).cast()
+                    .unwrap(),
             );
         }
 
@@ -146,9 +149,9 @@ fn main() {
     let mut trail_len = 10;
     let mut state = State::new(Arc::clone(ws.context()));
     {
-        let mut frame = context.lock_producer_frame().expect(
-            "failed to acquire a producer frame",
-        );
+        let mut frame = context
+            .lock_producer_frame()
+            .expect("failed to acquire a producer frame");
         state.resize(&mut frame, num_points, trail_len);
         state.update_points(&mut frame);
     }
@@ -166,9 +169,9 @@ fn main() {
             })))
             .build(&context);
 
-        let mut frame = context.lock_producer_frame().expect(
-            "failed to acquire a producer frame",
-        );
+        let mut frame = context
+            .lock_producer_frame()
+            .expect("failed to acquire a producer frame");
         ws.root()
             .windows()
             .set(&mut frame, Some(window.clone().into_node_ref()))
@@ -231,9 +234,9 @@ fn main() {
                 }
 
                 {
-                    let mut frame = context.lock_producer_frame().expect(
-                        "failed to acquire a producer frame",
-                    );
+                    let mut frame = context
+                        .lock_producer_frame()
+                        .expect("failed to acquire a producer frame");
 
                     if update {
                         state.resize(&mut frame, num_points, trail_len);
@@ -259,7 +262,6 @@ fn main() {
         .unwrap();
 
     // Start the main loop
-    ws.enter_main_loop().expect(
-        "error occured while running the main loop",
-    );
+    ws.enter_main_loop()
+        .expect("error occured while running the main loop");
 }
