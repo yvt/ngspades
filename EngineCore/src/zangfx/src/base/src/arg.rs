@@ -5,8 +5,7 @@
 //
 //! Builder for argument table objects, argument table signature objects, and
 //! root signature objects, and other relevant types.
-use Object;
-use common::Result;
+use {Object, Result};
 use handles::{ArgTable, ArgTableSig, RootSig};
 use resources::ImageAspect;
 use shader::ShaderStageFlags;

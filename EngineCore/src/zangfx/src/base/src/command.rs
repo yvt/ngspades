@@ -7,8 +7,8 @@
 use std::ops::{Deref, DerefMut, Range};
 use std::marker::PhantomData;
 
-use Object;
-use common::{Rect2D, Result};
+use {Object, Result};
+use common::Rect2D;
 use {handles, heap, pipeline, resources};
 use {AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
      Viewport, ViewportIndex};

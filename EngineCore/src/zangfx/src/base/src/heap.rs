@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Heap object.
-use Object;
-use common::Result;
+use {Object, Result};
 use handles as h;
 use {DeviceSize, MemoryType};
 

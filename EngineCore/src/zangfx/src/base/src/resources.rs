@@ -4,14 +4,12 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for (heap-allocated) resource objects, and other relevant types.
-use Object;
 use std::ops;
 use ngsenumflags::BitFlags;
 
-use common::Result;
 use handles::{Buffer, Image, ImageView};
 use formats::ImageFormat;
-use DeviceSize;
+use {Object, DeviceSize, Result};
 
 /// Trait for building images.
 ///

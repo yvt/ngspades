@@ -4,11 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for shader library objects, and other relevant types.
-use Object;
 use ngsenumflags::BitFlags;
 
-use common::Result;
 use handles::Library;
+use {Object, Result};
 
 /// Trait for building shader libraries.
 ///

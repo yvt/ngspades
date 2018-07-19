@@ -5,11 +5,11 @@
 //
 //! Builder for render/compute pipeline objects.
 use std::ops::Range;
-use Object;
 
-use common::{Rect2D, Result};
+use common::Rect2D;
 use handles::{ComputePipeline, Library, RenderPass, RenderPipeline, RootSig};
 use formats::VertexFormat;
+use {Object, Result};
 use {CmpFn, ColorChannelFlags, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex,
      VertexAttrIndex, VertexBufferIndex, ViewportIndex};
 

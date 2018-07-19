@@ -38,6 +38,7 @@ pub mod arg;
 pub mod command;
 pub mod debug;
 pub mod device;
+pub mod error;
 mod flags;
 pub use self::flags::*;
 pub mod formats;
@@ -164,6 +165,8 @@ pub mod prelude {
 
 // Import all objects
 #[doc(no_inline)]
+pub use error::*;
+#[doc(no_inline)]
 pub use handles::*;
 #[doc(no_inline)]
 pub use objects::*;
@@ -195,4 +198,4 @@ pub use sync::*;
 pub use debug::*;
 
 #[doc(no_inline)]
-pub use common::{Rect2D, Result};
+pub use common::Rect2D;

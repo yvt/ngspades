@@ -4,12 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for sampler objects, and other relevant types.
-use Object;
 use std::ops;
 
-use common::Result;
 use handles::Sampler;
-use CmpFn;
+use {Object, Result, CmpFn};
 
 /// Trait for building samplers.
 ///

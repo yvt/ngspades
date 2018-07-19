@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Device object.
-use Object;
-use common::Result;
+use {Object, Result};
 use {arg, command, handles, heap, limits, pass, pipeline, resources, sampler, shader, sync};
 use {ArgArrayIndex, ArgIndex};
 

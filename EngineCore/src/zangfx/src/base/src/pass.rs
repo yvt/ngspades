@@ -5,9 +5,7 @@
 //
 //! Builder for render pass objects and render target objects, and other
 //! relevant types.
-use Object;
-
-use common::Result;
+use {Object, Result};
 use formats::ImageFormat;
 use resources::ImageLayout;
 use handles::{Image, RenderPass, RenderTargetTable};

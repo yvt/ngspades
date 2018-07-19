@@ -4,9 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for synchronization objects.
-use Object;
+use {Error, ErrorKind, Result, Object};
 use std::ops::Range;
-use common::{Error, ErrorKind, Result};
 use handles::{Barrier, Buffer, Image, Semaphore};
 use {AccessTypeFlags, DeviceSize};
 use resources::{ImageLayout, ImageSubRange};
