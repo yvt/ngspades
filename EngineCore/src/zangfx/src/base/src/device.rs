@@ -49,9 +49,6 @@ pub trait Device: Object {
     /// Create a `SamplerBuilder` associated with this device.
     fn build_sampler(&self) -> Box<sampler::SamplerBuilder>;
 
-    /// Create an `ImageViewBuilder` associated with this device.
-    fn build_image_view(&self) -> Box<resources::ImageViewBuilder>;
-
     /// Create a `LibraryBuilder` associated with this device.
     fn build_library(&self) -> Box<shader::LibraryBuilder>;
 
@@ -85,9 +82,6 @@ pub trait Device: Object {
     /// Destroy a `Sampler` associated with this device.
     fn destroy_sampler(&self, obj: &sampler::Sampler) -> Result<()>;
 
-    /// Destroy an `ImageView` associated with this device.
-    fn destroy_image_view(&self, obj: &resources::ImageView) -> Result<()>;
-
     /// Retrieve the memory requirements for a given resource.
     fn get_memory_req(&self, obj: resources::ResourceRef) -> Result<resources::MemoryReq>;
 
@@ -95,12 +89,12 @@ pub trait Device: Object {
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::{Device, Image, Buffer, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
     ///     #     arg_table: &ArgTable,
     ///     #     arg_table_sig: &ArgTableSig,
-    ///     #     image_views: &[&ImageView],
+    ///     #     images: &[&Image],
     ///     #     buffer: &Buffer
     ///     # ) {
     ///     device.update_arg_tables(
@@ -109,7 +103,7 @@ pub trait Device: Object {
     ///             arg_table,
     ///             &[
     ///                 // The index range 0..2 of the argument 0
-    ///                 (0, 0, [image_views[0], image_views[1]][..].into()),
+    ///                 (0, 0, [images[0], images[1]][..].into()),
     ///
     ///                 // The index range 2..3 of the argument 1
     ///                 (1, 2, [(0..1024, buffer)][..].into()),
@@ -128,12 +122,12 @@ pub trait Device: Object {
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::{Device, Image, Buffer, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
     ///     #     arg_table: &ArgTable,
     ///     #     arg_table_sig: &ArgTableSig,
-    ///     #     image_views: &[&ImageView],
+    ///     #     images: &[&Image],
     ///     #     buffer: &Buffer
     ///     # ) {
     ///     device.update_arg_table(
@@ -141,7 +135,7 @@ pub trait Device: Object {
     ///         arg_table,
     ///         &[
     ///             // The index range 0..2 of the argument 0
-    ///             (0, 0, [image_views[0], image_views[1]][..].into()),
+    ///             (0, 0, [images[0], images[1]][..].into()),
     ///
     ///             // The index range 2..3 of the argument 1
     ///             (1, 2, [(0..1024, buffer)][..].into()),
@@ -246,28 +240,6 @@ pub trait DeviceExt: Device {
     ///
     fn new_semaphore(&self) -> Result<sync::Semaphore> {
         self.build_semaphore().build()
-    }
-
-    /// Create a `ImageView` associated with this device.
-    ///
-    /// This is a shorthand method for [`build_image_view`].
-    ///
-    /// [`build_image_view`]: Device::build_image_view
-    ///
-    /// # Examples
-    ///
-    ///     # use zangfx_base::*;
-    ///     use zangfx_base::prelude::*;
-    ///     # fn test(device: &Device, image: Image) {
-    ///     let image_view = device.new_image_view(&image, ImageLayout::ShaderRead).unwrap();
-    ///     # }
-    ///
-    fn new_image_view(
-        &self,
-        image: &resources::Image,
-        layout: resources::ImageLayout,
-    ) -> Result<resources::ImageView> {
-        self.build_image_view().image(image).layout(layout).build()
     }
 
     /// Create a autorelease pool and call the specified function inside it.

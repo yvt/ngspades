@@ -9,6 +9,7 @@ use std::ops;
 
 use crate::formats::ImageFormat;
 use crate::sampler::Sampler;
+use crate::handles::HandleImpl;
 use crate::{DeviceSize, Object, Result};
 
 define_handle! {
@@ -28,7 +29,17 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Image
+    Image: ImageTrait
+}
+
+/// Trait for image handles.
+pub trait ImageTrait: HandleImpl<Image> {
+    /// Create an `ImageViewBuilder` associated with this image.
+    ///
+    /// # Valid Usage
+    ///
+    ///  - The image must be in the Allocated state.
+    fn build_image_view(&self) -> Box<ImageViewBuilder>;
 }
 
 define_handle! {
@@ -49,16 +60,6 @@ define_handle! {
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
     Buffer
-}
-
-define_handle! {
-    /// Image view object.
-    ///
-    /// Shaders always access images via image views.
-    ///
-    /// See [the module-level documentation of `handles`](../handles/index.html)
-    /// for the generic usage of handles.
-    ImageView
 }
 
 /// Trait for building images.
@@ -202,11 +203,11 @@ pub enum ImageUsage {
     Storage = 0b00001000,
     Render = 0b00010000,
 
-    /// Enables the creation of an `ImageView` with a different type (2D/3D/...).
+    /// Enables the creation of an image view with a different type (2D/3D/...).
     MutableType = 0b00100000,
-    /// Enables the creation of an `ImageView` with a different image format.
+    /// Enables the creation of an image view with a different image format.
     MutableFormat = 0b01000000,
-    /// Enables the creation of an `ImageView` using a partial layer range of
+    /// Enables the creation of an image view using a partial layer range of
     /// the original image.
     PartialView = 0b10000000,
 }
@@ -325,22 +326,16 @@ pub struct MemoryReq {
 ///
 ///     # use zangfx_base::*;
 ///     # fn test(device: &Device, image: Image) {
-///     let image_view = device.build_image_view()
-///         .image(&image)
+///     let image_view = image.build_image_view()
+///         .subrange(&ImageSubRange {
+///             mip_levels: Some(0..1),
+///             layers: Some(0..1),
+///         })
 ///         .build()
 ///         .expect("Failed to create an image view.");
 ///     # }
 ///
 pub trait ImageViewBuilder: Object {
-    /// Set the image.
-    ///
-    /// This property is mandatory.
-    ///
-    /// # Valid Usage
-    ///
-    ///  - The image must be in the Allocated state.
-    fn image(&mut self, v: &Image) -> &mut ImageViewBuilder;
-
     /// Set the subresource range to `v`.
     ///
     /// Defaults to `Default::default()` (full range). The original image's
@@ -387,13 +382,13 @@ pub trait ImageViewBuilder: Object {
     /// `General`.
     fn layout(&mut self, v: ImageLayout) -> &mut ImageViewBuilder;
 
-    /// Build an `ImageView`.
+    /// Build an image view.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<ImageView>;
+    fn build(&mut self) -> Result<Image>;
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -439,15 +434,15 @@ impl<'a> From<&'a Buffer> for ResourceRef<'a> {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::{ImageView, ArgSlice};
-///     fn test(image1: ImageView, image2: ImageView) {
+///     # use zangfx_base::{Image, ArgSlice};
+///     fn test(image1: Image, image2: Image) {
 ///         let _: ArgSlice = [&image1, &image2][..].into();
 ///     }
 ///
 #[derive(Debug, Clone, Copy)]
 pub enum ArgSlice<'a> {
-    /// Image views.
-    ImageView(&'a [&'a ImageView]),
+    /// Images.
+    Image(&'a [&'a Image]),
     /// Buffers and their subranges.
     ///
     /// - For a uniform buffer, the starting offset of each range must be
@@ -463,16 +458,16 @@ pub enum ArgSlice<'a> {
 impl<'a> ArgSlice<'a> {
     pub fn len(&self) -> usize {
         match self {
-            &ArgSlice::ImageView(x) => x.len(),
+            &ArgSlice::Image(x) => x.len(),
             &ArgSlice::Buffer(x) => x.len(),
             &ArgSlice::Sampler(x) => x.len(),
         }
     }
 }
 
-impl<'a> From<&'a [&'a ImageView]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a ImageView]) -> Self {
-        ArgSlice::ImageView(x)
+impl<'a> From<&'a [&'a Image]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a Image]) -> Self {
+        ArgSlice::Image(x)
     }
 }
 

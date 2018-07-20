@@ -216,12 +216,12 @@ pub trait RenderTargetTableBuilder: Object {
 
     /// Define a render target.
     ///
-    /// `view` will be attached as the render target corresponding to one at
+    /// `image` will be attached as the render target corresponding to one at
     /// the index `index` in the render pass specified by `render_pass`.
     ///
     /// Mandatory. Must be specified for each render target defined by the
     /// render pass.
-    fn target(&mut self, index: RenderPassTargetIndex, view: &Image) -> &mut RenderTarget;
+    fn target(&mut self, index: RenderPassTargetIndex, image: &Image) -> &mut RenderTarget;
 
     /// Build an `RenderTargetTableBuilder`.
     ///
@@ -237,11 +237,17 @@ pub trait RenderTarget: Object {
     /// Set the mipmap level used for rendering.
     ///
     /// Defaults to `0`.
+    ///
+    /// For an image view, the value is relative to the first mipmap level of
+    /// the image view.
     fn mip_level(&mut self, v: u32) -> &mut RenderTarget;
 
     /// Set the array layer used for rendering.
     ///
     /// Defaults to `0`.
+    ///
+    /// For an image view, the value is relative to the first array layer of
+    /// the image view.
     fn layer(&mut self, v: u32) -> &mut RenderTarget;
 
     /// Set the clear value for the render target with a format other than

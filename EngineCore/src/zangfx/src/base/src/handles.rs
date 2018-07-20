@@ -40,15 +40,15 @@
 //!     # #[macro_use] extern crate zangfx_base;
 //!     # fn main() {
 //!     use std::any::Any;
-//!     use zangfx_base::{HandleImpl, Image};
+//!     use zangfx_base::{HandleImpl, Fence};
 //!
 //!     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-//!     struct MyImage;
+//!     struct MyFence;
 //!
-//!     zangfx_impl_handle!(MyImage, Image);
+//!     zangfx_impl_handle!(MyFence, Fence);
 //!
-//!     let image = Image::new(MyImage);
-//!     assert!(image.is::<MyImage>());
+//!     let fence = Fence::new(MyFence);
+//!     assert!(fence.is::<MyFence>());
 //!     # }
 //!
 use std::any::Any;
