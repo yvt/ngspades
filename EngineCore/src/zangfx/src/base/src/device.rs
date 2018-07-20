@@ -45,9 +45,6 @@ pub trait Device: Object {
     /// Create a `DedicatedHeapBuilder` associated with this device.
     fn build_dedicated_heap(&self) -> Box<heap::DedicatedHeapBuilder>;
 
-    /// Create an `BarrierBuilder` associated with this device.
-    fn build_barrier(&self) -> Box<sync::BarrierBuilder>;
-
     /// Create an `ImageBuilder` associated with this device.
     fn build_image(&self) -> Box<resources::ImageBuilder>;
 

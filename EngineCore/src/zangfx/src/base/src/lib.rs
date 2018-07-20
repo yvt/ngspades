@@ -142,7 +142,6 @@ define_object! { resources::ImageBuilder }
 define_object! { resources::BufferBuilder }
 define_object! { sampler::SamplerBuilder }
 define_object! { shader::LibraryBuilder }
-define_object! { sync::BarrierBuilder }
 
 /// The `zangfx_base` prelude.
 pub mod prelude {

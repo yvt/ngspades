@@ -8,6 +8,7 @@ use std::ops::Range;
 
 use crate::common::Rect2D;
 use crate::formats::IndexFormat;
+use crate::resources::{Buffer, Image, ImageLayout, ImageSubRange, ResourceRef};
 use crate::{arg, heap, pass, pipeline, resources, sync};
 use crate::{
     AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
@@ -132,14 +133,19 @@ pub trait CmdBuffer: Object {
     ///
     /// This operation is a part of a queue family ownership transfer operation.
     /// See Vulkan 1.0 "6.7.4. Queue Family Ownership Transfer" for details.
-    ///
-    /// All global memory barriers in `barrier` are ignored. All image/memory
-    /// barriers are converted to queue family ownership transfer operations.
+    /// The sending end and receiving end must call `queue_ownership_acquire` and
+    /// `queue_ownership_release` respectively, using an identical
+    /// `QueueOwnershipTransfer` value.
     ///
     /// The default implementation panics. Implementations that support more
     /// than one queue families must override this method.
-    fn queue_acquire_barrier(&mut self, src_queue_family: QueueFamily, barrier: &sync::Barrier) {
-        let _ = (src_queue_family, barrier);
+    fn queue_ownership_acquire(
+        &mut self,
+        src_queue_family: QueueFamily,
+        dst_access: AccessTypeFlags,
+        transfer: &QueueOwnershipTransfer,
+    ) {
+        let _ = (src_queue_family, dst_access, transfer);
         panic!("Queue families are not supported by this backend.");
     }
 
@@ -147,14 +153,19 @@ pub trait CmdBuffer: Object {
     ///
     /// This operation is a part of a queue family ownership transfer operation.
     /// See Vulkan 1.0 "6.7.4. Queue Family Ownership Transfer" for details.
-    ///
-    /// All global memory barriers in `barrier` are ignored. All image/memory
-    /// barriers are converted to queue family ownership transfer operations.
+    /// The sending end and receiving end must call `queue_ownership_acquire` and
+    /// `queue_ownership_release` respectively, using an identical
+    /// `QueueOwnershipTransfer` value.
     ///
     /// The default implementation panics. Implementations that support more
     /// than one queue families must override this method.
-    fn queue_release_barrier(&mut self, dst_queue_family: QueueFamily, barrier: &sync::Barrier) {
-        let _ = (dst_queue_family, barrier);
+    fn queue_ownership_release(
+        &mut self,
+        dst_queue_family: QueueFamily,
+        src_access: AccessTypeFlags,
+        transfer: &QueueOwnershipTransfer,
+    ) {
+        let _ = (dst_queue_family, src_access, transfer);
         panic!("Queue families are not supported by this backend.");
     }
 }
@@ -504,13 +515,13 @@ pub trait CmdEncoder: Object {
     /// automatically reorders command buffer submissions to satisfy this
     /// constraint. If fence operations are inserted in a way there exists no
     /// such ordering, a dead-lock might occur.
-    fn wait_fence(&mut self, fence: &sync::Fence, dst_stage: AccessTypeFlags);
+    fn wait_fence(&mut self, fence: &sync::Fence, dst_access: AccessTypeFlags);
 
     /// Update the specified fence.
     ///
     /// A fence can be updated only once. You must create a new one after done
     /// using the old one.
-    fn update_fence(&mut self, fence: &sync::Fence, src_stage: AccessTypeFlags);
+    fn update_fence(&mut self, fence: &sync::Fence, src_access: AccessTypeFlags);
 
     /// Insert a barrier and establish an execution dependency within the
     /// current encoder or subpass.
@@ -518,7 +529,12 @@ pub trait CmdEncoder: Object {
     /// When this is called inside a render subpass, a self-dependency with
     /// matching access type flags and stage flags must have been defined on the
     /// subpass.
-    fn barrier(&mut self, barrier: &sync::Barrier);
+    fn barrier(
+        &mut self,
+        obj: ResourceRef,
+        src_access: AccessTypeFlags,
+        dst_access: AccessTypeFlags,
+    );
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -545,4 +561,19 @@ pub struct BufferImageRange {
     ///
     /// Must be less than `1<<32`.
     pub plane_stride: DeviceSize,
+}
+
+/// Describes a queue family ownership transfer operation.
+#[derive(Debug, Clone)]
+pub enum QueueOwnershipTransfer<'a> {
+    Buffer {
+        buffer: &'a Buffer,
+        range: Option<Range<DeviceSize>>,
+    },
+    Image {
+        image: &'a Image,
+        src_layout: ImageLayout,
+        dst_layout: ImageLayout,
+        range: &'a ImageSubRange,
+    },
 }
