@@ -67,30 +67,30 @@ macro_rules! define_handle {
         $(#[$smeta])*
         #[derive(Debug)]
         pub struct $name {
-            inner: ::common::SmallBox<::handles::HandleImpl<$name>, [usize; 3]>,
+            inner: $crate::common::SmallBox<$crate::handles::HandleImpl<$name>, [usize; 3]>,
         }
 
         impl $name {
-            pub fn new<T: ::std::marker::Unsize<::handles::HandleImpl<$name>>>(x: T) -> Self {
+            pub fn new<T: ::std::marker::Unsize<$crate::handles::HandleImpl<$name>>>(x: T) -> Self {
                 Self {
-                    inner: unsafe { ::common::SmallBox::new(x) },
+                    inner: unsafe { $crate::common::SmallBox::new(x) },
                 }
             }
 
-            pub fn is<T: ::handles::HandleImpl<$name>>(&self) -> bool {
+            pub fn is<T: $crate::handles::HandleImpl<$name>>(&self) -> bool {
                 ::std::any::Any::is::<T>((*self.inner).as_ref())
             }
 
-            pub fn downcast_ref<T: ::handles::HandleImpl<$name>>(&self) -> Option<&T> {
+            pub fn downcast_ref<T: $crate::handles::HandleImpl<$name>>(&self) -> Option<&T> {
                 ::std::any::Any::downcast_ref((*self.inner).as_ref())
             }
 
-            pub fn downcast_mut<T: ::handles::HandleImpl<$name>>(&mut self) -> Option<&mut T> {
+            pub fn downcast_mut<T: $crate::handles::HandleImpl<$name>>(&mut self) -> Option<&mut T> {
                 ::std::any::Any::downcast_mut((*self.inner).as_mut())
             }
         }
 
-        impl<T: ::std::marker::Unsize<::handles::HandleImpl<$name>>> From<T> for $name {
+        impl<T: ::std::marker::Unsize<$crate::handles::HandleImpl<$name>>> From<T> for $name {
             fn from(x: T) -> Self {
                 Self::new(x)
             }
@@ -103,7 +103,7 @@ macro_rules! define_handle {
         }
 
         impl ::std::ops::Deref for $name {
-            type Target = ::handles::HandleImpl<$name>;
+            type Target = $crate::handles::HandleImpl<$name>;
 
             fn deref(&self) -> &Self::Target {
                 &*self.inner

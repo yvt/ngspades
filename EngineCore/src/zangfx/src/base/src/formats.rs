@@ -652,8 +652,8 @@ pub trait IntAsImageFormat: Sized {
 }
 
 fn scalar_to_red(value: ScalarFormat) -> ImageFormat {
-    use ScalarFormat::*;
-    use ImageFormat::*;
+    use crate::ScalarFormat::*;
+    use crate::ImageFormat::*;
     match value {
         I8(sgn, norm) => R8(sgn, norm),
         I16(sgn, norm) => R16(sgn, norm),
@@ -663,8 +663,8 @@ fn scalar_to_red(value: ScalarFormat) -> ImageFormat {
 }
 
 fn scalar_to_rg(value: ScalarFormat) -> ImageFormat {
-    use ScalarFormat::*;
-    use ImageFormat::*;
+    use crate::ScalarFormat::*;
+    use crate::ImageFormat::*;
     match value {
         I8(sgn, norm) => Rg8(sgn, norm),
         I16(sgn, norm) => Rg16(sgn, norm),
@@ -674,8 +674,8 @@ fn scalar_to_rg(value: ScalarFormat) -> ImageFormat {
 }
 
 fn scalar_to_rgba(value: ScalarFormat) -> ImageFormat {
-    use ScalarFormat::*;
-    use ImageFormat::*;
+    use crate::ScalarFormat::*;
+    use crate::ImageFormat::*;
     match value {
         I8(sgn, norm) => Rgba8(sgn, norm),
         I16(sgn, norm) => Rgba16(sgn, norm),

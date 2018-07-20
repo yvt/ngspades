@@ -57,9 +57,9 @@ macro_rules! zangfx_impl_object {
 macro_rules! define_object {
     ($t:ty) => {
         mopo! { $t }
-        impl ::debug::Label for $t {
+        impl $crate::debug::Label for $t {
             fn label(&mut self, label: &str) -> &mut Self {
-                if let Some(x) = self.query_mut::<::debug::SetLabel>() {
+                if let Some(x) = self.query_mut::<$crate::debug::SetLabel>() {
                     x.set_label(label);
                 }
                 self

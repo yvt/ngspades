@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Heap object.
-use {Object, Result};
-use {DeviceSize, MemoryType};
-use resources;
+use crate::{Object, Result};
+use crate::{DeviceSize, MemoryType};
+use crate::resources;
 
 define_handle! {
     /// Represents a single heap allocation.

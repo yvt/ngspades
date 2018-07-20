@@ -4,10 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for synchronization objects.
-use {Result, Object};
+use crate::{Result, Object};
 use std::ops::Range;
-use {AccessTypeFlags, DeviceSize};
-use resources::{ImageLayout, ImageSubRange, Image, Buffer};
+use crate::{AccessTypeFlags, DeviceSize};
+use crate::resources::{ImageLayout, ImageSubRange, Image, Buffer};
 
 define_handle! {
     /// Fence handle.

@@ -6,7 +6,7 @@
 //! Builder for sampler objects, and other relevant types.
 use std::ops;
 
-use {Object, Result, CmpFn};
+use crate::{Object, Result, CmpFn};
 
 define_handle! {
     /// Sampler handle.

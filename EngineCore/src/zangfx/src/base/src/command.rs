@@ -7,12 +7,12 @@
 use std::ops::{Deref, DerefMut, Range};
 use std::marker::PhantomData;
 
-use {Object, Result};
-use common::Rect2D;
-use {arg, sync, heap, pipeline, resources, pass};
-use {AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
+use crate::{Object, Result};
+use crate::common::Rect2D;
+use crate::{arg, sync, heap, pipeline, resources, pass};
+use crate::{AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
      Viewport, ViewportIndex};
-use formats::IndexFormat;
+use crate::formats::IndexFormat;
 
 /// Trait for building command queue objects.
 ///

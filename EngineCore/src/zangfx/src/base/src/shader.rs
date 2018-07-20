@@ -6,7 +6,7 @@
 //! Builder for shader library objects, and other relevant types.
 use ngsenumflags::BitFlags;
 
-use {Object, Result};
+use crate::{Object, Result};
 
 define_handle! {
     /// Shader library handle.

@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use ngsenumflags::BitFlags;
-use common::BinaryInteger;
+use crate::common::BinaryInteger;
 
 /// Specifies a pipeline stage.
 #[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]

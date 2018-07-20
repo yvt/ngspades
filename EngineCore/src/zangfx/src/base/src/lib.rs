@@ -7,6 +7,7 @@
 //! interface for backend implementations.
 #![feature(unsize)]
 #![feature(use_extern_macros)]
+#![feature(rust_2018_preview)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -150,53 +151,53 @@ define_object! { sync::BarrierBuilder }
 /// The `zangfx_base` prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use command::CmdPoolExt;
+    pub use crate::command::CmdPoolExt;
     #[doc(no_inline)]
-    pub use device::DeviceExt;
+    pub use crate::device::DeviceExt;
     #[doc(no_inline)]
-    pub use handles::HandleImpl;
+    pub use crate::handles::HandleImpl;
     #[doc(no_inline)]
-    pub use formats::{AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
+    pub use crate::formats::{AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
                       IntAsScalarFormat};
     #[doc(no_inline)]
-    pub use pipeline::RasterizerExt;
+    pub use crate::pipeline::RasterizerExt;
     #[doc(no_inline)]
-    pub use debug::Label;
+    pub use crate::debug::Label;
 }
 
 // Import all objects
 #[doc(no_inline)]
-pub use error::*;
+pub use crate::error::*;
 #[doc(no_inline)]
-pub use handles::*;
+pub use crate::handles::*;
 #[doc(no_inline)]
-pub use objects::*;
+pub use crate::objects::*;
 #[doc(no_inline)]
-pub use arg::*;
+pub use crate::arg::*;
 #[doc(no_inline)]
-pub use command::*;
+pub use crate::command::*;
 #[doc(no_inline)]
-pub use device::*;
+pub use crate::device::*;
 #[doc(no_inline)]
-pub use formats::*;
+pub use crate::formats::*;
 #[doc(no_inline)]
-pub use heap::*;
+pub use crate::heap::*;
 #[doc(no_inline)]
-pub use limits::*;
+pub use crate::limits::*;
 #[doc(no_inline)]
-pub use pass::*;
+pub use crate::pass::*;
 #[doc(no_inline)]
-pub use pipeline::*;
+pub use crate::pipeline::*;
 #[doc(no_inline)]
-pub use resources::*;
+pub use crate::resources::*;
 #[doc(no_inline)]
-pub use sampler::*;
+pub use crate::sampler::*;
 #[doc(no_inline)]
-pub use shader::*;
+pub use crate::shader::*;
 #[doc(no_inline)]
-pub use sync::*;
+pub use crate::sync::*;
 #[doc(no_inline)]
-pub use debug::*;
+pub use crate::debug::*;
 
 #[doc(no_inline)]
-pub use common::Rect2D;
+pub use crate::common::Rect2D;

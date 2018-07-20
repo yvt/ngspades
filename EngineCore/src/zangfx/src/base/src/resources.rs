@@ -7,9 +7,9 @@
 use std::ops;
 use ngsenumflags::BitFlags;
 
-use sampler::Sampler;
-use formats::ImageFormat;
-use {Object, DeviceSize, Result};
+use crate::sampler::Sampler;
+use crate::formats::ImageFormat;
+use crate::{Object, DeviceSize, Result};
 
 define_handle! {
     /// Image handle.

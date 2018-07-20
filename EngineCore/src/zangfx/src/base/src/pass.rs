@@ -5,11 +5,11 @@
 //
 //! Builder for render pass objects and render target objects, and other
 //! relevant types.
-use {Object, Result};
-use formats::ImageFormat;
-use resources::{ImageLayout, Image};
-use {RenderPassTargetIndex, SubpassIndex};
-use AccessTypeFlags;
+use crate::{Object, Result};
+use crate::formats::ImageFormat;
+use crate::resources::{ImageLayout, Image};
+use crate::{RenderPassTargetIndex, SubpassIndex};
+use crate::AccessTypeFlags;
 
 define_handle! {
     /// Render pass handle.
