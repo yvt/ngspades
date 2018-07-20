@@ -208,10 +208,10 @@ pub trait ArgPool: Object {
     ///
     /// Returns `Ok(Some(vec))` with `vec.len() == count` if the allocation
     /// succeds. Returns `Ok(None)` if the allocation fails due to lack of space.
-    fn new_tables(&mut self, count: usize, table: &ArgTableSig) -> Result<Option<Vec<ArgTable>>>;
+    fn new_tables(&self, count: usize, table: &ArgTableSig) -> Result<Option<Vec<ArgTable>>>;
 
     /// Allocate an `ArgTable` from the pool.
-    fn new_table(&mut self, table: &ArgTableSig) -> Result<Option<ArgTable>> {
+    fn new_table(&self, table: &ArgTableSig) -> Result<Option<ArgTable>> {
         let result = self.new_tables(1, table)?;
         if let Some(mut vec) = result {
             assert_eq!(vec.len(), 1);
@@ -233,7 +233,7 @@ pub trait ArgPool: Object {
     ///
     /// [`ArgPoolBuilder::enable_destroy_tables`]: ArgPoolBuilder::enable_destroy_tables
     ///
-    fn destroy_tables(&mut self, tables: &[&ArgTable]) -> Result<()>;
+    fn destroy_tables(&self, tables: &[&ArgTable]) -> Result<()>;
 
     /// Deallocate all `ArgTable`s.
     ///
@@ -241,5 +241,5 @@ pub trait ArgPool: Object {
     ///
     /// See `destroy_tables`, with the exception that enabling `destroy_tables`
     /// via `ArgPoolBuilder` is not required for this method.
-    fn reset(&mut self) -> Result<()>;
+    fn reset(&self) -> Result<()>;
 }
