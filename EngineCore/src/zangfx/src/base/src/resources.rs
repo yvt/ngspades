@@ -62,6 +62,18 @@ define_handle! {
     Buffer
 }
 
+/// Trait for buffer handles.
+pub trait BufferTrait: HandleImpl<Buffer> {
+    /// Get the address of the underlying storage of a buffer.
+    ///
+    /// # Valid Usage
+    ///
+    ///  - The buffer must be in the **Allocated** state.
+    ///  - The buffer must be bound to a heap whose memory type is host-visible.
+    ///
+    fn as_ptr(&self) -> *mut u8;
+}
+
 /// Trait for building images.
 ///
 /// The image type is inferred from the property values. The following

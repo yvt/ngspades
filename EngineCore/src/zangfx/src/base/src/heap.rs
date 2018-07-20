@@ -8,14 +8,6 @@ use crate::resources;
 use crate::{DeviceSize, MemoryType};
 use crate::{Object, Result};
 
-define_handle! {
-    /// Represents a single heap allocation.
-    ///
-    /// See [the module-level documentation of `handles`](../handles/index.html)
-    /// for the generic usage of handles.
-    HeapAlloc
-}
-
 /// Trait for building dynamic heap objects.
 ///
 /// # Valid Usage
@@ -77,13 +69,9 @@ pub trait DynamicHeapBuilder: Object {
 ///     let mut builder = device.build_dedicated_heap();
 ///     builder.memory_type(0);
 ///
-///     // Pre-allocation
-///     builder.prebind((&image).into());
+///     builder.bind((&image).into());
 ///
 ///     let heap = builder.build().expect("Failed to create a heap.");
-///
-///     // The real allocation must done in the exactly same order
-///     heap.bind((&image).into());
 ///     # }
 ///
 pub trait DedicatedHeapBuilder: Object {
@@ -95,25 +83,30 @@ pub trait DedicatedHeapBuilder: Object {
     /// Add a given resource to the dedicated allocation list.
     ///
     /// The return type of this method is reserved for future extensions.
-    fn prebind(&mut self, obj: resources::ResourceRef);
+    fn bind(&mut self, obj: resources::ResourceRef);
 
     // FIXME: resource aliasing?
 
     /// Build a `Heap`.
+    ///
+    /// All resources in the dedicated allocation list are bound to the created
+    /// heap and are transitioned to the Allocated state.
     ///
     /// # Valid Usage
     ///
     /// - All mandatory properties must have their values set before this method
     ///   is called.
     /// - The final heap size must not be zero.
+    /// - Every resource in the dedicated allocation list must follow all rules
+    ///   specified in the Valid Usage of `Heap::bind` (except for the one about
+    ///   the heap type).
     ///
     fn build(&mut self) -> Result<Box<Heap>>;
 }
 
 /// Trait for heap objects.
 ///
-/// The lifetime of the underlying heap object is associated with that of
-/// `Heap`. Drop the `Heap` to destroy the associated heap object.
+/// Resources bound to a heap internally keeps a reference to the heap.
 ///
 /// # Valid Usage
 ///
@@ -126,8 +119,8 @@ pub trait Heap: Object {
     ///
     /// The result is categorized as the following:
     ///
-    ///  - `Ok(Some(alloc))` — The allocation was successful.
-    ///  - `Ok(None)` — The allocation has failed because the heap did not have
+    ///  - `Ok(true)` — The allocation was successful.
+    ///  - `Ok(false)` — The allocation has failed because the heap did not have
     ///    a sufficient space.
     ///  - `Err(err)` — The allocation has failed for other reasons.
     ///
@@ -135,52 +128,26 @@ pub trait Heap: Object {
     ///
     ///  - `obj` must originate from the same `Device` as the one the heap was
     ///    created from.
-    ///  - If the heap is a dedicated heap, then `obj` must be one of the
-    ///    resources preallocated via `DedicatedHeapBuilder::prebind`.
-    ///    Furthermore, calls to `bind` must occur in the exact same order as
-    ///    those to `prebind`.
+    ///  - The heap must be a dynamic heap, i.e. have been created using a
+    ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
+    ///    method.)
     ///  - If `obj` refers to an image, this heap must not be associated with a
     ///    host-visible memory type.
     ///
-    fn bind(&self, obj: resources::ResourceRef) -> Result<Option<HeapAlloc>>;
+    fn bind(&self, obj: resources::ResourceRef) -> Result<bool>;
 
     /// Mark the allocated region available for future allocations.
     ///
+    /// Note: Destroying a resource does not automatically deallocate the
+    /// memory region associated with it. You must call this method or delete
+    /// all references to the heap.
+    ///
     /// # Valid Usage
     ///
-    ///  - `alloc` must originate from the same `Heap`.
-    ///  - `alloc` must not have been deallocated yet.
+    ///  - `obj` must be bound to this heap.
     ///  - The heap must be a dynamic heap, i.e. have been created using a
     ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
-    ///    method yet.)
+    ///    method.)
     ///
-    fn make_aliasable(&self, alloc: &HeapAlloc) -> Result<()>;
-
-    /// Deallocate a memory region.
-    ///
-    /// The resource previously associated with the `HeapAlloc` will transition
-    /// into the **Invalid** state.
-    ///
-    /// Note: Destroying a resource does not automatically deallocate the
-    /// memory region associated with it. You must call this method explicitly.
-    ///
-    /// # Valid Usage
-    ///
-    ///  - The resource must be in the **Allocated** state.
-    ///  - `alloc` must originate from the same `Heap`.
-    ///  - The heap must be a dynamic heap, i.e. have been created using a
-    ///    `DynamicHeapBuilder`.
-    ///
-    fn unbind(&self, alloc: &HeapAlloc) -> Result<()>;
-
-    /// Get the address of the underlying storage of a resource.
-    ///
-    /// # Valid Usage
-    ///
-    ///  - The resource must be in the **Allocated** state.
-    ///  - The heap's memory type must be host-visible.
-    ///  - `alloc` must originate from the same `Heap`.
-    ///  - `alloc` must be associated with a buffer resource.
-    ///
-    fn as_ptr(&self, alloc: &HeapAlloc) -> Result<*mut u8>;
+    fn make_aliasable(&self, obj: resources::ResourceRef) -> Result<()>;
 }

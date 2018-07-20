@@ -580,6 +580,9 @@ pub trait CmdEncoder: Object {
     ///
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
     /// descriptor sets.
+    ///
+    /// This method cannot be used on global heaps (returned by
+    /// `Device::global_heap()`).
     fn use_heap(&mut self, heaps: &[&heap::Heap]);
 
     /// Wait on the specified fence and establish an inter-encoder execution

@@ -16,6 +16,14 @@ use crate::{Object, Result};
 pub trait Device: Object {
     fn caps(&self) -> &limits::DeviceCaps;
 
+    /// Retrieve a reference to the global heap maintained by this device.
+    ///
+    /// A global heap is a special kind of heap that supports dynamic allocation
+    /// (like dynamic heaps) and automatic resizing. When a resource bound to
+    /// a global heap is released, the memory region allocated to it is
+    /// automatically reclaimed (as if `make_aliases` is called).
+    fn global_heap(&self) -> &heap::Heap;
+
     /// Create a `CmdQueueBuilder` associated with this device.
     fn build_cmd_queue(&self) -> Box<command::CmdQueueBuilder>;
 

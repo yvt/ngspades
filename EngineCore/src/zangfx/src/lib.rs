@@ -10,6 +10,8 @@
 //!
 //! [zabna]: http://jbovlaste.lojban.org/dict/zabna
 //!
+//! **The contents of this section is out-dated**
+//!
 //! # Safety
 //!
 //! Backend implementations can be categorized into two types depending on their
