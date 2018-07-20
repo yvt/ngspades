@@ -125,7 +125,6 @@ define_object! { arg::ArgPool }
 define_object! { command::CmdQueueBuilder }
 define_object! { command::CmdQueue }
 define_object! { command::CmdBuffer }
-define_object! { command::CmdPool }
 define_object! { command::RenderCmdEncoder }
 define_object! { command::ComputeCmdEncoder }
 define_object! { command::CopyCmdEncoder }
@@ -149,7 +148,6 @@ define_object! { sync::BarrierBuilder }
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        command::CmdPoolExt,
         debug::Label,
         device::DeviceExt,
         formats::{

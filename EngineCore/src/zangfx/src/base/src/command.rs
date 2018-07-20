@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Command queues and command buffers.
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut, Range};
+use std::ops::Range;
 
 use crate::common::Rect2D;
 use crate::formats::IndexFormat;
@@ -66,8 +65,11 @@ pub trait CmdQueueBuilder: Object {
 ///    exists no command buffer being executed)
 ///
 pub trait CmdQueue: Object {
-    /// Create a new command pool.
-    fn new_cmd_pool(&self) -> Result<Box<CmdPool>>;
+    /// Allocate a new command buffer.
+    ///
+    /// Command buffers are meant to be shortly lived. This method might stall
+    /// if there are too many (10–) outstanding command buffers.
+    fn new_cmd_buffer(&self) -> Result<Box<CmdBuffer>>;
 
     /// Create a `Fence` associated with the command queue.
     fn new_fence(&self) -> Result<sync::Fence>;
@@ -76,97 +78,11 @@ pub trait CmdQueue: Object {
     fn flush(&self);
 }
 
-/// Trait for command pools. Objects associated with command buffers are
-/// allocated from a command pool, and it allows to amortize the cost of
-/// resource creation across multiple command buffers.
-///
-/// All accesses to command pools must be externally synchronized. This extends
-/// not only to command buffer allocation but also to **recording commands on
-/// command buffers allocated from the pool**. Using the [`begin_cmd_buffer`]
-/// method provided by the extension trait [`CmdPoolExt`] is the recommended way
-/// to encode command buffers while fulfilling this requirement.
-///
-/// [`begin_cmd_buffer`]: CmdPoolExt::begin_cmd_buffer
-/// [`CmdPoolExt`]: CmdPoolExt
-///
-/// # Valid Usage
-///
-///  - No instance of `CmdPool` may outlive the originating `CmdQueue`.
-///  - All accesses (including indirect accesses as described above) to the
-///    command pool must be synchronized.
-///
-pub trait CmdPool: Object {
-    /// Allocate a new command buffer.
-    ///
-    /// Command buffers are meant to be shortly lived. This method might stall
-    /// if there are too many (20–) outstanding command buffers.
-    unsafe fn new_cmd_buffer(&mut self) -> Result<Box<CmdBuffer>>;
-}
-
-/// Extension trait for `CmdPool`. Provides a safe method for allocating and
-/// recording command buffers.
-pub trait CmdPoolExt: CmdPool {
-    /// Allocate a new command buffer and return a wrapper type which is tied to
-    /// the lifetime of this `CmdPool`.
-    ///
-    /// This is a safe wrapper of [`new_cmd_buffer`].
-    ///
-    /// [`new_cmd_buffer`]: CmdPool::new_cmd_buffer
-    ///
-    /// Command buffers are meant to be shortly lived. This method might stall
-    /// if there are too many (20–) outstanding command buffers.
-    ///
-    /// # Examples
-    ///
-    ///     # use zangfx_base::*;
-    ///     # use zangfx_base::prelude::*;
-    ///     # fn test(cmd_pool: &mut CmdPool) {
-    ///     let mut cmd_buffer = cmd_pool.begin_cmd_buffer()
-    ///         .expect("Failed to create a command buffer.");
-    ///     // Record commands here...
-    ///     cmd_buffer.commit();
-    ///     # }
-    ///
-    fn begin_cmd_buffer(&mut self) -> Result<SafeCmdBuffer> {
-        Ok(SafeCmdBuffer {
-            _phantom: PhantomData,
-            cmd_buffer: unsafe { self.new_cmd_buffer()? },
-        })
-    }
-}
-
-/// A somewhat safe wrapper of `Box<CmdBuffer>`.
-pub struct SafeCmdBuffer<'a> {
-    _phantom: PhantomData<&'a mut ()>,
-    cmd_buffer: Box<CmdBuffer>,
-}
-
-impl<'a> Deref for SafeCmdBuffer<'a> {
-    type Target = CmdBuffer;
-    fn deref(&self) -> &Self::Target {
-        &*self.cmd_buffer
-    }
-}
-
-impl<'a> DerefMut for SafeCmdBuffer<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut *self.cmd_buffer
-    }
-}
-
-impl<T: ?Sized + CmdPool> CmdPoolExt for T {}
-
 /// Trait for command buffers.
 ///
 /// An application can (and should) drop a `CmdBuffer` as soon as it finishes
 /// recording commands to the `CmdBuffer` and commiting it.
 pub trait CmdBuffer: Object {
-    /// Reserve a place for this command buffer on the associated command queue.
-    ///
-    /// The order in which `enqueue` is called defines the submission order of
-    /// command buffers.
-    fn enqueue(&mut self) -> Result<()>;
-
     /// Mark this command buffer as ready for submission.
     fn commit(&mut self) -> Result<()>;
 
@@ -178,7 +94,7 @@ pub trait CmdBuffer: Object {
     fn encode_copy(&mut self) -> &mut CopyCmdEncoder;
 
     /// Register a completion handler. Must not be called after calling `commit`.
-    fn on_complete(&mut self, cb: Box<FnMut() + Sync + Send>);
+    fn on_complete(&mut self, cb: Box<FnMut(Result<()>) + Sync + Send>);
 
     /// Wait on a given semaphore before the execution of the command buffer.
     ///
@@ -586,29 +502,19 @@ pub trait CmdEncoder: Object {
     fn use_heap(&mut self, heaps: &[&heap::Heap]);
 
     /// Wait on the specified fence and establish an inter-encoder execution
-    /// dependency
+    /// dependency.
     ///
     /// The fence must be updated first before waiting on it. The command queue
     /// automatically reorders command buffer submissions to satisfy this
     /// constraint. If fence operations are inserted in a way there exists no
     /// such ordering, a dead-lock might occur.
-    ///
-    /// # Valid Usage
-    ///
-    ///  - `src_stage` must match the `src_state` of the corresponding call to
-    ///    `update_fence`.
-    ///  - The supported stages of the first access type of each barrier
-    ///    defined by `barrier` must be a subset of `src_stage`.
-    ///  - You must not wait on a fence that was previously updated in the
-    ///    *same* `CmdEncoder`.
-    ///
-    fn wait_fence(&mut self, fence: &sync::Fence, src_stage: StageFlags, barrier: &sync::Barrier);
+    fn wait_fence(&mut self, fence: &sync::Fence, dst_stage: AccessTypeFlags);
 
     /// Update the specified fence.
     ///
     /// A fence can be updated only once. You must create a new one after done
     /// using the old one.
-    fn update_fence(&mut self, fence: &sync::Fence, src_stage: StageFlags);
+    fn update_fence(&mut self, fence: &sync::Fence, src_stage: AccessTypeFlags);
 
     /// Insert a barrier and establish an execution dependency within the
     /// current encoder or subpass.
