@@ -7,6 +7,21 @@ use std::fmt;
 use std::error::Error as StdError;
 
 /// Generic error types.
+///
+/// This enumerate type includes common error causes.
+///
+/// Some causes are intentionally excluded. They are mostly attributed to logic
+/// errors and simply returning them would obfucate the exact location where
+/// the error was detected, making debugging harder. The following list shows
+/// the excluded causes:
+///
+///  - *Not supported*: The requested feature is not supported by, or exceeds
+///    the limits of the hardware or the backend.
+///
+///  - *Invalid usage*: API contract violation was detected.
+///
+/// These errors are simply not detected, or in the cases they are detected,
+/// they will be escalated to `panic!`.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ErrorKind {
     /// Ran out of device memory during an operation.
@@ -20,20 +35,6 @@ pub enum ErrorKind {
     /// operation.
     DeviceLost,
 
-    /// The requested feature is not supported by, or exceeds the limits of the
-    /// hardware or the backend.
-    ///
-    /// An unsafe implementation may choose to cause an undefined behavior or
-    /// panic rather than returning this error code.
-    NotSupported,
-
-    /// API contract violation was detected.
-    ///
-    /// An unsafe implementation may choose to cause an undefined behavior or
-    /// panic rather than returning this error code. A safe implmenetation may
-    /// choose to escalate the usage error to panic.
-    InvalidUsage,
-
     /// Any error that is not part of this list.
     Other,
 }
@@ -43,8 +44,6 @@ impl ErrorKind {
         match *self {
             ErrorKind::OutOfDeviceMemory => "out of device memory",
             ErrorKind::DeviceLost => "device lost",
-            ErrorKind::NotSupported => "not supported",
-            ErrorKind::InvalidUsage => "invalid usage",
             ErrorKind::Other => "uncategorized error",
         }
     }

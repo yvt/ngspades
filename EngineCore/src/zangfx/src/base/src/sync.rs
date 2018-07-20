@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for synchronization objects.
-use {Error, ErrorKind, Result, Object};
+use {Result, Object};
 use std::ops::Range;
 use handles::{Barrier, Buffer, Image, Semaphore};
 use {AccessTypeFlags, DeviceSize};
@@ -93,8 +93,8 @@ pub trait SemaphoreBuilder: Object {
     fn build(&mut self) -> Result<Semaphore>;
 }
 
-/// An implementation of `SemaphoreBuilder` that always returns `NotSupported`
-/// error.
+/// An implementation of `SemaphoreBuilder` that always panics when `build` is
+/// called.
 #[derive(Debug)]
 pub struct NotSupportedSemaphoreBuilder;
 
@@ -103,6 +103,6 @@ SemaphoreBuilder, ::std::fmt::Debug }
 
 impl SemaphoreBuilder for NotSupportedSemaphoreBuilder {
     fn build(&mut self) -> Result<Semaphore> {
-        Err(Error::new(ErrorKind::NotSupported))
+        panic!("not supported by this backend")
     }
 }
