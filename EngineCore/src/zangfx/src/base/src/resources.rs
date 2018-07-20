@@ -40,6 +40,9 @@ pub trait ImageTrait: HandleImpl<Image> {
     ///
     ///  - The image must be in the Allocated state.
     fn build_image_view(&self) -> Box<ImageViewBuilder>;
+
+    /// Retrieve the memory requirements for this image.
+    fn get_memory_req(&self) -> Result<MemoryReq>;
 }
 
 define_handle! {
@@ -72,6 +75,9 @@ pub trait BufferTrait: HandleImpl<Buffer> {
     ///  - The buffer must be bound to a heap whose memory type is host-visible.
     ///
     fn as_ptr(&self) -> *mut u8;
+
+    /// Retrieve the memory requirements for this buffer.
+    fn get_memory_req(&self) -> Result<MemoryReq>;
 }
 
 /// Trait for building images.

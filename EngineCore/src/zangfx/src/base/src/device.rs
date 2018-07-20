@@ -87,9 +87,6 @@ pub trait Device: Object {
     /// Destroy a `Sampler` associated with this device.
     fn destroy_sampler(&self, obj: &sampler::Sampler) -> Result<()>;
 
-    /// Retrieve the memory requirements for a given resource.
-    fn get_memory_req(&self, obj: resources::ResourceRef) -> Result<resources::MemoryReq>;
-
     /// Update given argument tables.
     ///
     /// # Examples
