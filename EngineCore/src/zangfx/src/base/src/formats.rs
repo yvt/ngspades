@@ -15,6 +15,7 @@
 //!     - Color attachment operations are undeifned on all depth/stencil formats.
 //!
 use std::ops;
+use lazy_static::lazy_static;
 use itervalues::IterValues;
 
 /// Image format.
