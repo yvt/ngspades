@@ -194,16 +194,41 @@ impl From<ImageLayerRange> for ImageSubRange {
     }
 }
 
+/// Specifies an image layout.
+///
+/// Images are stored in implementation-dependent layouts in memory. Each image
+/// layout supports a particular set of operations. Although in most cases
+/// layout transitions are automatic, there are some cases where explicitly
+/// specifying a layout can lead to a more optimal operation of a device.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ImageLayout {
-    Undefined,
-    General,
-    RenderRead,
+    // TODO: Read-only render targets
+
+    /// Layout for read-write render targets.
     RenderWrite,
+
+    /// Layout for reading or sampling from shaders. Corresponds to
+    /// [`ResourceUsage::Read`] and [`ResourceUsage::Sample`].
+    ///
+    /// [`ResourceUsage::Read`]: ResourceUsage::Read
+    /// [`ResourceUsage::Sample`]: ResourceUsage::Sample
     ShaderRead,
+    /// Layout for reading and writing from shaders. Corresponds to
+    /// [`ResourceUsage::Write`].
+    ///
+    /// [`ResourceUsage::Write`]: ResourceUsage::Write
+    ShaderReadWrite,
+
+    /// Layout for using images as source of the copy commanddefined by
+    /// [`CopyCmdEncoder`].
+    ///
+    /// [`CopyCmdEncoder`]: CopyCmdEncoder
     CopyRead,
+    /// Layout for using images as destination of the copy command defined by
+    /// [`CopyCmdEncoder`].
+    ///
+    /// [`CopyCmdEncoder`]: CopyCmdEncoder
     CopyWrite,
-    Present,
 }
 
 #[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -222,6 +247,17 @@ pub enum ImageUsage {
     /// Enables the creation of an image view using a partial layer range of
     /// the original image.
     PartialView = 0b10000000,
+
+    /// This flag serves as a hint that the backend should trade off the use of
+    /// the generic image layout in memory for fewer image transitions.
+    Mutable = 0b100000000,
+
+    /// This flag serves as a hint that the backend should track the state of
+    /// each mipmap level individually.
+    TrackStatePerMipmapLevel = 0b1000000000,
+    /// This flag serves as a hint that the backend should track the state of
+    /// each array layer individually.
+    TrackStatePerArrayLayer = 0b10000000000,
 }
 
 pub type ImageUsageFlags = BitFlags<ImageUsage>;
@@ -386,13 +422,6 @@ pub trait ImageViewBuilder: Object {
     /// [`usage`]: ImageBuilder::usage
     /// [`MutableType`]: ImageUsage::MutableType
     fn image_type(&mut self, v: ImageType) -> &mut ImageViewBuilder;
-
-    /// Set the image layout.
-    ///
-    /// Defaults to `ImageLayout::ShaderRead`. Since image views are solely used
-    /// for shader access, the only valid values here are `ShaderRead` and
-    /// `General`.
-    fn layout(&mut self, v: ImageLayout) -> &mut ImageViewBuilder;
 
     /// Build an image view.
     ///

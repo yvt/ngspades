@@ -6,7 +6,7 @@
 //! Builder for render pass objects and render target objects, and other
 //! relevant types.
 use crate::formats::ImageFormat;
-use crate::resources::{Image, ImageLayout};
+use crate::resources::Image;
 use crate::AccessTypeFlags;
 use crate::{Object, Result};
 use crate::{RenderPassTargetIndex, SubpassIndex};
@@ -38,21 +38,19 @@ define_handle! {
 ///     # use zangfx_base::device::Device;
 ///     # use zangfx_base::{AccessType, Stage};
 ///     # use zangfx_base::formats::ImageFormat;
-///     # use zangfx_base::resources::ImageLayout;
 ///     # use zangfx_base::pass::{RenderPassBuilder, StoreOp};
 ///     # fn test(device: &Device) {
 ///     let mut builder = device.build_render_pass();
 ///
 ///     builder.target(0)
 ///         .set_format(ImageFormat::SrgbBgra8)
-///         .set_store_op(StoreOp::Store)
-///         .set_final_layout(ImageLayout::Present);
+///         .set_store_op(StoreOp::Store);
 ///     builder.target(1)
 ///         .set_format(ImageFormat::DepthFloat32);
 ///
 ///     // Subpass #0
-///     builder.subpass_color_targets(&[Some((0, ImageLayout::RenderWrite))])
-///         .subpass_ds_target(Some((1, ImageLayout::RenderWrite)));
+///     builder.subpass_color_targets(&[Some(0)]);
+///     builder.subpass_ds_target(Some(1));
 ///
 ///     // Post-render pass external
 ///     builder.end()
@@ -101,19 +99,19 @@ pub trait RenderPassBuilder: Object {
 
     /// Define the color render targets of the current subpass.
     ///
+    /// The return type of this method is reserved for future extensions.
+    ///
     /// # Valid Usage
     ///
     /// You must specify at least one non-`None` color target.
-    fn subpass_color_targets(
-        &mut self,
-        targets: &[Option<(RenderPassTargetIndex, ImageLayout)>],
-    ) -> &mut RenderPassBuilder;
+    fn subpass_color_targets(&mut self, targets: &[Option<RenderPassTargetIndex>]);
 
     /// Define the depth/stencil render target of the current subpass.
-    fn subpass_ds_target(
-        &mut self,
-        target: Option<(RenderPassTargetIndex, ImageLayout)>,
-    ) -> &mut RenderPassBuilder;
+    ///
+    /// The return type of this method is reserved for future extensions.
+    fn subpass_ds_target(&mut self, target: Option<RenderPassTargetIndex>);
+
+    // TODO: Read-only depth/stencil
 
     // TODO: `next_subpass`
 
@@ -150,16 +148,6 @@ pub trait RenderPassTarget: Object {
     ///
     /// Defaults to `StoreOp::DontCare`.
     fn set_stencil_store_op(&mut self, v: StoreOp) -> &mut RenderPassTarget;
-
-    /// Set the initial layout for the render target.
-    ///
-    /// Defaults to `ImageLayout::Undefined`.
-    fn set_initial_layout(&mut self, v: ImageLayout) -> &mut RenderPassTarget;
-    /// Set the initial layout for the render target.
-    ///
-    /// Defaults to `ImageLayout::ShaderRead`.
-    /// Must not be `ImageLayout::Undefined`.
-    fn set_final_layout(&mut self, v: ImageLayout) -> &mut RenderPassTarget;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

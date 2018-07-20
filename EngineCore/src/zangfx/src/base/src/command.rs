@@ -375,7 +375,6 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
         src: &resources::Buffer,
         src_range: &BufferImageRange,
         dst: &resources::Image,
-        dst_layout: resources::ImageLayout,
         dst_aspect: resources::ImageAspect,
         dst_range: &resources::ImageLayerRange,
         dst_origin: &[u32],
@@ -397,7 +396,6 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     fn copy_image_to_buffer(
         &mut self,
         src: &resources::Image,
-        src_layout: resources::ImageLayout,
         src_aspect: resources::ImageAspect,
         src_range: &resources::ImageLayerRange,
         src_origin: &[u32],
@@ -426,11 +424,9 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     fn copy_image(
         &mut self,
         src: &resources::Image,
-        src_layout: resources::ImageLayout,
         src_range: &resources::ImageLayerRange,
         src_origin: &[u32],
         dst: &resources::Image,
-        dst_layout: resources::ImageLayout,
         dst_range: &resources::ImageLayerRange,
         dst_origin: &[u32],
         size: &[u32],
