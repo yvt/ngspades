@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Device object.
-use crate::{Object, Result};
 use crate::{arg, command, heap, limits, pass, pipeline, resources, sampler, shader, sync};
 use crate::{ArgArrayIndex, ArgIndex};
+use crate::{Object, Result};
 
 /// Trait for device objects.
 ///

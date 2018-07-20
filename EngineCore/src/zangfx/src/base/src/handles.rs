@@ -57,8 +57,7 @@ use std::fmt;
 /// Base trait for all handle implementation traits.
 ///
 /// See [the module-level documentation](index.html) for the usage.
-pub trait HandleImpl<C>
-    : AsRef<Any> + AsMut<Any> + fmt::Debug + Send + Sync + Any {
+pub trait HandleImpl<C>: AsRef<Any> + AsMut<Any> + fmt::Debug + Send + Sync + Any {
     fn clone_handle(&self) -> C;
 }
 
@@ -133,10 +132,14 @@ macro_rules! zangfx_impl_handle {
             }
         }
         impl AsRef<::std::any::Any> for $type {
-            fn as_ref(&self) -> &::std::any::Any { self }
+            fn as_ref(&self) -> &::std::any::Any {
+                self
+            }
         }
         impl AsMut<::std::any::Any> for $type {
-            fn as_mut(&mut self) -> &mut ::std::any::Any { self }
+            fn as_mut(&mut self) -> &mut ::std::any::Any {
+                self
+            }
         }
-    }
+    };
 }

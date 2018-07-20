@@ -4,15 +4,17 @@
 // This source code is a part of Nightingales.
 //
 //! Command queues and command buffers.
-use std::ops::{Deref, DerefMut, Range};
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut, Range};
 
-use crate::{Object, Result};
 use crate::common::Rect2D;
-use crate::{arg, sync, heap, pipeline, resources, pass};
-use crate::{AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
-     Viewport, ViewportIndex};
 use crate::formats::IndexFormat;
+use crate::{arg, heap, pass, pipeline, resources, sync};
+use crate::{
+    AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
+    Viewport, ViewportIndex,
+};
+use crate::{Object, Result};
 
 /// Trait for building command queue objects.
 ///
@@ -597,12 +599,7 @@ pub trait CmdEncoder: Object {
     ///  - You must not wait on a fence that was previously updated in the
     ///    *same* `CmdEncoder`.
     ///
-    fn wait_fence(
-        &mut self,
-        fence: &sync::Fence,
-        src_stage: StageFlags,
-        barrier: &sync::Barrier,
-    );
+    fn wait_fence(&mut self, fence: &sync::Fence, src_stage: StageFlags, barrier: &sync::Barrier);
 
     /// Update the specified fence.
     ///

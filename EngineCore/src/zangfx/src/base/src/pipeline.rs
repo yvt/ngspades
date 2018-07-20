@@ -6,14 +6,16 @@
 //! Builder for render/compute pipeline objects.
 use std::ops::Range;
 
-use crate::common::Rect2D;
-use crate::shader::Library;
-use crate::pass::RenderPass;
 use crate::arg::RootSig;
+use crate::common::Rect2D;
 use crate::formats::VertexFormat;
+use crate::pass::RenderPass;
+use crate::shader::Library;
+use crate::{
+    CmpFn, ColorChannelFlags, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex,
+    VertexAttrIndex, VertexBufferIndex, ViewportIndex,
+};
 use crate::{Object, Result};
-use crate::{CmpFn, ColorChannelFlags, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex,
-     VertexAttrIndex, VertexBufferIndex, ViewportIndex};
 
 define_handle! {
     /// Render pipeline handle.

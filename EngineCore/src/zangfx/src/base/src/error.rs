@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::fmt;
 use std::error::Error as StdError;
+use std::fmt;
 
 /// Generic error types.
 ///

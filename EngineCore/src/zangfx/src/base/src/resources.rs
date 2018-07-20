@@ -4,12 +4,12 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for (heap-allocated) resource objects, and other relevant types.
-use std::ops;
 use ngsenumflags::BitFlags;
+use std::ops;
 
-use crate::sampler::Sampler;
 use crate::formats::ImageFormat;
-use crate::{Object, DeviceSize, Result};
+use crate::sampler::Sampler;
+use crate::{DeviceSize, Object, Result};
 
 define_handle! {
     /// Image handle.

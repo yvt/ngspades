@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngsenumflags::BitFlags;
 use lazy_static::lazy_static;
+use ngsenumflags::BitFlags;
 
 use crate::common::BinaryInteger;
 

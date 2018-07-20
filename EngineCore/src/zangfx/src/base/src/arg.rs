@@ -5,10 +5,10 @@
 //
 //! Builder for argument table objects, argument table signature objects, and
 //! root signature objects, and other relevant types.
-use crate::{Object, Result};
 use crate::resources::ImageAspect;
 use crate::shader::ShaderStageFlags;
 use crate::{ArgArrayIndex, ArgIndex, ArgTableIndex};
+use crate::{Object, Result};
 
 define_handle! {
     /// Argument set signature handle.

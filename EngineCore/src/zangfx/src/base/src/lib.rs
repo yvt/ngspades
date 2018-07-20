@@ -22,7 +22,7 @@ extern crate itervalues_derive;
 extern crate query_interface;
 
 // Rexport macros from `query_interface`
-pub use query_interface::{interfaces, vtable_for, mopo};
+pub use query_interface::{interfaces, mopo, vtable_for};
 
 extern crate zangfx_common as common;
 
@@ -148,53 +148,25 @@ define_object! { sync::BarrierBuilder }
 /// The `zangfx_base` prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::command::CmdPoolExt;
-    #[doc(no_inline)]
-    pub use crate::device::DeviceExt;
-    #[doc(no_inline)]
-    pub use crate::handles::HandleImpl;
-    #[doc(no_inline)]
-    pub use crate::formats::{AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
-                      IntAsScalarFormat};
-    #[doc(no_inline)]
-    pub use crate::pipeline::RasterizerExt;
-    #[doc(no_inline)]
-    pub use crate::debug::Label;
+    pub use crate::{
+        command::CmdPoolExt,
+        debug::Label,
+        device::DeviceExt,
+        formats::{
+            AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
+            IntAsScalarFormat,
+        },
+        handles::HandleImpl,
+        pipeline::RasterizerExt,
+    };
 }
 
 // Import all objects
 #[doc(no_inline)]
-pub use crate::error::*;
-#[doc(no_inline)]
-pub use crate::handles::*;
-#[doc(no_inline)]
-pub use crate::objects::*;
-#[doc(no_inline)]
-pub use crate::arg::*;
-#[doc(no_inline)]
-pub use crate::command::*;
-#[doc(no_inline)]
-pub use crate::device::*;
-#[doc(no_inline)]
-pub use crate::formats::*;
-#[doc(no_inline)]
-pub use crate::heap::*;
-#[doc(no_inline)]
-pub use crate::limits::*;
-#[doc(no_inline)]
-pub use crate::pass::*;
-#[doc(no_inline)]
-pub use crate::pipeline::*;
-#[doc(no_inline)]
-pub use crate::resources::*;
-#[doc(no_inline)]
-pub use crate::sampler::*;
-#[doc(no_inline)]
-pub use crate::shader::*;
-#[doc(no_inline)]
-pub use crate::sync::*;
-#[doc(no_inline)]
-pub use crate::debug::*;
+pub use crate::{
+    arg::*, command::*, debug::*, device::*, error::*, formats::*, handles::*, heap::*, limits::*,
+    objects::*, pass::*, pipeline::*, resources::*, sampler::*, shader::*, sync::*,
+};
 
 #[doc(no_inline)]
 pub use crate::common::Rect2D;
