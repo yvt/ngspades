@@ -61,35 +61,54 @@ pub trait HandleImpl<C>: AsRef<Any> + AsMut<Any> + fmt::Debug + Send + Sync + An
     fn clone_handle(&self) -> C;
 }
 
+/// Defines a handle type.
 macro_rules! define_handle {
     ($(#[$smeta:meta])* $name:ident) => {
+        define_handle! { $(#[$smeta])* $name : $crate::handles::HandleImpl<$name> }
+    };
+    ($(#[$smeta:meta])* $name:ident : $trait:path) => {
         $(#[$smeta])*
         #[derive(Debug)]
         pub struct $name {
-            inner: $crate::common::SmallBox<$crate::handles::HandleImpl<$name>, [usize; 3]>,
+            inner: $crate::common::SmallBox<$trait, [usize; 3]>,
         }
 
         impl $name {
-            pub fn new<T: ::std::marker::Unsize<$crate::handles::HandleImpl<$name>>>(x: T) -> Self {
+            pub fn new<T>(x: T) -> Self
+            where
+                T: ::std::marker::Unsize<$trait>,
+            {
                 Self {
                     inner: unsafe { $crate::common::SmallBox::new(x) },
                 }
             }
 
-            pub fn is<T: $crate::handles::HandleImpl<$name>>(&self) -> bool {
+            pub fn is<T>(&self) -> bool
+            where
+                T: $trait,
+            {
                 ::std::any::Any::is::<T>((*self.inner).as_ref())
             }
 
-            pub fn downcast_ref<T: $crate::handles::HandleImpl<$name>>(&self) -> Option<&T> {
+            pub fn downcast_ref<T>(&self) -> Option<&T>
+            where
+                T: $trait,
+            {
                 ::std::any::Any::downcast_ref((*self.inner).as_ref())
             }
 
-            pub fn downcast_mut<T: $crate::handles::HandleImpl<$name>>(&mut self) -> Option<&mut T> {
+            pub fn downcast_mut<T>(&mut self) -> Option<&mut T>
+            where
+                T: $trait,
+            {
                 ::std::any::Any::downcast_mut((*self.inner).as_mut())
             }
         }
 
-        impl<T: ::std::marker::Unsize<$crate::handles::HandleImpl<$name>>> From<T> for $name {
+        impl<T> From<T> for $name
+        where
+            T: ::std::marker::Unsize<$trait>,
+        {
             fn from(x: T) -> Self {
                 Self::new(x)
             }
@@ -102,7 +121,7 @@ macro_rules! define_handle {
         }
 
         impl ::std::ops::Deref for $name {
-            type Target = $crate::handles::HandleImpl<$name>;
+            type Target = $trait;
 
             fn deref(&self) -> &Self::Target {
                 &*self.inner
@@ -114,7 +133,7 @@ macro_rules! define_handle {
                 &mut *self.inner
             }
         }
-    }
+    };
 }
 
 /// Generates a boiler-plate code for defining a handle implementation type.
