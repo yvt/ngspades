@@ -29,6 +29,7 @@ pub use query_interface::{interfaces, vtable_for, mopo};
 extern crate zangfx_common as common;
 
 // `handles` defines a macro
+#[macro_use]
 pub mod handles;
 // `objects` defines a macro too
 #[macro_use]

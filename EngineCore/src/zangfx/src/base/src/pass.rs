@@ -7,10 +7,25 @@
 //! relevant types.
 use {Object, Result};
 use formats::ImageFormat;
-use resources::ImageLayout;
-use handles::{Image, RenderPass, RenderTargetTable};
+use resources::{ImageLayout, Image};
 use {RenderPassTargetIndex, SubpassIndex};
 use AccessTypeFlags;
+
+define_handle! {
+    /// Render pass handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    RenderPass
+}
+
+define_handle! {
+    /// Render target table handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    RenderTargetTable
+}
 
 /// Trait for building render passes.
 ///
@@ -168,9 +183,7 @@ pub enum StoreOp {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::pass::RenderTargetTableBuilder;
-///     # use zangfx_base::handles::{RenderPass, Image};
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device, pass: RenderPass, image: Image) {
 ///     let mut builder = device.build_render_target_table();
 ///     builder.render_pass(&pass)

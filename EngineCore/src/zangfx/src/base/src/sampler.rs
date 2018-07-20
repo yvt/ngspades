@@ -6,8 +6,15 @@
 //! Builder for sampler objects, and other relevant types.
 use std::ops;
 
-use handles::Sampler;
 use {Object, Result, CmpFn};
+
+define_handle! {
+    /// Sampler handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    Sampler
+}
 
 /// Trait for building samplers.
 ///

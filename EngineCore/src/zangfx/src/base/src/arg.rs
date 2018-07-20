@@ -6,10 +6,33 @@
 //! Builder for argument table objects, argument table signature objects, and
 //! root signature objects, and other relevant types.
 use {Object, Result};
-use handles::{ArgTable, ArgTableSig, RootSig};
 use resources::ImageAspect;
 use shader::ShaderStageFlags;
 use {ArgArrayIndex, ArgIndex, ArgTableIndex};
+
+define_handle! {
+    /// Argument set signature handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    ArgTableSig
+}
+
+define_handle! {
+    /// Argument set handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    ArgTable
+}
+
+define_handle! {
+    /// Root signature handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    RootSig
+}
 
 /// Trait for building argument table signature objects.
 ///
@@ -116,9 +139,7 @@ impl ArgType {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::arg::RootSigBuilder;
-///     # use zangfx_base::handles::ArgTableSig;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device, arg_table_sig: &ArgTableSig) {
 ///     let root_sig = device.build_root_sig()
 ///         .arg_table(0, arg_table_sig)
@@ -151,8 +172,7 @@ pub trait RootSigBuilder: Object {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::handles::ArgTableSig;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device, arg_table_sig: &ArgTableSig) {
 ///     let arg_pool = device.build_arg_pool()
 ///         .reserve_table_sig(64, arg_table_sig)

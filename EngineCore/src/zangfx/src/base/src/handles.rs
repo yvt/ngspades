@@ -40,7 +40,7 @@
 //!     # #[macro_use] extern crate zangfx_base;
 //!     # fn main() {
 //!     use std::any::Any;
-//!     use zangfx_base::handles::{HandleImpl, Image};
+//!     use zangfx_base::{HandleImpl, Image};
 //!
 //!     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 //!     struct MyImage;
@@ -52,10 +52,7 @@
 //!     # }
 //!
 use std::any::Any;
-use std::{fmt, marker, ops};
-
-use common::SmallBox;
-use DeviceSize;
+use std::fmt;
 
 /// Base trait for all handle implementation traits.
 ///
@@ -70,30 +67,30 @@ macro_rules! define_handle {
         $(#[$smeta])*
         #[derive(Debug)]
         pub struct $name {
-            inner: SmallBox<HandleImpl<$name>, [usize; 3]>,
+            inner: ::common::SmallBox<::handles::HandleImpl<$name>, [usize; 3]>,
         }
 
         impl $name {
-            pub fn new<T: marker::Unsize<HandleImpl<$name>>>(x: T) -> Self {
+            pub fn new<T: ::std::marker::Unsize<::handles::HandleImpl<$name>>>(x: T) -> Self {
                 Self {
-                    inner: unsafe { SmallBox::new(x) },
+                    inner: unsafe { ::common::SmallBox::new(x) },
                 }
             }
 
-            pub fn is<T: HandleImpl<$name>>(&self) -> bool {
-                Any::is::<T>((*self.inner).as_ref())
+            pub fn is<T: ::handles::HandleImpl<$name>>(&self) -> bool {
+                ::std::any::Any::is::<T>((*self.inner).as_ref())
             }
 
-            pub fn downcast_ref<T: HandleImpl<$name>>(&self) -> Option<&T> {
-                Any::downcast_ref((*self.inner).as_ref())
+            pub fn downcast_ref<T: ::handles::HandleImpl<$name>>(&self) -> Option<&T> {
+                ::std::any::Any::downcast_ref((*self.inner).as_ref())
             }
 
-            pub fn downcast_mut<T: HandleImpl<$name>>(&mut self) -> Option<&mut T> {
-                Any::downcast_mut((*self.inner).as_mut())
+            pub fn downcast_mut<T: ::handles::HandleImpl<$name>>(&mut self) -> Option<&mut T> {
+                ::std::any::Any::downcast_mut((*self.inner).as_mut())
             }
         }
 
-        impl<T: marker::Unsize<HandleImpl<$name>>> From<T> for $name {
+        impl<T: ::std::marker::Unsize<::handles::HandleImpl<$name>>> From<T> for $name {
             fn from(x: T) -> Self {
                 Self::new(x)
             }
@@ -105,260 +102,19 @@ macro_rules! define_handle {
             }
         }
 
-        impl ops::Deref for $name {
-            type Target = HandleImpl<$name>;
+        impl ::std::ops::Deref for $name {
+            type Target = ::handles::HandleImpl<$name>;
 
             fn deref(&self) -> &Self::Target {
                 &*self.inner
             }
         }
 
-        impl ops::DerefMut for $name {
+        impl ::std::ops::DerefMut for $name {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut *self.inner
             }
         }
-    }
-}
-
-define_handle! {
-    /// Image handle.
-    ///
-    /// Images are first created using `ImageBuilder`. After an image is created
-    /// it is in the **Prototype** state. Before it can be used as an attachment
-    /// or a descriptor, it must first be transitioned to the **Allocated**
-    /// state by allocating the physical space of the image via a method
-    /// provided by `Heap`.
-    ///
-    /// Once an image is transitioned to the **Allocated** state, it will never
-    /// go back to the original state. Destroying the heap where the image is
-    /// located causes the image to transition to the **Invalid** state. The
-    /// only valid operation to an image in the **Invalid** state is to destroy
-    /// the image.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Image
-}
-
-define_handle! {
-    /// Buffer handle.
-    ///
-    /// Buffers are first created using `BufferBuilder`. After a buffer is created
-    /// it is in the **Prototype** state. Before it can be used as an attachment
-    /// or a descriptor, it must first be transitioned to the **Allocated**
-    /// state by allocating the physical space of the buffer via a method
-    /// provided by `Heap`.
-    ///
-    /// Once a buffer is transitioned to the **Allocated** state, it will never
-    /// go back to the original state. Destroying the heap where the buffer is
-    /// located causes the buffer to transition to the **Invalid** state. The
-    /// only valid operation to a buffer in the **Invalid** state is to destroy
-    /// the buffer.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Buffer
-}
-
-define_handle! {
-    /// Represents a single heap allocation.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    HeapAlloc
-}
-
-define_handle! {
-    /// Image view object.
-    ///
-    /// Shaders always access images via image views.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ImageView
-}
-
-define_handle! {
-    /// Sampler handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Sampler
-}
-
-define_handle! {
-    /// Fence handle.
-    ///
-    /// Fences are used for intra-queue synchronization.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Fence
-}
-
-define_handle! {
-    /// Semaphore handle.
-    ///
-    /// Fences are used for inter-queue/API synchronization. Not supported by
-    /// every backend.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Semaphore
-}
-
-define_handle! {
-    /// Barrier handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Barrier
-}
-
-define_handle! {
-    /// Shader library handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Library
-}
-
-define_handle! {
-    /// Argument set signature handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ArgTableSig
-}
-
-define_handle! {
-    /// Argument set handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ArgTable
-}
-
-define_handle! {
-    /// Root signature handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RootSig
-}
-
-define_handle! {
-    /// Render pass handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RenderPass
-}
-
-define_handle! {
-    /// Render target table handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RenderTargetTable
-}
-
-define_handle! {
-    /// Render pipeline handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RenderPipeline
-}
-
-define_handle! {
-    /// Compute pipeline handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ComputePipeline
-}
-
-/// A reference to a resource handle.
-///
-/// # Examples
-///
-///     # use zangfx_base::handles::{Image, Buffer, ResourceRef};
-///     fn test(image: Image, buffer: Buffer) {
-///         let _ref1: ResourceRef = (&image).into();
-///         let _ref2: ResourceRef = (&buffer).into();
-///     }
-///
-#[derive(Debug, Clone, Copy)]
-pub enum ResourceRef<'a> {
-    Image(&'a Image),
-    Buffer(&'a Buffer),
-}
-
-impl<'a> From<&'a Image> for ResourceRef<'a> {
-    fn from(x: &'a Image) -> Self {
-        ResourceRef::Image(x)
-    }
-}
-
-impl<'a> From<&'a Buffer> for ResourceRef<'a> {
-    fn from(x: &'a Buffer) -> Self {
-        ResourceRef::Buffer(x)
-    }
-}
-
-/// A reference to a homogeneous slice of handles that can be passed to a shader
-/// function as an argument.
-///
-/// # Examples
-///
-///     # use zangfx_base::handles::{ImageView, ArgSlice};
-///     fn test(image1: ImageView, image2: ImageView) {
-///         let _: ArgSlice = [&image1, &image2][..].into();
-///     }
-///
-#[derive(Debug, Clone, Copy)]
-pub enum ArgSlice<'a> {
-    /// Image views.
-    ImageView(&'a [&'a ImageView]),
-    /// Buffers and their subranges.
-    ///
-    /// - For a uniform buffer, the starting offset of each range must be
-    ///   aligned to `DeviceLimits::uniform_buffer_alignment` bytes.
-    /// - For a storage buffer, the starting offset of each range must be
-    ///   aligned to `DeviceLimits::storage_buffer_alignment` bytes.
-    ///
-    Buffer(&'a [(ops::Range<DeviceSize>, &'a Buffer)]),
-    /// Samplers.
-    Sampler(&'a [&'a Sampler]),
-}
-
-impl<'a> ArgSlice<'a> {
-    pub fn len(&self) -> usize {
-        match self {
-            &ArgSlice::ImageView(x) => x.len(),
-            &ArgSlice::Buffer(x) => x.len(),
-            &ArgSlice::Sampler(x) => x.len(),
-        }
-    }
-}
-
-impl<'a> From<&'a [&'a ImageView]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a ImageView]) -> Self {
-        ArgSlice::ImageView(x)
-    }
-}
-
-impl<'a> From<&'a [(ops::Range<DeviceSize>, &'a Buffer)]> for ArgSlice<'a> {
-    fn from(x: &'a [(ops::Range<DeviceSize>, &'a Buffer)]) -> Self {
-        ArgSlice::Buffer(x)
-    }
-}
-
-impl<'a> From<&'a [&'a Sampler]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a Sampler]) -> Self {
-        ArgSlice::Sampler(x)
     }
 }
 

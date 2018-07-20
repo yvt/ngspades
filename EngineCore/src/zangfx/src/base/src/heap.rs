@@ -5,8 +5,16 @@
 //
 //! Heap object.
 use {Object, Result};
-use handles as h;
 use {DeviceSize, MemoryType};
+use resources;
+
+define_handle! {
+    /// Represents a single heap allocation.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    HeapAlloc
+}
 
 /// Trait for building dynamic heap objects.
 ///
@@ -87,7 +95,7 @@ pub trait DedicatedHeapBuilder: Object {
     /// Add a given resource to the dedicated allocation list.
     ///
     /// The return type of this method is reserved for future extensions.
-    fn prebind(&mut self, obj: h::ResourceRef);
+    fn prebind(&mut self, obj: resources::ResourceRef);
 
     // FIXME: resource aliasing?
 
@@ -134,7 +142,7 @@ pub trait Heap: Object {
     ///  - If `obj` refers to an image, this heap must not be associated with a
     ///    host-visible memory type.
     ///
-    fn bind(&self, obj: h::ResourceRef) -> Result<Option<h::HeapAlloc>>;
+    fn bind(&self, obj: resources::ResourceRef) -> Result<Option<HeapAlloc>>;
 
     /// Mark the allocated region available for future allocations.
     ///
@@ -146,7 +154,7 @@ pub trait Heap: Object {
     ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
     ///    method yet.)
     ///
-    fn make_aliasable(&self, alloc: &h::HeapAlloc) -> Result<()>;
+    fn make_aliasable(&self, alloc: &HeapAlloc) -> Result<()>;
 
     /// Deallocate a memory region.
     ///
@@ -163,7 +171,7 @@ pub trait Heap: Object {
     ///  - The heap must be a dynamic heap, i.e. have been created using a
     ///    `DynamicHeapBuilder`.
     ///
-    fn unbind(&self, alloc: &h::HeapAlloc) -> Result<()>;
+    fn unbind(&self, alloc: &HeapAlloc) -> Result<()>;
 
     /// Get the address of the underlying storage of a resource.
     ///
@@ -174,5 +182,5 @@ pub trait Heap: Object {
     ///  - `alloc` must originate from the same `Heap`.
     ///  - `alloc` must be associated with a buffer resource.
     ///
-    fn as_ptr(&self, alloc: &h::HeapAlloc) -> Result<*mut u8>;
+    fn as_ptr(&self, alloc: &HeapAlloc) -> Result<*mut u8>;
 }

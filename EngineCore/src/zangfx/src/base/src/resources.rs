@@ -7,9 +7,59 @@
 use std::ops;
 use ngsenumflags::BitFlags;
 
-use handles::{Buffer, Image, ImageView};
+use sampler::Sampler;
 use formats::ImageFormat;
 use {Object, DeviceSize, Result};
+
+define_handle! {
+    /// Image handle.
+    ///
+    /// Images are first created using `ImageBuilder`. After an image is created
+    /// it is in the **Prototype** state. Before it can be used as an attachment
+    /// or a descriptor, it must first be transitioned to the **Allocated**
+    /// state by allocating the physical space of the image via a method
+    /// provided by `Heap`.
+    ///
+    /// Once an image is transitioned to the **Allocated** state, it will never
+    /// go back to the original state. Destroying the heap where the image is
+    /// located causes the image to transition to the **Invalid** state. The
+    /// only valid operation to an image in the **Invalid** state is to destroy
+    /// the image.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    Image
+}
+
+define_handle! {
+    /// Buffer handle.
+    ///
+    /// Buffers are first created using `BufferBuilder`. After a buffer is created
+    /// it is in the **Prototype** state. Before it can be used as an attachment
+    /// or a descriptor, it must first be transitioned to the **Allocated**
+    /// state by allocating the physical space of the buffer via a method
+    /// provided by `Heap`.
+    ///
+    /// Once a buffer is transitioned to the **Allocated** state, it will never
+    /// go back to the original state. Destroying the heap where the buffer is
+    /// located causes the buffer to transition to the **Invalid** state. The
+    /// only valid operation to a buffer in the **Invalid** state is to destroy
+    /// the buffer.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    Buffer
+}
+
+define_handle! {
+    /// Image view object.
+    ///
+    /// Shaders always access images via image views.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    ImageView
+}
 
 /// Trait for building images.
 ///
@@ -354,4 +404,86 @@ pub enum ImageType {
     ThreeD,
     Cube,
     CubeArray,
+}
+
+/// A reference to a resource handle.
+///
+/// # Examples
+///
+///     # use zangfx_base::{Image, Buffer, ResourceRef};
+///     fn test(image: Image, buffer: Buffer) {
+///         let _ref1: ResourceRef = (&image).into();
+///         let _ref2: ResourceRef = (&buffer).into();
+///     }
+///
+#[derive(Debug, Clone, Copy)]
+pub enum ResourceRef<'a> {
+    Image(&'a Image),
+    Buffer(&'a Buffer),
+}
+
+impl<'a> From<&'a Image> for ResourceRef<'a> {
+    fn from(x: &'a Image) -> Self {
+        ResourceRef::Image(x)
+    }
+}
+
+impl<'a> From<&'a Buffer> for ResourceRef<'a> {
+    fn from(x: &'a Buffer) -> Self {
+        ResourceRef::Buffer(x)
+    }
+}
+
+/// A reference to a homogeneous slice of handles that can be passed to a shader
+/// function as an argument.
+///
+/// # Examples
+///
+///     # use zangfx_base::{ImageView, ArgSlice};
+///     fn test(image1: ImageView, image2: ImageView) {
+///         let _: ArgSlice = [&image1, &image2][..].into();
+///     }
+///
+#[derive(Debug, Clone, Copy)]
+pub enum ArgSlice<'a> {
+    /// Image views.
+    ImageView(&'a [&'a ImageView]),
+    /// Buffers and their subranges.
+    ///
+    /// - For a uniform buffer, the starting offset of each range must be
+    ///   aligned to `DeviceLimits::uniform_buffer_alignment` bytes.
+    /// - For a storage buffer, the starting offset of each range must be
+    ///   aligned to `DeviceLimits::storage_buffer_alignment` bytes.
+    ///
+    Buffer(&'a [(ops::Range<DeviceSize>, &'a Buffer)]),
+    /// Samplers.
+    Sampler(&'a [&'a Sampler]),
+}
+
+impl<'a> ArgSlice<'a> {
+    pub fn len(&self) -> usize {
+        match self {
+            &ArgSlice::ImageView(x) => x.len(),
+            &ArgSlice::Buffer(x) => x.len(),
+            &ArgSlice::Sampler(x) => x.len(),
+        }
+    }
+}
+
+impl<'a> From<&'a [&'a ImageView]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a ImageView]) -> Self {
+        ArgSlice::ImageView(x)
+    }
+}
+
+impl<'a> From<&'a [(ops::Range<DeviceSize>, &'a Buffer)]> for ArgSlice<'a> {
+    fn from(x: &'a [(ops::Range<DeviceSize>, &'a Buffer)]) -> Self {
+        ArgSlice::Buffer(x)
+    }
+}
+
+impl<'a> From<&'a [&'a Sampler]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a Sampler]) -> Self {
+        ArgSlice::Sampler(x)
+    }
 }

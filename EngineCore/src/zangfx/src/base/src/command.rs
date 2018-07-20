@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 
 use {Object, Result};
 use common::Rect2D;
-use {handles, heap, pipeline, resources};
+use {arg, sync, heap, pipeline, resources, pass};
 use {AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,
      Viewport, ViewportIndex};
 use formats::IndexFormat;
@@ -68,7 +68,7 @@ pub trait CmdQueue: Object {
     fn new_cmd_pool(&self) -> Result<Box<CmdPool>>;
 
     /// Create a `Fence` associated with the command queue.
-    fn new_fence(&self) -> Result<handles::Fence>;
+    fn new_fence(&self) -> Result<sync::Fence>;
 
     /// Schedule pending commited command buffers for execution.
     fn flush(&self);
@@ -170,7 +170,7 @@ pub trait CmdBuffer: Object {
 
     fn encode_render(
         &mut self,
-        render_target_table: &handles::RenderTargetTable,
+        render_target_table: &pass::RenderTargetTable,
     ) -> &mut RenderCmdEncoder;
     fn encode_compute(&mut self) -> &mut ComputeCmdEncoder;
     fn encode_copy(&mut self) -> &mut CopyCmdEncoder;
@@ -181,7 +181,7 @@ pub trait CmdBuffer: Object {
     /// Wait on a given semaphore before the execution of the command buffer.
     ///
     /// The default implementation panics.
-    fn wait_semaphore(&mut self, semaphore: &handles::Semaphore, dst_stage: StageFlags) {
+    fn wait_semaphore(&mut self, semaphore: &sync::Semaphore, dst_stage: StageFlags) {
         let _ = (semaphore, dst_stage);
         panic!("Semaphores are not supported by this backend.");
     }
@@ -189,7 +189,7 @@ pub trait CmdBuffer: Object {
     /// Signal a given semaphore after the execution of the command buffer.
     ///
     /// The default implementation panics.
-    fn signal_semaphore(&mut self, semaphore: &handles::Semaphore, src_stage: StageFlags) {
+    fn signal_semaphore(&mut self, semaphore: &sync::Semaphore, src_stage: StageFlags) {
         let _ = (semaphore, src_stage);
         panic!("Semaphores are not supported by this backend.");
     }
@@ -205,7 +205,7 @@ pub trait CmdBuffer: Object {
     fn host_barrier(
         &mut self,
         src_access: AccessTypeFlags,
-        buffers: &[(Range<DeviceSize>, &handles::Buffer)],
+        buffers: &[(Range<DeviceSize>, &resources::Buffer)],
     ) {
         let _ = (src_access, buffers);
     }
@@ -220,7 +220,7 @@ pub trait CmdBuffer: Object {
     ///
     /// The default implementation panics. Implementations that support more
     /// than one queue families must override this method.
-    fn queue_acquire_barrier(&mut self, src_queue_family: QueueFamily, barrier: &handles::Barrier) {
+    fn queue_acquire_barrier(&mut self, src_queue_family: QueueFamily, barrier: &sync::Barrier) {
         let _ = (src_queue_family, barrier);
         panic!("Queue families are not supported by this backend.");
     }
@@ -235,7 +235,7 @@ pub trait CmdBuffer: Object {
     ///
     /// The default implementation panics. Implementations that support more
     /// than one queue families must override this method.
-    fn queue_release_barrier(&mut self, dst_queue_family: QueueFamily, barrier: &handles::Barrier) {
+    fn queue_release_barrier(&mut self, dst_queue_family: QueueFamily, barrier: &sync::Barrier) {
         let _ = (dst_queue_family, barrier);
         panic!("Queue families are not supported by this backend.");
     }
@@ -246,7 +246,7 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     ///
     /// All non-dynamic state values of the new `RenderPipeline` will override
     /// the current ones. Other states are left intact.
-    fn bind_pipeline(&mut self, pipeline: &handles::RenderPipeline);
+    fn bind_pipeline(&mut self, pipeline: &pipeline::RenderPipeline);
 
     /// Set the blend constant values.
     ///
@@ -293,19 +293,19 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     fn set_scissors(&mut self, start_viewport: ViewportIndex, value: &[Rect2D<u32>]);
 
     /// Bind zero or more `ArgTable`s.
-    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&handles::ArgTable]);
+    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&arg::ArgTable]);
 
     /// Bind zero or more vertex buffers.
     fn bind_vertex_buffers(
         &mut self,
         index: VertexBufferIndex,
-        buffers: &[(&handles::Buffer, DeviceSize)],
+        buffers: &[(&resources::Buffer, DeviceSize)],
     );
 
     /// Bind an index buffer.
     fn bind_index_buffer(
         &mut self,
-        buffer: &handles::Buffer,
+        buffer: &resources::Buffer,
         offset: DeviceSize,
         format: IndexFormat,
     );
@@ -349,7 +349,7 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     /// - `offset` must be aligned to 4 bytes.
     ///
     /// [`DrawIndirectArgs`]: DrawIndirectArgs
-    fn draw_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize);
+    fn draw_indirect(&mut self, buffer: &resources::Buffer, offset: DeviceSize);
 
     /// Render primitives using the currently bound index buffer. Parameters are
     /// read by the device from a buffer.
@@ -361,7 +361,7 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     /// - `offset` must be aligned to 4 bytes.
     ///
     /// [`DrawIndexedIndirectArgs`]: DrawIndexedIndirectArgs
-    fn draw_indexed_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize);
+    fn draw_indexed_indirect(&mut self, buffer: &resources::Buffer, offset: DeviceSize);
 }
 
 /// The data layout for indirect draw calls.
@@ -394,10 +394,10 @@ pub struct DrawIndexedIndirectArgs {
 
 pub trait ComputeCmdEncoder: Object + CmdEncoder {
     /// Set the current `ComputePipeline` object.
-    fn bind_pipeline(&mut self, pipeline: &handles::ComputePipeline);
+    fn bind_pipeline(&mut self, pipeline: &pipeline::ComputePipeline);
 
     /// Bind zero or more `ArgTable`s.
-    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&handles::ArgTable]);
+    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&arg::ArgTable]);
 
     /// Provoke work in a compute pipeline.
     ///
@@ -415,7 +415,7 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     /// - `offset` must be aligned to 4 bytes.
     ///
     /// [`DispatchIndirectArgs`]: DispatchIndirectArgs
-    fn dispatch_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize);
+    fn dispatch_indirect(&mut self, buffer: &resources::Buffer, offset: DeviceSize);
 }
 
 /// The data layout for indirect dispatch calls.
@@ -425,7 +425,7 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// Fill a buffer with a constant byte value.
     ///
     /// Both of `range.start` and `range.end` must be a multiple of 4.
-    fn fill_buffer(&mut self, buffer: &handles::Buffer, range: Range<DeviceSize>, value: u8);
+    fn fill_buffer(&mut self, buffer: &resources::Buffer, range: Range<DeviceSize>, value: u8);
 
     /// Copy data from a buffer to another buffer.
     ///
@@ -433,9 +433,9 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// multiple of 4.
     fn copy_buffer(
         &mut self,
-        src: &handles::Buffer,
+        src: &resources::Buffer,
         src_offset: DeviceSize,
-        dst: &handles::Buffer,
+        dst: &resources::Buffer,
         dst_offset: DeviceSize,
         size: DeviceSize,
     );
@@ -454,9 +454,9 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// destination image, the rest is assumed to be all `1`.
     fn copy_buffer_to_image(
         &mut self,
-        src: &handles::Buffer,
+        src: &resources::Buffer,
         src_range: &BufferImageRange,
-        dst: &handles::Image,
+        dst: &resources::Image,
         dst_layout: resources::ImageLayout,
         dst_aspect: resources::ImageAspect,
         dst_range: &resources::ImageLayerRange,
@@ -478,12 +478,12 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// source image, the rest is assumed to be all `1`.
     fn copy_image_to_buffer(
         &mut self,
-        src: &handles::Image,
+        src: &resources::Image,
         src_layout: resources::ImageLayout,
         src_aspect: resources::ImageAspect,
         src_range: &resources::ImageLayerRange,
         src_origin: &[u32],
-        dst: &handles::Buffer,
+        dst: &resources::Buffer,
         dst_range: &BufferImageRange,
         size: &[u32],
     );
@@ -507,11 +507,11 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// source and/or destination image, the rest is assumed to be all `1`.
     fn copy_image(
         &mut self,
-        src: &handles::Image,
+        src: &resources::Image,
         src_layout: resources::ImageLayout,
         src_range: &resources::ImageLayerRange,
         src_origin: &[u32],
-        dst: &handles::Image,
+        dst: &resources::Image,
         dst_layout: resources::ImageLayout,
         dst_range: &resources::ImageLayerRange,
         dst_origin: &[u32],
@@ -566,7 +566,7 @@ pub trait CmdEncoder: Object {
     ///
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
     /// descriptor sets.
-    fn use_resource(&mut self, usage: ResourceUsage, objs: &[handles::ResourceRef]);
+    fn use_resource(&mut self, usage: ResourceUsage, objs: &[resources::ResourceRef]);
 
     /// Declare that the resources in the specified heaps are referenced by the
     /// descriptor sets used on this command encoder.
@@ -599,16 +599,16 @@ pub trait CmdEncoder: Object {
     ///
     fn wait_fence(
         &mut self,
-        fence: &handles::Fence,
+        fence: &sync::Fence,
         src_stage: StageFlags,
-        barrier: &handles::Barrier,
+        barrier: &sync::Barrier,
     );
 
     /// Update the specified fence.
     ///
     /// A fence can be updated only once. You must create a new one after done
     /// using the old one.
-    fn update_fence(&mut self, fence: &handles::Fence, src_stage: StageFlags);
+    fn update_fence(&mut self, fence: &sync::Fence, src_stage: StageFlags);
 
     /// Insert a barrier and establish an execution dependency within the
     /// current encoder or subpass.
@@ -616,7 +616,7 @@ pub trait CmdEncoder: Object {
     /// When this is called inside a render subpass, a self-dependency with
     /// matching access type flags and stage flags must have been defined on the
     /// subpass.
-    fn barrier(&mut self, barrier: &handles::Barrier);
+    fn barrier(&mut self, barrier: &sync::Barrier);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

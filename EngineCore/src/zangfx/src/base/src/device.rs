@@ -5,7 +5,7 @@
 //
 //! Device object.
 use {Object, Result};
-use {arg, command, handles, heap, limits, pass, pipeline, resources, sampler, shader, sync};
+use {arg, command, heap, limits, pass, pipeline, resources, sampler, shader, sync};
 use {ArgArrayIndex, ArgIndex};
 
 /// Trait for device objects.
@@ -77,26 +77,25 @@ pub trait Device: Object {
     fn build_compute_pipeline(&self) -> Box<pipeline::ComputePipelineBuilder>;
 
     /// Destroy an `Image` associated with this device.
-    fn destroy_image(&self, obj: &handles::Image) -> Result<()>;
+    fn destroy_image(&self, obj: &resources::Image) -> Result<()>;
 
     /// Destroy a `Buffer` associated with this device.
-    fn destroy_buffer(&self, obj: &handles::Buffer) -> Result<()>;
+    fn destroy_buffer(&self, obj: &resources::Buffer) -> Result<()>;
 
     /// Destroy a `Sampler` associated with this device.
-    fn destroy_sampler(&self, obj: &handles::Sampler) -> Result<()>;
+    fn destroy_sampler(&self, obj: &sampler::Sampler) -> Result<()>;
 
     /// Destroy an `ImageView` associated with this device.
-    fn destroy_image_view(&self, obj: &handles::ImageView) -> Result<()>;
+    fn destroy_image_view(&self, obj: &resources::ImageView) -> Result<()>;
 
     /// Retrieve the memory requirements for a given resource.
-    fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<resources::MemoryReq>;
+    fn get_memory_req(&self, obj: resources::ResourceRef) -> Result<resources::MemoryReq>;
 
     /// Update given argument tables.
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::device::Device;
-    ///     # use zangfx_base::handles::{ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::{Device, ImageView, Buffer, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
     ///     #     arg_table: &ArgTable,
@@ -121,16 +120,15 @@ pub trait Device: Object {
     ///
     fn update_arg_tables(
         &self,
-        arg_table_sig: &handles::ArgTableSig,
-        updates: &[(&handles::ArgTable, &[ArgUpdateSet])],
+        arg_table_sig: &arg::ArgTableSig,
+        updates: &[(&arg::ArgTable, &[ArgUpdateSet])],
     ) -> Result<()>;
 
     /// Update a given argument table.
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::device::Device;
-    ///     # use zangfx_base::handles::{ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::{Device, ImageView, Buffer, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
     ///     #     arg_table: &ArgTable,
@@ -153,8 +151,8 @@ pub trait Device: Object {
     ///
     fn update_arg_table(
         &self,
-        arg_table_sig: &handles::ArgTableSig,
-        arg_table: &handles::ArgTable,
+        arg_table_sig: &arg::ArgTableSig,
+        arg_table: &arg::ArgTable,
         updates: &[ArgUpdateSet],
     ) -> Result<()> {
         self.update_arg_tables(arg_table_sig, &[(arg_table, updates)])
@@ -228,7 +226,7 @@ pub trait DeviceExt: Device {
     ///                      invalid SPIR-V code.");
     ///     # }
     ///
-    fn new_library(&self, spirv_code: &[u32]) -> Result<handles::Library> {
+    fn new_library(&self, spirv_code: &[u32]) -> Result<shader::Library> {
         self.build_library().spirv_code(spirv_code).build()
     }
 
@@ -246,7 +244,7 @@ pub trait DeviceExt: Device {
     ///     let semaphore = device.new_semaphore().unwrap();
     ///     # }
     ///
-    fn new_semaphore(&self) -> Result<handles::Semaphore> {
+    fn new_semaphore(&self) -> Result<sync::Semaphore> {
         self.build_semaphore().build()
     }
 
@@ -266,9 +264,9 @@ pub trait DeviceExt: Device {
     ///
     fn new_image_view(
         &self,
-        image: &handles::Image,
+        image: &resources::Image,
         layout: resources::ImageLayout,
-    ) -> Result<handles::ImageView> {
+    ) -> Result<resources::ImageView> {
         self.build_image_view().image(image).layout(layout).build()
     }
 
@@ -336,7 +334,7 @@ impl<T: ?Sized + Device> DeviceExt for T {}
 ///
 /// See the documentation of [`update_arg_table`](Device::update_arg_table) for
 /// example.
-pub type ArgUpdateSet<'a> = (ArgIndex, ArgArrayIndex, handles::ArgSlice<'a>);
+pub type ArgUpdateSet<'a> = (ArgIndex, ArgArrayIndex, resources::ArgSlice<'a>);
 
 /// An autorelease pool.
 ///

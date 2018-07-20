@@ -6,9 +6,37 @@
 //! Builder for synchronization objects.
 use {Result, Object};
 use std::ops::Range;
-use handles::{Barrier, Buffer, Image, Semaphore};
 use {AccessTypeFlags, DeviceSize};
-use resources::{ImageLayout, ImageSubRange};
+use resources::{ImageLayout, ImageSubRange, Image, Buffer};
+
+define_handle! {
+    /// Fence handle.
+    ///
+    /// Fences are used for intra-queue synchronization.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    Fence
+}
+
+define_handle! {
+    /// Semaphore handle.
+    ///
+    /// Fences are used for inter-queue/API synchronization. Not supported by
+    /// every backend.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    Semaphore
+}
+
+define_handle! {
+    /// Barrier handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    Barrier
+}
 
 /// Trait for building barriers.
 ///

@@ -7,11 +7,29 @@
 use std::ops::Range;
 
 use common::Rect2D;
-use handles::{ComputePipeline, Library, RenderPass, RenderPipeline, RootSig};
+use shader::Library;
+use pass::RenderPass;
+use arg::RootSig;
 use formats::VertexFormat;
 use {Object, Result};
 use {CmpFn, ColorChannelFlags, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex,
      VertexAttrIndex, VertexBufferIndex, ViewportIndex};
+
+define_handle! {
+    /// Render pipeline handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    RenderPipeline
+}
+
+define_handle! {
+    /// Compute pipeline handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    ComputePipeline
+}
 
 /// Trait for building compute pipelines.
 ///
@@ -21,8 +39,7 @@ use {CmpFn, ColorChannelFlags, DeviceSize, RenderSubpassColorTargetIndex, Subpas
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::handles::Library;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device, library: &Library) {
 ///     let pipeline = device.build_compute_pipeline()
 ///         .compute_shader(library, "main")
