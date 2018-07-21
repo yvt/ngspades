@@ -487,25 +487,23 @@ pub trait CmdEncoder: Object {
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder.
     ///
-    /// This ensures the resources are resident at the point of executing the
-    /// encoded commands.
-    ///
-    /// The scope is the current encoder or subpass.
+    /// This ensures the resources are resident starting from the point where
+    /// this command is inserted and until the end of the current command
+    /// encoder or subpass.
     ///
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
-    /// descriptor sets.
-    fn use_resource(&mut self, usage: ResourceUsage, objs: &[resources::ResourceRef]);
+    /// argument tables.
+    fn use_resource(&mut self, usage: ResourceUsageFlags, objs: &[resources::ResourceRef]);
 
     /// Declare that the resources in the specified heaps are referenced by the
-    /// descriptor sets used on this command encoder.
+    /// argument tables used on this command encoder.
     ///
-    /// This ensures the resources are resident at the point of executing the
-    /// encoded commands.
-    ///
-    /// The scope is the current encoder or subpass.
+    /// This ensures the resources are resident starting from the point where
+    /// this command is inserted and until the end of the current command
+    /// encoder or subpass.
     ///
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
-    /// descriptor sets.
+    /// argument tables.
     ///
     /// This method cannot be used on global heaps (returned by
     /// [`Device::global_heap`]) nor on dynamic heaps (returned by
