@@ -508,7 +508,11 @@ pub trait CmdEncoder: Object {
     /// descriptor sets.
     ///
     /// This method cannot be used on global heaps (returned by
-    /// `Device::global_heap()`).
+    /// [`Device::global_heap`]) nor on dynamic heaps (returned by
+    /// [`DynamicHeapBuilder`]).
+    ///
+    /// [`Device::global_heap`]: crate::Device::global_heap
+    /// [`DynamicHeapBuilder`]: crate::DynamicHeapBuilder
     fn use_heap(&mut self, heaps: &[&heap::Heap]);
 
     /// Wait on the specified fence and establish an inter-encoder execution
