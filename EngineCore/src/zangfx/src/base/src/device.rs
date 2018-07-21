@@ -82,7 +82,7 @@ pub trait Device: Object {
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, Image, Buffer, ArgPool, ArgTable, ArgTableSig, ResourceUsage};
+    ///     # use zangfx_base::{Device, Image, Buffer, ArgPool, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
     ///     #     arg_pool: &dyn ArgPool,
@@ -97,10 +97,7 @@ pub trait Device: Object {
     ///             (arg_pool, arg_table),
     ///             &[
     ///                 // The index range 0..2 of the argument 0
-    ///                 (0, 0, [
-    ///                     (ResourceUsage::Sample, images[0]),
-    ///                     (ResourceUsage::Sample, images[1]),
-    ///                 ][..].into()),
+    ///                 (0, 0, [images[0], images[1]][..].into()),
     ///
     ///                 // The index range 2..3 of the argument 1
     ///                 (1, 2, [(0..1024, buffer)][..].into()),
@@ -119,7 +116,7 @@ pub trait Device: Object {
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, Image, Buffer, ArgPool, ArgTable, ArgTableSig, ResourceUsage};
+    ///     # use zangfx_base::{Device, Image, Buffer, ArgPool, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
     ///     #     arg_pool: &ArgPool,
@@ -134,10 +131,7 @@ pub trait Device: Object {
     ///         arg_table,
     ///         &[
     ///             // The index range 0..2 of the argument 0
-    ///             (0, 0, [
-    ///                 (ResourceUsage::Sample, images[0]),
-    ///                 (ResourceUsage::Sample, images[1]),
-    ///             ][..].into()),
+    ///             (0, 0, [images[0], images[1]][..].into()),
     ///
     ///             // The index range 2..3 of the argument 1
     ///             (1, 2, [(0..1024, buffer)][..].into()),
