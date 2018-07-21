@@ -240,13 +240,27 @@ pub enum ImageLayout {
     CopyWrite,
 }
 
+/// Specifies a type of operations supported by an image.
 #[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ImageUsage {
+    /// Enables uses of the image as the source of [copy commands].
+    ///
+    /// [copy commands]: crate::CopyCmdEncoder
     CopyRead = 0b00000001,
+    /// Enables uses of the image as the destination of [copy commands].
+    ///
+    /// [copy commands]: crate::CopyCmdEncoder
     CopyWrite = 0b00000010,
+    /// Enables uses of the image as a [sampled image shader argument].
+    ///
+    /// [sampled image shader argument]: crate::ArgType::SampledImage
     Sampled = 0b00000100,
+    /// Enables uses of the image as a [storage image shader argument].
+    ///
+    /// [storage image shader argument]: crate::ArgType::StorageImage
     Storage = 0b00001000,
+    /// Enables uses of the image as a render target.
     Render = 0b00010000,
 
     /// Enables the creation of an image view with a different type (2D/3D/...).
@@ -269,6 +283,7 @@ pub enum ImageUsage {
     TrackStatePerArrayLayer = 0b10000000000,
 }
 
+/// Specifies types of operations supported by an image.
 pub type ImageUsageFlags = BitFlags<ImageUsage>;
 
 impl ImageUsage {
