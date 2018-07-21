@@ -222,8 +222,8 @@ impl From<ImageLayerRange> for ImageSubRange {
 pub enum ImageLayout {
     // TODO: Read-only render targets
 
-    /// Layout for read-write render targets.
-    RenderWrite,
+    /// Layout for render targets.
+    Render,
 
     /// Layout for accesses from shaders.
     Shader,
