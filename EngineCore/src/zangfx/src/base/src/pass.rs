@@ -48,14 +48,6 @@ define_handle! {
 ///     builder.subpass_color_targets(&[Some(0)]);
 ///     builder.subpass_ds_target(Some(1));
 ///
-///     // Post-render pass external
-///     builder.end()
-///         .subpass_dep(
-///             Some(1),
-///             AccessType::ColorWrite.into(),
-///             AccessType::FragmentRead.into(),
-///         );
-///
 ///     let render_pass = builder.build()
 ///         .expect("Failed to create a render pass.");
 ///     # }
@@ -78,11 +70,11 @@ pub trait RenderPassBuilder: Object {
     /// current subpass index, it defines a subpass self-dependency, which is
     /// required to use the [`barrier`] command inside the subpass.
     ///
-    /// [`barrier`]: CmdEncoder::barrier
+    /// [`barrier`]: crate::CmdEncoder::barrier
     ///
     /// # Valid Usage
     ///
-    ///  - `from` shall not be greater than the current subpass index.
+    ///  - `from` shall be less than or equal to the current subpass index.
     fn subpass_dep(
         &mut self,
         from: SubpassIndex,
