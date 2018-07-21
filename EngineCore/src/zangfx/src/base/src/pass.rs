@@ -71,24 +71,21 @@ pub trait RenderPassBuilder: Object {
     /// The render target index must be assigned densely, starting from zero.
     fn target(&mut self, index: RenderPassTargetIndex) -> &mut RenderPassTarget;
 
-    /// End the definition of subpasses. Following calls to `subpass_dep` define
-    /// subpass-to-external dependencies.
-    fn end(&mut self) -> &mut RenderPassBuilder;
-
     /// Define a subpass dependency between one of the previous subpasses and
     /// the current one.
     ///
-    /// `from` specifies the source subpass index. `None` indicates an
-    /// external-to-subpass dependency.
+    /// `from` specifies the source subpass index. If `from` is equal to the
+    /// current subpass index, it defines a subpass self-dependency, which is
+    /// required to use the [`barrier`] command inside the subpass.
     ///
-    /// External (external-to-subpass or subpass-to-external) dependencies
-    /// define memory barriers required between the render pass and the set of
-    /// preceding/following commands. They must be used in combination with
-    /// fences. Furthermore, memory dependencies inserted with fences **must**
-    /// be a subset of those expressed by subpass dependencies.
+    /// [`barrier`]: CmdEncoder::barrier
+    ///
+    /// # Valid Usage
+    ///
+    ///  - `from` shall not be greater than the current subpass index.
     fn subpass_dep(
         &mut self,
-        from: Option<SubpassIndex>,
+        from: SubpassIndex,
         src_access: AccessTypeFlags,
         dst_access: AccessTypeFlags,
     ) -> &mut RenderPassBuilder;
