@@ -112,7 +112,7 @@ pub trait BufferTrait: HandleImpl<Buffer> {
 /// [Cube]: ImageBuilder::extents_cube
 /// [# of layers]: ImageBuilder::num_layers
 /// [Image type]: ImageType
-/// [`supports_cube_array`]: DeviceLimits::supports_cube_array
+/// [`supports_cube_array`]: crate::DeviceLimits::supports_cube_array
 ///
 /// # Examples
 ///
@@ -228,15 +228,15 @@ pub enum ImageLayout {
     /// Layout for accesses from shaders.
     Shader,
 
-    /// Layout for using images as source of the copy commanddefined by
+    /// Layout for using images as source of the copy commands defined by
     /// [`CopyCmdEncoder`].
     ///
-    /// [`CopyCmdEncoder`]: CopyCmdEncoder
+    /// [`CopyCmdEncoder`]: crate::CopyCmdEncoder
     CopyRead,
-    /// Layout for using images as destination of the copy command defined by
+    /// Layout for using images as destination of the copy commands defined by
     /// [`CopyCmdEncoder`].
     ///
-    /// [`CopyCmdEncoder`]: CopyCmdEncoder
+    /// [`CopyCmdEncoder`]: crate::CopyCmdEncoder
     CopyWrite,
 }
 

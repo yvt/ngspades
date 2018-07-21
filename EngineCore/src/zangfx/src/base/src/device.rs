@@ -34,7 +34,7 @@ pub trait Device: Object {
     /// The default implementation returns a [`NotSupportedSemaphoreBuilder`].
     ///
     /// [`new_semaphore`]: DeviceExt::new_semaphore
-    /// [`NotSupportedSemaphoreBuilder`]: NotSupportedSemaphoreBuilder
+    /// [`NotSupportedSemaphoreBuilder`]: crate::sync::NotSupportedSemaphoreBuilder
     fn build_semaphore(&self) -> Box<sync::SemaphoreBuilder> {
         Box::new(sync::NotSupportedSemaphoreBuilder)
     }

@@ -18,7 +18,7 @@
 //! Boxing is done using [`SmallBox`]`<_, [usize; 3]>`. Therefore, the contained
 //! data must be sufficiently small to fit `[usize; 3]`.
 //!
-//! [`SmallBox`]: SmallBox
+//! [`SmallBox`]: ../../zangfx_common/struct.SmallBox.html
 //!
 //! # Allocation Strategy
 //!

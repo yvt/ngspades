@@ -45,7 +45,7 @@ pub trait CmdQueueBuilder: Object {
     ///   a device (including those already dropped) must be less than or equal
     ///   to [`QueueFamilyInfo::count`].
     ///
-    /// [`QueueFamilyInfo::count`]: QueueFamilyInfo::count
+    /// [`QueueFamilyInfo::count`]: crate::limits::QueueFamilyInfo::count
     ///
     fn build(&mut self) -> Result<Box<CmdQueue>>;
 }
@@ -469,7 +469,7 @@ pub trait CmdEncoder: Object {
     /// There must be an outstanding call to [`begin_debug_group`] corresponding
     /// to this one in the same encoder.
     ///
-    /// [`begin_debug_group`]: begin_debug_group
+    /// [`begin_debug_group`]: CmdEncoder::begin_debug_group
     fn end_debug_group(&mut self) {}
 
     /// Insert a debug marker.
