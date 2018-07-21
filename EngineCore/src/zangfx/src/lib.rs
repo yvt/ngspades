@@ -132,6 +132,8 @@
 //!
 //! ## Objects
 //!
+//! TODO: New object model (proxy objects, automatic lifetime management, etc.)
+//!
 //! The object model of ZanGFX is based around two categories of objects:
 //!
 //! 1. Normal **objects**. The examples of objects include `Device` and

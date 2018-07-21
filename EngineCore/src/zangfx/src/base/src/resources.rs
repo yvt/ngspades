@@ -10,6 +10,7 @@ use std::ops;
 use crate::formats::ImageFormat;
 use crate::sampler::Sampler;
 use crate::handles::HandleImpl;
+use crate::command::CmdQueue;
 use crate::{DeviceSize, Object, Result};
 
 define_handle! {
@@ -34,6 +35,9 @@ define_handle! {
 
 /// Trait for image handles.
 pub trait ImageTrait: HandleImpl<Image> {
+    /// Create a proxy object to use this image from a specified queue.
+    fn make_proxy(&mut self, queue: &CmdQueue) -> Image;
+
     /// Create an `ImageViewBuilder` associated with this image.
     ///
     /// # Valid Usage
@@ -67,6 +71,9 @@ define_handle! {
 
 /// Trait for buffer handles.
 pub trait BufferTrait: HandleImpl<Buffer> {
+    /// Create a proxy object to use this buffer from a specified queue.
+    fn make_proxy(&mut self, queue: &CmdQueue) -> Buffer;
+
     /// Get the address of the underlying storage of a buffer.
     ///
     /// # Valid Usage
@@ -121,6 +128,11 @@ pub trait BufferTrait: HandleImpl<Buffer> {
 ///     # }
 ///
 pub trait ImageBuilder: Object {
+    /// Specify the queue associated with the created image.
+    ///
+    /// Defaults to the backend-specific value.
+    fn queue(&mut self, queue: &CmdQueue) -> &mut ImageBuilder;
+
     /// Set the image extents to `v`. Used for 1D/2D/3D images.
     ///
     /// `v.len()` matches the dimensionality of the image and must be one of
@@ -301,6 +313,11 @@ pub enum ImageAspect {
 ///     # }
 ///
 pub trait BufferBuilder: Object {
+    /// Specify the queue associated with the created buffer.
+    ///
+    /// Defaults to the backend-specific value.
+    fn queue(&mut self, queue: &CmdQueue) -> &mut BufferBuilder;
+
     /// Set the buffer size to `v` bytes.
     ///
     /// This property is mandatory.

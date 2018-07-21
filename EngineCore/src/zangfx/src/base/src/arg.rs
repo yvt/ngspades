@@ -5,6 +5,7 @@
 //
 //! Builder for argument table objects, argument table signature objects, and
 //! root signature objects, and other relevant types.
+use crate::command::CmdQueue;
 use crate::resources::ImageAspect;
 use crate::shader::ShaderStageFlags;
 use crate::{ArgArrayIndex, ArgIndex, ArgTableIndex};
@@ -181,6 +182,11 @@ pub trait RootSigBuilder: Object {
 ///     # }
 ///
 pub trait ArgPoolBuilder: Object {
+    /// Specify the queue associated with the created argument pool.
+    ///
+    /// Defaults to the backend-specific value.
+    fn queue(&mut self, queue: &CmdQueue) -> &mut ArgPoolBuilder;
+
     /// Increase the capacity of the created argument pool to contain additional
     /// `count` argument tables of the signature `table`.
     fn reserve_table_sig(&mut self, count: usize, table: &ArgTableSig) -> &mut ArgPoolBuilder;
@@ -224,6 +230,9 @@ pub trait ArgPoolBuilder: Object {
 ///    followed.
 ///
 pub trait ArgPool: Object {
+    /// Create a proxy object to use this argument pool from a specified queue.
+    fn make_proxy(&mut self, queue: &CmdQueue) -> ArgPool;
+
     /// Allocate zero or more `ArgTable`s from the pool.
     ///
     /// Returns `Ok(Some(vec))` with `vec.len() == count` if the allocation

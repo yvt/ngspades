@@ -5,6 +5,7 @@
 //
 //! Heap object.
 use crate::resources;
+use crate::command::CmdQueue;
 use crate::{DeviceSize, MemoryType};
 use crate::{Object, Result};
 
@@ -27,6 +28,11 @@ use crate::{Object, Result};
 ///     # }
 ///
 pub trait DynamicHeapBuilder: Object {
+    /// Specify the queue associated with the created heap.
+    ///
+    /// Defaults to the backend-specific value.
+    fn queue(&mut self, queue: &CmdQueue) -> &mut DynamicHeapBuilder;
+
     /// Set the heap size to `v` bytes.
     ///
     /// This property is mandatory.
@@ -75,6 +81,11 @@ pub trait DynamicHeapBuilder: Object {
 ///     # }
 ///
 pub trait DedicatedHeapBuilder: Object {
+    /// Specify the queue associated with the created heap.
+    ///
+    /// Defaults to the backend-specific value.
+    fn queue(&mut self, queue: &CmdQueue) -> &mut DedicatedHeapBuilder;
+
     /// Set the memory type index.
     ///
     /// This property is mandatory.
@@ -113,6 +124,9 @@ pub trait DedicatedHeapBuilder: Object {
 ///  - No instance of `Heap` may outlive the originating `Device`.
 ///
 pub trait Heap: Object {
+    /// Create a proxy object to use this sample object from a specified queue.
+    fn make_proxy(&mut self, queue: &CmdQueue) -> Box<Heap>;
+
     /// Allocate a memory region for a given resource.
     ///
     /// The resource must be in the **Prototype** state.
@@ -128,6 +142,10 @@ pub trait Heap: Object {
     ///
     ///  - `obj` must originate from the same `Device` as the one the heap was
     ///    created from.
+    ///  - `obj` must be in the Prototype state.
+    ///  - `obj` must be associated with the queue for which the heap was
+    ///    created.
+    ///  - `obj` must not be a proxy object.
     ///  - The heap must be a dynamic heap, i.e. have been created using a
     ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
     ///    method.)

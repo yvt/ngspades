@@ -6,6 +6,8 @@
 //! Builder for sampler objects, and other relevant types.
 use std::ops;
 
+use crate::command::CmdQueue;
+use crate::handles::HandleImpl;
 use crate::{CmpFn, Object, Result};
 
 define_handle! {
@@ -13,7 +15,13 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Sampler
+    Sampler: SamplerTrait
+}
+
+/// Trait for sampler handles.
+pub trait SamplerTrait: HandleImpl<Sampler> {
+    /// Create a proxy object to use this sample from a specified queue.
+    fn make_proxy(&mut self, queue: &CmdQueue) -> Sampler;
 }
 
 /// Trait for building samplers.
@@ -36,6 +44,11 @@ define_handle! {
 ///     # }
 ///
 pub trait SamplerBuilder: Object {
+    /// Specify the queue associated with the created sampler.
+    ///
+    /// Defaults to the backend-specific value.
+    fn queue(&mut self, queue: &CmdQueue) -> &mut SamplerBuilder;
+
     /// Set the magnification filter.
     ///
     /// Defaults to `Filter::Linear`.
