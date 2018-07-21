@@ -225,17 +225,8 @@ pub enum ImageLayout {
     /// Layout for read-write render targets.
     RenderWrite,
 
-    /// Layout for reading or sampling from shaders. Corresponds to
-    /// [`ResourceUsage::Read`] and [`ResourceUsage::Sample`].
-    ///
-    /// [`ResourceUsage::Read`]: ResourceUsage::Read
-    /// [`ResourceUsage::Sample`]: ResourceUsage::Sample
-    ShaderRead,
-    /// Layout for reading and writing from shaders. Corresponds to
-    /// [`ResourceUsage::Write`].
-    ///
-    /// [`ResourceUsage::Write`]: ResourceUsage::Write
-    ShaderReadWrite,
+    /// Layout for accesses from shaders.
+    Shader,
 
     /// Layout for using images as source of the copy commanddefined by
     /// [`CopyCmdEncoder`].
