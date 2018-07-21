@@ -36,6 +36,10 @@ define_handle! {
 /// Trait for image handles.
 pub trait ImageTrait: HandleImpl<Image> {
     /// Create a proxy object to use this image from a specified queue.
+    ///
+    /// # Valid Usage
+    ///
+    ///  - The image must not an image view.
     fn make_proxy(&mut self, queue: &CmdQueue) -> Image;
 
     /// Create an `ImageViewBuilder` associated with this image.
