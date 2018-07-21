@@ -91,9 +91,10 @@ pub trait Device: Object {
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, Image, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::{Device, Image, Buffer, ArgPool, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
+    ///     #     arg_pool: &dyn ArgPool,
     ///     #     arg_table: &ArgTable,
     ///     #     arg_table_sig: &ArgTableSig,
     ///     #     images: &[&Image],
@@ -102,7 +103,7 @@ pub trait Device: Object {
     ///     device.update_arg_tables(
     ///         arg_table_sig,
     ///         &[(
-    ///             arg_table,
+    ///             (arg_pool, arg_table),
     ///             &[
     ///                 // The index range 0..2 of the argument 0
     ///                 (0, 0, [images[0], images[1]][..].into()),
@@ -117,16 +118,17 @@ pub trait Device: Object {
     fn update_arg_tables(
         &self,
         arg_table_sig: &arg::ArgTableSig,
-        updates: &[(&arg::ArgTable, &[ArgUpdateSet])],
+        updates: &[((&dyn arg::ArgPool, &arg::ArgTable), &[ArgUpdateSet])],
     ) -> Result<()>;
 
     /// Update a given argument table.
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, Image, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::{Device, Image, Buffer, ArgPool, ArgTable, ArgTableSig};
     ///     # fn test(
     ///     #     device: &Device,
+    ///     #     arg_pool: &ArgPool,
     ///     #     arg_table: &ArgTable,
     ///     #     arg_table_sig: &ArgTableSig,
     ///     #     images: &[&Image],
@@ -134,6 +136,7 @@ pub trait Device: Object {
     ///     # ) {
     ///     device.update_arg_table(
     ///         arg_table_sig,
+    ///         arg_pool,
     ///         arg_table,
     ///         &[
     ///             // The index range 0..2 of the argument 0
@@ -148,10 +151,11 @@ pub trait Device: Object {
     fn update_arg_table(
         &self,
         arg_table_sig: &arg::ArgTableSig,
+        arg_pool: &arg::ArgPool,
         arg_table: &arg::ArgTable,
         updates: &[ArgUpdateSet],
     ) -> Result<()> {
-        self.update_arg_tables(arg_table_sig, &[(arg_table, updates)])
+        self.update_arg_tables(arg_table_sig, &[((arg_pool, arg_table), updates)])
     }
 
     /// Create a autorelease pool and call the specified function inside it.

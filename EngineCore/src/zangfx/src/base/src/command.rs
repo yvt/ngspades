@@ -222,7 +222,11 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     fn set_scissors(&mut self, start_viewport: ViewportIndex, value: &[Rect2D<u32>]);
 
     /// Bind zero or more `ArgTable`s.
-    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&arg::ArgTable]);
+    fn bind_arg_table(
+        &mut self,
+        index: ArgTableIndex,
+        tables: &[(&dyn arg::ArgPool, &arg::ArgTable)],
+    );
 
     /// Bind zero or more vertex buffers.
     fn bind_vertex_buffers(
@@ -326,7 +330,11 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     fn bind_pipeline(&mut self, pipeline: &pipeline::ComputePipeline);
 
     /// Bind zero or more `ArgTable`s.
-    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&arg::ArgTable]);
+    fn bind_arg_table(
+        &mut self,
+        index: ArgTableIndex,
+        tables: &[(&dyn arg::ArgPool, &arg::ArgTable)],
+    );
 
     /// Provoke work in a compute pipeline.
     ///
