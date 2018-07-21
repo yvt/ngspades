@@ -110,10 +110,6 @@ pub trait BufferTrait: HandleImpl<Buffer> {
 /// [Image type]: ImageType
 /// [`supports_cube_array`]: DeviceLimits::supports_cube_array
 ///
-/// # Valid Usage
-///
-///  - No instance of `ImageBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
@@ -297,10 +293,6 @@ pub enum ImageAspect {
 
 /// Trait for building buffers.
 ///
-/// # Valid Usage
-///
-///  - No instance of `BufferBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
@@ -388,10 +380,6 @@ pub struct MemoryReq {
 }
 
 /// Trait for building image views.
-///
-/// # Valid Usage
-///
-///  - No instance of `ImageViewBuilder` may outlive the originating `Device`.
 ///
 /// # Examples
 ///

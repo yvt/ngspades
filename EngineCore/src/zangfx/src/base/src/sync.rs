@@ -29,10 +29,6 @@ define_handle! {
 
 /// Trait for building semaphores.
 ///
-/// # Valid Usage
-///
-///  - No instance of `SemaphoreBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;

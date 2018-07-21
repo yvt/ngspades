@@ -18,10 +18,6 @@ define_handle! {
 
 /// Trait for building shader libraries.
 ///
-/// # Valid Usage
-///
-///  - No instance of `LibraryBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;

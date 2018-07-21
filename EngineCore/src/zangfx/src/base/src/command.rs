@@ -18,10 +18,6 @@ use crate::{Object, Result};
 
 /// Trait for building command queue objects.
 ///
-/// # Valid Usage
-///
-///  - No instance of `CmdQueueBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
@@ -61,7 +57,6 @@ pub trait CmdQueueBuilder: Object {
 ///
 /// # Valid Usage
 ///
-///  - No instance of `CmdQueue` may outlive the originating `Device`.
 ///  - `CmdQueue` must not be dropped until the queue is idle. (i.e. There
 ///    exists no command buffer being executed)
 ///

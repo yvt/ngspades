@@ -29,10 +29,6 @@ define_handle! {
 
 /// Trait for building render passes.
 ///
-/// # Valid Usage
-///
-///  - No instance of `RenderPassBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
@@ -164,10 +160,6 @@ pub enum StoreOp {
 }
 
 /// Trait for building render target tables.
-///
-/// # Valid Usage
-///
-///  - No instance of `RenderTargetTableBuilder` may outlive the originating `Device`.
 ///
 /// # Examples
 ///

@@ -35,10 +35,6 @@ define_handle! {
 
 /// Trait for building compute pipelines.
 ///
-/// # Valid Usage
-///
-///  - No instance of `ComputePipelineBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::*;
@@ -74,10 +70,6 @@ pub trait ComputePipelineBuilder: Object {
 }
 
 /// Trait for building render pipelines.
-///
-/// # Valid Usage
-///
-///  - No instance of `RenderPipelineBuilder` may outlive the originating `Device`.
 ///
 /// # Examples
 ///

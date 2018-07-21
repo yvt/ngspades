@@ -11,10 +11,6 @@ use crate::{Object, Result};
 
 /// Trait for building dynamic heap objects.
 ///
-/// # Valid Usage
-///
-///  - No instance of `DynamicHeapBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
@@ -63,10 +59,6 @@ pub trait DynamicHeapBuilder: Object {
 ///  - Certain drivers and backends can optimize the operation of the
 ///    heap, for example, by utilizing Vulkan's `VK_KHR_dedicated_allocation`
 ///    extension.
-///
-/// # Valid Usage
-///
-///  - No instance of `DedicatedHeapBuilder` may outlive the originating `Device`.
 ///
 /// # Examples
 ///
@@ -118,11 +110,6 @@ pub trait DedicatedHeapBuilder: Object {
 /// Trait for heap objects.
 ///
 /// Resources bound to a heap internally keeps a reference to the heap.
-///
-/// # Valid Usage
-///
-///  - No instance of `Heap` may outlive the originating `Device`.
-///
 pub trait Heap: Object {
     /// Create a proxy object to use this sample object from a specified queue.
     fn make_proxy(&mut self, queue: &CmdQueue) -> Box<Heap>;

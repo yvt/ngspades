@@ -26,10 +26,6 @@ pub trait SamplerTrait: HandleImpl<Sampler> {
 
 /// Trait for building samplers.
 ///
-/// # Valid Usage
-///
-///  - No instance of `SamplerBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;

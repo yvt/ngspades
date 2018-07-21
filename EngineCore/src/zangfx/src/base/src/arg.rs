@@ -37,10 +37,6 @@ define_handle! {
 
 /// Trait for building argument table signature objects.
 ///
-/// # Valid Usage
-///
-///  - No instance of `ArgTableSigBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
@@ -134,10 +130,6 @@ impl ArgType {
 
 /// Trait for building root signature objects.
 ///
-/// # Valid Usage
-///
-///  - No instance of `RootSigBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
 ///     # use zangfx_base::*;
@@ -166,10 +158,6 @@ pub trait RootSigBuilder: Object {
 }
 
 /// Trait for building argument pool objects.
-///
-/// # Valid Usage
-///
-///  - No instance of `ArgPoolBuilder` may outlive the originating `Device`.
 ///
 /// # Examples
 ///
@@ -224,7 +212,6 @@ pub trait ArgPoolBuilder: Object {
 ///
 /// # Valid Usage
 ///
-///  - No instance of `ArgPool` may outlive the originating `Device`.
 ///  - When `ArgTable`s are destroyed upon the destruction or the reset
 ///    operation of the `ArgPool`, the valid usage of `destroy_tables` must be
 ///    followed.
