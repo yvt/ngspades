@@ -4,6 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for sampler objects, and other relevant types.
+//!
+//! Each device can have a limited number (which depends on the implementation;
+//! usually in the order of 10s–1000s) of unique samplers created on it.
+//! Samplers are never garbage-collected.
 use std::ops;
 
 use crate::command::CmdQueue;
@@ -15,13 +19,7 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Sampler: SamplerTrait
-}
-
-/// Trait for sampler handles.
-pub trait SamplerTrait: HandleImpl<Sampler> {
-    /// Create a proxy object to use this sample from a specified queue.
-    fn make_proxy(&mut self, queue: &CmdQueue) -> Sampler;
+    Sampler
 }
 
 /// Trait for building samplers.
@@ -40,11 +38,6 @@ pub trait SamplerTrait: HandleImpl<Sampler> {
 ///     # }
 ///
 pub trait SamplerBuilder: Object {
-    /// Specify the queue associated with the created sampler.
-    ///
-    /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueue) -> &mut SamplerBuilder;
-
     /// Set the magnification filter.
     ///
     /// Defaults to `Filter::Linear`.

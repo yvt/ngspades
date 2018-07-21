@@ -78,9 +78,6 @@ pub trait Device: Object {
     /// Create a `ComputePipelineBuilder` associated with this device.
     fn build_compute_pipeline(&self) -> Box<pipeline::ComputePipelineBuilder>;
 
-    /// Destroy a `Sampler` associated with this device.
-    fn destroy_sampler(&self, obj: &sampler::Sampler) -> Result<()>;
-
     /// Update given argument tables.
     ///
     /// # Examples
