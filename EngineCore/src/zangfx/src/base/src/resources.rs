@@ -258,9 +258,18 @@ pub enum ImageUsage {
     Sampled = 0b00000100,
     /// Enables uses of the image as a [storage image shader argument].
     ///
+    /// Note: The [`use_heap`] command ignores images that include this usage
+    /// flag.
+    ///
     /// [storage image shader argument]: crate::ArgType::StorageImage
+    /// [`use_heap`]: crate::CmdEncoder::use_heap
     Storage = 0b00001000,
     /// Enables uses of the image as a render target.
+    ///
+    /// Note: The [`use_heap`] command ignores images that include this usage
+    /// flag.
+    ///
+    /// [`use_heap`]: crate::CmdEncoder::use_heap
     Render = 0b00010000,
 
     /// Enables the creation of an image view with a different type (2D/3D/...).

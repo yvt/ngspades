@@ -5,6 +5,7 @@
 //
 //! Command queues and command buffers.
 use std::ops::Range;
+use ngsenumflags::BitFlags;
 
 use crate::common::Rect2D;
 use crate::formats::IndexFormat;
@@ -511,6 +512,13 @@ pub trait CmdEncoder: Object {
     ///
     /// [`Device::global_heap`]: crate::Device::global_heap
     /// [`DynamicHeapBuilder`]: crate::DynamicHeapBuilder
+    ///
+    /// This method ignores images having [`Render`] or [`Storage`] image usage
+    /// flags. Call [`use_resource`] instead to use such images.
+    ///
+    /// [`Render`]: crate::ImageUsage::Render
+    /// [`Storage`]: crate::ImageUsage::Storage
+    /// [`use_resource`]: CmdEncoder::use_resource
     fn use_heap(&mut self, heaps: &[&heap::Heap]);
 
     /// Wait on the specified fence and establish an inter-encoder execution
@@ -542,12 +550,32 @@ pub trait CmdEncoder: Object {
     );
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Describes how a resource will be used in a shader.
+#[derive(NgsEnumFlags, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u32)]
 pub enum ResourceUsage {
-    Read,
-    Write,
-    Sample,
+    /// Enables reading from the resource via arguments of the [`StorageImage`],
+    /// [`UniformBuffer`], or [`StorageBuffer`] types.
+    ///
+    /// [`StorageImage`]: crate::ArgType::StorageImage
+    /// [`UniformBuffer`]: crate::ArgType::UniformBuffer
+    /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
+    Read = 0b001,
+    /// Enables writing to the resource via arguments of the [`StorageImage`],
+    /// or [`StorageBuffer`] types.
+    ///
+    /// [`StorageImage`]: crate::ArgType::StorageImage
+    /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
+    Write = 0b010,
+    /// Enables texture sampling from the resource via arguments of the
+    /// [`SampledImage`] type.
+    ///
+    /// [`SampledImage`]: crate::ArgType::SampledImage
+    Sample = 0b100,
 }
+
+/// Zero or more flags describing how a resource will be used in a shader.
+pub type ResourceUsageFlags = BitFlags<ResourceUsage>;
 
 /// Specifies the layout of an image data in a buffer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
