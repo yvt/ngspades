@@ -267,7 +267,7 @@ pub enum ImageUsage {
     PartialView = 0b10000000,
 
     /// This flag serves as a hint that the backend should trade off the use of
-    /// the generic image layout in memory for fewer image transitions.
+    /// the generic image layout in memory for fewer image layout transitions.
     Mutable = 0b100000000,
 
     /// This flag serves as a hint that the backend should track the state of
