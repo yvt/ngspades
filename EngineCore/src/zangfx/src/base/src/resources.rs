@@ -7,10 +7,10 @@
 use ngsenumflags::BitFlags;
 use std::ops;
 
+use crate::command::{CmdQueue, ResourceUsage};
 use crate::formats::ImageFormat;
-use crate::sampler::Sampler;
 use crate::handles::HandleImpl;
-use crate::command::CmdQueue;
+use crate::sampler::Sampler;
 use crate::{DeviceSize, Object, Result};
 
 define_handle! {
@@ -486,15 +486,18 @@ impl<'a> From<&'a Buffer> for ResourceRef<'a> {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::{Image, ArgSlice};
+///     # use zangfx_base::{Image, ArgSlice, ResourceUsage};
 ///     fn test(image1: Image, image2: Image) {
-///         let _: ArgSlice = [&image1, &image2][..].into();
+///         let _: ArgSlice = [
+///             (ResourceUsage::Sample, &image1),
+///             (ResourceUsage::Sample, &image2),
+///         ][..].into();
 ///     }
 ///
 #[derive(Debug, Clone, Copy)]
 pub enum ArgSlice<'a> {
     /// Images.
-    Image(&'a [&'a Image]),
+    Image(&'a [(ResourceUsage, &'a Image)]),
     /// Buffers and their subranges.
     ///
     /// - For a uniform buffer, the starting offset of each range must be
@@ -517,8 +520,8 @@ impl<'a> ArgSlice<'a> {
     }
 }
 
-impl<'a> From<&'a [&'a Image]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a Image]) -> Self {
+impl<'a> From<&'a [(ResourceUsage, &'a Image)]> for ArgSlice<'a> {
+    fn from(x: &'a [(ResourceUsage, &'a Image)]) -> Self {
         ArgSlice::Image(x)
     }
 }
