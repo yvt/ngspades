@@ -10,8 +10,6 @@
 //! Samplers are never garbage-collected.
 use std::ops;
 
-use crate::command::CmdQueue;
-use crate::handles::HandleImpl;
 use crate::{CmpFn, Object, Result};
 
 define_handle! {
