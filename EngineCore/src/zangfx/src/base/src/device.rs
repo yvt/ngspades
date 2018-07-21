@@ -78,12 +78,6 @@ pub trait Device: Object {
     /// Create a `ComputePipelineBuilder` associated with this device.
     fn build_compute_pipeline(&self) -> Box<pipeline::ComputePipelineBuilder>;
 
-    /// Destroy an `Image` associated with this device.
-    fn destroy_image(&self, obj: &resources::Image) -> Result<()>;
-
-    /// Destroy a `Buffer` associated with this device.
-    fn destroy_buffer(&self, obj: &resources::Buffer) -> Result<()>;
-
     /// Destroy a `Sampler` associated with this device.
     fn destroy_sampler(&self, obj: &sampler::Sampler) -> Result<()>;
 
