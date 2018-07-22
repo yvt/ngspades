@@ -156,10 +156,10 @@ pub trait Device: Object {
 
     /// Create a autorelease pool and call the specified function inside it.
     ///
-    /// On the macOS platform, the lifetimes of most Cocoa objects are managed by
-    /// reference counting. In some cases, the lifetimes of objects are temporarily
-    /// extended by inserting references to them into the current autorelease pool
-    /// associated with each thread.
+    /// On the macOS platform, the lifetimes of most Objective-C objects are
+    /// managed by reference counting. In some cases, the lifetimes of objects
+    /// are temporarily extended by inserting references to them into the
+    /// current autorelease pool associated with each thread.
     ///
     /// In standard macOS applications, a default autorelease pool is automatically
     /// provided and it is drained at every cycle of the event loop. However,
@@ -312,9 +312,7 @@ pub type ArgUpdateSet<'a> = (ArgIndex, ArgArrayIndex, resources::ArgSlice<'a>);
 
 /// An autorelease pool.
 ///
-/// See [`Backend::autorelease_pool_scope`] for more.
-///
-/// [`Backend::autorelease_pool_scope`]: trait.Backend.html#method.autorelease_pool_scope
+/// See [`Device::autorelease_pool_scope_core`] for more.
 pub trait AutoreleasePool {
     fn drain(&mut self);
 }

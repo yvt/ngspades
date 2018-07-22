@@ -19,13 +19,23 @@
 //!  - *Boxed handles* are `Arc` values each of which represents a reference to
 //!    a single heap-allocated object implementing a particular trait.
 //!
+//!    Trait types which boxed handles are based on provide an interface to
+//!    query their concrete types and additional traits implemented by them.
+//!    This functionality is provided by the `query_interface` crate.
+//!
+//!    Note: Boxed handles are previously referred to as just *objects*.
+//!
 //!  - *Fat handles* store object to the handles themselves. The implementor
 //!    must implement `Clone` on the stored objects to emulate the cloning
 //!    semantics of `Arc`.
 //!
-//! Fat handles encapsulate implementation-dependent objects using
-//! [`SmallBox`]`<_, [usize; 3]>`. Therefore, the contained data must be
-//! sufficiently small to fit `[usize; 3]`.
+//!    Fat handles encapsulate implementation-dependent objects using
+//!    [`SmallBox`]`<_, [usize; 3]>`. Therefore, the contained data must be
+//!    sufficiently small to fit `[usize; 3]`.
+//!
+//!    `HandleImpl` is a trait implemented by all fat handle implementations and
+//!    has `AsRef<Any>` in its trait bounds. You can use this to downcast a
+//!    handle to a known concrete type.
 //!
 //! [`SmallBox`]: ../../zangfx_common/struct.SmallBox.html
 //!
