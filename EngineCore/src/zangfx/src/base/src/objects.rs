@@ -5,6 +5,7 @@
 //
 //! Object type.
 use query_interface as qi;
+use query_interface::mopo;
 
 /// Base interface of all ZanGFX objects.
 ///
@@ -37,7 +38,7 @@ use query_interface as qi;
 ///     # }
 ///
 pub trait Object: qi::Object + Sync + Send {}
-mopo!(Object);
+mopo!(dyn Object);
 
 /// Generates a boiler-plate code for defining a ZanGFX object type.
 ///
@@ -49,7 +50,7 @@ macro_rules! zangfx_impl_object {
 
         // For a mysterious reason, `interfaces ! { $type : ... }` does not work
         // since `query_interface` 0.3.4
-        interfaces! { @imp () $type: $crate::Object $(, $iface)* }
+        interfaces! { @imp () $type: dyn $crate::Object $(, $iface)* }
     }
 }
 
@@ -59,7 +60,7 @@ macro_rules! define_object {
         mopo! { $t }
         impl $crate::debug::Label for $t {
             fn label(&mut self, label: &str) -> &mut Self {
-                if let Some(x) = self.query_mut::<$crate::debug::SetLabel>() {
+                if let Some(x) = self.query_mut::<dyn $crate::debug::SetLabel>() {
                     x.set_label(label);
                 }
                 self

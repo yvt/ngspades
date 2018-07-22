@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Provides an information regarding a device's capabilities and limits.
-use crate::Object;
-use ngsenumflags::BitFlags;
+use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 
+use crate::Object;
 use crate::formats::{ImageFormat, VertexFormat};
 use crate::{DeviceSize, MemoryRegionIndex};
 

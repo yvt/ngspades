@@ -6,25 +6,20 @@
 //! This crate is a part of [ZanGFX](../zangfx/index.html) and provides the base
 //! interface for backend implementations.
 #![feature(unsize)]
-#![feature(use_extern_macros)]
 #![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
 
-#[macro_use]
-extern crate ngsenumflags;
-#[macro_use]
-extern crate ngsenumflags_derive;
-
-extern crate itervalues;
-#[macro_use]
-extern crate itervalues_derive;
-
+// Macros provided by `query_interface` are not ready for Rust 2018 yet.
+// `interfaces!` assumes that `interfaces!` is imported into the current
+// context (where the macro is used).
+#[allow(rust_2018_idioms)]
 #[macro_use]
 extern crate query_interface;
 
 // Rexport macros from `query_interface`
 pub use query_interface::{interfaces, mopo, vtable_for};
 
-extern crate zangfx_common as common;
+pub use zangfx_common as common;
 
 // `handles` defines a macro
 #[macro_use]
@@ -117,31 +112,31 @@ pub struct Viewport {
     pub max_depth: f32,
 }
 
-define_object! { ArgTableSigBuilder }
-define_object! { ArgSig }
-define_object! { RootSigBuilder }
-define_object! { ArgPoolBuilder }
-define_object! { ArgPool }
-define_object! { CmdQueueBuilder }
-define_object! { CmdQueue }
-define_object! { CmdBuffer }
-define_object! { RenderCmdEncoder }
-define_object! { ComputeCmdEncoder }
-define_object! { CopyCmdEncoder }
-define_object! { CmdEncoder }
-define_object! { Device }
-define_object! { DynamicHeapBuilder }
-define_object! { DedicatedHeapBuilder }
-define_object! { Heap }
-define_object! { RenderPassBuilder }
-define_object! { RenderPassTarget }
-define_object! { RenderTargetTableBuilder }
-define_object! { ComputePipelineBuilder }
-define_object! { RenderPipelineBuilder }
-define_object! { ImageBuilder }
-define_object! { BufferBuilder }
-define_object! { SamplerBuilder }
-define_object! { LibraryBuilder }
+define_object! { dyn ArgTableSigBuilder }
+define_object! { dyn ArgSig }
+define_object! { dyn RootSigBuilder }
+define_object! { dyn ArgPoolBuilder }
+define_object! { dyn ArgPool }
+define_object! { dyn CmdQueueBuilder }
+define_object! { dyn CmdQueue }
+define_object! { dyn CmdBuffer }
+define_object! { dyn RenderCmdEncoder }
+define_object! { dyn ComputeCmdEncoder }
+define_object! { dyn CopyCmdEncoder }
+define_object! { dyn CmdEncoder }
+define_object! { dyn Device }
+define_object! { dyn DynamicHeapBuilder }
+define_object! { dyn DedicatedHeapBuilder }
+define_object! { dyn Heap }
+define_object! { dyn RenderPassBuilder }
+define_object! { dyn RenderPassTarget }
+define_object! { dyn RenderTargetTableBuilder }
+define_object! { dyn ComputePipelineBuilder }
+define_object! { dyn RenderPipelineBuilder }
+define_object! { dyn ImageBuilder }
+define_object! { dyn BufferBuilder }
+define_object! { dyn SamplerBuilder }
+define_object! { dyn LibraryBuilder }
 
 /// The `zangfx_base` prelude.
 pub mod prelude {
@@ -166,4 +161,4 @@ pub use crate::{
 };
 
 #[doc(no_inline)]
-pub use crate::common::Rect2D;
+pub use zangfx_common::Rect2D;

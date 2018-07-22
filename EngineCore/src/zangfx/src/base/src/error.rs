@@ -53,7 +53,7 @@ impl ErrorKind {
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,
-    error: Option<Box<StdError + Send + Sync>>,
+    error: Option<Box<dyn StdError + Send + Sync>>,
 }
 
 impl Error {
@@ -62,7 +62,7 @@ impl Error {
     }
     pub fn with_detail<E>(kind: ErrorKind, error: E) -> Self
     where
-        E: Into<Box<StdError + Send + Sync>>,
+        E: Into<Box<dyn StdError + Send + Sync>>,
     {
         Self {
             kind,
@@ -70,12 +70,12 @@ impl Error {
         }
     }
 
-    pub fn get_ref(&self) -> Option<&(StdError + Send + Sync + 'static)> {
+    pub fn get_ref(&self) -> Option<&(dyn StdError + Send + Sync + 'static)> {
         use std::ops::Deref;
         self.error.as_ref().map(Deref::deref)
     }
 
-    pub fn get_mut(&mut self) -> Option<&mut (StdError + Send + Sync + 'static)> {
+    pub fn get_mut(&mut self) -> Option<&mut (dyn StdError + Send + Sync + 'static)> {
         use std::ops::DerefMut;
         self.error.as_mut().map(DerefMut::deref_mut)
     }
@@ -104,7 +104,7 @@ impl StdError for Error {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         self.error.as_ref().and_then(|x| x.cause())
     }
 }

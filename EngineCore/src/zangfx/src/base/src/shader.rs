@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for shader library objects, and other relevant types.
-use ngsenumflags::BitFlags;
+use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 
 use crate::{Object, Result};
 

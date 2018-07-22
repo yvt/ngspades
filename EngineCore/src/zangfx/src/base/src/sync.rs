@@ -57,8 +57,9 @@ pub trait SemaphoreBuilder: Object {
 pub struct NotSupportedSemaphoreBuilder;
 
 zangfx_impl_object! {
-    NotSupportedSemaphoreBuilder: SemaphoreBuilder,
-    ::std::fmt::Debug
+    NotSupportedSemaphoreBuilder:
+        dyn SemaphoreBuilder,
+        dyn (::std::fmt::Debug)
 }
 
 impl SemaphoreBuilder for NotSupportedSemaphoreBuilder {

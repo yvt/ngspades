@@ -14,7 +14,7 @@
 //!     - Depth/stencil operations are undefined on all non-depth/stencil formats.
 //!     - Color attachment operations are undeifned on all depth/stencil formats.
 //!
-use itervalues::IterValues;
+use {itervalues::IterValues, itervalues_derive::IterValues};
 use lazy_static::lazy_static;
 use std::ops;
 

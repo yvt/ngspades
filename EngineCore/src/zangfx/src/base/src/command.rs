@@ -4,11 +4,11 @@
 // This source code is a part of Nightingales.
 //
 //! Command queues and command buffers.
-use ngsenumflags::BitFlags;
+use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 use std::ops::Range;
 use std::sync::Arc;
 
-use crate::common::Rect2D;
+use zangfx_common::Rect2D;
 use crate::formats::IndexFormat;
 use crate::resources::{BufferRef, ImageLayout, ImageRef, ImageSubRange, ResourceRef};
 use crate::{arg, heap, pass, pipeline, resources, sync};
@@ -101,7 +101,7 @@ pub trait CmdBuffer: Object {
     fn encode_copy(&mut self) -> &mut dyn CopyCmdEncoder;
 
     /// Register a completion handler. Must not be called after calling `commit`.
-    fn on_complete(&mut self, cb: Box<FnMut(Result<()>) + Sync + Send>);
+    fn on_complete(&mut self, cb: Box<dyn FnMut(Result<()>) + Sync + Send>);
 
     /// Wait on a given semaphore before the execution of the command buffer.
     ///

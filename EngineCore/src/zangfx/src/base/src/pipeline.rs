@@ -7,7 +7,7 @@
 use std::ops::Range;
 
 use crate::arg::RootSigRef;
-use crate::common::Rect2D;
+use zangfx_common::Rect2D;
 use crate::formats::VertexFormat;
 use crate::pass::RenderPassRef;
 use crate::shader::LibraryRef;

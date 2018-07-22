@@ -34,7 +34,7 @@
 //!    sufficiently small to fit `[usize; 3]`.
 //!
 //!    `HandleImpl` is a trait implemented by all fat handle implementations and
-//!    has `AsRef<Any>` in its trait bounds. You can use this to downcast a
+//!    has `AsRef<dyn Any>` in its trait bounds. You can use this to downcast a
 //!    handle to a known concrete type.
 //!
 //! [`SmallBox`]: ../../zangfx_common/struct.SmallBox.html
@@ -78,7 +78,7 @@ use std::fmt;
 /// [`zangfx_impl_handle`](zangfx_impl_handle) macro.
 ///
 /// See [the module-level documentation](index.html) for the usage.
-pub trait CloneHandle<C>: AsRef<Any> + AsMut<Any> + fmt::Debug + Send + Sync + Any {
+pub trait CloneHandle<C>: AsRef<dyn Any> + AsMut<dyn Any> + fmt::Debug + Send + Sync + Any {
     fn clone_handle(&self) -> C;
 }
 
@@ -91,13 +91,13 @@ macro_rules! define_handle {
         $(#[$smeta])*
         #[derive(Debug)]
         pub struct $name {
-            inner: $crate::common::SmallBox<$trait, [usize; 3]>,
+            inner: $crate::common::SmallBox<dyn $trait, [usize; 3]>,
         }
 
         impl $name {
             pub fn new<T>(x: T) -> Self
             where
-                T: ::std::marker::Unsize<$trait>,
+                T: ::std::marker::Unsize<dyn $trait>,
             {
                 Self {
                     inner: unsafe { $crate::common::SmallBox::new(x) },
@@ -128,7 +128,7 @@ macro_rules! define_handle {
 
         impl<T> From<T> for $name
         where
-            T: ::std::marker::Unsize<$trait>,
+            T: ::std::marker::Unsize<dyn $trait>,
         {
             fn from(x: T) -> Self {
                 Self::new(x)
@@ -142,7 +142,7 @@ macro_rules! define_handle {
         }
 
         impl ::std::ops::Deref for $name {
-            type Target = $trait;
+            type Target = dyn $trait;
 
             fn deref(&self) -> &Self::Target {
                 &*self.inner
