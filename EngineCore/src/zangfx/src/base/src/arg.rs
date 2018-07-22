@@ -7,7 +7,7 @@
 //! root signature objects, and other relevant types.
 use std::sync::Arc;
 
-use crate::command::CmdQueue;
+use crate::command::CmdQueueRef;
 use crate::resources::ImageAspect;
 use crate::shader::ShaderStageFlags;
 use crate::{ArgArrayIndex, ArgIndex, ArgTableIndex};
@@ -182,7 +182,7 @@ pub trait ArgPoolBuilder: Object {
     /// Specify the queue associated with the created argument pool.
     ///
     /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueue) -> &mut dyn ArgPoolBuilder;
+    fn queue(&mut self, queue: &CmdQueueRef) -> &mut dyn ArgPoolBuilder;
 
     /// Increase the capacity of the created argument pool to contain additional
     /// `count` argument tables of the signature `table`.
@@ -234,7 +234,7 @@ pub type ArgPoolRef = Arc<dyn ArgPool>;
 ///
 pub trait ArgPool: Object {
     /// Create a proxy object to use this argument pool from a specified queue.
-    fn make_proxy(&self, queue: &CmdQueue) -> ArgPool;
+    fn make_proxy(&self, queue: &CmdQueueRef) -> ArgPoolRef;
 
     /// Allocate zero or more `ArgTableRef`s from the pool.
     ///

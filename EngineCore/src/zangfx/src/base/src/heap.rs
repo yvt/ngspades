@@ -122,7 +122,7 @@ pub type HeapRef = Arc<dyn Heap>;
 /// Resources bound to a heap internally keeps a reference to the heap.
 pub trait Heap: Object {
     /// Create a proxy object to use this sample object from a specified queue.
-    fn make_proxy(&self, queue: &CmdQueueRef) -> Heap;
+    fn make_proxy(&self, queue: &CmdQueueRef) -> HeapRef;
 
     /// Allocate a memory region for a given resource.
     ///
