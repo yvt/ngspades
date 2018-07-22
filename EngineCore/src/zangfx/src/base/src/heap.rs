@@ -4,17 +4,21 @@
 // This source code is a part of Nightingales.
 //
 //! Heap object.
+use std::sync::Arc;
+
 use crate::resources;
 use crate::command::CmdQueue;
 use crate::{DeviceSize, MemoryType};
 use crate::{Object, Result};
 
+/// The builder for dynamic heap objects.
+pub type DynamicHeapBuilder = Box<dyn DynamicHeapBuilderTrait>;
+
 /// Trait for building dynamic heap objects.
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::heap::DynamicHeapBuilder;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device) {
 ///     let heap = device.build_dynamic_heap()
 ///         .size(1024 * 1024)
@@ -23,21 +27,21 @@ use crate::{Object, Result};
 ///         .expect("Failed to create a heap.");
 ///     # }
 ///
-pub trait DynamicHeapBuilder: Object {
+pub trait DynamicHeapBuilderTrait: Object {
     /// Specify the queue associated with the created heap.
     ///
     /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueue) -> &mut DynamicHeapBuilder;
+    fn queue(&mut self, queue: &CmdQueue) -> &mut dyn DynamicHeapBuilderTrait;
 
     /// Set the heap size to `v` bytes.
     ///
     /// This property is mandatory.
-    fn size(&mut self, v: DeviceSize) -> &mut DynamicHeapBuilder;
+    fn size(&mut self, v: DeviceSize) -> &mut dyn DynamicHeapBuilderTrait;
 
     /// Set the memory type index.
     ///
     /// This property is mandatory.
-    fn memory_type(&mut self, v: MemoryType) -> &mut DynamicHeapBuilder;
+    fn memory_type(&mut self, v: MemoryType) -> &mut dyn DynamicHeapBuilderTrait;
 
     /// Build a `Heap`.
     ///
@@ -47,8 +51,11 @@ pub trait DynamicHeapBuilder: Object {
     ///   is called.
     /// - The final heap size must not be zero.
     ///
-    fn build(&mut self) -> Result<Box<Heap>>;
+    fn build(&mut self) -> Result<Heap>;
 }
+
+/// THe builder for dedicated heap objects.;
+pub type DedicatedHeapBuilder = Box<dyn DedicatedHeapBuilderTrait>;
 
 /// Trait for building dedicated heap objects.
 ///
@@ -62,7 +69,7 @@ pub trait DynamicHeapBuilder: Object {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::{Device, DedicatedHeapBuilder, Image};
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device, image: Image) {
 ///     let mut builder = device.build_dedicated_heap();
 ///     builder.memory_type(0);
@@ -72,16 +79,16 @@ pub trait DynamicHeapBuilder: Object {
 ///     let heap = builder.build().expect("Failed to create a heap.");
 ///     # }
 ///
-pub trait DedicatedHeapBuilder: Object {
+pub trait DedicatedHeapBuilderTrait: Object {
     /// Specify the queue associated with the created heap.
     ///
     /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueue) -> &mut DedicatedHeapBuilder;
+    fn queue(&mut self, queue: &CmdQueue) -> &mut dyn DedicatedHeapBuilderTrait;
 
     /// Set the memory type index.
     ///
     /// This property is mandatory.
-    fn memory_type(&mut self, v: MemoryType) -> &mut DedicatedHeapBuilder;
+    fn memory_type(&mut self, v: MemoryType) -> &mut dyn DedicatedHeapBuilderTrait;
 
     /// Add a given resource to the dedicated allocation list.
     ///
@@ -104,15 +111,18 @@ pub trait DedicatedHeapBuilder: Object {
     ///   specified in the Valid Usage of `Heap::bind` (except for the one about
     ///   the heap type).
     ///
-    fn build(&mut self) -> Result<Box<Heap>>;
+    fn build(&mut self) -> Result<Heap>;
 }
+
+/// A boxed handle representing a heap object.
+pub type Heap = Arc<dyn HeapTrait>;
 
 /// Trait for heap objects.
 ///
 /// Resources bound to a heap internally keeps a reference to the heap.
-pub trait Heap: Object {
+pub trait HeapTrait: Object {
     /// Create a proxy object to use this sample object from a specified queue.
-    fn make_proxy(&mut self, queue: &CmdQueue) -> Box<Heap>;
+    fn make_proxy(&self, queue: &CmdQueue) -> Heap;
 
     /// Allocate a memory region for a given resource.
     ///
@@ -134,7 +144,7 @@ pub trait Heap: Object {
     ///    created.
     ///  - `obj` must not be a proxy object.
     ///  - The heap must be a dynamic heap, i.e. have been created using a
-    ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
+    ///    `DynamicHeapBuilderTrait`. (Dedicated heaps are not supported by this
     ///    method.)
     ///  - If `obj` refers to an image, this heap must not be associated with a
     ///    host-visible memory type.
@@ -151,7 +161,7 @@ pub trait Heap: Object {
     ///
     ///  - `obj` must be bound to this heap.
     ///  - The heap must be a dynamic heap, i.e. have been created using a
-    ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
+    ///    `DynamicHeapBuilderTrait`. (Dedicated heaps are not supported by this
     ///    method.)
     ///
     fn make_aliasable(&self, obj: resources::ResourceRef) -> Result<()>;

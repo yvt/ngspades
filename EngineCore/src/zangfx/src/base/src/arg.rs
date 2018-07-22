@@ -5,6 +5,8 @@
 //
 //! Builder for argument table objects, argument table signature objects, and
 //! root signature objects, and other relevant types.
+use std::sync::Arc;
+
 use crate::command::CmdQueue;
 use crate::resources::ImageAspect;
 use crate::shader::ShaderStageFlags;
@@ -35,13 +37,14 @@ define_handle! {
     RootSig
 }
 
+/// A builder object for argument table signature objects.
+pub type ArgTableSigBuilder = Box<dyn ArgTableSigBuilderTrait>;
+
 /// Trait for building argument table signature objects.
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::arg::{ArgTableSigBuilder, ArgType};
-///     # use zangfx_base::shader::ShaderStage;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device) {
 ///     let mut builder = device.build_arg_table_sig();
 ///     builder.arg(0, ArgType::SampledImage)
@@ -55,10 +58,10 @@ define_handle! {
 ///         .expect("Failed to create an argument table signature.");
 ///     # }
 ///
-pub trait ArgTableSigBuilder: Object {
-    /// Define an argument. Use the returned `ArgSig` to specify
+pub trait ArgTableSigBuilderTrait: Object {
+    /// Define an argument. Use the returned `dyn ArgSigTrait` to specify
     /// additional properties of it.
-    fn arg(&mut self, index: ArgIndex, ty: ArgType) -> &mut ArgSig;
+    fn arg(&mut self, index: ArgIndex, ty: ArgType) -> &mut dyn ArgSigTrait;
 
     /// Build an `ArgTableSig`.
     ///
@@ -70,21 +73,21 @@ pub trait ArgTableSigBuilder: Object {
 }
 
 /// Trait for setting properties of an argument in an argument table signature.
-pub trait ArgSig: Object {
+pub trait ArgSigTrait: Object {
     /// Set the number of elements. Must be non-zero.
     ///
     /// Defaults to `1`.
-    fn set_len(&mut self, x: ArgArrayIndex) -> &mut ArgSig;
+    fn set_len(&mut self, x: ArgArrayIndex) -> &mut ArgSigTrait;
 
     /// Set the set of shader stages from which this argument is used.
     ///
     /// Defaults to all shader stages supported by the backend.
-    fn set_stages(&mut self, x: ShaderStageFlags) -> &mut ArgSig;
+    fn set_stages(&mut self, x: ShaderStageFlags) -> &mut ArgSigTrait;
 
     /// Set the image aspect.
     ///
     /// Defaults to `Color`. Must be `Color` or `Depth`.
-    fn set_image_aspect(&mut self, _: ImageAspect) -> &mut ArgSig;
+    fn set_image_aspect(&mut self, _: ImageAspect) -> &mut ArgSigTrait;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -128,6 +131,9 @@ impl ArgType {
     }
 }
 
+/// A builder object for root signature objects.
+pub type RootSigBuilder = Box<dyn RootSigBuilderTrait>;
+
 /// Trait for building root signature objects.
 ///
 /// # Examples
@@ -140,9 +146,9 @@ impl ArgType {
 ///         .expect("Failed to create a root signature.");
 ///     # }
 ///
-pub trait RootSigBuilder: Object {
+pub trait RootSigBuilderTrait: Object {
     /// Set the argument table signature at the specified location.
-    fn arg_table(&mut self, index: ArgTableIndex, x: &ArgTableSig) -> &mut RootSigBuilder;
+    fn arg_table(&mut self, index: ArgTableIndex, x: &ArgTableSig) -> &mut dyn RootSigBuilderTrait;
 
     /// Build an `RootSig`.
     ///
@@ -157,6 +163,9 @@ pub trait RootSigBuilder: Object {
     fn build(&mut self) -> Result<RootSig>;
 }
 
+/// A builder object for argument pool objects.
+pub type ArgPoolBuilder = Box<dyn ArgPoolBuilderTrait>;
+
 /// Trait for building argument pool objects.
 ///
 /// # Examples
@@ -169,43 +178,46 @@ pub trait RootSigBuilder: Object {
 ///         .expect("Failed to create an argument pool.");
 ///     # }
 ///
-pub trait ArgPoolBuilder: Object {
+pub trait ArgPoolBuilderTrait: Object {
     /// Specify the queue associated with the created argument pool.
     ///
     /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueue) -> &mut ArgPoolBuilder;
+    fn queue(&mut self, queue: &CmdQueue) -> &mut ArgPoolBuilderTrait;
 
     /// Increase the capacity of the created argument pool to contain additional
     /// `count` argument tables of the signature `table`.
-    fn reserve_table_sig(&mut self, count: usize, table: &ArgTableSig) -> &mut ArgPoolBuilder;
+    fn reserve_table_sig(&mut self, count: usize, table: &ArgTableSig) -> &mut ArgPoolBuilderTrait;
 
     /// Increase the capacity of the created argument pool to contain additional
     /// `count` arguments of the type `ty`.
-    fn reserve_arg(&mut self, count: usize, ty: ArgType) -> &mut ArgPoolBuilder;
+    fn reserve_arg(&mut self, count: usize, ty: ArgType) -> &mut ArgPoolBuilderTrait;
 
     /// Increase the capacity of the created argument pool to contain additional
     /// `count` argument tables. Does not allocate space for their contents,
     /// which must be done by `reserve_arg`.
-    fn reserve_table(&mut self, count: usize) -> &mut ArgPoolBuilder;
+    fn reserve_table(&mut self, count: usize) -> &mut ArgPoolBuilderTrait;
 
-    /// Enable [`ArgPool::destroy_tables`].
+    /// Enable [`ArgPoolTrait::destroy_tables`].
     ///
-    /// [`ArgPool::destroy_tables`]: ArgPool::destroy_tables
-    fn enable_destroy_tables(&mut self) -> &mut ArgPoolBuilder;
+    /// [`ArgPoolTrait::destroy_tables`]: ArgPoolTrait::destroy_tables
+    fn enable_destroy_tables(&mut self) -> &mut ArgPoolBuilderTrait;
 
-    /// Build an `ArgPool`.
+    /// Build an `ArgPoolTrait`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<Box<ArgPool>>;
+    fn build(&mut self) -> Result<ArgPool>;
 }
+
+/// An argument pool object.
+pub type ArgPool = Arc<dyn ArgPoolTrait>;
 
 /// Trait for argument pool objects.
 ///
 /// The lifetime of the underlying pool object is associated with that of
-/// `ArgPool`. Drop the `ArgPool` to destroy the associated argument pool object.
+/// `ArgPoolTrait`. Drop the `ArgPoolTrait` to destroy the associated argument pool object.
 ///
 /// All argument tables allocated from a pool are implictly destroyed when
 /// the pool is destroyed or resetted.
@@ -213,12 +225,12 @@ pub trait ArgPoolBuilder: Object {
 /// # Valid Usage
 ///
 ///  - When `ArgTable`s are destroyed upon the destruction or the reset
-///    operation of the `ArgPool`, the valid usage of `destroy_tables` must be
+///    operation of the `ArgPoolTrait`, the valid usage of `destroy_tables` must be
 ///    followed.
 ///
-pub trait ArgPool: Object {
+pub trait ArgPoolTrait: Object {
     /// Create a proxy object to use this argument pool from a specified queue.
-    fn make_proxy(&mut self, queue: &CmdQueue) -> ArgPool;
+    fn make_proxy(&self, queue: &CmdQueue) -> ArgPoolTrait;
 
     /// Allocate zero or more `ArgTable`s from the pool.
     ///
@@ -245,9 +257,9 @@ pub trait ArgPool: Object {
     ///  - All commands referring to any of the specified `ArgTable`s must have
     ///    their execution completed at the point of the call to this method.
     ///  - `destroy_tables` must be enabled on this pool via
-    ///     [`ArgPoolBuilder::enable_destroy_tables`].
+    ///     [`ArgPoolBuilderTrait::enable_destroy_tables`].
     ///
-    /// [`ArgPoolBuilder::enable_destroy_tables`]: ArgPoolBuilder::enable_destroy_tables
+    /// [`ArgPoolBuilderTrait::enable_destroy_tables`]: ArgPoolBuilderTrait::enable_destroy_tables
     ///
     fn destroy_tables(&self, tables: &[&ArgTable]) -> Result<()>;
 
@@ -256,6 +268,6 @@ pub trait ArgPool: Object {
     /// # Valid Usage
     ///
     /// See `destroy_tables`, with the exception that enabling `destroy_tables`
-    /// via `ArgPoolBuilder` is not required for this method.
+    /// via `ArgPoolBuilderTrait` is not required for this method.
     fn reset(&self) -> Result<()>;
 }

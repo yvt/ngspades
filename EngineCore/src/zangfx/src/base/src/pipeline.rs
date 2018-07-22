@@ -33,6 +33,9 @@ define_handle! {
     ComputePipeline
 }
 
+/// The builder object for compute pipelines.
+pub type ComputePipelineBuilder = Box<dyn ComputePipelineBuilderTrait>;
+
 /// Trait for building compute pipelines.
 ///
 /// # Examples
@@ -45,7 +48,7 @@ define_handle! {
 ///         .expect("Failed to create a pipeline.");
 ///     # }
 ///
-pub trait ComputePipelineBuilder: Object {
+pub trait ComputePipelineBuilderTrait: Object {
     /// Set the compute shader.
     ///
     /// Mandatory.
@@ -53,12 +56,12 @@ pub trait ComputePipelineBuilder: Object {
         &mut self,
         library: &Library,
         entry_point: &str,
-    ) -> &mut ComputePipelineBuilder;
+    ) -> &mut dyn ComputePipelineBuilderTrait;
 
     /// Set the root signature.
     ///
     /// Mandatory.
-    fn root_sig(&mut self, v: &RootSig) -> &mut ComputePipelineBuilder;
+    fn root_sig(&mut self, v: &RootSig) -> &mut dyn ComputePipelineBuilderTrait;
 
     /// Build an `ComputePipeline`.
     ///
@@ -68,6 +71,9 @@ pub trait ComputePipelineBuilder: Object {
     /// is called.
     fn build(&mut self) -> Result<ComputePipeline>;
 }
+
+/// The builder object for render pipelines.
+pub type RenderPipelineBuilder = Box<dyn RenderPipelineBuilderTrait>;
 
 /// Trait for building render pipelines.
 ///
@@ -103,12 +109,15 @@ pub trait ComputePipelineBuilder: Object {
 ///         .expect("Failed to create a pipeline.");
 ///     # }
 ///
-pub trait RenderPipelineBuilder: Object {
+pub trait RenderPipelineBuilderTrait: Object {
     /// Set the vertex shader.
     ///
     /// Mandatory.
-    fn vertex_shader(&mut self, library: &Library, entry_point: &str)
-        -> &mut RenderPipelineBuilder;
+    fn vertex_shader(
+        &mut self,
+        library: &Library,
+        entry_point: &str,
+    ) -> &mut dyn RenderPipelineBuilderTrait;
 
     /// Set the fragment shader.
     ///
@@ -117,17 +126,21 @@ pub trait RenderPipelineBuilder: Object {
         &mut self,
         library: &Library,
         entry_point: &str,
-    ) -> &mut RenderPipelineBuilder;
+    ) -> &mut dyn RenderPipelineBuilderTrait;
 
     /// Set the root signature.
     ///
     /// Mandatory.
-    fn root_sig(&mut self, v: &RootSig) -> &mut RenderPipelineBuilder;
+    fn root_sig(&mut self, v: &RootSig) -> &mut dyn RenderPipelineBuilderTrait;
 
     /// Set the render pass where the render pipeline will be used.
     ///
     /// Mandatory.
-    fn render_pass(&mut self, v: &RenderPass, subpass: SubpassIndex) -> &mut RenderPipelineBuilder;
+    fn render_pass(
+        &mut self,
+        v: &RenderPass,
+        subpass: SubpassIndex,
+    ) -> &mut dyn RenderPipelineBuilderTrait;
 
     /// Define a vertex buffer binding.
     ///
@@ -138,7 +151,7 @@ pub trait RenderPipelineBuilder: Object {
         &mut self,
         index: VertexBufferIndex,
         stride: DeviceSize,
-    ) -> &mut VertexBufferBinding;
+    ) -> &mut dyn VertexBufferBinding;
 
     /// Defines a vertex attribute.
     ///
@@ -157,10 +170,10 @@ pub trait RenderPipelineBuilder: Object {
     );
 
     /// Set the input primitive topology. Mandatory.
-    fn topology(&mut self, v: PrimitiveTopology) -> &mut RenderPipelineBuilder;
+    fn topology(&mut self, v: PrimitiveTopology) -> &mut dyn RenderPipelineBuilderTrait;
 
     /// Enable rasterization.
-    fn rasterize(&mut self) -> &mut Rasterizer;
+    fn rasterize(&mut self) -> &mut dyn Rasterizer;
 
     /// Build an `RenderPipeline`.
     ///
@@ -174,7 +187,7 @@ pub trait RenderPipelineBuilder: Object {
 /// Trait for defining a vertex buffer binding.
 pub trait VertexBufferBinding: Object {
     /// Set the vertex input rate. Defaults to `Vertex`.
-    fn set_rate(&mut self, rate: VertexInputRate) -> &mut VertexBufferBinding;
+    fn set_rate(&mut self, rate: VertexInputRate) -> &mut dyn VertexBufferBinding;
 }
 
 /// Specifies a vertex input rate.
@@ -230,7 +243,7 @@ pub trait Rasterizer: Object {
     ///
     /// Must be less than or equal to `DeviceLimits::max_num_viewports`. Must be
     /// not zero. Defaults to `1`.
-    fn set_num_viewports(&mut self, v: usize) -> &mut Rasterizer;
+    fn set_num_viewports(&mut self, v: usize) -> &mut dyn Rasterizer;
 
     /// Set the scissor rect.
     ///
@@ -239,56 +252,59 @@ pub trait Rasterizer: Object {
         &mut self,
         start_viewport: ViewportIndex,
         v: &[StaticOrDynamic<Rect2D<u32>>],
-    ) -> &mut Rasterizer;
+    ) -> &mut dyn Rasterizer;
 
     /// Set the cull mode. Defaults to `None`.
-    fn set_cull_mode(&mut self, v: CullMode) -> &mut Rasterizer;
+    fn set_cull_mode(&mut self, v: CullMode) -> &mut dyn Rasterizer;
 
     /// Set the front face winding. Defaults to `CounterClockwise`.
-    fn set_front_face(&mut self, v: Winding) -> &mut Rasterizer;
+    fn set_front_face(&mut self, v: Winding) -> &mut dyn Rasterizer;
 
     /// Control whether fragments with depth values outside the clip volume
     /// is clipped or clamped. Defaults to `Clip`.
-    fn set_depth_clip_mode(&mut self, v: DepthClipMode) -> &mut Rasterizer;
+    fn set_depth_clip_mode(&mut self, v: DepthClipMode) -> &mut dyn Rasterizer;
 
     /// Set the triangle filling mode. Defaults to `Fill`.
-    fn set_triangle_fill_mode(&mut self, v: TriangleFillMode) -> &mut Rasterizer;
+    fn set_triangle_fill_mode(&mut self, v: TriangleFillMode) -> &mut dyn Rasterizer;
 
     /// Set the depth bias values. Defaults to `None`.
-    fn set_depth_bias(&mut self, v: Option<StaticOrDynamic<DepthBias>>) -> &mut Rasterizer;
+    fn set_depth_bias(&mut self, v: Option<StaticOrDynamic<DepthBias>>) -> &mut dyn Rasterizer;
 
     /// Enable the alpha-to-coverage feature. Defaults to `false`.
-    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut Rasterizer;
+    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut dyn Rasterizer;
 
     /// Specify the number of samples per pixel for MSAA targets.
     /// Defaults to `1`.
-    fn set_sample_count(&mut self, v: u32) -> &mut Rasterizer;
+    fn set_sample_count(&mut self, v: u32) -> &mut dyn Rasterizer;
 
     /// Enable the depth write. Defaults to `false`.
-    fn set_depth_write(&mut self, v: bool) -> &mut Rasterizer;
+    fn set_depth_write(&mut self, v: bool) -> &mut dyn Rasterizer;
 
     /// Set the depth test function. Defaults to `Always`.
     ///
     /// Specify `Always` to disable the depth test.
-    fn set_depth_test(&mut self, v: CmpFn) -> &mut Rasterizer;
+    fn set_depth_test(&mut self, v: CmpFn) -> &mut dyn Rasterizer;
 
     /// Set the stencil operations. Defaults to `Default::default()`.
-    fn set_stencil_ops(&mut self, front_back: [StencilOps; 2]) -> &mut Rasterizer;
+    fn set_stencil_ops(&mut self, front_back: [StencilOps; 2]) -> &mut dyn Rasterizer;
 
     /// Set the stencil masks. Defaults to `Default::default()`.
-    fn set_stencil_masks(&mut self, front_back: [StencilMasks; 2]) -> &mut Rasterizer;
+    fn set_stencil_masks(&mut self, front_back: [StencilMasks; 2]) -> &mut dyn Rasterizer;
 
     /// Specify whether depth bounds tests are enabled.
     ///
     /// If `DeviceLimits::supports_depth_bounds` is `false` then `None` must be
     /// specified.
-    fn set_depth_bounds(&mut self, v: Option<StaticOrDynamic<Range<f32>>>) -> &mut Rasterizer;
+    fn set_depth_bounds(&mut self, v: Option<StaticOrDynamic<Range<f32>>>) -> &mut dyn Rasterizer;
 
     /// Setup the color output for a color render target at a specified index.
     ///
     /// If `DeviceLimits::supports_independent_blend` is `false` then the same
     /// property values must be supplied for all color render targets.
-    fn color_target(&mut self, index: RenderSubpassColorTargetIndex) -> &mut RasterizerColorTarget;
+    fn color_target(
+        &mut self,
+        index: RenderSubpassColorTargetIndex,
+    ) -> &mut dyn RasterizerColorTarget;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -494,28 +510,28 @@ impl RasterizerProp for DepthBias {
 /// pipeline.
 pub trait RasterizerColorTarget: Object {
     /// Set the write mask. Defaults to `ColorChannel::all()`.
-    fn set_write_mask(&mut self, v: ColorChannelFlags) -> &mut RasterizerColorTarget;
+    fn set_write_mask(&mut self, v: ColorChannelFlags) -> &mut dyn RasterizerColorTarget;
 
     /// Enable blending. Defaults to `false`.
-    fn set_blending(&mut self, v: bool) -> &mut RasterizerColorTarget;
+    fn set_blending(&mut self, v: bool) -> &mut dyn RasterizerColorTarget;
 
     /// Set the source blend factor for the alpha channel. Defaults to `One`.
-    fn set_src_alpha_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
+    fn set_src_alpha_factor(&mut self, v: BlendFactor) -> &mut dyn RasterizerColorTarget;
 
     /// Set the source blend factor for RGB channels. Defaults to `One`.
-    fn set_src_rgb_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
+    fn set_src_rgb_factor(&mut self, v: BlendFactor) -> &mut dyn RasterizerColorTarget;
 
     /// Set the destination blend factor for the alpha channel. Defaults to `Zero`.
-    fn set_dst_alpha_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
+    fn set_dst_alpha_factor(&mut self, v: BlendFactor) -> &mut dyn RasterizerColorTarget;
 
     /// Set the destination blend factor for RGB channels. Defaults to `Zero`.
-    fn set_dst_rgb_factor(&mut self, v: BlendFactor) -> &mut RasterizerColorTarget;
+    fn set_dst_rgb_factor(&mut self, v: BlendFactor) -> &mut dyn RasterizerColorTarget;
 
     /// Set the blending operation for the alpha channel. Defaults to `Add`.
-    fn set_alpha_op(&mut self, v: BlendOp) -> &mut RasterizerColorTarget;
+    fn set_alpha_op(&mut self, v: BlendOp) -> &mut dyn RasterizerColorTarget;
 
     /// Set the blending operation for RGB channels. Defaults to `Add`.
-    fn set_rgb_op(&mut self, v: BlendOp) -> &mut RasterizerColorTarget;
+    fn set_rgb_op(&mut self, v: BlendOp) -> &mut dyn RasterizerColorTarget;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

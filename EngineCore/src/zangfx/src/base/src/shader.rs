@@ -16,12 +16,14 @@ define_handle! {
     Library
 }
 
+/// The builder object for shader libraries.
+pub type LibraryBuilder = Box<dyn LibraryBuilderTrait>;
+
 /// Trait for building shader libraries.
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::shader::LibraryBuilder;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device) {
 ///     let image = device.build_library()
 ///         .spirv_code(&[])
@@ -30,12 +32,12 @@ define_handle! {
 ///                      SPIR-V code.");
 ///     # }
 ///
-pub trait LibraryBuilder: Object {
+pub trait LibraryBuilderTrait: Object {
     /// Set the SPIR-V code.
     ///
     /// See Vulkan 1.0 Specification Appendix A: "Vulkan Environment for SPIR-V"
     /// for the requirements.
-    fn spirv_code(&mut self, v: &[u32]) -> &mut LibraryBuilder;
+    fn spirv_code(&mut self, v: &[u32]) -> &mut dyn LibraryBuilderTrait;
 
     /// Build an `Library`.
     ///

@@ -6,6 +6,7 @@
 //! Command queues and command buffers.
 use std::ops::Range;
 use ngsenumflags::BitFlags;
+use std::sync::Arc;
 
 use crate::common::Rect2D;
 use crate::formats::IndexFormat;
@@ -17,11 +18,14 @@ use crate::{
 };
 use crate::{Object, Result};
 
+/// A builder object for command queue objects.
+pub type CmdQueueBuilder = Box<dyn CmdQueueBuilderTrait>;
+
 /// Trait for building command queue objects.
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device) {
 ///     let cmd_queue = device.build_cmd_queue()
 ///         .queue_family(0)
@@ -29,13 +33,13 @@ use crate::{Object, Result};
 ///         .expect("Failed to create a command queue.");
 ///     # }
 ///
-pub trait CmdQueueBuilder: Object {
+pub trait CmdQueueBuilderTrait: Object {
     /// Set the queue family index.
     ///
     /// This property is mandatory.
-    fn queue_family(&mut self, v: QueueFamily) -> &mut CmdQueueBuilder;
+    fn queue_family(&mut self, v: QueueFamily) -> &mut dyn CmdQueueBuilderTrait;
 
-    /// Build a `CmdQueue`.
+    /// Build a `CmdQueueTrait`.
     ///
     /// # Valid Usage
     ///
@@ -47,26 +51,29 @@ pub trait CmdQueueBuilder: Object {
     ///
     /// [`QueueFamilyInfo::count`]: crate::limits::QueueFamilyInfo::count
     ///
-    fn build(&mut self) -> Result<Box<CmdQueue>>;
+    fn build(&mut self) -> Result<CmdQueue>;
 }
+
+/// A boxed handle representing a command queue.
+pub type CmdQueue = Arc<dyn CmdQueueTrait>;
 
 /// Trait for command queues.
 ///
 /// The lifetime of the underlying queue object is associated with that of
-/// `CmdQueue`. Drop the `CmdQueue` to destroy the associated queue object (cf.
+/// `CmdQueueTrait`. Drop the `CmdQueueTrait` to destroy the associated queue object (cf.
 /// handle types).
 ///
 /// # Valid Usage
 ///
-///  - `CmdQueue` must not be dropped until the queue is idle. (i.e. There
+///  - `CmdQueueTrait` must not be dropped until the queue is idle. (i.e. There
 ///    exists no command buffer being executed)
 ///
-pub trait CmdQueue: Object {
+pub trait CmdQueueTrait: Object {
     /// Allocate a new command buffer.
     ///
     /// Command buffers are meant to be shortly lived. This method might stall
     /// if there are too many (10–) outstanding command buffers.
-    fn new_cmd_buffer(&self) -> Result<Box<CmdBuffer>>;
+    fn new_cmd_buffer(&self) -> Result<CmdBuffer>;
 
     /// Create a `Fence` associated with the command queue.
     fn new_fence(&self) -> Result<sync::Fence>;
@@ -75,20 +82,23 @@ pub trait CmdQueue: Object {
     fn flush(&self);
 }
 
+/// A command buffer.
+pub type CmdBuffer = Box<dyn CmdBufferTrait>;
+
 /// Trait for command buffers.
 ///
-/// An application can (and should) drop a `CmdBuffer` as soon as it finishes
-/// recording commands to the `CmdBuffer` and commiting it.
-pub trait CmdBuffer: Object {
+/// An application can (and should) drop a `CmdBufferTrait` object as soon as
+/// it finishes recording commands and commiting it.
+pub trait CmdBufferTrait: Object {
     /// Mark this command buffer as ready for submission.
     fn commit(&mut self) -> Result<()>;
 
     fn encode_render(
         &mut self,
         render_target_table: &pass::RenderTargetTable,
-    ) -> &mut RenderCmdEncoder;
-    fn encode_compute(&mut self) -> &mut ComputeCmdEncoder;
-    fn encode_copy(&mut self) -> &mut CopyCmdEncoder;
+    ) -> &mut dyn RenderCmdEncoderTrait;
+    fn encode_compute(&mut self) -> &mut dyn ComputeCmdEncoderTrait;
+    fn encode_copy(&mut self) -> &mut dyn CopyCmdEncoderTrait;
 
     /// Register a completion handler. Must not be called after calling `commit`.
     fn on_complete(&mut self, cb: Box<FnMut(Result<()>) + Sync + Send>);
@@ -166,7 +176,7 @@ pub trait CmdBuffer: Object {
     }
 }
 
-pub trait RenderCmdEncoder: Object + CmdEncoder {
+pub trait RenderCmdEncoderTrait: Object + CmdEncoderTrait {
     /// Set the current `RenderPipeline` object.
     ///
     /// All non-dynamic state values of the new `RenderPipeline` will override
@@ -221,7 +231,7 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     fn bind_arg_table(
         &mut self,
         index: ArgTableIndex,
-        tables: &[(&dyn arg::ArgPool, &arg::ArgTable)],
+        tables: &[(&dyn arg::ArgPoolTrait, &arg::ArgTable)],
     );
 
     /// Bind zero or more vertex buffers.
@@ -321,7 +331,7 @@ pub struct DrawIndexedIndirectArgs {
     pub start_instance: u32,
 }
 
-pub trait ComputeCmdEncoder: Object + CmdEncoder {
+pub trait ComputeCmdEncoderTrait: Object + CmdEncoderTrait {
     /// Set the current `ComputePipeline` object.
     fn bind_pipeline(&mut self, pipeline: &pipeline::ComputePipeline);
 
@@ -329,7 +339,7 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     fn bind_arg_table(
         &mut self,
         index: ArgTableIndex,
-        tables: &[(&dyn arg::ArgPool, &arg::ArgTable)],
+        tables: &[(&dyn arg::ArgPoolTrait, &arg::ArgTable)],
     );
 
     /// Provoke work in a compute pipeline.
@@ -354,7 +364,7 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
 /// The data layout for indirect dispatch calls.
 pub type DispatchIndirectArgs = [u32; 3];
 
-pub trait CopyCmdEncoder: Object + CmdEncoder {
+pub trait CopyCmdEncoderTrait: Object + CmdEncoderTrait {
     /// Fill a buffer with a constant byte value.
     ///
     /// Both of `range.start` and `range.end` must be a multiple of 4.
@@ -448,7 +458,7 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     );
 }
 
-pub trait CmdEncoder: Object {
+pub trait CmdEncoderTrait: Object {
     /// Begin a debug group.
     ///
     /// The default implementation just returns `None`.
@@ -456,7 +466,7 @@ pub trait CmdEncoder: Object {
     /// # Examples
     ///
     ///     # use zangfx_base::*;
-    ///     # fn test(encoder: &mut CmdEncoder) {
+    ///     # fn test(encoder: &mut CmdEncoderTrait) {
     ///     encoder.begin_debug_group("Pinkie mane");
     ///     // Issue draw commands here...
     ///     encoder.end_debug_group();
@@ -469,7 +479,7 @@ pub trait CmdEncoder: Object {
     /// There must be an outstanding call to [`begin_debug_group`] corresponding
     /// to this one in the same encoder.
     ///
-    /// [`begin_debug_group`]: CmdEncoder::begin_debug_group
+    /// [`begin_debug_group`]: CmdEncoderTrait::begin_debug_group
     fn end_debug_group(&mut self) {}
 
     /// Insert a debug marker.
@@ -479,7 +489,7 @@ pub trait CmdEncoder: Object {
     /// # Examples
     ///
     ///     # use zangfx_base::*;
-    ///     # fn test(encoder: &mut CmdEncoder) {
+    ///     # fn test(encoder: &mut CmdEncoderTrait) {
     ///     encoder.debug_marker("Let there be dragons here");
     ///     # }
     ///
@@ -492,7 +502,7 @@ pub trait CmdEncoder: Object {
     /// this command is inserted and until the end of the current command
     /// encoder or subpass.
     ///
-    /// This method is no-op on `CopyCmdEncoder` since it does not use any
+    /// This method is no-op on `CopyCmdEncoderTrait` since it does not use any
     /// argument tables.
     fn use_resource(&mut self, usage: ResourceUsageFlags, objs: &[resources::ResourceRef]);
 
@@ -503,23 +513,23 @@ pub trait CmdEncoder: Object {
     /// this command is inserted and until the end of the current command
     /// encoder or subpass.
     ///
-    /// This method is no-op on `CopyCmdEncoder` since it does not use any
+    /// This method is no-op on `CopyCmdEncoderTrait` since it does not use any
     /// argument tables.
     ///
     /// This method cannot be used on global heaps (returned by
-    /// [`Device::global_heap`]) nor on dynamic heaps (returned by
-    /// [`DynamicHeapBuilder`]).
+    /// [`DeviceTrait::global_heap`]) nor on dynamic heaps (returned by
+    /// [`DynamicHeapBuilderTrait`]).
     ///
-    /// [`Device::global_heap`]: crate::Device::global_heap
-    /// [`DynamicHeapBuilder`]: crate::DynamicHeapBuilder
+    /// [`DeviceTrait::global_heap`]: crate::DeviceTrait::global_heap
+    /// [`DynamicHeapBuilderTrait`]: crate::DynamicHeapBuilderTrait
     ///
     /// This method ignores images having [`Render`] or [`Storage`] image usage
     /// flags. Call [`use_resource`] instead to use such images.
     ///
     /// [`Render`]: crate::ImageUsage::Render
     /// [`Storage`]: crate::ImageUsage::Storage
-    /// [`use_resource`]: CmdEncoder::use_resource
-    fn use_heap(&mut self, heaps: &[&heap::Heap]);
+    /// [`use_resource`]: CmdEncoderTrait::use_resource
+    fn use_heap(&mut self, heaps: &[&dyn heap::HeapTrait]);
 
     /// Wait on the specified fence and establish an inter-encoder execution
     /// dependency.

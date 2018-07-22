@@ -27,6 +27,9 @@ define_handle! {
     Semaphore
 }
 
+/// The builder object for semaphores.
+pub type SemaphoreBuilder = Box<dyn SemaphoreBuilderTrait>;
+
 /// Trait for building semaphores.
 ///
 /// # Examples
@@ -38,7 +41,7 @@ define_handle! {
 ///         .expect("Failed to create a semaphore.");
 ///     # }
 ///
-pub trait SemaphoreBuilder: Object {
+pub trait SemaphoreBuilderTrait: Object {
     /// Build an `Semaphore`.
     ///
     /// # Valid Usage
@@ -48,15 +51,17 @@ pub trait SemaphoreBuilder: Object {
     fn build(&mut self) -> Result<Semaphore>;
 }
 
-/// An implementation of `SemaphoreBuilder` that always panics when `build` is
+/// An implementation of `SemaphoreBuilderTrait` that always panics when `build` is
 /// called.
 #[derive(Debug)]
 pub struct NotSupportedSemaphoreBuilder;
 
-zangfx_impl_object! { NotSupportedSemaphoreBuilder:
-SemaphoreBuilder, ::std::fmt::Debug }
+zangfx_impl_object! {
+    NotSupportedSemaphoreBuilder: SemaphoreBuilderTrait,
+    ::std::fmt::Debug
+}
 
-impl SemaphoreBuilder for NotSupportedSemaphoreBuilder {
+impl SemaphoreBuilderTrait for NotSupportedSemaphoreBuilder {
     fn build(&mut self) -> Result<Semaphore> {
         panic!("not supported by this backend")
     }

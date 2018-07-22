@@ -20,12 +20,14 @@ define_handle! {
     Sampler
 }
 
+/// The builder for samplers.
+pub type SamplerBuilder = Box<dyn SamplerBuilderTrait>;
+
 /// Trait for building samplers.
 ///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::sampler::{SamplerBuilder, Filter};
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device) {
 ///     let image = device.build_sampler()
 ///         .mag_filter(Filter::Nearest)
@@ -35,16 +37,16 @@ define_handle! {
 ///         .expect("Failed to create a sampler.");
 ///     # }
 ///
-pub trait SamplerBuilder: Object {
+pub trait SamplerBuilderTrait: Object {
     /// Set the magnification filter.
     ///
     /// Defaults to `Filter::Linear`.
-    fn mag_filter(&mut self, v: Filter) -> &mut SamplerBuilder;
+    fn mag_filter(&mut self, v: Filter) -> &mut SamplerBuilderTrait;
 
     /// Set the minification filter.
     ///
     /// Defaults to `Filter::Linear`.
-    fn min_filter(&mut self, v: Filter) -> &mut SamplerBuilder;
+    fn min_filter(&mut self, v: Filter) -> &mut SamplerBuilderTrait;
 
     /// Set the addressing mode for each axis of texture coordinates.
     ///
@@ -57,34 +59,34 @@ pub trait SamplerBuilder: Object {
     /// # Valid Usage
     ///
     ///  - The given slice must have the number of elements between 0 and 3.
-    fn address_mode(&mut self, v: &[AddressMode]) -> &mut SamplerBuilder;
+    fn address_mode(&mut self, v: &[AddressMode]) -> &mut SamplerBuilderTrait;
 
     /// Set the mipmap interpolation mode.
     ///
     /// Defaults to `MipmapMode::Linear`.
-    fn mipmap_mode(&mut self, v: MipmapMode) -> &mut SamplerBuilder;
+    fn mipmap_mode(&mut self, v: MipmapMode) -> &mut SamplerBuilderTrait;
 
     /// Set the mipmap clamp range.
     ///
     /// Defaults to `0.0..0.0`.
-    fn lod_clamp(&mut self, v: ops::Range<f32>) -> &mut SamplerBuilder;
+    fn lod_clamp(&mut self, v: ops::Range<f32>) -> &mut SamplerBuilderTrait;
 
     /// Set the maximum anisotropic filtering level.
     ///
     /// Defaults to `1` (minimum).
-    fn max_anisotropy(&mut self, v: u32) -> &mut SamplerBuilder;
+    fn max_anisotropy(&mut self, v: u32) -> &mut SamplerBuilderTrait;
 
     /// Set the comparison function used when sampling from a depth texture.
     ///
     /// `Some(Never)` will be treated as `None`.
     ///
     /// Defaults to `None`.
-    fn cmp_fn(&mut self, v: Option<CmpFn>) -> &mut SamplerBuilder;
+    fn cmp_fn(&mut self, v: Option<CmpFn>) -> &mut SamplerBuilderTrait;
 
     /// Set the border color used for the `ClampToBorderColor` addressing mode.
     ///
     /// Defaults to `FloatTransparentBlack`.
-    fn border_color(&mut self, v: BorderColor) -> &mut SamplerBuilder;
+    fn border_color(&mut self, v: BorderColor) -> &mut SamplerBuilderTrait;
 
     /// Set whether texture coordinates are normalized to the range `[0.0, 1.0]`.
     ///
@@ -98,7 +100,7 @@ pub trait SamplerBuilder: Object {
     ///    views and must have only a single layer and a single mipmap level.
     ///  - When sampling an image using the sampler, projection and constant
     ///    offsets cannot be used.
-    fn unnorm_coords(&mut self, v: bool) -> &mut SamplerBuilder;
+    fn unnorm_coords(&mut self, v: bool) -> &mut SamplerBuilderTrait;
 
     /// Build an `Sampler`.
     ///

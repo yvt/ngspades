@@ -4,16 +4,21 @@
 // This source code is a part of Nightingales.
 //
 //! Device object.
+use std::sync::Arc;
+
 use crate::{arg, command, heap, limits, pass, pipeline, resources, sampler, shader, sync};
 use crate::{ArgArrayIndex, ArgIndex};
 use crate::{Object, Result};
+
+/// A boxed handle representing a device object.
+pub type Device = Arc<dyn DeviceTrait>;
 
 /// Trait for device objects.
 ///
 /// The lifetime of the underlying device object is associated with that of
 /// `Device`. Drop the `Device` to destroy the associated device object
 /// (cf. handle types).
-pub trait Device: Object {
+pub trait DeviceTrait: Object {
     fn caps(&self) -> &limits::DeviceCaps;
 
     /// Retrieve a reference to the global heap maintained by this device.
@@ -25,7 +30,7 @@ pub trait Device: Object {
     fn global_heap(&self) -> &heap::Heap;
 
     /// Create a `CmdQueueBuilder` associated with this device.
-    fn build_cmd_queue(&self) -> Box<command::CmdQueueBuilder>;
+    fn build_cmd_queue(&self) -> command::CmdQueueBuilder;
 
     /// Create a `SemaphoreBuilder` associated with this device.
     ///
@@ -35,57 +40,57 @@ pub trait Device: Object {
     ///
     /// [`new_semaphore`]: DeviceExt::new_semaphore
     /// [`NotSupportedSemaphoreBuilder`]: crate::sync::NotSupportedSemaphoreBuilder
-    fn build_semaphore(&self) -> Box<sync::SemaphoreBuilder> {
+    fn build_semaphore(&self) -> sync::SemaphoreBuilder {
         Box::new(sync::NotSupportedSemaphoreBuilder)
     }
 
     /// Create a `DynamicHeapBuilder` associated with this device.
-    fn build_dynamic_heap(&self) -> Box<heap::DynamicHeapBuilder>;
+    fn build_dynamic_heap(&self) -> heap::DynamicHeapBuilder;
 
     /// Create a `DedicatedHeapBuilder` associated with this device.
-    fn build_dedicated_heap(&self) -> Box<heap::DedicatedHeapBuilder>;
+    fn build_dedicated_heap(&self) -> heap::DedicatedHeapBuilder;
 
     /// Create an `ImageBuilder` associated with this device.
-    fn build_image(&self) -> Box<resources::ImageBuilder>;
+    fn build_image(&self) -> resources::ImageBuilder;
 
     /// Create a `BufferBuilder` associated with this device.
-    fn build_buffer(&self) -> Box<resources::BufferBuilder>;
+    fn build_buffer(&self) -> resources::BufferBuilder;
 
     /// Create a `SamplerBuilder` associated with this device.
-    fn build_sampler(&self) -> Box<sampler::SamplerBuilder>;
+    fn build_sampler(&self) -> sampler::SamplerBuilder;
 
     /// Create a `LibraryBuilder` associated with this device.
-    fn build_library(&self) -> Box<shader::LibraryBuilder>;
+    fn build_library(&self) -> shader::LibraryBuilder;
 
     /// Create a `ArgTableSigBuilder` associated with this device.
-    fn build_arg_table_sig(&self) -> Box<arg::ArgTableSigBuilder>;
+    fn build_arg_table_sig(&self) -> arg::ArgTableSigBuilder;
 
     /// Create a `RootSigBuilder` associated with this device.
-    fn build_root_sig(&self) -> Box<arg::RootSigBuilder>;
+    fn build_root_sig(&self) -> arg::RootSigBuilder;
 
     /// Create a `ArgPoolBuilder` associated with this device.
-    fn build_arg_pool(&self) -> Box<arg::ArgPoolBuilder>;
+    fn build_arg_pool(&self) -> arg::ArgPoolBuilder;
 
     /// Create a `RenderPassBuilder` associated with this device.
-    fn build_render_pass(&self) -> Box<pass::RenderPassBuilder>;
+    fn build_render_pass(&self) -> pass::RenderPassBuilder;
 
     /// Create a `RenderTargetTableBuilder` associated with this device.
-    fn build_render_target_table(&self) -> Box<pass::RenderTargetTableBuilder>;
+    fn build_render_target_table(&self) -> pass::RenderTargetTableBuilder;
 
     /// Create a `RenderPipelineBuilder` associated with this device.
-    fn build_render_pipeline(&self) -> Box<pipeline::RenderPipelineBuilder>;
+    fn build_render_pipeline(&self) -> pipeline::RenderPipelineBuilder;
 
     /// Create a `ComputePipelineBuilder` associated with this device.
-    fn build_compute_pipeline(&self) -> Box<pipeline::ComputePipelineBuilder>;
+    fn build_compute_pipeline(&self) -> pipeline::ComputePipelineBuilder;
 
     /// Update given argument tables.
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, Image, Buffer, ArgPool, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::*;
     ///     # fn test(
     ///     #     device: &Device,
-    ///     #     arg_pool: &dyn ArgPool,
+    ///     #     arg_pool: &ArgPool,
     ///     #     arg_table: &ArgTable,
     ///     #     arg_table_sig: &ArgTableSig,
     ///     #     images: &[&Image],
@@ -109,7 +114,7 @@ pub trait Device: Object {
     fn update_arg_tables(
         &self,
         arg_table_sig: &arg::ArgTableSig,
-        updates: &[((&dyn arg::ArgPool, &arg::ArgTable), &[ArgUpdateSet])],
+        updates: &[((&arg::ArgPool, &arg::ArgTable), &[ArgUpdateSet])],
     ) -> Result<()>;
 
     /// Update a given argument table.
@@ -197,20 +202,20 @@ pub trait Device: Object {
     }
 }
 
-/// Utilies for [`Device`](Device).
-pub trait DeviceExt: Device {
+/// Utilies for [`DeviceTrait`](DeviceTrait).
+pub trait DeviceExt: DeviceTrait {
     /// Create a `Library` associated with this device using a supplied SPIRV
     /// code.
     ///
     /// This is a shorthand method for [`build_library`].
     ///
-    /// [`build_library`]: Device::build_library
+    /// [`build_library`]: DeviceTrait::build_library
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::device::Device;
+    ///     # use zangfx_base::*;
     ///     use zangfx_base::prelude::*;
-    ///     # fn test(device: &Device) {
+    ///     # fn test(device: &DeviceTrait) {
     ///     device
     ///         .new_library(&[])
     ///         .expect_err("Succeeded to create a shader library with an \
@@ -225,7 +230,7 @@ pub trait DeviceExt: Device {
     ///
     /// This is a shorthand method for [`build_semaphore`].
     ///
-    /// [`build_semaphore`]: Device::build_semaphore
+    /// [`build_semaphore`]: DeviceTrait::build_semaphore
     ///
     /// # Examples
     ///
@@ -245,7 +250,7 @@ pub trait DeviceExt: Device {
     /// to return a value. See the documentation of `autorelease_pool_scope_core` for
     /// details.
     ///
-    /// [`autorelease_pool_scope_core`]: Device::autorelease_pool_scope_core
+    /// [`autorelease_pool_scope_core`]: DeviceTrait::autorelease_pool_scope_core
     ///
     /// # Examples
     ///
@@ -288,7 +293,7 @@ pub trait DeviceExt: Device {
     }
 }
 
-impl<T: ?Sized + Device> DeviceExt for T {}
+impl<T: ?Sized + DeviceTrait> DeviceExt for T {}
 
 /// Represents a consecutive update of arguments in an argument table.
 ///
@@ -301,7 +306,7 @@ impl<T: ?Sized + Device> DeviceExt for T {}
 /// Unlike Vulkan's descriptor update, `ArgSlice` does not overflow into the
 /// succeeding argument slots. (This is prohibited in ZanGFX.)
 ///
-/// See the documentation of [`update_arg_table`](Device::update_arg_table) for
+/// See the documentation of [`update_arg_table`](DeviceTrait::update_arg_table) for
 /// example.
 pub type ArgUpdateSet<'a> = (ArgIndex, ArgArrayIndex, resources::ArgSlice<'a>);
 

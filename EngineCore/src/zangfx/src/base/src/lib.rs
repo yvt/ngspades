@@ -117,31 +117,31 @@ pub struct Viewport {
     pub max_depth: f32,
 }
 
-define_object! { arg::ArgTableSigBuilder }
-define_object! { arg::ArgSig }
-define_object! { arg::RootSigBuilder }
-define_object! { arg::ArgPoolBuilder }
-define_object! { arg::ArgPool }
-define_object! { command::CmdQueueBuilder }
-define_object! { command::CmdQueue }
-define_object! { command::CmdBuffer }
-define_object! { command::RenderCmdEncoder }
-define_object! { command::ComputeCmdEncoder }
-define_object! { command::CopyCmdEncoder }
-define_object! { command::CmdEncoder }
-define_object! { device::Device }
-define_object! { heap::DynamicHeapBuilder }
-define_object! { heap::DedicatedHeapBuilder }
-define_object! { heap::Heap }
-define_object! { pass::RenderPassBuilder }
-define_object! { pass::RenderPassTarget }
-define_object! { pass::RenderTargetTableBuilder }
-define_object! { pipeline::ComputePipelineBuilder }
-define_object! { pipeline::RenderPipelineBuilder }
-define_object! { resources::ImageBuilder }
-define_object! { resources::BufferBuilder }
-define_object! { sampler::SamplerBuilder }
-define_object! { shader::LibraryBuilder }
+define_object! { ArgTableSigBuilderTrait }
+define_object! { ArgSigTrait }
+define_object! { RootSigBuilderTrait }
+define_object! { ArgPoolBuilderTrait }
+define_object! { ArgPoolTrait }
+define_object! { CmdQueueBuilderTrait }
+define_object! { CmdQueueTrait }
+define_object! { CmdBufferTrait }
+define_object! { RenderCmdEncoderTrait }
+define_object! { ComputeCmdEncoderTrait }
+define_object! { CopyCmdEncoderTrait }
+define_object! { CmdEncoderTrait }
+define_object! { DeviceTrait }
+define_object! { DynamicHeapBuilderTrait }
+define_object! { DedicatedHeapBuilderTrait }
+define_object! { HeapTrait }
+define_object! { RenderPassBuilderTrait }
+define_object! { RenderPassTarget }
+define_object! { RenderTargetTableBuilderTrait }
+define_object! { ComputePipelineBuilderTrait }
+define_object! { RenderPipelineBuilderTrait }
+define_object! { ImageBuilderTrait }
+define_object! { BufferBuilderTrait }
+define_object! { SamplerBuilderTrait }
+define_object! { LibraryBuilderTrait }
 
 /// The `zangfx_base` prelude.
 pub mod prelude {
@@ -153,7 +153,7 @@ pub mod prelude {
             AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
             IntAsScalarFormat,
         },
-        handles::HandleImpl,
+        handles::CloneHandle,
         pipeline::RasterizerExt,
     };
 }

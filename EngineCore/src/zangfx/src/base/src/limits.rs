@@ -14,7 +14,7 @@ use crate::{DeviceSize, MemoryRegionIndex};
 pub struct DeviceLimits {
     /// Indicates whether [`Heap::make_aliasable`] is supported or not.
     ///
-    /// [`Heap::make_aliasable`]: crate::Heap::make_aliasable
+    /// [`Heap::make_aliasable`]: crate::HeapTrait::make_aliasable
     pub supports_heap_aliasing: bool,
 
     /// Indicates whether *creating* semaphores (inter-queue synchronization) are
@@ -118,7 +118,7 @@ pub enum MemoryTypeCaps {
     /// Therefore, host-visible memory types without this flag are practially
     /// useless.)
     ///
-    /// [`host_barrier`]: crate::CmdBuffer::host_barrier
+    /// [`host_barrier`]: crate::CmdBufferTrait::host_barrier
     HostCoherent = 0b0010,
     HostCached = 0b0100,
     DeviceLocal = 0b1000,
