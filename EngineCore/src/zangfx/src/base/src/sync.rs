@@ -56,6 +56,7 @@ pub trait SemaphoreBuilder: Object {
 #[derive(Debug)]
 pub struct NotSupportedSemaphoreBuilder;
 
+use query_interface::{interfaces, vtable_for};
 zangfx_impl_object! {
     NotSupportedSemaphoreBuilder:
         dyn SemaphoreBuilder,

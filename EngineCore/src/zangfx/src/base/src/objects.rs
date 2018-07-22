@@ -5,24 +5,55 @@
 //
 //! Object type.
 use query_interface as qi;
+
 use query_interface::mopo;
 
 /// Base interface of all ZanGFX objects.
 ///
-/// Use the `interfaces!` macro provided by the `query_interface` crate to
-/// implement a ZanGFX object.
+/// This macro is implemented using the `mopo!` macro provided by the
+/// `query_interface` crate. However, it does not fully support the Rust 2018
+/// style macro imports. For this reason, you must make sure relevant macros
+/// from `query_interface` are imported into the current context. To make it
+/// easier, this crate reexports all necessary macros.
 ///
 /// # Examples
 ///
-///     #[macro_use]
-///     extern crate zangfx_base;
+/// The following example shows how to define a new interface based on this
+/// type (trait types provided by `zangfx_base`, such as `CmdBuffer`, are
+/// basically defined in this way).
 ///
-///     use std::fmt::Debug;
-///     use std::any::Any;
+///     use zangfx_base::{Object, mopo};
 ///
-///     trait SomeInterface: zangfx_base::Object {}
+///     trait SomeInterface: Object {}
 ///
 ///     mopo!(SomeInterface);
+///
+/// See [`zangfx_impl_object`]'s example for how to define a type implementing
+/// this newly defined interface.
+pub trait Object: qi::Object + Sync + Send {}
+mopo!(dyn Object);
+
+/// Generates a boiler-plate code for defining a ZanGFX object type.
+///
+/// For a given type, this macro generates the implementation for `AsObject`.
+///
+/// This macro is implemented using the `interfaces!` macro provided by the
+/// `query_interface` crate. However, it does not fully support the Rust 2018
+/// style macro imports. For this reason, you must make sure relevant macros
+/// from `query_interface` are imported into the current context. To make it
+/// easier, this crate reexports all necessary macros.
+///
+/// # Examples
+///
+/// This example defines a type named `MyObjectImpl` implementing
+/// `SomeInterface` from [`Object`]'s example code.
+///
+///     # use zangfx_base::{Object, mopo};
+///     # trait SomeInterface: Object {}
+///     # mopo!(SomeInterface);
+///     use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+///     use std::fmt::Debug;
+///     use std::any::Any;
 ///
 ///     #[derive(Debug)]
 ///     struct MyObjectImpl;
@@ -37,12 +68,6 @@ use query_interface::mopo;
 ///     assert!(boxed.query_ref::<SomeInterface>().is_some());
 ///     # }
 ///
-pub trait Object: qi::Object + Sync + Send {}
-mopo!(dyn Object);
-
-/// Generates a boiler-plate code for defining a ZanGFX object type.
-///
-/// For a given type, this macro generates the implementation for `AsObject`.
 #[macro_export]
 macro_rules! zangfx_impl_object {
     ($type:ty : $($iface:ty),*) => {

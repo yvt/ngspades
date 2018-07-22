@@ -9,17 +9,11 @@
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 
-// Macros provided by `query_interface` are not ready for Rust 2018 yet.
-// `interfaces!` assumes that `interfaces!` is imported into the current
-// context (where the macro is used).
-#[allow(rust_2018_idioms)]
-#[macro_use]
-extern crate query_interface;
+pub use zangfx_common as common;
 
 // Rexport macros from `query_interface`
+#[doc(no_inline)]
 pub use query_interface::{interfaces, mopo, vtable_for};
-
-pub use zangfx_common as common;
 
 // `handles` defines a macro
 #[macro_use]
