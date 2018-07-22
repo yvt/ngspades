@@ -13,7 +13,7 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Fence
+    FenceRef
 }
 
 define_handle! {
@@ -24,11 +24,11 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Semaphore
+    SemaphoreRef
 }
 
 /// The builder object for semaphores.
-pub type SemaphoreBuilder = Box<dyn SemaphoreBuilderTrait>;
+pub type SemaphoreBuilderRef = Box<dyn SemaphoreBuilder>;
 
 /// Trait for building semaphores.
 ///
@@ -41,28 +41,28 @@ pub type SemaphoreBuilder = Box<dyn SemaphoreBuilderTrait>;
 ///         .expect("Failed to create a semaphore.");
 ///     # }
 ///
-pub trait SemaphoreBuilderTrait: Object {
-    /// Build an `Semaphore`.
+pub trait SemaphoreBuilder: Object {
+    /// Build an `SemaphoreRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<Semaphore>;
+    fn build(&mut self) -> Result<SemaphoreRef>;
 }
 
-/// An implementation of `SemaphoreBuilderTrait` that always panics when `build` is
+/// An implementation of `SemaphoreBuilder` that always panics when `build` is
 /// called.
 #[derive(Debug)]
 pub struct NotSupportedSemaphoreBuilder;
 
 zangfx_impl_object! {
-    NotSupportedSemaphoreBuilder: SemaphoreBuilderTrait,
+    NotSupportedSemaphoreBuilder: SemaphoreBuilder,
     ::std::fmt::Debug
 }
 
-impl SemaphoreBuilderTrait for NotSupportedSemaphoreBuilder {
-    fn build(&mut self) -> Result<Semaphore> {
+impl SemaphoreBuilder for NotSupportedSemaphoreBuilder {
+    fn build(&mut self) -> Result<SemaphoreRef> {
         panic!("not supported by this backend")
     }
 }

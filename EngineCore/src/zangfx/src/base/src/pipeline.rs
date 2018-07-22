@@ -6,11 +6,11 @@
 //! Builder for render/compute pipeline objects.
 use std::ops::Range;
 
-use crate::arg::RootSig;
+use crate::arg::RootSigRef;
 use crate::common::Rect2D;
 use crate::formats::VertexFormat;
-use crate::pass::RenderPass;
-use crate::shader::Library;
+use crate::pass::RenderPassRef;
+use crate::shader::LibraryRef;
 use crate::{
     CmpFn, ColorChannelFlags, DeviceSize, RenderSubpassColorTargetIndex, SubpassIndex,
     VertexAttrIndex, VertexBufferIndex, ViewportIndex,
@@ -22,7 +22,7 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    RenderPipeline
+    RenderPipelineRef
 }
 
 define_handle! {
@@ -30,58 +30,58 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    ComputePipeline
+    ComputePipelineRef
 }
 
 /// The builder object for compute pipelines.
-pub type ComputePipelineBuilder = Box<dyn ComputePipelineBuilderTrait>;
+pub type ComputePipelineBuilderRef = Box<dyn ComputePipelineBuilder>;
 
 /// Trait for building compute pipelines.
 ///
 /// # Examples
 ///
 ///     # use zangfx_base::*;
-///     # fn test(device: &Device, library: &Library) {
+///     # fn test(device: &Device, library: &LibraryRef) {
 ///     let pipeline = device.build_compute_pipeline()
 ///         .compute_shader(library, "main")
 ///         .build()
 ///         .expect("Failed to create a pipeline.");
 ///     # }
 ///
-pub trait ComputePipelineBuilderTrait: Object {
+pub trait ComputePipelineBuilder: Object {
     /// Set the compute shader.
     ///
     /// Mandatory.
     fn compute_shader(
         &mut self,
-        library: &Library,
+        library: &LibraryRef,
         entry_point: &str,
-    ) -> &mut dyn ComputePipelineBuilderTrait;
+    ) -> &mut dyn ComputePipelineBuilder;
 
     /// Set the root signature.
     ///
     /// Mandatory.
-    fn root_sig(&mut self, v: &RootSig) -> &mut dyn ComputePipelineBuilderTrait;
+    fn root_sig(&mut self, v: &RootSigRef) -> &mut dyn ComputePipelineBuilder;
 
-    /// Build an `ComputePipeline`.
+    /// Build an `ComputePipelineRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<ComputePipeline>;
+    fn build(&mut self) -> Result<ComputePipelineRef>;
 }
 
 /// The builder object for render pipelines.
-pub type RenderPipelineBuilder = Box<dyn RenderPipelineBuilderTrait>;
+pub type RenderPipelineBuilderRef = Box<dyn RenderPipelineBuilder>;
 
 /// Trait for building render pipelines.
 ///
 /// # Examples
 ///
 ///     # use zangfx_base::*;
-///     # fn test(device: &Device, library: Library, root_sig: RootSig,
-///     #    render_pass: RenderPass) {
+///     # fn test(device: &Device, library: LibraryRef, root_sig: RootSigRef,
+///     #    render_pass: RenderPassRef) {
 ///     let mut builder = device.build_render_pipeline();
 ///
 ///     builder.root_sig(&root_sig)
@@ -109,38 +109,38 @@ pub type RenderPipelineBuilder = Box<dyn RenderPipelineBuilderTrait>;
 ///         .expect("Failed to create a pipeline.");
 ///     # }
 ///
-pub trait RenderPipelineBuilderTrait: Object {
+pub trait RenderPipelineBuilder: Object {
     /// Set the vertex shader.
     ///
     /// Mandatory.
     fn vertex_shader(
         &mut self,
-        library: &Library,
+        library: &LibraryRef,
         entry_point: &str,
-    ) -> &mut dyn RenderPipelineBuilderTrait;
+    ) -> &mut dyn RenderPipelineBuilder;
 
     /// Set the fragment shader.
     ///
     /// Mandatory if rasterization is enabled.
     fn fragment_shader(
         &mut self,
-        library: &Library,
+        library: &LibraryRef,
         entry_point: &str,
-    ) -> &mut dyn RenderPipelineBuilderTrait;
+    ) -> &mut dyn RenderPipelineBuilder;
 
     /// Set the root signature.
     ///
     /// Mandatory.
-    fn root_sig(&mut self, v: &RootSig) -> &mut dyn RenderPipelineBuilderTrait;
+    fn root_sig(&mut self, v: &RootSigRef) -> &mut dyn RenderPipelineBuilder;
 
     /// Set the render pass where the render pipeline will be used.
     ///
     /// Mandatory.
     fn render_pass(
         &mut self,
-        v: &RenderPass,
+        v: &RenderPassRef,
         subpass: SubpassIndex,
-    ) -> &mut dyn RenderPipelineBuilderTrait;
+    ) -> &mut dyn RenderPipelineBuilder;
 
     /// Define a vertex buffer binding.
     ///
@@ -170,18 +170,18 @@ pub trait RenderPipelineBuilderTrait: Object {
     );
 
     /// Set the input primitive topology. Mandatory.
-    fn topology(&mut self, v: PrimitiveTopology) -> &mut dyn RenderPipelineBuilderTrait;
+    fn topology(&mut self, v: PrimitiveTopology) -> &mut dyn RenderPipelineBuilder;
 
     /// Enable rasterization.
     fn rasterize(&mut self) -> &mut dyn Rasterizer;
 
-    /// Build an `RenderPipeline`.
+    /// Build an `RenderPipelineRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<RenderPipeline>;
+    fn build(&mut self) -> Result<RenderPipelineRef>;
 }
 
 /// Trait for defining a vertex buffer binding.

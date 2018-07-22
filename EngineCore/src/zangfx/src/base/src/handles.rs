@@ -6,7 +6,8 @@
 //! Handle types.
 //!
 //! Handles represent references to objects such as images and shader modules.
-//! They behave like `Arc`s from the application developer's perspective.
+//! Handle types are distinguished by the suffix `Ref` and they behave like
+//! `Arc`s from the application developer's perspective.
 //! They support the following operations:
 //!
 //!  - `Drop`. Note that dropping a handle does not necessarily destroy the
@@ -47,14 +48,14 @@
 //!     # #[macro_use] extern crate zangfx_base;
 //!     # fn main() {
 //!     use std::any::Any;
-//!     use zangfx_base::{CloneHandle, Fence};
+//!     use zangfx_base::{CloneHandle, FenceRef};
 //!
 //!     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 //!     struct MyFence;
 //!
-//!     zangfx_impl_handle!(MyFence, Fence);
+//!     zangfx_impl_handle!(MyFence, FenceRef);
 //!
-//!     let fence = Fence::new(MyFence);
+//!     let fence = FenceRef::new(MyFence);
 //!     assert!(fence.is::<MyFence>());
 //!     # }
 //!

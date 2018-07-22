@@ -7,16 +7,16 @@
 use ngsenumflags::BitFlags;
 use std::ops;
 
+use crate::command::CmdQueueRef;
 use crate::formats::ImageFormat;
-use crate::sampler::Sampler;
 use crate::handles::CloneHandle;
-use crate::command::CmdQueue;
+use crate::sampler::SamplerRef;
 use crate::{DeviceSize, Object, Result};
 
 define_handle! {
     /// Image handle.
     ///
-    /// Images are first created using `ImageBuilderTrait`. After an image is created
+    /// Images are first created using `ImageBuilder`. After an image is created
     /// it is in the **Prototype** state. Before it can be used as an attachment
     /// or a descriptor, it must first be transitioned to the **Allocated**
     /// state by allocating the physical space of the image via a method
@@ -30,24 +30,24 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Image: ImageTrait
+    ImageRef: Image
 }
 
 /// Trait for image handles.
-pub trait ImageTrait: CloneHandle<Image> {
+pub trait Image: CloneHandle<ImageRef> {
     /// Create a proxy object to use this image from a specified queue.
     ///
     /// # Valid Usage
     ///
     ///  - The image must not an image view.
-    fn make_proxy(&mut self, queue: &CmdQueue) -> Image;
+    fn make_proxy(&mut self, queue: &CmdQueueRef) -> ImageRef;
 
-    /// Create an `ImageViewBuilderTrait` associated with this image.
+    /// Create an `ImageViewBuilder` associated with this image.
     ///
     /// # Valid Usage
     ///
     ///  - The image must be in the Allocated state.
-    fn build_image_view(&self) -> ImageViewBuilder;
+    fn build_image_view(&self) -> ImageViewBuilderRef;
 
     /// Retrieve the memory requirements for this image.
     fn get_memory_req(&self) -> Result<MemoryReq>;
@@ -56,7 +56,7 @@ pub trait ImageTrait: CloneHandle<Image> {
 define_handle! {
     /// Buffer handle.
     ///
-    /// Buffers are first created using `BufferBuilderTrait`. After a buffer is created
+    /// Buffers are first created using `BufferBuilder`. After a buffer is created
     /// it is in the **Prototype** state. Before it can be used as an attachment
     /// or a descriptor, it must first be transitioned to the **Allocated**
     /// state by allocating the physical space of the buffer via a method
@@ -70,13 +70,13 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Buffer
+    BufferRef
 }
 
 /// Trait for buffer handles.
-pub trait BufferTrait: CloneHandle<Buffer> {
+pub trait Buffer: CloneHandle<BufferRef> {
     /// Create a proxy object to use this buffer from a specified queue.
-    fn make_proxy(&mut self, queue: &CmdQueue) -> Buffer;
+    fn make_proxy(&mut self, queue: &CmdQueueRef) -> BufferRef;
 
     /// Get the address of the underlying storage of a buffer.
     ///
@@ -92,7 +92,7 @@ pub trait BufferTrait: CloneHandle<Buffer> {
 }
 
 /// The builder object for images.
-pub type ImageBuilder = Box<dyn ImageBuilderTrait>;
+pub type ImageBuilderRef = Box<dyn ImageBuilder>;
 
 /// Trait for building images.
 ///
@@ -111,9 +111,9 @@ pub type ImageBuilder = Box<dyn ImageBuilderTrait>;
 ///
 /// ¹ Requires [`supports_cube_array`].
 ///
-/// [Extents]: ImageBuilderTrait::extents
-/// [Cube]: ImageBuilderTrait::extents_cube
-/// [# of layers]: ImageBuilderTrait::num_layers
+/// [Extents]: ImageBuilder::extents
+/// [Cube]: ImageBuilder::extents_cube
+/// [# of layers]: ImageBuilder::num_layers
 /// [Image type]: ImageType
 /// [`supports_cube_array`]: crate::DeviceLimits::supports_cube_array
 ///
@@ -121,7 +121,7 @@ pub type ImageBuilder = Box<dyn ImageBuilderTrait>;
 ///
 ///     # use zangfx_base::device::Device;
 ///     # use zangfx_base::formats::ImageFormat;
-///     # use zangfx_base::resources::ImageBuilderTrait;
+///     # use zangfx_base::resources::ImageBuilder;
 ///     # fn test(device: &Device) {
 ///     let image = device.build_image()
 ///         .extents(&[1024, 768])
@@ -130,11 +130,11 @@ pub type ImageBuilder = Box<dyn ImageBuilderTrait>;
 ///         .expect("Failed to create an image.");
 ///     # }
 ///
-pub trait ImageBuilderTrait: Object {
+pub trait ImageBuilder: Object {
     /// Specify the queue associated with the created image.
     ///
     /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueue) -> &mut dyn ImageBuilderTrait;
+    fn queue(&mut self, queue: &CmdQueueRef) -> &mut dyn ImageBuilder;
 
     /// Set the image extents to `v`. Used for 1D/2D/3D images.
     ///
@@ -143,13 +143,13 @@ pub trait ImageBuilderTrait: Object {
     ///
     /// Specifying either of `extents` and `extents_cube` is mandatory.
     /// Specifying one overwrites the specification of another.
-    fn extents(&mut self, v: &[u32]) -> &mut dyn ImageBuilderTrait;
+    fn extents(&mut self, v: &[u32]) -> &mut dyn ImageBuilder;
 
     /// Set the image extents to `v`. Used for cube images.
     ///
     /// Specifying either of `extents` and `extents_cube` is mandatory.
     /// Specifying one overwrites the specification of another.
-    fn extents_cube(&mut self, v: u32) -> &mut dyn ImageBuilderTrait;
+    fn extents_cube(&mut self, v: u32) -> &mut dyn ImageBuilder;
 
     /// Set the number of array layers.
     ///
@@ -157,7 +157,7 @@ pub trait ImageBuilderTrait: Object {
     ///
     /// `None` must be specified for 3D images (those for which a three-element
     /// slice was passed to `extents`).
-    fn num_layers(&mut self, v: Option<u32>) -> &mut dyn ImageBuilderTrait;
+    fn num_layers(&mut self, v: Option<u32>) -> &mut dyn ImageBuilder;
 
     /// Set the number of mipmap levels.
     ///
@@ -165,26 +165,26 @@ pub trait ImageBuilderTrait: Object {
     /// `log2(extents_value.iter().max().unwrap()).ceil() + 1`. Defaults to `1`.
     ///
     /// Must be `1` for 1D textures.
-    fn num_mip_levels(&mut self, v: u32) -> &mut dyn ImageBuilderTrait;
+    fn num_mip_levels(&mut self, v: u32) -> &mut dyn ImageBuilder;
 
     /// Set the image format.
     ///
     /// This property is mandatory.
-    fn format(&mut self, v: ImageFormat) -> &mut dyn ImageBuilderTrait;
+    fn format(&mut self, v: ImageFormat) -> &mut dyn ImageBuilder;
 
     /// Set the image usage.
     ///
     /// Defaults to `ImageUsage::default_flags()`
     /// (`ImageUsage::CopyWrite | ImageUsage::Sampled`).
-    fn usage(&mut self, v: ImageUsageFlags) -> &mut dyn ImageBuilderTrait;
+    fn usage(&mut self, v: ImageUsageFlags) -> &mut dyn ImageBuilder;
 
-    /// Build an `Image`.
+    /// Build an `ImageRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<Image>;
+    fn build(&mut self) -> Result<ImageRef>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -224,7 +224,6 @@ impl From<ImageLayerRange> for ImageSubRange {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ImageLayout {
     // TODO: Read-only render targets
-
     /// Layout for render targets.
     Render,
 
@@ -232,14 +231,14 @@ pub enum ImageLayout {
     Shader,
 
     /// Layout for using images as source of the copy commands defined by
-    /// [`CopyCmdEncoderTrait`].
+    /// [`CopyCmdEncoder`].
     ///
-    /// [`CopyCmdEncoderTrait`]: crate::CopyCmdEncoderTrait
+    /// [`CopyCmdEncoder`]: crate::CopyCmdEncoder
     CopyRead,
     /// Layout for using images as destination of the copy commands defined by
-    /// [`CopyCmdEncoderTrait`].
+    /// [`CopyCmdEncoder`].
     ///
-    /// [`CopyCmdEncoderTrait`]: crate::CopyCmdEncoderTrait
+    /// [`CopyCmdEncoder`]: crate::CopyCmdEncoder
     CopyWrite,
 }
 
@@ -249,11 +248,11 @@ pub enum ImageLayout {
 pub enum ImageUsage {
     /// Enables uses of the image as the source of [copy commands].
     ///
-    /// [copy commands]: crate::CopyCmdEncoderTrait
+    /// [copy commands]: crate::CopyCmdEncoder
     CopyRead = 0b00000001,
     /// Enables uses of the image as the destination of [copy commands].
     ///
-    /// [copy commands]: crate::CopyCmdEncoderTrait
+    /// [copy commands]: crate::CopyCmdEncoder
     CopyWrite = 0b00000010,
     /// Enables uses of the image as a [sampled image shader argument].
     ///
@@ -265,14 +264,14 @@ pub enum ImageUsage {
     /// flag.
     ///
     /// [storage image shader argument]: crate::ArgType::StorageImage
-    /// [`use_heap`]: crate::CmdEncoderTrait::use_heap
+    /// [`use_heap`]: crate::CmdEncoder::use_heap
     Storage = 0b00001000,
     /// Enables uses of the image as a render target.
     ///
     /// Note: The [`use_heap`] command ignores images that include this usage
     /// flag.
     ///
-    /// [`use_heap`]: crate::CmdEncoderTrait::use_heap
+    /// [`use_heap`]: crate::CmdEncoder::use_heap
     Render = 0b00010000,
 
     /// Enables the creation of an image view with a different type (2D/3D/...).
@@ -299,7 +298,7 @@ pub enum ImageUsage {
 pub type ImageUsageFlags = BitFlags<ImageUsage>;
 
 impl ImageUsage {
-    /// Get the default image usage flags used by [`ImageBuilderTrait`](ImageBuilderTrait).
+    /// Get the default image usage flags used by [`ImageBuilder`](ImageBuilder).
     pub fn default_flags() -> ImageUsageFlags {
         ImageUsage::CopyWrite | ImageUsage::Sampled
     }
@@ -314,14 +313,14 @@ pub enum ImageAspect {
 }
 
 /// The builder object for buffers.
-pub type BufferBuilder = Box<dyn BufferBuilderTrait>;
+pub type BufferBuilderRef = Box<dyn BufferBuilder>;
 
 /// Trait for building buffers.
 ///
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
-///     # use zangfx_base::resources::BufferBuilderTrait;
+///     # use zangfx_base::resources::BufferBuilder;
 ///     # fn test(device: &Device) {
 ///     let buffer = device.build_buffer()
 ///         .size(1024 * 1024)
@@ -329,30 +328,30 @@ pub type BufferBuilder = Box<dyn BufferBuilderTrait>;
 ///         .expect("Failed to create a buffer.");
 ///     # }
 ///
-pub trait BufferBuilderTrait: Object {
+pub trait BufferBuilder: Object {
     /// Specify the queue associated with the created buffer.
     ///
     /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueue) -> &mut dyn BufferBuilderTrait;
+    fn queue(&mut self, queue: &CmdQueueRef) -> &mut dyn BufferBuilder;
 
     /// Set the buffer size to `v` bytes.
     ///
     /// This property is mandatory.
-    fn size(&mut self, v: DeviceSize) -> &mut dyn BufferBuilderTrait;
+    fn size(&mut self, v: DeviceSize) -> &mut dyn BufferBuilder;
 
     /// Set the buffer usage.
     ///
     /// Defaults to `BufferUsage::default_flags()`
     /// (`BufferUsage::CopyWrite | BufferUsage::Uniform`).
-    fn usage(&mut self, v: BufferUsageFlags) -> &mut dyn BufferBuilderTrait;
+    fn usage(&mut self, v: BufferUsageFlags) -> &mut dyn BufferBuilder;
 
-    /// Build a `Buffer`.
+    /// Build a `BufferRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<Buffer>;
+    fn build(&mut self) -> Result<BufferRef>;
 }
 
 #[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -370,7 +369,7 @@ pub enum BufferUsage {
 pub type BufferUsageFlags = BitFlags<BufferUsage>;
 
 impl BufferUsage {
-    /// Get the default image usage flags used by `ImageBuilderTrait`.
+    /// Get the default image usage flags used by `ImageBuilder`.
     pub fn default_flags() -> BufferUsageFlags {
         BufferUsage::CopyWrite | BufferUsage::Uniform
     }
@@ -405,14 +404,14 @@ pub struct MemoryReq {
 }
 
 /// The builder object for image views.
-pub type ImageViewBuilder = Box<dyn ImageViewBuilderTrait>;
+pub type ImageViewBuilderRef = Box<dyn ImageViewBuilder>;
 
 /// Trait for building image views.
 ///
 /// # Examples
 ///
 ///     # use zangfx_base::*;
-///     # fn test(device: &Device, image: Image) {
+///     # fn test(device: &Device, image: ImageRef) {
 ///     let image_view = image.build_image_view()
 ///         .subrange(&ImageSubRange {
 ///             mip_levels: Some(0..1),
@@ -422,15 +421,15 @@ pub type ImageViewBuilder = Box<dyn ImageViewBuilderTrait>;
 ///         .expect("Failed to create an image view.");
 ///     # }
 ///
-pub trait ImageViewBuilderTrait: Object {
+pub trait ImageViewBuilder: Object {
     /// Set the subresource range to `v`.
     ///
     /// Defaults to `Default::default()` (full range). The original image's
     /// [`usage`] must include [`PartialView`] to specify a partial range here.
     ///
-    /// [`usage`]: ImageBuilderTrait::usage
+    /// [`usage`]: ImageBuilder::usage
     /// [`PartialView`]: ImageUsage::PartialView
-    fn subrange(&mut self, v: &ImageSubRange) -> &mut dyn ImageViewBuilderTrait;
+    fn subrange(&mut self, v: &ImageSubRange) -> &mut dyn ImageViewBuilder;
 
     /// Set the image view format.
     ///
@@ -438,9 +437,9 @@ pub trait ImageViewBuilderTrait: Object {
     /// [`usage`] must include [`MutableFormat`] to specify a different format
     /// here.
     ///
-    /// [`usage`]: ImageBuilderTrait::usage
+    /// [`usage`]: ImageBuilder::usage
     /// [`MutableFormat`]: ImageUsage::MutableFormat
-    fn format(&mut self, v: ImageFormat) -> &mut dyn ImageViewBuilderTrait;
+    fn format(&mut self, v: ImageFormat) -> &mut dyn ImageViewBuilder;
 
     /// Set the image view type.
     ///
@@ -458,9 +457,9 @@ pub trait ImageViewBuilderTrait: Object {
     /// | Cube or cube array  | 2D, 2D array, cube, or cube array |
     /// | 3D                  | 3D                                |
     ///
-    /// [`usage`]: ImageBuilderTrait::usage
+    /// [`usage`]: ImageBuilder::usage
     /// [`MutableType`]: ImageUsage::MutableType
-    fn image_type(&mut self, v: ImageType) -> &mut dyn ImageViewBuilderTrait;
+    fn image_type(&mut self, v: ImageType) -> &mut dyn ImageViewBuilder;
 
     /// Build an image view.
     ///
@@ -468,7 +467,7 @@ pub trait ImageViewBuilderTrait: Object {
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<Image>;
+    fn build(&mut self) -> Result<ImageRef>;
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -485,26 +484,26 @@ pub enum ImageType {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::{Image, Buffer, ResourceRef};
-///     fn test(image: Image, buffer: Buffer) {
+///     # use zangfx_base::{ImageRef, BufferRef, ResourceRef};
+///     fn test(image: ImageRef, buffer: BufferRef) {
 ///         let _ref1: ResourceRef = (&image).into();
 ///         let _ref2: ResourceRef = (&buffer).into();
 ///     }
 ///
 #[derive(Debug, Clone, Copy)]
 pub enum ResourceRef<'a> {
-    Image(&'a Image),
-    Buffer(&'a Buffer),
+    Image(&'a ImageRef),
+    Buffer(&'a BufferRef),
 }
 
-impl<'a> From<&'a Image> for ResourceRef<'a> {
-    fn from(x: &'a Image) -> Self {
+impl<'a> From<&'a ImageRef> for ResourceRef<'a> {
+    fn from(x: &'a ImageRef) -> Self {
         ResourceRef::Image(x)
     }
 }
 
-impl<'a> From<&'a Buffer> for ResourceRef<'a> {
-    fn from(x: &'a Buffer) -> Self {
+impl<'a> From<&'a BufferRef> for ResourceRef<'a> {
+    fn from(x: &'a BufferRef) -> Self {
         ResourceRef::Buffer(x)
     }
 }
@@ -514,15 +513,15 @@ impl<'a> From<&'a Buffer> for ResourceRef<'a> {
 ///
 /// # Examples
 ///
-///     # use zangfx_base::{Image, ArgSlice};
-///     fn test(image1: Image, image2: Image) {
+///     # use zangfx_base::{ImageRef, ArgSlice};
+///     fn test(image1: ImageRef, image2: ImageRef) {
 ///         let _: ArgSlice = [&image1, &image2][..].into();
 ///     }
 ///
 #[derive(Debug, Clone, Copy)]
 pub enum ArgSlice<'a> {
     /// Images.
-    Image(&'a [&'a Image]),
+    Image(&'a [&'a ImageRef]),
     /// Buffers and their subranges.
     ///
     /// - For a uniform buffer, the starting offset of each range must be
@@ -530,9 +529,9 @@ pub enum ArgSlice<'a> {
     /// - For a storage buffer, the starting offset of each range must be
     ///   aligned to `DeviceLimits::storage_buffer_alignment` bytes.
     ///
-    Buffer(&'a [(ops::Range<DeviceSize>, &'a Buffer)]),
+    Buffer(&'a [(ops::Range<DeviceSize>, &'a BufferRef)]),
     /// Samplers.
-    Sampler(&'a [&'a Sampler]),
+    Sampler(&'a [&'a SamplerRef]),
 }
 
 impl<'a> ArgSlice<'a> {
@@ -545,20 +544,20 @@ impl<'a> ArgSlice<'a> {
     }
 }
 
-impl<'a> From<&'a [&'a Image]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a Image]) -> Self {
+impl<'a> From<&'a [&'a ImageRef]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a ImageRef]) -> Self {
         ArgSlice::Image(x)
     }
 }
 
-impl<'a> From<&'a [(ops::Range<DeviceSize>, &'a Buffer)]> for ArgSlice<'a> {
-    fn from(x: &'a [(ops::Range<DeviceSize>, &'a Buffer)]) -> Self {
+impl<'a> From<&'a [(ops::Range<DeviceSize>, &'a BufferRef)]> for ArgSlice<'a> {
+    fn from(x: &'a [(ops::Range<DeviceSize>, &'a BufferRef)]) -> Self {
         ArgSlice::Buffer(x)
     }
 }
 
-impl<'a> From<&'a [&'a Sampler]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a Sampler]) -> Self {
+impl<'a> From<&'a [&'a SamplerRef]> for ArgSlice<'a> {
+    fn from(x: &'a [&'a SamplerRef]) -> Self {
         ArgSlice::Sampler(x)
     }
 }

@@ -117,31 +117,31 @@ pub struct Viewport {
     pub max_depth: f32,
 }
 
-define_object! { ArgTableSigBuilderTrait }
-define_object! { ArgSigTrait }
-define_object! { RootSigBuilderTrait }
-define_object! { ArgPoolBuilderTrait }
-define_object! { ArgPoolTrait }
-define_object! { CmdQueueBuilderTrait }
-define_object! { CmdQueueTrait }
-define_object! { CmdBufferTrait }
-define_object! { RenderCmdEncoderTrait }
-define_object! { ComputeCmdEncoderTrait }
-define_object! { CopyCmdEncoderTrait }
-define_object! { CmdEncoderTrait }
-define_object! { DeviceTrait }
-define_object! { DynamicHeapBuilderTrait }
-define_object! { DedicatedHeapBuilderTrait }
-define_object! { HeapTrait }
-define_object! { RenderPassBuilderTrait }
+define_object! { ArgTableSigBuilder }
+define_object! { ArgSig }
+define_object! { RootSigBuilder }
+define_object! { ArgPoolBuilder }
+define_object! { ArgPool }
+define_object! { CmdQueueBuilder }
+define_object! { CmdQueue }
+define_object! { CmdBuffer }
+define_object! { RenderCmdEncoder }
+define_object! { ComputeCmdEncoder }
+define_object! { CopyCmdEncoder }
+define_object! { CmdEncoder }
+define_object! { Device }
+define_object! { DynamicHeapBuilder }
+define_object! { DedicatedHeapBuilder }
+define_object! { Heap }
+define_object! { RenderPassBuilder }
 define_object! { RenderPassTarget }
-define_object! { RenderTargetTableBuilderTrait }
-define_object! { ComputePipelineBuilderTrait }
-define_object! { RenderPipelineBuilderTrait }
-define_object! { ImageBuilderTrait }
-define_object! { BufferBuilderTrait }
-define_object! { SamplerBuilderTrait }
-define_object! { LibraryBuilderTrait }
+define_object! { RenderTargetTableBuilder }
+define_object! { ComputePipelineBuilder }
+define_object! { RenderPipelineBuilder }
+define_object! { ImageBuilder }
+define_object! { BufferBuilder }
+define_object! { SamplerBuilder }
+define_object! { LibraryBuilder }
 
 /// The `zangfx_base` prelude.
 pub mod prelude {

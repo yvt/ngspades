@@ -6,7 +6,7 @@
 //! Builder for render pass objects and render target objects, and other
 //! relevant types.
 use crate::formats::ImageFormat;
-use crate::resources::Image;
+use crate::resources::ImageRef;
 use crate::AccessTypeFlags;
 use crate::{Object, Result};
 use crate::{RenderPassTargetIndex, SubpassIndex};
@@ -16,7 +16,7 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    RenderPass
+    RenderPassRef
 }
 
 define_handle! {
@@ -24,11 +24,11 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    RenderTargetTable
+    RenderTargetTableRef
 }
 
 /// The builder object for render passes.
-pub type RenderPassBuilder = Box<dyn RenderPassBuilderTrait>;
+pub type RenderPassBuilderRef = Box<dyn RenderPassBuilder>;
 
 /// Trait for building render passes.
 ///
@@ -55,7 +55,7 @@ pub type RenderPassBuilder = Box<dyn RenderPassBuilderTrait>;
 ///         .expect("Failed to create a render pass.");
 ///     # }
 ///
-pub trait RenderPassBuilderTrait: Object {
+pub trait RenderPassBuilder: Object {
     /// Define a render target of the render pass.
     ///
     /// Use the returned `dyn RenderPassTarget` to specify additional properties
@@ -73,7 +73,7 @@ pub trait RenderPassBuilderTrait: Object {
     /// current subpass index, it defines a subpass self-dependency, which is
     /// required to use the [`barrier`] command inside the subpass.
     ///
-    /// [`barrier`]: crate::CmdEncoderTrait::barrier
+    /// [`barrier`]: crate::CmdEncoder::barrier
     ///
     /// # Valid Usage
     ///
@@ -83,7 +83,7 @@ pub trait RenderPassBuilderTrait: Object {
         from: SubpassIndex,
         src_access: AccessTypeFlags,
         dst_access: AccessTypeFlags,
-    ) -> &mut dyn RenderPassBuilderTrait;
+    ) -> &mut dyn RenderPassBuilder;
 
     /// Define the color render targets of the current subpass.
     ///
@@ -103,13 +103,13 @@ pub trait RenderPassBuilderTrait: Object {
 
     // TODO: `next_subpass`
 
-    /// Build an `RenderPass`.
+    /// Build an `RenderPassRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<RenderPass>;
+    fn build(&mut self) -> Result<RenderPassRef>;
 }
 
 pub trait RenderPassTarget: Object {
@@ -152,14 +152,14 @@ pub enum StoreOp {
 }
 
 /// The builder object for render target tables.
-pub type RenderTargetTableBuilder = Box<dyn RenderTargetTableBuilderTrait>;
+pub type RenderTargetTableBuilderRef = Box<dyn RenderTargetTableBuilder>;
 
 /// Trait for building render target tables.
 ///
 /// # Examples
 ///
 ///     # use zangfx_base::*;
-///     # fn test(device: &Device, pass: RenderPass, image: Image) {
+///     # fn test(device: &Device, pass: RenderPassRef, image: ImageRef) {
 ///     let mut builder = device.build_render_target_table();
 ///     builder.render_pass(&pass)
 ///         .extents(&[1024, 768]);
@@ -171,23 +171,23 @@ pub type RenderTargetTableBuilder = Box<dyn RenderTargetTableBuilderTrait>;
 ///         .expect("Failed to create a render target table.");
 ///     # }
 ///
-pub trait RenderTargetTableBuilderTrait: Object {
+pub trait RenderTargetTableBuilder: Object {
     /// Set the associated render pass to `v`.
     ///
     /// Mandatory.
-    fn render_pass(&mut self, v: &RenderPass) -> &mut dyn RenderTargetTableBuilderTrait;
+    fn render_pass(&mut self, v: &RenderPassRef) -> &mut dyn RenderTargetTableBuilder;
 
     /// Set the render target extents to `v`.
     ///
     /// `v.len()` matches the dimensionality of the image and must be 1 or 2.
     ///
     /// Mandatory.
-    fn extents(&mut self, v: &[u32]) -> &mut dyn RenderTargetTableBuilderTrait;
+    fn extents(&mut self, v: &[u32]) -> &mut dyn RenderTargetTableBuilder;
 
     /// Set the render target layer count to `v`.
     ///
     /// Defaults to `1`.
-    fn num_layers(&mut self, v: u32) -> &mut dyn RenderTargetTableBuilderTrait;
+    fn num_layers(&mut self, v: u32) -> &mut dyn RenderTargetTableBuilder;
 
     /// Define a render target.
     ///
@@ -196,16 +196,16 @@ pub trait RenderTargetTableBuilderTrait: Object {
     ///
     /// Mandatory. Must be specified for each render target defined by the
     /// render pass.
-    fn target(&mut self, index: RenderPassTargetIndex, image: &Image) -> &mut dyn RenderTarget;
+    fn target(&mut self, index: RenderPassTargetIndex, image: &ImageRef) -> &mut dyn RenderTarget;
 
-    /// Build an `RenderTargetTable`.
+    /// Build an `RenderTargetTableRef`.
     ///
     /// # Valid Usage
     ///
     /// - All mandatory properties must have their values set before this
     ///   method is called.
     ///
-    fn build(&mut self) -> Result<RenderTargetTable>;
+    fn build(&mut self) -> Result<RenderTargetTableRef>;
 }
 
 pub trait RenderTarget: Object {

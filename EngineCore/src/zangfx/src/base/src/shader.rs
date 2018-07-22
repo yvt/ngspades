@@ -13,11 +13,11 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    Library
+    LibraryRef
 }
 
 /// The builder object for shader libraries.
-pub type LibraryBuilder = Box<dyn LibraryBuilderTrait>;
+pub type LibraryBuilderRef = Box<dyn LibraryBuilder>;
 
 /// Trait for building shader libraries.
 ///
@@ -32,20 +32,20 @@ pub type LibraryBuilder = Box<dyn LibraryBuilderTrait>;
 ///                      SPIR-V code.");
 ///     # }
 ///
-pub trait LibraryBuilderTrait: Object {
+pub trait LibraryBuilder: Object {
     /// Set the SPIR-V code.
     ///
     /// See Vulkan 1.0 Specification Appendix A: "Vulkan Environment for SPIR-V"
     /// for the requirements.
-    fn spirv_code(&mut self, v: &[u32]) -> &mut dyn LibraryBuilderTrait;
+    fn spirv_code(&mut self, v: &[u32]) -> &mut dyn LibraryBuilder;
 
-    /// Build an `Library`.
+    /// Build an `LibraryRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<Library>;
+    fn build(&mut self) -> Result<LibraryRef>;
 }
 
 #[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
