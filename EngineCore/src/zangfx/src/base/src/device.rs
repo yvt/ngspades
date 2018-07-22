@@ -90,7 +90,7 @@ pub trait Device: Object {
     ///     # use zangfx_base::*;
     ///     # fn test(
     ///     #     device: &Device,
-    ///     #     arg_pool: &ArgPool,
+    ///     #     arg_pool: &ArgPoolRef,
     ///     #     arg_table: &ArgTableRef,
     ///     #     arg_table_sig: &ArgTableSigRef,
     ///     #     images: &[&ImageRef],
@@ -121,10 +121,10 @@ pub trait Device: Object {
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::{Device, ImageRef, BufferRef, ArgPool, ArgTableRef, ArgTableSigRef};
+    ///     # use zangfx_base::*;
     ///     # fn test(
     ///     #     device: &Device,
-    ///     #     arg_pool: &ArgPool,
+    ///     #     arg_pool: &ArgPoolRef,
     ///     #     arg_table: &ArgTableRef,
     ///     #     arg_table_sig: &ArgTableSigRef,
     ///     #     images: &[&ImageRef],
