@@ -4,15 +4,15 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdBuffer` for Metal.
-use parking_lot::Mutex;
+use atomic_refcell::AtomicRefCell;
 use std::fmt;
 use std::mem::replace;
 use std::sync::Arc;
-use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue};
+use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue, MTLCommandBufferStatus};
 
 use crate::renderpass::RenderTargetTable;
 use crate::utils::{nil_error, OCPtr};
-use zangfx_base::Result;
+use zangfx_base::{Result, Error, ErrorKind};
 use zangfx_base::{self as base, command};
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
@@ -48,7 +48,7 @@ struct UncommitedBuffer {
 }
 
 #[derive(Default)]
-struct CallbackSet(Vec<Box<dyn FnMut() + Sync + Send>>);
+struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
 
 #[derive(Debug)]
 enum Encoder {
@@ -141,10 +141,19 @@ impl command::CmdBuffer for CmdBuffer {
         // Pass the completion callbacks to `MTLCommandBuffer`
         let callbacks = replace(&mut uncommited.completion_callbacks, Default::default());
         if callbacks.0.len() > 0 {
-            let callbacks_cell = Mutex::new(callbacks.0);
+            let callbacks_cell = AtomicRefCell::new(callbacks.0);
+            let metal_buffer = Clone::clone(&uncommited.metal_buffer);
             let block = block::ConcreteBlock::new(move |_| {
-                for cb in callbacks_cell.lock().iter_mut() {
-                    cb();
+                // TODO: Return error details (`MTLCommandBufferError`?)
+
+                // `Error` is not `Clone`, so it must be re-created for every
+                // iteration.
+                let status = metal_buffer.status();
+                for cb in callbacks_cell.borrow_mut().iter_mut() {
+                    cb(match status {
+                        MTLCommandBufferStatus::Completed => Ok(()),
+                        _ => Err(Error::new(ErrorKind::Other)),
+                    });
                 }
             });
             uncommited.metal_buffer.add_completed_handler(&block.copy());
@@ -239,12 +248,11 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn on_complete(&mut self, cb: Box<dyn FnMut(base::Result<()>) + Sync + Send>) {
+    fn on_complete(&mut self, cb: Box<dyn FnMut(Result<()>) + Sync + Send>) {
         let uncommited = self
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        unimplemented!()
-        // uncommited.completion_callbacks.0.push(cb);
+        uncommited.completion_callbacks.0.push(cb);
     }
 }
