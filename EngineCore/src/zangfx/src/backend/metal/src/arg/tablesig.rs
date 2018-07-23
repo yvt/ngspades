@@ -4,16 +4,16 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `ArgTableSig` for Metal.
-use zangfx_metal_rs as metal;
-use cocoa::foundation::NSArray;
+use arrayvec::ArrayVec;
 use cocoa::base::nil;
+use cocoa::foundation::NSArray;
 use parking_lot::Mutex;
 use std::sync::Arc;
-use arrayvec::ArrayVec;
+use zangfx_metal_rs as metal;
 
-use zangfx_base::{self as base, arg, device, shader, ArgArrayIndex, ArgIndex};
 use zangfx_base::Result;
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, arg, device, shader, ArgArrayIndex, ArgIndex};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use crate::arg::ArgSize;
 use crate::utils::{nil_error, OCPtr};
@@ -256,13 +256,16 @@ impl ArgTableSig {
 
     pub(crate) fn update_arg_tables(
         &self,
-        updates: &[((&arg::ArgPoolRef, &arg::ArgTableRef), &[device::ArgUpdateSet])],
+        updates: &[(
+            (&arg::ArgPoolRef, &arg::ArgTableRef),
+            &[device::ArgUpdateSet],
+        )],
     ) -> Result<()> {
-        use zangfx_base::ArgSlice::*;
         use crate::arg::table::ArgTable;
         use crate::buffer::Buffer;
         use crate::image::Image;
         use crate::sampler::Sampler;
+        use zangfx_base::ArgSlice::*;
 
         self.lock_encoder(|encoder| {
             for &((_pool, table), update_sets) in updates.iter() {
@@ -280,7 +283,8 @@ impl ArgTableSig {
                     // stack-allocated array (`ArrayVec`).
                     match resources {
                         Image(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|obj| {
                                     let my_obj: &Image =
                                         obj.downcast_ref().expect("bad image view type");
@@ -294,7 +298,8 @@ impl ArgTableSig {
                         },
 
                         Buffer(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|&(_, obj)| {
                                     let my_obj: &Buffer =
                                         obj.downcast_ref().expect("bad buffer type");
@@ -304,7 +309,8 @@ impl ArgTableSig {
                                 })
                                 .collect();
 
-                            let offsets: ArrayVec<[_; 64]> = objs.iter()
+                            let offsets: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|&(ref range, obj)| {
                                     let my_obj: &Buffer =
                                         obj.downcast_ref().expect("bad buffer type");
@@ -323,7 +329,8 @@ impl ArgTableSig {
                         },
 
                         Sampler(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|obj| {
                                     let my_obj: &Sampler =
                                         obj.downcast_ref().expect("bad sampler type");

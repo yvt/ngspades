@@ -3,12 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::u32;
 use ngsenumflags::flags;
+use std::u32;
 
-use zangfx_metal_rs as metal;
 use zangfx_base::{self as base, limits};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_metal_rs as metal;
 
 use crate::MEMORY_REGION_GLOBAL;
 
@@ -82,18 +82,14 @@ impl DeviceCaps {
             },
         ];
 
-        let memory_regions = [
-            limits::MemoryRegionInfo {
-                size: working_set_size,
-            },
-        ];
+        let memory_regions = [limits::MemoryRegionInfo {
+            size: working_set_size,
+        }];
 
-        let queue_families = [
-            limits::QueueFamilyInfo {
-                caps: flags![limits::QueueFamilyCaps::{Render | Compute | Copy}],
-                count: <usize>::max_value(),
-            },
-        ];
+        let queue_families = [limits::QueueFamilyInfo {
+            caps: flags![limits::QueueFamilyCaps::{Render | Compute | Copy}],
+            count: <usize>::max_value(),
+        }];
 
         Self {
             limits,
@@ -116,8 +112,8 @@ impl limits::DeviceCaps for DeviceCaps {
     ) -> limits::ImageFormatCapsFlags {
         use crate::formats::translate_image_format;
         use zangfx_base::formats::ImageFormat;
-        use zangfx_base::formats::Signedness::*;
         use zangfx_base::formats::Normalizedness::*;
+        use zangfx_base::formats::Signedness::*;
         use zangfx_base::limits::ImageFormatCaps::*;
 
         let trans = CopyRead | CopyWrite;

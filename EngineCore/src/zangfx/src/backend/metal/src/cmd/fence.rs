@@ -4,14 +4,14 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Fence` for Metal.
-use zangfx_base::{self as base, Result};
-use zangfx_base::zangfx_impl_handle;
-use tokenlock::{TokenLock, TokenRef};
-use zangfx_metal_rs::{MTLDevice, MTLFence};
 use refeq::RefEqArc;
+use tokenlock::{TokenLock, TokenRef};
+use zangfx_base::zangfx_impl_handle;
+use zangfx_base::{self as base, Result};
+use zangfx_metal_rs::{MTLDevice, MTLFence};
 
-use crate::utils::{nil_error, OCPtr};
 use crate::cmd::queue::Item;
+use crate::utils::{nil_error, OCPtr};
 
 // TODO: recycle fences after use
 

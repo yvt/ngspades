@@ -4,19 +4,19 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Heap` for Metal.
-use std::sync::Arc;
-use zangfx_metal_rs as metal;
 use iterpool::{IterablePool, Pool, PoolPtr};
 use parking_lot::Mutex;
+use std::sync::Arc;
 use xalloc::{SysTlsf, SysTlsfRegion};
+use zangfx_metal_rs as metal;
 
-use zangfx_base::{self as base, heap, DeviceSize, MemoryType};
 use zangfx_base::Result;
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{self as base, heap, DeviceSize, MemoryType};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use crate::utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 use crate::buffer::Buffer;
 use crate::image::Image;
+use crate::utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 
 /// Implementation of `DynamicHeapBuilder` and `DedicatedHeapBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -49,10 +49,8 @@ impl HeapBuilder {
     }
 
     fn build_common(&mut self) -> Result<heap::HeapRef> {
-        let memory_type = self.memory_type
-            .expect("memory_type");
-        let storage_mode = translate_storage_mode(memory_type)
-            .expect("memory_type");
+        let memory_type = self.memory_type.expect("memory_type");
+        let storage_mode = translate_storage_mode(memory_type).expect("memory_type");
 
         if self.size == 0 {
             panic!("size is zero");
@@ -180,14 +178,14 @@ impl heap::Heap for Heap {
                         self.metal_heap.new_buffer(size, options)
                     })?;
 
-                Ok(if let Some (metal_buffer) = metal_buffer_or_none {
+                Ok(if let Some(metal_buffer) = metal_buffer_or_none {
                     // If the allocation was successful, then return
                     // a `HeapAlloc` for the allocated buffer
                     let resource = *metal_buffer;
                     let heap_alloc = HeapAlloc { resource };
 
                     unimplemented!()
-                    // base::HeapAlloc::new(heap_alloc)
+                // base::HeapAlloc::new(heap_alloc)
                 } else {
                     false
                 })
@@ -205,7 +203,7 @@ impl heap::Heap for Heap {
                     let heap_alloc = HeapAlloc { resource };
 
                     unimplemented!()
-                    // base::HeapAlloc::new(heap_alloc)
+                // base::HeapAlloc::new(heap_alloc)
                 } else {
                     false
                 })
@@ -307,7 +305,7 @@ impl heap::Heap for EmulatedHeap {
                     };
 
                     unimplemented!()
-                    // base::HeapAlloc::new(heap_alloc)
+                // base::HeapAlloc::new(heap_alloc)
                 } else {
                     false
                 })
@@ -323,7 +321,7 @@ impl heap::Heap for EmulatedHeap {
         // We do not support aliasing, but the definition of `make_aliasable`
         // does not guarantee aliasing
         Ok(())
-    }/*
+    } /*
 
     fn unbind(&self, alloc: &base::HeapAlloc) -> Result<()> {
         let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
@@ -469,7 +467,8 @@ impl heap::Heap for BufferHeap {
                     return Ok(false);
                 }
                 data.pool.reserve(1);
-                let result = data.tlsf
+                let result = data
+                    .tlsf
                     .alloc_aligned(memory_req.size as u32, memory_req.align as u32);
 
                 if let Some((region, offset)) = result {
@@ -481,7 +480,7 @@ impl heap::Heap for BufferHeap {
                     let contents_ptr = contents_ptr.wrapping_offset(offset as isize);
 
                     unimplemented!()
-                    /*Ok(Some(
+                /*Ok(Some(
                         BufferHeapAlloc {
                             contents_ptr,
                             pool_ptr,

@@ -3,15 +3,15 @@
 //
 // This source code is a part of Nightingales.
 //
-use zangfx_metal_rs as metal;
-use zangfx_base::{self as base, command, heap};
 use arrayvec::ArrayVec;
 use std::collections::HashSet;
+use zangfx_base::{self as base, command, heap};
+use zangfx_metal_rs as metal;
 
-use crate::cmd::fence::Fence;
 use crate::buffer::Buffer;
-use crate::image::Image;
+use crate::cmd::fence::Fence;
 use crate::heap::{BufferHeap, EmulatedHeap, Heap};
+use crate::image::Image;
 
 #[derive(Debug, Default)]
 crate struct CmdBufferFenceSet {
@@ -58,7 +58,7 @@ crate trait UseResources {
     fn use_metal_heaps(&self, heaps: &[metal::MTLHeap]);
 
     fn use_gfx_resource(&self, usage: command::ResourceUsageFlags, objs: base::ResourceSet) {
-        let metal_usage = unimplemented!();/* match usage {
+        let metal_usage = unimplemented!(); /* match usage {
             command::ResourceUsage::Read => metal::MTLResourceUsage::Read,
             command::ResourceUsage::Write => metal::MTLResourceUsage::Write,
             command::ResourceUsage::Sample => metal::MTLResourceUsage::Sample,

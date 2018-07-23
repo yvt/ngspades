@@ -3,19 +3,19 @@
 //
 // This source code is a part of Nightingales.
 //
+use cocoa::foundation::NSRange;
 use std::ops::Range;
 use zangfx_metal_rs::{self as metal, MTLBlitCommandEncoder};
-use cocoa::foundation::NSRange;
 
 use zangfx_base::{self as base, DeviceSize};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_common::*;
 
-use crate::utils::OCPtr;
+use crate::buffer::Buffer;
 use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands};
 use crate::cmd::fence::Fence;
-use crate::buffer::Buffer;
 use crate::image::Image;
+use crate::utils::OCPtr;
 
 #[derive(Debug)]
 crate struct CopyEncoder {
@@ -30,7 +30,10 @@ unsafe impl Send for CopyEncoder {}
 unsafe impl Sync for CopyEncoder {}
 
 impl CopyEncoder {
-    crate unsafe fn new(metal_encoder: MTLBlitCommandEncoder, fence_set: CmdBufferFenceSet) -> Self {
+    crate unsafe fn new(
+        metal_encoder: MTLBlitCommandEncoder,
+        fence_set: CmdBufferFenceSet,
+    ) -> Self {
         Self {
             metal_encoder: OCPtr::new(metal_encoder).unwrap(),
             fence_set,
@@ -148,7 +151,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
             self.metal_encoder.copy_from_buffer_to_image(
                 metal_buffer,
                 src_range.offset + buffer_offset
-                    + src_range.plane_stride * pixel_size as u64
+                    + src_range.plane_stride
+                        * pixel_size as u64
                         * (i - dst_range.layers.start) as u64,
                 src_range.row_stride * pixel_size as u64,
                 src_range.plane_stride * pixel_size as u64,
@@ -211,7 +215,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
                 },
                 metal_buffer,
                 dst_range.offset + buffer_offset
-                    + dst_range.plane_stride * pixel_size as u64
+                    + dst_range.plane_stride
+                        * pixel_size as u64
                         * (i - src_range.layers.start) as u64,
                 dst_range.row_stride * pixel_size as u64,
                 dst_range.plane_stride * pixel_size as u64,

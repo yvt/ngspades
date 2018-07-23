@@ -4,19 +4,19 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdQueue` for Metal.
-use std::sync::Arc;
-use std::collections::HashSet;
+use block;
 use parking_lot::Mutex;
+use std::collections::HashSet;
+use std::sync::Arc;
 use tokenlock::{Token, TokenRef};
 use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
-use block;
 
-use zangfx_base::{self as base, command, QueueFamily, Result};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use crate::utils::{nil_error, OCPtr};
+use zangfx_base::{self as base, command, QueueFamily, Result};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use super::enc::CmdBufferFenceSet;
 use super::buffer::CmdBuffer;
+use super::enc::CmdBufferFenceSet;
 use super::fence::Fence;
 
 /// Implementation of `CmdQueueBuilder` for Metal.
@@ -259,7 +259,8 @@ impl SchedulerData {
 impl command::CmdQueue for CmdQueue {
     fn new_cmd_buffer(&self) -> Result<command::CmdBufferRef> {
         unsafe {
-            CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler)).map(|cb| Box::new(cb) as _)
+            CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler))
+                .map(|cb| Box::new(cb) as _)
         }
     }
 

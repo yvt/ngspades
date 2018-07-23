@@ -4,15 +4,15 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Image` for Metal.
-use std::ops;
-use zangfx_base::{self as base, Result};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
-use zangfx_metal_rs as metal;
 use cocoa::foundation::NSRange;
 use ngsenumflags::flags;
+use std::ops;
+use zangfx_base::{self as base, Result};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_metal_rs as metal;
 
-use crate::utils::{nil_error, OCPtr};
 use crate::formats::{translate_image_format, translate_metal_pixel_format};
+use crate::utils::{nil_error, OCPtr};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImageSubRange {
@@ -102,16 +102,14 @@ impl base::ImageBuilder for ImageBuilder {
     }
 
     fn build(&mut self) -> Result<base::ImageRef> {
-        let extents = self.extents
-            .expect("extents");
+        let extents = self.extents.expect("extents");
 
-        let format = self.format
-            .expect("format");
+        let format = self.format.expect("format");
 
         let metal_desc =
             unsafe { OCPtr::from_raw(metal::MTLTextureDescriptor::alloc().init()).unwrap() };
 
-        use zangfx_metal_rs::MTLTextureType::{D1, D1Array, D2, D2Array, D3, Cube, CubeArray};
+        use zangfx_metal_rs::MTLTextureType::{Cube, CubeArray, D1, D1Array, D2, D2Array, D3};
         let (ty, dims) = match (extents, self.num_layers) {
             (ImageExtents::OneD(x), None) => (D1, [x, 1, 1]),
             (ImageExtents::OneD(x), Some(_)) => (D1Array, [x, 1, 1]),
@@ -126,7 +124,8 @@ impl base::ImageBuilder for ImageBuilder {
         metal_desc.set_texture_type(ty);
 
         let mut usage = metal::MTLTextureUsage::empty();
-        if self.usage
+        if self
+            .usage
             .intersects(flags![base::ImageUsage::{Sampled | Storage}])
         {
             usage |= metal::MTLTextureUsageShaderRead;
@@ -137,7 +136,8 @@ impl base::ImageBuilder for ImageBuilder {
         if self.usage.intersects(base::ImageUsage::Render) {
             usage |= metal::MTLTextureUsageRenderTarget;
         }
-        if self.usage
+        if self
+            .usage
             .intersects(flags![base::ImageUsage::{MutableType | MutableFormat | PartialView}])
         {
             usage |= metal::MTLTextureUsagePixelFormatView;
@@ -163,11 +163,7 @@ impl base::ImageBuilder for ImageBuilder {
 
         let num_bytes_per_pixel = format.size_class().num_bytes_per_pixel();
 
-        Ok(Image::new(
-            metal_desc,
-            num_bytes_per_pixel,
-            self.label.clone(),
-        ).into())
+        Ok(Image::new(metal_desc, num_bytes_per_pixel, self.label.clone()).into())
     }
 }
 
@@ -349,20 +345,20 @@ impl base::ImageViewBuilder for ImageViewBuilder {
     }
 
     fn build(&mut self) -> Result<base::ImageRef> {
-        let image = self.image
-            .as_ref()
-            .expect("image");
+        let image = self.image.as_ref().expect("image");
         let metal_texture = image.metal_texture();
         assert!(!metal_texture.is_null());
 
         let subrange = image.resolve_subrange(&self.subrange);
         let full_subrange = image.resolve_subrange(&Default::default());
-        let metal_format = self.format
+        let metal_format = self
+            .format
             .map(|x| translate_image_format(x).expect("Unsupported image format"))
             .unwrap_or_else(|| metal_texture.pixel_format());
 
-        use zangfx_metal_rs::MTLTextureType::{D1, D2, D2Array, D3, Cube, CubeArray};
-        let metal_ty = self.image_type
+        use zangfx_metal_rs::MTLTextureType::{Cube, CubeArray, D1, D2, D2Array, D3};
+        let metal_ty = self
+            .image_type
             .map(|ty| match ty {
                 base::ImageType::OneD => D1,
                 base::ImageType::TwoD => D2,
@@ -373,7 +369,8 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             })
             .unwrap_or_else(|| metal_texture.texture_type());
 
-        if subrange == full_subrange && metal_format == metal_texture.pixel_format()
+        if subrange == full_subrange
+            && metal_format == metal_texture.pixel_format()
             && metal_ty == metal_texture.texture_type()
         {
             unimplemented!()

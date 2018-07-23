@@ -3,24 +3,26 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::Arc;
 use std::ops::Range;
-use zangfx_metal_rs as metal;
+use std::sync::Arc;
 
+use crate::arg::rootsig::RootSig;
+use crate::arg::table::ArgTable;
+use crate::buffer::Buffer;
+use crate::formats::translate_vertex_format;
+use crate::renderpass::RenderPass;
+use crate::shader::{Library, ShaderVertexAttrInfo};
 use zangfx_base as base;
 use zangfx_base::StaticOrDynamic::*;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::{Error, ErrorKind, Result};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use zangfx_common::BinaryInteger;
-use crate::arg::table::ArgTable;
-use crate::arg::rootsig::RootSig;
-use crate::buffer::Buffer;
-use crate::shader::{Library, ShaderVertexAttrInfo};
-use crate::renderpass::RenderPass;
-use crate::formats::translate_vertex_format;
+use zangfx_metal_rs as metal;
 
-use crate::utils::{clip_scissor_rect, nil_error, translate_cmp_fn, translate_scissor_rect,
-            translate_viewport, OCPtr};
+use crate::utils::{
+    clip_scissor_rect, nil_error, translate_cmp_fn, translate_scissor_rect, translate_viewport,
+    OCPtr,
+};
 
 /// Implementation of `RenderPipelineBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -151,17 +153,11 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
     }
 
     fn build(&mut self) -> Result<base::RenderPipelineRef> {
-        let root_sig = self.root_sig
-            .as_ref()
-            .expect("root_sig");
+        let root_sig = self.root_sig.as_ref().expect("root_sig");
 
-        let vertex_shader = self.vertex_shader
-            .as_ref()
-            .expect("vertex_shader");
+        let vertex_shader = self.vertex_shader.as_ref().expect("vertex_shader");
 
-        let &(ref render_pass, subpass_index) = self.render_pass
-            .as_ref()
-            .expect("render_pass");
+        let &(ref render_pass, subpass_index) = self.render_pass.as_ref().expect("render_pass");
 
         let metal_desc = unsafe {
             OCPtr::from_raw(metal::MTLRenderPipelineDescriptor::alloc().init())
@@ -204,7 +200,8 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         let shader_va_infos = self.vertex_attrs.iter().enumerate().filter_map(
             |(i, vertex_attr)| {
                 vertex_attr.as_ref().map(|vertex_attr| {
-                    let vertex_buffer = self.vertex_buffers
+                    let vertex_buffer = self
+                        .vertex_buffers
                         .get(vertex_attr.buffer)
                         .unwrap_or(&None)
                         .as_ref()
@@ -234,9 +231,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         let rast_partial_states;
         if let Some(ref rasterizer) = self.rasterizer {
             // Fragment shader is mandatory only if rasterization is enabled
-            let fragment_shader = self.fragment_shader
-                .as_ref()
-                .expect("fragment_shader");
+            let fragment_shader = self.fragment_shader.as_ref().expect("fragment_shader");
 
             let fragment_fn = fragment_shader.0.new_metal_function(
                 &fragment_shader.1,
@@ -259,8 +254,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             metal_desc.set_rasterization_enabled(false);
         }
 
-        let topology = self.topology
-            .expect("topology");
+        let topology = self.topology.expect("topology");
 
         let prim_type = match topology {
             base::PrimitiveTopology::Points => metal::MTLPrimitiveType::Point,
@@ -285,7 +279,8 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             metal_desc.set_label(label);
         }
 
-        let metal_pipeline = self.metal_device
+        let metal_pipeline = self
+            .metal_device
             .new_render_pipeline_state(*metal_desc)
             .map_err(|e| Error::with_detail(ErrorKind::Other, e))
             .and_then(|p| {
@@ -597,7 +592,10 @@ impl base::Rasterizer for Rasterizer {
         self
     }
 
-    fn set_stencil_masks(&mut self, front_back: [base::StencilMasks; 2]) -> &mut dyn base::Rasterizer {
+    fn set_stencil_masks(
+        &mut self,
+        front_back: [base::StencilMasks; 2],
+    ) -> &mut dyn base::Rasterizer {
         self.stencil_masks = front_back;
         self
     }
@@ -666,7 +664,10 @@ impl RasterizerColorTarget {
 }
 
 impl base::RasterizerColorTarget for RasterizerColorTarget {
-    fn set_write_mask(&mut self, v: base::ColorChannelFlags) -> &mut dyn base::RasterizerColorTarget {
+    fn set_write_mask(
+        &mut self,
+        v: base::ColorChannelFlags,
+    ) -> &mut dyn base::RasterizerColorTarget {
         let mut mask = metal::MTLColorWriteMaskNone;
         if v.intersects(base::ColorChannel::Red) {
             mask |= metal::MTLColorWriteMaskRed;
@@ -689,7 +690,10 @@ impl base::RasterizerColorTarget for RasterizerColorTarget {
         self
     }
 
-    fn set_src_alpha_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
+    fn set_src_alpha_factor(
+        &mut self,
+        v: base::BlendFactor,
+    ) -> &mut dyn base::RasterizerColorTarget {
         self.src_alpha_factor = translate_blend_factor(v);
         self
     }
@@ -699,7 +703,10 @@ impl base::RasterizerColorTarget for RasterizerColorTarget {
         self
     }
 
-    fn set_dst_alpha_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
+    fn set_dst_alpha_factor(
+        &mut self,
+        v: base::BlendFactor,
+    ) -> &mut dyn base::RasterizerColorTarget {
         self.dst_alpha_factor = translate_blend_factor(v);
         self
     }
@@ -994,7 +1001,11 @@ impl RenderStateManager {
         }
     }
 
-    crate fn set_viewports(&mut self, start_viewport: base::ViewportIndex, value: &[base::Viewport]) {
+    crate fn set_viewports(
+        &mut self,
+        start_viewport: base::ViewportIndex,
+        value: &[base::Viewport],
+    ) {
         // Multiple viewport are not supported
         if value.len() > 0 {
             debug_assert_eq!(start_viewport, 0);
@@ -1023,7 +1034,11 @@ impl RenderStateManager {
         }
     }
 
-    crate fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+    crate fn bind_arg_table(
+        &mut self,
+        index: base::ArgTableIndex,
+        tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
+    ) {
         for (i, (_pool, table)) in tables.iter().enumerate() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.metal_encoder.set_vertex_buffer(

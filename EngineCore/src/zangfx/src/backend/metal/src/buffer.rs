@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Buffer` for Metal.
-use zangfx_base::{self as base, resources, DeviceSize};
 use zangfx_base::Result;
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, resources, DeviceSize};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_metal_rs as metal;
 
 use crate::utils::OCPtr;
@@ -54,11 +54,7 @@ impl resources::BufferBuilder for BufferBuilder {
 
     fn build(&mut self) -> Result<base::BufferRef> {
         let size = self.size.expect("size");
-        Ok(Buffer::new(
-            size,
-            self.label.clone(),
-            self.usage,
-        ).into())
+        Ok(Buffer::new(size, self.label.clone(), self.usage).into())
     }
 }
 

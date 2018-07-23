@@ -4,13 +4,15 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Metal.
-use zangfx_metal_rs as metal;
 use zangfx_base::{self as base, device, Result};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_metal_rs as metal;
 
-use crate::utils::OCPtr;
 use crate::limits::DeviceCaps;
-use crate::{arg, buffer, cmd, computepipeline, heap, image, renderpass, renderpipeline, sampler, shader};
+use crate::utils::OCPtr;
+use crate::{
+    arg, buffer, cmd, computepipeline, heap, image, renderpass, renderpipeline, sampler, shader,
+};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -139,7 +141,10 @@ impl device::Device for Device {
     fn update_arg_tables(
         &self,
         arg_table_sig: &base::ArgTableSigRef,
-        updates: &[((&base::ArgPoolRef, &base::ArgTableRef), &[device::ArgUpdateSet])],
+        updates: &[(
+            (&base::ArgPoolRef, &base::ArgTableRef),
+            &[device::ArgUpdateSet],
+        )],
     ) -> Result<()> {
         let our_sig: &arg::tablesig::ArgTableSig = arg_table_sig
             .downcast_ref()

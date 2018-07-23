@@ -3,16 +3,16 @@
 //
 // This source code is a part of Nightingales.
 //
-use zangfx_metal_rs::{MTLComputeCommandEncoder, MTLSize};
 use zangfx_base::{self as base, command, heap, ArgTableIndex, DeviceSize};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_metal_rs::{MTLComputeCommandEncoder, MTLSize};
 
-use crate::utils::OCPtr;
+use crate::arg::table::ArgTable;
+use crate::buffer::Buffer;
 use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
 use crate::cmd::fence::Fence;
-use crate::arg::table::ArgTable;
 use crate::computepipeline::ComputePipeline;
-use crate::buffer::Buffer;
+use crate::utils::OCPtr;
 
 #[derive(Debug)]
 crate struct ComputeEncoder {
@@ -102,7 +102,11 @@ impl command::ComputeCmdEncoder for ComputeEncoder {
         self.threads_per_threadgroup = our_pipeline.threads_per_threadgroup();
     }
 
-    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+    fn bind_arg_table(
+        &mut self,
+        index: ArgTableIndex,
+        tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
+    ) {
         for (i, (_pool, table)) in tables.iter().enumerate() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.metal_encoder.set_buffer(

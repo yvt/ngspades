@@ -3,11 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::ops::Deref;
-use std::fmt;
 use ngsenumflags::flags;
-use zangfx_metal_rs::{self as metal, id, MTLDevice, NSObjectProtocol};
+use std::fmt;
+use std::ops::Deref;
 use zangfx_base as base;
+use zangfx_metal_rs::{self as metal, id, MTLDevice, NSObjectProtocol};
 
 /// Smart pointer for Objective-C objects.
 #[derive(Debug, PartialEq, Eq, Hash)]

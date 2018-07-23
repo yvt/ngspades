@@ -4,15 +4,15 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use zangfx_metal_rs::MTLRenderCommandEncoder;
 use zangfx_base::{self as base, command, heap};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_common::Rect2D;
+use zangfx_metal_rs::MTLRenderCommandEncoder;
 
-use crate::utils::{translate_render_stage, OCPtr};
 use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
 use crate::cmd::fence::Fence;
 use crate::renderpipeline::RenderStateManager;
+use crate::utils::{translate_render_stage, OCPtr};
 
 #[derive(Debug)]
 crate struct RenderEncoder {
@@ -126,7 +126,11 @@ impl command::RenderCmdEncoder for RenderEncoder {
         self.state.set_scissors(start_viewport, value);
     }
 
-    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+    fn bind_arg_table(
+        &mut self,
+        index: base::ArgTableIndex,
+        tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
+    ) {
         self.state.bind_arg_table(index, tables);
     }
 

@@ -7,15 +7,15 @@
 use std::sync::Arc;
 use zangfx_metal_rs as metal;
 
-use zangfx_base::{self as base, arg};
 use zangfx_base::Result;
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, arg};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use crate::utils::{nil_error, OCPtr};
 
-use super::ArgSize;
-use super::tablesig::ArgTableSig;
 use super::allocator::{Allocation, Allocator, StackAllocator, TlsfAllocator};
+use super::tablesig::ArgTableSig;
+use super::ArgSize;
 
 /// Device-specific characteristics of argument buffers' layout.
 ///

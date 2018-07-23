@@ -4,17 +4,17 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Library` for Metal.
-use std::sync::Arc;
 use std::fmt;
+use std::sync::Arc;
 
-use zangfx_metal_rs as metal;
 use rspirv::mr;
 use spirv_headers;
+use zangfx_metal_rs as metal;
 use zangfx_spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
 use zangfx_base::{self as base, shader};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::{Error, ErrorKind, Result};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use crate::arg::rootsig::RootSig;
 use crate::utils::{nil_error, OCPtr};
@@ -49,9 +49,7 @@ impl shader::LibraryBuilder for LibraryBuilder {
     }
 
     fn build(&mut self) -> Result<base::LibraryRef> {
-        let spirv_code = self.spirv_code
-            .clone()
-            .expect("spirv_code");
+        let spirv_code = self.spirv_code.clone().expect("spirv_code");
         Library::new(spirv_code, self.label.clone()).map(base::LibraryRef::new)
     }
 }
@@ -166,24 +164,27 @@ impl Library {
         let options = unsafe { OCPtr::from_raw(metal::MTLCompileOptions::alloc().init()) }.unwrap();
         options.set_language_version(metal::MTLLanguageVersion::V2_0);
 
-        let lib = OCPtr::new(metal_device
-            .new_library_with_source(&code, *options)
-            .map_err(|e| {
-                Error::with_detail(
-                    ErrorKind::Other,
-                    ShaderCompilationFailed {
-                        reason: e,
-                        code: code.clone(),
-                    },
-                )
-            })?).unwrap();
+        let lib = OCPtr::new(
+            metal_device
+                .new_library_with_source(&code, *options)
+                .map_err(|e| {
+                    Error::with_detail(
+                        ErrorKind::Other,
+                        ShaderCompilationFailed {
+                            reason: e,
+                            code: code.clone(),
+                        },
+                    )
+                })?,
+        ).unwrap();
 
         if self.data.label.is_some() || pipeline_name.is_some() {
             let pipeline_name = pipeline_name
                 .as_ref()
                 .map(String::as_str)
                 .unwrap_or("(none)");
-            let library_name = self.data
+            let library_name = self
+                .data
                 .label
                 .as_ref()
                 .map(String::as_str)

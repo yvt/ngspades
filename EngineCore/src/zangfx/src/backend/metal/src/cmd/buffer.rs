@@ -4,23 +4,23 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdBuffer` for Metal.
-use std::fmt;
-use std::sync::Arc;
-use std::mem::replace;
 use parking_lot::Mutex;
+use std::fmt;
+use std::mem::replace;
+use std::sync::Arc;
 use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue};
 
-use zangfx_base::{self as base, command};
-use zangfx_base::Result;
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
-use crate::utils::{nil_error, OCPtr};
 use crate::renderpass::RenderTargetTable;
+use crate::utils::{nil_error, OCPtr};
+use zangfx_base::Result;
+use zangfx_base::{self as base, command};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::CmdBufferFenceSet;
 use super::enc_compute::ComputeEncoder;
 use super::enc_copy::CopyEncoder;
 use super::enc_render::RenderEncoder;
+use super::queue::{CommitedBuffer, Scheduler};
 
 /// Implementation of `CmdBuffer` for Metal.
 #[derive(Debug)]
@@ -132,7 +132,10 @@ impl command::CmdBuffer for CmdBuffer {
         use block;
         use std::mem::replace;
 
-        let mut uncommited = self.uncommited.take().expect("command buffer is already commited");
+        let mut uncommited = self
+            .uncommited
+            .take()
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         // Pass the completion callbacks to `MTLCommandBuffer`
@@ -164,7 +167,8 @@ impl command::CmdBuffer for CmdBuffer {
             .downcast_ref()
             .expect("bad render target table type");
 
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         uncommited.clear_encoder();
@@ -189,7 +193,8 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
     fn encode_compute(&mut self) -> &mut dyn command::ComputeCmdEncoder {
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         uncommited.clear_encoder();
@@ -211,7 +216,8 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
     fn encode_copy(&mut self) -> &mut dyn command::CopyCmdEncoder {
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         uncommited.clear_encoder();
@@ -234,7 +240,8 @@ impl command::CmdBuffer for CmdBuffer {
     }
 
     fn on_complete(&mut self, cb: Box<dyn FnMut(base::Result<()>) + Sync + Send>) {
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         unimplemented!()

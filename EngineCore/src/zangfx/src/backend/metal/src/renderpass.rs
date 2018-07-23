@@ -8,7 +8,7 @@ use zangfx_metal_rs as metal;
 
 use zangfx_base as base;
 use zangfx_base::Result;
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use crate::formats::translate_image_format;
 use crate::image::Image;
@@ -55,17 +55,11 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         self
     }
 
-    fn subpass_color_targets(
-        &mut self,
-        targets: &[Option<base::RenderPassTargetIndex>],
-    ) {
+    fn subpass_color_targets(&mut self, targets: &[Option<base::RenderPassTargetIndex>]) {
         self.subpass_color_targets = targets.iter().cloned().collect();
     }
 
-    fn subpass_ds_target(
-        &mut self,
-        target: Option<base::RenderPassTargetIndex>,
-    ) {
+    fn subpass_ds_target(&mut self, target: Option<base::RenderPassTargetIndex>) {
         self.subpass_ds_target = target;
     }
 
@@ -80,7 +74,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             }
         }
 
-        let colors = self.subpass_color_targets
+        let colors = self
+            .subpass_color_targets
             .iter()
             .map(|i_or_none| {
                 i_or_none.map(|i| {
@@ -345,11 +340,8 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
     }
 
     fn build(&mut self) -> Result<base::RenderTargetTableRef> {
-        let render_pass: RenderPass = self.render_pass
-            .clone()
-            .expect("render_pass");
-        let extents = self.extents
-            .expect("extents");
+        let render_pass: RenderPass = self.render_pass.clone().expect("render_pass");
+        let extents = self.extents.expect("extents");
 
         let metal_desc = OCPtr::new(metal::MTLRenderPassDescriptor::new())
             .ok_or_else(|| nil_error("MTLRenderPassDescriptor renderPassDescriptor"))?;

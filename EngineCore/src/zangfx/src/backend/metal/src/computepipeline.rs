@@ -6,11 +6,11 @@
 use std::sync::Arc;
 use zangfx_metal_rs as metal;
 
-use zangfx_base::{self as base, pipeline, shader};
-use zangfx_base::{Error, ErrorKind, Result};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use crate::arg::rootsig::RootSig;
 use crate::shader::Library;
+use zangfx_base::{self as base, pipeline, shader};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
 use crate::utils::{nil_error, OCPtr};
 
@@ -71,12 +71,8 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
     }
 
     fn build(&mut self) -> Result<base::ComputePipelineRef> {
-        let compute_shader = self.compute_shader
-            .as_ref()
-            .expect("compute_shader");
-        let root_sig = self.root_sig
-            .as_ref()
-            .expect("root_sig");
+        let compute_shader = self.compute_shader.as_ref().expect("compute_shader");
+        let root_sig = self.root_sig.as_ref().expect("root_sig");
 
         let metal_desc = unsafe {
             OCPtr::from_raw(metal::MTLComputePipelineDescriptor::alloc().init())
@@ -104,7 +100,8 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             metal_desc.set_label(label);
         }
 
-        let metal_pipeline = self.metal_device
+        let metal_pipeline = self
+            .metal_device
             .new_compute_pipeline_state(*metal_desc)
             .map_err(|e| Error::with_detail(ErrorKind::Other, e))
             .and_then(|p| {
