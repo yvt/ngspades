@@ -52,8 +52,8 @@
 //!
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
-extern crate atomic_refcell;
 extern crate arrayvec;
+extern crate atomic_refcell;
 extern crate block;
 extern crate cocoa;
 extern crate iterpool;

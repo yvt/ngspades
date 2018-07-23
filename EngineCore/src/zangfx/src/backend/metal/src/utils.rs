@@ -7,7 +7,7 @@ use ngsenumflags::flags;
 use std::fmt;
 use std::ops::Deref;
 use zangfx_base as base;
-use zangfx_metal_rs::{self as metal, id, MTLDevice, NSObjectProtocol};
+use zangfx_metal_rs::{self as metal, id, NSObjectProtocol};
 
 /// Smart pointer for Objective-C objects.
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -181,19 +181,9 @@ crate fn nil_error(sel: &'static str) -> base::Error {
     base::Error::with_detail(base::ErrorKind::Other, SelectorReturnedNullError { sel })
 }
 
-crate fn get_memory_req(
-    metal_device: MTLDevice,
-    obj: base::ResourceRef,
-) -> base::Result<base::MemoryReq> {
-    use crate::{buffer, image};
+crate fn get_memory_req(obj: base::ResourceRef) -> base::Result<base::MemoryReq> {
     match obj {
-        base::ResourceRef::Buffer(buffer) => {
-            let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
-            Ok(our_buffer.memory_req(metal_device))
-        }
-        base::ResourceRef::Image(image) => {
-            let our_image: &image::Image = image.downcast_ref().expect("bad image type");
-            Ok(our_image.memory_req(metal_device))
-        }
+        base::ResourceRef::Buffer(buffer) => buffer.get_memory_req(),
+        base::ResourceRef::Image(image) => image.get_memory_req(),
     }
 }

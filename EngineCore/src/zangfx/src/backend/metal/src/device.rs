@@ -78,11 +78,11 @@ impl device::Device for Device {
     }
 
     fn build_image(&self) -> base::resources::ImageBuilderRef {
-        Box::new(image::ImageBuilder::new())
+        unsafe { Box::new(image::ImageBuilder::new(self.metal_device())) }
     }
 
     fn build_buffer(&self) -> base::resources::BufferBuilderRef {
-        Box::new(buffer::BufferBuilder::new())
+        unsafe { Box::new(buffer::BufferBuilder::new(self.metal_device())) }
     }
 
     fn build_sampler(&self) -> base::sampler::SamplerBuilderRef {

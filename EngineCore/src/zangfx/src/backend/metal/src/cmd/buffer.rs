@@ -8,13 +8,13 @@ use atomic_refcell::AtomicRefCell;
 use std::fmt;
 use std::mem::replace;
 use std::sync::Arc;
-use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue, MTLCommandBufferStatus};
+use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandBufferStatus, MTLCommandQueue};
 
 use crate::renderpass::RenderTargetTable;
 use crate::utils::{nil_error, OCPtr};
-use zangfx_base::{Result, Error, ErrorKind};
 use zangfx_base::{self as base, command};
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
 use super::enc::CmdBufferFenceSet;
 use super::enc_compute::ComputeEncoder;

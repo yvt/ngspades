@@ -251,9 +251,7 @@ impl RenderPass {
 /// Implementation of `RenderTargetTableBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct RenderTargetTableBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     label: Option<String>,
 
     render_pass: Option<RenderPass>,
@@ -283,10 +281,10 @@ zangfx_impl_object! { Target: dyn base::RenderTarget, dyn crate::Debug }
 impl RenderTargetTableBuilder {
     /// Construct a `RenderTargetTableBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             label: None,
 
             render_pass: None,

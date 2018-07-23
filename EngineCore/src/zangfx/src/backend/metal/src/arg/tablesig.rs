@@ -22,9 +22,7 @@ use zangfx_spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, Spir
 /// Implementation of `ArgTableSigBuilder` for Metal.
 #[derive(Debug)]
 pub struct ArgTableSigBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     args: Vec<Option<ArgSigBuilder>>,
 }
 
@@ -45,10 +43,10 @@ zangfx_impl_object! { ArgSigBuilder: dyn arg::ArgSig, dyn crate::Debug }
 impl ArgTableSigBuilder {
     /// Construct an `ArgTableSigBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             args: Vec::new(),
         }
     }
@@ -131,7 +129,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
             OCPtr::new(transmute(ns_array)).ok_or_else(|| nil_error("NSArray arrayWithObjects"))?
         };
 
-        unsafe { ArgTableSig::new(self.metal_device, metal_args_array, arg_sigs) }
+        unsafe { ArgTableSig::new(*self.metal_device, metal_args_array, arg_sigs) }
             .map(arg::ArgTableSigRef::new)
     }
 }
@@ -175,7 +173,7 @@ zangfx_impl_handle! { ArgTableSig, arg::ArgTableSigRef }
 
 #[derive(Debug)]
 struct ArgTableSigData {
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     args: Vec<Option<ArgSig>>,
     metal_args_array: OCPtr<metal::NSArray<metal::MTLArgumentDescriptor>>,
 
@@ -216,7 +214,7 @@ impl ArgTableSig {
         let metal_arg_encoder = new_metal_arg_encoder(metal_device, *metal_args_array)?;
 
         let data = ArgTableSigData {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             args,
             metal_args_array,
             size: metal_arg_encoder.encoded_length() as ArgSize,
@@ -240,7 +238,7 @@ impl ArgTableSig {
             Ok(cb(&encoder))
         } else {
             let metal_arg_encoder = unsafe {
-                new_metal_arg_encoder(self.data.metal_device, *self.data.metal_args_array)?
+                new_metal_arg_encoder(*self.data.metal_device, *self.data.metal_args_array)?
             };
             Ok(cb(&metal_arg_encoder))
         }

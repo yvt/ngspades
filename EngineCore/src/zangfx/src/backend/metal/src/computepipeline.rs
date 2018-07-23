@@ -17,9 +17,7 @@ use crate::utils::{nil_error, OCPtr};
 /// Implementation of `ComputePipelineBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct ComputePipelineBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
 
     compute_shader: Option<(Library, String)>,
     root_sig: Option<RootSig>,
@@ -36,10 +34,10 @@ unsafe impl Sync for ComputePipelineBuilder {}
 impl ComputePipelineBuilder {
     /// Construct a `ComputePipelineBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             compute_shader: None,
             root_sig: None,
             label: None,
@@ -84,7 +82,7 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             shader::ShaderStage::Compute,
             root_sig,
             ::std::iter::empty(),
-            self.metal_device,
+            *self.metal_device,
             &self.label,
         )?;
         metal_desc.set_compute_function(*compute_fn);

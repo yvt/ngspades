@@ -21,9 +21,7 @@ use crate::utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 /// Implementation of `DynamicHeapBuilder` and `DedicatedHeapBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct HeapBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     size: DeviceSize,
     memory_type: Option<MemoryType>,
     label: Option<String>,
@@ -38,10 +36,10 @@ unsafe impl Sync for HeapBuilder {}
 impl HeapBuilder {
     /// Construct a `HeapBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             size: 0,
             memory_type: None,
             label: None,
@@ -115,7 +113,7 @@ impl heap::DedicatedHeapBuilder for HeapBuilder {
     }
 
     fn bind(&mut self, obj: base::ResourceRef) {
-        let req = get_memory_req(self.metal_device, obj).unwrap();
+        let req = get_memory_req(obj).unwrap();
         self.size = (self.size + req.align - 1) & !(req.align - 1);
         self.size += req.size;
         unimplemented!()
@@ -453,10 +451,11 @@ impl BufferHeap {
 
 impl heap::Heap for BufferHeap {
     fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
+        use zangfx_base::Buffer as _Buffer; // for `get_memory_req`
         match obj {
             base::ResourceRef::Buffer(buffer) => {
                 let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
-                let memory_req = my_buffer.memory_req(self.metal_buffer.device());
+                let memory_req = my_buffer.get_memory_req().unwrap();
 
                 let contents_ptr = self.metal_buffer.contents() as *mut u8;
                 let mut data = self.data.lock();

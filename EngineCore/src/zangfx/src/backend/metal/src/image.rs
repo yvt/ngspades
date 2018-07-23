@@ -4,9 +4,12 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Image` for Metal.
+use std::cell::UnsafeCell;
+use std::ops;
+use std::sync::Arc;
+
 use cocoa::foundation::NSRange;
 use ngsenumflags::flags;
-use std::ops;
 use zangfx_base::{self as base, Result};
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_metal_rs as metal;
@@ -23,6 +26,7 @@ pub(super) struct ImageSubRange {
 /// Implementation of `ImageBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct ImageBuilder {
+    metal_device: OCPtr<metal::MTLDevice>,
     extents: Option<ImageExtents>,
     num_layers: Option<u32>,
     num_mip_levels: u32,
@@ -41,10 +45,16 @@ enum ImageExtents {
 
 zangfx_impl_object! { ImageBuilder: dyn base::ImageBuilder, dyn crate::Debug, dyn base::SetLabel }
 
+unsafe impl Send for ImageBuilder {}
+unsafe impl Sync for ImageBuilder {}
+
 impl ImageBuilder {
     /// Construct a `ImageBuilder`.
-    pub fn new() -> Self {
+    ///
+    /// It's up to the caller to make sure `metal_device` is valid.
+    pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             extents: None,
             num_layers: None,
             num_mip_levels: 1,
@@ -163,14 +173,19 @@ impl base::ImageBuilder for ImageBuilder {
 
         let num_bytes_per_pixel = format.size_class().num_bytes_per_pixel();
 
-        Ok(Image::new(metal_desc, num_bytes_per_pixel, self.label.clone()).into())
+        Ok(Image::new(
+            *self.metal_device,
+            metal_desc,
+            num_bytes_per_pixel,
+            self.label.clone(),
+        ).into())
     }
 }
 
 /// Implementation of `Image` for Metal.
 #[derive(Debug, Clone)]
 pub struct Image {
-    data: *mut ImageData,
+    data: Arc<UnsafeCell<ImageData>>,
 }
 
 zangfx_impl_handle! { Image, base::ImageRef }
@@ -183,30 +198,41 @@ struct ImageData {
     metal_desc: Option<OCPtr<metal::MTLTextureDescriptor>>,
     metal_texture: Option<OCPtr<metal::MTLTexture>>,
     num_bytes_per_pixel: usize,
+    memory_req: Option<base::MemoryReq>,
     label: Option<String>,
 }
 
 impl Image {
     fn new(
+        metal_device: metal::MTLDevice,
         metal_desc: OCPtr<metal::MTLTextureDescriptor>,
         num_bytes_per_pixel: usize,
         label: Option<String>,
     ) -> Self {
+        let metal_req = metal_device.heap_texture_size_and_align_with_descriptor(*metal_desc);
+        let memory_req = base::MemoryReq {
+            size: metal_req.size,
+            align: metal_req.align,
+            memory_types: 1 << crate::MEMORY_TYPE_PRIVATE,
+        };
+
         let data = ImageData {
             metal_desc: Some(metal_desc),
             metal_texture: None,
             num_bytes_per_pixel,
+            memory_req: Some(memory_req),
             label,
         };
 
         Self {
-            data: Box::into_raw(Box::new(data)),
+            data: Arc::new(UnsafeCell::new(data)),
         }
     }
 
     /// Construct a `Image` from a given raw `MTLTexture`.
     ///
-    /// The constructed `Image` will be initally in the Allocated state.
+    /// - The constructed `Image` will be initally in the Allocated state.
+    /// - The constructed `Image` does not support `Image::get_memory_req`.
     pub unsafe fn from_raw(metal_texture: metal::MTLTexture) -> Self {
         let metal_format = metal_texture.pixel_format();
         let format = translate_metal_pixel_format(metal_format);
@@ -215,16 +241,17 @@ impl Image {
             metal_desc: None,
             metal_texture: OCPtr::from_raw(metal_texture),
             label: None,
+            memory_req: None,
             num_bytes_per_pixel: format.size_class().num_bytes_per_pixel(),
         };
 
         Self {
-            data: Box::into_raw(Box::new(data)),
+            data: Arc::new(UnsafeCell::new(data)),
         }
     }
 
     unsafe fn data(&self) -> &mut ImageData {
-        &mut *self.data
+        &mut *self.data.get()
     }
 
     /// Return the underlying `MTLTexture`. Returns `nil` for `Image`s in the
@@ -240,11 +267,12 @@ impl Image {
     }
 
     pub(super) fn prototype_metal_desc(&self) -> metal::MTLTextureDescriptor {
-        unsafe { **self.data().metal_desc.as_ref().unwrap() }
+        unsafe { **self.data().metal_desc.as_ref().expect("not prototype") }
     }
 
     pub(super) fn materialize(&self, metal_texture: OCPtr<metal::MTLTexture>) {
         let data = unsafe { self.data() };
+        assert!(data.metal_texture.is_none(), "already materialized");
         data.metal_texture = Some(metal_texture);
 
         if let Some(label) = data.label.take() {
@@ -257,16 +285,6 @@ impl Image {
 
     pub(super) fn num_bytes_per_pixel(&self) -> usize {
         unsafe { self.data() }.num_bytes_per_pixel
-    }
-
-    pub(super) fn memory_req(&self, metal_device: metal::MTLDevice) -> base::MemoryReq {
-        let metal_req =
-            metal_device.heap_texture_size_and_align_with_descriptor(self.prototype_metal_desc());
-        base::MemoryReq {
-            size: metal_req.size,
-            align: metal_req.align,
-            memory_types: 1 << crate::MEMORY_TYPE_PRIVATE,
-        }
     }
 
     pub(super) fn resolve_subrange(&self, range: &base::ImageSubRange) -> ImageSubRange {
@@ -283,10 +301,6 @@ impl Image {
                 .unwrap_or_else(|| 0..metal_texture.array_length() as u32),
         }
     }
-
-    pub(super) unsafe fn destroy(&self) {
-        Box::from_raw(self.data);
-    }
 }
 
 impl base::Image for Image {
@@ -295,7 +309,9 @@ impl base::Image for Image {
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
-        unimplemented!()
+        Ok(unsafe { self.data() }
+            .memory_req
+            .expect("This image does not support get_memory_req"))
     }
 }
 

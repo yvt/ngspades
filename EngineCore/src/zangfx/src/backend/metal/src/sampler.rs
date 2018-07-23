@@ -16,9 +16,7 @@ use crate::utils::{nil_error, translate_cmp_fn, OCPtr};
 /// Implementation of `SamplerBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct SamplerBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     mag_filter: sampler::Filter,
     min_filter: sampler::Filter,
     address_mode: [sampler::AddressMode; 3],
@@ -39,10 +37,10 @@ unsafe impl Sync for SamplerBuilder {}
 impl SamplerBuilder {
     /// Construct a `SamplerBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             mag_filter: sampler::Filter::Linear,
             min_filter: sampler::Filter::Linear,
             address_mode: [sampler::AddressMode::Repeat; 3],
@@ -190,7 +188,7 @@ fn translate_border_color(value: sampler::BorderColor) -> metal::MTLSamplerBorde
 /// Implementation of `Sampler` for Metal.
 #[derive(Debug, Clone)]
 pub struct Sampler {
-    metal_sampler: metal::MTLSamplerState,
+    metal_sampler: OCPtr<metal::MTLSamplerState>,
 }
 
 zangfx_impl_handle! { Sampler, base::SamplerRef }
@@ -200,14 +198,12 @@ unsafe impl Sync for Sampler {}
 
 impl Sampler {
     pub unsafe fn from_raw(metal_sampler: metal::MTLSamplerState) -> Self {
-        Self { metal_sampler }
+        Self {
+            metal_sampler: OCPtr::new(metal_sampler).expect("nil sampler"),
+        }
     }
 
     pub fn metal_sampler(&self) -> metal::MTLSamplerState {
-        self.metal_sampler
-    }
-
-    pub(super) unsafe fn destroy(&self) {
-        self.metal_sampler.release();
+        *self.metal_sampler
     }
 }

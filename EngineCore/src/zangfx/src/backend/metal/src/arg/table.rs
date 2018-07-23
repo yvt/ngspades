@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `ArgPool` and `ArgTable` for Metal.
-use std::sync::Arc;
 use parking_lot::Mutex;
+use std::sync::Arc;
 use zangfx_metal_rs as metal;
 
 use zangfx_base::Result;
@@ -71,9 +71,7 @@ impl ArgLayoutInfo {
 /// Implementation of `ArgPoolBuilder` for Metal.
 #[derive(Debug)]
 pub struct ArgPoolBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     layout: ArgLayoutInfo,
 
     size: ArgSize,
@@ -90,10 +88,10 @@ unsafe impl Sync for ArgPoolBuilder {}
 impl ArgPoolBuilder {
     /// Construct an `ArgPoolBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub(crate) unsafe fn new(metal_device: metal::MTLDevice, layout: ArgLayoutInfo) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             layout,
             size: 0,
             enable_destroy_tables: false,

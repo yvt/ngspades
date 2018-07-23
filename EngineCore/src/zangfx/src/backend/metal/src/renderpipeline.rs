@@ -27,9 +27,7 @@ use crate::utils::{
 /// Implementation of `RenderPipelineBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct RenderPipelineBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
 
     vertex_shader: Option<(Library, String)>,
     fragment_shader: Option<(Library, String)>,
@@ -51,10 +49,10 @@ unsafe impl Sync for RenderPipelineBuilder {}
 impl RenderPipelineBuilder {
     /// Construct a `RenderPipelineBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             vertex_shader: None,
             fragment_shader: None,
             root_sig: None,
@@ -222,7 +220,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             base::ShaderStage::Vertex,
             root_sig,
             shader_va_infos,
-            self.metal_device,
+            *self.metal_device,
             &self.label,
         )?;
         metal_desc.set_vertex_function(*vertex_fn);
@@ -238,7 +236,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
                 base::ShaderStage::Fragment,
                 root_sig,
                 ::std::iter::empty(),
-                self.metal_device,
+                *self.metal_device,
                 &self.label,
             )?;
             metal_desc.set_fragment_function(*fragment_fn);
@@ -247,7 +245,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
                 *metal_desc,
                 render_pass,
                 subpass_index,
-                self.metal_device,
+                *self.metal_device,
             )?);
         } else {
             rast_partial_states = None;
