@@ -554,7 +554,7 @@ pub trait CmdEncoder: Object {
     /// Insert a barrier and establish an execution dependency within the
     /// current encoder or subpass.
     ///
-    /// See [`CmdEncoderExt::barrier_core`] for an ergonomic wrapper of this method.
+    /// See [`CmdEncoderExt::barrier`] for an ergonomic wrapper of this method.
     ///
     /// When this is called inside a render subpass, a self-dependency with
     /// matching access type flags and stage flags must have been defined on the
@@ -606,7 +606,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///     // Heterogeneous list
     ///     encoder.use_resource(
     ///         flags![ResourceUsage::{Read | Sample}],
-    ///         &resources![&buffer, &buffer][..],
+    ///         &resources![&image, &buffer][..],
     ///     );
     ///     # }
     fn use_resource<T: Into<resources::ResourceSet<'a>>>(
@@ -636,7 +636,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///     encoder.use_resource_read(&[&buffer, &buffer][..]);
     ///
     ///     // Heterogeneous list
-    ///     encoder.use_resource_read(&resources![&buffer, &buffer][..]);
+    ///     encoder.use_resource_read(&resources![&image, &buffer][..]);
     ///     # }
     fn use_resource_read<T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
         self.use_resource(flags![ResourceUsage::{Read | Sample}], objs)
