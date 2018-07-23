@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use crate::{arg, command, heap, limits, pass, pipeline, resources, sampler, shader, sync};
-use crate::{ArgArrayIndex, ArgIndex};
+use crate::{ArgArrayIndex, ArgIndex, MemoryType};
 use crate::{Object, Result};
 
 /// A boxed handle representing a device object.
@@ -21,13 +21,14 @@ pub type DeviceRef = Arc<dyn Device>;
 pub trait Device: Object {
     fn caps(&self) -> &dyn limits::DeviceCaps;
 
-    /// Retrieve a reference to the global heap maintained by this device.
+    /// Retrieve a reference to a global heap of the specified memory type,
+    /// maintained by this device.
     ///
     /// A global heap is a special kind of heap that supports dynamic allocation
     /// (like dynamic heaps) and automatic resizing. When a resource bound to
     /// a global heap is released, the memory region allocated to it is
     /// automatically reclaimed (as if `make_aliases` is called).
-    fn global_heap(&self) -> &heap::HeapRef;
+    fn global_heap(&self, memory_type: MemoryType) -> &heap::HeapRef;
 
     /// Create a `CmdQueueBuilder` associated with this device.
     fn build_cmd_queue(&self) -> command::CmdQueueBuilderRef;
