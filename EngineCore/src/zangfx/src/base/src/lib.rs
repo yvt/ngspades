@@ -136,6 +136,7 @@ define_object! { dyn LibraryBuilder }
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
+        command::CmdEncoderExt,
         debug::Label,
         device::DeviceExt,
         formats::{

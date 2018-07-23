@@ -482,6 +482,9 @@ pub enum ImageType {
 
 /// A reference to a resource handle.
 ///
+/// The name is actually a misnormer; `ResourceRefRef` would be more accurate,
+/// albeit being weird.
+///
 /// # Examples
 ///
 ///     # use zangfx_base::{ImageRef, BufferRef, ResourceRef};
@@ -496,6 +499,24 @@ pub enum ResourceRef<'a> {
     Buffer(&'a BufferRef),
 }
 
+impl<'a> ResourceRef<'a> {
+    /// Return `Some(x)` for `ResourceRef::Image(x)`; `None` otherwise.
+    pub fn image(&self) -> Option<&'a ImageRef> {
+        match self {
+            ResourceRef::Image(x) => Some(x),
+            ResourceRef::Buffer(_) => None,
+        }
+    }
+
+    /// Return `Some(x)` for `ResourceRef::Buffer(x)`; `None` otherwise.
+    pub fn buffer(&self) -> Option<&'a BufferRef> {
+        match self {
+            ResourceRef::Buffer(x) => Some(x),
+            ResourceRef::Image(_) => None,
+        }
+    }
+}
+
 impl<'a> From<&'a ImageRef> for ResourceRef<'a> {
     fn from(x: &'a ImageRef) -> Self {
         ResourceRef::Image(x)
@@ -505,6 +526,133 @@ impl<'a> From<&'a ImageRef> for ResourceRef<'a> {
 impl<'a> From<&'a BufferRef> for ResourceRef<'a> {
     fn from(x: &'a BufferRef) -> Self {
         ResourceRef::Buffer(x)
+    }
+}
+
+/// A set of references to resource handles.
+///
+/// # Examples
+///
+///     # use zangfx_base::*;
+///     # fn test(image: ImageRef, buffer: BufferRef) {
+///     // Empty
+///     let _: ResourceSet = ().into();
+///
+///     // Single resource
+///     let _: ResourceSet = (&image).into();
+///     let _: ResourceSet = (&buffer).into();
+///
+///     // Homogeneous list
+///     let _: ResourceSet = (&[&image, &image][..]).into();
+///     let _: ResourceSet = (&[&buffer, &buffer][..]).into();
+///
+///     // Heterogeneous list
+///     let _: ResourceSet = (&resources![&image, &buffer][..]).into();
+///     # }
+///
+#[derive(Debug, Clone, Copy)]
+pub enum ResourceSet<'a> {
+    Empty,
+    Image([&'a ImageRef; 1]),
+    Buffer([&'a BufferRef; 1]),
+    Images(&'a [&'a ImageRef]),
+    Buffers(&'a [&'a BufferRef]),
+    Resources(&'a [ResourceRef<'a>]),
+}
+
+/// Constructs an `[ResourceRef; _]`, converting all elements to `ResourceRef`.
+#[macro_export]
+macro_rules! resources {
+    ( $($x:expr),* $(,)* ) => ( [$($crate::ResourceRef::from($x)),*] )
+}
+
+impl<'a> ResourceSet<'a> {
+    /// Get an iterator that visits all resources in the `ResourceSet`.
+    pub fn iter(&'b self) -> impl Iterator<Item = ResourceRef> + 'b {
+        let mut images = &[][..];
+        let mut buffers = &[][..];
+        let mut hetero = &[][..];
+        match self {
+            ResourceSet::Empty => {}
+            ResourceSet::Image(a) => images = &a[..],
+            ResourceSet::Buffer(a) => buffers = &a[..],
+            ResourceSet::Images(a) => images = a,
+            ResourceSet::Buffers(a) => buffers = a,
+            ResourceSet::Resources(a) => hetero = &a,
+        }
+        hetero
+            .iter()
+            .cloned()
+            .chain(images.iter().cloned().map(|e| ResourceRef::from(e)))
+            .chain(buffers.iter().cloned().map(|e| ResourceRef::from(e)))
+    }
+
+    /// Get an iterator that visits all images in the `ResourceSet`.
+    pub fn images(&'b self) -> impl Iterator<Item = &'a ImageRef> + 'b {
+        let mut images = &[][..];
+        let mut hetero = &[][..];
+        match self {
+            ResourceSet::Image(a) => images = &a[..],
+            ResourceSet::Images(a) => images = a,
+            ResourceSet::Resources(a) => hetero = &a,
+            _ => {}
+        }
+        hetero
+            .iter()
+            .filter_map(ResourceRef::image)
+            .chain(images.iter().cloned())
+    }
+
+    /// Get an iterator that visits all buffers in the `ResourceSet`.
+    pub fn buffers(&'b self) -> impl Iterator<Item = &'a BufferRef> + 'b {
+        let mut buffers = &[][..];
+        let mut hetero = &[][..];
+        match self {
+            ResourceSet::Buffer(a) => buffers = &a[..],
+            ResourceSet::Buffers(a) => buffers = a,
+            ResourceSet::Resources(a) => hetero = &a,
+            _ => {}
+        }
+        hetero
+            .iter()
+            .filter_map(ResourceRef::buffer)
+            .chain(buffers.iter().cloned())
+    }
+}
+
+impl<'a> From<()> for ResourceSet<'a> {
+    fn from(_: ()) -> Self {
+        ResourceSet::Empty
+    }
+}
+
+impl<'a> From<&'a ImageRef> for ResourceSet<'a> {
+    fn from(x: &'a ImageRef) -> Self {
+        ResourceSet::Image([x])
+    }
+}
+
+impl<'a> From<&'a BufferRef> for ResourceSet<'a> {
+    fn from(x: &'a BufferRef) -> Self {
+        ResourceSet::Buffer([x])
+    }
+}
+
+impl<'a> From<&'a [&'a ImageRef]> for ResourceSet<'a> {
+    fn from(x: &'a [&'a ImageRef]) -> Self {
+        ResourceSet::Images(x)
+    }
+}
+
+impl<'a> From<&'a [&'a BufferRef]> for ResourceSet<'a> {
+    fn from(x: &'a [&'a BufferRef]) -> Self {
+        ResourceSet::Buffers(x)
+    }
+}
+
+impl<'a> From<&'a [ResourceRef<'a>]> for ResourceSet<'a> {
+    fn from(x: &'a [ResourceRef<'a>]) -> Self {
+        ResourceSet::Resources(x)
     }
 }
 

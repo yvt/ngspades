@@ -4,9 +4,12 @@
 // This source code is a part of Nightingales.
 //
 //! Command queues and command buffers.
-use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 use std::ops::Range;
 use std::sync::Arc;
+use {
+    ngsenumflags::{flags, BitFlags},
+    ngsenumflags_derive::NgsEnumFlags,
+};
 
 use zangfx_common::Rect2D;
 use crate::formats::IndexFormat;
@@ -498,13 +501,15 @@ pub trait CmdEncoder: Object {
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder.
     ///
+    /// See [`CmdEncoderExt::use_resource`] for an ergonomic wrapper of this method.
+    ///
     /// This ensures the resources are resident starting from the point where
     /// this command is inserted and until the end of the current command
     /// encoder or subpass.
     ///
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
     /// argument tables.
-    fn use_resource(&mut self, usage: ResourceUsageFlags, objs: &[resources::ResourceRef]);
+    fn use_resource_core(&mut self, usage: ResourceUsageFlags, objs: resources::ResourceSet);
 
     /// Declare that the resources in the specified heaps are referenced by the
     /// argument tables used on this command encoder.
@@ -528,7 +533,7 @@ pub trait CmdEncoder: Object {
     ///
     /// [`Render`]: crate::ImageUsage::Render
     /// [`Storage`]: crate::ImageUsage::Storage
-    /// [`use_resource`]: CmdEncoder::use_resource
+    /// [`use_resource`]: CmdEncoderExt::use_resource
     fn use_heap(&mut self, heaps: &[&heap::HeapRef]);
 
     /// Wait on the specified fence and establish an inter-encoder execution
@@ -549,16 +554,122 @@ pub trait CmdEncoder: Object {
     /// Insert a barrier and establish an execution dependency within the
     /// current encoder or subpass.
     ///
+    /// See [`CmdEncoderExt::barrier_core`] for an ergonomic wrapper of this method.
+    ///
     /// When this is called inside a render subpass, a self-dependency with
     /// matching access type flags and stage flags must have been defined on the
     /// subpass.
-    fn barrier(
+    fn barrier_core(
         &mut self,
-        obj: ResourceRef,
+        obj: resources::ResourceSet,
         src_access: AccessTypeFlags,
         dst_access: AccessTypeFlags,
     );
 }
+
+/// Utilies for [`CmdEncoder`].
+pub trait CmdEncoderExt: CmdEncoder {
+    /// Declare that the specified resources are referenced by the descriptor
+    /// sets used on this command encoder.
+    ///
+    /// This is an ergonomic wrapper for [`CmdEncoder::use_resource_core`].
+    ///
+    /// See also [`CmdEncoderExt::use_resource_read`] and
+    /// [`CmdEncoderExt::use_resource_read_write`].
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::*;
+    ///     use ngsenumflags::flags;
+    ///
+    ///     # fn test(encoder: &mut CmdEncoder, image: ImageRef, buffer: BufferRef) {
+    ///     // Single resource
+    ///     encoder.use_resource(
+    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         &image,
+    ///     );
+    ///     encoder.use_resource(
+    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         &buffer,
+    ///     );
+    ///
+    ///     // Homogeneous list
+    ///     encoder.use_resource(
+    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         &[&image, &image][..],
+    ///     );
+    ///     encoder.use_resource(
+    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         &[&buffer, &buffer][..],
+    ///     );
+    ///
+    ///     // Heterogeneous list
+    ///     encoder.use_resource(
+    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         &resources![&buffer, &buffer][..],
+    ///     );
+    ///     # }
+    fn use_resource<T: Into<resources::ResourceSet<'a>>>(
+        &mut self,
+        usage: ResourceUsageFlags,
+        objs: T,
+    ) {
+        self.use_resource_core(usage, objs.into())
+    }
+
+    /// Declare that the specified resources are referenced by the descriptor
+    /// sets used on this command encoder. The usage is limited to read
+    /// accesses (`flags![ResourceUsage::{Read | Sample}]`).
+    ///
+    /// This is an ergonomic wrapper for [`CmdEncoder::use_resource_core`].
+    ///
+    /// # Examples
+    ///
+    ///     # use zangfx_base::*;
+    ///     # fn test(encoder: &mut CmdEncoder, image: ImageRef, buffer: BufferRef) {
+    ///     // Single resource
+    ///     encoder.use_resource_read(&image);
+    ///     encoder.use_resource_read(&buffer);
+    ///
+    ///     // Homogeneous list
+    ///     encoder.use_resource_read(&[&image, &image][..]);
+    ///     encoder.use_resource_read(&[&buffer, &buffer][..]);
+    ///
+    ///     // Heterogeneous list
+    ///     encoder.use_resource_read(&resources![&buffer, &buffer][..]);
+    ///     # }
+    fn use_resource_read<T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
+        self.use_resource(flags![ResourceUsage::{Read | Sample}], objs)
+    }
+
+    /// Declare that the specified resources are referenced by the descriptor
+    /// sets used on this command encoder. All accesses are allowed
+    /// (`flags![ResourceUsage::{Read | Write | Sample}]`).
+    ///
+    /// This is an ergonomic wrapper for [`CmdEncoder::use_resource_core`].
+    ///
+    /// # Examples
+    ///
+    /// See [`CmdEncoderExt::use_resource_read`].
+    fn use_resource_read_write<T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
+        self.use_resource(flags![ResourceUsage::{Read | Write | Sample}], objs)
+    }
+
+    /// Insert a barrier and establish an execution dependency within the
+    /// current encoder or subpass.
+    ///
+    /// This is an ergonomic wrapper for [`CmdEncoder::barrier_core`].
+    fn barrier<T: Into<resources::ResourceSet<'a>>>(
+        &mut self,
+        obj: T,
+        src_access: AccessTypeFlags,
+        dst_access: AccessTypeFlags,
+    ) {
+        self.barrier_core(obj.into(), src_access, dst_access)
+    }
+}
+
+impl<T: ?Sized + CmdEncoder> CmdEncoderExt for T {}
 
 /// Describes how a resource will be used in a shader.
 #[derive(NgsEnumFlags, Debug, Clone, Copy, PartialEq, Eq, Hash)]
