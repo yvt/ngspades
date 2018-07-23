@@ -6,6 +6,7 @@
 //! Implementation of `Buffer` for Metal.
 use base::{self, resources, DeviceSize};
 use base::Result;
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
 
 use utils::OCPtr;

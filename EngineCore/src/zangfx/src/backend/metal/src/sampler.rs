@@ -7,6 +7,7 @@
 use std::ops::Range;
 use base::{self, sampler, CmpFn};
 use base::Result;
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
 use metal::NSObjectProtocol;
 

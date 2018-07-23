@@ -8,6 +8,7 @@ use metal::{self, MTLBlitCommandEncoder};
 use cocoa::foundation::NSRange;
 
 use base::{self, DeviceSize};
+use base::{zangfx_impl_object, interfaces, vtable_for};
 use common::*;
 
 use utils::OCPtr;

@@ -9,6 +9,7 @@ use metal;
 
 use base::{self, arg};
 use base::Result;
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use utils::{nil_error, OCPtr};
 

@@ -14,6 +14,7 @@ use spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
 use base::{self, shader};
 use base::{Error, ErrorKind, Result};
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use arg::rootsig::RootSig;
 use utils::{nil_error, OCPtr};

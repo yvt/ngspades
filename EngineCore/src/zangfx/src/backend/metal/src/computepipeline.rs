@@ -8,6 +8,7 @@ use metal;
 
 use base::{self, pipeline, shader};
 use base::{Error, ErrorKind, Result};
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use arg::rootsig::RootSig;
 use shader::Library;
 

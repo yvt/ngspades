@@ -12,6 +12,7 @@ use xalloc::{SysTlsf, SysTlsfRegion};
 
 use base::{self, heap, DeviceSize, MemoryType};
 use base::{Error, ErrorKind, Result};
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 use buffer::Buffer;

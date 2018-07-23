@@ -5,6 +5,7 @@
 //
 //! Implementation of `Fence` for Metal.
 use base::{self, Result};
+use base::zangfx_impl_handle;
 use tokenlock::{TokenLock, TokenRef};
 use metal::{MTLDevice, MTLFence};
 use refeq::RefEqArc;

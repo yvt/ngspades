@@ -6,6 +6,7 @@
 use std::ops::Range;
 use metal::MTLRenderCommandEncoder;
 use base::{self, command, heap, StageFlags};
+use base::{zangfx_impl_object, interfaces, vtable_for};
 use common::Rect2D;
 
 use utils::{translate_render_stage, OCPtr};

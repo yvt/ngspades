@@ -4,9 +4,11 @@
 // This source code is a part of Nightingales.
 //
 use std::u32;
+use ngsenumflags::flags;
 
 use {base, metal};
 use base::limits;
+use base::{zangfx_impl_object, interfaces, vtable_for};
 
 use MEMORY_REGION_GLOBAL;
 

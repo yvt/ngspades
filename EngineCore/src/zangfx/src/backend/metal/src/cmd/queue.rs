@@ -12,6 +12,7 @@ use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
 
 use base::{self, command, QueueFamily, Result};
+use base::{zangfx_impl_object, interfaces, vtable_for};
 use utils::{nil_error, OCPtr};
 
 use super::enc::CmdBufferFenceSet;

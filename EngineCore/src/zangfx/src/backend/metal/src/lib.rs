@@ -50,11 +50,11 @@
 //!   16-byte aligned types (e.g., `vec4` or structs containing one) as element
 //!   types for arrays defined in uniform buffers.
 //!
+#![feature(rust_2018_preview)]
 extern crate arrayvec;
 extern crate block;
 extern crate cocoa;
 extern crate iterpool;
-#[macro_use(flags)]
 extern crate ngsenumflags;
 extern crate parking_lot;
 extern crate refeq;
@@ -62,7 +62,6 @@ extern crate rspirv;
 extern crate spirv_headers;
 extern crate tokenlock;
 extern crate xalloc;
-#[macro_use]
 extern crate zangfx_base as base;
 extern crate zangfx_common as common;
 pub extern crate zangfx_metal_rs as metal;

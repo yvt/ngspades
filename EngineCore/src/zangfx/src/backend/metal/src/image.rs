@@ -5,10 +5,11 @@
 //
 //! Implementation of `Image` for Metal.
 use std::ops;
-use base;
-use base::{Error, ErrorKind, Result};
+use base::{self, Error, ErrorKind, Result};
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
 use cocoa::foundation::NSRange;
+use ngsenumflags::flags;
 
 use utils::{nil_error, OCPtr};
 use formats::{translate_image_format, translate_metal_pixel_format};

@@ -13,6 +13,7 @@ use arrayvec::ArrayVec;
 
 use base::{self, arg, device, shader, ArgArrayIndex, ArgIndex};
 use base::Result;
+use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use arg::ArgSize;
 use utils::{nil_error, OCPtr};

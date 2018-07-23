@@ -5,6 +5,7 @@
 //
 use std::ops::Deref;
 use std::fmt;
+use ngsenumflags::flags;
 use metal::{self, id, MTLDevice, NSObjectProtocol};
 use base;
 

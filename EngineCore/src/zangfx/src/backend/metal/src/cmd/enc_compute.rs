@@ -5,6 +5,7 @@
 //
 use metal::{MTLComputeCommandEncoder, MTLSize};
 use base::{self, command, heap, ArgTableIndex, DeviceSize};
+use base::{zangfx_impl_object, interfaces, vtable_for};
 
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};

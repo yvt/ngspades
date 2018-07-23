@@ -1,3 +1,5 @@
+cargo-features = ["edition"]
+
 [package]
 name = "zangfx_metal"
 version = "0.1.0"
