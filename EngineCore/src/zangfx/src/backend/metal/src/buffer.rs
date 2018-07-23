@@ -12,6 +12,7 @@ use zangfx_base::{self as base, resources, DeviceSize};
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_metal_rs as metal;
 
+use crate::heap::BufferHeapAlloc;
 use crate::utils::OCPtr;
 
 /// Implementation of `BufferBuilder` for Metal.
@@ -82,7 +83,11 @@ unsafe impl Sync for Buffer {}
 #[derive(Debug)]
 struct BufferData {
     size: DeviceSize,
-    metal_buffer: Option<(OCPtr<metal::MTLBuffer>, base::DeviceSize, bool)>,
+    metal_buffer: Option<(
+        OCPtr<metal::MTLBuffer>,
+        base::DeviceSize,
+        Option<BufferHeapAlloc>,
+    )>,
     usage: base::BufferUsageFlags,
     memory_req: Option<base::MemoryReq>,
     label: Option<String>,
@@ -136,7 +141,7 @@ impl Buffer {
     pub unsafe fn from_raw(metal_buffer: metal::MTLBuffer) -> Self {
         let data = BufferData {
             size: metal_buffer.length(),
-            metal_buffer: Some((OCPtr::from_raw(metal_buffer).unwrap(), 0, false)),
+            metal_buffer: Some((OCPtr::from_raw(metal_buffer).unwrap(), 0, None)),
             usage: base::BufferUsageFlags::all(),
             memory_req: None,
             label: None,
@@ -166,23 +171,38 @@ impl Buffer {
         unsafe { self.data().size }
     }
 
+    /// Return the suballocation info if this `Buffer` represents a region
+    /// suballocated from a `BufferHeap`.
+    pub(super) fn suballoc_info(&self) -> Option<&BufferHeapAlloc> {
+        unsafe {
+            self.data()
+                .metal_buffer
+                .as_ref()
+                .expect("not bound")
+                .2
+                .as_ref()
+        }
+    }
+
+    /// Determine whether this `Buffer` represents a region suballocated from a
+    /// `BufferHeap` or not.
     pub(super) fn is_subbuffer(&self) -> bool {
-        unsafe { self.data().metal_buffer.as_ref().expect("not bound").2 }
+        self.suballoc_info().is_some()
     }
 
     /// Assign a `MTLBuffer` to this `Buffer` object.
     ///
-    /// `is_subbuffer` indicates whether `metal_buffer` is a subportion of a
-    /// larger `MTLBuffer` used to realize a heap.
+    /// If the pointed region was suballocated from of a larger `MTLBuffer`,
+    /// `suballoc_info` specifies the suballocation info.
     pub(super) fn materialize(
         &self,
         metal_buffer: OCPtr<metal::MTLBuffer>,
         offset: base::DeviceSize,
-        is_subbuffer: bool,
+        suballoc_info: Option<BufferHeapAlloc>,
     ) {
         let data = unsafe { self.data() };
         assert!(data.metal_buffer.is_none(), "already materialized");
-        data.metal_buffer = Some((metal_buffer, offset, is_subbuffer));
+        data.metal_buffer = Some((metal_buffer, offset, suballoc_info));
 
         if let Some(label) = data.label.take() {
             data.metal_buffer.as_ref().unwrap().0.set_label(&label);

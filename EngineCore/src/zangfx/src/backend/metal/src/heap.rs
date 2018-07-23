@@ -4,8 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Heap` for Metal.
-use iterpool::{IterablePool, Pool, PoolPtr};
+use iterpool::{Pool, PoolPtr};
 use parking_lot::Mutex;
+use std::cell::UnsafeCell;
 use std::sync::Arc;
 use xalloc::{SysTlsf, SysTlsfRegion};
 use zangfx_metal_rs as metal;
@@ -291,7 +292,7 @@ where
         let metal_buffer_ptr = *metal_buffer;
 
         // Transition the buffer to the Allocated state
-        my_buffer.materialize(metal_buffer, 0, false);
+        my_buffer.materialize(metal_buffer, 0, None);
 
         // Return `metal_buffer_ptr` for `HeapAlloc` creation
         Ok(Some(metal_buffer_ptr))
@@ -345,23 +346,13 @@ struct BufferHeapData {
     pool: Pool<Option<SysTlsfRegion>>,
 }
 
-/// Implementation of `HeapAlloc` for Metal. To be used with [`BufferHeap`].
-///
-/// [`BufferHeap`]: BufferHeap
-#[derive(Debug, Clone)]
-pub struct BufferHeapAlloc {
-    /// The pointer to the resource's contents.
-    contents_ptr: *mut u8,
-
+/// Represents a single allocated region within a [`BufferHeap`].
+#[derive(Debug)]
+crate struct BufferHeapAlloc {
     /// Associates this `BufferHeapAlloc` with an element of
     /// `BufferHeapData::pool`.
-    pool_ptr: PoolPtr,
+    pool_ptr: UnsafeCell<Option<PoolPtr>>,
 }
-
-// zangfx_impl_handle! { BufferHeapAlloc, base::HeapAllocRef }
-
-unsafe impl Send for BufferHeapAlloc {}
-unsafe impl Sync for BufferHeapAlloc {}
 
 impl BufferHeap {
     fn new(metal_buffer: OCPtr<metal::MTLBuffer>) -> Self {
@@ -392,7 +383,6 @@ impl heap::Heap for BufferHeap {
                 let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
                 let memory_req = my_buffer.get_memory_req().unwrap();
 
-                let contents_ptr = self.metal_buffer.contents() as *mut u8;
                 let mut data = self.data.lock();
 
                 // Allocate the region
@@ -408,18 +398,17 @@ impl heap::Heap for BufferHeap {
                 if let Some((region, offset)) = result {
                     let pool_ptr = data.pool.allocate(Some(region));
 
+                    let suballoc_info = BufferHeapAlloc {
+                        pool_ptr: UnsafeCell::new(Some(pool_ptr)),
+                    };
+
                     // Transition the buffer to the Allocated state
-                    my_buffer.materialize(self.metal_buffer.clone(), offset as u64, true);
-
-                    let contents_ptr = contents_ptr.wrapping_offset(offset as isize);
-
-                    unimplemented!()
-                /*Ok(Some(
-                        BufferHeapAlloc {
-                            contents_ptr,
-                            pool_ptr,
-                        }.into(),
-                    ))*/
+                    my_buffer.materialize(
+                        self.metal_buffer.clone(),
+                        offset as u64,
+                        Some(suballoc_info),
+                    );
+                    Ok(true)
                 } else {
                     Ok(false)
                 }
@@ -432,6 +421,34 @@ impl heap::Heap for BufferHeap {
     }
 
     fn make_aliasable(&self, resource: base::ResourceRef) -> Result<()> {
-        unimplemented!()
+        let my_alloc: &BufferHeapAlloc;
+
+        match resource {
+            base::ResourceRef::Buffer(buffer) => {
+                let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+                my_alloc = my_buffer
+                    .suballoc_info()
+                    .expect("not allocated from a BufferHeap");
+            }
+            base::ResourceRef::Image(_) => panic!("not allocated from a BufferHeap"),
+        }
+
+        let mut data = self.data.lock();
+        let ref mut data = *data; // Enable split borrows
+
+        // Assuming the user obeys to the valid usage "`obj` must be bound to
+        // this heap.", this should not cause a race condition since we are
+        // already protected by a mutex
+        let pool_ptr_cell = unsafe { &mut *my_alloc.pool_ptr.get() };
+
+        // `make_aliasable` is idempotent
+        if let Some(pool_ptr) = pool_ptr_cell.take() {
+            let region = data.pool[pool_ptr].take().unwrap();
+            unsafe {
+                data.tlsf.dealloc_unchecked(region);
+            }
+        }
+
+        Ok(())
     }
 }
