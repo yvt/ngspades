@@ -73,7 +73,7 @@ pub trait RenderPassBuilder: Object {
     /// current subpass index, it defines a subpass self-dependency, which is
     /// required to use the [`barrier`] command inside the subpass.
     ///
-    /// [`barrier`]: crate::CmdEncoder::barrier
+    /// [`barrier`]: crate::CmdEncoderExt::barrier
     ///
     /// # Valid Usage
     ///

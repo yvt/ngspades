@@ -58,7 +58,8 @@ mopo!(dyn Object);
 ///     #[derive(Debug)]
 ///     struct MyObjectImpl;
 ///
-///     zangfx_impl_object! { MyObjectImpl: SomeInterface, Debug, Any }
+///     zangfx_impl_object! { MyObjectImpl:
+///         dyn SomeInterface, dyn Debug, dyn Any }
 ///
 ///     impl SomeInterface for MyObjectImpl {}
 ///

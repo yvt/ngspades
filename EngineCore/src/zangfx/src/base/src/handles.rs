@@ -53,17 +53,15 @@
 //! This example uses the [`zangfx_impl_handle`] macro to define a handle
 //! implementation type.
 //!
-//! [`zangfx_impl_handle`]: macro.zangfx_impl_handle.html
-//!
 //!     # #[macro_use] extern crate zangfx_base;
 //!     # fn main() {
 //!     use std::any::Any;
-//!     use zangfx_base::{CloneHandle, FenceRef};
+//!     use zangfx_base::{zangfx_impl_handle, CloneHandle, FenceRef};
 //!
 //!     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 //!     struct MyFence;
 //!
-//!     zangfx_impl_handle!(MyFence, FenceRef);
+//!     zangfx_impl_handle! { MyFence, FenceRef }
 //!
 //!     let fence = FenceRef::new(MyFence);
 //!     assert!(fence.is::<MyFence>());
