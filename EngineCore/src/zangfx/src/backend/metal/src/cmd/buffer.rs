@@ -8,7 +8,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::mem::replace;
 use parking_lot::Mutex;
-use crate::metal::{MTLCommandBuffer, MTLCommandQueue};
+use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue};
 
 use zangfx_base::{self as base, command};
 use zangfx_base::Result;
@@ -32,7 +32,7 @@ pub struct CmdBuffer {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdBuffer: command::CmdBuffer, crate::Debug, base::SetLabel }
+zangfx_impl_object! { CmdBuffer: dyn command::CmdBuffer, dyn crate::Debug, dyn base::SetLabel }
 
 #[derive(Debug)]
 struct UncommitedBuffer {
@@ -48,7 +48,7 @@ struct UncommitedBuffer {
 }
 
 #[derive(Default)]
-struct CallbackSet(Vec<Box<FnMut() + Sync + Send>>);
+struct CallbackSet(Vec<Box<dyn FnMut() + Sync + Send>>);
 
 #[derive(Debug)]
 enum Encoder {
@@ -159,7 +159,7 @@ impl command::CmdBuffer for CmdBuffer {
     fn encode_render(
         &mut self,
         render_target_table: &base::RenderTargetTableRef,
-    ) -> &mut command::RenderCmdEncoder {
+    ) -> &mut dyn command::RenderCmdEncoder {
         let our_rt_table: &RenderTargetTable = render_target_table
             .downcast_ref()
             .expect("bad render target table type");
@@ -188,7 +188,7 @@ impl command::CmdBuffer for CmdBuffer {
             _ => unreachable!(),
         }
     }
-    fn encode_compute(&mut self) -> &mut command::ComputeCmdEncoder {
+    fn encode_compute(&mut self) -> &mut dyn command::ComputeCmdEncoder {
         let uncommited = self.uncommited
             .as_mut()
             .expect("command buffer is already commited");
@@ -210,7 +210,7 @@ impl command::CmdBuffer for CmdBuffer {
             _ => unreachable!(),
         }
     }
-    fn encode_copy(&mut self) -> &mut command::CopyCmdEncoder {
+    fn encode_copy(&mut self) -> &mut dyn command::CopyCmdEncoder {
         let uncommited = self.uncommited
             .as_mut()
             .expect("command buffer is already commited");
@@ -233,7 +233,7 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn on_complete(&mut self, cb: Box<FnMut(base::Result<()>) + Sync + Send>) {
+    fn on_complete(&mut self, cb: Box<dyn FnMut(base::Result<()>) + Sync + Send>) {
         let uncommited = self.uncommited
             .as_mut()
             .expect("command buffer is already commited");

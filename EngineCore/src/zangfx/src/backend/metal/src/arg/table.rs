@@ -5,7 +5,7 @@
 //
 //! Implementation of `ArgPool` and `ArgTable` for Metal.
 use std::sync::Arc;
-use metal;
+use zangfx_metal_rs as metal;
 
 use zangfx_base::{self as base, arg};
 use zangfx_base::Result;
@@ -32,7 +32,7 @@ pub(crate) struct ArgLayoutInfo {
 
 impl ArgLayoutInfo {
     /// Compute the `ArgLayoutInfo` for a given device.
-    pub unsafe fn new(metal_device: metal::MTLDevice) -> Result<Self> {
+    crate unsafe fn new(metal_device: metal::MTLDevice) -> Result<Self> {
         use zangfx_base::arg::ArgTableSigBuilder;
         let mut builder = super::tablesig::ArgTableSigBuilder::new(metal_device);
         builder.arg(0, arg::ArgType::StorageImage);
@@ -81,7 +81,7 @@ pub struct ArgPoolBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { ArgPoolBuilder: arg::ArgPoolBuilder, crate::Debug, base::SetLabel }
+zangfx_impl_object! { ArgPoolBuilder: dyn arg::ArgPoolBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for ArgPoolBuilder {}
 unsafe impl Sync for ArgPoolBuilder {}
@@ -108,7 +108,7 @@ impl base::SetLabel for ArgPoolBuilder {
 }
 
 impl arg::ArgPoolBuilder for ArgPoolBuilder {
-    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::ArgPoolBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::ArgPoolBuilder {
         self
     }
 
@@ -116,7 +116,7 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         &mut self,
         count: usize,
         table: &arg::ArgTableSigRef,
-    ) -> &mut arg::ArgPoolBuilder {
+    ) -> &mut dyn arg::ArgPoolBuilder {
         if count == 0 {
             return self;
         }
@@ -135,7 +135,7 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         self
     }
 
-    fn reserve_arg(&mut self, count: usize, ty: arg::ArgType) -> &mut arg::ArgPoolBuilder {
+    fn reserve_arg(&mut self, count: usize, ty: arg::ArgType) -> &mut dyn arg::ArgPoolBuilder {
         use zangfx_base::arg::ArgType::*;
         self.size += match ty {
             StorageImage | SampledImage => self.layout.texture_size,
@@ -145,12 +145,12 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         self
     }
 
-    fn reserve_table(&mut self, count: usize) -> &mut arg::ArgPoolBuilder {
+    fn reserve_table(&mut self, count: usize) -> &mut dyn arg::ArgPoolBuilder {
         self.size += self.layout.table_size * count as ArgSize;
         self
     }
 
-    fn enable_destroy_tables(&mut self) -> &mut arg::ArgPoolBuilder {
+    fn enable_destroy_tables(&mut self) -> &mut dyn arg::ArgPoolBuilder {
         self.enable_destroy_tables = true;
         self
     }
@@ -260,7 +260,7 @@ impl<T: Allocator> BaseArgPool<T> {
 #[derive(Debug)]
 pub struct StackArgPool(BaseArgPool<StackAllocator>);
 
-zangfx_impl_object! { StackArgPool: arg::ArgPool, crate::Debug }
+zangfx_impl_object! { StackArgPool: dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for StackArgPool {
     fn new_tables(
@@ -284,7 +284,7 @@ impl arg::ArgPool for StackArgPool {
 #[derive(Debug)]
 pub struct DynamicArgPool(BaseArgPool<TlsfAllocator>);
 
-zangfx_impl_object! { DynamicArgPool: arg::ArgPool, crate::Debug }
+zangfx_impl_object! { DynamicArgPool: dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for DynamicArgPool {
     fn new_tables(
@@ -308,7 +308,7 @@ impl arg::ArgPool for DynamicArgPool {
 #[derive(Debug)]
 pub struct ZeroSizedArgPool;
 
-zangfx_impl_object! { ZeroSizedArgPool: arg::ArgPool, crate::Debug }
+zangfx_impl_object! { ZeroSizedArgPool: dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for ZeroSizedArgPool {
     fn new_tables(

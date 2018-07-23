@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use crate::metal::MTLRenderCommandEncoder;
+use zangfx_metal_rs::MTLRenderCommandEncoder;
 use zangfx_base::{self as base, command, heap};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use zangfx_common::Rect2D;
@@ -15,20 +15,20 @@ use crate::cmd::fence::Fence;
 use crate::renderpipeline::RenderStateManager;
 
 #[derive(Debug)]
-pub struct RenderEncoder {
+crate struct RenderEncoder {
     metal_encoder: OCPtr<MTLRenderCommandEncoder>,
     fence_set: CmdBufferFenceSet,
     state: RenderStateManager,
 }
 
 zangfx_impl_object! { RenderEncoder:
-command::CmdEncoder, command::RenderCmdEncoder, crate::Debug }
+dyn command::CmdEncoder, dyn command::RenderCmdEncoder, dyn crate::Debug }
 
 unsafe impl Send for RenderEncoder {}
 unsafe impl Sync for RenderEncoder {}
 
 impl RenderEncoder {
-    pub unsafe fn new(
+    crate unsafe fn new(
         metal_encoder: MTLRenderCommandEncoder,
         fence_set: CmdBufferFenceSet,
         extents: [u32; 2],

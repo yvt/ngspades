@@ -6,7 +6,7 @@
 use std::u32;
 use ngsenumflags::flags;
 
-use metal;
+use zangfx_metal_rs as metal;
 use zangfx_base::{self as base, limits};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
@@ -31,7 +31,7 @@ pub struct DeviceCaps {
     d24_s8_supported: bool,
 }
 
-zangfx_impl_object! { DeviceCaps: limits::DeviceCaps, crate::Debug }
+zangfx_impl_object! { DeviceCaps: dyn limits::DeviceCaps, dyn crate::Debug }
 
 impl DeviceCaps {
     pub(crate) fn new(device: metal::MTLDevice) -> Self {

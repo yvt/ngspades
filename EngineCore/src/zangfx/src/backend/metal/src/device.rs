@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Metal.
-use metal;
+use zangfx_metal_rs as metal;
 use zangfx_base::{self as base, device, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
@@ -20,7 +20,7 @@ pub struct Device {
     arg_layout_info: arg::table::ArgLayoutInfo,
 }
 
-zangfx_impl_object! { Device: device::Device, crate::Debug }
+zangfx_impl_object! { Device: dyn device::Device, dyn crate::Debug }
 
 unsafe impl Send for Device {}
 unsafe impl Sync for Device {}
@@ -55,7 +55,7 @@ impl Device {
 }
 
 impl device::Device for Device {
-    fn caps(&self) -> &base::limits::DeviceCaps {
+    fn caps(&self) -> &dyn base::limits::DeviceCaps {
         &self.caps
     }
 
@@ -63,43 +63,43 @@ impl device::Device for Device {
         unimplemented!()
     }
 
-    fn build_cmd_queue(&self) -> Box<base::command::CmdQueueBuilder> {
+    fn build_cmd_queue(&self) -> base::command::CmdQueueBuilderRef {
         unsafe { Box::new(cmd::queue::CmdQueueBuilder::new(self.metal_device())) }
     }
 
-    fn build_dynamic_heap(&self) -> Box<base::heap::DynamicHeapBuilder> {
+    fn build_dynamic_heap(&self) -> base::heap::DynamicHeapBuilderRef {
         unsafe { Box::new(heap::HeapBuilder::new(self.metal_device())) }
     }
 
-    fn build_dedicated_heap(&self) -> Box<base::heap::DedicatedHeapBuilder> {
+    fn build_dedicated_heap(&self) -> base::heap::DedicatedHeapBuilderRef {
         unsafe { Box::new(heap::HeapBuilder::new(self.metal_device())) }
     }
 
-    fn build_image(&self) -> Box<base::resources::ImageBuilder> {
+    fn build_image(&self) -> base::resources::ImageBuilderRef {
         Box::new(image::ImageBuilder::new())
     }
 
-    fn build_buffer(&self) -> Box<base::resources::BufferBuilder> {
+    fn build_buffer(&self) -> base::resources::BufferBuilderRef {
         Box::new(buffer::BufferBuilder::new())
     }
 
-    fn build_sampler(&self) -> Box<base::sampler::SamplerBuilder> {
+    fn build_sampler(&self) -> base::sampler::SamplerBuilderRef {
         unsafe { Box::new(sampler::SamplerBuilder::new(self.metal_device())) }
     }
 
-    fn build_library(&self) -> Box<base::shader::LibraryBuilder> {
+    fn build_library(&self) -> base::shader::LibraryBuilderRef {
         Box::new(shader::LibraryBuilder::new())
     }
 
-    fn build_arg_table_sig(&self) -> Box<base::arg::ArgTableSigBuilder> {
+    fn build_arg_table_sig(&self) -> base::arg::ArgTableSigBuilderRef {
         unsafe { Box::new(arg::tablesig::ArgTableSigBuilder::new(self.metal_device())) }
     }
 
-    fn build_root_sig(&self) -> Box<base::arg::RootSigBuilder> {
+    fn build_root_sig(&self) -> base::arg::RootSigBuilderRef {
         Box::new(arg::rootsig::RootSigBuilder::new())
     }
 
-    fn build_arg_pool(&self) -> Box<base::arg::ArgPoolBuilder> {
+    fn build_arg_pool(&self) -> base::arg::ArgPoolBuilderRef {
         unsafe {
             Box::new(arg::table::ArgPoolBuilder::new(
                 self.metal_device(),
@@ -108,11 +108,11 @@ impl device::Device for Device {
         }
     }
 
-    fn build_render_pass(&self) -> Box<base::pass::RenderPassBuilder> {
+    fn build_render_pass(&self) -> base::pass::RenderPassBuilderRef {
         Box::new(renderpass::RenderPassBuilder::new())
     }
 
-    fn build_render_target_table(&self) -> Box<base::pass::RenderTargetTableBuilder> {
+    fn build_render_target_table(&self) -> base::pass::RenderTargetTableBuilderRef {
         unsafe {
             Box::new(renderpass::RenderTargetTableBuilder::new(
                 self.metal_device(),
@@ -120,7 +120,7 @@ impl device::Device for Device {
         }
     }
 
-    fn build_render_pipeline(&self) -> Box<base::pipeline::RenderPipelineBuilder> {
+    fn build_render_pipeline(&self) -> base::pipeline::RenderPipelineBuilderRef {
         unsafe {
             Box::new(renderpipeline::RenderPipelineBuilder::new(
                 self.metal_device(),
@@ -128,7 +128,7 @@ impl device::Device for Device {
         }
     }
 
-    fn build_compute_pipeline(&self) -> Box<base::pipeline::ComputePipelineBuilder> {
+    fn build_compute_pipeline(&self) -> base::pipeline::ComputePipelineBuilderRef {
         unsafe {
             Box::new(computepipeline::ComputePipelineBuilder::new(
                 self.metal_device(),
@@ -147,7 +147,7 @@ impl device::Device for Device {
         our_sig.update_arg_tables(updates)
     }
 
-    fn autorelease_pool_scope_core(&self, cb: &mut FnMut(&mut device::AutoreleasePool)) {
+    fn autorelease_pool_scope_core(&self, cb: &mut dyn FnMut(&mut dyn device::AutoreleasePool)) {
         struct AutoreleasePool(Option<OCPtr<metal::NSAutoreleasePool>>);
 
         impl device::AutoreleasePool for AutoreleasePool {

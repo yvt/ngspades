@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use metal;
+use zangfx_metal_rs as metal;
 use zangfx_base::{self as base, command, heap};
 use arrayvec::ArrayVec;
 use std::collections::HashSet;
@@ -14,17 +14,17 @@ use crate::image::Image;
 use crate::heap::{BufferHeap, EmulatedHeap, Heap};
 
 #[derive(Debug, Default)]
-pub struct CmdBufferFenceSet {
-    pub wait_fences: Vec<Fence>,
-    pub signal_fences: HashSet<Fence>,
+crate struct CmdBufferFenceSet {
+    crate wait_fences: Vec<Fence>,
+    crate signal_fences: HashSet<Fence>,
 }
 
 impl CmdBufferFenceSet {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         Default::default()
     }
 
-    pub fn wait_fence(&mut self, fence: Fence) {
+    crate fn wait_fence(&mut self, fence: Fence) {
         if self.signal_fences.contains(&fence) {
             // Found a matching fence signaling operating in the same CB
             return;
@@ -32,7 +32,7 @@ impl CmdBufferFenceSet {
         self.wait_fences.push(fence);
     }
 
-    pub fn signal_fence(&mut self, fence: Fence) {
+    crate fn signal_fence(&mut self, fence: Fence) {
         self.signal_fences.insert(fence);
     }
 }
@@ -53,7 +53,7 @@ fn translate_resource(handle: base::ResourceRef) -> (metal::MTLResource, bool) {
     }
 }
 
-pub trait UseResources {
+crate trait UseResources {
     fn use_metal_resources(&self, resources: &[metal::MTLResource], usage: metal::MTLResourceUsage);
     fn use_metal_heaps(&self, heaps: &[metal::MTLHeap]);
 
@@ -91,7 +91,7 @@ pub trait UseResources {
     }
 
     fn use_gfx_heap(&self, heaps: &[&heap::HeapRef]) {
-        use crate::metal::MTLResourceUsage::Read;
+        use zangfx_metal_rs::MTLResourceUsage::Read;
         let mut metal_heaps = ArrayVec::<[_; 256]>::new();
         let mut metal_resources = ArrayVec::<[_; 256]>::new();
 
@@ -158,7 +158,7 @@ impl UseResources for metal::MTLComputeCommandEncoder {
     }
 }
 
-pub trait DebugCommands {
+crate trait DebugCommands {
     fn begin_debug_group(&self, label: &str);
     fn end_debug_group(&self);
     fn debug_marker(&self, label: &str);

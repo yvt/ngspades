@@ -8,8 +8,8 @@ use std::ops::Range;
 use zangfx_base::{self as base, sampler, CmpFn};
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
-use metal;
-use crate::metal::NSObjectProtocol;
+use zangfx_metal_rs as metal;
+use zangfx_metal_rs::NSObjectProtocol;
 
 use crate::utils::{nil_error, translate_cmp_fn, OCPtr};
 
@@ -31,7 +31,7 @@ pub struct SamplerBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, crate::Debug, base::SetLabel }
+zangfx_impl_object! { SamplerBuilder: dyn sampler::SamplerBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for SamplerBuilder {}
 unsafe impl Sync for SamplerBuilder {}
@@ -64,48 +64,48 @@ impl base::SetLabel for SamplerBuilder {
 }
 
 impl sampler::SamplerBuilder for SamplerBuilder {
-    fn mag_filter(&mut self, v: sampler::Filter) -> &mut sampler::SamplerBuilder {
+    fn mag_filter(&mut self, v: sampler::Filter) -> &mut dyn sampler::SamplerBuilder {
         self.mag_filter = v;
         self
     }
 
-    fn min_filter(&mut self, v: sampler::Filter) -> &mut sampler::SamplerBuilder {
+    fn min_filter(&mut self, v: sampler::Filter) -> &mut dyn sampler::SamplerBuilder {
         self.min_filter = v;
         self
     }
 
-    fn address_mode(&mut self, v: &[sampler::AddressMode]) -> &mut sampler::SamplerBuilder {
+    fn address_mode(&mut self, v: &[sampler::AddressMode]) -> &mut dyn sampler::SamplerBuilder {
         use zangfx_common::IntoWithPad;
         self.address_mode = v.into_with_pad(v.last().cloned().unwrap_or(sampler::AddressMode::Repeat));
         self
     }
 
-    fn mipmap_mode(&mut self, v: sampler::MipmapMode) -> &mut sampler::SamplerBuilder {
+    fn mipmap_mode(&mut self, v: sampler::MipmapMode) -> &mut dyn sampler::SamplerBuilder {
         self.mipmap_mode = v;
         self
     }
 
-    fn lod_clamp(&mut self, v: Range<f32>) -> &mut sampler::SamplerBuilder {
+    fn lod_clamp(&mut self, v: Range<f32>) -> &mut dyn sampler::SamplerBuilder {
         self.lod_clamp = v;
         self
     }
 
-    fn max_anisotropy(&mut self, v: u32) -> &mut sampler::SamplerBuilder {
+    fn max_anisotropy(&mut self, v: u32) -> &mut dyn sampler::SamplerBuilder {
         self.max_anisotropy = v;
         self
     }
 
-    fn cmp_fn(&mut self, v: Option<CmpFn>) -> &mut sampler::SamplerBuilder {
+    fn cmp_fn(&mut self, v: Option<CmpFn>) -> &mut dyn sampler::SamplerBuilder {
         self.cmp_fn = v;
         self
     }
 
-    fn border_color(&mut self, v: sampler::BorderColor) -> &mut sampler::SamplerBuilder {
+    fn border_color(&mut self, v: sampler::BorderColor) -> &mut dyn sampler::SamplerBuilder {
         self.border_color = v;
         self
     }
 
-    fn unnorm_coords(&mut self, v: bool) -> &mut sampler::SamplerBuilder {
+    fn unnorm_coords(&mut self, v: bool) -> &mut dyn sampler::SamplerBuilder {
         self.unnorm_coords = v;
         self
     }

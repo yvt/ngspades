@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::collections::HashSet;
 use parking_lot::Mutex;
 use tokenlock::{Token, TokenRef};
-use crate::metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
+use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
 
 use zangfx_base::{self as base, command, QueueFamily, Result};
@@ -26,7 +26,7 @@ pub struct CmdQueueBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, crate::Debug, base::SetLabel }
+zangfx_impl_object! { CmdQueueBuilder: dyn command::CmdQueueBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for CmdQueueBuilder {}
 unsafe impl Sync for CmdQueueBuilder {}
@@ -50,7 +50,7 @@ impl base::SetLabel for CmdQueueBuilder {
 }
 
 impl command::CmdQueueBuilder for CmdQueueBuilder {
-    fn queue_family(&mut self, _: QueueFamily) -> &mut command::CmdQueueBuilder {
+    fn queue_family(&mut self, _: QueueFamily) -> &mut dyn command::CmdQueueBuilder {
         // Ignore it since we know we only have exactly one queue family
         self
     }
@@ -76,7 +76,7 @@ pub struct CmdQueue {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdQueue: command::CmdQueue, crate::Debug }
+zangfx_impl_object! { CmdQueue: dyn command::CmdQueue, dyn crate::Debug }
 
 unsafe impl Send for CmdQueue {}
 unsafe impl Sync for CmdQueue {}
@@ -109,8 +109,8 @@ pub(super) struct Item {
 
 #[derive(Debug)]
 pub(super) struct CommitedBuffer {
-    pub metal_buffer: OCPtr<MTLCommandBuffer>,
-    pub fence_set: CmdBufferFenceSet,
+    crate metal_buffer: OCPtr<MTLCommandBuffer>,
+    crate fence_set: CmdBufferFenceSet,
 }
 
 impl CmdQueue {
@@ -129,7 +129,7 @@ impl CmdQueue {
 }
 
 impl Scheduler {
-    pub fn commit(&self, commited_buffer: CommitedBuffer) {
+    crate fn commit(&self, commited_buffer: CommitedBuffer) {
         let mut item = Box::new(Item {
             commited: commited_buffer,
             wait_fence_index: 0,

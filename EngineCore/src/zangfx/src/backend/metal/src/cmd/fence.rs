@@ -7,7 +7,7 @@
 use zangfx_base::{self as base, Result};
 use zangfx_base::zangfx_impl_handle;
 use tokenlock::{TokenLock, TokenRef};
-use crate::metal::{MTLDevice, MTLFence};
+use zangfx_metal_rs::{MTLDevice, MTLFence};
 use refeq::RefEqArc;
 
 use crate::utils::{nil_error, OCPtr};
@@ -31,8 +31,8 @@ struct FenceData {
 
 #[derive(Debug)]
 pub(super) struct FenceScheduleData {
-    pub signaled: bool,
-    pub waiting: Option<Box<Item>>,
+    crate signaled: bool,
+    crate waiting: Option<Box<Item>>,
 }
 
 unsafe impl Send for Fence {}

@@ -5,7 +5,7 @@
 //
 use std::sync::Arc;
 use std::ops::Range;
-use metal;
+use zangfx_metal_rs as metal;
 
 use zangfx_base as base;
 use zangfx_base::StaticOrDynamic::*;
@@ -41,7 +41,7 @@ pub struct RenderPipelineBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { RenderPipelineBuilder: base::RenderPipelineBuilder, crate::Debug, base::SetLabel }
+zangfx_impl_object! { RenderPipelineBuilder: dyn base::RenderPipelineBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for RenderPipelineBuilder {}
 unsafe impl Sync for RenderPipelineBuilder {}
@@ -77,7 +77,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         library: &base::LibraryRef,
         entry_point: &str,
-    ) -> &mut base::RenderPipelineBuilder {
+    ) -> &mut dyn base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
         self.vertex_shader = Some((my_library.clone(), entry_point.to_owned()));
         self
@@ -87,13 +87,13 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         library: &base::LibraryRef,
         entry_point: &str,
-    ) -> &mut base::RenderPipelineBuilder {
+    ) -> &mut dyn base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
         self.fragment_shader = Some((my_library.clone(), entry_point.to_owned()));
         self
     }
 
-    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut base::RenderPipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut dyn base::RenderPipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
@@ -103,7 +103,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         v: &base::RenderPassRef,
         subpass: base::SubpassIndex,
-    ) -> &mut base::RenderPipelineBuilder {
+    ) -> &mut dyn base::RenderPipelineBuilder {
         let my_render_pass: &RenderPass = v.downcast_ref().expect("bad render pass type");
         self.render_pass = Some((my_render_pass.clone(), subpass));
         self
@@ -113,7 +113,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         index: base::VertexBufferIndex,
         stride: base::DeviceSize,
-    ) -> &mut base::VertexBufferBinding {
+    ) -> &mut dyn base::VertexBufferBinding {
         assert!(
             index < crate::MAX_NUM_VERTEX_BUFFERS,
             "index exceeds implementation limit"
@@ -138,12 +138,12 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         self.vertex_attrs[index] = Some(VertexAttrBinding::new(buffer, offset, format));
     }
 
-    fn topology(&mut self, v: base::PrimitiveTopology) -> &mut base::RenderPipelineBuilder {
+    fn topology(&mut self, v: base::PrimitiveTopology) -> &mut dyn base::RenderPipelineBuilder {
         self.topology = Some(v);
         self
     }
 
-    fn rasterize(&mut self) -> &mut base::Rasterizer {
+    fn rasterize(&mut self) -> &mut dyn base::Rasterizer {
         if self.rasterizer.is_none() {
             self.rasterizer = Some(Rasterizer::new());
         }
@@ -317,7 +317,7 @@ struct VertexBufferBinding {
     stride: base::DeviceSize,
 }
 
-zangfx_impl_object! { VertexBufferBinding: base::VertexBufferBinding, crate::Debug }
+zangfx_impl_object! { VertexBufferBinding: dyn base::VertexBufferBinding, dyn crate::Debug }
 
 impl VertexBufferBinding {
     fn new(stride: base::DeviceSize) -> Self {
@@ -334,7 +334,7 @@ impl VertexBufferBinding {
 }
 
 impl base::VertexBufferBinding for VertexBufferBinding {
-    fn set_rate(&mut self, rate: base::VertexInputRate) -> &mut base::VertexBufferBinding {
+    fn set_rate(&mut self, rate: base::VertexInputRate) -> &mut dyn base::VertexBufferBinding {
         self.step_fn = match rate {
             base::VertexInputRate::Vertex => metal::MTLVertexStepFunction::PerVertex,
             base::VertexInputRate::Instance => metal::MTLVertexStepFunction::PerInstance,
@@ -389,7 +389,7 @@ struct Rasterizer {
     color_targets: Vec<RasterizerColorTarget>,
 }
 
-zangfx_impl_object! { Rasterizer: base::Rasterizer, crate::Debug }
+zangfx_impl_object! { Rasterizer: dyn base::Rasterizer, dyn crate::Debug }
 
 /// A part of rasterizer states that must be set via render commands when the
 /// pipeline is bound.
@@ -511,7 +511,7 @@ impl Rasterizer {
 }
 
 impl base::Rasterizer for Rasterizer {
-    fn set_num_viewports(&mut self, v: usize) -> &mut base::Rasterizer {
+    fn set_num_viewports(&mut self, v: usize) -> &mut dyn base::Rasterizer {
         // Multiple viewport are not supported
         assert_eq!(v, 1);
         self
@@ -521,7 +521,7 @@ impl base::Rasterizer for Rasterizer {
         &mut self,
         start_viewport: base::ViewportIndex,
         v: &[base::StaticOrDynamic<base::Rect2D<u32>>],
-    ) -> &mut base::Rasterizer {
+    ) -> &mut dyn base::Rasterizer {
         // Multiple viewport are not supported
         if v.len() > 0 {
             assert_eq!(start_viewport, 0);
@@ -531,7 +531,7 @@ impl base::Rasterizer for Rasterizer {
         self
     }
 
-    fn set_cull_mode(&mut self, v: base::CullMode) -> &mut base::Rasterizer {
+    fn set_cull_mode(&mut self, v: base::CullMode) -> &mut dyn base::Rasterizer {
         self.cull_mode = match v {
             base::CullMode::None => metal::MTLCullMode::None,
             base::CullMode::Back => metal::MTLCullMode::Back,
@@ -540,7 +540,7 @@ impl base::Rasterizer for Rasterizer {
         self
     }
 
-    fn set_front_face(&mut self, v: base::Winding) -> &mut base::Rasterizer {
+    fn set_front_face(&mut self, v: base::Winding) -> &mut dyn base::Rasterizer {
         self.front_face = match v {
             base::Winding::Clockwise => metal::MTLWinding::Clockwise,
             base::Winding::CounterClockwise => metal::MTLWinding::CounterClockwise,
@@ -548,7 +548,7 @@ impl base::Rasterizer for Rasterizer {
         self
     }
 
-    fn set_depth_clip_mode(&mut self, v: base::DepthClipMode) -> &mut base::Rasterizer {
+    fn set_depth_clip_mode(&mut self, v: base::DepthClipMode) -> &mut dyn base::Rasterizer {
         self.depth_clip_mode = match v {
             base::DepthClipMode::Clip => metal::MTLDepthClipMode::Clip,
             base::DepthClipMode::Clamp => metal::MTLDepthClipMode::Clamp,
@@ -556,7 +556,7 @@ impl base::Rasterizer for Rasterizer {
         self
     }
 
-    fn set_triangle_fill_mode(&mut self, v: base::TriangleFillMode) -> &mut base::Rasterizer {
+    fn set_triangle_fill_mode(&mut self, v: base::TriangleFillMode) -> &mut dyn base::Rasterizer {
         self.triangle_fill_mode = match v {
             base::TriangleFillMode::Line => metal::MTLTriangleFillMode::Lines,
             base::TriangleFillMode::Fill => metal::MTLTriangleFillMode::Fill,
@@ -567,37 +567,37 @@ impl base::Rasterizer for Rasterizer {
     fn set_depth_bias(
         &mut self,
         v: Option<base::StaticOrDynamic<base::DepthBias>>,
-    ) -> &mut base::Rasterizer {
+    ) -> &mut dyn base::Rasterizer {
         self.depth_bias = v.unwrap_or(Static(Default::default())).static_value();
         self
     }
 
-    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut base::Rasterizer {
+    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut dyn base::Rasterizer {
         self.alpha_to_coverage = v;
         self
     }
 
-    fn set_sample_count(&mut self, v: u32) -> &mut base::Rasterizer {
+    fn set_sample_count(&mut self, v: u32) -> &mut dyn base::Rasterizer {
         self.sample_count = v;
         self
     }
 
-    fn set_depth_write(&mut self, v: bool) -> &mut base::Rasterizer {
+    fn set_depth_write(&mut self, v: bool) -> &mut dyn base::Rasterizer {
         self.depth_write = v;
         self
     }
 
-    fn set_depth_test(&mut self, v: base::CmpFn) -> &mut base::Rasterizer {
+    fn set_depth_test(&mut self, v: base::CmpFn) -> &mut dyn base::Rasterizer {
         self.depth_test = translate_cmp_fn(v);
         self
     }
 
-    fn set_stencil_ops(&mut self, front_back: [base::StencilOps; 2]) -> &mut base::Rasterizer {
+    fn set_stencil_ops(&mut self, front_back: [base::StencilOps; 2]) -> &mut dyn base::Rasterizer {
         self.stencil_ops = [front_back[0].into(), front_back[1].into()];
         self
     }
 
-    fn set_stencil_masks(&mut self, front_back: [base::StencilMasks; 2]) -> &mut base::Rasterizer {
+    fn set_stencil_masks(&mut self, front_back: [base::StencilMasks; 2]) -> &mut dyn base::Rasterizer {
         self.stencil_masks = front_back;
         self
     }
@@ -605,7 +605,7 @@ impl base::Rasterizer for Rasterizer {
     fn set_depth_bounds(
         &mut self,
         v: Option<base::StaticOrDynamic<Range<f32>>>,
-    ) -> &mut base::Rasterizer {
+    ) -> &mut dyn base::Rasterizer {
         assert_eq!(v, None);
         self
     }
@@ -613,7 +613,7 @@ impl base::Rasterizer for Rasterizer {
     fn color_target(
         &mut self,
         index: base::RenderSubpassColorTargetIndex,
-    ) -> &mut base::RasterizerColorTarget {
+    ) -> &mut dyn base::RasterizerColorTarget {
         if self.color_targets.len() <= index {
             self.color_targets
                 .resize(index + 1, RasterizerColorTarget::new());
@@ -635,7 +635,7 @@ struct RasterizerColorTarget {
     rgb_op: metal::MTLBlendOperation,
 }
 
-zangfx_impl_object! { RasterizerColorTarget: base::RasterizerColorTarget, crate::Debug }
+zangfx_impl_object! { RasterizerColorTarget: dyn base::RasterizerColorTarget, dyn crate::Debug }
 
 impl RasterizerColorTarget {
     fn new() -> Self {
@@ -666,7 +666,7 @@ impl RasterizerColorTarget {
 }
 
 impl base::RasterizerColorTarget for RasterizerColorTarget {
-    fn set_write_mask(&mut self, v: base::ColorChannelFlags) -> &mut base::RasterizerColorTarget {
+    fn set_write_mask(&mut self, v: base::ColorChannelFlags) -> &mut dyn base::RasterizerColorTarget {
         let mut mask = metal::MTLColorWriteMaskNone;
         if v.intersects(base::ColorChannel::Red) {
             mask |= metal::MTLColorWriteMaskRed;
@@ -684,37 +684,37 @@ impl base::RasterizerColorTarget for RasterizerColorTarget {
         self
     }
 
-    fn set_blending(&mut self, v: bool) -> &mut base::RasterizerColorTarget {
+    fn set_blending(&mut self, v: bool) -> &mut dyn base::RasterizerColorTarget {
         self.blending = v;
         self
     }
 
-    fn set_src_alpha_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_src_alpha_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
         self.src_alpha_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_src_rgb_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_src_rgb_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
         self.src_rgb_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_dst_alpha_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_dst_alpha_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
         self.dst_alpha_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_dst_rgb_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_dst_rgb_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
         self.dst_rgb_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_alpha_op(&mut self, v: base::BlendOp) -> &mut base::RasterizerColorTarget {
+    fn set_alpha_op(&mut self, v: base::BlendOp) -> &mut dyn base::RasterizerColorTarget {
         self.alpha_op = translate_blend_op(v);
         self
     }
 
-    fn set_rgb_op(&mut self, v: base::BlendOp) -> &mut base::RasterizerColorTarget {
+    fn set_rgb_op(&mut self, v: base::BlendOp) -> &mut dyn base::RasterizerColorTarget {
         self.rgb_op = translate_blend_op(v);
         self
     }
@@ -892,7 +892,7 @@ impl RenderStateManager {
     ///
     /// Ir's up to the caller to maintain the lifetime of `metal_encoder`.
     /// The render state are assumed to have the default values.
-    pub unsafe fn new(metal_encoder: metal::MTLRenderCommandEncoder, extents: [u32; 2]) -> Self {
+    crate unsafe fn new(metal_encoder: metal::MTLRenderCommandEncoder, extents: [u32; 2]) -> Self {
         Self {
             metal_encoder,
             extents,
@@ -924,7 +924,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn bind_pipeline(&mut self, pipeline: &base::RenderPipelineRef) {
+    crate fn bind_pipeline(&mut self, pipeline: &base::RenderPipelineRef) {
         let pipeline: &RenderPipeline = pipeline.downcast_ref().expect("bad render pipeline type");
 
         self.metal_encoder
@@ -970,22 +970,22 @@ impl RenderStateManager {
         self.vb_used = pipeline.data.vb_used;
     }
 
-    pub fn set_blend_constant(&mut self, value: &[f32]) {
+    crate fn set_blend_constant(&mut self, value: &[f32]) {
         self.metal_encoder
             .set_blend_color(value[0], value[1], value[2], value[3]);
     }
 
-    pub fn set_depth_bias(&mut self, value: Option<base::DepthBias>) {
+    crate fn set_depth_bias(&mut self, value: Option<base::DepthBias>) {
         let value = value.unwrap_or_default();
         self.metal_encoder
             .set_depth_bias(value.constant_factor, value.slope_factor, value.clamp);
     }
 
-    pub fn set_depth_bounds(&mut self, _: Option<Range<f32>>) {
+    crate fn set_depth_bounds(&mut self, _: Option<Range<f32>>) {
         panic!("not supported");
     }
 
-    pub fn set_stencil_refs(&mut self, values: &[u32]) {
+    crate fn set_stencil_refs(&mut self, values: &[u32]) {
         if values[0] == values[1] {
             self.metal_encoder.set_stencil_reference_value(values[0]);
         } else {
@@ -994,7 +994,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn set_viewports(&mut self, start_viewport: base::ViewportIndex, value: &[base::Viewport]) {
+    crate fn set_viewports(&mut self, start_viewport: base::ViewportIndex, value: &[base::Viewport]) {
         // Multiple viewport are not supported
         if value.len() > 0 {
             debug_assert_eq!(start_viewport, 0);
@@ -1005,7 +1005,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn set_scissors(
+    crate fn set_scissors(
         &mut self,
         start_viewport: base::ViewportIndex,
         value: &[base::Rect2D<u32>],
@@ -1023,7 +1023,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+    crate fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
         for (i, (_pool, table)) in tables.iter().enumerate() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.metal_encoder.set_vertex_buffer(
@@ -1039,7 +1039,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn bind_vertex_buffers(
+    crate fn bind_vertex_buffers(
         &mut self,
         index: base::VertexBufferIndex,
         buffers: &[(&base::BufferRef, base::DeviceSize)],
@@ -1074,7 +1074,7 @@ impl RenderStateManager {
         self.vb_dirty &= !<u32>::ones(start..end);
     }
 
-    pub fn bind_index_buffer(
+    crate fn bind_index_buffer(
         &mut self,
         buffer: &base::BufferRef,
         offset: base::DeviceSize,
@@ -1092,7 +1092,7 @@ impl RenderStateManager {
         };
     }
 
-    pub fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
+    crate fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
         if vertex_range.len() == 0 {
             return;
         }
@@ -1115,7 +1115,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn draw_indexed(
+    crate fn draw_indexed(
         &mut self,
         index_buffer_range: Range<u32>,
         vertex_offset: u32,
@@ -1148,7 +1148,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn draw_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
+    crate fn draw_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.flush_vertex_buffers();
@@ -1156,7 +1156,7 @@ impl RenderStateManager {
             .draw_indirect(self.primitive_type, metal_buffer, offset + buffer_offset);
     }
 
-    pub fn draw_indexed_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
+    crate fn draw_indexed_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.flush_vertex_buffers();

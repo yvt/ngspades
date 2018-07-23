@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `ArgTableSig` for Metal.
-use metal;
+use zangfx_metal_rs as metal;
 use cocoa::foundation::NSArray;
 use cocoa::base::nil;
 use parking_lot::Mutex;
@@ -17,7 +17,7 @@ use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle
 
 use crate::arg::ArgSize;
 use crate::utils::{nil_error, OCPtr};
-use crate::spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl};
+use zangfx_spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl};
 
 /// Implementation of `ArgTableSigBuilder` for Metal.
 #[derive(Debug)]
@@ -28,7 +28,7 @@ pub struct ArgTableSigBuilder {
     args: Vec<Option<ArgSigBuilder>>,
 }
 
-zangfx_impl_object! { ArgTableSigBuilder: arg::ArgTableSigBuilder, crate::Debug }
+zangfx_impl_object! { ArgTableSigBuilder: dyn arg::ArgTableSigBuilder, dyn crate::Debug }
 
 unsafe impl Send for ArgTableSigBuilder {}
 unsafe impl Sync for ArgTableSigBuilder {}
@@ -40,7 +40,7 @@ struct ArgSigBuilder {
     image_aspect: base::ImageAspect,
 }
 
-zangfx_impl_object! { ArgSigBuilder: arg::ArgSig, crate::Debug }
+zangfx_impl_object! { ArgSigBuilder: dyn arg::ArgSig, dyn crate::Debug }
 
 impl ArgTableSigBuilder {
     /// Construct an `ArgTableSigBuilder`.
@@ -67,7 +67,7 @@ impl ArgTableSigBuilder {
 }
 
 impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
-    fn arg(&mut self, index: ArgIndex, ty: arg::ArgType) -> &mut arg::ArgSig {
+    fn arg(&mut self, index: ArgIndex, ty: arg::ArgType) -> &mut dyn arg::ArgSig {
         if self.args.len() <= index {
             self.args.resize(index + 1, None);
         }
@@ -147,16 +147,16 @@ impl ArgSigBuilder {
 }
 
 impl arg::ArgSig for ArgSigBuilder {
-    fn set_len(&mut self, x: ArgArrayIndex) -> &mut arg::ArgSig {
+    fn set_len(&mut self, x: ArgArrayIndex) -> &mut dyn arg::ArgSig {
         self.len = x as _;
         self
     }
 
-    fn set_stages(&mut self, _: shader::ShaderStageFlags) -> &mut arg::ArgSig {
+    fn set_stages(&mut self, _: shader::ShaderStageFlags) -> &mut dyn arg::ArgSig {
         self
     }
 
-    fn set_image_aspect(&mut self, v: base::ImageAspect) -> &mut arg::ArgSig {
+    fn set_image_aspect(&mut self, v: base::ImageAspect) -> &mut dyn arg::ArgSig {
         self.image_aspect = v;
         self
     }

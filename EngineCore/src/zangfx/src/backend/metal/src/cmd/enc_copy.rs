@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use crate::metal::{self, MTLBlitCommandEncoder};
+use zangfx_metal_rs::{self as metal, MTLBlitCommandEncoder};
 use cocoa::foundation::NSRange;
 
 use zangfx_base::{self as base, DeviceSize};
@@ -18,19 +18,19 @@ use crate::buffer::Buffer;
 use crate::image::Image;
 
 #[derive(Debug)]
-pub struct CopyEncoder {
+crate struct CopyEncoder {
     metal_encoder: OCPtr<MTLBlitCommandEncoder>,
     fence_set: CmdBufferFenceSet,
 }
 
 zangfx_impl_object! { CopyEncoder:
-base::CmdEncoder, base::CopyCmdEncoder, crate::Debug }
+dyn base::CmdEncoder, dyn base::CopyCmdEncoder, dyn crate::Debug }
 
 unsafe impl Send for CopyEncoder {}
 unsafe impl Sync for CopyEncoder {}
 
 impl CopyEncoder {
-    pub unsafe fn new(metal_encoder: MTLBlitCommandEncoder, fence_set: CmdBufferFenceSet) -> Self {
+    crate unsafe fn new(metal_encoder: MTLBlitCommandEncoder, fence_set: CmdBufferFenceSet) -> Self {
         Self {
             metal_encoder: OCPtr::new(metal_encoder).unwrap(),
             fence_set,

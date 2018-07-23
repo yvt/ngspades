@@ -6,12 +6,12 @@
 use std::ops::Deref;
 use std::fmt;
 use ngsenumflags::flags;
-use crate::metal::{self, id, MTLDevice, NSObjectProtocol};
+use zangfx_metal_rs::{self as metal, id, MTLDevice, NSObjectProtocol};
 use zangfx_base as base;
 
 /// Smart pointer for Objective-C objects.
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct OCPtr<T: NSObjectProtocol> {
+crate struct OCPtr<T: NSObjectProtocol> {
     data: T,
 }
 
@@ -19,7 +19,7 @@ impl<T> OCPtr<id<T>>
 where
     id<T>: NSObjectProtocol,
 {
-    pub fn new(ptr: id<T>) -> Option<Self> {
+    crate fn new(ptr: id<T>) -> Option<Self> {
         if ptr.is_null() {
             None
         } else {
@@ -31,7 +31,7 @@ where
     }
 
     #[allow(dead_code)]
-    pub unsafe fn from_raw(ptr: id<T>) -> Option<Self> {
+    crate unsafe fn from_raw(ptr: id<T>) -> Option<Self> {
         if ptr.is_null() {
             None
         } else {
@@ -42,7 +42,7 @@ where
 
 impl<T: NSObjectProtocol> OCPtr<T> {
     #[allow(dead_code)]
-    pub fn into_raw(mut this: Self) -> T {
+    crate fn into_raw(mut this: Self) -> T {
         let ret = unsafe { ::std::mem::replace(&mut this.data, ::std::mem::uninitialized()) };
         ::std::mem::forget(this);
         ret
@@ -70,7 +70,7 @@ impl<T: NSObjectProtocol> Drop for OCPtr<T> {
     }
 }
 
-pub fn translate_cmp_fn(value: base::CmpFn) -> metal::MTLCompareFunction {
+crate fn translate_cmp_fn(value: base::CmpFn) -> metal::MTLCompareFunction {
     match value {
         base::CmpFn::NotEqual => metal::MTLCompareFunction::NotEqual,
         base::CmpFn::Equal => metal::MTLCompareFunction::Equal,
@@ -83,7 +83,7 @@ pub fn translate_cmp_fn(value: base::CmpFn) -> metal::MTLCompareFunction {
     }
 }
 
-pub fn translate_storage_mode(
+crate fn translate_storage_mode(
     value: base::MemoryType,
 ) -> Result<metal::MTLStorageMode, base::MemoryType> {
     if value == crate::MEMORY_TYPE_PRIVATE {
@@ -95,7 +95,7 @@ pub fn translate_storage_mode(
     }
 }
 
-pub fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStages {
+crate fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStages {
     let mut stages = metal::MTLRenderStages::empty();
 
     if stage.intersects(flags![
@@ -113,7 +113,7 @@ pub fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStages
     stages
 }
 
-pub fn translate_viewport(value: &base::Viewport) -> metal::MTLViewport {
+crate fn translate_viewport(value: &base::Viewport) -> metal::MTLViewport {
     metal::MTLViewport {
         originX: value.x as f64,
         originY: value.y as f64,
@@ -124,7 +124,7 @@ pub fn translate_viewport(value: &base::Viewport) -> metal::MTLViewport {
     }
 }
 
-pub fn translate_scissor_rect(value: &base::Rect2D<u32>) -> metal::MTLScissorRect {
+crate fn translate_scissor_rect(value: &base::Rect2D<u32>) -> metal::MTLScissorRect {
     metal::MTLScissorRect {
         x: value.min[0] as u64,
         y: value.min[1] as u64,
@@ -133,7 +133,7 @@ pub fn translate_scissor_rect(value: &base::Rect2D<u32>) -> metal::MTLScissorRec
     }
 }
 
-pub fn clip_scissor_rect(
+crate fn clip_scissor_rect(
     value: &metal::MTLScissorRect,
     extents: &[u32; 2],
 ) -> metal::MTLScissorRect {
@@ -177,11 +177,11 @@ impl fmt::Display for SelectorReturnedNullError {
 }
 
 /// Construct a `base::Error` indicating a selector returned the `nil` value.
-pub fn nil_error(sel: &'static str) -> base::Error {
+crate fn nil_error(sel: &'static str) -> base::Error {
     base::Error::with_detail(base::ErrorKind::Other, SelectorReturnedNullError { sel })
 }
 
-pub fn get_memory_req(
+crate fn get_memory_req(
     metal_device: MTLDevice,
     obj: base::ResourceRef,
 ) -> base::Result<base::MemoryReq> {

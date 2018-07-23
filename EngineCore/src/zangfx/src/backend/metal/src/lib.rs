@@ -51,6 +51,7 @@
 //!   types for arrays defined in uniform buffers.
 //!
 #![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
 extern crate arrayvec;
 extern crate block;
 extern crate cocoa;
@@ -64,8 +65,10 @@ extern crate tokenlock;
 extern crate xalloc;
 extern crate zangfx_base;
 extern crate zangfx_common;
-pub extern crate zangfx_metal_rs as metal;
-extern crate zangfx_spirv_cross as spirv_cross;
+pub extern crate zangfx_metal_rs;
+extern crate zangfx_spirv_cross;
+
+pub use zangfx_metal_rs as metal;
 
 pub mod arg;
 pub mod buffer;

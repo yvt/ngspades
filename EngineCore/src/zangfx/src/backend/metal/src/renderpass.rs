@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::sync::Arc;
-use metal;
+use zangfx_metal_rs as metal;
 
 use zangfx_base as base;
 use zangfx_base::Result;
@@ -22,7 +22,7 @@ pub struct RenderPassBuilder {
     subpass_ds_target: Option<usize>,
 }
 
-zangfx_impl_object! { RenderPassBuilder: base::RenderPassBuilder, crate::Debug }
+zangfx_impl_object! { RenderPassBuilder: dyn base::RenderPassBuilder, dyn crate::Debug }
 
 impl RenderPassBuilder {
     /// Construct a `RenderPassBuilder`.
@@ -36,7 +36,7 @@ impl RenderPassBuilder {
 }
 
 impl base::RenderPassBuilder for RenderPassBuilder {
-    fn target(&mut self, index: base::RenderPassTargetIndex) -> &mut base::RenderPassTarget {
+    fn target(&mut self, index: base::RenderPassTargetIndex) -> &mut dyn base::RenderPassTarget {
         if self.targets.len() <= index {
             self.targets.resize(index + 1, None);
         }
@@ -49,7 +49,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         _from: base::SubpassIndex,
         _src_access: base::AccessTypeFlags,
         _dst_access: base::AccessTypeFlags,
-    ) -> &mut base::RenderPassBuilder {
+    ) -> &mut dyn base::RenderPassBuilder {
         // No-op: (a) We don't support multiple subpasses yet.
         //        (b) Subpass self-dependency is allowed by default.
         self
@@ -154,7 +154,7 @@ struct RenderPassTargetBuilder {
     stencil_store_op: base::StoreOp,
 }
 
-zangfx_impl_object! { RenderPassTargetBuilder: base::RenderPassTarget, crate::Debug }
+zangfx_impl_object! { RenderPassTargetBuilder: dyn base::RenderPassTarget, dyn crate::Debug }
 
 unsafe impl Send for RenderPassTargetBuilder {}
 unsafe impl Sync for RenderPassTargetBuilder {}
@@ -172,26 +172,26 @@ impl RenderPassTargetBuilder {
 }
 
 impl base::RenderPassTarget for RenderPassTargetBuilder {
-    fn set_format(&mut self, v: base::ImageFormat) -> &mut base::RenderPassTarget {
+    fn set_format(&mut self, v: base::ImageFormat) -> &mut dyn base::RenderPassTarget {
         self.format = Some(v);
         self
     }
 
-    fn set_load_op(&mut self, v: base::LoadOp) -> &mut base::RenderPassTarget {
+    fn set_load_op(&mut self, v: base::LoadOp) -> &mut dyn base::RenderPassTarget {
         self.load_op = v;
         self
     }
-    fn set_store_op(&mut self, v: base::StoreOp) -> &mut base::RenderPassTarget {
+    fn set_store_op(&mut self, v: base::StoreOp) -> &mut dyn base::RenderPassTarget {
         self.store_op = v;
         self
     }
 
-    fn set_stencil_load_op(&mut self, v: base::LoadOp) -> &mut base::RenderPassTarget {
+    fn set_stencil_load_op(&mut self, v: base::LoadOp) -> &mut dyn base::RenderPassTarget {
         self.stencil_load_op = v;
         self
     }
 
-    fn set_stencil_store_op(&mut self, v: base::StoreOp) -> &mut base::RenderPassTarget {
+    fn set_stencil_store_op(&mut self, v: base::StoreOp) -> &mut dyn base::RenderPassTarget {
         self.stencil_store_op = v;
         self
     }
@@ -267,7 +267,7 @@ pub struct RenderTargetTableBuilder {
     targets: Vec<Option<Target>>,
 }
 
-zangfx_impl_object! { RenderTargetTableBuilder: base::RenderTargetTableBuilder, crate::Debug }
+zangfx_impl_object! { RenderTargetTableBuilder: dyn base::RenderTargetTableBuilder, dyn crate::Debug }
 
 unsafe impl Send for RenderTargetTableBuilder {}
 unsafe impl Sync for RenderTargetTableBuilder {}
@@ -283,7 +283,7 @@ struct Target {
     clear_stencil: u32,
 }
 
-zangfx_impl_object! { Target: base::RenderTarget, crate::Debug }
+zangfx_impl_object! { Target: dyn base::RenderTarget, dyn crate::Debug }
 
 impl RenderTargetTableBuilder {
     /// Construct a `RenderTargetTableBuilder`.
@@ -303,13 +303,13 @@ impl RenderTargetTableBuilder {
 }
 
 impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
-    fn render_pass(&mut self, v: &base::RenderPassRef) -> &mut base::RenderTargetTableBuilder {
+    fn render_pass(&mut self, v: &base::RenderPassRef) -> &mut dyn base::RenderTargetTableBuilder {
         let our_rp: &RenderPass = v.downcast_ref().expect("bad render pass type");
         self.render_pass = Some(our_rp.clone());
         self
     }
 
-    fn extents(&mut self, v: &[u32]) -> &mut base::RenderTargetTableBuilder {
+    fn extents(&mut self, v: &[u32]) -> &mut dyn base::RenderTargetTableBuilder {
         self.extents = Some([
             v.get(0).cloned().unwrap_or(1),
             v.get(1).cloned().unwrap_or(1),
@@ -317,7 +317,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         self
     }
 
-    fn num_layers(&mut self, v: u32) -> &mut base::RenderTargetTableBuilder {
+    fn num_layers(&mut self, v: u32) -> &mut dyn base::RenderTargetTableBuilder {
         self.num_layers = v;
         self
     }
@@ -326,7 +326,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         &mut self,
         index: base::RenderPassTargetIndex,
         view: &base::ImageRef,
-    ) -> &mut base::RenderTarget {
+    ) -> &mut dyn base::RenderTarget {
         if self.targets.len() <= index {
             self.targets.resize(index + 1, None);
         }
@@ -407,38 +407,38 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 }
 
 impl base::RenderTarget for Target {
-    fn mip_level(&mut self, v: u32) -> &mut base::RenderTarget {
+    fn mip_level(&mut self, v: u32) -> &mut dyn base::RenderTarget {
         self.mip_level = v;
         self
     }
 
-    fn layer(&mut self, v: u32) -> &mut base::RenderTarget {
+    fn layer(&mut self, v: u32) -> &mut dyn base::RenderTarget {
         self.layer = v;
         self
     }
 
-    fn clear_float(&mut self, v: &[f32]) -> &mut base::RenderTarget {
+    fn clear_float(&mut self, v: &[f32]) -> &mut dyn base::RenderTarget {
         let v = &v[0..4];
         self.clear_color =
             metal::MTLClearColor::new(v[0] as f64, v[1] as f64, v[2] as f64, v[3] as f64);
         self
     }
 
-    fn clear_uint(&mut self, v: &[u32]) -> &mut base::RenderTarget {
+    fn clear_uint(&mut self, v: &[u32]) -> &mut dyn base::RenderTarget {
         let v = &v[0..4];
         self.clear_color =
             metal::MTLClearColor::new(v[0] as f64, v[1] as f64, v[2] as f64, v[3] as f64);
         self
     }
 
-    fn clear_sint(&mut self, v: &[i32]) -> &mut base::RenderTarget {
+    fn clear_sint(&mut self, v: &[i32]) -> &mut dyn base::RenderTarget {
         let v = &v[0..4];
         self.clear_color =
             metal::MTLClearColor::new(v[0] as f64, v[1] as f64, v[2] as f64, v[3] as f64);
         self
     }
 
-    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut base::RenderTarget {
+    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut dyn base::RenderTarget {
         self.clear_depth = depth;
         self.clear_stencil = stencil;
         self

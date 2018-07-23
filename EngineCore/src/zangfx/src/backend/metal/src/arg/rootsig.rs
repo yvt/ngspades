@@ -11,7 +11,7 @@ use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use super::tablesig::ArgTableSig;
-use crate::spirv_cross::{ExecutionModel, SpirV2Msl};
+use zangfx_spirv_cross::{ExecutionModel, SpirV2Msl};
 
 /// Implementation of `RootSigBuilder` for Metal.
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub struct RootSigBuilder {
     tables: Vec<Option<ArgTableSig>>,
 }
 
-zangfx_impl_object! { RootSigBuilder: arg::RootSigBuilder, crate::Debug }
+zangfx_impl_object! { RootSigBuilder: dyn arg::RootSigBuilder, dyn crate::Debug }
 
 impl RootSigBuilder {
     /// Construct an `RootSigBuilder`.
@@ -33,7 +33,7 @@ impl arg::RootSigBuilder for RootSigBuilder {
         &mut self,
         index: ArgTableIndex,
         x: &arg::ArgTableSigRef,
-    ) -> &mut arg::RootSigBuilder {
+    ) -> &mut dyn arg::RootSigBuilder {
         let our_table: &ArgTableSig = x.downcast_ref().expect("bad argument table signature type");
         if self.tables.len() <= index {
             self.tables.resize(index + 1, None);

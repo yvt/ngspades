@@ -7,7 +7,7 @@
 use zangfx_base::{self as base, resources, DeviceSize};
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
-use metal;
+use zangfx_metal_rs as metal;
 
 use crate::utils::OCPtr;
 
@@ -19,7 +19,7 @@ pub struct BufferBuilder {
     usage: base::BufferUsageFlags,
 }
 
-zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, crate::Debug, base::SetLabel }
+zangfx_impl_object! { BufferBuilder: dyn resources::BufferBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 impl BufferBuilder {
     /// Construct a `BufferBuilder`.
@@ -39,15 +39,15 @@ impl base::SetLabel for BufferBuilder {
 }
 
 impl resources::BufferBuilder for BufferBuilder {
-    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::BufferBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::BufferBuilder {
         self
     }
 
-    fn size(&mut self, v: DeviceSize) -> &mut resources::BufferBuilder {
+    fn size(&mut self, v: DeviceSize) -> &mut dyn resources::BufferBuilder {
         self.size = Some(v);
         self
     }
-    fn usage(&mut self, v: resources::BufferUsageFlags) -> &mut resources::BufferBuilder {
+    fn usage(&mut self, v: resources::BufferUsageFlags) -> &mut dyn resources::BufferBuilder {
         self.usage = v;
         self
     }

@@ -5,7 +5,7 @@
 //
 //! Implementation of `Heap` for Metal.
 use std::sync::Arc;
-use metal;
+use zangfx_metal_rs as metal;
 use iterpool::{IterablePool, Pool, PoolPtr};
 use parking_lot::Mutex;
 use xalloc::{SysTlsf, SysTlsfRegion};
@@ -30,7 +30,7 @@ pub struct HeapBuilder {
 }
 
 zangfx_impl_object! { HeapBuilder:
-heap::DynamicHeapBuilder, heap::DedicatedHeapBuilder, crate::Debug, base::SetLabel }
+dyn heap::DynamicHeapBuilder, dyn heap::DedicatedHeapBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for HeapBuilder {}
 unsafe impl Sync for HeapBuilder {}
@@ -92,16 +92,16 @@ impl base::SetLabel for HeapBuilder {
 }
 
 impl heap::DynamicHeapBuilder for HeapBuilder {
-    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::DynamicHeapBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::DynamicHeapBuilder {
         self
     }
 
-    fn size(&mut self, v: DeviceSize) -> &mut heap::DynamicHeapBuilder {
+    fn size(&mut self, v: DeviceSize) -> &mut dyn heap::DynamicHeapBuilder {
         self.size = v;
         self
     }
 
-    fn memory_type(&mut self, v: MemoryType) -> &mut heap::DynamicHeapBuilder {
+    fn memory_type(&mut self, v: MemoryType) -> &mut dyn heap::DynamicHeapBuilder {
         self.memory_type = Some(v);
         self
     }
@@ -112,7 +112,7 @@ impl heap::DynamicHeapBuilder for HeapBuilder {
 }
 
 impl heap::DedicatedHeapBuilder for HeapBuilder {
-    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::DedicatedHeapBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::DedicatedHeapBuilder {
         self
     }
 
@@ -123,7 +123,7 @@ impl heap::DedicatedHeapBuilder for HeapBuilder {
         unimplemented!()
     }
 
-    fn memory_type(&mut self, v: MemoryType) -> &mut heap::DedicatedHeapBuilder {
+    fn memory_type(&mut self, v: MemoryType) -> &mut dyn heap::DedicatedHeapBuilder {
         self.memory_type = Some(v);
         self
     }
@@ -153,7 +153,7 @@ pub struct Heap {
     storage_mode: metal::MTLStorageMode,
 }
 
-zangfx_impl_object! { Heap: heap::Heap, crate::Debug }
+zangfx_impl_object! { Heap: dyn heap::Heap, dyn crate::Debug }
 
 unsafe impl Send for Heap {}
 unsafe impl Sync for Heap {}
@@ -262,7 +262,7 @@ pub struct EmulatedHeap {
     pool: Mutex<IterablePool<metal::MTLResource>>,
 }
 
-zangfx_impl_object! { EmulatedHeap: heap::Heap, crate::Debug }
+zangfx_impl_object! { EmulatedHeap: dyn heap::Heap, dyn crate::Debug }
 
 unsafe impl Send for EmulatedHeap {}
 unsafe impl Sync for EmulatedHeap {}
@@ -403,7 +403,7 @@ pub struct BufferHeap {
     data: Mutex<BufferHeapData>,
 }
 
-zangfx_impl_object! { BufferHeap: heap::Heap, crate::Debug }
+zangfx_impl_object! { BufferHeap: dyn heap::Heap, dyn crate::Debug }
 
 unsafe impl Send for BufferHeap {}
 unsafe impl Sync for BufferHeap {}

@@ -8,9 +8,9 @@ use xalloc::{SysTlsf, SysTlsfRegion};
 
 use super::ArgSize;
 
-pub type Allocation = Option<SysTlsfRegion>;
+crate type Allocation = Option<SysTlsfRegion>;
 
-pub trait Allocator: crate::Debug + Send + Sync + Sized {
+crate trait Allocator: crate::Debug + Send + Sync + Sized {
     fn new(size: ArgSize) -> Self;
     fn allocate(&mut self, size: ArgSize, align: ArgSize) -> Option<(ArgSize, Allocation)>;
     fn deallocate(&mut self, p: Allocation);
@@ -18,7 +18,7 @@ pub trait Allocator: crate::Debug + Send + Sync + Sized {
 }
 
 #[derive(Debug)]
-pub struct StackAllocator {
+crate struct StackAllocator {
     allocated: ArgSize,
     size: ArgSize,
 }
@@ -63,7 +63,7 @@ impl Allocator for StackAllocator {
 }
 
 #[derive(Debug)]
-pub struct TlsfAllocator {
+crate struct TlsfAllocator {
     tlsf: SysTlsf<ArgSize>,
     size: ArgSize,
 }

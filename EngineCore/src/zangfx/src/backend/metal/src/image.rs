@@ -7,7 +7,7 @@
 use std::ops;
 use zangfx_base::{self as base, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
-use metal;
+use zangfx_metal_rs as metal;
 use cocoa::foundation::NSRange;
 use ngsenumflags::flags;
 
@@ -16,8 +16,8 @@ use crate::formats::{translate_image_format, translate_metal_pixel_format};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImageSubRange {
-    pub mip_levels: ops::Range<u32>,
-    pub layers: ops::Range<u32>,
+    crate mip_levels: ops::Range<u32>,
+    crate layers: ops::Range<u32>,
 }
 
 /// Implementation of `ImageBuilder` for Metal.
@@ -39,7 +39,7 @@ enum ImageExtents {
     Cube(u32),
 }
 
-zangfx_impl_object! { ImageBuilder: base::ImageBuilder, crate::Debug, base::SetLabel }
+zangfx_impl_object! { ImageBuilder: dyn base::ImageBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 impl ImageBuilder {
     /// Construct a `ImageBuilder`.
@@ -62,11 +62,11 @@ impl base::SetLabel for ImageBuilder {
 }
 
 impl base::ImageBuilder for ImageBuilder {
-    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::ImageBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::ImageBuilder {
         self
     }
 
-    fn extents(&mut self, v: &[u32]) -> &mut base::ImageBuilder {
+    fn extents(&mut self, v: &[u32]) -> &mut dyn base::ImageBuilder {
         self.extents = Some(match v.len() {
             1 => ImageExtents::OneD(v[0]),
             2 => ImageExtents::TwoD(v[0], v[1]),
@@ -76,27 +76,27 @@ impl base::ImageBuilder for ImageBuilder {
         self
     }
 
-    fn extents_cube(&mut self, v: u32) -> &mut base::ImageBuilder {
+    fn extents_cube(&mut self, v: u32) -> &mut dyn base::ImageBuilder {
         self.extents = Some(ImageExtents::Cube(v));
         self
     }
 
-    fn num_layers(&mut self, v: Option<u32>) -> &mut base::ImageBuilder {
+    fn num_layers(&mut self, v: Option<u32>) -> &mut dyn base::ImageBuilder {
         self.num_layers = v;
         self
     }
 
-    fn num_mip_levels(&mut self, v: u32) -> &mut base::ImageBuilder {
+    fn num_mip_levels(&mut self, v: u32) -> &mut dyn base::ImageBuilder {
         self.num_mip_levels = v;
         self
     }
 
-    fn format(&mut self, v: base::ImageFormat) -> &mut base::ImageBuilder {
+    fn format(&mut self, v: base::ImageFormat) -> &mut dyn base::ImageBuilder {
         self.format = Some(v);
         self
     }
 
-    fn usage(&mut self, v: base::ImageUsageFlags) -> &mut base::ImageBuilder {
+    fn usage(&mut self, v: base::ImageUsageFlags) -> &mut dyn base::ImageBuilder {
         self.usage = v;
         self
     }
@@ -111,7 +111,7 @@ impl base::ImageBuilder for ImageBuilder {
         let metal_desc =
             unsafe { OCPtr::from_raw(metal::MTLTextureDescriptor::alloc().init()).unwrap() };
 
-        use crate::metal::MTLTextureType::*;
+        use zangfx_metal_rs::MTLTextureType::{D1, D1Array, D2, D2Array, D3, Cube, CubeArray};
         let (ty, dims) = match (extents, self.num_layers) {
             (ImageExtents::OneD(x), None) => (D1, [x, 1, 1]),
             (ImageExtents::OneD(x), Some(_)) => (D1Array, [x, 1, 1]),
@@ -312,7 +312,7 @@ pub struct ImageViewBuilder {
     image_type: Option<base::ImageType>,
 }
 
-zangfx_impl_object! { ImageViewBuilder: base::ImageViewBuilder, crate::Debug }
+zangfx_impl_object! { ImageViewBuilder: dyn base::ImageViewBuilder, dyn crate::Debug }
 
 impl ImageViewBuilder {
     /// Construct a `ImageBuilder`.
@@ -333,17 +333,17 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         self
     } */
 
-    fn subrange(&mut self, v: &base::ImageSubRange) -> &mut base::ImageViewBuilder {
+    fn subrange(&mut self, v: &base::ImageSubRange) -> &mut dyn base::ImageViewBuilder {
         self.subrange = v.clone();
         self
     }
 
-    fn format(&mut self, v: base::ImageFormat) -> &mut base::ImageViewBuilder {
+    fn format(&mut self, v: base::ImageFormat) -> &mut dyn base::ImageViewBuilder {
         self.format = Some(v);
         self
     }
 
-    fn image_type(&mut self, v: base::ImageType) -> &mut base::ImageViewBuilder {
+    fn image_type(&mut self, v: base::ImageType) -> &mut dyn base::ImageViewBuilder {
         self.image_type = Some(v);
         self
     }
@@ -361,7 +361,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             .map(|x| translate_image_format(x).expect("Unsupported image format"))
             .unwrap_or_else(|| metal_texture.pixel_format());
 
-        use crate::metal::MTLTextureType::*;
+        use zangfx_metal_rs::MTLTextureType::{D1, D2, D2Array, D3, Cube, CubeArray};
         let metal_ty = self.image_type
             .map(|ty| match ty {
                 base::ImageType::OneD => D1,

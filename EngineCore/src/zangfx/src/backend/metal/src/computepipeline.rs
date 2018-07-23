@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::sync::Arc;
-use metal;
+use zangfx_metal_rs as metal;
 
 use zangfx_base::{self as base, pipeline, shader};
 use zangfx_base::{Error, ErrorKind, Result};
@@ -28,7 +28,7 @@ pub struct ComputePipelineBuilder {
 }
 
 zangfx_impl_object! { ComputePipelineBuilder:
-pipeline::ComputePipelineBuilder, crate::Debug, base::SetLabel }
+dyn pipeline::ComputePipelineBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for ComputePipelineBuilder {}
 unsafe impl Sync for ComputePipelineBuilder {}
@@ -58,13 +58,13 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
         &mut self,
         library: &base::LibraryRef,
         entry_point: &str,
-    ) -> &mut pipeline::ComputePipelineBuilder {
+    ) -> &mut dyn pipeline::ComputePipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
         self.compute_shader = Some((my_library.clone(), entry_point.to_owned()));
         self
     }
 
-    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut pipeline::ComputePipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut dyn pipeline::ComputePipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self

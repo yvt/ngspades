@@ -7,10 +7,10 @@
 use std::sync::Arc;
 use std::fmt;
 
-use metal;
+use zangfx_metal_rs as metal;
 use rspirv::mr;
 use spirv_headers;
-use crate::spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
+use zangfx_spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
 use zangfx_base::{self as base, shader};
 use zangfx_base::{Error, ErrorKind, Result};
@@ -28,7 +28,7 @@ pub struct LibraryBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, crate::Debug, base::SetLabel }
+zangfx_impl_object! { LibraryBuilder: dyn shader::LibraryBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 impl LibraryBuilder {
     pub fn new() -> Self {
@@ -43,7 +43,7 @@ impl base::SetLabel for LibraryBuilder {
 }
 
 impl shader::LibraryBuilder for LibraryBuilder {
-    fn spirv_code(&mut self, v: &[u32]) -> &mut shader::LibraryBuilder {
+    fn spirv_code(&mut self, v: &[u32]) -> &mut dyn shader::LibraryBuilder {
         self.spirv_code = Some(Vec::from(v));
         self
     }
@@ -253,9 +253,9 @@ impl fmt::Display for ShaderCompilationFailed {
 
 /// Vertex attribute information provided to `ShaderModule::get_function`.
 pub(crate) struct ShaderVertexAttrInfo {
-    pub binding: usize,
-    pub msl_buffer_index: usize,
-    pub offset: u32,
-    pub stride: u32,
-    pub input_rate: metal::MTLVertexStepFunction,
+    crate binding: usize,
+    crate msl_buffer_index: usize,
+    crate offset: u32,
+    crate stride: u32,
+    crate input_rate: metal::MTLVertexStepFunction,
 }
