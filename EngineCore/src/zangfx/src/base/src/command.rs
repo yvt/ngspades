@@ -521,9 +521,9 @@ pub trait CmdEncoder: Object {
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
     /// argument tables.
     ///
-    /// This method cannot be used on global heaps (returned by
-    /// [`Device::global_heap`]) nor on dynamic heaps (returned by
-    /// [`DynamicHeapBuilder`]).
+    /// This method only can be used on dedicated heaps (returned by
+    /// [`DedicatedHeapBuilder`]) that have `use_heap` enabled on them (by
+    /// calling [`DedicatedHeapBuilder::enable_use_heap`]).
     ///
     /// [`Device::global_heap`]: crate::Device::global_heap
     /// [`DynamicHeapBuilder`]: crate::DynamicHeapBuilder

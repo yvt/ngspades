@@ -190,9 +190,10 @@
 //!
 //! ## Inter-queue operation
 //!
-//! Each image, buffer, heap, and argument pool object is associated with a
-//! single queue. The automatic resource state tracking works on the per-queue
-//! basis — it does not have knowledge outside a single queue.
+//! Each image, buffer, dedicated heap (with `use_heap` enabled), fence, and
+//! argument pool object is associated with a single queue.
+//! The automatic resource state tracking works on the per-queue basis — it does
+//! not have knowledge outside a single queue.
 //!
 //! The queue to which an object belongs is specified as a part of the object
 //! creation parameter. The default value is defined in a backend-specific
@@ -210,6 +211,26 @@
 //!       source queue.
 //!     - Executing a *queue family ownership acquire operation* on the
 //!       destination queue.
+//!
+//! The following objects and operations require matching associated queues:
+//!
+//!  - Heaps passed to `use_heap`.
+//!  - Resources (buffers/images) passed to any methods of `*CmdEncoder`
+//!    and `CmdBuffer` that accept them, which include but are not limited to:
+//!    `use_resource`, `draw_indirect`, and `host_barrier`.
+//!  - Render target images (specified via `RenderTargetTableBuilder`) passed to
+//!    `encoder_render`.
+//!  - Fences passed to `update_fence` or `wait_fence`. (Note: Proxies cannot be
+//!    created for fences.)
+//!  - Resources passed to `DedicatedHeapBuilder::bind` if `use_heap` is enabled
+//!    on the created heap.
+//!
+//! Some operations (e.g., `use_heap`) do not work on proxy objects.
+//!
+//! Every object can have up to one proxy or original object created for each
+//! queue.
+//! Creating more is not allowed and might lead to an undefined behavior on
+//! unsafe backend implementations.
 //!
 //! [`zangfx_base::handles`]: ../zangfx_base/handles/index.html
 //! [`query_interface`]: ../query_interface/index.html

@@ -120,6 +120,10 @@ impl heap::DedicatedHeapBuilder for HeapBuilder {
         unimplemented!()
     }
 
+    fn enable_use_heap(&mut self) -> &mut dyn DedicatedHeapBuilder {
+        self
+    }
+
     fn memory_type(&mut self, v: MemoryType) -> &mut dyn heap::DedicatedHeapBuilder {
         self.memory_type = Some(v);
         self

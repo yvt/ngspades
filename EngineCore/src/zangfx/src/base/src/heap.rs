@@ -28,11 +28,6 @@ pub type DynamicHeapBuilderRef = Box<dyn DynamicHeapBuilder>;
 ///     # }
 ///
 pub trait DynamicHeapBuilder: Object {
-    /// Specify the queue associated with the created heap.
-    ///
-    /// Defaults to the backend-specific value.
-    fn queue(&mut self, queue: &CmdQueueRef) -> &mut dyn DynamicHeapBuilder;
-
     /// Set the heap size to `v` bytes.
     ///
     /// This property is mandatory.
@@ -95,6 +90,9 @@ pub trait DedicatedHeapBuilder: Object {
     /// The return type of this method is reserved for future extensions.
     fn bind(&mut self, obj: resources::ResourceRef);
 
+    /// Enable uses of `use_heap` on the created heap.
+    fn enable_use_heap(&mut self) -> &mut dyn DedicatedHeapBuilder;
+
     // FIXME: resource aliasing?
 
     /// Build a `Heap`.
@@ -107,6 +105,9 @@ pub trait DedicatedHeapBuilder: Object {
     /// - All mandatory properties must have their values set before this method
     ///   is called.
     /// - The final heap size must not be zero.
+    /// - If `use_heap` is enabled (via `DedicatedHeapBuilder::enable_use_heap`),
+    ///   every resource in  the dedicated allocation list must be associated
+    ///   with the queue specified by [`DedicatedHeapBuilder::queue`].
     /// - Every resource in the dedicated allocation list must follow all rules
     ///   specified in the Valid Usage of `Heap::bind` (except for the one about
     ///   the heap type).
@@ -121,15 +122,6 @@ pub type HeapRef = Arc<dyn Heap>;
 ///
 /// Resources bound to a heap internally keeps a reference to the heap.
 pub trait Heap: Object {
-    /// Create a proxy object to use this sample object from a specified queue.
-    ///
-    /// The default implementation panics with a message indicating that the
-    /// backend does not support inter-queue operation.
-    fn make_proxy(&self, queue: &CmdQueueRef) -> HeapRef {
-        let _ = queue;
-        panic!("Inter-queue operation is not supported by this backend.");
-    }
-
     /// Allocate a memory region for a given resource.
     ///
     /// The resource must be in the **Prototype** state.
@@ -146,8 +138,6 @@ pub trait Heap: Object {
     ///  - `obj` must originate from the same `Device` as the one the heap was
     ///    created from.
     ///  - `obj` must be in the Prototype state.
-    ///  - `obj` must be associated with the queue for which the heap was
-    ///    created.
     ///  - `obj` must not be a proxy object.
     ///  - The heap must be a dynamic heap, i.e. have been created using a
     ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
