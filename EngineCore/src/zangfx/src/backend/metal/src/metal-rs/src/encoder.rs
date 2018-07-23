@@ -70,12 +70,12 @@ pub enum MTLTriangleFillMode {
     Lines = 1,
 }
 
-#[repr(u64)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum MTLResourceUsage {
-    Read = 1 << 0,
-    Write = 1 << 1,
-    Sample = 1 << 2,
+bitflags! {
+    pub flags MTLResourceUsage: NSUInteger {
+        const MTLResourceUsageRead   = 1 << 0,
+        const MTLResourceUsageWrite  = 1 << 1,
+        const MTLResourceUsageSample = 1 << 2,
+    }
 }
 
 bitflags! {

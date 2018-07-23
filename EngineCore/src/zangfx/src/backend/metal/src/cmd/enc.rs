@@ -6,7 +6,7 @@
 use arrayvec::ArrayVec;
 use std::collections::HashSet;
 use zangfx_base::{self as base, command, heap};
-use zangfx_metal_rs as metal;
+use zangfx_metal_rs::{self as metal, MTLResourceUsage};
 
 use crate::buffer::Buffer;
 use crate::cmd::fence::Fence;
@@ -58,40 +58,52 @@ crate trait UseResources {
     fn use_metal_heaps(&self, heaps: &[metal::MTLHeap]);
 
     fn use_gfx_resource(&self, usage: command::ResourceUsageFlags, objs: base::ResourceSet) {
-        let metal_usage = unimplemented!(); /* match usage {
-            command::ResourceUsage::Read => metal::MTLResourceUsage::Read,
-            command::ResourceUsage::Write => metal::MTLResourceUsage::Write,
-            command::ResourceUsage::Sample => metal::MTLResourceUsage::Sample,
-        }; */
+        let metal_usage = usage
+            .iter()
+            .map(|x| match x {
+                command::ResourceUsage::Read => metal::MTLResourceUsageRead,
+                command::ResourceUsage::Write => metal::MTLResourceUsageWrite,
+                command::ResourceUsage::Sample => metal::MTLResourceUsageSample,
+            })
+            .fold(MTLResourceUsage::empty(), |x, y| x | y);
 
-        unimplemented!()
-        /* for objs in objs.chunks(256) {
-            let mut metal_usage = metal_usage;
-            let metal_resources: ArrayVec<[_; 256]> = objs.iter()
-                .cloned()
-                .map(|r| {
-                    let (metal_resource, is_subbuffer) = translate_resource(r);
-                    if is_subbuffer {
-                        // This resource is a suballocated portion of
-                        // `BufferHeap`, a `MTLBuffer`-backed heap. The
-                        // application might call `use_resource` on multiple
-                        // resources from the heap with different resource usage
-                        // type.
-                        //
-                        // In such situations, the usage type is overwritten
-                        // every time `use_metal_resources` is called. To be
-                        // safe, use the `Write` usage type for such resources.
-                        metal_usage = metal::MTLResourceUsage::Write;
-                    }
-                    metal_resource
-                })
-                .collect();
-            self.use_metal_resources(metal_resources.as_slice(), metal_usage);
-        } */
+        let mut metal_resources: ArrayVec<[_; 256]> = ArrayVec::new();
+        let mut chunk_metal_usage = metal_usage;
+
+        macro_rules! flush {
+            () => {{
+                self.use_metal_resources(metal_resources.as_slice(), chunk_metal_usage);
+                metal_resources.clear();
+                chunk_metal_usage = metal_usage;
+            }};
+        }
+
+        for obj in objs.iter() {
+            let (metal_resource, is_subbuffer) = translate_resource(obj);
+            if is_subbuffer {
+                // This resource is a suballocated portion of
+                // `BufferHeap`, a `MTLBuffer`-backed heap. The
+                // application might call `use_resource` on multiple
+                // resources from the heap with different resource usage
+                // type.
+                //
+                // In such situations, the usage type is overwritten
+                // every time `use_metal_resources` is called. To be
+                // safe, be conservative for such resources.
+                chunk_metal_usage |= metal::MTLResourceUsageWrite | metal::MTLResourceUsageRead;
+            }
+            metal_resources.push(metal_resource);
+
+            if metal_resources.len() == metal_resources.capacity() {
+                flush!();
+            }
+        }
+
+        flush!();
     }
 
     fn use_gfx_heap(&self, heaps: &[&heap::HeapRef]) {
-        use zangfx_metal_rs::MTLResourceUsage::Read;
+        use zangfx_metal_rs::MTLResourceUsageRead;
         let mut metal_heaps = ArrayVec::<[_; 256]>::new();
         let mut metal_resources = ArrayVec::<[_; 256]>::new();
 
@@ -105,14 +117,14 @@ crate trait UseResources {
             } else if let Some(heap) = heap.query_ref::<BufferHeap>() {
                 metal_resources.push(*heap.metal_buffer());
                 if metal_resources.len() == metal_resources.capacity() {
-                    self.use_metal_resources(metal_resources.as_slice(), Read);
+                    self.use_metal_resources(metal_resources.as_slice(), MTLResourceUsageRead);
                     metal_resources.clear();
                 }
             } else if let Some(heap) = heap.query_ref::<EmulatedHeap>() {
                 heap.for_each_metal_resources(&mut |metal_resource| {
                     metal_resources.push(metal_resource);
                     if metal_resources.len() == metal_resources.capacity() {
-                        self.use_metal_resources(metal_resources.as_slice(), Read);
+                        self.use_metal_resources(metal_resources.as_slice(), MTLResourceUsageRead);
                         metal_resources.clear();
                     }
                 });
@@ -125,7 +137,7 @@ crate trait UseResources {
             self.use_metal_heaps(metal_heaps.as_slice());
         }
         if metal_resources.len() > 0 {
-            self.use_metal_resources(metal_resources.as_slice(), Read);
+            self.use_metal_resources(metal_resources.as_slice(), MTLResourceUsageRead);
         }
     }
 }
