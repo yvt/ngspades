@@ -76,7 +76,7 @@ define_handle! {
     ///
     /// See [the module-level documentation of `handles`](../handles/index.html)
     /// for the generic usage of handles.
-    BufferRef
+    BufferRef: Buffer
 }
 
 /// Trait for buffer handles.
