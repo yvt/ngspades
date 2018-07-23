@@ -305,7 +305,7 @@ impl Image {
 
 impl base::Image for Image {
     fn build_image_view(&self) -> base::ImageViewBuilderRef {
-        unimplemented!() // Box::new(image::ImageViewBuilder::new())
+        Box::new(ImageViewBuilder::new(self.clone()))
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
@@ -318,7 +318,7 @@ impl base::Image for Image {
 /// Implementation of `ImageViewBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct ImageViewBuilder {
-    image: Option<Image>,
+    image: Image,
     subrange: base::ImageSubRange,
     format: Option<base::ImageFormat>,
     image_type: Option<base::ImageType>,
@@ -327,10 +327,10 @@ pub struct ImageViewBuilder {
 zangfx_impl_object! { ImageViewBuilder: dyn base::ImageViewBuilder, dyn crate::Debug }
 
 impl ImageViewBuilder {
-    /// Construct a `ImageBuilder`.
-    pub fn new() -> Self {
+    /// Construct a `ImageViewBuilder`.
+    pub fn new(image: Image) -> Self {
         Self {
-            image: None,
+            image,
             subrange: Default::default(),
             format: None,
             image_type: None,
@@ -339,12 +339,6 @@ impl ImageViewBuilder {
 }
 
 impl base::ImageViewBuilder for ImageViewBuilder {
-    /* fn image(&mut self, v: &base::Image) -> &mut base::ImageViewBuilder {
-        let my_image: &Image = v.downcast_ref().expect("bad image type");
-        self.image = Some(my_image.clone());
-        self
-    } */
-
     fn subrange(&mut self, v: &base::ImageSubRange) -> &mut dyn base::ImageViewBuilder {
         self.subrange = v.clone();
         self
@@ -361,9 +355,11 @@ impl base::ImageViewBuilder for ImageViewBuilder {
     }
 
     fn build(&mut self) -> Result<base::ImageRef> {
-        let image = self.image.as_ref().expect("image");
+        let ref image = self.image;
         let metal_texture = image.metal_texture();
         assert!(!metal_texture.is_null());
+
+        let num_bytes_per_pixel = image.num_bytes_per_pixel();
 
         let subrange = image.resolve_subrange(&self.subrange);
         let full_subrange = image.resolve_subrange(&Default::default());
@@ -385,34 +381,44 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             })
             .unwrap_or_else(|| metal_texture.texture_type());
 
+        let new_metal_texture;
+
         if subrange == full_subrange
             && metal_format == metal_texture.pixel_format()
             && metal_ty == metal_texture.texture_type()
         {
-            unimplemented!()
-            // return Ok(base::ImageView::new(ImageView::new(metal_texture, false)));
+            new_metal_texture = metal_texture.clone();
+        } else {
+            new_metal_texture = metal_texture.new_texture_view_from_slice(
+                metal_format,
+                metal_ty,
+                NSRange::new(
+                    subrange.mip_levels.start as u64,
+                    (subrange.mip_levels.end - subrange.mip_levels.start) as u64,
+                ),
+                NSRange::new(
+                    subrange.layers.start as u64,
+                    (subrange.layers.end - subrange.layers.start) as u64,
+                ),
+            );
+
+            if new_metal_texture.is_null() {
+                return Err(nil_error(
+                    "MTLTexture newTextureViewWithPixelFormat:textureType:levels:slices:",
+                ));
+            }
         }
 
-        let view = metal_texture.new_texture_view_from_slice(
-            metal_format,
-            metal_ty,
-            NSRange::new(
-                subrange.mip_levels.start as u64,
-                (subrange.mip_levels.end - subrange.mip_levels.start) as u64,
-            ),
-            NSRange::new(
-                subrange.layers.start as u64,
-                (subrange.layers.end - subrange.layers.start) as u64,
-            ),
-        );
+        let data = ImageData {
+            metal_desc: None,
+            metal_texture: Some(unsafe { OCPtr::from_raw(new_metal_texture) }.unwrap()),
+            num_bytes_per_pixel,
+            memory_req: None,
+            label: None,
+        };
 
-        if view.is_null() {
-            return Err(nil_error(
-                "MTLTexture newTextureViewWithPixelFormat:textureType:levels:slices:",
-            ));
-        }
-
-        unimplemented!()
-        // Ok(base::ImageView::new(ImageView::new(metal_texture, true)))
+        Ok(Image {
+            data: Arc::new(UnsafeCell::new(data)),
+        }.into())
     }
 }
