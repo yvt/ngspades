@@ -4,13 +4,14 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Heap` for Metal.
+use std::sync::Arc;
 use metal;
 use iterpool::{IterablePool, Pool, PoolPtr};
 use parking_lot::Mutex;
 use xalloc::{SysTlsf, SysTlsfRegion};
 
-use base::{self, handles, heap, DeviceSize, MemoryType};
-use common::{Error, ErrorKind, Result};
+use base::{self, heap, DeviceSize, MemoryType};
+use base::{Error, ErrorKind, Result};
 
 use utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 use buffer::Buffer;
@@ -46,14 +47,14 @@ impl HeapBuilder {
         }
     }
 
-    fn build_common(&mut self) -> Result<Box<heap::Heap>> {
+    fn build_common(&mut self) -> Result<heap::HeapRef> {
         let memory_type = self.memory_type
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "memory_type"))?;
+            .expect("memory_type");
         let storage_mode = translate_storage_mode(memory_type)
-            .map_err(|_| Error::with_detail(ErrorKind::InvalidUsage, "memory_type"))?;
+            .expect("memory_type");
 
         if self.size == 0 {
-            return Err(Error::new(ErrorKind::InvalidUsage));
+            panic!("size is zero");
         }
 
         if storage_mode == metal::MTLStorageMode::Private {
@@ -69,7 +70,7 @@ impl HeapBuilder {
                 metal_heap.set_label(label);
             }
 
-            Ok(Box::new(Heap::new(metal_heap, storage_mode)))
+            Ok(Arc::new(Heap::new(metal_heap, storage_mode)))
         } else {
             // `MTLHeap` only supports the private storage mode. So create a
             //  `MTLBuffer` and suballocate from it
@@ -78,7 +79,7 @@ impl HeapBuilder {
             let metal_buffer = unsafe {
                 OCPtr::from_raw(self.metal_device.new_buffer(self.size, options))
             }.ok_or(nil_error("MTLDevice newBufferWithLength:options:"))?;
-            Ok(Box::new(BufferHeap::new(metal_buffer)))
+            Ok(Arc::new(BufferHeap::new(metal_buffer)))
         }
     }
 }
@@ -90,6 +91,10 @@ impl base::SetLabel for HeapBuilder {
 }
 
 impl heap::DynamicHeapBuilder for HeapBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::DynamicHeapBuilder {
+        self
+    }
+
     fn size(&mut self, v: DeviceSize) -> &mut heap::DynamicHeapBuilder {
         self.size = v;
         self
@@ -100,16 +105,21 @@ impl heap::DynamicHeapBuilder for HeapBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<Box<heap::Heap>> {
+    fn build(&mut self) -> Result<heap::HeapRef> {
         self.build_common()
     }
 }
 
 impl heap::DedicatedHeapBuilder for HeapBuilder {
-    fn prebind(&mut self, obj: handles::ResourceRef) {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::DedicatedHeapBuilder {
+        self
+    }
+
+    fn bind(&mut self, obj: base::ResourceRef) {
         let req = get_memory_req(self.metal_device, obj).unwrap();
         self.size = (self.size + req.align - 1) & !(req.align - 1);
         self.size += req.size;
+        unimplemented!()
     }
 
     fn memory_type(&mut self, v: MemoryType) -> &mut heap::DedicatedHeapBuilder {
@@ -117,7 +127,7 @@ impl heap::DedicatedHeapBuilder for HeapBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<Box<heap::Heap>> {
+    fn build(&mut self) -> Result<heap::HeapRef> {
         self.build_common()
     }
 }
@@ -130,7 +140,7 @@ pub struct HeapAlloc {
     resource: metal::MTLResource,
 }
 
-zangfx_impl_handle! { HeapAlloc, handles::HeapAlloc }
+// zangfx_impl_handle! { HeapAlloc, base::HeapAlloc }
 
 unsafe impl Send for HeapAlloc {}
 unsafe impl Sync for HeapAlloc {}
@@ -161,61 +171,52 @@ impl Heap {
 }
 
 impl heap::Heap for Heap {
-    fn bind(&self, obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
+    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
         match obj {
-            handles::ResourceRef::Buffer(buffer) => {
+            base::ResourceRef::Buffer(buffer) => {
                 let metal_buffer_or_none =
                     bind_buffer(buffer, self.storage_mode, |size, options| {
                         self.metal_heap.new_buffer(size, options)
                     })?;
 
-                Ok(metal_buffer_or_none.map(|metal_buffer| {
+                Ok(if let Some (metal_buffer) = metal_buffer_or_none {
                     // If the allocation was successful, then return
                     // a `HeapAlloc` for the allocated buffer
                     let resource = *metal_buffer;
                     let heap_alloc = HeapAlloc { resource };
 
-                    handles::HeapAlloc::new(heap_alloc)
-                }))
+                    unimplemented!()
+                    // base::HeapAlloc::new(heap_alloc)
+                } else {
+                    false
+                })
             }
 
-            handles::ResourceRef::Image(image) => {
+            base::ResourceRef::Image(image) => {
                 let metal_texture_or_none = bind_image(image, self.storage_mode, |desc| {
                     self.metal_heap.new_texture(desc)
                 })?;
 
-                Ok(metal_texture_or_none.map(|metal_texture| {
+                Ok(if let Some(metal_texture) = metal_texture_or_none {
                     // If the allocation was successful, then return
                     // a `HeapAlloc` for the allocated image
                     let resource = *metal_texture;
                     let heap_alloc = HeapAlloc { resource };
 
-                    handles::HeapAlloc::new(heap_alloc)
-                }))
+                    unimplemented!()
+                    // base::HeapAlloc::new(heap_alloc)
+                } else {
+                    false
+                })
             }
         }
     }
 
-    fn make_aliasable(&self, alloc: &handles::HeapAlloc) -> Result<()> {
-        let my_alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+    fn make_aliasable(&self, obj: base::ResourceRef) -> Result<()> {
+        unimplemented!()
+        /* let my_alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         my_alloc.resource.make_aliasable();
-        Ok(())
-    }
-
-    fn unbind(&self, alloc: &handles::HeapAlloc) -> Result<()> {
-        let my_alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-
-        // Deallocate the resource as soon as possible
-        my_alloc.resource.make_aliasable();
-
-        Ok(())
-    }
-
-    fn as_ptr(&self, _alloc: &handles::HeapAlloc) -> Result<*mut u8> {
-        Err(Error::with_detail(
-            ErrorKind::InvalidUsage,
-            "not host visible",
-        ))
+        Ok(()) */
     }
 }
 
@@ -232,7 +233,7 @@ pub struct EmulatedHeapAlloc {
     pool_ptr: PoolPtr,
 }
 
-zangfx_impl_handle! { EmulatedHeapAlloc, handles::HeapAlloc }
+// zangfx_impl_handle! { EmulatedHeapAlloc, base::HeapAlloc }
 
 unsafe impl Send for EmulatedHeapAlloc {}
 unsafe impl Sync for EmulatedHeapAlloc {}
@@ -285,15 +286,15 @@ impl EmulatedHeap {
 }
 
 impl heap::Heap for EmulatedHeap {
-    fn bind(&self, obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
+    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
         match obj {
-            handles::ResourceRef::Buffer(buffer) => {
+            base::ResourceRef::Buffer(buffer) => {
                 let metal_buffer_or_none =
                     bind_buffer(buffer, self.storage_mode, |size, options| {
                         self.metal_device.new_buffer(size, options)
                     })?;
 
-                Ok(metal_buffer_or_none.map(|metal_buffer| {
+                Ok(if let Some(metal_buffer) = metal_buffer_or_none {
                     // If the allocation was successful, then return
                     // a `HeapAlloc` for the allocated buffer
                     let contents_ptr = metal_buffer.contents() as *mut u8;
@@ -304,26 +305,26 @@ impl heap::Heap for EmulatedHeap {
                         pool_ptr,
                     };
 
-                    handles::HeapAlloc::new(heap_alloc)
-                }))
+                    unimplemented!()
+                    // base::HeapAlloc::new(heap_alloc)
+                } else {
+                    false
+                })
             }
 
-            handles::ResourceRef::Image(_image) => {
-                return Err(Error::with_detail(
-                    ErrorKind::InvalidUsage,
-                    "images cannot be bound to host-visible memory",
-                ));
+            base::ResourceRef::Image(_image) => {
+                panic!("images cannot be bound to host-visible memory");
             }
         }
     }
 
-    fn make_aliasable(&self, _alloc: &handles::HeapAlloc) -> Result<()> {
+    fn make_aliasable(&self, _resource: base::ResourceRef) -> Result<()> {
         // We do not support aliasing, but the definition of `make_aliasable`
         // does not guarantee aliasing
         Ok(())
-    }
+    }/*
 
-    fn unbind(&self, alloc: &handles::HeapAlloc) -> Result<()> {
+    fn unbind(&self, alloc: &base::HeapAlloc) -> Result<()> {
         let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         self.pool.lock().deallocate(my_alloc.pool_ptr).unwrap();
 
@@ -331,14 +332,14 @@ impl heap::Heap for EmulatedHeap {
         Ok(())
     }
 
-    fn as_ptr(&self, alloc: &handles::HeapAlloc) -> Result<*mut u8> {
+    fn as_ptr(&self, alloc: &base::HeapAlloc) -> Result<*mut u8> {
         let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         Ok(my_alloc.contents_ptr)
-    }
+    }*/
 }
 
 fn bind_buffer<T>(
-    buffer: &handles::Buffer,
+    buffer: &base::BufferRef,
     storage_mode: metal::MTLStorageMode,
     allocator: T,
 ) -> Result<Option<metal::MTLBuffer>>
@@ -368,7 +369,7 @@ where
 }
 
 fn bind_image<T>(
-    image: &handles::Image,
+    image: &base::ImageRef,
     storage_mode: metal::MTLStorageMode,
     allocator: T,
 ) -> Result<Option<metal::MTLTexture>>
@@ -425,7 +426,7 @@ pub struct BufferHeapAlloc {
     pool_ptr: PoolPtr,
 }
 
-zangfx_impl_handle! { BufferHeapAlloc, handles::HeapAlloc }
+// zangfx_impl_handle! { BufferHeapAlloc, base::HeapAllocRef }
 
 unsafe impl Send for BufferHeapAlloc {}
 unsafe impl Sync for BufferHeapAlloc {}
@@ -452,9 +453,9 @@ impl BufferHeap {
 }
 
 impl heap::Heap for BufferHeap {
-    fn bind(&self, obj: handles::ResourceRef) -> Result<Option<handles::HeapAlloc>> {
+    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
         match obj {
-            handles::ResourceRef::Buffer(buffer) => {
+            base::ResourceRef::Buffer(buffer) => {
                 let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
                 let memory_req = my_buffer.memory_req(self.metal_buffer.device());
 
@@ -464,7 +465,7 @@ impl heap::Heap for BufferHeap {
                 // Allocate the region
                 if memory_req.size >= 0x8000_0000 {
                     // Does not fit in 32 bits
-                    return Ok(None);
+                    return Ok(false);
                 }
                 data.pool.reserve(1);
                 let result = data.tlsf
@@ -478,53 +479,25 @@ impl heap::Heap for BufferHeap {
 
                     let contents_ptr = contents_ptr.wrapping_offset(offset as isize);
 
-                    Ok(Some(
+                    unimplemented!()
+                    /*Ok(Some(
                         BufferHeapAlloc {
                             contents_ptr,
                             pool_ptr,
                         }.into(),
-                    ))
+                    ))*/
                 } else {
-                    Ok(None)
+                    Ok(false)
                 }
             }
 
-            handles::ResourceRef::Image(_image) => {
-                return Err(Error::with_detail(
-                    ErrorKind::InvalidUsage,
-                    "BufferHeap does not support binding image resources",
-                ));
+            base::ResourceRef::Image(_image) => {
+                panic!("BufferHeap does not support binding image resources");
             }
         }
     }
 
-    fn make_aliasable(&self, alloc: &handles::HeapAlloc) -> Result<()> {
-        let my_alloc: &BufferHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        let mut data = self.data.lock();
-        let ref mut data = *data; // Enable split borrows
-        let ref mut region = data.pool[my_alloc.pool_ptr];
-        if let Some(region) = region.take() {
-            unsafe {
-                data.tlsf.dealloc_unchecked(region);
-            }
-        }
-        Ok(())
-    }
-
-    fn unbind(&self, alloc: &handles::HeapAlloc) -> Result<()> {
-        let my_alloc: &BufferHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        let mut data = self.data.lock();
-        let region = data.pool.deallocate(my_alloc.pool_ptr).unwrap();
-        if let Some(region) = region {
-            unsafe {
-                data.tlsf.dealloc_unchecked(region);
-            }
-        }
-        Ok(())
-    }
-
-    fn as_ptr(&self, alloc: &handles::HeapAlloc) -> Result<*mut u8> {
-        let my_alloc: &BufferHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        Ok(my_alloc.contents_ptr)
+    fn make_aliasable(&self, resource: base::ResourceRef) -> Result<()> {
+        unimplemented!()
     }
 }

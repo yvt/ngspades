@@ -7,7 +7,7 @@ use std::sync::Arc;
 use metal;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 
 use formats::translate_image_format;
 use image::Image;
@@ -43,43 +43,38 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         self.targets[index].as_mut().unwrap()
     }
 
-    fn end(&mut self) -> &mut base::RenderPassBuilder {
-        self
-    }
-
     fn subpass_dep(
         &mut self,
-        _from: Option<base::SubpassIndex>,
+        _from: base::SubpassIndex,
         _src_access: base::AccessTypeFlags,
         _dst_access: base::AccessTypeFlags,
     ) -> &mut base::RenderPassBuilder {
-        // No-op: all barriers are expressed by other means on Metal
+        // No-op: (a) We don't support multiple subpasses yet.
+        //        (b) Subpass self-dependency is allowed by default.
         self
     }
 
     fn subpass_color_targets(
         &mut self,
-        targets: &[Option<(base::RenderPassTargetIndex, base::ImageLayout)>],
-    ) -> &mut base::RenderPassBuilder {
-        self.subpass_color_targets = targets.iter().map(|x| x.map(|(i, _)| i)).collect();
-        self
+        targets: &[Option<base::RenderPassTargetIndex>],
+    ) {
+        self.subpass_color_targets = targets.iter().cloned().collect();
     }
 
     fn subpass_ds_target(
         &mut self,
-        target: Option<(base::RenderPassTargetIndex, base::ImageLayout)>,
-    ) -> &mut base::RenderPassBuilder {
-        self.subpass_ds_target = target.map(|(i, _)| i);
-        self
+        target: Option<base::RenderPassTargetIndex>,
+    ) {
+        self.subpass_ds_target = target;
     }
 
-    fn build(&mut self) -> Result<base::RenderPass> {
+    fn build(&mut self) -> Result<base::RenderPassRef> {
         let ref targets = self.targets;
 
         for target in targets.iter() {
             if let &Some(ref target) = target {
                 if target.format.is_none() {
-                    return Err(Error::with_detail(ErrorKind::InvalidUsage, "format"));
+                    panic!("format");
                 }
             }
         }
@@ -199,13 +194,6 @@ impl base::RenderPassTarget for RenderPassTargetBuilder {
         self.stencil_store_op = v;
         self
     }
-
-    fn set_initial_layout(&mut self, _: base::ImageLayout) -> &mut base::RenderPassTarget {
-        self
-    }
-    fn set_final_layout(&mut self, _: base::ImageLayout) -> &mut base::RenderPassTarget {
-        self
-    }
 }
 
 /// Implementation of `RenderPass` for Metal.
@@ -214,7 +202,7 @@ pub struct RenderPass {
     data: Arc<RenderPassData>,
 }
 
-zangfx_impl_handle! { RenderPass, base::RenderPass }
+zangfx_impl_handle! { RenderPass, base::RenderPassRef }
 
 #[derive(Debug)]
 struct RenderPassData {
@@ -314,7 +302,7 @@ impl RenderTargetTableBuilder {
 }
 
 impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
-    fn render_pass(&mut self, v: &base::RenderPass) -> &mut base::RenderTargetTableBuilder {
+    fn render_pass(&mut self, v: &base::RenderPassRef) -> &mut base::RenderTargetTableBuilder {
         let our_rp: &RenderPass = v.downcast_ref().expect("bad render pass type");
         self.render_pass = Some(our_rp.clone());
         self
@@ -336,7 +324,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
     fn target(
         &mut self,
         index: base::RenderPassTargetIndex,
-        view: &base::Image,
+        view: &base::ImageRef,
     ) -> &mut base::RenderTarget {
         if self.targets.len() <= index {
             self.targets.resize(index + 1, None);
@@ -355,12 +343,12 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         self.targets[index].as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<base::RenderTargetTable> {
+    fn build(&mut self) -> Result<base::RenderTargetTableRef> {
         let render_pass: RenderPass = self.render_pass
             .clone()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "render_pass"))?;
+            .expect("render_pass");
         let extents = self.extents
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "extents"))?;
+            .expect("extents");
 
         let metal_desc = OCPtr::new(metal::MTLRenderPassDescriptor::new())
             .ok_or_else(|| nil_error("MTLRenderPassDescriptor renderPassDescriptor"))?;
@@ -463,7 +451,7 @@ pub struct RenderTargetTable {
     extents: [u32; 2],
 }
 
-zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTable }
+zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTableRef }
 
 unsafe impl Send for RenderTargetTable {}
 unsafe impl Sync for RenderTargetTable {}

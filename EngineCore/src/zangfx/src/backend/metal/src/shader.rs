@@ -12,8 +12,8 @@ use rspirv::mr;
 use spirv_headers;
 use spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
-use base::{self, handles, shader};
-use common::{Error, ErrorKind, Result};
+use base::{self, shader};
+use base::{Error, ErrorKind, Result};
 
 use arg::rootsig::RootSig;
 use utils::{nil_error, OCPtr};
@@ -47,11 +47,11 @@ impl shader::LibraryBuilder for LibraryBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<handles::Library> {
+    fn build(&mut self) -> Result<base::LibraryRef> {
         let spirv_code = self.spirv_code
             .clone()
-            .ok_or(Error::new(ErrorKind::InvalidUsage))?;
-        Library::new(spirv_code, self.label.clone()).map(handles::Library::new)
+            .expect("spirv_code");
+        Library::new(spirv_code, self.label.clone()).map(base::LibraryRef::new)
     }
 }
 
@@ -61,7 +61,7 @@ pub struct Library {
     data: Arc<LibraryData>,
 }
 
-zangfx_impl_handle! { Library, handles::Library }
+zangfx_impl_handle! { Library, base::LibraryRef }
 
 #[derive(Debug)]
 struct LibraryData {

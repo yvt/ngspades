@@ -10,8 +10,8 @@ use std::mem::replace;
 use parking_lot::Mutex;
 use metal::{MTLCommandBuffer, MTLCommandQueue};
 
-use base::{self, command, handles};
-use common::{Error, ErrorKind, Result};
+use base::{self, command};
+use base::{Error, ErrorKind, Result};
 use utils::{nil_error, OCPtr};
 use renderpass::RenderTargetTable;
 
@@ -58,13 +58,6 @@ enum Encoder {
 
 unsafe impl Send for CmdBuffer {}
 unsafe impl Sync for CmdBuffer {}
-
-fn already_commited_error() -> Error {
-    Error::with_detail(
-        ErrorKind::InvalidUsage,
-        "command buffer is already commited",
-    )
-}
 
 impl CmdBuffer {
     pub(super) unsafe fn new(
@@ -134,18 +127,11 @@ impl base::SetLabel for CmdBuffer {
 }
 
 impl command::CmdBuffer for CmdBuffer {
-    fn enqueue(&mut self) -> Result<()> {
-        Ok(())
-    }
-
     fn commit(&mut self) -> Result<()> {
         use block;
         use std::mem::replace;
 
-        // Commiting a command buffer implicitly enqueues it
-        self.enqueue()?;
-
-        let mut uncommited = self.uncommited.take().ok_or_else(already_commited_error)?;
+        let mut uncommited = self.uncommited.take().expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         // Pass the completion callbacks to `MTLCommandBuffer`
@@ -171,7 +157,7 @@ impl command::CmdBuffer for CmdBuffer {
 
     fn encode_render(
         &mut self,
-        render_target_table: &handles::RenderTargetTable,
+        render_target_table: &base::RenderTargetTableRef,
     ) -> &mut command::RenderCmdEncoder {
         let our_rt_table: &RenderTargetTable = render_target_table
             .downcast_ref()
@@ -179,8 +165,7 @@ impl command::CmdBuffer for CmdBuffer {
 
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let metal_encoder = uncommited
@@ -205,8 +190,7 @@ impl command::CmdBuffer for CmdBuffer {
     fn encode_compute(&mut self) -> &mut command::ComputeCmdEncoder {
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let metal_encoder = uncommited.metal_buffer.new_compute_command_encoder();
@@ -228,8 +212,7 @@ impl command::CmdBuffer for CmdBuffer {
     fn encode_copy(&mut self) -> &mut command::CopyCmdEncoder {
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let metal_encoder = uncommited.metal_buffer.new_blit_command_encoder();
@@ -249,11 +232,11 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn on_complete(&mut self, cb: Box<FnMut() + Sync + Send>) {
+    fn on_complete(&mut self, cb: Box<FnMut(base::Result<()>) + Sync + Send>) {
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
-        uncommited.completion_callbacks.0.push(cb);
+            .expect("command buffer is already commited");
+        unimplemented!()
+        // uncommited.completion_callbacks.0.push(cb);
     }
 }

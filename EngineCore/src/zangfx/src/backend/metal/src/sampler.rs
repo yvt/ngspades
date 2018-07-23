@@ -5,8 +5,8 @@
 //
 //! Implementation of `Sampler` for Metal.
 use std::ops::Range;
-use base::{self, handles, sampler, CmpFn};
-use common::Result;
+use base::{self, sampler, CmpFn};
+use base::Result;
 use metal;
 use metal::NSObjectProtocol;
 
@@ -109,7 +109,7 @@ impl sampler::SamplerBuilder for SamplerBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<handles::Sampler> {
+    fn build(&mut self) -> Result<base::SamplerRef> {
         let metal_desc = unsafe { OCPtr::from_raw(metal::MTLSamplerDescriptor::new()) }
             .ok_or(nil_error("MTLSamplerDescriptor new"))?;
         metal_desc.set_min_filter(translate_filter(self.min_filter));
@@ -140,7 +140,7 @@ impl sampler::SamplerBuilder for SamplerBuilder {
         }
         unsafe {
             metal_sampler.retain();
-            Ok(handles::Sampler::new(Sampler::from_raw(metal_sampler)))
+            Ok(base::SamplerRef::new(Sampler::from_raw(metal_sampler)))
         }
     }
 }
@@ -191,7 +191,7 @@ pub struct Sampler {
     metal_sampler: metal::MTLSamplerState,
 }
 
-zangfx_impl_handle! { Sampler, handles::Sampler }
+zangfx_impl_handle! { Sampler, base::SamplerRef }
 
 unsafe impl Send for Sampler {}
 unsafe impl Sync for Sampler {}

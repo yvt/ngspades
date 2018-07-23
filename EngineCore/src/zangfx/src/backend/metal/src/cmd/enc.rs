@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use metal;
-use base::{command, handles, heap};
+use base::{self, command, heap};
 use arrayvec::ArrayVec;
 use std::collections::HashSet;
 
@@ -37,16 +37,16 @@ impl CmdBufferFenceSet {
     }
 }
 
-fn translate_resource(handle: handles::ResourceRef) -> (metal::MTLResource, bool) {
+fn translate_resource(handle: base::ResourceRef) -> (metal::MTLResource, bool) {
     match handle {
-        handles::ResourceRef::Buffer(buffer) => {
+        base::ResourceRef::Buffer(buffer) => {
             let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
             (
                 *my_buffer.metal_buffer_and_offset().unwrap().0,
                 my_buffer.is_subbuffer(),
             )
         }
-        handles::ResourceRef::Image(image) => {
+        base::ResourceRef::Image(image) => {
             let my_image: &Image = image.downcast_ref().expect("bad image type");
             (*my_image.metal_texture(), false)
         }
@@ -57,14 +57,15 @@ pub trait UseResources {
     fn use_metal_resources(&self, resources: &[metal::MTLResource], usage: metal::MTLResourceUsage);
     fn use_metal_heaps(&self, heaps: &[metal::MTLHeap]);
 
-    fn use_gfx_resource(&self, usage: command::ResourceUsage, objs: &[handles::ResourceRef]) {
-        let metal_usage = match usage {
+    fn use_gfx_resource(&self, usage: command::ResourceUsageFlags, objs: base::ResourceSet) {
+        let metal_usage = unimplemented!();/* match usage {
             command::ResourceUsage::Read => metal::MTLResourceUsage::Read,
             command::ResourceUsage::Write => metal::MTLResourceUsage::Write,
             command::ResourceUsage::Sample => metal::MTLResourceUsage::Sample,
-        };
+        }; */
 
-        for objs in objs.chunks(256) {
+        unimplemented!()
+        /* for objs in objs.chunks(256) {
             let mut metal_usage = metal_usage;
             let metal_resources: ArrayVec<[_; 256]> = objs.iter()
                 .cloned()
@@ -86,10 +87,10 @@ pub trait UseResources {
                 })
                 .collect();
             self.use_metal_resources(metal_resources.as_slice(), metal_usage);
-        }
+        } */
     }
 
-    fn use_gfx_heap(&self, heaps: &[&heap::Heap]) {
+    fn use_gfx_heap(&self, heaps: &[&heap::HeapRef]) {
         use metal::MTLResourceUsage::Read;
         let mut metal_heaps = ArrayVec::<[_; 256]>::new();
         let mut metal_resources = ArrayVec::<[_; 256]>::new();

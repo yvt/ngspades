@@ -6,8 +6,8 @@
 use std::sync::Arc;
 use metal;
 
-use base::{self, handles, pipeline, shader};
-use common::{Error, ErrorKind, Result};
+use base::{self, pipeline, shader};
+use base::{Error, ErrorKind, Result};
 use arg::rootsig::RootSig;
 use shader::Library;
 
@@ -55,7 +55,7 @@ impl base::SetLabel for ComputePipelineBuilder {
 impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
     fn compute_shader(
         &mut self,
-        library: &handles::Library,
+        library: &base::LibraryRef,
         entry_point: &str,
     ) -> &mut pipeline::ComputePipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
@@ -63,19 +63,19 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
         self
     }
 
-    fn root_sig(&mut self, v: &handles::RootSig) -> &mut pipeline::ComputePipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut pipeline::ComputePipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
     }
 
-    fn build(&mut self) -> Result<handles::ComputePipeline> {
+    fn build(&mut self) -> Result<base::ComputePipelineRef> {
         let compute_shader = self.compute_shader
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "compute_shader"))?;
+            .expect("compute_shader");
         let root_sig = self.root_sig
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "root_sig"))?;
+            .expect("root_sig");
 
         let metal_desc = unsafe {
             OCPtr::from_raw(metal::MTLComputePipelineDescriptor::alloc().init())
@@ -144,9 +144,9 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             threads_per_threadgroup,
         };
 
-        Ok(handles::ComputePipeline::new(ComputePipeline {
+        Ok(ComputePipeline {
             data: Arc::new(data),
-        }))
+        }.into())
     }
 }
 
@@ -156,7 +156,7 @@ pub struct ComputePipeline {
     data: Arc<ComputePipelineData>,
 }
 
-zangfx_impl_handle! { ComputePipeline, handles::ComputePipeline }
+zangfx_impl_handle! { ComputePipeline, base::ComputePipelineRef }
 
 #[derive(Debug)]
 struct ComputePipelineData {

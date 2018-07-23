@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Buffer` for Metal.
-use base::{self, handles, resources, DeviceSize};
-use common::{Error, ErrorKind, Result};
+use base::{self, resources, DeviceSize};
+use base::Result;
 use metal;
 
 use utils::OCPtr;
@@ -38,6 +38,10 @@ impl base::SetLabel for BufferBuilder {
 }
 
 impl resources::BufferBuilder for BufferBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::BufferBuilder {
+        self
+    }
+
     fn size(&mut self, v: DeviceSize) -> &mut resources::BufferBuilder {
         self.size = Some(v);
         self
@@ -47,14 +51,13 @@ impl resources::BufferBuilder for BufferBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<handles::Buffer> {
-        let size = self.size
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "size"))?;
-        Ok(handles::Buffer::new(Buffer::new(
+    fn build(&mut self) -> Result<base::BufferRef> {
+        let size = self.size.expect("size");
+        Ok(Buffer::new(
             size,
             self.label.clone(),
             self.usage,
-        )))
+        ).into())
     }
 }
 
@@ -64,7 +67,7 @@ pub struct Buffer {
     data: *mut BufferData,
 }
 
-zangfx_impl_handle! { Buffer, handles::Buffer }
+zangfx_impl_handle! { Buffer, base::BufferRef }
 
 unsafe impl Send for Buffer {}
 unsafe impl Sync for Buffer {}
@@ -172,5 +175,15 @@ impl Buffer {
 
     pub(super) unsafe fn destroy(&self) {
         Box::from_raw(self.data);
+    }
+}
+
+impl base::Buffer for Buffer {
+    fn as_ptr(&self) -> *mut u8 {
+        unimplemented!()
+    }
+
+    fn get_memory_req(&self) -> Result<base::MemoryReq> {
+        unimplemented!()
     }
 }

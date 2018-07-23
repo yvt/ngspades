@@ -11,8 +11,7 @@ use tokenlock::{Token, TokenRef};
 use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
 
-use base::{self, command, handles, QueueFamily};
-use common::Result;
+use base::{self, command, QueueFamily, Result};
 use utils::{nil_error, OCPtr};
 
 use super::enc::CmdBufferFenceSet;
@@ -55,7 +54,7 @@ impl command::CmdQueueBuilder for CmdQueueBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<Box<command::CmdQueue>> {
+    fn build(&mut self) -> Result<command::CmdQueueRef> {
         let metal_queue = self.metal_device.new_command_queue();
         if metal_queue.is_null() {
             Err(nil_error("MTLDevice newCommandQueue"))
@@ -63,7 +62,7 @@ impl command::CmdQueueBuilder for CmdQueueBuilder {
             if let Some(ref label) = self.label {
                 metal_queue.set_label(label);
             }
-            unsafe { Ok(Box::new(CmdQueue::from_raw(metal_queue))) }
+            unsafe { Ok(Arc::new(CmdQueue::from_raw(metal_queue))) }
         }
     }
 }
@@ -257,37 +256,18 @@ impl SchedulerData {
 }
 
 impl command::CmdQueue for CmdQueue {
-    fn new_cmd_pool(&self) -> Result<Box<command::CmdPool>> {
-        Ok(Box::new(CmdPool {
-            metal_queue: self.metal_queue.clone(),
-            scheduler: self.scheduler.clone(),
-        }))
+    fn new_cmd_buffer(&self) -> Result<command::CmdBufferRef> {
+        unsafe {
+            CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler)).map(|cb| Box::new(cb) as _)
+        }
     }
 
-    fn new_fence(&self) -> Result<handles::Fence> {
+    fn new_fence(&self) -> Result<base::FenceRef> {
         unsafe { Fence::new(self.device, self.scheduler.token_ref.clone()) }
-            .map(handles::Fence::new)
+            .map(base::FenceRef::new)
     }
 
     fn flush(&self) {
         Scheduler::flush(&self.scheduler);
-    }
-}
-
-/// Implementation of `CmdPool` for Metal.
-#[derive(Debug)]
-pub struct CmdPool {
-    metal_queue: OCPtr<MTLCommandQueue>,
-    scheduler: Arc<Scheduler>,
-}
-
-zangfx_impl_object! { CmdPool: command::CmdPool, ::Debug }
-
-unsafe impl Send for CmdPool {}
-unsafe impl Sync for CmdPool {}
-
-impl command::CmdPool for CmdPool {
-    unsafe fn new_cmd_buffer(&mut self) -> Result<Box<command::CmdBuffer>> {
-        CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler)).map(|cb| Box::new(cb) as _)
     }
 }

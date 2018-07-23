@@ -9,7 +9,8 @@ use metal;
 
 use base;
 use base::StaticOrDynamic::*;
-use common::{BinaryInteger, Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
+use common::BinaryInteger;
 use arg::table::ArgTable;
 use arg::rootsig::RootSig;
 use buffer::Buffer;
@@ -73,7 +74,7 @@ impl base::SetLabel for RenderPipelineBuilder {
 impl base::RenderPipelineBuilder for RenderPipelineBuilder {
     fn vertex_shader(
         &mut self,
-        library: &base::Library,
+        library: &base::LibraryRef,
         entry_point: &str,
     ) -> &mut base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
@@ -83,7 +84,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
     fn fragment_shader(
         &mut self,
-        library: &base::Library,
+        library: &base::LibraryRef,
         entry_point: &str,
     ) -> &mut base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
@@ -91,7 +92,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         self
     }
 
-    fn root_sig(&mut self, v: &base::RootSig) -> &mut base::RenderPipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut base::RenderPipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
@@ -99,7 +100,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
     fn render_pass(
         &mut self,
-        v: &base::RenderPass,
+        v: &base::RenderPassRef,
         subpass: base::SubpassIndex,
     ) -> &mut base::RenderPipelineBuilder {
         let my_render_pass: &RenderPass = v.downcast_ref().expect("bad render pass type");
@@ -148,18 +149,18 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         self.rasterizer.as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<base::RenderPipeline> {
+    fn build(&mut self) -> Result<base::RenderPipelineRef> {
         let root_sig = self.root_sig
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "root_sig"))?;
+            .expect("root_sig");
 
         let vertex_shader = self.vertex_shader
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "vertex_shader"))?;
+            .expect("vertex_shader");
 
         let &(ref render_pass, subpass_index) = self.render_pass
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "render_pass"))?;
+            .expect("render_pass");
 
         let metal_desc = unsafe {
             OCPtr::from_raw(metal::MTLRenderPipelineDescriptor::alloc().init())
@@ -234,7 +235,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             // Fragment shader is mandatory only if rasterization is enabled
             let fragment_shader = self.fragment_shader
                 .as_ref()
-                .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "fragment_shader"))?;
+                .expect("fragment_shader");
 
             let fragment_fn = fragment_shader.0.new_metal_function(
                 &fragment_shader.1,
@@ -258,7 +259,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         }
 
         let topology = self.topology
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "topology"))?;
+            .expect("topology");
 
         let prim_type = match topology {
             base::PrimitiveTopology::Points => metal::MTLPrimitiveType::Point,
@@ -302,9 +303,9 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             vb_used,
         };
 
-        Ok(base::RenderPipeline::new(RenderPipeline {
+        Ok(RenderPipeline {
             data: Arc::new(data),
-        }))
+        }.into())
     }
 }
 
@@ -796,7 +797,7 @@ pub struct RenderPipeline {
     data: Arc<RenderPipelineData>,
 }
 
-zangfx_impl_handle! { RenderPipeline, base::RenderPipeline }
+zangfx_impl_handle! { RenderPipeline, base::RenderPipelineRef }
 
 #[derive(Debug)]
 struct RenderPipelineData {
@@ -922,7 +923,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn bind_pipeline(&mut self, pipeline: &base::RenderPipeline) {
+    pub fn bind_pipeline(&mut self, pipeline: &base::RenderPipelineRef) {
         let pipeline: &RenderPipeline = pipeline.downcast_ref().expect("bad render pipeline type");
 
         self.metal_encoder
@@ -1021,8 +1022,8 @@ impl RenderStateManager {
         }
     }
 
-    pub fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&base::ArgTable]) {
-        for (i, table) in tables.iter().enumerate() {
+    pub fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+        for (i, (_pool, table)) in tables.iter().enumerate() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.metal_encoder.set_vertex_buffer(
                 (i + index) as u64,
@@ -1040,7 +1041,7 @@ impl RenderStateManager {
     pub fn bind_vertex_buffers(
         &mut self,
         index: base::VertexBufferIndex,
-        buffers: &[(&base::Buffer, base::DeviceSize)],
+        buffers: &[(&base::BufferRef, base::DeviceSize)],
     ) {
         for (i, &(buffer, offset)) in buffers.iter().enumerate() {
             let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
@@ -1074,7 +1075,7 @@ impl RenderStateManager {
 
     pub fn bind_index_buffer(
         &mut self,
-        buffer: &base::Buffer,
+        buffer: &base::BufferRef,
         offset: base::DeviceSize,
         format: base::IndexFormat,
     ) {
@@ -1146,7 +1147,7 @@ impl RenderStateManager {
         }
     }
 
-    pub fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    pub fn draw_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.flush_vertex_buffers();
@@ -1154,7 +1155,7 @@ impl RenderStateManager {
             .draw_indirect(self.primitive_type, metal_buffer, offset + buffer_offset);
     }
 
-    pub fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    pub fn draw_indexed_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.flush_vertex_buffers();

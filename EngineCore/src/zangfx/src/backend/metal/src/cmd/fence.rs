@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Fence` for Metal.
-use base::handles;
-use common::Result;
+use base::{self, Result};
 use tokenlock::{TokenLock, TokenRef};
 use metal::{MTLDevice, MTLFence};
 use refeq::RefEqArc;
@@ -21,7 +20,7 @@ pub struct Fence {
     data: RefEqArc<FenceData>,
 }
 
-zangfx_impl_handle! { Fence, handles::Fence }
+zangfx_impl_handle! { Fence, base::FenceRef }
 
 #[derive(Debug)]
 struct FenceData {

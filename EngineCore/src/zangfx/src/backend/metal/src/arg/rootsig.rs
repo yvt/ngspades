@@ -6,8 +6,8 @@
 //! Implementation of `RootSig` for Metal.
 use std::sync::Arc;
 
-use base::{arg, handles, ArgTableIndex};
-use common::Result;
+use base::{arg, ArgTableIndex};
+use base::Result;
 
 use super::tablesig::ArgTableSig;
 use spirv_cross::{ExecutionModel, SpirV2Msl};
@@ -31,7 +31,7 @@ impl arg::RootSigBuilder for RootSigBuilder {
     fn arg_table(
         &mut self,
         index: ArgTableIndex,
-        x: &handles::ArgTableSig,
+        x: &arg::ArgTableSigRef,
     ) -> &mut arg::RootSigBuilder {
         let our_table: &ArgTableSig = x.downcast_ref().expect("bad argument table signature type");
         if self.tables.len() <= index {
@@ -41,11 +41,11 @@ impl arg::RootSigBuilder for RootSigBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<handles::RootSig> {
+    fn build(&mut self) -> Result<arg::RootSigRef> {
         let root_sig = RootSig {
             tables: Arc::new(self.tables.clone()),
         };
-        Ok(handles::RootSig::new(root_sig))
+        Ok(arg::RootSigRef::new(root_sig))
     }
 }
 
@@ -56,7 +56,7 @@ pub struct RootSig {
     tables: Arc<Vec<Option<ArgTableSig>>>,
 }
 
-zangfx_impl_handle! { RootSig, handles::RootSig }
+zangfx_impl_handle! { RootSig, arg::RootSigRef }
 
 impl RootSig {
     pub(crate) fn setup_spirv2msl(&self, s2m: &mut SpirV2Msl, stage: ExecutionModel) {

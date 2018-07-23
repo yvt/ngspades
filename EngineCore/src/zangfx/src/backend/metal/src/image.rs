@@ -6,7 +6,7 @@
 //! Implementation of `Image` for Metal.
 use std::ops;
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 use metal;
 use cocoa::foundation::NSRange;
 
@@ -61,6 +61,10 @@ impl base::SetLabel for ImageBuilder {
 }
 
 impl base::ImageBuilder for ImageBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::ImageBuilder {
+        self
+    }
+
     fn extents(&mut self, v: &[u32]) -> &mut base::ImageBuilder {
         self.extents = Some(match v.len() {
             1 => ImageExtents::OneD(v[0]),
@@ -96,12 +100,12 @@ impl base::ImageBuilder for ImageBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<base::Image> {
+    fn build(&mut self) -> Result<base::ImageRef> {
         let extents = self.extents
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "extents"))?;
+            .expect("extents");
 
         let format = self.format
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "format"))?;
+            .expect("format");
 
         let metal_desc =
             unsafe { OCPtr::from_raw(metal::MTLTextureDescriptor::alloc().init()).unwrap() };
@@ -115,12 +119,7 @@ impl base::ImageBuilder for ImageBuilder {
             (ImageExtents::ThreeD(x, y, z), None) => (D3, [x, y, z]),
             (ImageExtents::Cube(x), None) => (Cube, [x, x, 1]),
             (ImageExtents::Cube(x), Some(_)) => (CubeArray, [x, x, 1]),
-            _ => {
-                return Err(Error::with_detail(
-                    ErrorKind::InvalidUsage,
-                    "unsupported image type",
-                ))
-            }
+            _ => panic!("unsupported image type"),
         };
 
         metal_desc.set_texture_type(ty);
@@ -163,11 +162,11 @@ impl base::ImageBuilder for ImageBuilder {
 
         let num_bytes_per_pixel = format.size_class().num_bytes_per_pixel();
 
-        Ok(base::Image::new(Image::new(
+        Ok(Image::new(
             metal_desc,
             num_bytes_per_pixel,
             self.label.clone(),
-        )))
+        ).into())
     }
 }
 
@@ -177,7 +176,7 @@ pub struct Image {
     data: *mut ImageData,
 }
 
-zangfx_impl_handle! { Image, base::Image }
+zangfx_impl_handle! { Image, base::ImageRef }
 
 unsafe impl Send for Image {}
 unsafe impl Sync for Image {}
@@ -293,6 +292,16 @@ impl Image {
     }
 }
 
+impl base::Image for Image {
+    fn build_image_view(&self) -> base::ImageViewBuilderRef {
+        unimplemented!() // Box::new(image::ImageViewBuilder::new())
+    }
+
+    fn get_memory_req(&self) -> Result<base::MemoryReq> {
+        unimplemented!()
+    }
+}
+
 /// Implementation of `ImageViewBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct ImageViewBuilder {
@@ -317,11 +326,11 @@ impl ImageViewBuilder {
 }
 
 impl base::ImageViewBuilder for ImageViewBuilder {
-    fn image(&mut self, v: &base::Image) -> &mut base::ImageViewBuilder {
+    /* fn image(&mut self, v: &base::Image) -> &mut base::ImageViewBuilder {
         let my_image: &Image = v.downcast_ref().expect("bad image type");
         self.image = Some(my_image.clone());
         self
-    }
+    } */
 
     fn subrange(&mut self, v: &base::ImageSubRange) -> &mut base::ImageViewBuilder {
         self.subrange = v.clone();
@@ -338,15 +347,10 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         self
     }
 
-    fn layout(&mut self, _: base::ImageLayout) -> &mut base::ImageViewBuilder {
-        // No-op: The concept of image layouts does not exist in Metal
-        self
-    }
-
-    fn build(&mut self) -> Result<base::ImageView> {
+    fn build(&mut self) -> Result<base::ImageRef> {
         let image = self.image
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "image"))?;
+            .expect("image");
         let metal_texture = image.metal_texture();
         assert!(!metal_texture.is_null());
 
@@ -371,7 +375,8 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         if subrange == full_subrange && metal_format == metal_texture.pixel_format()
             && metal_ty == metal_texture.texture_type()
         {
-            return Ok(base::ImageView::new(ImageView::new(metal_texture, false)));
+            unimplemented!()
+            // return Ok(base::ImageView::new(ImageView::new(metal_texture, false)));
         }
 
         let view = metal_texture.new_texture_view_from_slice(
@@ -393,42 +398,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             ));
         }
 
-        Ok(base::ImageView::new(ImageView::new(metal_texture, true)))
-    }
-}
-
-/// Implementation of `ImageView` for Metal.
-#[derive(Debug, Clone)]
-pub struct ImageView {
-    metal_texture: metal::MTLTexture,
-
-    /// Indicates whether we should release `metal_texture` along with
-    /// `ImageView`.
-    owned: bool,
-}
-
-zangfx_impl_handle! { ImageView, base::ImageView }
-
-unsafe impl Send for ImageView {}
-unsafe impl Sync for ImageView {}
-
-impl ImageView {
-    fn new(metal_texture: metal::MTLTexture, owned: bool) -> Self {
-        Self {
-            metal_texture,
-            owned,
-        }
-    }
-
-    /// Return the underlying `MTLTexture`.
-    pub fn metal_texture(&self) -> metal::MTLTexture {
-        self.metal_texture
-    }
-
-    pub(super) unsafe fn destroy(&self) {
-        use metal::NSObjectProtocol;
-        if self.owned {
-            self.metal_texture.release();
-        }
+        unimplemented!()
+        // Ok(base::ImageView::new(ImageView::new(metal_texture, true)))
     }
 }

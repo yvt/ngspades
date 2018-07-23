@@ -11,8 +11,8 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use arrayvec::ArrayVec;
 
-use base::{self, arg, device, handles, shader, ArgArrayIndex, ArgIndex};
-use common::Result;
+use base::{self, arg, device, shader, ArgArrayIndex, ArgIndex};
+use base::Result;
 
 use arg::ArgSize;
 use utils::{nil_error, OCPtr};
@@ -76,7 +76,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
         self.args[index].as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<handles::ArgTableSig> {
+    fn build(&mut self) -> Result<arg::ArgTableSigRef> {
         let mut metal_args = Vec::with_capacity(self.args.len());
         let mut arg_sigs = Vec::with_capacity(self.args.len());
         let mut current_index = 0usize;
@@ -131,7 +131,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
         };
 
         unsafe { ArgTableSig::new(self.metal_device, metal_args_array, arg_sigs) }
-            .map(handles::ArgTableSig::new)
+            .map(arg::ArgTableSigRef::new)
     }
 }
 
@@ -170,7 +170,7 @@ pub struct ArgTableSig {
 unsafe impl Send for ArgTableSig {}
 unsafe impl Sync for ArgTableSig {}
 
-zangfx_impl_handle! { ArgTableSig, handles::ArgTableSig }
+zangfx_impl_handle! { ArgTableSig, arg::ArgTableSigRef }
 
 #[derive(Debug)]
 struct ArgTableSigData {
@@ -255,16 +255,16 @@ impl ArgTableSig {
 
     pub(crate) fn update_arg_tables(
         &self,
-        updates: &[(&handles::ArgTable, &[device::ArgUpdateSet])],
+        updates: &[((&arg::ArgPoolRef, &arg::ArgTableRef), &[device::ArgUpdateSet])],
     ) -> Result<()> {
-        use base::handles::ArgSlice::*;
+        use base::ArgSlice::*;
         use arg::table::ArgTable;
         use buffer::Buffer;
-        use image::ImageView;
+        use image::Image;
         use sampler::Sampler;
 
         self.lock_encoder(|encoder| {
-            for &(table, update_sets) in updates.iter() {
+            for &((_pool, table), update_sets) in updates.iter() {
                 let table: &ArgTable = table.downcast_ref().expect("bad argument table type");
                 encoder.set_argument_buffer(table.metal_buffer(), table.offset() as _);
 
@@ -278,12 +278,12 @@ impl ArgTableSig {
                     // into chunks and process each chunk on a fixed size
                     // stack-allocated array (`ArrayVec`).
                     match resources {
-                        ImageView(objs) => for objs in objs.chunks(64) {
+                        Image(objs) => for objs in objs.chunks(64) {
                             let metal_objs: ArrayVec<[_; 64]> = objs.iter()
                                 .map(|obj| {
-                                    let my_obj: &ImageView =
+                                    let my_obj: &Image =
                                         obj.downcast_ref().expect("bad image view type");
-                                    my_obj.metal_texture()
+                                    unimplemented!() // my_obj.metal_texture()
                                 })
                                 .collect();
 

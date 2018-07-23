@@ -5,8 +5,8 @@
 //
 //! Implementation of `Device` for Metal.
 use {base, metal};
-use base::{device, handles};
-use common::Result;
+use base::device;
+use base::Result;
 
 use utils::{get_memory_req, OCPtr};
 use limits::DeviceCaps;
@@ -59,6 +59,10 @@ impl device::Device for Device {
         &self.caps
     }
 
+    fn global_heap(&self) -> &base::HeapRef {
+        unimplemented!()
+    }
+
     fn build_cmd_queue(&self) -> Box<base::command::CmdQueueBuilder> {
         unsafe { Box::new(cmd::queue::CmdQueueBuilder::new(self.metal_device())) }
     }
@@ -71,10 +75,6 @@ impl device::Device for Device {
         unsafe { Box::new(heap::HeapBuilder::new(self.metal_device())) }
     }
 
-    fn build_barrier(&self) -> Box<base::sync::BarrierBuilder> {
-        Box::new(cmd::barrier::BarrierBuilder::new())
-    }
-
     fn build_image(&self) -> Box<base::resources::ImageBuilder> {
         Box::new(image::ImageBuilder::new())
     }
@@ -85,10 +85,6 @@ impl device::Device for Device {
 
     fn build_sampler(&self) -> Box<base::sampler::SamplerBuilder> {
         unsafe { Box::new(sampler::SamplerBuilder::new(self.metal_device())) }
-    }
-
-    fn build_image_view(&self) -> Box<base::resources::ImageViewBuilder> {
-        Box::new(image::ImageViewBuilder::new())
     }
 
     fn build_library(&self) -> Box<base::shader::LibraryBuilder> {
@@ -140,46 +136,10 @@ impl device::Device for Device {
         }
     }
 
-    fn destroy_image(&self, obj: &handles::Image) -> Result<()> {
-        let our_image: &image::Image = obj.downcast_ref().expect("bad image type");
-        unsafe {
-            our_image.destroy();
-        }
-        Ok(())
-    }
-
-    fn destroy_buffer(&self, obj: &handles::Buffer) -> Result<()> {
-        let our_buffer: &buffer::Buffer = obj.downcast_ref().expect("bad buffer type");
-        unsafe {
-            our_buffer.destroy();
-        }
-        Ok(())
-    }
-
-    fn destroy_sampler(&self, obj: &handles::Sampler) -> Result<()> {
-        let our_sampler: &sampler::Sampler = obj.downcast_ref().expect("bad sampler type");
-        unsafe {
-            our_sampler.destroy();
-        }
-        Ok(())
-    }
-
-    fn destroy_image_view(&self, obj: &handles::ImageView) -> Result<()> {
-        let our_image_view: &image::ImageView = obj.downcast_ref().expect("bad image view type");
-        unsafe {
-            our_image_view.destroy();
-        }
-        Ok(())
-    }
-
-    fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<base::resources::MemoryReq> {
-        get_memory_req(self.metal_device(), obj)
-    }
-
     fn update_arg_tables(
         &self,
-        arg_table_sig: &handles::ArgTableSig,
-        updates: &[(&handles::ArgTable, &[device::ArgUpdateSet])],
+        arg_table_sig: &base::ArgTableSigRef,
+        updates: &[((&base::ArgPoolRef, &base::ArgTableRef), &[device::ArgUpdateSet])],
     ) -> Result<()> {
         let our_sig: &arg::tablesig::ArgTableSig = arg_table_sig
             .downcast_ref()

@@ -7,7 +7,6 @@ use std::ops::Deref;
 use std::fmt;
 use metal::{self, id, MTLDevice, NSObjectProtocol};
 use base;
-use common;
 
 /// Smart pointer for Objective-C objects.
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -176,15 +175,15 @@ impl fmt::Display for SelectorReturnedNullError {
     }
 }
 
-/// Construct a `common::Error` indicating a selector returned the `nil` value.
-pub fn nil_error(sel: &'static str) -> common::Error {
-    common::Error::with_detail(common::ErrorKind::Other, SelectorReturnedNullError { sel })
+/// Construct a `base::Error` indicating a selector returned the `nil` value.
+pub fn nil_error(sel: &'static str) -> base::Error {
+    base::Error::with_detail(base::ErrorKind::Other, SelectorReturnedNullError { sel })
 }
 
 pub fn get_memory_req(
     metal_device: MTLDevice,
     obj: base::ResourceRef,
-) -> common::Result<base::MemoryReq> {
+) -> base::Result<base::MemoryReq> {
     use {buffer, image};
     match obj {
         base::ResourceRef::Buffer(buffer) => {

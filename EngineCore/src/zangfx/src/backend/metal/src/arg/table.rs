@@ -4,10 +4,11 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `ArgPool` and `ArgTable` for Metal.
+use std::sync::Arc;
 use metal;
 
-use base::{self, arg, handles};
-use common::{Error, ErrorKind, Result};
+use base::{self, arg};
+use base::Result;
 
 use utils::{nil_error, OCPtr};
 
@@ -106,10 +107,14 @@ impl base::SetLabel for ArgPoolBuilder {
 }
 
 impl arg::ArgPoolBuilder for ArgPoolBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut base::ArgPoolBuilder {
+        self
+    }
+
     fn reserve_table_sig(
         &mut self,
         count: usize,
-        table: &handles::ArgTableSig,
+        table: &arg::ArgTableSigRef,
     ) -> &mut arg::ArgPoolBuilder {
         if count == 0 {
             return self;
@@ -149,9 +154,9 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<Box<arg::ArgPool>> {
+    fn build(&mut self) -> Result<arg::ArgPoolRef> {
         if self.size == 0 {
-            return Ok(Box::new(ZeroSizedArgPool));
+            return Ok(Arc::new(ZeroSizedArgPool));
         }
 
         // Allocate a buffer for the newly created argument pool
@@ -167,9 +172,9 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         }
 
         if self.enable_destroy_tables {
-            Ok(Box::new(DynamicArgPool(BaseArgPool::new(metal_buffer))))
+            Ok(Arc::new(DynamicArgPool(BaseArgPool::new(metal_buffer))))
         } else {
-            Ok(Box::new(StackArgPool(BaseArgPool::new(metal_buffer))))
+            Ok(Arc::new(StackArgPool(BaseArgPool::new(metal_buffer))))
         }
     }
 }
@@ -197,8 +202,8 @@ impl<T: Allocator> BaseArgPool<T> {
     fn new_tables(
         &mut self,
         count: usize,
-        table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
+        table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
         let our_sig: &ArgTableSig = table
             .downcast_ref()
             .expect("bad argument table signature type");
@@ -229,13 +234,13 @@ impl<T: Allocator> BaseArgPool<T> {
                     offset,
                     allocation,
                 };
-                handles::ArgTable::new(our_table)
+                arg::ArgTableRef::new(our_table)
             })
             .collect();
         Ok(Some(tables))
     }
 
-    fn destroy_tables(&mut self, tables: &[&handles::ArgTable]) -> Result<()> {
+    fn destroy_tables(&mut self, tables: &[&arg::ArgTableRef]) -> Result<()> {
         for table in tables.iter() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.allocator.deallocate(our_table.clone().allocation);
@@ -258,19 +263,19 @@ zangfx_impl_object! { StackArgPool: arg::ArgPool, ::Debug }
 
 impl arg::ArgPool for StackArgPool {
     fn new_tables(
-        &mut self,
+        &self,
         count: usize,
-        table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
-        self.0.new_tables(count, table)
+        table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
+        unimplemented!() // self.0.new_tables(count, table)
     }
 
-    fn destroy_tables(&mut self, tables: &[&handles::ArgTable]) -> Result<()> {
-        self.0.destroy_tables(tables)
+    fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
+        unimplemented!() // self.0.destroy_tables(tables)
     }
 
-    fn reset(&mut self) -> Result<()> {
-        self.0.reset()
+    fn reset(&self) -> Result<()> {
+        unimplemented!() // self.0.reset()
     }
 }
 
@@ -282,19 +287,19 @@ zangfx_impl_object! { DynamicArgPool: arg::ArgPool, ::Debug }
 
 impl arg::ArgPool for DynamicArgPool {
     fn new_tables(
-        &mut self,
+        &self,
         count: usize,
-        table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
-        self.0.new_tables(count, table)
+        table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
+        unimplemented!() // self.0.new_tables(count, table)
     }
 
-    fn destroy_tables(&mut self, tables: &[&handles::ArgTable]) -> Result<()> {
-        self.0.destroy_tables(tables)
+    fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
+        unimplemented!() // self.0.destroy_tables(tables)
     }
 
-    fn reset(&mut self) -> Result<()> {
-        self.0.reset()
+    fn reset(&self) -> Result<()> {
+        unimplemented!() // self.0.reset()
     }
 }
 
@@ -306,21 +311,18 @@ zangfx_impl_object! { ZeroSizedArgPool: arg::ArgPool, ::Debug }
 
 impl arg::ArgPool for ZeroSizedArgPool {
     fn new_tables(
-        &mut self,
+        &self,
         _count: usize,
-        _table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
+        _table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
         Ok(None)
     }
 
-    fn destroy_tables(&mut self, _: &[&handles::ArgTable]) -> Result<()> {
-        Err(Error::with_detail(
-            ErrorKind::InvalidUsage,
-            "ZeroSizedArgPool does not support allocation at all",
-        ))
+    fn destroy_tables(&self, _: &[&arg::ArgTableRef]) -> Result<()> {
+        panic!("ZeroSizedArgPool does not support allocation at all")
     }
 
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&self) -> Result<()> {
         Ok(())
     }
 }
@@ -333,7 +335,7 @@ pub struct ArgTable {
     allocation: Allocation,
 }
 
-zangfx_impl_handle! { ArgTable, handles::ArgTable }
+zangfx_impl_handle! { ArgTable, arg::ArgTableRef }
 
 unsafe impl Send for ArgTable {}
 unsafe impl Sync for ArgTable {}

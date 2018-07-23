@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use metal::{MTLComputeCommandEncoder, MTLSize};
-use base::{command, handles, heap, ArgTableIndex, DeviceSize, StageFlags};
+use base::{self, command, heap, ArgTableIndex, DeviceSize};
 
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
@@ -61,39 +61,39 @@ impl command::CmdEncoder for ComputeEncoder {
         self.metal_encoder.debug_marker(label);
     }
 
-    fn use_resource(&mut self, usage: command::ResourceUsage, objs: &[handles::ResourceRef]) {
+    fn use_resource_core(&mut self, usage: base::ResourceUsageFlags, objs: base::ResourceSet) {
         self.metal_encoder.use_gfx_resource(usage, objs);
     }
 
-    fn use_heap(&mut self, heaps: &[&heap::Heap]) {
+    fn use_heap(&mut self, heaps: &[&heap::HeapRef]) {
         self.metal_encoder.use_gfx_heap(heaps);
     }
 
-    fn wait_fence(
-        &mut self,
-        fence: &handles::Fence,
-        _src_stage: StageFlags,
-        _barrier: &handles::Barrier,
-    ) {
+    fn wait_fence(&mut self, fence: &base::FenceRef, _dst_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.wait_for_fence(our_fence.metal_fence());
         self.fence_set.wait_fence(our_fence);
     }
 
-    fn update_fence(&mut self, fence: &handles::Fence, _src_stage: StageFlags) {
+    fn update_fence(&mut self, fence: &base::FenceRef, _src_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.update_fence(our_fence.metal_fence());
         self.fence_set.signal_fence(our_fence);
     }
 
-    fn barrier(&mut self, _barrier: &handles::Barrier) {
+    fn barrier_core(
+        &mut self,
+        _obj: base::ResourceSet,
+        _src_access: base::AccessTypeFlags,
+        _dst_access: base::AccessTypeFlags,
+    ) {
         // No-op: Metal's compute command encoders implicitly barrier between
         // each dispatch.
     }
 }
 
 impl command::ComputeCmdEncoder for ComputeEncoder {
-    fn bind_pipeline(&mut self, pipeline: &handles::ComputePipeline) {
+    fn bind_pipeline(&mut self, pipeline: &base::ComputePipelineRef) {
         let our_pipeline: &ComputePipeline =
             pipeline.downcast_ref().expect("bad compute pipeline type");
         self.metal_encoder
@@ -101,8 +101,8 @@ impl command::ComputeCmdEncoder for ComputeEncoder {
         self.threads_per_threadgroup = our_pipeline.threads_per_threadgroup();
     }
 
-    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[&handles::ArgTable]) {
-        for (i, table) in tables.iter().enumerate() {
+    fn bind_arg_table(&mut self, index: ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+        for (i, (_pool, table)) in tables.iter().enumerate() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.metal_encoder.set_buffer(
                 (i + index) as u64,
@@ -123,7 +123,7 @@ impl command::ComputeCmdEncoder for ComputeEncoder {
         );
     }
 
-    fn dispatch_indirect(&mut self, buffer: &handles::Buffer, offset: DeviceSize) {
+    fn dispatch_indirect(&mut self, buffer: &base::BufferRef, offset: DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         let (metal_buffer, buffer_offset) = buffer.metal_buffer_and_offset().unwrap();
         self.metal_encoder
