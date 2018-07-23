@@ -33,7 +33,7 @@ impl Device {
     /// `metal_device` must not be null. Otherwise, it will panic.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Result<Self> {
         Ok(Self {
-            metal_device: OCPtr::new(metal_device).unwrap(),
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             caps: DeviceCaps::new(metal_device),
             arg_layout_info: arg::table::ArgLayoutInfo::new(metal_device)?,
         })
