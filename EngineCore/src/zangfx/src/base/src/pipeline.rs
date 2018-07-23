@@ -7,7 +7,6 @@
 use std::ops::Range;
 
 use crate::arg::RootSigRef;
-use zangfx_common::Rect2D;
 use crate::formats::VertexFormat;
 use crate::pass::RenderPassRef;
 use crate::shader::LibraryRef;
@@ -16,6 +15,7 @@ use crate::{
     VertexAttrIndex, VertexBufferIndex, ViewportIndex,
 };
 use crate::{Object, Result};
+use zangfx_common::Rect2D;
 
 define_handle! {
     /// Render pipeline handle.

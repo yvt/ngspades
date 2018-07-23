@@ -6,8 +6,8 @@
 //! Provides an information regarding a device's capabilities and limits.
 use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 
-use crate::Object;
 use crate::formats::{ImageFormat, VertexFormat};
+use crate::Object;
 use crate::{DeviceSize, MemoryRegionIndex};
 
 #[derive(Debug, Clone, Copy)]

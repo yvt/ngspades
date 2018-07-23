@@ -4,7 +4,10 @@
 // This source code is a part of Nightingales.
 //
 use lazy_static::lazy_static;
-use {ngsenumflags::{BitFlags, flags}, ngsenumflags_derive::NgsEnumFlags};
+use {
+    ngsenumflags::{flags, BitFlags},
+    ngsenumflags_derive::NgsEnumFlags,
+};
 
 use zangfx_common::BinaryInteger;
 

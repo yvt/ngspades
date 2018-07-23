@@ -11,7 +11,6 @@ use {
     ngsenumflags_derive::NgsEnumFlags,
 };
 
-use zangfx_common::Rect2D;
 use crate::formats::IndexFormat;
 use crate::resources::{BufferRef, ImageLayout, ImageRef, ImageSubRange, ResourceRef};
 use crate::{arg, heap, pass, pipeline, resources, sync};
@@ -20,6 +19,7 @@ use crate::{
     Viewport, ViewportIndex,
 };
 use crate::{Object, Result};
+use zangfx_common::Rect2D;
 
 /// A builder object for command queue objects.
 pub type CmdQueueBuilderRef = Box<dyn CmdQueueBuilder>;
