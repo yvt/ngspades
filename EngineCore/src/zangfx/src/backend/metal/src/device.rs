@@ -8,7 +8,7 @@ use metal;
 use zangfx_base::{self as base, device, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
-use utils::{get_memory_req, OCPtr};
+use utils::OCPtr;
 use limits::DeviceCaps;
 use {arg, buffer, cmd, computepipeline, heap, image, renderpass, renderpipeline, sampler, shader};
 

@@ -11,8 +11,8 @@ use parking_lot::Mutex;
 use xalloc::{SysTlsf, SysTlsfRegion};
 
 use zangfx_base::{self as base, heap, DeviceSize, MemoryType};
-use zangfx_base::{Error, ErrorKind, Result};
-use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::Result;
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
 use utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
 use buffer::Buffer;

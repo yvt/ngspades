@@ -5,7 +5,7 @@
 //
 use std::ops::Range;
 use metal::MTLRenderCommandEncoder;
-use zangfx_base::{self as base, command, heap, StageFlags};
+use zangfx_base::{self as base, command, heap};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use zangfx_common::Rect2D;
 

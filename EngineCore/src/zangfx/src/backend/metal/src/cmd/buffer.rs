@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use metal::{MTLCommandBuffer, MTLCommandQueue};
 
 use zangfx_base::{self as base, command};
-use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use utils::{nil_error, OCPtr};
 use renderpass::RenderTargetTable;
