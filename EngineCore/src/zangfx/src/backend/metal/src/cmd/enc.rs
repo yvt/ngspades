@@ -10,7 +10,7 @@ use zangfx_metal_rs::{self as metal, MTLResourceUsage};
 
 use crate::buffer::Buffer;
 use crate::cmd::fence::Fence;
-use crate::heap::{BufferHeap, EmulatedHeap, Heap};
+use crate::heap::{BufferHeap, GlobalHeap, Heap};
 use crate::image::Image;
 
 #[derive(Debug, Default)]
@@ -120,14 +120,8 @@ crate trait UseResources {
                     self.use_metal_resources(metal_resources.as_slice(), MTLResourceUsageRead);
                     metal_resources.clear();
                 }
-            } else if let Some(heap) = heap.query_ref::<EmulatedHeap>() {
-                heap.for_each_metal_resources(&mut |metal_resource| {
-                    metal_resources.push(metal_resource);
-                    if metal_resources.len() == metal_resources.capacity() {
-                        self.use_metal_resources(metal_resources.as_slice(), MTLResourceUsageRead);
-                        metal_resources.clear();
-                    }
-                });
+            } else if let Some(heap) = heap.query_ref::<GlobalHeap>() {
+                panic!("global heaps do not support use_heap");
             } else {
                 panic!("invalid heap type");
             }

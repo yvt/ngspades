@@ -4,12 +4,14 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Metal.
+use std::sync::Arc;
+
 use zangfx_base::{self as base, device, Result};
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_metal_rs as metal;
 
 use crate::limits::DeviceCaps;
-use crate::utils::OCPtr;
+use crate::utils::{translate_storage_mode, OCPtr};
 use crate::{
     arg, buffer, cmd, computepipeline, heap, image, renderpass, renderpipeline, sampler, shader,
 };
@@ -20,6 +22,7 @@ pub struct Device {
     metal_device: OCPtr<metal::MTLDevice>,
     caps: DeviceCaps,
     arg_layout_info: arg::table::ArgLayoutInfo,
+    global_heaps: Vec<base::HeapRef>,
 }
 
 zangfx_impl_object! { Device: dyn device::Device, dyn crate::Debug }
@@ -36,6 +39,12 @@ impl Device {
             metal_device: OCPtr::new(metal_device).expect("nil device"),
             caps: DeviceCaps::new(metal_device),
             arg_layout_info: arg::table::ArgLayoutInfo::new(metal_device)?,
+            global_heaps: (0..2)
+                .map(|memory_type| -> base::HeapRef {
+                    let storage_mode = translate_storage_mode(memory_type).unwrap();
+                    Arc::new(heap::GlobalHeap::new(metal_device, storage_mode))
+                })
+                .collect(),
         })
     }
 
@@ -61,8 +70,10 @@ impl device::Device for Device {
         &self.caps
     }
 
-    fn global_heap(&self) -> &base::HeapRef {
-        unimplemented!()
+    fn global_heap(&self, memory_type: base::MemoryType) -> &base::HeapRef {
+        self.global_heaps
+            .get(memory_type as usize)
+            .expect("bad memory type")
     }
 
     fn build_cmd_queue(&self) -> base::command::CmdQueueBuilderRef {

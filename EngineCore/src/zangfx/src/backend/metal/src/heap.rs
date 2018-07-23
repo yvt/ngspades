@@ -217,72 +217,32 @@ impl heap::Heap for Heap {
     }
 }
 
-/// Implementation of `HeapAlloc` for Metal. To be used with [`EmulatedHeap`].
-///
-/// [`EmulatedHeap`]: EmulatedHeap
-#[derive(Debug, Clone)]
-pub struct EmulatedHeapAlloc {
-    /// The pointer to the resource's contents. Invalid for images.
-    contents_ptr: *mut u8,
-
-    /// Associates this `EmulatedHeapAlloc` with an element of
-    /// `EmulatedHeap::pool`.
-    pool_ptr: PoolPtr,
-}
-
-// zangfx_impl_handle! { EmulatedHeapAlloc, base::HeapAlloc }
-
-unsafe impl Send for EmulatedHeapAlloc {}
-unsafe impl Sync for EmulatedHeapAlloc {}
-
-/// Emulated implementation of `Heap` for Metal. Does not use `MTLHeap` and
+/// Implementation of `Heap` for Metal. It represents a global heap and
 /// allocates resources from `MTLDevice` directly.
 ///
-/// Host-visible heap is superseded by `BufferHeap` and therefore this type of
-/// heap is **no longer** created by `HeapBuilder`.
-///
-/// Binding `MTLImage`s is not supported.
-///
-/// # Performance Quirks
-///
-/// `CmdEncoder::use_heap` runs much slower for this type of heaps because it
-/// has to iterate through all allocated resources.
-///
+/// It does not support `use_heap`. Also, it does not support `make_aliasable`
+/// as per the requirements of global heaps.
 #[derive(Debug)]
-pub struct EmulatedHeap {
-    metal_device: metal::MTLDevice,
+pub struct GlobalHeap {
+    metal_device: OCPtr<metal::MTLDevice>,
     storage_mode: metal::MTLStorageMode,
-
-    /// We need to keep the list of allocated resources to implement
-    /// `CmdEncoder::use_heap`.
-    pool: Mutex<IterablePool<metal::MTLResource>>,
 }
 
-zangfx_impl_object! { EmulatedHeap: dyn heap::Heap, dyn crate::Debug }
+zangfx_impl_object! { GlobalHeap: dyn heap::Heap, dyn crate::Debug }
 
-unsafe impl Send for EmulatedHeap {}
-unsafe impl Sync for EmulatedHeap {}
+unsafe impl Send for GlobalHeap {}
+unsafe impl Sync for GlobalHeap {}
 
-impl EmulatedHeap {
+impl GlobalHeap {
     pub unsafe fn new(metal_device: metal::MTLDevice, storage_mode: metal::MTLStorageMode) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             storage_mode,
-            pool: Mutex::new(IterablePool::new()),
-        }
-    }
-
-    pub(crate) fn for_each_metal_resources<T>(&self, cb: &mut T)
-    where
-        T: FnMut(metal::MTLResource),
-    {
-        for &metal_resource in self.pool.lock().iter() {
-            cb(metal_resource);
         }
     }
 }
 
-impl heap::Heap for EmulatedHeap {
+impl heap::Heap for GlobalHeap {
     fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
         match obj {
             base::ResourceRef::Buffer(buffer) => {
@@ -291,48 +251,23 @@ impl heap::Heap for EmulatedHeap {
                         self.metal_device.new_buffer(size, options)
                     })?;
 
-                Ok(if let Some(metal_buffer) = metal_buffer_or_none {
-                    // If the allocation was successful, then return
-                    // a `HeapAlloc` for the allocated buffer
-                    let contents_ptr = metal_buffer.contents() as *mut u8;
-                    let pool_ptr = self.pool.lock().allocate(*metal_buffer);
-
-                    let heap_alloc = EmulatedHeapAlloc {
-                        contents_ptr,
-                        pool_ptr,
-                    };
-
-                    unimplemented!()
-                // base::HeapAlloc::new(heap_alloc)
-                } else {
-                    false
-                })
+                Ok(metal_buffer_or_none.is_some())
             }
 
-            base::ResourceRef::Image(_image) => {
-                panic!("images cannot be bound to host-visible memory");
+            base::ResourceRef::Image(image) => {
+                let metal_image_or_none = bind_image(image, self.storage_mode, |desc| {
+                    self.metal_device.new_texture(desc)
+                })?;
+
+                Ok(metal_image_or_none.is_some())
             }
         }
     }
 
     fn make_aliasable(&self, _resource: base::ResourceRef) -> Result<()> {
-        // We do not support aliasing, but the definition of `make_aliasable`
-        // does not guarantee aliasing
-        Ok(())
-    } /*
-
-    fn unbind(&self, alloc: &base::HeapAlloc) -> Result<()> {
-        let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        self.pool.lock().deallocate(my_alloc.pool_ptr).unwrap();
-
-        // We do not maintain the lifetime of `MTLResource`
+        // Global heaps do not support `make_aliasable`.
         Ok(())
     }
-
-    fn as_ptr(&self, alloc: &base::HeapAlloc) -> Result<*mut u8> {
-        let my_alloc: &EmulatedHeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        Ok(my_alloc.contents_ptr)
-    }*/
 }
 
 fn bind_buffer<T>(
