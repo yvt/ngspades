@@ -5,6 +5,7 @@
 //
 //! Implementation of `ArgPool` and `ArgTable` for Metal.
 use std::sync::Arc;
+use parking_lot::Mutex;
 use zangfx_metal_rs as metal;
 
 use zangfx_base::Result;
@@ -185,7 +186,7 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
 #[derive(Debug)]
 struct BaseArgPool<T> {
     metal_buffer: OCPtr<metal::MTLBuffer>,
-    allocator: T,
+    allocator: Mutex<T>,
 }
 
 unsafe impl<T> Send for BaseArgPool<T> {}
@@ -196,12 +197,12 @@ impl<T: Allocator> BaseArgPool<T> {
         let size = metal_buffer.length() as ArgSize;
         Self {
             metal_buffer,
-            allocator: T::new(size),
+            allocator: Mutex::new(T::new(size)),
         }
     }
 
     fn new_tables(
-        &mut self,
+        &self,
         count: usize,
         table: &arg::ArgTableSigRef,
     ) -> Result<Option<Vec<arg::ArgTableRef>>> {
@@ -210,9 +211,11 @@ impl<T: Allocator> BaseArgPool<T> {
             .expect("bad argument table signature type");
         let (size, align) = (our_sig.encoded_size(), our_sig.encoded_alignment());
 
+        let mut allocator = self.allocator.lock();
+
         let mut alloc_infos = Vec::with_capacity(count);
         for _ in 0..count {
-            if let Some(alloc_info) = self.allocator.allocate(size, align) {
+            if let Some(alloc_info) = allocator.allocate(size, align) {
                 alloc_infos.push(alloc_info);
             } else {
                 break;
@@ -222,7 +225,7 @@ impl<T: Allocator> BaseArgPool<T> {
         if alloc_infos.len() < count {
             // Allocation has failed -- rollback
             for (_, alloc) in alloc_infos {
-                self.allocator.deallocate(alloc);
+                allocator.deallocate(alloc);
             }
             return Ok(None);
         }
@@ -241,16 +244,18 @@ impl<T: Allocator> BaseArgPool<T> {
         Ok(Some(tables))
     }
 
-    fn destroy_tables(&mut self, tables: &[&arg::ArgTableRef]) -> Result<()> {
+    fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
+        let mut allocator = self.allocator.lock();
         for table in tables.iter() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
-            self.allocator.deallocate(our_table.clone().allocation);
+            allocator.deallocate(our_table.clone().allocation);
         }
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<()> {
-        self.allocator.reset();
+    fn reset(&self) -> Result<()> {
+        let mut allocator = self.allocator.lock();
+        allocator.reset();
         Ok(())
     }
 }
@@ -268,15 +273,15 @@ impl arg::ArgPool for StackArgPool {
         count: usize,
         table: &arg::ArgTableSigRef,
     ) -> Result<Option<Vec<arg::ArgTableRef>>> {
-        unimplemented!() // self.0.new_tables(count, table)
+        self.0.new_tables(count, table)
     }
 
     fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
-        unimplemented!() // self.0.destroy_tables(tables)
+        self.0.destroy_tables(tables)
     }
 
     fn reset(&self) -> Result<()> {
-        unimplemented!() // self.0.reset()
+        self.0.reset()
     }
 }
 
@@ -292,15 +297,15 @@ impl arg::ArgPool for DynamicArgPool {
         count: usize,
         table: &arg::ArgTableSigRef,
     ) -> Result<Option<Vec<arg::ArgTableRef>>> {
-        unimplemented!() // self.0.new_tables(count, table)
+        self.0.new_tables(count, table)
     }
 
     fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
-        unimplemented!() // self.0.destroy_tables(tables)
+        self.0.destroy_tables(tables)
     }
 
     fn reset(&self) -> Result<()> {
-        unimplemented!() // self.0.reset()
+        self.0.reset()
     }
 }
 
