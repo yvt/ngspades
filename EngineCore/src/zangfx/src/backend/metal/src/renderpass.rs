@@ -6,9 +6,9 @@
 use std::sync::Arc;
 use metal;
 
-use base;
-use base::{Error, ErrorKind, Result};
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base as base;
+use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use formats::translate_image_format;
 use image::Image;

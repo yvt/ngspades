@@ -7,9 +7,9 @@
 use std::sync::Arc;
 use metal;
 
-use base::{self, arg};
-use base::Result;
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, arg};
+use zangfx_base::Result;
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use utils::{nil_error, OCPtr};
 
@@ -33,7 +33,7 @@ pub(crate) struct ArgLayoutInfo {
 impl ArgLayoutInfo {
     /// Compute the `ArgLayoutInfo` for a given device.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Result<Self> {
-        use base::arg::ArgTableSigBuilder;
+        use zangfx_base::arg::ArgTableSigBuilder;
         let mut builder = super::tablesig::ArgTableSigBuilder::new(metal_device);
         builder.arg(0, arg::ArgType::StorageImage);
 
@@ -136,7 +136,7 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
     }
 
     fn reserve_arg(&mut self, count: usize, ty: arg::ArgType) -> &mut arg::ArgPoolBuilder {
-        use base::arg::ArgType::*;
+        use zangfx_base::arg::ArgType::*;
         self.size += match ty {
             StorageImage | SampledImage => self.layout.texture_size,
             Sampler => self.layout.sampler_size,

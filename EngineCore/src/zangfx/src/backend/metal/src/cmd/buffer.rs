@@ -10,9 +10,9 @@ use std::mem::replace;
 use parking_lot::Mutex;
 use metal::{MTLCommandBuffer, MTLCommandQueue};
 
-use base::{self, command};
-use base::{Error, ErrorKind, Result};
-use base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{self as base, command};
+use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use utils::{nil_error, OCPtr};
 use renderpass::RenderTargetTable;
 

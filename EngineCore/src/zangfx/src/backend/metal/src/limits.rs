@@ -6,9 +6,9 @@
 use std::u32;
 use ngsenumflags::flags;
 
-use {base, metal};
-use base::limits;
-use base::{zangfx_impl_object, interfaces, vtable_for};
+use metal;
+use zangfx_base::{self as base, limits};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
 use MEMORY_REGION_GLOBAL;
 
@@ -115,10 +115,10 @@ impl limits::DeviceCaps for DeviceCaps {
         format: base::formats::ImageFormat,
     ) -> limits::ImageFormatCapsFlags {
         use formats::translate_image_format;
-        use base::formats::ImageFormat;
-        use base::formats::Signedness::*;
-        use base::formats::Normalizedness::*;
-        use base::limits::ImageFormatCaps::*;
+        use zangfx_base::formats::ImageFormat;
+        use zangfx_base::formats::Signedness::*;
+        use zangfx_base::formats::Normalizedness::*;
+        use zangfx_base::limits::ImageFormatCaps::*;
 
         let trans = CopyRead | CopyWrite;
         let all = Sampled | SampledFilterLinear | Storage | Render | RenderBlend | trans; // + MSAA w/Resolve

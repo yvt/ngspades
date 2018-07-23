@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::fmt;
 use ngsenumflags::flags;
 use metal::{self, id, MTLDevice, NSObjectProtocol};
-use base;
+use zangfx_base as base;
 
 /// Smart pointer for Objective-C objects.
 #[derive(Debug, PartialEq, Eq, Hash)]

@@ -5,9 +5,9 @@
 //
 use std::ops::Range;
 use metal::MTLRenderCommandEncoder;
-use base::{self, command, heap, StageFlags};
-use base::{zangfx_impl_object, interfaces, vtable_for};
-use common::Rect2D;
+use zangfx_base::{self as base, command, heap, StageFlags};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_common::Rect2D;
 
 use utils::{translate_render_stage, OCPtr};
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};

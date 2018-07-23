@@ -11,9 +11,9 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use arrayvec::ArrayVec;
 
-use base::{self, arg, device, shader, ArgArrayIndex, ArgIndex};
-use base::Result;
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, arg, device, shader, ArgArrayIndex, ArgIndex};
+use zangfx_base::Result;
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use arg::ArgSize;
 use utils::{nil_error, OCPtr};
@@ -57,7 +57,7 @@ impl ArgTableSigBuilder {
     /// argument buffer. Not optimized because the intention is that
     /// `ArgLayoutInfo` is computed only once for each `Device` created.
     pub(super) fn encoded_size(&mut self) -> Result<ArgSize> {
-        use base::arg::ArgTableSigBuilder;
+        use zangfx_base::arg::ArgTableSigBuilder;
         let gfx_sig = self.build()?;
         let sig: &ArgTableSig = gfx_sig.downcast_ref().unwrap();
         let size = sig.encoded_size();
@@ -98,7 +98,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
                 metal_desc.set_index(current_index as _);
                 metal_desc.set_array_length(arg_sig_builder.len as _);
 
-                use base::arg::ArgType::*;
+                use zangfx_base::arg::ArgType::*;
                 match arg_sig_builder.ty {
                     StorageImage | SampledImage => {
                         metal_desc.set_data_type(metal::MTLDataType::Texture);
@@ -258,7 +258,7 @@ impl ArgTableSig {
         &self,
         updates: &[((&arg::ArgPoolRef, &arg::ArgTableRef), &[device::ArgUpdateSet])],
     ) -> Result<()> {
-        use base::ArgSlice::*;
+        use zangfx_base::ArgSlice::*;
         use arg::table::ArgTable;
         use buffer::Buffer;
         use image::Image;

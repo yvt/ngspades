@@ -7,11 +7,11 @@ use std::sync::Arc;
 use std::ops::Range;
 use metal;
 
-use base;
-use base::StaticOrDynamic::*;
-use base::{Error, ErrorKind, Result};
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
-use common::BinaryInteger;
+use zangfx_base as base;
+use zangfx_base::StaticOrDynamic::*;
+use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_common::BinaryInteger;
 use arg::table::ArgTable;
 use arg::rootsig::RootSig;
 use buffer::Buffer;

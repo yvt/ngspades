@@ -5,8 +5,8 @@
 //
 //! Implementation of `Image` for Metal.
 use std::ops;
-use base::{self, Error, ErrorKind, Result};
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, Error, ErrorKind, Result};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
 use cocoa::foundation::NSRange;
 use ngsenumflags::flags;

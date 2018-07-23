@@ -6,9 +6,9 @@
 use std::sync::Arc;
 use metal;
 
-use base::{self, pipeline, shader};
-use base::{Error, ErrorKind, Result};
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, pipeline, shader};
+use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use arg::rootsig::RootSig;
 use shader::Library;
 

@@ -62,8 +62,8 @@ extern crate rspirv;
 extern crate spirv_headers;
 extern crate tokenlock;
 extern crate xalloc;
-extern crate zangfx_base as base;
-extern crate zangfx_common as common;
+extern crate zangfx_base;
+extern crate zangfx_common;
 pub extern crate zangfx_metal_rs as metal;
 extern crate zangfx_spirv_cross as spirv_cross;
 
@@ -84,19 +84,19 @@ mod utils;
 
 use std::fmt::Debug;
 
-pub const MEMORY_REGION_GLOBAL: base::MemoryRegionIndex = 0;
+pub const MEMORY_REGION_GLOBAL: zangfx_base::MemoryRegionIndex = 0;
 
-pub const MEMORY_TYPE_PRIVATE: base::MemoryType = 0;
-pub const MEMORY_TYPE_SHARED: base::MemoryType = 1;
+pub const MEMORY_TYPE_PRIVATE: zangfx_base::MemoryType = 0;
+pub const MEMORY_TYPE_SHARED: zangfx_base::MemoryType = 1;
 
 pub const MEMORY_TYPE_ALL_BITS: u32 = 0b11;
 
-pub const QUEUE_FAMILY_UNIVERSAL: base::QueueFamily = 0;
+pub const QUEUE_FAMILY_UNIVERSAL: zangfx_base::QueueFamily = 0;
 
 pub const MAX_NUM_VERTEX_BUFFERS: usize = 16;
 
 /// The memory alignment requirement for uniform buffers.
-pub const UNIFORM_BUFFER_MIN_ALIGN: base::DeviceSize = 256;
+pub const UNIFORM_BUFFER_MIN_ALIGN: zangfx_base::DeviceSize = 256;
 
 /// The memory alignment requirement for storage buffers.
-pub const STORAGE_BUFFER_MIN_ALIGN: base::DeviceSize = 16;
+pub const STORAGE_BUFFER_MIN_ALIGN: zangfx_base::DeviceSize = 16;

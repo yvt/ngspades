@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use base::formats::{ImageFormat, Normalizedness, ScalarFormat, Signedness, VecWidth, VertexFormat};
+use zangfx_base::formats::{ImageFormat, Normalizedness, ScalarFormat, Signedness, VecWidth, VertexFormat};
 use self::Signedness::{Signed, Unsigned};
 use self::Normalizedness::{Normalized, Unnormalized};
 use self::VecWidth::{Scalar, Vector2, Vector3, Vector4};

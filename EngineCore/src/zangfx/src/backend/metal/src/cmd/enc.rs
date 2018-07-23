@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use metal;
-use base::{self, command, heap};
+use zangfx_base::{self as base, command, heap};
 use arrayvec::ArrayVec;
 use std::collections::HashSet;
 

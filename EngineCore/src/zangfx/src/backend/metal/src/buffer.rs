@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Buffer` for Metal.
-use base::{self, resources, DeviceSize};
-use base::Result;
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, resources, DeviceSize};
+use zangfx_base::Result;
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
 
 use utils::OCPtr;

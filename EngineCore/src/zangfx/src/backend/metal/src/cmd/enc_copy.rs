@@ -7,9 +7,9 @@ use std::ops::Range;
 use metal::{self, MTLBlitCommandEncoder};
 use cocoa::foundation::NSRange;
 
-use base::{self, DeviceSize};
-use base::{zangfx_impl_object, interfaces, vtable_for};
-use common::*;
+use zangfx_base::{self as base, DeviceSize};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_common::*;
 
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands};

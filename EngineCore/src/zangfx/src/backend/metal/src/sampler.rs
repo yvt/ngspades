@@ -5,9 +5,9 @@
 //
 //! Implementation of `Sampler` for Metal.
 use std::ops::Range;
-use base::{self, sampler, CmpFn};
-use base::Result;
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{self as base, sampler, CmpFn};
+use zangfx_base::Result;
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
 use metal::NSObjectProtocol;
 
@@ -75,7 +75,7 @@ impl sampler::SamplerBuilder for SamplerBuilder {
     }
 
     fn address_mode(&mut self, v: &[sampler::AddressMode]) -> &mut sampler::SamplerBuilder {
-        use common::IntoWithPad;
+        use zangfx_common::IntoWithPad;
         self.address_mode = v.into_with_pad(v.last().cloned().unwrap_or(sampler::AddressMode::Repeat));
         self
     }

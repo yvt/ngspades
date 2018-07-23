@@ -6,9 +6,9 @@
 //! Implementation of `RootSig` for Metal.
 use std::sync::Arc;
 
-use base::{arg, ArgTableIndex};
-use base::Result;
-use base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
+use zangfx_base::{arg, ArgTableIndex};
+use zangfx_base::Result;
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use super::tablesig::ArgTableSig;
 use spirv_cross::{ExecutionModel, SpirV2Msl};

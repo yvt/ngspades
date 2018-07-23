@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use metal::{MTLComputeCommandEncoder, MTLSize};
-use base::{self, command, heap, ArgTableIndex, DeviceSize};
-use base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{self as base, command, heap, ArgTableIndex, DeviceSize};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
 use utils::OCPtr;
 use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};

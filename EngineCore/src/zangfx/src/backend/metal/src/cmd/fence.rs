@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Fence` for Metal.
-use base::{self, Result};
-use base::zangfx_impl_handle;
+use zangfx_base::{self as base, Result};
+use zangfx_base::zangfx_impl_handle;
 use tokenlock::{TokenLock, TokenRef};
 use metal::{MTLDevice, MTLFence};
 use refeq::RefEqArc;

@@ -11,8 +11,8 @@ use tokenlock::{Token, TokenRef};
 use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
 
-use base::{self, command, QueueFamily, Result};
-use base::{zangfx_impl_object, interfaces, vtable_for};
+use zangfx_base::{self as base, command, QueueFamily, Result};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use utils::{nil_error, OCPtr};
 
 use super::enc::CmdBufferFenceSet;

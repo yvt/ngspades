@@ -4,10 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Metal.
-use {base, metal};
-use base::device;
-use base::Result;
-use base::{zangfx_impl_object, interfaces, vtable_for};
+use metal;
+use zangfx_base::{self as base, device, Result};
+use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
 use utils::{get_memory_req, OCPtr};
 use limits::DeviceCaps;
