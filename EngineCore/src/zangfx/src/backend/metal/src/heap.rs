@@ -177,17 +177,7 @@ impl heap::Heap for Heap {
                         self.metal_heap.new_buffer(size, options)
                     })?;
 
-                Ok(if let Some(metal_buffer) = metal_buffer_or_none {
-                    // If the allocation was successful, then return
-                    // a `HeapAlloc` for the allocated buffer
-                    let resource = *metal_buffer;
-                    let heap_alloc = HeapAlloc { resource };
-
-                    unimplemented!()
-                // base::HeapAlloc::new(heap_alloc)
-                } else {
-                    false
-                })
+                Ok(metal_buffer_or_none.is_some())
             }
 
             base::ResourceRef::Image(image) => {
@@ -195,26 +185,29 @@ impl heap::Heap for Heap {
                     self.metal_heap.new_texture(desc)
                 })?;
 
-                Ok(if let Some(metal_texture) = metal_texture_or_none {
-                    // If the allocation was successful, then return
-                    // a `HeapAlloc` for the allocated image
-                    let resource = *metal_texture;
-                    let heap_alloc = HeapAlloc { resource };
-
-                    unimplemented!()
-                // base::HeapAlloc::new(heap_alloc)
-                } else {
-                    false
-                })
+                Ok(metal_texture_or_none.is_some())
             }
         }
     }
 
     fn make_aliasable(&self, obj: base::ResourceRef) -> Result<()> {
-        unimplemented!()
-        /* let my_alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        my_alloc.resource.make_aliasable();
-        Ok(()) */
+        match obj {
+            base::ResourceRef::Buffer(buffer) => {
+                let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+                my_buffer
+                    .metal_buffer_and_offset()
+                    .expect("not bound")
+                    .0
+                    .make_aliasable();
+            }
+            base::ResourceRef::Image(image) => {
+                let my_image: &Image = image.downcast_ref().expect("bad image type");
+                my_image
+                    .metal_texture()
+                    .make_aliasable();
+            }
+        }
+        Ok(())
     }
 }
 
