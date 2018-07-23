@@ -8,12 +8,12 @@ use std::sync::Arc;
 use std::collections::HashSet;
 use parking_lot::Mutex;
 use tokenlock::{Token, TokenRef};
-use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
+use crate::metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
 
 use zangfx_base::{self as base, command, QueueFamily, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
-use utils::{nil_error, OCPtr};
+use crate::utils::{nil_error, OCPtr};
 
 use super::enc::CmdBufferFenceSet;
 use super::buffer::CmdBuffer;
@@ -26,7 +26,7 @@ pub struct CmdQueueBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, crate::Debug, base::SetLabel }
 
 unsafe impl Send for CmdQueueBuilder {}
 unsafe impl Sync for CmdQueueBuilder {}
@@ -76,7 +76,7 @@ pub struct CmdQueue {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdQueue: command::CmdQueue, ::Debug }
+zangfx_impl_object! { CmdQueue: command::CmdQueue, crate::Debug }
 
 unsafe impl Send for CmdQueue {}
 unsafe impl Sync for CmdQueue {}

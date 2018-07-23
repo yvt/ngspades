@@ -4,15 +4,15 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use metal::MTLRenderCommandEncoder;
+use crate::metal::MTLRenderCommandEncoder;
 use zangfx_base::{self as base, command, heap};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use zangfx_common::Rect2D;
 
-use utils::{translate_render_stage, OCPtr};
-use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
-use cmd::fence::Fence;
-use renderpipeline::RenderStateManager;
+use crate::utils::{translate_render_stage, OCPtr};
+use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
+use crate::cmd::fence::Fence;
+use crate::renderpipeline::RenderStateManager;
 
 #[derive(Debug)]
 pub struct RenderEncoder {
@@ -22,7 +22,7 @@ pub struct RenderEncoder {
 }
 
 zangfx_impl_object! { RenderEncoder:
-command::CmdEncoder, command::RenderCmdEncoder, ::Debug }
+command::CmdEncoder, command::RenderCmdEncoder, crate::Debug }
 
 unsafe impl Send for RenderEncoder {}
 unsafe impl Sync for RenderEncoder {}

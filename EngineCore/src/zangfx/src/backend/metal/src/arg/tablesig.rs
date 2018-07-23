@@ -15,9 +15,9 @@ use zangfx_base::{self as base, arg, device, shader, ArgArrayIndex, ArgIndex};
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
-use arg::ArgSize;
-use utils::{nil_error, OCPtr};
-use spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl};
+use crate::arg::ArgSize;
+use crate::utils::{nil_error, OCPtr};
+use crate::spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl};
 
 /// Implementation of `ArgTableSigBuilder` for Metal.
 #[derive(Debug)]
@@ -28,7 +28,7 @@ pub struct ArgTableSigBuilder {
     args: Vec<Option<ArgSigBuilder>>,
 }
 
-zangfx_impl_object! { ArgTableSigBuilder: arg::ArgTableSigBuilder, ::Debug }
+zangfx_impl_object! { ArgTableSigBuilder: arg::ArgTableSigBuilder, crate::Debug }
 
 unsafe impl Send for ArgTableSigBuilder {}
 unsafe impl Sync for ArgTableSigBuilder {}
@@ -40,7 +40,7 @@ struct ArgSigBuilder {
     image_aspect: base::ImageAspect,
 }
 
-zangfx_impl_object! { ArgSigBuilder: arg::ArgSig, ::Debug }
+zangfx_impl_object! { ArgSigBuilder: arg::ArgSig, crate::Debug }
 
 impl ArgTableSigBuilder {
     /// Construct an `ArgTableSigBuilder`.
@@ -259,10 +259,10 @@ impl ArgTableSig {
         updates: &[((&arg::ArgPoolRef, &arg::ArgTableRef), &[device::ArgUpdateSet])],
     ) -> Result<()> {
         use zangfx_base::ArgSlice::*;
-        use arg::table::ArgTable;
-        use buffer::Buffer;
-        use image::Image;
-        use sampler::Sampler;
+        use crate::arg::table::ArgTable;
+        use crate::buffer::Buffer;
+        use crate::image::Image;
+        use crate::sampler::Sampler;
 
         self.lock_encoder(|encoder| {
             for &((_pool, table), update_sets) in updates.iter() {

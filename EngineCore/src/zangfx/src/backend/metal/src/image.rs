@@ -11,8 +11,8 @@ use metal;
 use cocoa::foundation::NSRange;
 use ngsenumflags::flags;
 
-use utils::{nil_error, OCPtr};
-use formats::{translate_image_format, translate_metal_pixel_format};
+use crate::utils::{nil_error, OCPtr};
+use crate::formats::{translate_image_format, translate_metal_pixel_format};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImageSubRange {
@@ -39,7 +39,7 @@ enum ImageExtents {
     Cube(u32),
 }
 
-zangfx_impl_object! { ImageBuilder: base::ImageBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { ImageBuilder: base::ImageBuilder, crate::Debug, base::SetLabel }
 
 impl ImageBuilder {
     /// Construct a `ImageBuilder`.
@@ -111,7 +111,7 @@ impl base::ImageBuilder for ImageBuilder {
         let metal_desc =
             unsafe { OCPtr::from_raw(metal::MTLTextureDescriptor::alloc().init()).unwrap() };
 
-        use metal::MTLTextureType::*;
+        use crate::metal::MTLTextureType::*;
         let (ty, dims) = match (extents, self.num_layers) {
             (ImageExtents::OneD(x), None) => (D1, [x, 1, 1]),
             (ImageExtents::OneD(x), Some(_)) => (D1Array, [x, 1, 1]),
@@ -269,7 +269,7 @@ impl Image {
         base::MemoryReq {
             size: metal_req.size,
             align: metal_req.align,
-            memory_types: 1 << ::MEMORY_TYPE_PRIVATE,
+            memory_types: 1 << crate::MEMORY_TYPE_PRIVATE,
         }
     }
 
@@ -312,7 +312,7 @@ pub struct ImageViewBuilder {
     image_type: Option<base::ImageType>,
 }
 
-zangfx_impl_object! { ImageViewBuilder: base::ImageViewBuilder, ::Debug }
+zangfx_impl_object! { ImageViewBuilder: base::ImageViewBuilder, crate::Debug }
 
 impl ImageViewBuilder {
     /// Construct a `ImageBuilder`.
@@ -361,7 +361,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             .map(|x| translate_image_format(x).expect("Unsupported image format"))
             .unwrap_or_else(|| metal_texture.pixel_format());
 
-        use metal::MTLTextureType::*;
+        use crate::metal::MTLTextureType::*;
         let metal_ty = self.image_type
             .map(|ty| match ty {
                 base::ImageType::OneD => D1,

@@ -8,13 +8,13 @@ use std::fmt;
 use std::sync::Arc;
 use std::mem::replace;
 use parking_lot::Mutex;
-use metal::{MTLCommandBuffer, MTLCommandQueue};
+use crate::metal::{MTLCommandBuffer, MTLCommandQueue};
 
 use zangfx_base::{self as base, command};
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
-use utils::{nil_error, OCPtr};
-use renderpass::RenderTargetTable;
+use crate::utils::{nil_error, OCPtr};
+use crate::renderpass::RenderTargetTable;
 
 use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::CmdBufferFenceSet;
@@ -32,7 +32,7 @@ pub struct CmdBuffer {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdBuffer: command::CmdBuffer, ::Debug, base::SetLabel }
+zangfx_impl_object! { CmdBuffer: command::CmdBuffer, crate::Debug, base::SetLabel }
 
 #[derive(Debug)]
 struct UncommitedBuffer {

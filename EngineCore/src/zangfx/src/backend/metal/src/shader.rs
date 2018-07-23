@@ -10,14 +10,14 @@ use std::fmt;
 use metal;
 use rspirv::mr;
 use spirv_headers;
-use spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
+use crate::spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
 use zangfx_base::{self as base, shader};
 use zangfx_base::{Error, ErrorKind, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
-use arg::rootsig::RootSig;
-use utils::{nil_error, OCPtr};
+use crate::arg::rootsig::RootSig;
+use crate::utils::{nil_error, OCPtr};
 
 // TODO: recycle fences after use
 
@@ -28,7 +28,7 @@ pub struct LibraryBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, crate::Debug, base::SetLabel }
 
 impl LibraryBuilder {
     pub fn new() -> Self {

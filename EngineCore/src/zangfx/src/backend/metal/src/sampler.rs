@@ -9,9 +9,9 @@ use zangfx_base::{self as base, sampler, CmpFn};
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
-use metal::NSObjectProtocol;
+use crate::metal::NSObjectProtocol;
 
-use utils::{nil_error, translate_cmp_fn, OCPtr};
+use crate::utils::{nil_error, translate_cmp_fn, OCPtr};
 
 /// Implementation of `SamplerBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -31,7 +31,7 @@ pub struct SamplerBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, crate::Debug, base::SetLabel }
 
 unsafe impl Send for SamplerBuilder {}
 unsafe impl Sync for SamplerBuilder {}

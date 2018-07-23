@@ -10,7 +10,7 @@ use super::ArgSize;
 
 pub type Allocation = Option<SysTlsfRegion>;
 
-pub trait Allocator: ::Debug + Send + Sync + Sized {
+pub trait Allocator: crate::Debug + Send + Sync + Sized {
     fn new(size: ArgSize) -> Self;
     fn allocate(&mut self, size: ArgSize, align: ArgSize) -> Option<(ArgSize, Allocation)>;
     fn deallocate(&mut self, p: Allocation);

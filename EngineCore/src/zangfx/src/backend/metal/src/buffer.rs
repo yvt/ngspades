@@ -9,7 +9,7 @@ use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use metal;
 
-use utils::OCPtr;
+use crate::utils::OCPtr;
 
 /// Implementation of `BufferBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct BufferBuilder {
     usage: base::BufferUsageFlags,
 }
 
-zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { BufferBuilder: resources::BufferBuilder, crate::Debug, base::SetLabel }
 
 impl BufferBuilder {
     /// Construct a `BufferBuilder`.
@@ -161,16 +161,16 @@ impl Buffer {
         use std::cmp::max;
         let usage = unsafe { self.data() }.usage;
         if usage.contains(base::BufferUsage::Storage) {
-            metal_req.align = max(metal_req.align, ::STORAGE_BUFFER_MIN_ALIGN);
+            metal_req.align = max(metal_req.align, crate::STORAGE_BUFFER_MIN_ALIGN);
         }
         if usage.contains(base::BufferUsage::Uniform) {
-            metal_req.align = max(metal_req.align, ::UNIFORM_BUFFER_MIN_ALIGN);
+            metal_req.align = max(metal_req.align, crate::UNIFORM_BUFFER_MIN_ALIGN);
         }
 
         resources::MemoryReq {
             size: metal_req.size,
             align: metal_req.align,
-            memory_types: ::MEMORY_TYPE_ALL_BITS,
+            memory_types: crate::MEMORY_TYPE_ALL_BITS,
         }
     }
 

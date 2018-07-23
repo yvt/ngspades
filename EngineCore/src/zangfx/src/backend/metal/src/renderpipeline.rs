@@ -12,14 +12,14 @@ use zangfx_base::StaticOrDynamic::*;
 use zangfx_base::{Error, ErrorKind, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 use zangfx_common::BinaryInteger;
-use arg::table::ArgTable;
-use arg::rootsig::RootSig;
-use buffer::Buffer;
-use shader::{Library, ShaderVertexAttrInfo};
-use renderpass::RenderPass;
-use formats::translate_vertex_format;
+use crate::arg::table::ArgTable;
+use crate::arg::rootsig::RootSig;
+use crate::buffer::Buffer;
+use crate::shader::{Library, ShaderVertexAttrInfo};
+use crate::renderpass::RenderPass;
+use crate::formats::translate_vertex_format;
 
-use utils::{clip_scissor_rect, nil_error, translate_cmp_fn, translate_scissor_rect,
+use crate::utils::{clip_scissor_rect, nil_error, translate_cmp_fn, translate_scissor_rect,
             translate_viewport, OCPtr};
 
 /// Implementation of `RenderPipelineBuilder` for Metal.
@@ -41,7 +41,7 @@ pub struct RenderPipelineBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { RenderPipelineBuilder: base::RenderPipelineBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { RenderPipelineBuilder: base::RenderPipelineBuilder, crate::Debug, base::SetLabel }
 
 unsafe impl Send for RenderPipelineBuilder {}
 unsafe impl Sync for RenderPipelineBuilder {}
@@ -115,7 +115,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         stride: base::DeviceSize,
     ) -> &mut base::VertexBufferBinding {
         assert!(
-            index < ::MAX_NUM_VERTEX_BUFFERS,
+            index < crate::MAX_NUM_VERTEX_BUFFERS,
             "index exceeds implementation limit"
         );
         if self.vertex_buffers.len() <= index {
@@ -317,7 +317,7 @@ struct VertexBufferBinding {
     stride: base::DeviceSize,
 }
 
-zangfx_impl_object! { VertexBufferBinding: base::VertexBufferBinding, ::Debug }
+zangfx_impl_object! { VertexBufferBinding: base::VertexBufferBinding, crate::Debug }
 
 impl VertexBufferBinding {
     fn new(stride: base::DeviceSize) -> Self {
@@ -389,7 +389,7 @@ struct Rasterizer {
     color_targets: Vec<RasterizerColorTarget>,
 }
 
-zangfx_impl_object! { Rasterizer: base::Rasterizer, ::Debug }
+zangfx_impl_object! { Rasterizer: base::Rasterizer, crate::Debug }
 
 /// A part of rasterizer states that must be set via render commands when the
 /// pipeline is bound.
@@ -635,7 +635,7 @@ struct RasterizerColorTarget {
     rgb_op: metal::MTLBlendOperation,
 }
 
-zangfx_impl_object! { RasterizerColorTarget: base::RasterizerColorTarget, ::Debug }
+zangfx_impl_object! { RasterizerColorTarget: base::RasterizerColorTarget, crate::Debug }
 
 impl RasterizerColorTarget {
     fn new() -> Self {
@@ -881,8 +881,8 @@ pub(crate) struct RenderStateManager {
     index_format: metal::MTLIndexType,
 
     vb_start_index: u32,
-    vb_buffers: [metal::MTLBuffer; ::MAX_NUM_VERTEX_BUFFERS],
-    vb_offsets: [base::DeviceSize; ::MAX_NUM_VERTEX_BUFFERS],
+    vb_buffers: [metal::MTLBuffer; crate::MAX_NUM_VERTEX_BUFFERS],
+    vb_offsets: [base::DeviceSize; crate::MAX_NUM_VERTEX_BUFFERS],
     vb_dirty: u32,
     vb_used: u32,
 }
@@ -917,8 +917,8 @@ impl RenderStateManager {
             index_format: metal::MTLIndexType::UInt16,
 
             vb_start_index: 0,
-            vb_buffers: [metal::MTLBuffer::nil(); ::MAX_NUM_VERTEX_BUFFERS],
-            vb_offsets: [0; ::MAX_NUM_VERTEX_BUFFERS],
+            vb_buffers: [metal::MTLBuffer::nil(); crate::MAX_NUM_VERTEX_BUFFERS],
+            vb_offsets: [0; crate::MAX_NUM_VERTEX_BUFFERS],
             vb_dirty: !0u32,
             vb_used: 0,
         }

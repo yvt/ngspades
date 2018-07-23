@@ -10,9 +10,9 @@ use zangfx_base as base;
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
-use formats::translate_image_format;
-use image::Image;
-use utils::{nil_error, OCPtr};
+use crate::formats::translate_image_format;
+use crate::image::Image;
+use crate::utils::{nil_error, OCPtr};
 
 /// Implementation of `RenderPassBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ pub struct RenderPassBuilder {
     subpass_ds_target: Option<usize>,
 }
 
-zangfx_impl_object! { RenderPassBuilder: base::RenderPassBuilder, ::Debug }
+zangfx_impl_object! { RenderPassBuilder: base::RenderPassBuilder, crate::Debug }
 
 impl RenderPassBuilder {
     /// Construct a `RenderPassBuilder`.
@@ -154,7 +154,7 @@ struct RenderPassTargetBuilder {
     stencil_store_op: base::StoreOp,
 }
 
-zangfx_impl_object! { RenderPassTargetBuilder: base::RenderPassTarget, ::Debug }
+zangfx_impl_object! { RenderPassTargetBuilder: base::RenderPassTarget, crate::Debug }
 
 unsafe impl Send for RenderPassTargetBuilder {}
 unsafe impl Sync for RenderPassTargetBuilder {}
@@ -267,7 +267,7 @@ pub struct RenderTargetTableBuilder {
     targets: Vec<Option<Target>>,
 }
 
-zangfx_impl_object! { RenderTargetTableBuilder: base::RenderTargetTableBuilder, ::Debug }
+zangfx_impl_object! { RenderTargetTableBuilder: base::RenderTargetTableBuilder, crate::Debug }
 
 unsafe impl Send for RenderTargetTableBuilder {}
 unsafe impl Sync for RenderTargetTableBuilder {}
@@ -283,7 +283,7 @@ struct Target {
     clear_stencil: u32,
 }
 
-zangfx_impl_object! { Target: base::RenderTarget, ::Debug }
+zangfx_impl_object! { Target: base::RenderTarget, crate::Debug }
 
 impl RenderTargetTableBuilder {
     /// Construct a `RenderTargetTableBuilder`.

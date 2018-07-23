@@ -9,10 +9,10 @@ use metal;
 use zangfx_base::{self as base, pipeline, shader};
 use zangfx_base::{Error, ErrorKind, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
-use arg::rootsig::RootSig;
-use shader::Library;
+use crate::arg::rootsig::RootSig;
+use crate::shader::Library;
 
-use utils::{nil_error, OCPtr};
+use crate::utils::{nil_error, OCPtr};
 
 /// Implementation of `ComputePipelineBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ pub struct ComputePipelineBuilder {
 }
 
 zangfx_impl_object! { ComputePipelineBuilder:
-pipeline::ComputePipelineBuilder, ::Debug, base::SetLabel }
+pipeline::ComputePipelineBuilder, crate::Debug, base::SetLabel }
 
 unsafe impl Send for ComputePipelineBuilder {}
 unsafe impl Sync for ComputePipelineBuilder {}

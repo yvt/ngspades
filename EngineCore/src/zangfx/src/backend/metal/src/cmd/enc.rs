@@ -8,10 +8,10 @@ use zangfx_base::{self as base, command, heap};
 use arrayvec::ArrayVec;
 use std::collections::HashSet;
 
-use cmd::fence::Fence;
-use buffer::Buffer;
-use image::Image;
-use heap::{BufferHeap, EmulatedHeap, Heap};
+use crate::cmd::fence::Fence;
+use crate::buffer::Buffer;
+use crate::image::Image;
+use crate::heap::{BufferHeap, EmulatedHeap, Heap};
 
 #[derive(Debug, Default)]
 pub struct CmdBufferFenceSet {
@@ -91,7 +91,7 @@ pub trait UseResources {
     }
 
     fn use_gfx_heap(&self, heaps: &[&heap::HeapRef]) {
-        use metal::MTLResourceUsage::Read;
+        use crate::metal::MTLResourceUsage::Read;
         let mut metal_heaps = ArrayVec::<[_; 256]>::new();
         let mut metal_resources = ArrayVec::<[_; 256]>::new();
 

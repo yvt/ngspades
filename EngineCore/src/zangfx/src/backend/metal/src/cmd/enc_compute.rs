@@ -3,16 +3,16 @@
 //
 // This source code is a part of Nightingales.
 //
-use metal::{MTLComputeCommandEncoder, MTLSize};
+use crate::metal::{MTLComputeCommandEncoder, MTLSize};
 use zangfx_base::{self as base, command, heap, ArgTableIndex, DeviceSize};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
-use utils::OCPtr;
-use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
-use cmd::fence::Fence;
-use arg::table::ArgTable;
-use computepipeline::ComputePipeline;
-use buffer::Buffer;
+use crate::utils::OCPtr;
+use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
+use crate::cmd::fence::Fence;
+use crate::arg::table::ArgTable;
+use crate::computepipeline::ComputePipeline;
+use crate::buffer::Buffer;
 
 #[derive(Debug)]
 pub struct ComputeEncoder {
@@ -22,7 +22,7 @@ pub struct ComputeEncoder {
 }
 
 zangfx_impl_object! { ComputeEncoder:
-command::CmdEncoder, command::ComputeCmdEncoder, ::Debug }
+command::CmdEncoder, command::ComputeCmdEncoder, crate::Debug }
 
 unsafe impl Send for ComputeEncoder {}
 unsafe impl Sync for ComputeEncoder {}

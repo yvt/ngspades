@@ -11,7 +11,7 @@ use zangfx_base::{self as base, arg};
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
-use utils::{nil_error, OCPtr};
+use crate::utils::{nil_error, OCPtr};
 
 use super::ArgSize;
 use super::tablesig::ArgTableSig;
@@ -81,7 +81,7 @@ pub struct ArgPoolBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { ArgPoolBuilder: arg::ArgPoolBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { ArgPoolBuilder: arg::ArgPoolBuilder, crate::Debug, base::SetLabel }
 
 unsafe impl Send for ArgPoolBuilder {}
 unsafe impl Sync for ArgPoolBuilder {}
@@ -260,7 +260,7 @@ impl<T: Allocator> BaseArgPool<T> {
 #[derive(Debug)]
 pub struct StackArgPool(BaseArgPool<StackAllocator>);
 
-zangfx_impl_object! { StackArgPool: arg::ArgPool, ::Debug }
+zangfx_impl_object! { StackArgPool: arg::ArgPool, crate::Debug }
 
 impl arg::ArgPool for StackArgPool {
     fn new_tables(
@@ -284,7 +284,7 @@ impl arg::ArgPool for StackArgPool {
 #[derive(Debug)]
 pub struct DynamicArgPool(BaseArgPool<TlsfAllocator>);
 
-zangfx_impl_object! { DynamicArgPool: arg::ArgPool, ::Debug }
+zangfx_impl_object! { DynamicArgPool: arg::ArgPool, crate::Debug }
 
 impl arg::ArgPool for DynamicArgPool {
     fn new_tables(
@@ -308,7 +308,7 @@ impl arg::ArgPool for DynamicArgPool {
 #[derive(Debug)]
 pub struct ZeroSizedArgPool;
 
-zangfx_impl_object! { ZeroSizedArgPool: arg::ArgPool, ::Debug }
+zangfx_impl_object! { ZeroSizedArgPool: arg::ArgPool, crate::Debug }
 
 impl arg::ArgPool for ZeroSizedArgPool {
     fn new_tables(

@@ -11,7 +11,7 @@ use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for, zangfx_impl_handle};
 
 use super::tablesig::ArgTableSig;
-use spirv_cross::{ExecutionModel, SpirV2Msl};
+use crate::spirv_cross::{ExecutionModel, SpirV2Msl};
 
 /// Implementation of `RootSigBuilder` for Metal.
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub struct RootSigBuilder {
     tables: Vec<Option<ArgTableSig>>,
 }
 
-zangfx_impl_object! { RootSigBuilder: arg::RootSigBuilder, ::Debug }
+zangfx_impl_object! { RootSigBuilder: arg::RootSigBuilder, crate::Debug }
 
 impl RootSigBuilder {
     /// Construct an `RootSigBuilder`.

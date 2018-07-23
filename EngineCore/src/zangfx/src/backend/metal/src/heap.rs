@@ -14,9 +14,9 @@ use zangfx_base::{self as base, heap, DeviceSize, MemoryType};
 use zangfx_base::Result;
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
-use utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
-use buffer::Buffer;
-use image::Image;
+use crate::utils::{get_memory_req, nil_error, translate_storage_mode, OCPtr};
+use crate::buffer::Buffer;
+use crate::image::Image;
 
 /// Implementation of `DynamicHeapBuilder` and `DedicatedHeapBuilder` for Metal.
 #[derive(Debug, Clone)]
@@ -30,7 +30,7 @@ pub struct HeapBuilder {
 }
 
 zangfx_impl_object! { HeapBuilder:
-heap::DynamicHeapBuilder, heap::DedicatedHeapBuilder, ::Debug, base::SetLabel }
+heap::DynamicHeapBuilder, heap::DedicatedHeapBuilder, crate::Debug, base::SetLabel }
 
 unsafe impl Send for HeapBuilder {}
 unsafe impl Sync for HeapBuilder {}
@@ -153,7 +153,7 @@ pub struct Heap {
     storage_mode: metal::MTLStorageMode,
 }
 
-zangfx_impl_object! { Heap: heap::Heap, ::Debug }
+zangfx_impl_object! { Heap: heap::Heap, crate::Debug }
 
 unsafe impl Send for Heap {}
 unsafe impl Sync for Heap {}
@@ -262,7 +262,7 @@ pub struct EmulatedHeap {
     pool: Mutex<IterablePool<metal::MTLResource>>,
 }
 
-zangfx_impl_object! { EmulatedHeap: heap::Heap, ::Debug }
+zangfx_impl_object! { EmulatedHeap: heap::Heap, crate::Debug }
 
 unsafe impl Send for EmulatedHeap {}
 unsafe impl Sync for EmulatedHeap {}
@@ -403,7 +403,7 @@ pub struct BufferHeap {
     data: Mutex<BufferHeapData>,
 }
 
-zangfx_impl_object! { BufferHeap: heap::Heap, ::Debug }
+zangfx_impl_object! { BufferHeap: heap::Heap, crate::Debug }
 
 unsafe impl Send for BufferHeap {}
 unsafe impl Sync for BufferHeap {}

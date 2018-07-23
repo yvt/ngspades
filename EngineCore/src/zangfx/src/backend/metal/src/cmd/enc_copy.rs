@@ -4,18 +4,18 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use metal::{self, MTLBlitCommandEncoder};
+use crate::metal::{self, MTLBlitCommandEncoder};
 use cocoa::foundation::NSRange;
 
 use zangfx_base::{self as base, DeviceSize};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 use zangfx_common::*;
 
-use utils::OCPtr;
-use cmd::enc::{CmdBufferFenceSet, DebugCommands};
-use cmd::fence::Fence;
-use buffer::Buffer;
-use image::Image;
+use crate::utils::OCPtr;
+use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands};
+use crate::cmd::fence::Fence;
+use crate::buffer::Buffer;
+use crate::image::Image;
 
 #[derive(Debug)]
 pub struct CopyEncoder {
@@ -24,7 +24,7 @@ pub struct CopyEncoder {
 }
 
 zangfx_impl_object! { CopyEncoder:
-base::CmdEncoder, base::CopyCmdEncoder, ::Debug }
+base::CmdEncoder, base::CopyCmdEncoder, crate::Debug }
 
 unsafe impl Send for CopyEncoder {}
 unsafe impl Sync for CopyEncoder {}

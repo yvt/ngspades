@@ -8,9 +8,9 @@ use metal;
 use zangfx_base::{self as base, device, Result};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
-use utils::OCPtr;
-use limits::DeviceCaps;
-use {arg, buffer, cmd, computepipeline, heap, image, renderpass, renderpipeline, sampler, shader};
+use crate::utils::OCPtr;
+use crate::limits::DeviceCaps;
+use crate::{arg, buffer, cmd, computepipeline, heap, image, renderpass, renderpipeline, sampler, shader};
 
 /// Implementation of `Device` for Metal.
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub struct Device {
     arg_layout_info: arg::table::ArgLayoutInfo,
 }
 
-zangfx_impl_object! { Device: device::Device, ::Debug }
+zangfx_impl_object! { Device: device::Device, crate::Debug }
 
 unsafe impl Send for Device {}
 unsafe impl Sync for Device {}
@@ -40,7 +40,7 @@ impl Device {
     /// Constructs a new `Device` with the preferred system default Metal
     /// device.
     pub unsafe fn new_system_default() -> Result<Self> {
-        use utils::nil_error;
+        use crate::utils::nil_error;
         let metal_device = metal::create_system_default_device();
         if metal_device.is_null() {
             Err(nil_error("MTLCreateSystemDefaultDevice"))

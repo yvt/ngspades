@@ -10,7 +10,7 @@ use metal;
 use zangfx_base::{self as base, limits};
 use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
 
-use MEMORY_REGION_GLOBAL;
+use crate::MEMORY_REGION_GLOBAL;
 
 /// Feature sets for Metal.
 ///
@@ -31,7 +31,7 @@ pub struct DeviceCaps {
     d24_s8_supported: bool,
 }
 
-zangfx_impl_object! { DeviceCaps: limits::DeviceCaps, ::Debug }
+zangfx_impl_object! { DeviceCaps: limits::DeviceCaps, crate::Debug }
 
 impl DeviceCaps {
     pub(crate) fn new(device: metal::MTLDevice) -> Self {
@@ -65,8 +65,8 @@ impl DeviceCaps {
             ],
             max_num_compute_workgroup_invocations: 256,
             max_compute_workgroup_count: [u32::max_value(); 3],
-            uniform_buffer_align: ::UNIFORM_BUFFER_MIN_ALIGN,
-            storage_buffer_align: ::STORAGE_BUFFER_MIN_ALIGN,
+            uniform_buffer_align: crate::UNIFORM_BUFFER_MIN_ALIGN,
+            storage_buffer_align: crate::STORAGE_BUFFER_MIN_ALIGN,
         };
 
         let working_set_size = device.recommended_max_working_set_size();
@@ -114,7 +114,7 @@ impl limits::DeviceCaps for DeviceCaps {
         &self,
         format: base::formats::ImageFormat,
     ) -> limits::ImageFormatCapsFlags {
-        use formats::translate_image_format;
+        use crate::formats::translate_image_format;
         use zangfx_base::formats::ImageFormat;
         use zangfx_base::formats::Signedness::*;
         use zangfx_base::formats::Normalizedness::*;
@@ -193,7 +193,7 @@ impl limits::DeviceCaps for DeviceCaps {
         &self,
         format: base::formats::VertexFormat,
     ) -> limits::VertexFormatCapsFlags {
-        use formats::translate_vertex_format;
+        use crate::formats::translate_vertex_format;
         if translate_vertex_format(format).is_some() {
             limits::VertexFormatCaps::Vertex.into()
         } else {

@@ -8,7 +8,7 @@ use self::Signedness::{Signed, Unsigned};
 use self::Normalizedness::{Normalized, Unnormalized};
 use self::VecWidth::{Scalar, Vector2, Vector3, Vector4};
 use self::ScalarFormat::{F32, I16, I32, I8};
-use metal::{MTLPixelFormat, MTLVertexFormat};
+use crate::metal::{MTLPixelFormat, MTLVertexFormat};
 
 pub fn translate_image_format(format: ImageFormat) -> Option<MTLPixelFormat> {
     match format {

@@ -7,11 +7,11 @@
 use zangfx_base::{self as base, Result};
 use zangfx_base::zangfx_impl_handle;
 use tokenlock::{TokenLock, TokenRef};
-use metal::{MTLDevice, MTLFence};
+use crate::metal::{MTLDevice, MTLFence};
 use refeq::RefEqArc;
 
-use utils::{nil_error, OCPtr};
-use cmd::queue::Item;
+use crate::utils::{nil_error, OCPtr};
+use crate::cmd::queue::Item;
 
 // TODO: recycle fences after use
 

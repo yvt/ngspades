@@ -6,7 +6,7 @@
 use std::ops::Deref;
 use std::fmt;
 use ngsenumflags::flags;
-use metal::{self, id, MTLDevice, NSObjectProtocol};
+use crate::metal::{self, id, MTLDevice, NSObjectProtocol};
 use zangfx_base as base;
 
 /// Smart pointer for Objective-C objects.
@@ -86,9 +86,9 @@ pub fn translate_cmp_fn(value: base::CmpFn) -> metal::MTLCompareFunction {
 pub fn translate_storage_mode(
     value: base::MemoryType,
 ) -> Result<metal::MTLStorageMode, base::MemoryType> {
-    if value == ::MEMORY_TYPE_PRIVATE {
+    if value == crate::MEMORY_TYPE_PRIVATE {
         Ok(metal::MTLStorageMode::Private)
-    } else if value == ::MEMORY_TYPE_SHARED {
+    } else if value == crate::MEMORY_TYPE_SHARED {
         Ok(metal::MTLStorageMode::Shared)
     } else {
         Err(value)
@@ -185,7 +185,7 @@ pub fn get_memory_req(
     metal_device: MTLDevice,
     obj: base::ResourceRef,
 ) -> base::Result<base::MemoryReq> {
-    use {buffer, image};
+    use crate::{buffer, image};
     match obj {
         base::ResourceRef::Buffer(buffer) => {
             let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
