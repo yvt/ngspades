@@ -122,7 +122,13 @@ pub type HeapRef = Arc<dyn Heap>;
 /// Resources bound to a heap internally keeps a reference to the heap.
 pub trait Heap: Object {
     /// Create a proxy object to use this sample object from a specified queue.
-    fn make_proxy(&self, queue: &CmdQueueRef) -> HeapRef;
+    ///
+    /// The default implementation panics with a message indicating that the
+    /// backend does not support inter-queue operation.
+    fn make_proxy(&self, queue: &CmdQueueRef) -> HeapRef {
+        let _ = queue;
+        panic!("Inter-queue operation is not supported by this backend.");
+    }
 
     /// Allocate a memory region for a given resource.
     ///

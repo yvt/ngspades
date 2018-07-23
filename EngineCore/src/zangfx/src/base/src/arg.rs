@@ -234,7 +234,13 @@ pub type ArgPoolRef = Arc<dyn ArgPool>;
 ///
 pub trait ArgPool: Object {
     /// Create a proxy object to use this argument pool from a specified queue.
-    fn make_proxy(&self, queue: &CmdQueueRef) -> ArgPoolRef;
+    ///
+    /// The default implementation panics with a message indicating that the
+    /// backend does not support inter-queue operation.
+    fn make_proxy(&self, queue: &CmdQueueRef) -> ArgPoolRef {
+        let _ = queue;
+        panic!("Inter-queue operation is not supported by this backend.");
+    }
 
     /// Allocate zero or more `ArgTableRef`s from the pool.
     ///

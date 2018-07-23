@@ -12,7 +12,7 @@ use {
 };
 
 use crate::formats::IndexFormat;
-use crate::resources::{BufferRef, ImageLayout, ImageRef, ImageSubRange, ResourceRef};
+use crate::resources::{BufferRef, ImageLayout, ImageRef, ImageSubRange};
 use crate::{arg, heap, pass, pipeline, resources, sync};
 use crate::{
     AccessTypeFlags, ArgTableIndex, DeviceSize, QueueFamily, StageFlags, VertexBufferIndex,

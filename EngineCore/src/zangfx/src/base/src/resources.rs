@@ -37,10 +37,16 @@ define_handle! {
 pub trait Image: CloneHandle<ImageRef> {
     /// Create a proxy object to use this image from a specified queue.
     ///
+    /// The default implementation panics with a message indicating that the
+    /// backend does not support inter-queue operation.
+    ///
     /// # Valid Usage
     ///
     ///  - The image must not an image view.
-    fn make_proxy(&mut self, queue: &CmdQueueRef) -> ImageRef;
+    fn make_proxy(&mut self, queue: &CmdQueueRef) -> ImageRef {
+        let _ = queue;
+        panic!("Inter-queue operation is not supported by this backend.");
+    }
 
     /// Create an `ImageViewBuilder` associated with this image.
     ///
@@ -76,7 +82,13 @@ define_handle! {
 /// Trait for buffer handles.
 pub trait Buffer: CloneHandle<BufferRef> {
     /// Create a proxy object to use this buffer from a specified queue.
-    fn make_proxy(&mut self, queue: &CmdQueueRef) -> BufferRef;
+    ///
+    /// The default implementation panics with a message indicating that the
+    /// backend does not support inter-queue operation.
+    fn make_proxy(&mut self, queue: &CmdQueueRef) -> BufferRef {
+        let _ = queue;
+        panic!("Inter-queue operation is not supported by this backend.");
+    }
 
     /// Get the address of the underlying storage of a buffer.
     ///
