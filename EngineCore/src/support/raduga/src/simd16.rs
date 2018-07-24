@@ -5,12 +5,14 @@
 //
 #[allow(unused_imports)]
 use intrin;
+#[allow(unused_imports)]
+use packed_simd::{self as simd, Cast};
 #[cfg(target_arch = "x86")]
 use std::arch::x86 as vendor;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64 as vendor;
 #[allow(unused_imports)]
-use std::simd::{self, IntoBits};
+use std::mem::transmute;
 use {IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
 
 #[derive(Debug, Copy, Clone)]
@@ -88,12 +90,12 @@ unsafe impl Packed for Simd16U8 {
     ) -> Self {
         // Load 4-byte values
         let data0 =
-            intrin::mm256_i32gather_epi32(base as *const _, offset.0.into_bits(), scale as i32);
+            intrin::mm256_i32gather_epi32(base as *const _, transmute(offset.0), scale as i32);
         let data1 =
-            intrin::mm256_i32gather_epi32(base as *const _, offset.1.into_bits(), scale as i32);
+            intrin::mm256_i32gather_epi32(base as *const _, transmute(offset.1), scale as i32);
 
         // Throw away the extra 24 MSBs
-        Simd16U32(data0.into_bits(), data1.into_bits()).as_u8()
+        Simd16U32(transmute(data0), transmute(data1)).as_u8()
     }
 }
 
@@ -114,7 +116,7 @@ mod avx2 {
     impl Simd16U16 {
         #[inline]
         pub(super) fn from_u8(x: Simd16U8) -> Self {
-            unsafe { Simd16U16(vendor::_mm256_cvtepu8_epi16(x.0.into_bits()).into_bits()) }
+            unsafe { Simd16U16(transmute(vendor::_mm256_cvtepu8_epi16(transmute(x.0)))) }
         }
     }
 
@@ -156,13 +158,13 @@ mod avx2 {
             unsafe {
                 // Discard upper 8 bits so they don't affect the result of
                 // `_mm256_packus_epi16` (which casts `i16` to `u8` with saturation)
-                let u16s = (self.0 & simd::u16x16::splat(0xff)).into_bits();
+                let u16s = transmute(self.0 & simd::u16x16::splat(0xff));
 
                 // Split into two `m128i`s
-                let lo = vendor::_mm256_extractf128_si256(u16s, 0).into_bits();
-                let hi = vendor::_mm256_extractf128_si256(u16s, 1).into_bits();
+                let lo = vendor::_mm256_extractf128_si256(u16s, 0);
+                let hi = vendor::_mm256_extractf128_si256(u16s, 1);
 
-                Simd16U8(vendor::_mm_packus_epi16(lo, hi).into_bits())
+                Simd16U8(transmute(vendor::_mm_packus_epi16(lo, hi)))
             }
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
@@ -170,18 +172,20 @@ mod avx2 {
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
             unsafe {
-                let lo = vendor::_mm256_extractf128_si256(self.0.into_bits(), 0).into_bits();
-                let hi = vendor::_mm256_extractf128_si256(self.0.into_bits(), 1).into_bits();
+                let this = transmute(self.0);
+
+                let lo = vendor::_mm256_extractf128_si256(this, 0);
+                let hi = vendor::_mm256_extractf128_si256(this, 1);
 
                 Simd16U32(
-                    vendor::_mm256_cvtepu16_epi32(lo).into_bits(),
-                    vendor::_mm256_cvtepu16_epi32(hi).into_bits(),
+                    transmute(vendor::_mm256_cvtepu16_epi32(lo)),
+                    transmute(vendor::_mm256_cvtepu16_epi32(hi)),
                 )
             }
         }
 
         fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {
-            Simd16I16(self.0.into_bits())
+            Simd16I16(self.0.cast())
         }
 
         #[inline]
@@ -193,17 +197,17 @@ mod avx2 {
             // Load 4-byte values
             let data0 = intrin::mm256_i32gather_epi32(
                 base as *const _,
-                offset.0.into_bits(),
+                transmute(offset.0),
                 (scale * 2) as i32,
             );
             let data1 = intrin::mm256_i32gather_epi32(
                 base as *const _,
-                offset.1.into_bits(),
+                transmute(offset.1),
                 (scale * 2) as i32,
             );
 
             // Throw away the extra 16 MSBs
-            Simd16U32(data0.into_bits(), data1.into_bits()).as_u16()
+            Simd16U32(transmute(data0), transmute(data1)).as_u16()
         }
     }
 
@@ -216,9 +220,10 @@ mod avx2 {
     impl PackedU16 for Simd16U16 {
         fn mul_hi_epu16(self, rhs: Self) -> Self {
             unsafe {
-                Simd16U16(
-                    vendor::_mm256_mulhi_epu16(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
-                )
+                Simd16U16(transmute(vendor::_mm256_mulhi_epu16(
+                    transmute(self.0),
+                    transmute(rhs.0),
+                )))
             }
         }
     }
@@ -233,10 +238,11 @@ mod avx2 {
         #[inline]
         pub(super) fn from_u8(x: Simd16U8) -> Self {
             unsafe {
-                let hi = vendor::_mm_shuffle_epi32(x.0.into_bits(), 0b_11_10_11_10);
+                let this = transmute(x.0);
+                let hi = vendor::_mm_shuffle_epi32(this, 0b_11_10_11_10);
                 Simd16U32(
-                    vendor::_mm256_cvtepu8_epi32(x.0.into_bits()).into_bits(),
-                    vendor::_mm256_cvtepu8_epi32(hi.into_bits()).into_bits(),
+                    transmute(vendor::_mm256_cvtepu8_epi32(this)),
+                    transmute(vendor::_mm256_cvtepu8_epi32(hi)),
                 )
             }
         }
@@ -271,29 +277,29 @@ mod avx2 {
                 // Discard upper 24 bits so they don't affect the result of
                 // `_mm256_packus_epi32` (which casts `i32` to `u16` with saturation)
                 // and  `_mm256_packus_epi16` (which casts `i16` to `u8` with saturation)
-                let data0 = self.0 & simd::u32x8::splat(0xff);
-                let data1 = self.1 & simd::u32x8::splat(0xff);
+                let data0 = transmute(self.0 & simd::u32x8::splat(0xff));
+                let data1 = transmute(self.1 & simd::u32x8::splat(0xff));
 
-                let i16s = vendor::_mm256_packus_epi32(data0.into_bits(), data1.into_bits());
-                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into_bits(), 0b_11_01_10_00);
+                let i16s = vendor::_mm256_packus_epi32(data0, data1);
+                let i16s = vendor::_mm256_permute4x64_epi64(i16s, 0b_11_01_10_00);
 
                 // Split into two `m128i`s
-                let lo = vendor::_mm256_extractf128_si256(i16s.into_bits(), 0).into_bits();
-                let hi = vendor::_mm256_extractf128_si256(i16s.into_bits(), 1).into_bits();
+                let lo = vendor::_mm256_extractf128_si256(i16s, 0);
+                let hi = vendor::_mm256_extractf128_si256(i16s, 1);
 
-                Simd16U8(vendor::_mm_packus_epi16(lo, hi).into_bits())
+                Simd16U8(transmute(vendor::_mm_packus_epi16(lo, hi)))
             }
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
             unsafe {
                 // Discard upper 16 bits so they don't affect the result of
                 // `_mm256_packus_epi32` (which casts `i32` to `u16` with saturation)
-                let data0 = self.0 & simd::u32x8::splat(0xffff);
-                let data1 = self.1 & simd::u32x8::splat(0xffff);
+                let data0 = transmute(self.0 & simd::u32x8::splat(0xffff));
+                let data1 = transmute(self.1 & simd::u32x8::splat(0xffff));
 
-                let i16s = vendor::_mm256_packus_epi32(data0.into_bits(), data1.into_bits());
-                let i16s = vendor::_mm256_permute4x64_epi64(i16s.into_bits(), 0b_11_01_10_00);
-                Simd16U16(i16s.into_bits())
+                let i16s = vendor::_mm256_packus_epi32(data0, data1);
+                let i16s = vendor::_mm256_permute4x64_epi64(i16s, 0b_11_01_10_00);
+                Simd16U16(transmute(i16s))
             }
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
@@ -311,16 +317,16 @@ mod avx2 {
             scale: u8,
         ) -> Self {
             Simd16U32(
-                intrin::mm256_i32gather_epi32(
+                transmute(intrin::mm256_i32gather_epi32(
                     base as *const _,
-                    offset.0.into_bits(),
+                    transmute(offset.0),
                     (scale * 4) as i32,
-                ).into_bits(),
-                intrin::mm256_i32gather_epi32(
+                )),
+                transmute(intrin::mm256_i32gather_epi32(
                     base as *const _,
-                    offset.1.into_bits(),
+                    transmute(offset.1),
                     (scale * 4) as i32,
-                ).into_bits(),
+                )),
             )
         }
     }
@@ -330,8 +336,14 @@ mod avx2 {
         fn shl_var(self, rhs: <Self::Mode as SimdMode>::U32) -> Self {
             unsafe {
                 Simd16U32(
-                    vendor::_mm256_sllv_epi32(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
-                    vendor::_mm256_sllv_epi32(self.1.into_bits(), rhs.1.into_bits()).into_bits(),
+                    transmute(vendor::_mm256_sllv_epi32(
+                        transmute(self.0),
+                        transmute(rhs.0),
+                    )),
+                    transmute(vendor::_mm256_sllv_epi32(
+                        transmute(self.1),
+                        transmute(rhs.1),
+                    )),
                 )
             }
         }
@@ -381,7 +393,7 @@ mod avx2 {
             self.as_u16().as_u8()
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
-            Simd16U16(self.0.into_bits())
+            Simd16U16(self.0.cast())
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
             self.as_u16().as_u32()
@@ -406,9 +418,10 @@ mod avx2 {
         #[cfg(target_feature = "ssse3")]
         fn mul_hrs_epi16(self, rhs: Self) -> Self {
             unsafe {
-                Simd16I16(
-                    vendor::_mm256_mulhrs_epi16(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
-                )
+                Simd16I16(transmute(vendor::_mm256_mulhrs_epi16(
+                    transmute(self.0),
+                    transmute(rhs.0),
+                )))
             }
         }
     }
@@ -456,7 +469,7 @@ mod generic {
         }
 
         fn as_i16(self) -> <Self::Mode as SimdMode>::I16 {
-            Simd16I16(self.0.into_bits(), self.1.into_bits())
+            Simd16I16(self.0.cast(), self.1.cast())
         }
     }
 
@@ -467,8 +480,8 @@ mod generic {
         fn mul_hi_epu16(self, rhs: Self) -> Self {
             unsafe {
                 Simd16U16(
-                    vendor::_mm_mulhi_epu16(self.0.into_bits(), rhs.0.into_bits()).into_bits(),
-                    vendor::_mm_mulhi_epu16(self.1.into_bits(), rhs.1.into_bits()).into_bits(),
+                    transmute(vendor::_mm_mulhi_epu16(transmute(self.0), transmute(rhs.0))),
+                    transmute(vendor::_mm_mulhi_epu16(transmute(self.1), transmute(rhs.1))),
                 )
             }
         }
@@ -561,7 +574,7 @@ mod generic {
             self.as_u16().as_u8()
         }
         fn as_u16(self) -> <Self::Mode as SimdMode>::U16 {
-            Simd16U16(self.0.into_bits(), self.1.into_bits())
+            Simd16U16(self.0.cast(), self.1.cast())
         }
         fn as_u32(self) -> <Self::Mode as SimdMode>::U32 {
             self.as_u16().as_u32()
@@ -578,7 +591,7 @@ mod generic {
         fn mul_hrs_epi16(self, rhs: Self) -> Self {
             #[cfg(target_feature = "ssse3")]
             unsafe fn mulhrs_epi16(x: simd::i16x8, y: simd::i16x8) -> simd::i16x8 {
-                vendor::_mm_mulhrs_epi16(x.into_bits(), y.into_bits()).into_bits()
+                transmute(vendor::_mm_mulhrs_epi16(transmute(x), transmute(y)))
             }
             #[cfg(not(target_feature = "ssse3"))]
             unsafe fn mulhrs_epi16(x: simd::i16x8, y: simd::i16x8) -> simd::i16x8 {

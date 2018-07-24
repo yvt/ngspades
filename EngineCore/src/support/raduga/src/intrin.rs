@@ -17,7 +17,7 @@ use std::arch::x86_64 as vendor;
 use self::vendor::__m256i;
 
 #[cfg(target_feature = "avx2")]
-use std::simd::i32x8;
+use packed_simd::i32x8;
 
 // A replacement for `stdsimd::vendor::_mm256_i32gather_epi32` which generates
 // horrible code for some reasons.

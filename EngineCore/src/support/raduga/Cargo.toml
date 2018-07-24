@@ -6,3 +6,7 @@ authors = ["yvt <i@yvt.jp>"]
 [dependencies]
 num-traits = "0.2.2"
 x86intrin = "0.4.5"
+
+[dependencies.packed_simd]
+git = "https://github.com/rust-lang-nursery/packed_simd.git"
+rev = "6e6bb03aa9d5bbf88a83ef7f792b7892ce6915ea"

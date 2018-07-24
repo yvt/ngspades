@@ -9,8 +9,8 @@
 //! <a href="https://derpibooru.org/1155840">![Радуга Дэш](https://derpicdn.net/img/2016/5/17/1155840/large.png)</a>
 //!
 //! [`faster`]: https://docs.adamniederer.com/faster/index.html
-#![feature(stdsimd)]
 extern crate num_traits;
+extern crate packed_simd;
 
 #[allow(dead_code)]
 mod intrin;
@@ -25,6 +25,7 @@ pub mod utils;
 
 pub mod prelude {
     #[doc(no_inline)]
-    pub use {kernel::*, utils::*, IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8,
-             SimdMode};
+    pub use {
+        kernel::*, utils::*, IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode,
+    };
 }
