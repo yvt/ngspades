@@ -10,7 +10,6 @@
 
 #[doc(hidden)]
 pub extern crate test;
-extern crate xdispatch;
 
 pub mod backend_benches;
 pub mod backend_tests;
