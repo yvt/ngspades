@@ -12,15 +12,12 @@ extern crate ngsenumflags;
 
 pub mod cbstatetracker;
 mod device;
-pub mod smartref;
 pub mod uploader;
 mod uploaderutils;
 
 #[doc(no_inline)]
 pub use cbstatetracker::*;
 pub use device::DeviceUtils;
-#[doc(no_inline)]
-pub use smartref::*;
 
 /// ZanGFX Utils prelude.
 pub mod prelude {

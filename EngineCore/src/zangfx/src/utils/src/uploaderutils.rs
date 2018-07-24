@@ -3,24 +3,28 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::ops::Range;
-use {base, uploader};
 use base::Result;
 use common::IntoWithPad;
+use std::ops::Range;
+use {base, uploader};
 
 /// A buffer staging request. Implements `UploadRequest`.
 #[derive(Debug, Clone, Copy)]
 pub struct StageBuffer<'a> {
     pub src_data: &'a [u8],
-    pub dst_buffer: &'a base::Buffer,
+    pub dst_buffer: &'a base::BufferRef,
     pub dst_offset: base::DeviceSize,
 }
 
 impl<'a> StageBuffer<'a> {
     /// Construct a `StageBuffer`.
-    pub fn new<T: Copy>(buffer: &'a base::Buffer, offset: base::DeviceSize, data: &'a [T]) -> Self {
-        use std::slice::from_raw_parts;
+    pub fn new<T: Copy>(
+        buffer: &'a base::BufferRef,
+        offset: base::DeviceSize,
+        data: &'a [T],
+    ) -> Self {
         use std::mem::size_of_val;
+        use std::slice::from_raw_parts;
         Self {
             src_data: unsafe { from_raw_parts(data.as_ptr() as *const u8, size_of_val(data)) },
             dst_buffer: buffer,
@@ -41,7 +45,7 @@ impl<'a> uploader::UploadRequest for StageBuffer<'a> {
     fn copy(
         &self,
         encoder: &mut base::CopyCmdEncoder,
-        staging_buffer: &base::Buffer,
+        staging_buffer: &base::BufferRef,
         staging_buffer_range: Range<base::DeviceSize>,
     ) -> Result<()> {
         encoder.copy_buffer(
@@ -65,25 +69,18 @@ pub struct StageImage<'a> {
     pub src_data: &'a [u8],
     pub src_row_stride: base::DeviceSize,
     pub src_plane_stride: base::DeviceSize,
-    pub dst_image: &'a base::Image,
+    pub dst_image: &'a base::ImageRef,
     pub dst_range: base::ImageLayerRange,
     pub dst_aspect: base::ImageAspect,
-    pub dst_old_layout: base::ImageLayout,
-    pub dst_new_layout: base::ImageLayout,
     pub dst_origin: [u32; 3],
     pub size: [u32; 3],
 }
 
 impl<'a> StageImage<'a> {
     /// Construct a `StageImage` with reasonable default settings.
-    pub fn new_default<T: Copy>(
-        image: &'a base::Image,
-        layout: base::ImageLayout,
-        data: &'a [T],
-        size: &[u32],
-    ) -> Self {
-        use std::slice::from_raw_parts;
+    pub fn new_default<T: Copy>(image: &'a base::ImageRef, data: &'a [T], size: &[u32]) -> Self {
         use std::mem::size_of_val;
+        use std::slice::from_raw_parts;
         let size: [u32; 3] = size.into_with_pad(1);
         Self {
             src_data: unsafe { from_raw_parts(data.as_ptr() as *const u8, size_of_val(data)) },
@@ -95,8 +92,6 @@ impl<'a> StageImage<'a> {
                 layers: 0..1,
             },
             dst_aspect: base::ImageAspect::Color,
-            dst_old_layout: base::ImageLayout::Undefined,
-            dst_new_layout: layout,
             dst_origin: [0, 0, 0],
             size,
         }
@@ -128,31 +123,9 @@ impl UploaderUtils for uploader::Uploader {
             fn copy(
                 &self,
                 encoder: &mut base::CopyCmdEncoder,
-                staging_buffer: &base::Buffer,
+                staging_buffer: &base::BufferRef,
                 staging_buffer_range: Range<base::DeviceSize>,
             ) -> Result<()> {
-                let staging_layout = match self.0.dst_new_layout {
-                    base::ImageLayout::CopyWrite | base::ImageLayout::General => {
-                        self.0.dst_new_layout
-                    }
-                    _ => base::ImageLayout::CopyWrite,
-                };
-
-                if self.0.dst_old_layout != staging_layout {
-                    let barrier = self.1
-                        .build_barrier()
-                        .image(
-                            flags![base::AccessType::{}],
-                            flags![base::AccessType::{CopyWrite}],
-                            self.0.dst_image,
-                            self.0.dst_old_layout,
-                            staging_layout,
-                            &self.0.dst_range.clone().into(),
-                        )
-                        .build()?;
-                    encoder.barrier(&barrier);
-                }
-
                 encoder.copy_buffer_to_image(
                     staging_buffer,
                     &base::BufferImageRange {
@@ -161,27 +134,12 @@ impl UploaderUtils for uploader::Uploader {
                         plane_stride: self.0.src_plane_stride,
                     },
                     self.0.dst_image,
-                    staging_layout,
                     self.0.dst_aspect,
                     &self.0.dst_range,
                     &self.0.dst_origin,
                     &self.0.size,
                 );
 
-                if self.0.dst_new_layout != staging_layout {
-                    let barrier = self.1
-                        .build_barrier()
-                        .image(
-                            flags![base::AccessType::{CopyWrite}],
-                            flags![base::AccessType::{}],
-                            self.0.dst_image,
-                            staging_layout,
-                            self.0.dst_new_layout,
-                            &self.0.dst_range.clone().into(),
-                        )
-                        .build()?;
-                    encoder.barrier(&barrier);
-                }
                 Ok(())
             }
         }

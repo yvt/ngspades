@@ -5,7 +5,6 @@
 //
 use base::{self, Result};
 use common::BinaryInteger;
-use smartref::{UniqueBuffer, UniqueImage};
 
 /// An extension trait for `Device`.
 pub trait DeviceUtils {
@@ -92,18 +91,17 @@ impl DeviceUtils for base::Device {
 
     fn memory_types_for_buffer(&self, usage: base::BufferUsageFlags) -> Result<u32> {
         let buffer = self.build_buffer().size(1).usage(usage).build()?;
-        let buffer = UniqueBuffer::new(self, buffer);
-        Ok(self.get_memory_req((&*buffer).into())?.memory_types)
+        Ok(buffer.get_memory_req()?.memory_types)
     }
 
     fn memory_types_for_image(&self, format: base::ImageFormat) -> Result<u32> {
-        let image = self.build_image()
+        let image = self
+            .build_image()
             .extents(&[1, 1])
             .usage(flags![base::ImageUsage::{CopyRead | CopyWrite}])
             .format(format)
             .build()?;
-        let image = UniqueImage::new(self, image);
-        Ok(self.get_memory_req((&*image).into())?.memory_types)
+        Ok(image.get_memory_req()?.memory_types)
     }
 
     fn memory_type_for_buffer(
