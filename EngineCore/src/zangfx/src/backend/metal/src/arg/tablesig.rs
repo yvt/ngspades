@@ -286,7 +286,7 @@ impl ArgTableSig {
                                 .map(|obj| {
                                     let my_obj: &Image =
                                         obj.downcast_ref().expect("bad image view type");
-                                    unimplemented!() // my_obj.metal_texture()
+                                    my_obj.metal_texture()
                                 })
                                 .collect();
 
