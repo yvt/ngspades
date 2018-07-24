@@ -100,6 +100,9 @@ pub trait DedicatedHeapBuilder: Object {
     /// All resources in the dedicated allocation list are bound to the created
     /// heap and are transitioned to the Allocated state.
     ///
+    /// The dedicated allocation list is cleared after a successful construction
+    /// of a `Heap`.
+    ///
     /// # Valid Usage
     ///
     /// - All mandatory properties must have their values set before this method

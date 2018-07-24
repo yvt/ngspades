@@ -56,6 +56,10 @@ pub trait Image: CloneHandle<ImageRef> {
     fn build_image_view(&self) -> ImageViewBuilderRef;
 
     /// Retrieve the memory requirements for this image.
+    ///
+    /// # Valid Usage
+    ///
+    ///  - The image must not be an image view.
     fn get_memory_req(&self) -> Result<MemoryReq>;
 }
 
