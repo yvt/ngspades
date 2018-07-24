@@ -89,10 +89,6 @@ impl base::SetLabel for HeapBuilder {
 }
 
 impl heap::DynamicHeapBuilder for HeapBuilder {
-    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::DynamicHeapBuilder {
-        self
-    }
-
     fn size(&mut self, v: DeviceSize) -> &mut dyn heap::DynamicHeapBuilder {
         self.size = v;
         self
@@ -120,7 +116,7 @@ impl heap::DedicatedHeapBuilder for HeapBuilder {
         unimplemented!()
     }
 
-    fn enable_use_heap(&mut self) -> &mut dyn DedicatedHeapBuilder {
+    fn enable_use_heap(&mut self) -> &mut dyn base::DedicatedHeapBuilder {
         self
     }
 
