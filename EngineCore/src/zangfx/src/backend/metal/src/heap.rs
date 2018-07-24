@@ -202,9 +202,7 @@ impl heap::Heap for Heap {
             }
             base::ResourceRef::Image(image) => {
                 let my_image: &Image = image.downcast_ref().expect("bad image type");
-                my_image
-                    .metal_texture()
-                    .make_aliasable();
+                my_image.metal_texture().make_aliasable();
             }
         }
         Ok(())

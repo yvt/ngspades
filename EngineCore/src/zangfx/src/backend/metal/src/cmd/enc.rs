@@ -100,6 +100,7 @@ crate trait UseResources {
         }
 
         flush!();
+        let _ = chunk_metal_usage; // ignore its value after last `flush!`
     }
 
     fn use_gfx_heap(&self, heaps: &[&heap::HeapRef]) {
@@ -120,7 +121,7 @@ crate trait UseResources {
                     self.use_metal_resources(metal_resources.as_slice(), MTLResourceUsageRead);
                     metal_resources.clear();
                 }
-            } else if let Some(heap) = heap.query_ref::<GlobalHeap>() {
+            } else if let Some(_) = heap.query_ref::<GlobalHeap>() {
                 panic!("global heaps do not support use_heap");
             } else {
                 panic!("invalid heap type");

@@ -97,6 +97,7 @@ impl command::CmdEncoder for RenderEncoder {
         _src_access: base::AccessTypeFlags,
         _dst_access: base::AccessTypeFlags,
     ) {
+        // FIXME: `textureBarrier` is deprecated in macOS 10.14
         self.metal_encoder.texture_barrier();
     }
 }
