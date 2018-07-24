@@ -4,7 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use gfx::prelude::*;
+use include_data::include_data;
+use zangfx_base::prelude::*;
 
 static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));

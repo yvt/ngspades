@@ -4,10 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Tracks the execution state of command buffers.
-use base;
 use std::sync::Arc;
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
+use zangfx_base as base;
 
 /// Tracks the execution state of a command buffer.
 #[derive(Debug)]
@@ -27,7 +27,7 @@ struct State {
 }
 
 impl CbStateTracker {
-    pub fn new(cmd_buffer: &mut base::CmdBuffer) -> Self {
+    pub fn new(cmd_buffer: &mut dyn base::CmdBuffer) -> Self {
         let state = Arc::new(State {
             done: Mutex::new(None),
             cv: Condvar::new(),

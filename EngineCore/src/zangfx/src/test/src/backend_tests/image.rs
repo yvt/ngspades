@@ -4,10 +4,11 @@
 // This source code is a part of Nightingales.
 //
 use super::TestDriver;
-use common::BinaryInteger;
-use gfx;
+use ngsenumflags::flags;
+use zangfx_base as gfx;
+use zangfx_common::BinaryInteger;
 
-fn try_all_memory_types(device: &gfx::Device, builder: &mut gfx::ImageBuilder) {
+fn try_all_memory_types(device: &gfx::DeviceRef, builder: &mut dyn gfx::ImageBuilder) {
     println!("  - Creating an image");
     let mut image = builder.build().unwrap();
 

@@ -4,8 +4,10 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use gfx;
-use gfx::prelude::*;
+use include_data::include_data;
+use ngsenumflags::flags;
+use zangfx_base as gfx;
+use zangfx_base::prelude::*;
 
 static SPIRV_VERT: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/render_null.vert.spv"));

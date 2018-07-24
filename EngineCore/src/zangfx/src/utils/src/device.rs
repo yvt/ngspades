@@ -3,8 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use base::{self, Result};
-use common::BinaryInteger;
+use ngsenumflags::flags;
+
+use zangfx_base::{self as base, Result};
+use zangfx_common::BinaryInteger;
 
 /// An extension trait for `Device`.
 pub trait DeviceUtils {
@@ -63,7 +65,7 @@ pub trait DeviceUtils {
     ) -> Result<Option<base::MemoryType>>;
 }
 
-impl DeviceUtils for base::Device {
+impl DeviceUtils for dyn base::Device {
     fn choose_memory_type(
         &self,
         valid_memory_types: u32,

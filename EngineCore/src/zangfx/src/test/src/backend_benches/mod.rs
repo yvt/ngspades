@@ -4,13 +4,13 @@
 // This source code is a part of Nightingales.
 //
 //! Benchmarks for ZanGFX implementations.
-use gfx;
-use utils;
+use crate::utils;
+use zangfx_base as gfx;
 
 pub trait BenchDriver {
-    fn choose_device(&self, runner: &mut FnMut(&gfx::Device));
+    fn choose_device(&self, runner: &mut dyn FnMut(&gfx::DeviceRef));
 
-    fn choose_compute_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+    fn choose_compute_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.choose_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Compute) {
@@ -22,7 +22,7 @@ pub trait BenchDriver {
         })
     }
 
-    fn choose_render_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+    fn choose_render_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.choose_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Render) {
@@ -34,7 +34,7 @@ pub trait BenchDriver {
         })
     }
 
-    fn choose_copy_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+    fn choose_copy_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.choose_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Copy) {

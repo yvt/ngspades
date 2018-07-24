@@ -3,10 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-use base::Result;
-use common::IntoWithPad;
 use std::ops::Range;
-use {base, uploader};
+use zangfx_base::{self as base, Result};
+use zangfx_common::IntoWithPad;
+
+use crate::uploader;
 
 /// A buffer staging request. Implements `UploadRequest`.
 #[derive(Debug, Clone, Copy)]
@@ -44,7 +45,7 @@ impl<'a> uploader::UploadRequest for StageBuffer<'a> {
 
     fn copy(
         &self,
-        encoder: &mut base::CopyCmdEncoder,
+        encoder: &mut dyn base::CopyCmdEncoder,
         staging_buffer: &base::BufferRef,
         staging_buffer_range: Range<base::DeviceSize>,
     ) -> Result<()> {
@@ -111,7 +112,7 @@ impl UploaderUtils for uploader::Uploader {
     where
         I: Iterator<Item = StageImage<'a>> + Clone,
     {
-        impl<'a> uploader::UploadRequest for (StageImage<'a>, &'static base::Device) {
+        impl<'a> uploader::UploadRequest for (StageImage<'a>, &'static dyn base::Device) {
             fn size(&self) -> usize {
                 self.0.src_data.len()
             }
@@ -122,7 +123,7 @@ impl UploaderUtils for uploader::Uploader {
 
             fn copy(
                 &self,
-                encoder: &mut base::CopyCmdEncoder,
+                encoder: &mut dyn base::CopyCmdEncoder,
                 staging_buffer: &base::BufferRef,
                 staging_buffer_range: Range<base::DeviceSize>,
             ) -> Result<()> {

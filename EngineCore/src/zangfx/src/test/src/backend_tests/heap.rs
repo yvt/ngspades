@@ -4,8 +4,9 @@
 // This source code is a part of Nightingales.
 //
 use super::TestDriver;
-use common::BinaryInteger;
-use gfx;
+use ngsenumflags::flags;
+use zangfx_base as gfx;
+use zangfx_common::BinaryInteger;
 
 pub fn heap_dynamic_create<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {

@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use gfx;
+use zangfx_base as gfx;
 
 pub fn cmdqueue_create<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {

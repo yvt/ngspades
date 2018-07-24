@@ -4,10 +4,12 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use gfx;
-use gfx::prelude::*;
+use include_data::include_data;
+use ngsenumflags::flags;
 use std::mem::size_of_val;
 use std::slice::from_raw_parts_mut;
+use zangfx_base as gfx;
+use zangfx_base::prelude::*;
 
 static SPIRV_CONV: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_conv1.comp.spv"));
@@ -207,7 +209,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
 
         println!("- Encoding the command buffer");
         {
-            let e: &mut gfx::ComputeCmdEncoder = buffer.encode_compute();
+            let e: &mut dyn gfx::ComputeCmdEncoder = buffer.encode_compute();
             e.use_resource_read(&[&input_buffer, &kernel_buffer][..]);
             e.use_resource_read_write(&output_buffer);
             e.begin_debug_group("Convolution");

@@ -4,9 +4,11 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use gfx;
-use gfx::prelude::*;
+use include_data::include_data;
+use ngsenumflags::flags;
 use std::slice::from_raw_parts_mut;
+use zangfx_base as gfx;
+use zangfx_base::prelude::*;
 
 static SPIRV_READ: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/arg_table_mixed_read.comp.spv"));
@@ -260,7 +262,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
 
         println!("- Encoding the command buffer");
         {
-            let e: &mut gfx::ComputeCmdEncoder = cmd_buffer.encode_compute();
+            let e: &mut dyn gfx::ComputeCmdEncoder = cmd_buffer.encode_compute();
             e.use_resource_read_write(&buffer);
             e.bind_pipeline(&pipeline);
             e.bind_arg_table(0, &[(&pool, &arg_table)]);

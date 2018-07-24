@@ -38,14 +38,15 @@
 //!    the retirement of their associated upload sessions.
 //!
 use itertools::unfold;
+use ngsenumflags::flags;
 use std::collections::VecDeque;
 use std::ops::Range;
 
-use base::{self, Result};
-use cbstatetracker::CbStateTracker;
-use DeviceUtils;
+use crate::cbstatetracker::CbStateTracker;
+use crate::DeviceUtils;
+use zangfx_base::{self as base, Result};
 
-pub use uploaderutils::*;
+pub use crate::uploaderutils::*;
 
 /// Represents a session ID of `Uploader`.
 ///
@@ -78,7 +79,7 @@ pub trait UploadRequest {
     /// Encode copy commands.
     fn copy(
         &self,
-        _encoder: &mut base::CopyCmdEncoder,
+        _encoder: &mut dyn base::CopyCmdEncoder,
         _staging_buffer: &base::BufferRef,
         _staging_buffer_range: Range<base::DeviceSize>,
     ) -> Result<()> {
@@ -89,7 +90,7 @@ pub trait UploadRequest {
     /// the same session.
     fn post_copy(
         &self,
-        _encoder: &mut base::CopyCmdEncoder,
+        _encoder: &mut dyn base::CopyCmdEncoder,
         _staging_buffer: &base::BufferRef,
         _staging_buffer_range: Range<base::DeviceSize>,
     ) -> Result<()> {
@@ -97,7 +98,7 @@ pub trait UploadRequest {
     }
 
     /// Encode commands outside a command encoder.
-    fn post_encoder(&self, _cmd_buffer: &mut base::CmdBuffer) -> Result<()> {
+    fn post_encoder(&self, _cmd_buffer: &mut dyn base::CmdBuffer) -> Result<()> {
         Ok(())
     }
 
@@ -420,7 +421,7 @@ impl SessionRing {
 
     /// Check the completion of sessions. Returns a flag indicating whether at
     /// least one session has retired or not.
-    fn recycle(&mut self, heap: &base::Heap) -> Result<bool> {
+    fn recycle(&mut self, heap: &dyn base::Heap) -> Result<bool> {
         let mut some_retired = false;
 
         while self.sessions.len() > 0 && self.sessions[0].cb_state_tracker.is_completed() {

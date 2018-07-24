@@ -4,8 +4,9 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, BenchDriver};
-use gfx::prelude::*;
+use include_data::include_data;
 use test::Bencher;
+use zangfx_base::prelude::*;
 
 static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
@@ -23,7 +24,7 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
             .build()
             .unwrap();
 
-        let mut cb_ring: Vec<Box<FnMut()>> = (0..5).map(|_| Box::new(|| {}) as _).collect();
+        let mut cb_ring: Vec<Box<dyn FnMut()>> = (0..5).map(|_| Box::new(|| {}) as _).collect();
 
         b.iter(|| {
             device.autorelease_pool_scope_core(&mut |arp| {

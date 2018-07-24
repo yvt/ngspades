@@ -4,9 +4,10 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use gfx;
-use gfx::prelude::*;
+use ngsenumflags::flags;
 use std::slice::from_raw_parts_mut;
+use zangfx_base as gfx;
+use zangfx_base::prelude::*;
 
 pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
     driver.for_each_copy_queue(&mut |device, qf| {
@@ -57,7 +58,7 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
 
         println!("- Encoding the command buffer");
         {
-            let e: &mut gfx::CopyCmdEncoder = buffer.encode_copy();
+            let e: &mut dyn gfx::CopyCmdEncoder = buffer.encode_copy();
             e.begin_debug_group("Convolution");
             e.fill_buffer(&buffer1, 0..400, 0x12);
             e.fill_buffer(&buffer1, 800..1200, 0xaf);
@@ -145,7 +146,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
 
         println!("- Encoding the command buffer");
         {
-            let e: &mut gfx::CopyCmdEncoder = buffer.encode_copy();
+            let e: &mut dyn gfx::CopyCmdEncoder = buffer.encode_copy();
             e.begin_debug_group("Convolution");
             e.copy_buffer(&buffer1, 4, &buffer2, 1200, data.len() as u64 / 2);
             e.end_debug_group();

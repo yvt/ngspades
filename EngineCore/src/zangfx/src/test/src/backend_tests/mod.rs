@@ -4,11 +4,11 @@
 // This source code is a part of Nightingales.
 //
 //! Tests for ZanGFX implementations.
-use gfx;
-use utils;
+use crate::utils;
+use zangfx_base as gfx;
 
 pub trait TestDriver {
-    fn for_each_device(&self, runner: &mut FnMut(&gfx::Device));
+    fn for_each_device(&self, runner: &mut dyn FnMut(&gfx::DeviceRef));
 
     /// Retrieve if the backend is based on a safe implementation, i.e., does
     /// not cause an undefined behavior on invalid usages.
@@ -16,7 +16,7 @@ pub trait TestDriver {
         false
     }
 
-    fn for_each_compute_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+    fn for_each_compute_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.for_each_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Compute) {
@@ -27,7 +27,7 @@ pub trait TestDriver {
         })
     }
 
-    fn for_each_render_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+    fn for_each_render_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.for_each_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Render) {
@@ -38,7 +38,7 @@ pub trait TestDriver {
         })
     }
 
-    fn for_each_copy_queue(&self, runner: &mut FnMut(&gfx::Device, gfx::QueueFamily)) {
+    fn for_each_copy_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.for_each_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf.caps.intersects(gfx::limits::QueueFamilyCaps::Copy) {
