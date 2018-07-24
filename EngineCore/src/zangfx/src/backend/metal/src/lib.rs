@@ -69,6 +69,7 @@ extern crate zangfx_common;
 pub extern crate zangfx_metal_rs;
 extern crate zangfx_spirv_cross;
 
+#[doc(no_inline)]
 pub use zangfx_metal_rs as metal;
 
 pub mod arg;

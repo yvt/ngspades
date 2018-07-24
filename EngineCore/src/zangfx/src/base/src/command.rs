@@ -525,15 +525,16 @@ pub trait CmdEncoder: Object {
     /// [`DedicatedHeapBuilder`]) that have `use_heap` enabled on them (by
     /// calling [`DedicatedHeapBuilder::enable_use_heap`]).
     ///
-    /// [`Device::global_heap`]: crate::Device::global_heap
-    /// [`DynamicHeapBuilder`]: crate::DynamicHeapBuilder
-    ///
     /// This method ignores images having [`Render`] or [`Storage`] image usage
     /// flags. Call [`use_resource`] instead to use such images.
     ///
+    /// [`Device::global_heap`]: crate::Device::global_heap
+    /// [`DynamicHeapBuilder`]: crate::DynamicHeapBuilder
     /// [`Render`]: crate::ImageUsage::Render
     /// [`Storage`]: crate::ImageUsage::Storage
     /// [`use_resource`]: CmdEncoderExt::use_resource
+    /// [`DedicatedHeapBuilder`]: crate::DedicatedHeapBuilder
+    /// [`DedicatedHeapBuilder::enable_use_heap`]: crate::DedicatedHeapBuilder::enable_use_heap
     fn use_heap(&mut self, heaps: &[&heap::HeapRef]);
 
     /// Wait on the specified fence and establish an inter-encoder execution

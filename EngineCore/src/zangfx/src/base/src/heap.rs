@@ -97,18 +97,17 @@ pub trait DedicatedHeapBuilder: Object {
 
     /// Build a `Heap`.
     ///
-    /// All resources in the dedicated allocation list are bound to the created
-    /// heap and are transitioned to the Allocated state.
-    ///
-    /// The dedicated allocation list is cleared after a successful construction
-    /// of a `Heap`.
+    /// After a successful construction of a `Heap`,  all resources in the
+    /// dedicated allocation list will be bound to the created heap and will be
+    /// transitioned to the Allocated state. The dedicated allocation list will
+    /// be cleared.
     ///
     /// # Valid Usage
     ///
     /// - All mandatory properties must have their values set before this method
     ///   is called.
     /// - The final heap size must not be zero.
-    /// - If `use_heap` is enabled (via `DedicatedHeapBuilder::enable_use_heap`),
+    /// - If `use_heap` is enabled (via [`DedicatedHeapBuilder::enable_use_heap`]),
     ///   every resource in  the dedicated allocation list must be associated
     ///   with the queue specified by [`DedicatedHeapBuilder::queue`].
     /// - Every resource in the dedicated allocation list must follow all rules
