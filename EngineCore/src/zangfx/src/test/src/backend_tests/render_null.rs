@@ -30,8 +30,7 @@ pub fn render_null<T: TestDriver>(driver: T) {
         let pass = {
             let mut builder = device.build_render_pass();
             builder.target(0).set_format(<u8>::as_rgba_norm());
-            builder.subpass_color_targets(&[Some((0, gfx::ImageLayout::RenderWrite))]);
-            builder.end();
+            builder.subpass_color_targets(&[Some(0)]);
             builder.build().unwrap()
         };
 
@@ -43,13 +42,9 @@ pub fn render_null<T: TestDriver>(driver: T) {
             .usage(flags![gfx::ImageUsage::{Render}])
             .build()
             .unwrap();
-        let image = utils::UniqueImage::new(device, image);
 
         println!("- Computing the memory requirements for the render target");
-        let valid_memory_types = device
-            .get_memory_req((&*image).into())
-            .unwrap()
-            .memory_types;
+        let valid_memory_types = image.get_memory_req().unwrap().memory_types;
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
@@ -58,19 +53,14 @@ pub fn render_null<T: TestDriver>(driver: T) {
         );
         println!("  Memory Type = {}", memory_type);
 
-        println!("- Creating a heap");
-        let heap: Box<gfx::Heap> = {
-            let mut builder = device.build_dedicated_heap();
-            builder.memory_type(memory_type).label("Render target heap");
-            builder.prebind((&*image).into());
-            builder.build().unwrap()
-        };
-        heap.bind((&*image).into()).unwrap().unwrap();
+        println!("- Allocating memory");
+        let heap = device.global_heap(memory_type);
+        assert!(heap.bind((&image).into()).unwrap());
 
         println!("- Creating a render target table");
         let rtt = {
             let mut builder = device.build_render_target_table();
-            builder.target(0, &*image);
+            builder.target(0, &image);
             builder
                 .render_pass(&pass)
                 .extents(&[256, 256])
@@ -96,11 +86,8 @@ pub fn render_null<T: TestDriver>(driver: T) {
             builder.build().unwrap()
         };
 
-        println!("- Creating a command pool");
-        let mut pool = queue.new_cmd_pool().unwrap();
-
         println!("- Creating a command buffer");
-        let mut buffer = pool.begin_cmd_buffer().unwrap();
+        let mut buffer = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {
@@ -108,16 +95,14 @@ pub fn render_null<T: TestDriver>(driver: T) {
             e.bind_pipeline(&pipeline);
             e.set_viewports(
                 0,
-                &[
-                    gfx::Viewport {
-                        x: 0.0,
-                        y: 0.0,
-                        width: 256.0,
-                        height: 256.0,
-                        min_depth: 0.0,
-                        max_depth: 1.0,
-                    },
-                ],
+                &[gfx::Viewport {
+                    x: 0.0,
+                    y: 0.0,
+                    width: 256.0,
+                    height: 256.0,
+                    min_depth: 0.0,
+                    max_depth: 1.0,
+                }],
             );
             e.draw(0..4, 0..1);
         }

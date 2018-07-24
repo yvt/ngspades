@@ -3,11 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::mem::size_of_val;
-use std::slice::from_raw_parts_mut;
+use super::{utils, TestDriver};
 use gfx;
 use gfx::prelude::*;
-use super::{utils, TestDriver};
+use std::mem::size_of_val;
+use std::slice::from_raw_parts_mut;
 
 static SPIRV_CONV: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_conv1.comp.spv"));
@@ -51,55 +51,43 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         }
 
         println!("- Creating buffers");
-        let input_buffer = utils::UniqueBuffer::new(
-            device,
-            device
-                .build_buffer()
-                .label("Input buffer")
-                .size(input_bytes)
-                .usage(flags![gfx::BufferUsage::{Storage}])
-                .build()
-                .unwrap(),
-        );
-        let kernel_buffer = utils::UniqueBuffer::new(
-            device,
-            device
-                .build_buffer()
-                .label("Kernel buffer")
-                .size(kernel_bytes)
-                .usage(flags![gfx::BufferUsage::{Uniform}])
-                .build()
-                .unwrap(),
-        );
-        let output_buffer = utils::UniqueBuffer::new(
-            device,
-            device
-                .build_buffer()
-                .label("Output buffer")
-                .size(output_bytes)
-                .usage(flags![gfx::BufferUsage::{Storage}])
-                .build()
-                .unwrap(),
-        );
-        let indirect_buffer = utils::UniqueBuffer::new(
-            device,
-            device
-                .build_buffer()
-                .label("Indirect argument buffer")
-                .size(indirect_bytes)
-                .usage(flags![gfx::BufferUsage::{IndirectDraw}])
-                .build()
-                .unwrap(),
-        );
+        let input_buffer = device
+            .build_buffer()
+            .label("Input buffer")
+            .size(input_bytes)
+            .usage(flags![gfx::BufferUsage::{Storage}])
+            .build()
+            .unwrap();
+        let kernel_buffer = device
+            .build_buffer()
+            .label("Kernel buffer")
+            .size(kernel_bytes)
+            .usage(flags![gfx::BufferUsage::{Uniform}])
+            .build()
+            .unwrap();
+        let output_buffer = device
+            .build_buffer()
+            .label("Output buffer")
+            .size(output_bytes)
+            .usage(flags![gfx::BufferUsage::{Storage}])
+            .build()
+            .unwrap();
+        let indirect_buffer = device
+            .build_buffer()
+            .label("Indirect argument buffer")
+            .size(indirect_bytes)
+            .usage(flags![gfx::BufferUsage::{IndirectDraw}])
+            .build()
+            .unwrap();
 
         println!("- Computing the memory requirements for the heap");
         let valid_memory_types = [
-            device.get_memory_req((&*input_buffer).into()).unwrap(),
-            device.get_memory_req((&*kernel_buffer).into()).unwrap(),
-            device.get_memory_req((&*output_buffer).into()).unwrap(),
-            device.get_memory_req((&*indirect_buffer).into()).unwrap(),
+            &input_buffer,
+            &kernel_buffer,
+            &output_buffer,
+            &indirect_buffer,
         ].iter()
-            .map(|r| r.memory_types)
+            .map(|r| r.get_memory_req().unwrap().memory_types)
             .fold(!0, |x, y| x & y);
         let memory_type = utils::choose_memory_type(
             device,
@@ -109,37 +97,22 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         );
         println!("  Memory Type = {}", memory_type);
 
-        println!("- Creating a heap");
-        let heap: Box<gfx::Heap> = {
-            let mut builder = device.build_dedicated_heap();
-            builder.memory_type(memory_type).label("Buffer heap");
-            builder.prebind((&*input_buffer).into());
-            builder.prebind((&*kernel_buffer).into());
-            builder.prebind((&*output_buffer).into());
-            builder.prebind((&*indirect_buffer).into());
-            builder.build().unwrap()
-        };
+        println!("- Allocating memory");
+        let heap = device.global_heap(memory_type);
+        heap.bind((&input_buffer).into()).unwrap();
+        heap.bind((&kernel_buffer).into()).unwrap();
+        heap.bind((&output_buffer).into()).unwrap();
+        heap.bind((&indirect_buffer).into()).unwrap();
 
         println!("- Retrieving pointers to the allocated buffer");
-        let input_ptr = unsafe {
-            let alloc = heap.bind((&*input_buffer).into()).unwrap().unwrap();
-            let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut _, input_data.len())
-        };
-        let kernel_ptr = unsafe {
-            let alloc = heap.bind((&*kernel_buffer).into()).unwrap().unwrap();
-            let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut _, kernel_data.len())
-        };
-        let output_ptr = unsafe {
-            let alloc = heap.bind((&*output_buffer).into()).unwrap().unwrap();
-            let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut u32, output_data.len())
-        };
+        let input_ptr =
+            unsafe { from_raw_parts_mut(input_buffer.as_ptr() as *mut _, input_data.len()) };
+        let kernel_ptr =
+            unsafe { from_raw_parts_mut(kernel_buffer.as_ptr() as *mut _, kernel_data.len()) };
+        let output_ptr =
+            unsafe { from_raw_parts_mut(output_buffer.as_ptr() as *mut u32, output_data.len()) };
         let indirect_ptr = unsafe {
-            let alloc = heap.bind((&*indirect_buffer).into()).unwrap().unwrap();
-            let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut u32, indirect_data.len())
+            from_raw_parts_mut(indirect_buffer.as_ptr() as *mut u32, indirect_data.len())
         };
         println!(
             "  Input = {:p}, Kernel = {:p}, Output = {:p}, Indirect = {:p}",
@@ -181,7 +154,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .unwrap();
 
         println!("- Creating an argument pool");
-        let mut arg_pool: Box<gfx::ArgPool> = device
+        let arg_pool: gfx::ArgPoolRef = device
             .build_arg_pool()
             .reserve_table_sig(2, &arg_table_sig)
             .build()
@@ -197,23 +170,24 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         device
             .update_arg_table(
                 &arg_table_sig,
+                &arg_pool,
                 &arg_table,
                 &[
-                    (binding_redundant, 0, [(0..4, &*kernel_buffer)][..].into()),
+                    (binding_redundant, 0, [(0..4, &kernel_buffer)][..].into()),
                     (
                         binding_input,
                         0,
-                        [(0..input_bytes, &*input_buffer)][..].into(),
+                        [(0..input_bytes, &input_buffer)][..].into(),
                     ),
                     (
                         binding_output,
                         0,
-                        [(0..output_bytes, &*output_buffer)][..].into(),
+                        [(0..output_bytes, &output_buffer)][..].into(),
                     ),
                     (
                         binding_param,
                         0,
-                        [(0..kernel_bytes, &*kernel_buffer)][..].into(),
+                        [(0..kernel_bytes, &kernel_buffer)][..].into(),
                     ),
                 ],
             )
@@ -228,24 +202,18 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build()
             .unwrap();
 
-        println!("- Creating a command pool");
-        let mut pool = queue.new_cmd_pool().unwrap();
-
         println!("- Creating a command buffer");
-        let mut buffer: gfx::SafeCmdBuffer = pool.begin_cmd_buffer().unwrap();
+        let mut buffer = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {
             let e: &mut gfx::ComputeCmdEncoder = buffer.encode_compute();
-            e.use_resource(
-                gfx::ResourceUsage::Read,
-                &[(&*input_buffer).into(), (&*kernel_buffer).into()],
-            );
-            e.use_resource(gfx::ResourceUsage::Write, &[(&*output_buffer).into()]);
+            e.use_resource_read(&[&input_buffer, &kernel_buffer][..]);
+            e.use_resource_read_write(&output_buffer);
             e.begin_debug_group("Convolution");
             e.bind_pipeline(&pipeline);
-            e.bind_arg_table(0, &[&arg_table]);
-            e.bind_arg_table(1, &[&arg_table]);
+            e.bind_arg_table(0, &[(&arg_pool, &arg_table)]);
+            e.bind_arg_table(1, &[(&arg_pool, &arg_table)]);
             if direct {
                 e.dispatch(&[global_size as u32]);
             } else {
@@ -255,7 +223,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         }
         buffer.host_barrier(
             flags![gfx::AccessType::{ComputeWrite}],
-            &[(0..output_bytes, &*output_buffer)],
+            &[(0..output_bytes, &output_buffer)],
         );
 
         println!("- Installing a completion handler");

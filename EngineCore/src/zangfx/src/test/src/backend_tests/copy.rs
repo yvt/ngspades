@@ -3,30 +3,24 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::slice::from_raw_parts_mut;
+use super::{utils, TestDriver};
 use gfx;
 use gfx::prelude::*;
-use super::{utils, TestDriver};
+use std::slice::from_raw_parts_mut;
 
 pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
     driver.for_each_copy_queue(&mut |device, qf| {
         println!("- Creating a buffer");
-        let buffer1 = utils::UniqueBuffer::new(
-            device,
-            device
-                .build_buffer()
-                .label("Buffer 1")
-                .size(65536)
-                .usage(flags![gfx::BufferUsage::{CopyWrite}])
-                .build()
-                .unwrap(),
-        );
+        let buffer1 = device
+            .build_buffer()
+            .label("Buffer 1")
+            .size(65536)
+            .usage(flags![gfx::BufferUsage::{CopyWrite}])
+            .build()
+            .unwrap();
 
         println!("- Computing the memory requirements for the heap");
-        let valid_memory_types = device
-            .get_memory_req((&*buffer1).into())
-            .unwrap()
-            .memory_types;
+        let valid_memory_types = buffer1.get_memory_req().unwrap().memory_types;
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
@@ -35,20 +29,14 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
         );
         println!("  Memory Type = {}", memory_type);
 
-        println!("- Creating a heap");
-        let heap: Box<gfx::Heap> = {
-            let mut builder = device.build_dedicated_heap();
-            builder.memory_type(memory_type).label("Buffer heap");
-            builder.prebind((&*buffer1).into());
-            builder.build().unwrap()
-        };
+        println!("- Allocating memory");
+        device
+            .global_heap(memory_type)
+            .bind((&buffer1).into())
+            .unwrap();
 
         println!("- Retrieving pointers to the allocated buffer");
-        let buffer1_ptr = unsafe {
-            let alloc = heap.bind((&*buffer1).into()).unwrap().unwrap();
-            let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut u8, 65536)
-        };
+        let buffer1_ptr = unsafe { from_raw_parts_mut(buffer1.as_ptr() as *mut u8, 65536) };
         println!("  Ptr = {:p}", buffer1_ptr);
 
         println!("- Storing the input");
@@ -64,11 +52,8 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             .build()
             .unwrap();
 
-        println!("- Creating a command pool");
-        let mut pool = queue.new_cmd_pool().unwrap();
-
         println!("- Creating a command buffer");
-        let mut buffer = pool.begin_cmd_buffer().unwrap();
+        let mut buffer = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {
@@ -105,32 +90,23 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
 pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
     driver.for_each_copy_queue(&mut |device, qf| {
         println!("- Creating buffers");
-        let buffer1 = utils::UniqueBuffer::new(
-            device,
-            device
-                .build_buffer()
-                .label("Buffer 1")
-                .size(65536)
-                .usage(flags![gfx::BufferUsage::{CopyRead}])
-                .build()
-                .unwrap(),
-        );
-        let buffer2 = utils::UniqueBuffer::new(
-            device,
-            device
-                .build_buffer()
-                .label("Buffer 2")
-                .size(65536)
-                .usage(flags![gfx::BufferUsage::{CopyWrite}])
-                .build()
-                .unwrap(),
-        );
+        let buffer1 = device
+            .build_buffer()
+            .label("Buffer 1")
+            .size(65536)
+            .usage(flags![gfx::BufferUsage::{CopyRead}])
+            .build()
+            .unwrap();
+        let buffer2 = device
+            .build_buffer()
+            .label("Buffer 2")
+            .size(65536)
+            .usage(flags![gfx::BufferUsage::{CopyWrite}])
+            .build()
+            .unwrap();
 
         println!("- Computing the memory requirements for the heap");
-        let valid_memory_types = device
-            .get_memory_req((&*buffer1).into())
-            .unwrap()
-            .memory_types;
+        let valid_memory_types = buffer1.get_memory_req().unwrap().memory_types;
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
@@ -139,26 +115,14 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
         );
         println!("  Memory Type = {}", memory_type);
 
-        println!("- Creating a heap");
-        let heap: Box<gfx::Heap> = {
-            let mut builder = device.build_dedicated_heap();
-            builder.memory_type(memory_type).label("Buffer heap");
-            builder.prebind((&*buffer1).into());
-            builder.prebind((&*buffer2).into());
-            builder.build().unwrap()
-        };
+        println!("- Allocating memory");
+        let heap = device.global_heap(memory_type);
+        heap.bind((&buffer1).into()).unwrap();
+        heap.bind((&buffer2).into()).unwrap();
 
         println!("- Retrieving pointers to the allocated buffer");
-        let buffer1_ptr = unsafe {
-            let alloc = heap.bind((&*buffer1).into()).unwrap().unwrap();
-            let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut u8, 65536)
-        };
-        let buffer2_ptr = unsafe {
-            let alloc = heap.bind((&*buffer2).into()).unwrap().unwrap();
-            let ptr = heap.as_ptr(&alloc).unwrap();
-            from_raw_parts_mut(ptr as *mut u8, 65536)
-        };
+        let buffer1_ptr = unsafe { from_raw_parts_mut(buffer1.as_ptr() as *mut u8, 65536) };
+        let buffer2_ptr = unsafe { from_raw_parts_mut(buffer2.as_ptr() as *mut u8, 65536) };
         println!("  Input = {:p}, Output = {:p}", buffer1_ptr, buffer2_ptr);
 
         println!("- Storing the input");
@@ -176,11 +140,8 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             .build()
             .unwrap();
 
-        println!("- Creating a command pool");
-        let mut pool = queue.new_cmd_pool().unwrap();
-
         println!("- Creating a command buffer");
-        let mut buffer = pool.begin_cmd_buffer().unwrap();
+        let mut buffer = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {

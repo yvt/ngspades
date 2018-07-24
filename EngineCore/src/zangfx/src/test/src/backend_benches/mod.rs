@@ -56,7 +56,6 @@ macro_rules! zangfx_generate_backend_benches {
         zangfx_bench_single! { cb_throughput_400, $driver }
 
         zangfx_bench_single! { cmds_dispatch_10000_throughput, $driver }
-        zangfx_bench_single! { cmds_dispatch_10000_mt_throughput, $driver }
     }
 }
 
