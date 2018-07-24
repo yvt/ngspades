@@ -26,6 +26,29 @@ pub struct HeapBuilder {
     size: DeviceSize,
     memory_type: Option<MemoryType>,
     label: Option<String>,
+    bindings: Vec<Resource>,
+}
+
+#[derive(Debug, Clone)]
+enum Resource {
+    Image(base::ImageRef),
+    Buffer(base::BufferRef),
+}
+
+impl Resource {
+    fn clone_from(x: base::ResourceRef<'_>) -> Self {
+        match x {
+            base::ResourceRef::Image(x) => Resource::Image(x.clone()),
+            base::ResourceRef::Buffer(x) => Resource::Buffer(x.clone()),
+        }
+    }
+
+    fn as_ref(&self) -> base::ResourceRef<'_> {
+        match self {
+            Resource::Image(ref x) => base::ResourceRef::Image(x),
+            Resource::Buffer(ref x) => base::ResourceRef::Buffer(x),
+        }
+    }
 }
 
 zangfx_impl_object! { HeapBuilder:
@@ -44,6 +67,7 @@ impl HeapBuilder {
             size: 0,
             memory_type: None,
             label: None,
+            bindings: Vec::new(),
         }
     }
 
@@ -55,6 +79,7 @@ impl HeapBuilder {
             panic!("size is zero");
         }
 
+        let heap: heap::HeapRef;
         if storage_mode == metal::MTLStorageMode::Private {
             let metal_desc = unsafe { OCPtr::from_raw(metal::MTLHeapDescriptor::new()) }
                 .ok_or(nil_error("MTLHeapDescriptor new"))?;
@@ -68,7 +93,7 @@ impl HeapBuilder {
                 metal_heap.set_label(label);
             }
 
-            Ok(Arc::new(Heap::new(metal_heap, storage_mode)))
+            heap = Arc::new(Heap::new(metal_heap, storage_mode));
         } else {
             // `MTLHeap` only supports the private storage mode. So create a
             //  `MTLBuffer` and suballocate from it
@@ -77,8 +102,16 @@ impl HeapBuilder {
             let metal_buffer = unsafe {
                 OCPtr::from_raw(self.metal_device.new_buffer(self.size, options))
             }.ok_or(nil_error("MTLDevice newBufferWithLength:options:"))?;
-            Ok(Arc::new(BufferHeap::new(metal_buffer)))
+            heap = Arc::new(BufferHeap::new(metal_buffer));
         }
+
+        // Dedicated allocations
+        for resource in self.bindings.drain(..) {
+            let success = heap.bind(resource.as_ref())?;
+            assert!(success, "dedicated allocation failed for an unknown reason");
+        }
+
+        Ok(heap)
     }
 }
 
@@ -110,10 +143,15 @@ impl heap::DedicatedHeapBuilder for HeapBuilder {
     }
 
     fn bind(&mut self, obj: base::ResourceRef) {
+        let binding = Resource::clone_from(obj);
+        self.bindings.reserve(1);
+
         let req = get_memory_req(obj).unwrap();
         self.size = (self.size + req.align - 1) & !(req.align - 1);
         self.size += req.size;
-        unimplemented!()
+
+        // Add the resource handle to the dedicated allocation list
+        self.bindings.push(binding);
     }
 
     fn enable_use_heap(&mut self) -> &mut dyn base::DedicatedHeapBuilder {
