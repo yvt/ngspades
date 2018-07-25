@@ -285,15 +285,14 @@ impl<P: Painter> WindowManager<P> {
             return;
         }
 
-        struct Drawable<'a> {
-            device: &'a gfx::DeviceRef,
+        struct Drawable {
             image: gfx::ImageRef,
             surface_props: SurfaceProps,
             metal_drawable: Option<OCPtr<metal::CAMetalDrawable>>,
             pixel_ratio: f32,
         }
 
-        impl<'a> super::Drawable for Drawable<'a> {
+        impl super::Drawable for Drawable {
             fn image(&self) -> &gfx::ImageRef {
                 &self.image
             }
@@ -357,7 +356,6 @@ impl<P: Painter> WindowManager<P> {
                     }
 
                     let mut drawable = Drawable {
-                        device: &self.wm_device.device,
                         image: unsafe { be::image::Image::from_raw(metal_texture) }.into(),
                         surface_props,
                         metal_drawable: Some(OCPtr::new(metal_drawable).unwrap()),

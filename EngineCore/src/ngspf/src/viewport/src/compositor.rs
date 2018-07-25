@@ -157,7 +157,7 @@ impl Compositor {
         let device = gfx_objects.device.clone();
         let main_queue = gfx_objects.main_queue.queue.clone();
 
-        let mut temp_res_pool = TempResPool::new(device.clone())?;
+        let temp_res_pool = TempResPool::new(device.clone())?;
         let mut image_manager = ImageManager::new(&device, &main_queue)?;
 
         let composite_arg_table_sigs = [

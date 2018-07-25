@@ -5,7 +5,6 @@
 //
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
-use std::sync::Arc;
 
 use iterpool::{Pool, PoolPtr};
 
@@ -99,7 +98,6 @@ fn bytes_of_image(image_ref: &ImageRef, frame: &PresenterFrame) -> usize {
 }
 
 fn uncommit_image(
-    device: &gfx::DeviceRef,
     heap_set: &mut HeapSet,
     resident_image: &ResidentImageData,
 ) -> Result<()> {
@@ -112,7 +110,7 @@ impl Drop for ImageManager {
         for (_, image_ptr) in self.image_map.drain() {
             let mut image = self.images.deallocate(image_ptr).unwrap();
             if let Some(resident) = image.resident.take() {
-                uncommit_image(&self.device, &mut self.image_heap, &resident).unwrap();
+                uncommit_image(&mut self.image_heap, &resident).unwrap();
             }
         }
     }
@@ -169,7 +167,7 @@ impl ImageManager {
             let mut image = self.images.deallocate(image_ptr).unwrap();
             self.image_map.remove(&image.image_ref);
             if let Some(resident) = image.resident.take() {
-                uncommit_image(&self.device, &mut self.image_heap, &resident)?;
+                uncommit_image( &mut self.image_heap, &resident)?;
             }
         }
 
@@ -260,7 +258,6 @@ impl ImageManager {
 
         // Initiate the upload
         struct UploadRequest<'a> {
-            device: &'a gfx::DeviceRef,
             frame: &'a PresenterFrame,
             image: &'a Image,
         }
@@ -323,7 +320,6 @@ impl ImageManager {
             .upload(self.new_images_list.iter().map(&|&image_ptr| {
                 let ref image: Image = images[image_ptr];
                 UploadRequest {
-                    device: &device,
                     frame,
                     image,
                 }
@@ -345,7 +341,7 @@ impl ImageManager {
             let mut image = images.deallocate(image_ptr).unwrap();
             self.image_map.remove(&image.image_ref);
             if let Some(resident) = image.resident.take() {
-                uncommit_image(&device, &mut self.image_heap, &resident)?;
+                uncommit_image(&mut self.image_heap, &resident)?;
             }
         }
 

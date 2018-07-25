@@ -50,10 +50,6 @@ impl TempResPool {
         Ok(Self { device, heap })
     }
 
-    pub fn heap_mut(&mut self) -> &mut MultiHeapSet {
-        &mut self.heap
-    }
-
     /// Construct a `TempResTable` associated with this `TempResPool`.
     pub fn new_table(&self) -> TempResTable {
         Default::default()
