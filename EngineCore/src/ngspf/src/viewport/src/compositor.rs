@@ -301,18 +301,10 @@ impl Compositor {
             sampler_clamp,
 
             buffer_memory_type: device
-                .memory_type_for_buffer(
-                    flags![gfx::BufferUsage::{Storage}],
-                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                )?
+                .try_choose_memory_type_shared(flags![gfx::BufferUsage::{Storage}])?
                 .unwrap(),
             backing_store_memory_type: device
-                .memory_type_for_image(
-                    gfx::ImageFormat::SrgbBgra8,
-                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                    flags![gfx::MemoryTypeCaps::{}],
-                )?
+                .try_choose_memory_type_private(gfx::ImageFormat::SrgbBgra8)?
                 .unwrap(),
 
             device,

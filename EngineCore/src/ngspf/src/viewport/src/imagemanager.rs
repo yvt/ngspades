@@ -128,11 +128,7 @@ impl ImageManager {
         })?;
 
         let image_memory_type = device
-            .memory_type_for_image(
-                gfx::ImageFormat::SrgbRgba8,
-                flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                flags![gfx::MemoryTypeCaps::{}],
-            )?
+            .try_choose_memory_type_private(gfx::ImageFormat::SrgbRgba8)?
             .unwrap();
 
         Ok(Self {

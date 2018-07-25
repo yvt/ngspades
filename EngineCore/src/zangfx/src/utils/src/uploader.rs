@@ -138,11 +138,7 @@ impl Uploader {
             .build_dynamic_heap()
             .memory_type(
                 device
-                    .memory_type_for_buffer(
-                        flags![base::BufferUsage::{CopyRead}],
-                        flags![base::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                        flags![base::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                    )?
+                    .try_choose_memory_type_shared(flags![base::BufferUsage::{CopyRead}])?
                     .unwrap(),
             )
             .size(params.max_bytes_ongoing as u64)
