@@ -531,6 +531,14 @@ impl<'a> ResourceRef<'a> {
             ResourceRef::Image(_) => None,
         }
     }
+
+    /// Retrieve the memory requirements for this resource.
+    pub fn get_memory_req(&self) -> Result<MemoryReq> {
+        match self {
+            ResourceRef::Buffer(x) => x.get_memory_req(),
+            ResourceRef::Image(x) => x.get_memory_req(),
+        }
+    }
 }
 
 impl<'a> From<&'a ImageRef> for ResourceRef<'a> {
