@@ -116,12 +116,7 @@ struct Stateset {
     composite_pipeline: gfx::RenderPipelineRef,
 }
 
-// TODO: Remove `RENDER_PASS_BIT_USAGE_*`
 const RENDER_PASS_BIT_CLEAR: usize = 1 << 0;
-const RENDER_PASS_BIT_USAGE_MASK: usize = 0b11 << 1;
-const RENDER_PASS_BIT_USAGE_PRESENT: usize = 0b00 << 1;
-const RENDER_PASS_BIT_USAGE_SHADER_READ: usize = 0b01 << 1;
-const RENDER_PASS_BIT_USAGE_GENERAL: usize = 0b10 << 1;
 
 #[derive(Debug)]
 pub struct CompositorWindow {
@@ -603,8 +598,6 @@ impl CompositorWindow {
                             ref mut rt_i,
                         } => {
                             saved = Some((*pass_i, *rt_i));
-                            *pass_i = *pass_i & !RENDER_PASS_BIT_USAGE_MASK
-                                | RENDER_PASS_BIT_USAGE_SHADER_READ;
                         }
                         _ => unreachable!(),
                     }
@@ -649,7 +642,7 @@ impl CompositorWindow {
                 let rt_i = c.rts.len() - 1;
 
                 c.cmds[cmd_group_i].push(Cmd::BeginPass {
-                    pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_SHADER_READ,
+                    pass_i: RENDER_PASS_BIT_CLEAR,
                     rt_i,
                 });
 
@@ -669,7 +662,7 @@ impl CompositorWindow {
                     let (pass_i, rt_i) = saved.unwrap();
                     // Restart the interrupted render pass
                     c.cmds[rc.cmd_group_i].push(Cmd::BeginPass {
-                        pass_i: pass_i & RENDER_PASS_BIT_USAGE_MASK,
+                        pass_i: pass_i & !RENDER_PASS_BIT_CLEAR,
                         rt_i,
                     });
                     rc.begin_pass_cmd_i = c.cmds[rc.cmd_group_i].len() - 1;
@@ -701,7 +694,7 @@ impl CompositorWindow {
                     let mask_rt_i = c.rts.len() - 1;
 
                     c.cmds.push(vec![Cmd::BeginPass {
-                        pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_SHADER_READ,
+                        pass_i: RENDER_PASS_BIT_CLEAR,
                         rt_i: mask_rt_i,
                     }]);
                     let mask_cmd_group_i = c.cmds.len() - 1;
@@ -790,7 +783,7 @@ impl CompositorWindow {
             rts: Vec::with_capacity(self.num_rts * 2),
         };
         c.cmds.push(vec![Cmd::BeginPass {
-            pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_PRESENT,
+            pass_i: RENDER_PASS_BIT_CLEAR,
             rt_i: 0,
         }]);
         c.rts.push(RenderTarget {
@@ -1121,10 +1114,8 @@ impl Stateset {
         shaders: &CompositorShaders,
         framebuffer_format: gfx::ImageFormat,
     ) -> Result<Self> {
-        let render_passes: Vec<_> = (0..6)
+        let render_passes: Vec<_> = (0..2)
             .map(|i| {
-                let usage = i & RENDER_PASS_BIT_USAGE_MASK;
-
                 let mut builder = device.build_render_pass();
                 builder.label("Compositor render pass");
 
