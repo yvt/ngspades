@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use pod::Pod;
 use std::ops::Range;
 use zangfx_base::{self as base, Result};
 use zangfx_common::IntoWithPad;
@@ -19,15 +20,13 @@ pub struct StageBuffer<'a> {
 
 impl<'a> StageBuffer<'a> {
     /// Construct a `StageBuffer`.
-    pub fn new<T: Copy>(
+    pub fn new<T: Pod>(
         buffer: &'a base::BufferRef,
         offset: base::DeviceSize,
         data: &'a [T],
     ) -> Self {
-        use std::mem::size_of_val;
-        use std::slice::from_raw_parts;
         Self {
-            src_data: unsafe { from_raw_parts(data.as_ptr() as *const u8, size_of_val(data)) },
+            src_data: Pod::map_slice(data).unwrap(),
             dst_buffer: buffer,
             dst_offset: offset,
         }
@@ -79,12 +78,10 @@ pub struct StageImage<'a> {
 
 impl<'a> StageImage<'a> {
     /// Construct a `StageImage` with reasonable default settings.
-    pub fn new_default<T: Copy>(image: &'a base::ImageRef, data: &'a [T], size: &[u32]) -> Self {
-        use std::mem::size_of_val;
-        use std::slice::from_raw_parts;
+    pub fn new_default<T: Pod>(image: &'a base::ImageRef, data: &'a [T], size: &[u32]) -> Self {
         let size: [u32; 3] = size.into_with_pad(1);
         Self {
-            src_data: unsafe { from_raw_parts(data.as_ptr() as *const u8, size_of_val(data)) },
+            src_data: Pod::map_slice(data).unwrap(),
             src_row_stride: size[0] as u64,
             src_plane_stride: (size[0] * size[1]) as u64,
             dst_image: image,
