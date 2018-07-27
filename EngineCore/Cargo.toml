@@ -38,6 +38,7 @@ members = [
     "src/support/retire",
     "src/support/stickylock",
     "src/support/tokenlock",
+    "src/support/volatile_view",
     "src/yfft",
     "src/ysr2",
     "src/ysr2/src/clip",
