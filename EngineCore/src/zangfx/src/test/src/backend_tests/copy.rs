@@ -5,9 +5,10 @@
 //
 use super::{utils, TestDriver};
 use ngsenumflags::flags;
-use std::slice::from_raw_parts_mut;
+use volatile_view::prelude::*;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
+use zangfx_utils::prelude::*;
 
 pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
     driver.for_each_copy_queue(&mut |device, qf| {
@@ -37,12 +38,12 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             .unwrap();
 
         println!("- Retrieving pointers to the allocated buffer");
-        let buffer1_ptr = unsafe { from_raw_parts_mut(buffer1.as_ptr() as *mut u8, 65536) };
-        println!("  Ptr = {:p}", buffer1_ptr);
+        let buffer1_view = buffer1.as_bytes_volatile();
+        println!("  Ptr = {:p}", buffer1_view.as_ptr());
 
         println!("- Storing the input");
-        for x in buffer1_ptr.iter_mut() {
-            *x = 0;
+        for x in buffer1_view {
+            x.store(0);
         }
 
         println!("- Creating a command queue");
@@ -82,9 +83,10 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
         awaiter.wait_until_completed();
 
         println!("- Comparing the result");
-        assert_eq!(buffer1_ptr[0..400], [0x12u8; 400][..]);
-        assert_eq!(buffer1_ptr[400..800], [0u8; 400][..]);
-        assert_eq!(buffer1_ptr[800..1200], [0xafu8; 400][..]);
+        let ret: Vec<_> = buffer1_view.load();
+        assert_eq!(ret[0..400], [0x12u8; 400][..]);
+        assert_eq!(ret[400..800], [0u8; 400][..]);
+        assert_eq!(ret[800..1200], [0xafu8; 400][..]);
     });
 }
 
@@ -122,15 +124,19 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
         heap.bind((&buffer2).into()).unwrap();
 
         println!("- Retrieving pointers to the allocated buffer");
-        let buffer1_ptr = unsafe { from_raw_parts_mut(buffer1.as_ptr() as *mut u8, 65536) };
-        let buffer2_ptr = unsafe { from_raw_parts_mut(buffer2.as_ptr() as *mut u8, 65536) };
-        println!("  Input = {:p}, Output = {:p}", buffer1_ptr, buffer2_ptr);
+        let buffer1_view = buffer1.as_bytes_volatile();
+        let buffer2_view = buffer2.as_bytes_volatile();
+        println!(
+            "  Input = {:p}, Output = {:p}",
+            buffer1_view.as_ptr(),
+            buffer2_view.as_ptr()
+        );
 
         println!("- Storing the input");
         let data = "The quick brown 𠮷野家 jumped over the lazy ま・つ・や.".as_bytes();
-        buffer1_ptr[4..4 + data.len()].copy_from_slice(&data);
-        for x in buffer2_ptr.iter_mut() {
-            *x = 0;
+        buffer1_view[4..4 + data.len()].copy_from_slice(&data);
+        for x in buffer2_view {
+            x.store(0);
         }
 
         println!("- Creating a command queue");
@@ -169,13 +175,11 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
         awaiter.wait_until_completed();
 
         println!("- Comparing the result");
-        assert_eq!(buffer2_ptr[0..1200], [0u8; 1200][..]);
+        let ret: Vec<_> = buffer2_view.load();
+        assert_eq!(ret[0..1200], [0u8; 1200][..]);
+        assert_eq!(ret[1200..1200 + data.len() / 2], data[0..data.len() / 2]);
         assert_eq!(
-            buffer2_ptr[1200..1200 + data.len() / 2],
-            data[0..data.len() / 2]
-        );
-        assert_eq!(
-            buffer2_ptr[1200 + data.len() / 2..1200 + data.len() / 2 + 1200],
+            ret[1200 + data.len() / 2..1200 + data.len() / 2 + 1200],
             [0u8; 1200][..]
         );
     });

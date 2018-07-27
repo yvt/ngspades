@@ -6,9 +6,10 @@
 use super::{utils, TestDriver};
 use include_data::include_data;
 use ngsenumflags::flags;
-use std::slice::from_raw_parts_mut;
+use volatile_view::prelude::*;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
+use zangfx_utils::prelude::*;
 
 static SPIRV_READ: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/arg_table_mixed_read.comp.spv"));
@@ -187,8 +188,8 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         }
 
         println!("- Retrieving a pointer to the allocated buffer");
-        let ptr = unsafe { from_raw_parts_mut(buffer.as_ptr() as *mut u32, 1024) };
-        println!("  Pointer = {:p}", ptr);
+        let buffer_view = buffer.as_volatile::<u32>().unwrap();
+        println!("  Pointer = {:p}", buffer_view.as_ptr());
 
         println!("- Creating a sampler");
         let sampler = device.build_sampler().build().unwrap();
@@ -198,10 +199,10 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         const INPUT2_OFFSET: usize = 512;
         const INPUT3_OFFSET: usize = 768;
         const INPUT4_OFFSET: usize = 1024;
-        ptr[INPUT1_OFFSET / 4] = 114;
-        ptr[INPUT2_OFFSET / 4] = 514;
-        ptr[INPUT3_OFFSET / 4] = 810;
-        ptr[INPUT4_OFFSET / 4] = 1919;
+        buffer_view[INPUT1_OFFSET / 4].store(114);
+        buffer_view[INPUT2_OFFSET / 4].store(514);
+        buffer_view[INPUT3_OFFSET / 4].store(810);
+        buffer_view[INPUT4_OFFSET / 4].store(1919);
 
         println!("- Creating a command queue");
         let queue = device
@@ -286,10 +287,11 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         awaiter.wait_until_completed();
 
         println!("- Reading back the result");
-        assert_eq!(ptr[0], ptr[INPUT1_OFFSET / 4]);
-        assert_eq!(ptr[1], ptr[INPUT2_OFFSET / 4]);
-        assert_eq!(ptr[2], ptr[INPUT3_OFFSET / 4]);
-        assert_eq!(ptr[3], ptr[INPUT4_OFFSET / 4]);
-        assert_eq!(ptr[4], 0xdeadbeef);
+        let ret: Vec<_> = buffer_view.load();
+        assert_eq!(ret[0], ret[INPUT1_OFFSET / 4]);
+        assert_eq!(ret[1], ret[INPUT2_OFFSET / 4]);
+        assert_eq!(ret[2], ret[INPUT3_OFFSET / 4]);
+        assert_eq!(ret[3], ret[INPUT4_OFFSET / 4]);
+        assert_eq!(ret[4], 0xdeadbeef);
     });
 }

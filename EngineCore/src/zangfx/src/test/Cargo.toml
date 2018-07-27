@@ -12,6 +12,7 @@ zangfx_base = { path = "../base" }
 zangfx_utils = { path = "../utils" }
 ngsenumflags = { path = "../../../support/ngsenumflags" }
 include_data = { path = "../../../support/include_data" }
+volatile_view = { path = "../../../support/volatile_view" }
 
 [build-dependencies]
 prebuild-glslang = { path = "../../../support/prebuild-glslang" }

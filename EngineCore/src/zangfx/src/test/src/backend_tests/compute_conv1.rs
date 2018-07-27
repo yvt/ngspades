@@ -7,9 +7,10 @@ use super::{utils, TestDriver};
 use include_data::include_data;
 use ngsenumflags::flags;
 use std::mem::size_of_val;
-use std::slice::from_raw_parts_mut;
+use volatile_view::prelude::*;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
+use zangfx_utils::prelude::*;
 
 static SPIRV_CONV: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_conv1.comp.spv"));
@@ -107,24 +108,22 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         heap.bind((&indirect_buffer).into()).unwrap();
 
         println!("- Retrieving pointers to the allocated buffer");
-        let input_ptr =
-            unsafe { from_raw_parts_mut(input_buffer.as_ptr() as *mut _, input_data.len()) };
-        let kernel_ptr =
-            unsafe { from_raw_parts_mut(kernel_buffer.as_ptr() as *mut _, kernel_data.len()) };
-        let output_ptr =
-            unsafe { from_raw_parts_mut(output_buffer.as_ptr() as *mut u32, output_data.len()) };
-        let indirect_ptr = unsafe {
-            from_raw_parts_mut(indirect_buffer.as_ptr() as *mut u32, indirect_data.len())
-        };
+        let input_view = input_buffer.as_volatile().unwrap();
+        let kernel_view = kernel_buffer.as_volatile().unwrap();
+        let output_view = output_buffer.as_volatile().unwrap();
+        let indirect_view = indirect_buffer.as_volatile().unwrap();
         println!(
             "  Input = {:p}, Kernel = {:p}, Output = {:p}, Indirect = {:p}",
-            input_ptr, kernel_ptr, output_ptr, indirect_ptr
+            input_view.as_ptr(),
+            kernel_view.as_ptr(),
+            output_view.as_ptr(),
+            indirect_view.as_ptr()
         );
 
         println!("- Storing the shader inputs");
-        input_ptr.copy_from_slice(&input_data);
-        kernel_ptr.copy_from_slice(&kernel_data);
-        indirect_ptr.copy_from_slice(&indirect_data);
+        input_view.copy_from_slice(&input_data);
+        kernel_view.copy_from_slice(&kernel_data);
+        indirect_view.copy_from_slice(&indirect_data);
 
         println!("- Creating a command queue");
         let queue = device
@@ -241,7 +240,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         awaiter.wait_until_completed();
 
         println!("- Reading back the result");
-        output_data.copy_from_slice(output_ptr);
+        output_view.copy_to_slice(&mut output_data);
 
         let mut model_data = vec![0u32; num_elements];
         for (i, model) in model_data.iter_mut().enumerate() {
