@@ -61,7 +61,7 @@
 extern crate pod;
 
 use pod::Pod;
-use std::{cell::UnsafeCell, fmt, mem::transmute};
+use std::{cell::UnsafeCell, fmt, iter::FromIterator, mem::transmute};
 
 /// A volatile access view.
 ///
@@ -294,6 +294,32 @@ pub trait VolatileSlicePod<T> {
     ///
     /// This function will panic if `slice.len() != self.len()`.
     fn copy_from_slice(&self, slice: &[T]);
+
+    /// Copy all elements to a new `Vec`.
+    ///
+    /// # Examples
+    ///
+    ///     # use volatile_view::*;
+    ///     let mut x: Volatile<u32> = Volatile::new(0x42424242u32);
+    ///     let x_bytes: &[Volatile<u8>] = x.split().unwrap();
+    ///
+    ///     assert_eq!(&x_bytes.load_to_vec(), &[0x42u8; 4]);
+    ///
+    fn load_to_vec(&self) -> Vec<T> {
+        self.load()
+    }
+
+    /// Copy all elements to a new collection.
+    ///
+    /// # Examples
+    ///
+    ///     # use volatile_view::*;
+    ///     let mut x: Volatile<u32> = Volatile::new(0x42424242u32);
+    ///     let x_bytes: &[Volatile<u8>] = x.split().unwrap();
+    ///
+    ///     assert_eq!(&x_bytes.load_to_vec(), &[0x42u8; 4]);
+    ///
+    fn load<B: FromIterator<T>>(&self) -> B;
 }
 
 /// Convert `&[Volatile<T>]` to a `&[T]`. The contents must not be accessed via
@@ -323,6 +349,10 @@ impl<T: Pod> VolatileSlicePod<T> for [Volatile<T>] {
         for (x, y) in self.iter().zip(slice) {
             x.store(y.copy());
         }
+    }
+
+    fn load<B: FromIterator<T>>(&self) -> B {
+        self.iter().map(|x| x.load()).collect()
     }
 }
 
