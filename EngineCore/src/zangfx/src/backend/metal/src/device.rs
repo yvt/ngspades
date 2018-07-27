@@ -154,7 +154,7 @@ impl device::Device for Device {
         arg_table_sig: &base::ArgTableSigRef,
         updates: &[(
             (&base::ArgPoolRef, &base::ArgTableRef),
-            &[device::ArgUpdateSet],
+            &[device::ArgUpdateSet<'_>],
         )],
     ) -> Result<()> {
         let our_sig: &arg::tablesig::ArgTableSig = arg_table_sig

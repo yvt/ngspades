@@ -597,7 +597,7 @@ macro_rules! resources {
 
 impl<'a> ResourceSet<'a> {
     /// Get an iterator that visits all resources in the `ResourceSet`.
-    pub fn iter(&'b self) -> impl Iterator<Item = ResourceRef> + 'b {
+    pub fn iter(&'b self) -> impl Iterator<Item = ResourceRef<'_>> + 'b {
         let mut images = &[][..];
         let mut buffers = &[][..];
         let mut hetero = &[][..];

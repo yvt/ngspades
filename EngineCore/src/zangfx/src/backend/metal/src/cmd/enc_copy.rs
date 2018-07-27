@@ -59,7 +59,11 @@ impl base::CmdEncoder for CopyEncoder {
         self.metal_encoder.debug_marker(label);
     }
 
-    fn use_resource_core(&mut self, _usage: base::ResourceUsageFlags, _objs: base::ResourceSet) {
+    fn use_resource_core(
+        &mut self,
+        _usage: base::ResourceUsageFlags,
+        _objs: base::ResourceSet<'_>,
+    ) {
         // No-op: no arguemnt table for copy encoder
     }
 
@@ -81,7 +85,7 @@ impl base::CmdEncoder for CopyEncoder {
 
     fn barrier_core(
         &mut self,
-        _obj: base::ResourceSet,
+        _obj: base::ResourceSet<'_>,
         _src_access: base::AccessTypeFlags,
         _dst_access: base::AccessTypeFlags,
     ) {

@@ -86,7 +86,7 @@ impl Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref error) = self.error {
             error.fmt(fmt)
         } else {

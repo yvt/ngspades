@@ -88,7 +88,7 @@ pub trait DedicatedHeapBuilder: Object {
     /// Add a given resource to the dedicated allocation list.
     ///
     /// The return type of this method is reserved for future extensions.
-    fn bind(&mut self, obj: resources::ResourceRef);
+    fn bind(&mut self, obj: resources::ResourceRef<'_>);
 
     /// Enable uses of `use_heap` on the created heap.
     fn enable_use_heap(&mut self) -> &mut dyn DedicatedHeapBuilder;
@@ -147,7 +147,7 @@ pub trait Heap: Object {
     ///  - If `obj` refers to an image, this heap must not be associated with a
     ///    host-visible memory type.
     ///
-    fn bind(&self, obj: resources::ResourceRef) -> Result<bool>;
+    fn bind(&self, obj: resources::ResourceRef<'_>) -> Result<bool>;
 
     /// Mark the allocated region available for future allocations.
     ///
@@ -162,5 +162,5 @@ pub trait Heap: Object {
     ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
     ///    method.)
     ///
-    fn make_aliasable(&self, obj: resources::ResourceRef) -> Result<()>;
+    fn make_aliasable(&self, obj: resources::ResourceRef<'_>) -> Result<()>;
 }

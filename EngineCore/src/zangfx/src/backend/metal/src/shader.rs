@@ -219,7 +219,7 @@ impl ::std::error::Error for ShaderTranspilationFailed {
 }
 
 impl fmt::Display for ShaderTranspilationFailed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "Failed to transpile a shader code due to the following reason: {}",
@@ -241,7 +241,7 @@ impl ::std::error::Error for ShaderCompilationFailed {
 }
 
 impl fmt::Display for ShaderCompilationFailed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "Failed to compile the transpiled MSL code due to the following reason: {}\n\

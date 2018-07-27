@@ -256,7 +256,7 @@ impl ArgTableSig {
         &self,
         updates: &[(
             (&arg::ArgPoolRef, &arg::ArgTableRef),
-            &[device::ArgUpdateSet],
+            &[device::ArgUpdateSet<'_>],
         )],
     ) -> Result<()> {
         use crate::arg::table::ArgTable;

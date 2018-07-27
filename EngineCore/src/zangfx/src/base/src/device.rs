@@ -115,7 +115,7 @@ pub trait Device: Object {
     fn update_arg_tables(
         &self,
         arg_table_sig: &arg::ArgTableSigRef,
-        updates: &[((&arg::ArgPoolRef, &arg::ArgTableRef), &[ArgUpdateSet])],
+        updates: &[((&arg::ArgPoolRef, &arg::ArgTableRef), &[ArgUpdateSet<'_>])],
     ) -> Result<()>;
 
     /// Update a given argument table.
@@ -150,7 +150,7 @@ pub trait Device: Object {
         arg_table_sig: &arg::ArgTableSigRef,
         arg_pool: &arg::ArgPoolRef,
         arg_table: &arg::ArgTableRef,
-        updates: &[ArgUpdateSet],
+        updates: &[ArgUpdateSet<'_>],
     ) -> Result<()> {
         self.update_arg_tables(arg_table_sig, &[((arg_pool, arg_table), updates)])
     }

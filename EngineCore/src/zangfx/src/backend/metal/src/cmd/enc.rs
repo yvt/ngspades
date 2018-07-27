@@ -37,7 +37,7 @@ impl CmdBufferFenceSet {
     }
 }
 
-fn translate_resource(handle: base::ResourceRef) -> (metal::MTLResource, bool) {
+fn translate_resource(handle: base::ResourceRef<'_>) -> (metal::MTLResource, bool) {
     match handle {
         base::ResourceRef::Buffer(buffer) => {
             let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
@@ -57,7 +57,7 @@ crate trait UseResources {
     fn use_metal_resources(&self, resources: &[metal::MTLResource], usage: metal::MTLResourceUsage);
     fn use_metal_heaps(&self, heaps: &[metal::MTLHeap]);
 
-    fn use_gfx_resource(&self, usage: command::ResourceUsageFlags, objs: base::ResourceSet) {
+    fn use_gfx_resource(&self, usage: command::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
         let metal_usage = usage
             .iter()
             .map(|x| match x {

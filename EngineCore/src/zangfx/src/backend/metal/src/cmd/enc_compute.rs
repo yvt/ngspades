@@ -62,7 +62,7 @@ impl command::CmdEncoder for ComputeEncoder {
         self.metal_encoder.debug_marker(label);
     }
 
-    fn use_resource_core(&mut self, usage: base::ResourceUsageFlags, objs: base::ResourceSet) {
+    fn use_resource_core(&mut self, usage: base::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
         self.metal_encoder.use_gfx_resource(usage, objs);
     }
 
@@ -84,7 +84,7 @@ impl command::CmdEncoder for ComputeEncoder {
 
     fn barrier_core(
         &mut self,
-        _obj: base::ResourceSet,
+        _obj: base::ResourceSet<'_>,
         _src_access: base::AccessTypeFlags,
         _dst_access: base::AccessTypeFlags,
     ) {

@@ -142,7 +142,7 @@ impl heap::DedicatedHeapBuilder for HeapBuilder {
         self
     }
 
-    fn bind(&mut self, obj: base::ResourceRef) {
+    fn bind(&mut self, obj: base::ResourceRef<'_>) {
         let binding = Resource::clone_from(obj);
         self.bindings.reserve(1);
 
@@ -207,7 +207,7 @@ impl Heap {
 }
 
 impl heap::Heap for Heap {
-    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
+    fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
         match obj {
             base::ResourceRef::Buffer(buffer) => {
                 let metal_buffer_or_none =
@@ -228,7 +228,7 @@ impl heap::Heap for Heap {
         }
     }
 
-    fn make_aliasable(&self, obj: base::ResourceRef) -> Result<()> {
+    fn make_aliasable(&self, obj: base::ResourceRef<'_>) -> Result<()> {
         match obj {
             base::ResourceRef::Buffer(buffer) => {
                 let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
@@ -273,7 +273,7 @@ impl GlobalHeap {
 }
 
 impl heap::Heap for GlobalHeap {
-    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
+    fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
         match obj {
             base::ResourceRef::Buffer(buffer) => {
                 let metal_buffer_or_none =
@@ -294,7 +294,7 @@ impl heap::Heap for GlobalHeap {
         }
     }
 
-    fn make_aliasable(&self, _resource: base::ResourceRef) -> Result<()> {
+    fn make_aliasable(&self, _resource: base::ResourceRef<'_>) -> Result<()> {
         // Global heaps do not support `make_aliasable`.
         Ok(())
     }
@@ -405,7 +405,7 @@ impl BufferHeap {
 }
 
 impl heap::Heap for BufferHeap {
-    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
+    fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
         use zangfx_base::Buffer as _Buffer; // for `get_memory_req`
         match obj {
             base::ResourceRef::Buffer(buffer) => {
@@ -449,7 +449,7 @@ impl heap::Heap for BufferHeap {
         }
     }
 
-    fn make_aliasable(&self, resource: base::ResourceRef) -> Result<()> {
+    fn make_aliasable(&self, resource: base::ResourceRef<'_>) -> Result<()> {
         let my_alloc: &BufferHeapAlloc;
 
         match resource {

@@ -171,7 +171,7 @@ impl ::std::error::Error for SelectorReturnedNullError {
 }
 
 impl fmt::Display for SelectorReturnedNullError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Selector '{}' returned nil", self.sel)
     }
 }
@@ -181,7 +181,7 @@ crate fn nil_error(sel: &'static str) -> base::Error {
     base::Error::with_detail(base::ErrorKind::Other, SelectorReturnedNullError { sel })
 }
 
-crate fn get_memory_req(obj: base::ResourceRef) -> base::Result<base::MemoryReq> {
+crate fn get_memory_req(obj: base::ResourceRef<'_>) -> base::Result<base::MemoryReq> {
     match obj {
         base::ResourceRef::Buffer(buffer) => buffer.get_memory_req(),
         base::ResourceRef::Image(image) => image.get_memory_req(),

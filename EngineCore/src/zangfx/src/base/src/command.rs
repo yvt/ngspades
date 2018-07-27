@@ -152,7 +152,7 @@ pub trait CmdBuffer: Object {
         &mut self,
         src_queue_family: QueueFamily,
         dst_access: AccessTypeFlags,
-        transfer: &QueueOwnershipTransfer,
+        transfer: &QueueOwnershipTransfer<'_>,
     ) {
         let _ = (src_queue_family, dst_access, transfer);
         panic!("Queue families are not supported by this backend.");
@@ -172,7 +172,7 @@ pub trait CmdBuffer: Object {
         &mut self,
         dst_queue_family: QueueFamily,
         src_access: AccessTypeFlags,
-        transfer: &QueueOwnershipTransfer,
+        transfer: &QueueOwnershipTransfer<'_>,
     ) {
         let _ = (dst_queue_family, src_access, transfer);
         panic!("Queue families are not supported by this backend.");
@@ -509,7 +509,7 @@ pub trait CmdEncoder: Object {
     ///
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
     /// argument tables.
-    fn use_resource_core(&mut self, usage: ResourceUsageFlags, objs: resources::ResourceSet);
+    fn use_resource_core(&mut self, usage: ResourceUsageFlags, objs: resources::ResourceSet<'_>);
 
     /// Declare that the resources in the specified heaps are referenced by the
     /// argument tables used on this command encoder.
@@ -562,7 +562,7 @@ pub trait CmdEncoder: Object {
     /// subpass.
     fn barrier_core(
         &mut self,
-        obj: resources::ResourceSet,
+        obj: resources::ResourceSet<'_>,
         src_access: AccessTypeFlags,
         dst_access: AccessTypeFlags,
     );

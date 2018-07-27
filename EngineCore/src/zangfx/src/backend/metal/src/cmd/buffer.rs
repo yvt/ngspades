@@ -89,7 +89,7 @@ impl CmdBuffer {
 }
 
 impl fmt::Debug for CallbackSet {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("CallbackSet")
             .field(&format!("[{} elements]", self.0.len()))
             .finish()
