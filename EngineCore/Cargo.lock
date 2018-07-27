@@ -2242,6 +2242,9 @@ version = "0.1.0"
 dependencies = [
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsenumflags 0.1.2",
+ "num-traits 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pod 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "volatile_view 0.1.0",
  "zangfx_base 0.1.0",
  "zangfx_common 0.1.0",
 ]

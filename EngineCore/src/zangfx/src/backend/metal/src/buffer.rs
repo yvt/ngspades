@@ -210,7 +210,7 @@ impl Buffer {
     }
 }
 
-impl base::Buffer for Buffer {
+unsafe impl base::Buffer for Buffer {
     fn as_ptr(&self) -> *mut u8 {
         let data = unsafe { self.data() };
         let (ref metal_buffer, ref offset, _) = data.metal_buffer.as_ref().expect("not bound");
@@ -225,5 +225,10 @@ impl base::Buffer for Buffer {
         Ok(unsafe { self.data() }
             .memory_req
             .expect("This buffer does not support get_memory_req"))
+    }
+
+    fn len(&self) -> DeviceSize {
+        let data = unsafe { self.data() };
+        data.size
     }
 }

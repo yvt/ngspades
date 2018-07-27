@@ -84,7 +84,7 @@ define_handle! {
 }
 
 /// Trait for buffer handles.
-pub trait Buffer: CloneHandle<BufferRef> {
+pub unsafe trait Buffer: CloneHandle<BufferRef> {
     /// Create a proxy object to use this buffer from a specified queue.
     ///
     /// The default implementation panics with a message indicating that the
@@ -96,12 +96,17 @@ pub trait Buffer: CloneHandle<BufferRef> {
 
     /// Get the address of the underlying storage of a buffer.
     ///
+    /// The returned address must be valid throughout the lifetime of `self`.
+    ///
     /// # Valid Usage
     ///
     ///  - The buffer must be in the **Allocated** state.
     ///  - The buffer must be bound to a heap whose memory type is host-visible.
     ///
     fn as_ptr(&self) -> *mut u8;
+
+    /// Get the size of a buffer.
+    fn len(&self) -> DeviceSize;
 
     /// Retrieve the memory requirements for this buffer.
     fn get_memory_req(&self) -> Result<MemoryReq>;
