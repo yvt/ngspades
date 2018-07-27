@@ -4,9 +4,7 @@ cargo-features = ["edition"]
 name = "zangfx_metal"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
-# FIXME: Compilation fails when the following line is uncommented ... without
-#        any actual compilation errors.
-# edition = "2018"
+edition = "2018"
 
 [dependencies]
 zangfx_common = { path = "../../common" }

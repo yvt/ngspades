@@ -52,22 +52,9 @@
 //!
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
-extern crate arrayvec;
-extern crate atomic_refcell;
-extern crate block;
-extern crate cocoa;
-extern crate iterpool;
-extern crate ngsenumflags;
-extern crate parking_lot;
-extern crate refeq;
-extern crate rspirv;
-extern crate spirv_headers;
-extern crate tokenlock;
-extern crate xalloc;
-extern crate zangfx_base;
-extern crate zangfx_common;
-pub extern crate zangfx_metal_rs;
-extern crate zangfx_spirv_cross;
+
+#[allow(rust_2018_idioms)]
+pub extern crate zangfx_metal_rs as metal;
 
 #[doc(no_inline)]
 pub use zangfx_metal_rs as metal;
