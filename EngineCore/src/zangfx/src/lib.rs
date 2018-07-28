@@ -173,7 +173,6 @@
 //! | `RenderPass`        | fat handle     |                    |
 //! | `RenderTargetTable` | fat handle     |                    |
 //! | `Heap`              | boxed handle   |                    |
-//! | `HeapAlloc`         | fat handle     |                    |
 //! | `Image`             | fat handle     |                    |
 //! | `Buffer`            | fat handle     |                    |
 //! | `Sampler`           | fat handle     |                    |
