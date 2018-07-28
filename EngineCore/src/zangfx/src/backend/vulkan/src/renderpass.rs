@@ -41,7 +41,7 @@ pub struct RenderPassBuilder {
 zangfx_impl_object! { RenderPassBuilder: dyn base::RenderPassBuilder, dyn (crate::Debug) }
 
 impl RenderPassBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             targets: Vec::new(),
@@ -174,10 +174,9 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         let vk_render_pass = unsafe { vk_device.create_render_pass(&vk_info, None) }
             .map_err(translate_generic_error_unwrap)?;
 
-        Ok(
-            unsafe { RenderPass::from_raw(self.device, vk_render_pass, num_color_attachments) }
-                .into(),
-        )
+        Ok(unsafe {
+            RenderPass::from_raw(self.device.clone(), vk_render_pass, num_color_attachments)
+        }.into())
     }
 }
 
@@ -393,7 +392,7 @@ struct Target {
 zangfx_impl_object! { Target: dyn base::RenderTarget, dyn (crate::Debug) }
 
 impl RenderTargetTableBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
 
@@ -450,7 +449,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         let vk_device = self.device.vk_device();
 
         let mut image_views =
-            unsafe { UniqueImageViews::with_capacity(self.device, self.targets.len()) };
+            unsafe { UniqueImageViews::with_capacity(self.device.clone(), self.targets.len()) };
         for target in self.targets.iter() {
             let target = target.as_ref().unwrap();
 
@@ -517,7 +516,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 
         Ok(unsafe {
             RenderTargetTable::from_raw(
-                self.device,
+                self.device.clone(),
                 vk_framebuffer,
                 render_pass,
                 image_views,

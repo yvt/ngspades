@@ -31,7 +31,7 @@ pub struct ArgPoolBuilder {
 zangfx_impl_object! { ArgPoolBuilder: dyn base::ArgPoolBuilder, dyn (crate::Debug) }
 
 impl ArgPoolBuilder {
-    pub(crate) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             count: DescriptorCount::new(),
@@ -97,7 +97,7 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         let vk_device = self.device.vk_device();
         let vk_d_pool = unsafe { vk_device.create_descriptor_pool(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(Arc::new(ArgPool::new(self.device, vk_d_pool)))
+        Ok(Arc::new(ArgPool::new(self.device.clone(), vk_d_pool)))
     }
 }
 
@@ -160,7 +160,7 @@ impl base::ArgPool for ArgPool {
             }
         }
 
-        let device = self.device;
+        let ref device = self.device;
         let vk_d_pool = self.vk_d_pool;
 
         let mut result_set =

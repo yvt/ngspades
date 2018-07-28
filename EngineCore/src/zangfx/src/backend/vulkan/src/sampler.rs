@@ -34,7 +34,7 @@ pub struct SamplerBuilder {
 zangfx_impl_object! { SamplerBuilder: dyn base::SamplerBuilder, dyn (crate::Debug) }
 
 impl SamplerBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             mag_filter: base::Filter::Linear,

@@ -83,7 +83,7 @@ impl CmdBuffer {
         let vk_device = device.vk_device();
 
         let uncommited = Uncommited {
-            device,
+            device: device.clone(),
             scheduler,
             vk_cmd_buffer_pool_item,
             fence_set: FenceSet::new(),
@@ -196,7 +196,7 @@ impl base::CmdBuffer for CmdBuffer {
 
         let encoder = unsafe {
             RenderEncoder::new(
-                uncommited.device,
+                uncommited.device.clone(),
                 uncommited.vk_cmd_buffer(),
                 replace(&mut uncommited.fence_set, Default::default()),
                 replace(&mut uncommited.ref_table, Default::default()),
@@ -220,7 +220,7 @@ impl base::CmdBuffer for CmdBuffer {
 
         let encoder = unsafe {
             ComputeEncoder::new(
-                uncommited.device,
+                uncommited.device.clone(),
                 uncommited.vk_cmd_buffer(),
                 replace(&mut uncommited.fence_set, Default::default()),
                 replace(&mut uncommited.ref_table, Default::default()),
@@ -243,7 +243,7 @@ impl base::CmdBuffer for CmdBuffer {
 
         let encoder = unsafe {
             CopyEncoder::new(
-                uncommited.device,
+                uncommited.device.clone(),
                 uncommited.vk_cmd_buffer(),
                 replace(&mut uncommited.fence_set, Default::default()),
             )

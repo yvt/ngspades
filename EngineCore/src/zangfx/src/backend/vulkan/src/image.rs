@@ -41,7 +41,7 @@ enum ImageExtents {
 zangfx_impl_object! { ImageBuilder: dyn base::ImageBuilder, dyn (crate::Debug) }
 
 impl ImageBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             extents: None,
@@ -305,7 +305,7 @@ pub struct ImageViewBuilder {
 zangfx_impl_object! { ImageViewBuilder: dyn base::ImageViewBuilder, dyn (crate::Debug) }
 
 impl ImageViewBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             image: None,

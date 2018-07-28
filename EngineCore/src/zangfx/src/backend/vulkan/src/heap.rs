@@ -32,7 +32,7 @@ pub struct DynamicHeapBuilder {
 zangfx_impl_object! { DynamicHeapBuilder: dyn base::DynamicHeapBuilder, dyn (crate::Debug) }
 
 impl DynamicHeapBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             size: None,
@@ -55,7 +55,7 @@ impl base::DynamicHeapBuilder for DynamicHeapBuilder {
     fn build(&mut self) -> Result<base::HeapRef> {
         let size = self.size.expect("size");
         let memory_type = self.memory_type.expect("memory_type");
-        Heap::new(self.device, size, memory_type, size).map(|x| Arc::new(x) as _)
+        Heap::new(self.device.clone(), size, memory_type, size).map(|x| Arc::new(x) as _)
     }
 }
 
@@ -71,7 +71,7 @@ pub struct DedicatedHeapBuilder {
 zangfx_impl_object! { DedicatedHeapBuilder: dyn base::DedicatedHeapBuilder, dyn (crate::Debug) }
 
 impl DedicatedHeapBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             memory_type: None,
@@ -128,7 +128,7 @@ impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
             heap_size += size;
         }
 
-        Heap::new(self.device, heap_size, memory_type, heap_size).map(|x| Arc::new(x) as _)
+        Heap::new(self.device.clone(), heap_size, memory_type, heap_size).map(|x| Arc::new(x) as _)
     }
 }
 
@@ -203,13 +203,16 @@ impl Heap {
 
         // Map the host-visible memory (this might fail, which is why we built
         // `Heap` first)
-        let memory_type_caps = device.caps().info.memory_types[ty as usize].caps;
+        let memory_type_caps = heap.device.caps().info.memory_types[ty as usize].caps;
         let is_host_visible = memory_type_caps.contains(base::MemoryTypeCaps::HostVisible);
         if is_host_visible {
             heap.ptr = unsafe {
-                device
-                    .vk_device()
-                    .map_memory(heap.vk_mem, 0, size, vk::MemoryMapFlags::empty())
+                heap.device.vk_device().map_memory(
+                    heap.vk_mem,
+                    0,
+                    size,
+                    vk::MemoryMapFlags::empty(),
+                )
             }.map_err(translate_map_memory_error_unwrap)? as *mut u8;
         }
 

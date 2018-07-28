@@ -62,13 +62,13 @@ impl Fence {
             flags: vk::EventCreateFlags::empty(),
         };
 
-        let vk_device: &crate::AshDevice = device.vk_device();
         let mut vk_event = vk::Event::null();
 
         // Skip all event operations on MoltenVK -- Events are not supported.
         // It'll (probably) work without them thanks to Metal's automatic memory
         // barriers anyway.
         if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
+            let vk_device: &crate::AshDevice = device.vk_device();
             match vk_device.fp_v1_0().create_event(
                 vk_device.handle(),
                 &info,

@@ -15,34 +15,27 @@ use crate::{arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler
 use zangfx_base::Result;
 use zangfx_base::{self as base, interfaces, vtable_for, zangfx_impl_object};
 
-/// Unsafe reference to a Vulkan device object that is internally held by
-/// `Device`.
-///
-/// This type is `'static`, but the referent is only guaranteed to live as long
-/// as the originating `Device`. It is the application's responsibility to
-/// prevent premature release of `Device` (as required by ZanGFX's base
-/// interface.)
-#[derive(Debug, Clone, Copy)]
-pub(super) struct DeviceRef(*const AshDevice, *const limits::DeviceCaps);
+crate struct DeviceInfo {
+    vk_device: AshDevice,
+    caps: limits::DeviceCaps,
+}
 
-unsafe impl Sync for DeviceRef {}
-unsafe impl Send for DeviceRef {}
+crate type DeviceRef = Arc<DeviceInfo>;
 
-impl DeviceRef {
+impl DeviceInfo {
     crate fn vk_device(&self) -> &AshDevice {
-        unsafe { &*self.0 }
+        &self.vk_device
     }
 
     crate fn caps(&self) -> &limits::DeviceCaps {
-        unsafe { &*self.1 }
+        &self.caps
     }
 }
 
 /// Implementation of `Device` for Vulkan.
+#[derive(Debug)]
 pub struct Device {
-    // These fields are boxed so they can be referenced by `DeviceRef`
-    vk_device: Box<AshDevice>,
-    caps: Box<limits::DeviceCaps>,
+    device_ref: DeviceRef,
     queue_pool: Arc<cmd::queue::QueuePool>,
 }
 
@@ -67,33 +60,36 @@ impl Device {
         let caps = limits::DeviceCaps::new(info, config)?;
         let queue_pool = cmd::queue::QueuePool::new(&caps.config);
 
+        let device_ref = Arc::new(DeviceInfo { vk_device, caps });
+
         Ok(Self {
-            vk_device: Box::new(vk_device),
-            caps: Box::new(caps),
+            device_ref,
             queue_pool: Arc::new(queue_pool),
         })
     }
 
     pub fn vk_device(&self) -> &AshDevice {
-        &self.vk_device
+        &self.device_ref.vk_device()
     }
 
-    /// Construct a `DeviceRef` pointing this `Device`.
-    pub(super) unsafe fn new_device_ref(&self) -> DeviceRef {
-        DeviceRef(&*self.vk_device, &*self.caps)
+    crate fn device_ref(&self) -> &DeviceRef {
+        &self.device_ref
     }
 }
 
 use std::fmt;
-impl fmt::Debug for Device {
+impl fmt::Debug for DeviceInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Device").finish()
+        f.debug_struct("DeviceInfo")
+            .field("vk_device", &())
+            .field("caps", &self.caps)
+            .finish()
     }
 }
 
 impl base::Device for Device {
     fn caps(&self) -> &dyn base::DeviceCaps {
-        &*self.caps
+        self.device_ref.caps()
     }
 
     fn global_heap(&self, memory_type: base::MemoryType) -> &base::HeapRef {
@@ -103,70 +99,78 @@ impl base::Device for Device {
     fn build_cmd_queue(&self) -> base::CmdQueueBuilderRef {
         unsafe {
             Box::new(cmd::queue::CmdQueueBuilder::new(
-                self.new_device_ref(),
+                self.device_ref().clone(),
                 self.queue_pool.clone(),
             ))
         }
     }
 
     fn build_semaphore(&self) -> base::SemaphoreBuilderRef {
-        unsafe { Box::new(cmd::semaphore::SemaphoreBuilder::new(self.new_device_ref())) }
+        Box::new(cmd::semaphore::SemaphoreBuilder::new(
+            self.device_ref().clone(),
+        ))
     }
 
     fn build_dynamic_heap(&self) -> base::DynamicHeapBuilderRef {
-        unsafe { Box::new(heap::DynamicHeapBuilder::new(self.new_device_ref())) }
+        Box::new(heap::DynamicHeapBuilder::new(self.device_ref().clone()))
     }
 
     fn build_dedicated_heap(&self) -> base::DedicatedHeapBuilderRef {
-        unsafe { Box::new(heap::DedicatedHeapBuilder::new(self.new_device_ref())) }
+        Box::new(heap::DedicatedHeapBuilder::new(self.device_ref().clone()))
     }
 
     fn build_image(&self) -> base::ImageBuilderRef {
-        unsafe { Box::new(image::ImageBuilder::new(self.new_device_ref())) }
+        Box::new(image::ImageBuilder::new(self.device_ref().clone()))
     }
 
     fn build_buffer(&self) -> base::BufferBuilderRef {
-        unsafe { Box::new(buffer::BufferBuilder::new(self.new_device_ref())) }
+        Box::new(buffer::BufferBuilder::new(self.device_ref().clone()))
     }
 
     fn build_sampler(&self) -> base::SamplerBuilderRef {
-        unsafe { Box::new(sampler::SamplerBuilder::new(self.new_device_ref())) }
+        Box::new(sampler::SamplerBuilder::new(self.device_ref().clone()))
     }
 
     fn build_library(&self) -> base::LibraryBuilderRef {
-        unsafe { Box::new(shader::LibraryBuilder::new(self.new_device_ref())) }
+        Box::new(shader::LibraryBuilder::new(self.device_ref().clone()))
     }
 
     fn build_arg_table_sig(&self) -> base::ArgTableSigBuilderRef {
-        unsafe { Box::new(arg::layout::ArgTableSigBuilder::new(self.new_device_ref())) }
+        Box::new(arg::layout::ArgTableSigBuilder::new(
+            self.device_ref().clone(),
+        ))
     }
 
     fn build_root_sig(&self) -> base::RootSigBuilderRef {
-        unsafe { Box::new(arg::layout::RootSigBuilder::new(self.new_device_ref())) }
+        Box::new(arg::layout::RootSigBuilder::new(self.device_ref().clone()))
     }
 
     fn build_arg_pool(&self) -> base::ArgPoolBuilderRef {
-        unsafe { Box::new(arg::pool::ArgPoolBuilder::new(self.new_device_ref())) }
+        Box::new(arg::pool::ArgPoolBuilder::new(self.device_ref().clone()))
     }
 
     fn build_render_pass(&self) -> base::RenderPassBuilderRef {
-        unsafe { Box::new(renderpass::RenderPassBuilder::new(self.new_device_ref())) }
+        Box::new(renderpass::RenderPassBuilder::new(
+            self.device_ref().clone(),
+        ))
     }
 
     fn build_render_target_table(&self) -> base::RenderTargetTableBuilderRef {
-        unsafe {
-            Box::new(renderpass::RenderTargetTableBuilder::new(
-                self.new_device_ref(),
-            ))
-        }
+        Box::new(renderpass::RenderTargetTableBuilder::new(
+            self.device_ref().clone(),
+        ))
     }
 
     fn build_render_pipeline(&self) -> base::RenderPipelineBuilderRef {
-        unsafe { Box::new(pipeline::RenderPipelineBuilder::new(self.new_device_ref())) }
+        Box::new(pipeline::RenderPipelineBuilder::new(
+            self.device_ref().clone(),
+        ))
     }
 
     fn build_compute_pipeline(&self) -> base::ComputePipelineBuilderRef {
-        unsafe { Box::new(pipeline::ComputePipelineBuilder::new(self.new_device_ref())) }
+        Box::new(pipeline::ComputePipelineBuilder::new(
+            self.device_ref().clone(),
+        ))
     }
 
     fn update_arg_tables(

@@ -48,7 +48,7 @@ impl CopyEncoder {
     }
 
     fn common(&self) -> CommonCmdEncoder {
-        CommonCmdEncoder::new(self.device, self.vk_cmd_buffer)
+        CommonCmdEncoder::new(self.device.clone(), self.vk_cmd_buffer)
     }
 }
 

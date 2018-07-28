@@ -25,7 +25,7 @@ pub struct LibraryBuilder {
 zangfx_impl_object! { LibraryBuilder: dyn base::LibraryBuilder, dyn (crate::Debug) }
 
 impl LibraryBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             spirv_code: None,
@@ -57,7 +57,7 @@ impl base::LibraryBuilder for LibraryBuilder {
         let vk_device = self.device.vk_device();
         let vk_shader_mod = unsafe { vk_device.create_shader_module(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(unsafe { Library::from_raw(self.device, vk_shader_mod) }.into())
+        Ok(unsafe { Library::from_raw(self.device.clone(), vk_shader_mod) }.into())
     }
 }
 

@@ -78,7 +78,8 @@ where
                 sender
                     .send(
                         unsafe {
-                            device.vk_device().create_fence(
+                            let ref vk_device = monitor.shared.device.vk_device();
+                            vk_device.create_fence(
                                 &vk::FenceCreateInfo {
                                     s_type: vk::StructureType::FenceCreateInfo,
                                     p_next: crate::null(),

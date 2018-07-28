@@ -83,7 +83,7 @@ impl RenderEncoder {
     }
 
     fn common(&self) -> CommonCmdEncoder {
-        CommonCmdEncoder::new(self.device, self.vk_cmd_buffer)
+        CommonCmdEncoder::new(self.device.clone(), self.vk_cmd_buffer)
     }
 }
 
@@ -308,7 +308,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
 
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
         self.desc_set_binding_table.flush(
-            self.device,
+            &self.device,
             self.vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );
@@ -332,7 +332,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
         instance_range: Range<u32>,
     ) {
         self.desc_set_binding_table.flush(
-            self.device,
+            &self.device,
             self.vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );
@@ -352,7 +352,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
 
     fn draw_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         self.desc_set_binding_table.flush(
-            self.device,
+            &self.device,
             self.vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );
@@ -366,7 +366,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
 
     fn draw_indexed_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         self.desc_set_binding_table.flush(
-            self.device,
+            &self.device,
             self.vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );

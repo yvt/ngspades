@@ -262,7 +262,7 @@ impl DescSetBindingTable {
 
     crate fn flush(
         &mut self,
-        device: DeviceRef,
+        device: &DeviceRef,
         vk_cmd_buffer: vk::CommandBuffer,
         bind_point: vk::PipelineBindPoint,
     ) {

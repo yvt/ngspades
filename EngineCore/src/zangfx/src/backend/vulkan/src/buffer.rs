@@ -25,7 +25,7 @@ pub struct BufferBuilder {
 zangfx_impl_object! { BufferBuilder: dyn base::BufferBuilder, dyn (crate::Debug) }
 
 impl BufferBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             size: None,

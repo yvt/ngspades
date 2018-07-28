@@ -47,8 +47,8 @@ impl VkCmdBufferPool {
             cb_send.send(None).unwrap();
         }
 
-        let vk_device = device.vk_device();
         let vk_cmd_pool = unsafe {
+            let vk_device = device.vk_device();
             vk_device.create_command_pool(
                 &vk::CommandPoolCreateInfo {
                     s_type: vk::StructureType::CommandPoolCreateInfo,
@@ -62,7 +62,7 @@ impl VkCmdBufferPool {
         }.map_err(translate_generic_error_unwrap)?;
 
         Ok(Self {
-            device,
+            device: device.clone(),
             data: Arc::new(Mutex::new(PoolData {
                 device,
                 vk_cmd_pool,

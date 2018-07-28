@@ -55,7 +55,7 @@ fn new_shader_stage_description(
 }
 
 fn translate_pipeline_creation_error_unwrap(
-    device: DeviceRef,
+    device: &DeviceRef,
     (pipelines, error): (Vec<vk::Pipeline>, vk::Result),
 ) -> Error {
     let device = device.vk_device();
@@ -82,7 +82,7 @@ pub struct ComputePipelineBuilder {
 zangfx_impl_object! { ComputePipelineBuilder: dyn base::ComputePipelineBuilder, dyn (crate::Debug) }
 
 impl ComputePipelineBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             compute_shader: None,
@@ -132,9 +132,13 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
 
         let vk_device = self.device.vk_device();
         let vk_pipeline = unsafe { vk_device.create_compute_pipelines(cache, &[info], None) }
-            .map_err(|e| translate_pipeline_creation_error_unwrap(self.device, e))?[0];
+            .map_err(|e| translate_pipeline_creation_error_unwrap(&self.device, e))?[0];
 
-        Ok(unsafe { ComputePipeline::from_raw(self.device, vk_pipeline, root_sig.clone()) }.into())
+        Ok(
+            unsafe {
+                ComputePipeline::from_raw(self.device.clone(), vk_pipeline, root_sig.clone())
+            }.into(),
+        )
     }
 }
 
@@ -203,7 +207,7 @@ pub struct RenderPipelineBuilder {
 zangfx_impl_object! { RenderPipelineBuilder: dyn base::RenderPipelineBuilder, dyn (crate::Debug) }
 
 impl RenderPipelineBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             vertex_shader: None,
@@ -437,10 +441,15 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         let vk_device = self.device.vk_device();
         let vk_pipeline = unsafe { vk_device.create_graphics_pipelines(cache, &[vk_info], None) }
-            .map_err(|e| translate_pipeline_creation_error_unwrap(self.device, e))?[0];
+            .map_err(|e| translate_pipeline_creation_error_unwrap(&self.device, e))?[0];
 
         Ok(unsafe {
-            RenderPipeline::from_raw(self.device, vk_pipeline, root_sig.clone(), partial_states)
+            RenderPipeline::from_raw(
+                self.device.clone(),
+                vk_pipeline,
+                root_sig.clone(),
+                partial_states,
+            )
         }.into())
     }
 }

@@ -120,8 +120,13 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
         let num_fences = self.max_num_outstanding_batches;
         let num_cbs = self.max_num_outstanding_cmd_buffers;
 
-        CmdQueue::new(self.device, vk_queue, queue_family, num_fences, num_cbs)
-            .map(|x| Arc::new(x) as _)
+        CmdQueue::new(
+            self.device.clone(),
+            vk_queue,
+            queue_family,
+            num_fences,
+            num_cbs,
+        ).map(|x| Arc::new(x) as _)
     }
 }
 
@@ -156,15 +161,15 @@ impl CmdQueue {
         let scheduler_data = SchedulerData::default();
 
         Ok(Self {
-            device,
             vk_queue,
             queue_family_index,
             num_cbs,
-            monitor: Monitor::new(device, vk_queue, num_fences)?,
+            monitor: Monitor::new(device.clone(), vk_queue, num_fences)?,
             scheduler: Some(Arc::new(Scheduler {
                 token_ref: (&scheduler_data.token).into(),
                 data: Mutex::new(scheduler_data),
             })),
+            device,
         })
     }
 
@@ -192,7 +197,7 @@ impl base::CmdQueue for CmdQueue {
     }
 
     fn new_fence(&self) -> Result<base::FenceRef> {
-        unsafe { Fence::new(self.device, self.scheduler().token_ref.clone()) }
+        unsafe { Fence::new(self.device.clone(), self.scheduler().token_ref.clone()) }
             .map(base::FenceRef::new)
     }
 
@@ -200,7 +205,7 @@ impl base::CmdQueue for CmdQueue {
         self.scheduler()
             .data
             .lock()
-            .flush(&self.monitor, self.device, self.vk_queue);
+            .flush(&self.monitor, &self.device, self.vk_queue);
     }
 }
 
@@ -293,7 +298,7 @@ impl SchedulerData {
     fn flush(
         &mut self,
         monitor: &Monitor<BatchDoneHandler>,
-        device: DeviceRef,
+        device: &DeviceRef,
         vk_queue: vk::Queue,
     ) {
         let mut scheduled_items = None;

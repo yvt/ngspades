@@ -26,7 +26,7 @@ pub struct ArgTableSigBuilder {
 zangfx_impl_object! { ArgTableSigBuilder: dyn base::ArgTableSigBuilder, dyn (crate::Debug) }
 
 impl ArgTableSigBuilder {
-    pub(crate) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             args: Vec::new(),
@@ -82,7 +82,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
         let vk_device = self.device.vk_device();
         let vk_ds_layout = unsafe { vk_device.create_descriptor_set_layout(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(ArgTableSig::new(self.device, vk_ds_layout, desc_count, desc_types).into())
+        Ok(ArgTableSig::new(self.device.clone(), vk_ds_layout, desc_count, desc_types).into())
     }
 }
 
@@ -192,7 +192,7 @@ pub struct RootSigBuilder {
 zangfx_impl_object! { RootSigBuilder: dyn base::RootSigBuilder, dyn (crate::Debug) }
 
 impl RootSigBuilder {
-    pub(crate) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             tables: Vec::new(),
@@ -244,7 +244,7 @@ impl base::RootSigBuilder for RootSigBuilder {
         let vk_device = self.device.vk_device();
         let vk_p_layout = unsafe { vk_device.create_pipeline_layout(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(RootSig::new(self.device, vk_p_layout, tables).into())
+        Ok(RootSig::new(self.device.clone(), vk_p_layout, tables).into())
     }
 }
 

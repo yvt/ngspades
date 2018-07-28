@@ -31,7 +31,7 @@ impl CmdPool {
         queue_family_index: u32,
         num_cbs: usize,
     ) -> Result<Self> {
-        let vk_cmd_buffer_pool = VkCmdBufferPool::new(device, queue_family_index, num_cbs)?;
+        let vk_cmd_buffer_pool = VkCmdBufferPool::new(device.clone(), queue_family_index, num_cbs)?;
         Ok(Self {
             device,
             vk_cmd_buffer_pool,
@@ -43,7 +43,7 @@ impl CmdPool {
 impl base::CmdPool for CmdPool { */
     unsafe fn new_cmd_buffer(&mut self) -> Result<Box<dyn base::CmdBuffer>> {
         CmdBuffer::new(
-            self.device,
+            self.device.clone(),
             self.vk_cmd_buffer_pool.new_cmd_buffer()?,
             Arc::clone(&self.scheduler),
         ).map(|x| Box::new(x) as _)

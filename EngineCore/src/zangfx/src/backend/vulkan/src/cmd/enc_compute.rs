@@ -48,7 +48,7 @@ impl ComputeEncoder {
     }
 
     fn common(&self) -> CommonCmdEncoder {
-        CommonCmdEncoder::new(self.device, self.vk_cmd_buffer)
+        CommonCmdEncoder::new(self.device.clone(), self.vk_cmd_buffer)
     }
 }
 
@@ -129,7 +129,7 @@ impl base::ComputeCmdEncoder for ComputeEncoder {
 
     fn dispatch(&mut self, workgroup_count: &[u32]) {
         self.desc_set_binding_table.flush(
-            self.device,
+            &self.device,
             self.vk_cmd_buffer,
             vk::PipelineBindPoint::Compute,
         );
@@ -150,7 +150,7 @@ impl base::ComputeCmdEncoder for ComputeEncoder {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
 
         self.desc_set_binding_table.flush(
-            self.device,
+            &self.device,
             self.vk_cmd_buffer,
             vk::PipelineBindPoint::Compute,
         );
