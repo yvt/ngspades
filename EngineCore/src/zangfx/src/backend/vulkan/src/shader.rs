@@ -8,11 +8,12 @@ use ash::version::*;
 use ash::vk;
 use std::sync::Arc;
 
-use base;
-use base::{Error, ErrorKind, Result};
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use utils::translate_generic_error_unwrap;
+use crate::utils::translate_generic_error_unwrap;
 
 /// Implementation of `LibraryBuilder` for Vulkan.
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub struct LibraryBuilder {
     spirv_code: Option<Vec<u32>>,
 }
 
-zangfx_impl_object! { LibraryBuilder: base::LibraryBuilder, ::Debug }
+zangfx_impl_object! { LibraryBuilder: dyn base::LibraryBuilder, dyn (crate::Debug) }
 
 impl LibraryBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -33,7 +34,7 @@ impl LibraryBuilder {
 }
 
 impl base::LibraryBuilder for LibraryBuilder {
-    fn spirv_code(&mut self, v: &[u32]) -> &mut base::LibraryBuilder {
+    fn spirv_code(&mut self, v: &[u32]) -> &mut dyn base::LibraryBuilder {
         self.spirv_code = Some(Vec::from(v));
         self
     }

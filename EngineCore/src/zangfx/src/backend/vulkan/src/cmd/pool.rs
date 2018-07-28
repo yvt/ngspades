@@ -6,13 +6,13 @@
 //! Implementation of `CmdPool` for Vulkan.
 use std::sync::Arc;
 
-use base;
-use base::Result;
+use zangfx_base as base;
+use zangfx_base::Result;
 
 use super::buffer::CmdBuffer;
 use super::bufferpool::VkCmdBufferPool;
 use super::queue::Scheduler;
-use device::DeviceRef;
+use crate::device::DeviceRef;
 
 /// Implementation of `CmdPool` for Vulkan.
 #[derive(Debug)]
@@ -41,7 +41,7 @@ impl CmdPool {
     /* }
 
 impl base::CmdPool for CmdPool { */
-    unsafe fn new_cmd_buffer(&mut self) -> Result<Box<base::CmdBuffer>> {
+    unsafe fn new_cmd_buffer(&mut self) -> Result<Box<dyn base::CmdBuffer>> {
         CmdBuffer::new(
             self.device,
             self.vk_cmd_buffer_pool.new_cmd_buffer()?,

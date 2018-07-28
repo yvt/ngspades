@@ -7,29 +7,29 @@ use ash::version::*;
 use ash::vk;
 use std::collections::HashSet;
 
-use base;
+use zangfx_base as base;
 
-use arg::layout::RootSig;
-use arg::pool::ArgTable;
-use cmd::fence::Fence;
-use device::DeviceRef;
-use limits::DeviceTrait;
-use pipeline::{ComputePipeline, RenderPipeline};
-use renderpass::RenderTargetTable;
-use utils::translate_pipeline_stage_flags;
+use crate::arg::layout::RootSig;
+use crate::arg::pool::ArgTable;
+use crate::cmd::fence::Fence;
+use crate::device::DeviceRef;
+use crate::limits::DeviceTrait;
+use crate::pipeline::{ComputePipeline, RenderPipeline};
+use crate::renderpass::RenderTargetTable;
+use crate::utils::translate_pipeline_stage_flags;
 
 #[derive(Debug, Default)]
-pub struct FenceSet {
-    pub wait_fences: Vec<Fence>,
-    pub signal_fences: HashSet<Fence>,
+crate struct FenceSet {
+    crate wait_fences: Vec<Fence>,
+    crate signal_fences: HashSet<Fence>,
 }
 
 impl FenceSet {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         Default::default()
     }
 
-    pub fn wait_fence(&mut self, fence: Fence) {
+    crate fn wait_fence(&mut self, fence: Fence) {
         if self.signal_fences.contains(&fence) {
             // Found a matching fence signaling operating in the same CB
             return;
@@ -37,7 +37,7 @@ impl FenceSet {
         self.wait_fences.push(fence);
     }
 
-    pub fn signal_fence(&mut self, fence: Fence) {
+    crate fn signal_fence(&mut self, fence: Fence) {
         self.signal_fences.insert(fence);
     }
 }
@@ -50,26 +50,26 @@ impl FenceSet {
 ///     buffer is done.
 ///
 #[derive(Debug, Default)]
-pub struct RefTable {
+crate struct RefTable {
     compute_pipelines: HashSet<ComputePipeline>,
     render_pipelines: HashSet<RenderPipeline>,
     render_target_tables: HashSet<RenderTargetTable>,
 }
 
 impl RefTable {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         Default::default()
     }
 
-    pub fn insert_compute_pipeline(&mut self, obj: &ComputePipeline) {
+    crate fn insert_compute_pipeline(&mut self, obj: &ComputePipeline) {
         self.compute_pipelines.insert(obj.clone());
     }
 
-    pub fn insert_render_pipeline(&mut self, obj: &RenderPipeline) {
+    crate fn insert_render_pipeline(&mut self, obj: &RenderPipeline) {
         self.render_pipelines.insert(obj.clone());
     }
 
-    pub fn insert_render_target_table(&mut self, obj: &RenderTargetTable) {
+    crate fn insert_render_target_table(&mut self, obj: &RenderTargetTable) {
         self.render_target_tables.insert(obj.clone());
     }
 }
@@ -81,22 +81,22 @@ pub(super) struct CommonCmdEncoder {
 }
 
 impl CommonCmdEncoder {
-    pub fn new(device: DeviceRef, vk_cmd_buffer: vk::CommandBuffer) -> Self {
+    crate fn new(device: DeviceRef, vk_cmd_buffer: vk::CommandBuffer) -> Self {
         Self {
             device,
             vk_cmd_buffer,
         }
     }
 
-    pub fn begin_debug_group(&mut self, _label: &str) {
+    crate fn begin_debug_group(&mut self, _label: &str) {
         // TODO: debug commands
     }
 
-    pub fn end_debug_group(&mut self) {
+    crate fn end_debug_group(&mut self) {
         // TODO: debug commands
     }
 
-    pub fn debug_marker(&mut self, _label: &str) {
+    crate fn debug_marker(&mut self, _label: &str) {
         // TODO: debug commands
     }
 
@@ -106,7 +106,7 @@ impl CommonCmdEncoder {
     /// A render pass automatically inserts memory barriers as defined by
     /// external subpass dependencies, and ZanGFX requires that they must be
     /// a conservative approximation of the barrier inserted by fences.
-    pub fn wait_fence(&mut self, fence: &Fence, dst_access: base::AccessTypeFlags) {
+    crate fn wait_fence(&mut self, _fence: &Fence, _dst_access: base::AccessTypeFlags) {
         unimplemented!()
         /*
         let traits = self.device.caps().info.traits;
@@ -159,7 +159,7 @@ impl CommonCmdEncoder {
     ///
     /// When calling this from a render encoder, this must be called after
     /// ending a render pass.
-    pub fn update_fence(&mut self, fence: &Fence, src_access: base::AccessTypeFlags) {
+    crate fn update_fence(&mut self, _fence: &Fence, _src_access: base::AccessTypeFlags) {
         unimplemented!()
         /*let traits = self.device.caps().info.traits;
         if traits.intersects(DeviceTrait::MoltenVK) {
@@ -181,11 +181,11 @@ impl CommonCmdEncoder {
         }*/
     }
 
-    pub fn barrier_core(
+    crate fn barrier_core(
         &mut self,
-        obj: base::ResourceSet<'_>,
-        src_access: base::AccessTypeFlags,
-        dst_access: base::AccessTypeFlags,
+        _obj: base::ResourceSet<'_>,
+        _src_access: base::AccessTypeFlags,
+        _dst_access: base::AccessTypeFlags,
     ) {
         unimplemented!()
         /* let my_barrier: &Barrier = barrier.downcast_ref().expect("bad barrier type");
@@ -218,28 +218,28 @@ impl CommonCmdEncoder {
 pub(super) struct DescSetBindingTable {
     /// The first arugment table index that needs rebinding.
     start_dirty: usize,
-    table_sig_id: [usize; ::MAX_NUM_ARG_TABLES],
-    desc_sets: [vk::DescriptorSet; ::MAX_NUM_ARG_TABLES],
+    table_sig_id: [usize; crate::MAX_NUM_ARG_TABLES],
+    desc_sets: [vk::DescriptorSet; crate::MAX_NUM_ARG_TABLES],
 
     /// The root signature of the currently bound pipeline.
     bound_root_sig: Option<RootSig>,
 }
 
 impl DescSetBindingTable {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         Self {
             start_dirty: 0,
-            table_sig_id: [0; ::MAX_NUM_ARG_TABLES],
-            desc_sets: [vk::DescriptorSet::null(); ::MAX_NUM_ARG_TABLES],
+            table_sig_id: [0; crate::MAX_NUM_ARG_TABLES],
+            desc_sets: [vk::DescriptorSet::null(); crate::MAX_NUM_ARG_TABLES],
             bound_root_sig: None,
         }
     }
 
-    pub fn bind_root_sig(&mut self, root_sig: &RootSig) {
+    crate fn bind_root_sig(&mut self, root_sig: &RootSig) {
         self.bound_root_sig = Some(root_sig.clone());
     }
 
-    pub fn bind_arg_table(
+    crate fn bind_arg_table(
         &mut self,
         index: base::ArgTableIndex,
         tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
@@ -260,7 +260,7 @@ impl DescSetBindingTable {
         self.start_dirty = min(self.start_dirty, index);
     }
 
-    pub fn flush(
+    crate fn flush(
         &mut self,
         device: DeviceRef,
         vk_cmd_buffer: vk::CommandBuffer,

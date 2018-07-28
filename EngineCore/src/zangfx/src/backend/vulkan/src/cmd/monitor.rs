@@ -10,10 +10,10 @@ use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Arc;
 use std::thread;
 
-use base::Result;
+use zangfx_base::Result;
 
-use device::DeviceRef;
-use utils::translate_generic_error_unwrap;
+use crate::device::DeviceRef;
+use crate::utils::translate_generic_error_unwrap;
 
 /// Maintains a set of fences, and calls a provided callback function when one
 /// of them are signaled.
@@ -47,7 +47,7 @@ impl<T> Monitor<T>
 where
     T: MonitorHandler,
 {
-    pub fn new(device: DeviceRef, queue: vk::Queue, num_fences: usize) -> Result<Self> {
+    crate fn new(device: DeviceRef, queue: vk::Queue, num_fences: usize) -> Result<Self> {
         let (fence_sender, fence_receiver) = sync_channel(num_fences);
         let (cmd_sender, cmd_receiver) = sync_channel(num_fences + 1);
 
@@ -81,7 +81,7 @@ where
                             device.vk_device().create_fence(
                                 &vk::FenceCreateInfo {
                                     s_type: vk::StructureType::FenceCreateInfo,
-                                    p_next: ::null(),
+                                    p_next: crate::null(),
                                     flags: vk::FenceCreateFlags::empty(),
                                 },
                                 None,
@@ -124,7 +124,7 @@ where
         }
     }
 
-    pub fn get_fence(&self) -> MonitorFence<T> {
+    crate fn get_fence(&self) -> MonitorFence<'_, T> {
         let fence = self.fence_receiver.lock().recv().unwrap();
         MonitorFence {
             monitor: Some(self),
@@ -163,12 +163,12 @@ pub(super) struct MonitorFence<'a, T: 'a> {
 }
 
 impl<'a, T: 'a> MonitorFence<'a, T> {
-    pub fn vk_fence(&self) -> vk::Fence {
+    crate fn vk_fence(&self) -> vk::Fence {
         self.fence
     }
 
     /// Register a callback function for the fence.
-    pub fn finish(mut self, callback: T) {
+    crate fn finish(mut self, callback: T) {
         let monitor = self.monitor.take().unwrap();
         monitor
             .cmd_sender

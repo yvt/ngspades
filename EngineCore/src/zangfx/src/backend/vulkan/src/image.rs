@@ -8,13 +8,14 @@ use ash::version::*;
 use ash::vk;
 use std::mem::transmute;
 
-use base;
-use base::{Error, ErrorKind, Result};
-use common::BinaryInteger;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_common::BinaryInteger;
 
-use device::DeviceRef;
-use formats::translate_image_format;
-use utils::{
+use crate::device::DeviceRef;
+use crate::formats::translate_image_format;
+use crate::utils::{
     translate_generic_error_unwrap, translate_image_layout, translate_image_subresource_range,
 };
 
@@ -37,7 +38,7 @@ enum ImageExtents {
     Cube(u32),
 }
 
-zangfx_impl_object! { ImageBuilder: base::ImageBuilder, ::Debug }
+zangfx_impl_object! { ImageBuilder: dyn base::ImageBuilder, dyn (crate::Debug) }
 
 impl ImageBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -53,12 +54,12 @@ impl ImageBuilder {
 }
 
 impl base::ImageBuilder for ImageBuilder {
-    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::ImageBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::ImageBuilder {
         unimplemented!();
         self
     }
 
-    fn extents(&mut self, v: &[u32]) -> &mut base::ImageBuilder {
+    fn extents(&mut self, v: &[u32]) -> &mut dyn base::ImageBuilder {
         self.extents = Some(match v.len() {
             1 => ImageExtents::OneD(v[0]),
             2 => ImageExtents::TwoD(v[0], v[1]),
@@ -68,27 +69,27 @@ impl base::ImageBuilder for ImageBuilder {
         self
     }
 
-    fn extents_cube(&mut self, v: u32) -> &mut base::ImageBuilder {
+    fn extents_cube(&mut self, v: u32) -> &mut dyn base::ImageBuilder {
         self.extents = Some(ImageExtents::Cube(v));
         self
     }
 
-    fn num_layers(&mut self, v: Option<u32>) -> &mut base::ImageBuilder {
+    fn num_layers(&mut self, v: Option<u32>) -> &mut dyn base::ImageBuilder {
         self.num_layers = v;
         self
     }
 
-    fn num_mip_levels(&mut self, v: u32) -> &mut base::ImageBuilder {
+    fn num_mip_levels(&mut self, v: u32) -> &mut dyn base::ImageBuilder {
         self.num_mip_levels = v;
         self
     }
 
-    fn format(&mut self, v: base::ImageFormat) -> &mut base::ImageBuilder {
+    fn format(&mut self, v: base::ImageFormat) -> &mut dyn base::ImageBuilder {
         self.format = Some(v);
         self
     }
 
-    fn usage(&mut self, v: base::ImageUsageFlags) -> &mut base::ImageBuilder {
+    fn usage(&mut self, v: base::ImageUsageFlags) -> &mut dyn base::ImageBuilder {
         self.usage = v;
         self
     }
@@ -206,7 +207,7 @@ impl Image {
         self.meta
     }
 
-    pub(super) unsafe fn destroy(&self, vk_device: &::AshDevice) {
+    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
         vk_device.destroy_image(self.vk_image, None);
     }
 }
@@ -301,7 +302,7 @@ pub struct ImageViewBuilder {
     image_type: Option<base::ImageType>,
 }
 
-zangfx_impl_object! { ImageViewBuilder: base::ImageViewBuilder, ::Debug }
+zangfx_impl_object! { ImageViewBuilder: dyn base::ImageViewBuilder, dyn (crate::Debug) }
 
 impl ImageViewBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -322,17 +323,17 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         self
     } */
 
-    fn subrange(&mut self, v: &base::ImageSubRange) -> &mut base::ImageViewBuilder {
+    fn subrange(&mut self, v: &base::ImageSubRange) -> &mut dyn base::ImageViewBuilder {
         self.subrange = v.clone();
         self
     }
 
-    fn format(&mut self, v: base::ImageFormat) -> &mut base::ImageViewBuilder {
+    fn format(&mut self, v: base::ImageFormat) -> &mut dyn base::ImageViewBuilder {
         self.format = Some(v);
         self
     }
 
-    fn image_type(&mut self, v: base::ImageType) -> &mut base::ImageViewBuilder {
+    fn image_type(&mut self, v: base::ImageType) -> &mut dyn base::ImageViewBuilder {
         self.image_type = Some(v);
         self
     }
@@ -428,7 +429,7 @@ impl ImageView {
         self.meta
     }
 
-    pub(super) unsafe fn destroy(&self, vk_device: &::AshDevice) {
+    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
         vk_device.destroy_image_view(self.vk_image_view, None);
     }
 }

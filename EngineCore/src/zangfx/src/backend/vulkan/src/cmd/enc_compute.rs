@@ -6,10 +6,11 @@
 use ash::version::*;
 use ash::vk;
 
-use base;
-use buffer::Buffer;
-use device::DeviceRef;
-use pipeline::ComputePipeline;
+use crate::buffer::Buffer;
+use crate::device::DeviceRef;
+use crate::pipeline::ComputePipeline;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
 use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
 use super::fence::Fence;
@@ -24,10 +25,10 @@ pub(super) struct ComputeEncoder {
 }
 
 zangfx_impl_object! { ComputeEncoder:
-base::CmdEncoder, base::ComputeCmdEncoder, ::Debug }
+dyn base::CmdEncoder, dyn base::ComputeCmdEncoder, dyn (crate::Debug) }
 
 impl ComputeEncoder {
-    pub unsafe fn new(
+    crate unsafe fn new(
         device: DeviceRef,
         vk_cmd_buffer: vk::CommandBuffer,
         fence_set: FenceSet,
@@ -42,7 +43,7 @@ impl ComputeEncoder {
         }
     }
 
-    pub fn finish(self) -> (FenceSet, RefTable) {
+    crate fn finish(self) -> (FenceSet, RefTable) {
         (self.fence_set, self.ref_table)
     }
 

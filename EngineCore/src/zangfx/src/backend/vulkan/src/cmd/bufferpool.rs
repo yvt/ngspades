@@ -9,10 +9,10 @@ use parking_lot::Mutex;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Arc;
 
-use base::Result;
+use zangfx_base::Result;
 
-use device::DeviceRef;
-use utils::translate_generic_error_unwrap;
+use crate::device::DeviceRef;
+use crate::utils::translate_generic_error_unwrap;
 
 /// Thread-safe command buffer pool. Maintains a fixed number of command
 /// buffers.
@@ -41,7 +41,7 @@ pub(super) struct VkCmdBufferPoolItem {
 }
 
 impl VkCmdBufferPool {
-    pub fn new(device: DeviceRef, queue_family_index: u32, num_cbs: usize) -> Result<Self> {
+    crate fn new(device: DeviceRef, queue_family_index: u32, num_cbs: usize) -> Result<Self> {
         let (cb_send, cb_recv) = sync_channel(num_cbs);
         for _ in 0..num_cbs {
             cb_send.send(None).unwrap();
@@ -52,7 +52,7 @@ impl VkCmdBufferPool {
             vk_device.create_command_pool(
                 &vk::CommandPoolCreateInfo {
                     s_type: vk::StructureType::CommandPoolCreateInfo,
-                    p_next: ::null(),
+                    p_next: crate::null(),
                     flags: vk::COMMAND_POOL_CREATE_TRANSIENT_BIT
                         | vk::COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                     queue_family_index,
@@ -74,7 +74,7 @@ impl VkCmdBufferPool {
 
     /// Allocate an empty command buffer. Might block if there are an excessive
     /// number of outstanding command buffers.
-    pub fn new_cmd_buffer(&self) -> Result<VkCmdBufferPoolItem> {
+    crate fn new_cmd_buffer(&self) -> Result<VkCmdBufferPoolItem> {
         use std::mem::drop;
 
         let vk_device = self.device.vk_device();
@@ -99,7 +99,7 @@ impl VkCmdBufferPool {
                 vk_device
                     .allocate_command_buffers(&vk::CommandBufferAllocateInfo {
                         s_type: vk::StructureType::CommandBufferAllocateInfo,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         command_pool: data.vk_cmd_pool,
                         level: vk::CommandBufferLevel::Primary,
                         command_buffer_count: 1,
@@ -135,7 +135,7 @@ impl Drop for PoolData {
 }
 
 impl VkCmdBufferPoolItem {
-    pub fn vk_cmd_buffer(&self) -> vk::CommandBuffer {
+    crate fn vk_cmd_buffer(&self) -> vk::CommandBuffer {
         self.vk_cmd_buffer
     }
 }

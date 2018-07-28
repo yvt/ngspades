@@ -7,11 +7,12 @@
 use ash::version::*;
 use ash::vk;
 
-use base;
-use base::{Error, ErrorKind, Result};
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use utils::translate_generic_error_unwrap;
+use crate::utils::translate_generic_error_unwrap;
 
 /// Implementation of `BufferBuilder` for Vulkan.
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub struct BufferBuilder {
     usage: base::BufferUsageFlags,
 }
 
-zangfx_impl_object! { BufferBuilder: base::BufferBuilder, ::Debug }
+zangfx_impl_object! { BufferBuilder: dyn base::BufferBuilder, dyn (crate::Debug) }
 
 impl BufferBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -34,17 +35,17 @@ impl BufferBuilder {
 }
 
 impl base::BufferBuilder for BufferBuilder {
-    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::BufferBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::BufferBuilder {
         unimplemented!();
         self
     }
 
-    fn size(&mut self, v: base::DeviceSize) -> &mut base::BufferBuilder {
+    fn size(&mut self, v: base::DeviceSize) -> &mut dyn base::BufferBuilder {
         self.size = Some(v);
         self
     }
 
-    fn usage(&mut self, v: base::BufferUsageFlags) -> &mut base::BufferBuilder {
+    fn usage(&mut self, v: base::BufferUsageFlags) -> &mut dyn base::BufferBuilder {
         self.usage = v;
         self
     }
@@ -113,7 +114,7 @@ impl Buffer {
         self.vk_buffer
     }
 
-    pub(super) unsafe fn destroy(&self, vk_device: &::AshDevice) {
+    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
         vk_device.destroy_buffer(self.vk_buffer, None);
     }
 }

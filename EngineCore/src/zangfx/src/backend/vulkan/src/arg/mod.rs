@@ -8,14 +8,14 @@ use arrayvec::ArrayVec;
 use ash::vk;
 use std::ops::{AddAssign, Index, IndexMut, Mul};
 
-use base;
+use zangfx_base as base;
 
 pub mod layout;
 pub mod pool;
 
 fn translate_descriptor_type(ty: base::ArgType) -> vk::DescriptorType {
     use ash::vk::DescriptorType::*;
-    use base::ArgType;
+    use zangfx_base::ArgType;
     match ty {
         ArgType::StorageImage => StorageImage,
         ArgType::SampledImage => SampledImage,
@@ -30,24 +30,24 @@ fn translate_descriptor_type(ty: base::ArgType) -> vk::DescriptorType {
 struct DescriptorCount([u32; 11]);
 
 impl DescriptorCount {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         Default::default()
     }
 
-    pub fn from_bindings(bindings: &[vk::DescriptorSetLayoutBinding]) -> Self {
+    crate fn from_bindings(bindings: &[vk::DescriptorSetLayoutBinding]) -> Self {
         let mut x = Self::new();
         x.add_bindings(bindings);
         x
     }
 
-    pub fn add_bindings(&mut self, bindings: &[vk::DescriptorSetLayoutBinding]) -> &mut Self {
+    crate fn add_bindings(&mut self, bindings: &[vk::DescriptorSetLayoutBinding]) -> &mut Self {
         for binding in bindings.iter() {
             self[binding.descriptor_type] += binding.descriptor_count;
         }
         self
     }
 
-    pub fn as_pool_sizes(&self) -> ArrayVec<[vk::DescriptorPoolSize; 11]> {
+    crate fn as_pool_sizes(&self) -> ArrayVec<[vk::DescriptorPoolSize; 11]> {
         use ash::vk::DescriptorType::*;
         [
             Sampler,

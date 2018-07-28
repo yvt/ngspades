@@ -10,12 +10,13 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use tokenlock::{Token, TokenRef};
 
-use base;
-use base::{Error, ErrorKind, Result};
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use limits::DeviceConfig;
-use utils::translate_generic_error_unwrap;
+use crate::limits::DeviceConfig;
+use crate::utils::translate_generic_error_unwrap;
 
 use super::buffer::BufferCompleteCallback;
 use super::bufferpool::VkCmdBufferPoolItem;
@@ -31,7 +32,7 @@ pub(crate) struct QueuePool {
 }
 
 impl QueuePool {
-    pub fn new(config: &DeviceConfig) -> Self {
+    crate fn new(config: &DeviceConfig) -> Self {
         let ref queues = config.queues;
 
         let num_qf = queues.iter().map(|&(qf, _)| qf + 1).max().unwrap_or(0);
@@ -46,7 +47,7 @@ impl QueuePool {
         }
     }
 
-    pub fn allocate_queue(&self, queue_family: base::QueueFamily) -> u32 {
+    crate fn allocate_queue(&self, queue_family: base::QueueFamily) -> u32 {
         self.pools.lock()[queue_family as usize]
             .pop()
             .expect("out of queues")
@@ -64,7 +65,7 @@ pub struct CmdQueueBuilder {
     queue_family: Option<base::QueueFamily>,
 }
 
-zangfx_impl_object! { CmdQueueBuilder: base::CmdQueueBuilder, ::Debug }
+zangfx_impl_object! { CmdQueueBuilder: dyn base::CmdQueueBuilder, dyn (crate::Debug) }
 
 impl CmdQueueBuilder {
     pub(crate) unsafe fn new(device: DeviceRef, queue_pool: Arc<QueuePool>) -> Self {
@@ -95,7 +96,7 @@ impl CmdQueueBuilder {
 }
 
 impl base::CmdQueueBuilder for CmdQueueBuilder {
-    fn queue_family(&mut self, v: base::QueueFamily) -> &mut base::CmdQueueBuilder {
+    fn queue_family(&mut self, v: base::QueueFamily) -> &mut dyn base::CmdQueueBuilder {
         self.queue_family = Some(v);
         self
     }
@@ -135,7 +136,7 @@ pub struct CmdQueue {
     scheduler: Option<Arc<Scheduler>>,
 }
 
-zangfx_impl_object! { CmdQueue: base::CmdQueue, ::Debug }
+zangfx_impl_object! { CmdQueue: dyn base::CmdQueue, dyn (crate::Debug) }
 
 impl Drop for CmdQueue {
     fn drop(&mut self) {
@@ -254,17 +255,17 @@ fn for_each_item_mut<T: FnMut(&mut Item)>(item_or_none: &mut Option<Box<Item>>, 
 
 #[derive(Debug)]
 pub(super) struct CommitedBuffer {
-    pub fence_set: FenceSet,
-    pub ref_table: Option<RefTable>,
-    pub vk_cmd_buffer_pool_item: Option<VkCmdBufferPoolItem>,
-    pub completion_handler: BufferCompleteCallback,
-    pub wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
-    pub signal_semaphores: Vec<Semaphore>,
+    crate fence_set: FenceSet,
+    crate ref_table: Option<RefTable>,
+    crate vk_cmd_buffer_pool_item: Option<VkCmdBufferPoolItem>,
+    crate completion_handler: BufferCompleteCallback,
+    crate wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
+    crate signal_semaphores: Vec<Semaphore>,
 }
 
 impl Scheduler {
     /// Called by a command buffer's method.
-    pub fn commit(&self, commited_buffer: CommitedBuffer) {
+    crate fn commit(&self, commited_buffer: CommitedBuffer) {
         let mut item = Box::new(Item {
             commited: commited_buffer,
             wait_fence_index: 0,

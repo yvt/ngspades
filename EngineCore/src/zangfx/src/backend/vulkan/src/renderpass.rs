@@ -7,15 +7,17 @@
 use ash::version::*;
 use ash::vk;
 use refeq::RefEqArc;
+use std::ops;
 
-use base;
-use base::{Error, ErrorKind, Result};
-use common::IntoWithPad;
-use device::DeviceRef;
-use formats::translate_image_format;
-use image::Image;
+use crate::device::DeviceRef;
+use crate::formats::translate_image_format;
+use crate::image::Image;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_common::IntoWithPad;
 
-use utils::{
+use crate::utils::{
     translate_access_type_flags, translate_generic_error_unwrap, translate_image_layout,
     translate_pipeline_stage_flags,
 };
@@ -36,7 +38,7 @@ pub struct RenderPassBuilder {
     depth_stencil_attachment: Option<vk::AttachmentReference>,
 }
 
-zangfx_impl_object! { RenderPassBuilder: base::RenderPassBuilder, ::Debug }
+zangfx_impl_object! { RenderPassBuilder: dyn base::RenderPassBuilder, dyn (crate::Debug) }
 
 impl RenderPassBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -52,7 +54,7 @@ impl RenderPassBuilder {
 }
 
 impl base::RenderPassBuilder for RenderPassBuilder {
-    fn target(&mut self, index: base::RenderPassTargetIndex) -> &mut base::RenderPassTarget {
+    fn target(&mut self, index: base::RenderPassTargetIndex) -> &mut dyn base::RenderPassTarget {
         if self.targets.len() <= index {
             self.targets.resize(index + 1, None);
         }
@@ -65,7 +67,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         from: base::SubpassIndex,
         src_access: base::AccessTypeFlags,
         dst_access: base::AccessTypeFlags,
-    ) -> &mut base::RenderPassBuilder {
+    ) -> &mut dyn base::RenderPassBuilder {
         let from = from as u32;
 
         if from == self.subpass {
@@ -187,7 +189,7 @@ struct RenderPassTargetBuilder {
     final_layout: base::ImageLayout,
 }
 
-zangfx_impl_object! { RenderPassTargetBuilder: base::RenderPassTarget, ::Debug }
+zangfx_impl_object! { RenderPassTargetBuilder: dyn base::RenderPassTarget, dyn (crate::Debug) }
 
 impl RenderPassTargetBuilder {
     fn new() -> Self {
@@ -223,38 +225,38 @@ impl RenderPassTargetBuilder {
 }
 
 impl base::RenderPassTarget for RenderPassTargetBuilder {
-    fn set_format(&mut self, v: base::ImageFormat) -> &mut base::RenderPassTarget {
+    fn set_format(&mut self, v: base::ImageFormat) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.format = translate_image_format(v).expect("unsupported format");
         self
     }
 
-    fn set_load_op(&mut self, v: base::LoadOp) -> &mut base::RenderPassTarget {
+    fn set_load_op(&mut self, v: base::LoadOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.load_op = translate_load_op(v);
         self
     }
-    fn set_store_op(&mut self, v: base::StoreOp) -> &mut base::RenderPassTarget {
+    fn set_store_op(&mut self, v: base::StoreOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.store_op = translate_store_op(v);
         self
     }
 
-    fn set_stencil_load_op(&mut self, v: base::LoadOp) -> &mut base::RenderPassTarget {
+    fn set_stencil_load_op(&mut self, v: base::LoadOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.stencil_load_op = translate_load_op(v);
         self
     }
 
-    fn set_stencil_store_op(&mut self, v: base::StoreOp) -> &mut base::RenderPassTarget {
+    fn set_stencil_store_op(&mut self, v: base::StoreOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.stencil_store_op = translate_store_op(v);
         self
     }
 
     /*
-    fn set_initial_layout(&mut self, v: base::ImageLayout) -> &mut base::RenderPassTarget {
+    fn set_initial_layout(&mut self, v: base::ImageLayout) -> &mut dyn base::RenderPassTarget {
         // The actual layout cannot be decided without knowing whether the image
         // has the depth/stencil format.
         self.initial_layout = v;
         self
     }
-    fn set_final_layout(&mut self, v: base::ImageLayout) -> &mut base::RenderPassTarget {
+    fn set_final_layout(&mut self, v: base::ImageLayout) -> &mut dyn base::RenderPassTarget {
         // The actual layout cannot be decided without knowing whether the image
         // has the depth/stencil format.
         self.final_layout = v;
@@ -341,7 +343,7 @@ impl UniqueImageViews {
     }
 }
 
-impl ::Deref for UniqueImageViews {
+impl ops::Deref for UniqueImageViews {
     type Target = Vec<vk::ImageView>;
 
     fn deref(&self) -> &Self::Target {
@@ -349,7 +351,7 @@ impl ::Deref for UniqueImageViews {
     }
 }
 
-impl ::DerefMut for UniqueImageViews {
+impl ops::DerefMut for UniqueImageViews {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.image_views
     }
@@ -377,7 +379,7 @@ pub struct RenderTargetTableBuilder {
     targets: Vec<Option<Target>>,
 }
 
-zangfx_impl_object! { RenderTargetTableBuilder: base::RenderTargetTableBuilder, ::Debug }
+zangfx_impl_object! { RenderTargetTableBuilder: dyn base::RenderTargetTableBuilder, dyn (crate::Debug) }
 
 /// Implementation of `RenderTarget` for Vulkan.
 #[derive(Debug, Clone)]
@@ -388,7 +390,7 @@ struct Target {
     clear_value: ClearValue,
 }
 
-zangfx_impl_object! { Target: base::RenderTarget, ::Debug }
+zangfx_impl_object! { Target: dyn base::RenderTarget, dyn (crate::Debug) }
 
 impl RenderTargetTableBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -404,18 +406,18 @@ impl RenderTargetTableBuilder {
 }
 
 impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
-    fn render_pass(&mut self, v: &base::RenderPassRef) -> &mut base::RenderTargetTableBuilder {
+    fn render_pass(&mut self, v: &base::RenderPassRef) -> &mut dyn base::RenderTargetTableBuilder {
         let our_rp: &RenderPass = v.downcast_ref().expect("bad render pass type");
         self.render_pass = Some(our_rp.clone());
         self
     }
 
-    fn extents(&mut self, v: &[u32]) -> &mut base::RenderTargetTableBuilder {
+    fn extents(&mut self, v: &[u32]) -> &mut dyn base::RenderTargetTableBuilder {
         self.extents = Some(v.into_with_pad(1));
         self
     }
 
-    fn num_layers(&mut self, v: u32) -> &mut base::RenderTargetTableBuilder {
+    fn num_layers(&mut self, v: u32) -> &mut dyn base::RenderTargetTableBuilder {
         self.num_layers = v;
         self
     }
@@ -424,7 +426,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         &mut self,
         index: base::RenderPassTargetIndex,
         view: &base::ImageRef,
-    ) -> &mut base::RenderTarget {
+    ) -> &mut dyn base::RenderTarget {
         use std::mem::uninitialized;
         if self.targets.len() <= index {
             self.targets.resize(index + 1, None);
@@ -527,38 +529,38 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 }
 
 impl base::RenderTarget for Target {
-    fn mip_level(&mut self, v: u32) -> &mut base::RenderTarget {
+    fn mip_level(&mut self, v: u32) -> &mut dyn base::RenderTarget {
         self.mip_level = v;
         self
     }
 
-    fn layer(&mut self, v: u32) -> &mut base::RenderTarget {
+    fn layer(&mut self, v: u32) -> &mut dyn base::RenderTarget {
         self.layer = v;
         self
     }
 
-    fn clear_float(&mut self, v: &[f32]) -> &mut base::RenderTarget {
+    fn clear_float(&mut self, v: &[f32]) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.color.float32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
-    fn clear_uint(&mut self, v: &[u32]) -> &mut base::RenderTarget {
+    fn clear_uint(&mut self, v: &[u32]) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.color.uint32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
-    fn clear_sint(&mut self, v: &[i32]) -> &mut base::RenderTarget {
+    fn clear_sint(&mut self, v: &[i32]) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.color.int32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
-    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut base::RenderTarget {
+    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.depth.depth = depth;
             self.clear_value.0.depth.stencil = stencil;
@@ -646,8 +648,9 @@ impl Drop for RenderTargetTableData {
 #[repr(C)]
 struct ClearValue(vk::ClearValue);
 
-impl ::Debug for ClearValue {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+use std::fmt;
+impl fmt::Debug for ClearValue {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[derive(Debug)]
         struct Values {
             float32: [f32; 4],

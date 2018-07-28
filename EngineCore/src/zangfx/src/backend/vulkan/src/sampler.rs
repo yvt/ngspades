@@ -8,11 +8,12 @@ use ash::version::*;
 use ash::vk;
 use std::ops::Range;
 
-use base;
-use base::Result;
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
-use utils::{translate_compare_op, translate_generic_error_unwrap};
+use crate::utils::{translate_compare_op, translate_generic_error_unwrap};
 
 /// Implementation of `SamplerBuilder` for Vulkan.
 #[derive(Debug)]
@@ -30,7 +31,7 @@ pub struct SamplerBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { SamplerBuilder: base::SamplerBuilder, ::Debug }
+zangfx_impl_object! { SamplerBuilder: dyn base::SamplerBuilder, dyn (crate::Debug) }
 
 impl SamplerBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -51,48 +52,48 @@ impl SamplerBuilder {
 }
 
 impl base::SamplerBuilder for SamplerBuilder {
-    fn mag_filter(&mut self, v: base::Filter) -> &mut base::SamplerBuilder {
+    fn mag_filter(&mut self, v: base::Filter) -> &mut dyn base::SamplerBuilder {
         self.mag_filter = v;
         self
     }
 
-    fn min_filter(&mut self, v: base::Filter) -> &mut base::SamplerBuilder {
+    fn min_filter(&mut self, v: base::Filter) -> &mut dyn base::SamplerBuilder {
         self.min_filter = v;
         self
     }
 
-    fn address_mode(&mut self, v: &[base::AddressMode]) -> &mut base::SamplerBuilder {
-        use common::IntoWithPad;
+    fn address_mode(&mut self, v: &[base::AddressMode]) -> &mut dyn base::SamplerBuilder {
+        use zangfx_common::IntoWithPad;
         self.address_mode = v.into_with_pad(v.last().cloned().unwrap_or(base::AddressMode::Repeat));
         self
     }
 
-    fn mipmap_mode(&mut self, v: base::MipmapMode) -> &mut base::SamplerBuilder {
+    fn mipmap_mode(&mut self, v: base::MipmapMode) -> &mut dyn base::SamplerBuilder {
         self.mipmap_mode = v;
         self
     }
 
-    fn lod_clamp(&mut self, v: Range<f32>) -> &mut base::SamplerBuilder {
+    fn lod_clamp(&mut self, v: Range<f32>) -> &mut dyn base::SamplerBuilder {
         self.lod_clamp = v;
         self
     }
 
-    fn max_anisotropy(&mut self, v: u32) -> &mut base::SamplerBuilder {
+    fn max_anisotropy(&mut self, v: u32) -> &mut dyn base::SamplerBuilder {
         self.max_anisotropy = v;
         self
     }
 
-    fn cmp_fn(&mut self, v: Option<base::CmpFn>) -> &mut base::SamplerBuilder {
+    fn cmp_fn(&mut self, v: Option<base::CmpFn>) -> &mut dyn base::SamplerBuilder {
         self.cmp_fn = v;
         self
     }
 
-    fn border_color(&mut self, v: base::BorderColor) -> &mut base::SamplerBuilder {
+    fn border_color(&mut self, v: base::BorderColor) -> &mut dyn base::SamplerBuilder {
         self.border_color = v;
         self
     }
 
-    fn unnorm_coords(&mut self, v: bool) -> &mut base::SamplerBuilder {
+    fn unnorm_coords(&mut self, v: bool) -> &mut dyn base::SamplerBuilder {
         self.unnorm_coords = v;
         self
     }
@@ -161,7 +162,7 @@ impl Sampler {
         self.vk_sampler
     }
 
-    pub(super) unsafe fn destroy(&self, vk_device: &::AshDevice) {
+    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
         vk_device.destroy_sampler(self.vk_sampler, None);
     }
 }

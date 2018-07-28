@@ -8,16 +8,17 @@ use ash::version::*;
 use ash::vk;
 use std::ops::Range;
 
-use base;
-use common::Rect2D;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_common::Rect2D;
 
 use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
 use super::fence::Fence;
-use buffer::Buffer;
-use device::DeviceRef;
-use pipeline::RenderPipeline;
-use renderpass::RenderTargetTable;
-use utils::{clip_rect2d_u31, translate_rect2d_u32};
+use crate::buffer::Buffer;
+use crate::device::DeviceRef;
+use crate::pipeline::RenderPipeline;
+use crate::renderpass::RenderTargetTable;
+use crate::utils::{clip_rect2d_u31, translate_rect2d_u32};
 
 #[derive(Debug)]
 pub(super) struct RenderEncoder {
@@ -31,10 +32,10 @@ pub(super) struct RenderEncoder {
 }
 
 zangfx_impl_object! { RenderEncoder:
-base::CmdEncoder, base::RenderCmdEncoder, ::Debug }
+dyn base::CmdEncoder, dyn base::RenderCmdEncoder, dyn (crate::Debug) }
 
 impl RenderEncoder {
-    pub unsafe fn new(
+    crate unsafe fn new(
         device: DeviceRef,
         vk_cmd_buffer: vk::CommandBuffer,
         fence_set: FenceSet,
@@ -64,7 +65,7 @@ impl RenderEncoder {
         enc
     }
 
-    pub fn finish(mut self) -> (FenceSet, RefTable) {
+    crate fn finish(mut self) -> (FenceSet, RefTable) {
         unsafe {
             let vk_device = self.device.vk_device();
             vk_device.cmd_end_render_pass(self.vk_cmd_buffer);

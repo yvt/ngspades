@@ -10,16 +10,17 @@ use refeq::RefEqArc;
 use std::ffi;
 use std::ops::Range;
 
-use base;
-use base::StaticOrDynamic::*;
-use base::{Error, ErrorKind, Rect2D, Result};
+use zangfx_base as base;
+use zangfx_base::StaticOrDynamic::*;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Rect2D, Result};
 
-use arg::layout::RootSig;
-use device::DeviceRef;
-use formats::translate_vertex_format;
-use renderpass::RenderPass;
-use shader::Library;
-use utils::{
+use crate::arg::layout::RootSig;
+use crate::device::DeviceRef;
+use crate::formats::translate_vertex_format;
+use crate::renderpass::RenderPass;
+use crate::shader::Library;
+use crate::utils::{
     clip_rect2d_u31, translate_bool, translate_color_channel_flags, translate_compare_op,
     translate_generic_error_unwrap, translate_rect2d_u32, translate_sample_count,
     translate_shader_stage,
@@ -78,7 +79,7 @@ pub struct ComputePipelineBuilder {
     root_sig: Option<RootSig>,
 }
 
-zangfx_impl_object! { ComputePipelineBuilder: base::ComputePipelineBuilder, ::Debug }
+zangfx_impl_object! { ComputePipelineBuilder: dyn base::ComputePipelineBuilder, dyn (crate::Debug) }
 
 impl ComputePipelineBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -95,13 +96,13 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
         &mut self,
         library: &base::LibraryRef,
         entry_point: &str,
-    ) -> &mut base::ComputePipelineBuilder {
+    ) -> &mut dyn base::ComputePipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
         self.compute_shader = Some((my_library.clone(), entry_point.to_owned()));
         self
     }
 
-    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut base::ComputePipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut dyn base::ComputePipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
@@ -199,7 +200,7 @@ pub struct RenderPipelineBuilder {
     rasterizer: Option<RasterizerBuilder>,
 }
 
-zangfx_impl_object! { RenderPipelineBuilder: base::RenderPipelineBuilder, ::Debug }
+zangfx_impl_object! { RenderPipelineBuilder: dyn base::RenderPipelineBuilder, dyn (crate::Debug) }
 
 impl RenderPipelineBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -223,7 +224,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         library: &base::LibraryRef,
         entry_point: &str,
-    ) -> &mut base::RenderPipelineBuilder {
+    ) -> &mut dyn base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
         self.vertex_shader = Some((my_library.clone(), entry_point.to_owned()));
         self
@@ -233,13 +234,13 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         library: &base::LibraryRef,
         entry_point: &str,
-    ) -> &mut base::RenderPipelineBuilder {
+    ) -> &mut dyn base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
         self.fragment_shader = Some((my_library.clone(), entry_point.to_owned()));
         self
     }
 
-    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut base::RenderPipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut dyn base::RenderPipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
@@ -249,7 +250,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         v: &base::RenderPassRef,
         subpass: base::SubpassIndex,
-    ) -> &mut base::RenderPipelineBuilder {
+    ) -> &mut dyn base::RenderPipelineBuilder {
         let render_pass: &RenderPass = v.downcast_ref().expect("bad render pass type");
         self.render_pass = Some((render_pass.clone(), subpass));
         self
@@ -259,7 +260,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         &mut self,
         index: base::VertexBufferIndex,
         stride: base::DeviceSize,
-    ) -> &mut base::VertexBufferBinding {
+    ) -> &mut dyn base::VertexBufferBinding {
         if self.vertex_buffers.len() <= index {
             self.vertex_buffers.resize(index + 1, None);
         }
@@ -285,7 +286,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         });
     }
 
-    fn topology(&mut self, v: base::PrimitiveTopology) -> &mut base::RenderPipelineBuilder {
+    fn topology(&mut self, v: base::PrimitiveTopology) -> &mut dyn base::RenderPipelineBuilder {
         self.topology = match v {
             base::PrimitiveTopology::Points => vk::PrimitiveTopology::PointList,
             base::PrimitiveTopology::Lines => vk::PrimitiveTopology::LineList,
@@ -296,7 +297,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         self
     }
 
-    fn rasterize(&mut self) -> &mut base::Rasterizer {
+    fn rasterize(&mut self) -> &mut dyn base::Rasterizer {
         if self.rasterizer.is_none() {
             self.rasterizer = Some(RasterizerBuilder::new());
         }
@@ -450,7 +451,7 @@ struct VertexBufferBindingBuilder {
     vk_binding: vk::VertexInputBindingDescription,
 }
 
-zangfx_impl_object! { VertexBufferBindingBuilder: base::VertexBufferBinding, ::Debug }
+zangfx_impl_object! { VertexBufferBindingBuilder: dyn base::VertexBufferBinding, dyn (crate::Debug) }
 
 impl VertexBufferBindingBuilder {
     fn new(binding: u32, stride: base::DeviceSize) -> Self {
@@ -469,7 +470,7 @@ impl VertexBufferBindingBuilder {
 }
 
 impl base::VertexBufferBinding for VertexBufferBindingBuilder {
-    fn set_rate(&mut self, rate: base::VertexInputRate) -> &mut base::VertexBufferBinding {
+    fn set_rate(&mut self, rate: base::VertexInputRate) -> &mut dyn base::VertexBufferBinding {
         self.vk_binding.input_rate = match rate {
             base::VertexInputRate::Vertex => vk::VertexInputRate::Vertex,
             base::VertexInputRate::Instance => vk::VertexInputRate::Instance,
@@ -701,7 +702,7 @@ struct RasterizerBuilder {
     color_targets: Vec<RasterizerColorTargetBuilder>,
 }
 
-zangfx_impl_object! { RasterizerBuilder: base::Rasterizer, ::Debug }
+zangfx_impl_object! { RasterizerBuilder: dyn base::Rasterizer, dyn (crate::Debug) }
 
 impl RasterizerBuilder {
     fn new() -> Self {
@@ -734,7 +735,7 @@ impl RasterizerBuilder {
 }
 
 impl base::Rasterizer for RasterizerBuilder {
-    fn set_num_viewports(&mut self, v: usize) -> &mut base::Rasterizer {
+    fn set_num_viewports(&mut self, v: usize) -> &mut dyn base::Rasterizer {
         self.num_viewports = v;
         self
     }
@@ -743,7 +744,7 @@ impl base::Rasterizer for RasterizerBuilder {
         &mut self,
         start_viewport: base::ViewportIndex,
         v: &[base::StaticOrDynamic<Rect2D<u32>>],
-    ) -> &mut base::Rasterizer {
+    ) -> &mut dyn base::Rasterizer {
         if v.len() == 0 {
             return self;
         }
@@ -757,7 +758,7 @@ impl base::Rasterizer for RasterizerBuilder {
         self
     }
 
-    fn set_cull_mode(&mut self, v: base::CullMode) -> &mut base::Rasterizer {
+    fn set_cull_mode(&mut self, v: base::CullMode) -> &mut dyn base::Rasterizer {
         self.cull_mode = match v {
             base::CullMode::None => vk::CULL_MODE_NONE,
             base::CullMode::Front => vk::CULL_MODE_FRONT_BIT,
@@ -766,7 +767,7 @@ impl base::Rasterizer for RasterizerBuilder {
         self
     }
 
-    fn set_front_face(&mut self, v: base::Winding) -> &mut base::Rasterizer {
+    fn set_front_face(&mut self, v: base::Winding) -> &mut dyn base::Rasterizer {
         self.front_face = match v {
             base::Winding::Clockwise => vk::FrontFace::Clockwise,
             base::Winding::CounterClockwise => vk::FrontFace::CounterClockwise,
@@ -774,12 +775,12 @@ impl base::Rasterizer for RasterizerBuilder {
         self
     }
 
-    fn set_depth_clip_mode(&mut self, v: base::DepthClipMode) -> &mut base::Rasterizer {
+    fn set_depth_clip_mode(&mut self, v: base::DepthClipMode) -> &mut dyn base::Rasterizer {
         self.depth_clamp_enable = v == base::DepthClipMode::Clamp;
         self
     }
 
-    fn set_triangle_fill_mode(&mut self, v: base::TriangleFillMode) -> &mut base::Rasterizer {
+    fn set_triangle_fill_mode(&mut self, v: base::TriangleFillMode) -> &mut dyn base::Rasterizer {
         self.polygon_mode = match v {
             base::TriangleFillMode::Fill => vk::PolygonMode::Fill,
             base::TriangleFillMode::Line => vk::PolygonMode::Line,
@@ -790,33 +791,33 @@ impl base::Rasterizer for RasterizerBuilder {
     fn set_depth_bias(
         &mut self,
         v: Option<base::StaticOrDynamic<base::DepthBias>>,
-    ) -> &mut base::Rasterizer {
+    ) -> &mut dyn base::Rasterizer {
         self.depth_bias = v;
         self
     }
 
-    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut base::Rasterizer {
+    fn set_alpha_to_coverage(&mut self, v: bool) -> &mut dyn base::Rasterizer {
         self.alpha_to_coverage_enable = v;
         self
     }
 
-    fn set_sample_count(&mut self, v: u32) -> &mut base::Rasterizer {
+    fn set_sample_count(&mut self, v: u32) -> &mut dyn base::Rasterizer {
         self.rasterization_samples = translate_sample_count(v);
         self
     }
 
-    fn set_depth_write(&mut self, v: bool) -> &mut base::Rasterizer {
+    fn set_depth_write(&mut self, v: bool) -> &mut dyn base::Rasterizer {
         self.depth_write_enable = v;
         self
     }
 
-    fn set_depth_test(&mut self, v: base::CmpFn) -> &mut base::Rasterizer {
+    fn set_depth_test(&mut self, v: base::CmpFn) -> &mut dyn base::Rasterizer {
         self.depth_test_enable = v != base::CmpFn::Always;
         self.depth_compare_op = translate_compare_op(v);
         self
     }
 
-    fn set_stencil_ops(&mut self, front_back: [base::StencilOps; 2]) -> &mut base::Rasterizer {
+    fn set_stencil_ops(&mut self, front_back: [base::StencilOps; 2]) -> &mut dyn base::Rasterizer {
         for i in 0..2 {
             self.stencil_ops[i].fail_op = translate_stencil_op(front_back[i].stencil_fail);
             self.stencil_ops[i].pass_op = translate_stencil_op(front_back[i].pass);
@@ -826,7 +827,10 @@ impl base::Rasterizer for RasterizerBuilder {
         self
     }
 
-    fn set_stencil_masks(&mut self, front_back: [base::StencilMasks; 2]) -> &mut base::Rasterizer {
+    fn set_stencil_masks(
+        &mut self,
+        front_back: [base::StencilMasks; 2],
+    ) -> &mut dyn base::Rasterizer {
         for i in 0..2 {
             self.stencil_ops[i].compare_mask = front_back[i].read;
             self.stencil_ops[i].write_mask = front_back[i].write;
@@ -837,7 +841,7 @@ impl base::Rasterizer for RasterizerBuilder {
     fn set_depth_bounds(
         &mut self,
         v: Option<base::StaticOrDynamic<Range<f32>>>,
-    ) -> &mut base::Rasterizer {
+    ) -> &mut dyn base::Rasterizer {
         self.depth_bounds = v;
         self
     }
@@ -845,7 +849,7 @@ impl base::Rasterizer for RasterizerBuilder {
     fn color_target(
         &mut self,
         index: base::RenderSubpassColorTargetIndex,
-    ) -> &mut base::RasterizerColorTarget {
+    ) -> &mut dyn base::RasterizerColorTarget {
         if self.color_targets.len() <= index {
             self.color_targets
                 .resize(index + 1, RasterizerColorTargetBuilder::new());
@@ -860,7 +864,7 @@ struct RasterizerColorTargetBuilder {
     vk_state: vk::PipelineColorBlendAttachmentState,
 }
 
-zangfx_impl_object! { RasterizerColorTargetBuilder: base::RasterizerColorTarget, ::Debug }
+zangfx_impl_object! { RasterizerColorTargetBuilder: dyn base::RasterizerColorTarget, dyn (crate::Debug) }
 
 impl RasterizerColorTargetBuilder {
     fn new() -> Self {
@@ -883,42 +887,51 @@ impl RasterizerColorTargetBuilder {
 }
 
 impl base::RasterizerColorTarget for RasterizerColorTargetBuilder {
-    fn set_write_mask(&mut self, v: base::ColorChannelFlags) -> &mut base::RasterizerColorTarget {
+    fn set_write_mask(
+        &mut self,
+        v: base::ColorChannelFlags,
+    ) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.color_write_mask = translate_color_channel_flags(v);
         self
     }
 
-    fn set_blending(&mut self, v: bool) -> &mut base::RasterizerColorTarget {
+    fn set_blending(&mut self, v: bool) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.blend_enable = translate_bool(v);
         self
     }
 
-    fn set_src_alpha_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_src_alpha_factor(
+        &mut self,
+        v: base::BlendFactor,
+    ) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.src_alpha_blend_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_src_rgb_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_src_rgb_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.src_color_blend_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_dst_alpha_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_dst_alpha_factor(
+        &mut self,
+        v: base::BlendFactor,
+    ) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.dst_alpha_blend_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_dst_rgb_factor(&mut self, v: base::BlendFactor) -> &mut base::RasterizerColorTarget {
+    fn set_dst_rgb_factor(&mut self, v: base::BlendFactor) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.dst_color_blend_factor = translate_blend_factor(v);
         self
     }
 
-    fn set_alpha_op(&mut self, v: base::BlendOp) -> &mut base::RasterizerColorTarget {
+    fn set_alpha_op(&mut self, v: base::BlendOp) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.alpha_blend_op = translate_blend_op(v);
         self
     }
 
-    fn set_rgb_op(&mut self, v: base::BlendOp) -> &mut base::RasterizerColorTarget {
+    fn set_rgb_op(&mut self, v: base::BlendOp) -> &mut dyn base::RasterizerColorTarget {
         self.vk_state.color_blend_op = translate_blend_op(v);
         self
     }
@@ -1013,7 +1026,7 @@ impl RenderPipeline {
     }
 
     pub(crate) unsafe fn encode_partial_states(&self, vk_cmd_buffer: vk::CommandBuffer) {
-        let vk_device: &::AshDevice = self.data.device.vk_device();
+        let vk_device: &crate::AshDevice = self.data.device.vk_device();
 
         for &(i, ref rect) in self.data.partial_states.scissors.iter() {
             vk_device

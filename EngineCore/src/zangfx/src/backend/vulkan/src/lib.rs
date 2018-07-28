@@ -14,22 +14,12 @@
 //!  - The number of argument tables per root signature is limited to 32
 //!    (`MAX_NUM_ARG_TABLES`).
 //!
-extern crate arrayvec;
+#![feature(unsize)]
+#![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
+
+#[allow(rust_2018_idioms)]
 pub extern crate ash;
-extern crate iterpool;
-extern crate parking_lot;
-extern crate refeq;
-extern crate tokenlock;
-extern crate xalloc;
-
-#[macro_use(flags)]
-extern crate ngsenumflags;
-#[macro_use]
-extern crate ngsenumflags_derive;
-
-#[macro_use]
-extern crate zangfx_base as base;
-extern crate zangfx_common as common;
 
 pub mod arg;
 pub mod buffer;
@@ -45,11 +35,10 @@ pub mod sampler;
 pub mod shader;
 mod utils;
 
-use std::fmt::{self, Debug};
-use std::ops::{Deref, DerefMut};
+use std::fmt::Debug;
 use std::ptr::{null, null_mut};
 pub type AshDevice = ash::Device<ash::version::V1_0>;
 
-pub use utils::translate_generic_error;
+pub use crate::utils::translate_generic_error;
 
 pub const MAX_NUM_ARG_TABLES: usize = 32;

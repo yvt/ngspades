@@ -9,12 +9,13 @@ use ash::version::*;
 use ash::vk;
 use std::sync::Arc;
 
-use base;
-use base::Result;
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use super::{translate_descriptor_type, DescriptorCount};
-use utils::translate_generic_error_unwrap;
+use crate::utils::translate_generic_error_unwrap;
 
 use super::layout::ArgTableSig;
 
@@ -27,7 +28,7 @@ pub struct ArgPoolBuilder {
     enable_destroy_tables: bool,
 }
 
-zangfx_impl_object! { ArgPoolBuilder: base::ArgPoolBuilder, ::Debug }
+zangfx_impl_object! { ArgPoolBuilder: dyn base::ArgPoolBuilder, dyn (crate::Debug) }
 
 impl ArgPoolBuilder {
     pub(crate) unsafe fn new(device: DeviceRef) -> Self {
@@ -41,7 +42,7 @@ impl ArgPoolBuilder {
 }
 
 impl base::ArgPoolBuilder for ArgPoolBuilder {
-    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::ArgPoolBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::ArgPoolBuilder {
         unimplemented!();
         self
     }
@@ -50,7 +51,7 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         &mut self,
         count: usize,
         table: &base::ArgTableSigRef,
-    ) -> &mut base::ArgPoolBuilder {
+    ) -> &mut dyn base::ArgPoolBuilder {
         let our_table: &ArgTableSig = table
             .downcast_ref()
             .expect("bad argument table signature type");
@@ -59,18 +60,18 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         self
     }
 
-    fn reserve_arg(&mut self, count: usize, ty: base::ArgType) -> &mut base::ArgPoolBuilder {
+    fn reserve_arg(&mut self, count: usize, ty: base::ArgType) -> &mut dyn base::ArgPoolBuilder {
         let dt = translate_descriptor_type(ty);
         self.count[dt] += count as u32;
         self
     }
 
-    fn reserve_table(&mut self, count: usize) -> &mut base::ArgPoolBuilder {
+    fn reserve_table(&mut self, count: usize) -> &mut dyn base::ArgPoolBuilder {
         self.num_sets += count as u32;
         self
     }
 
-    fn enable_destroy_tables(&mut self) -> &mut base::ArgPoolBuilder {
+    fn enable_destroy_tables(&mut self) -> &mut dyn base::ArgPoolBuilder {
         self.enable_destroy_tables = true;
         self
     }
@@ -107,7 +108,7 @@ pub struct ArgPool {
     vk_d_pool: vk::DescriptorPool,
 }
 
-zangfx_impl_object! { ArgPool: base::ArgPool, ::Debug }
+zangfx_impl_object! { ArgPool: dyn base::ArgPool, dyn (crate::Debug) }
 
 impl ArgPool {
     fn new(device: DeviceRef, vk_d_pool: vk::DescriptorPool) -> Self {
@@ -148,7 +149,7 @@ impl base::ArgPool for ArgPool {
         struct PartialTableSet<'a>(&'a mut ArgPool, Vec<base::ArgTableRef>);
         impl<'a> Drop for PartialTableSet<'a> {
             fn drop(&mut self) {
-                use base::ArgPool;
+                use zangfx_base::ArgPool;
 
                 // Conversion `&[T]` to `&[&T]`
                 for chunk in self.1.chunks(256) {

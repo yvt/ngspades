@@ -8,13 +8,15 @@
 use ash;
 use ash::version::*;
 use ash::vk::{self, VK_FALSE};
-use base;
-use base::Result;
-use ngsenumflags::BitFlags;
+use ngsenumflags::{flags, BitFlags};
+use ngsenumflags_derive::NgsEnumFlags;
 use std::collections::HashMap;
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use formats::{translate_image_format, translate_vertex_format};
-use utils::translate_generic_error_unwrap;
+use crate::formats::{translate_image_format, translate_vertex_format};
+use crate::utils::translate_generic_error_unwrap;
 
 /// Properties of a Vulkan physical device as recognized by the ZanGFX Vulkan
 /// backend.
@@ -244,7 +246,7 @@ impl DeviceConfig {
     }
 
     fn validate(&mut self, device_info: &DeviceInfo) {
-        use base::{Error, ErrorKind};
+        use zangfx_base::{Error, ErrorKind};
 
         for &(qf_index, q_index) in self.queues.iter() {
             if let Some(qf) = device_info.queue_families.get(qf_index as usize) {
@@ -273,7 +275,7 @@ pub struct DeviceCaps {
     available_qfs: Vec<base::QueueFamilyInfo>,
 }
 
-zangfx_impl_object! { DeviceCaps: base::DeviceCaps, ::Debug }
+zangfx_impl_object! { DeviceCaps: dyn base::DeviceCaps, dyn (crate::Debug) }
 
 impl DeviceCaps {
     /// Construct a `DeviceCaps`. Also perform a validation on the given

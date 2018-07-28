@@ -11,12 +11,15 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use xalloc::{SysTlsf, SysTlsfRegion};
 
-use base;
-use base::{Error, ErrorKind, Result};
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use device::DeviceRef;
-use utils::{get_memory_req, translate_generic_error_unwrap, translate_map_memory_error_unwrap};
-use {buffer, image};
+use crate::device::DeviceRef;
+use crate::utils::{
+    get_memory_req, translate_generic_error_unwrap, translate_map_memory_error_unwrap,
+};
+use crate::{buffer, image};
 
 /// Implementation of `DynamicHeapBuilder` for Vulkan.
 #[derive(Debug)]
@@ -26,7 +29,7 @@ pub struct DynamicHeapBuilder {
     memory_type: Option<base::MemoryType>,
 }
 
-zangfx_impl_object! { DynamicHeapBuilder: base::DynamicHeapBuilder, ::Debug }
+zangfx_impl_object! { DynamicHeapBuilder: dyn base::DynamicHeapBuilder, dyn (crate::Debug) }
 
 impl DynamicHeapBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -39,12 +42,12 @@ impl DynamicHeapBuilder {
 }
 
 impl base::DynamicHeapBuilder for DynamicHeapBuilder {
-    fn size(&mut self, v: base::DeviceSize) -> &mut base::DynamicHeapBuilder {
+    fn size(&mut self, v: base::DeviceSize) -> &mut dyn base::DynamicHeapBuilder {
         self.size = Some(v);
         self
     }
 
-    fn memory_type(&mut self, v: base::MemoryType) -> &mut base::DynamicHeapBuilder {
+    fn memory_type(&mut self, v: base::MemoryType) -> &mut dyn base::DynamicHeapBuilder {
         self.memory_type = Some(v);
         self
     }
@@ -65,7 +68,7 @@ pub struct DedicatedHeapBuilder {
     error: Option<Error>,
 }
 
-zangfx_impl_object! { DedicatedHeapBuilder: base::DedicatedHeapBuilder, ::Debug }
+zangfx_impl_object! { DedicatedHeapBuilder: dyn base::DedicatedHeapBuilder, dyn (crate::Debug) }
 
 impl DedicatedHeapBuilder {
     pub(super) unsafe fn new(device: DeviceRef) -> Self {
@@ -79,22 +82,22 @@ impl DedicatedHeapBuilder {
 }
 
 impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
-    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::DedicatedHeapBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::DedicatedHeapBuilder {
         unimplemented!();
         self
     }
 
-    fn memory_type(&mut self, v: base::MemoryType) -> &mut base::DedicatedHeapBuilder {
+    fn memory_type(&mut self, v: base::MemoryType) -> &mut dyn base::DedicatedHeapBuilder {
         self.memory_type = Some(v);
         self
     }
 
-    fn enable_use_heap(&mut self) -> &mut base::DedicatedHeapBuilder {
+    fn enable_use_heap(&mut self) -> &mut dyn base::DedicatedHeapBuilder {
         unimplemented!();
         self
     }
 
-    fn bind(&mut self, obj: base::ResourceRef) {
+    fn bind(&mut self, obj: base::ResourceRef<'_>) {
         match get_memory_req(self.device.vk_device(), obj) {
             Ok(req) => self.allocs.push((req.size, req.align)),
             // Save the error and return it from `build`.
@@ -150,7 +153,7 @@ pub struct Heap {
     state: Mutex<HeapState>,
 }
 
-zangfx_impl_object! { Heap: base::Heap, ::Debug }
+zangfx_impl_object! { Heap: dyn base::Heap, dyn (crate::Debug) }
 
 unsafe impl Send for Heap {}
 unsafe impl Sync for Heap {}
@@ -227,7 +230,7 @@ impl Drop for Heap {
 }
 
 impl base::Heap for Heap {
-    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
+    fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
         let vk_device = self.device.vk_device();
         let req = get_memory_req(vk_device, obj)?;
 
@@ -285,7 +288,7 @@ impl base::Heap for Heap {
         // Ok(Some(HeapAlloc { pool_ptr, ptr }.into()))
     }
 
-    fn make_aliasable(&self, _obj: base::ResourceRef) -> Result<()> {
+    fn make_aliasable(&self, _obj: base::ResourceRef<'_>) -> Result<()> {
         unimplemented!()
         /* let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         let mut state = self.state.lock();

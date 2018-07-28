@@ -23,13 +23,13 @@ use ash::vk;
 use refeq::RefEqArc;
 use tokenlock::{TokenLock, TokenRef};
 
-use base;
-use base::Result;
-use device::DeviceRef;
-use limits::DeviceTrait;
+use crate::device::DeviceRef;
+use crate::limits::DeviceTrait;
+use zangfx_base as base;
+use zangfx_base::{zangfx_impl_handle, Result};
 
-use cmd::queue::Item;
-use utils::translate_generic_error_unwrap;
+use crate::cmd::queue::Item;
+use crate::utils::translate_generic_error_unwrap;
 
 // TODO: recycle fences after use
 
@@ -50,19 +50,19 @@ struct FenceData {
 
 #[derive(Debug)]
 pub(super) struct FenceScheduleData {
-    pub signaled: bool,
-    pub waiting: Option<Box<Item>>,
+    crate signaled: bool,
+    crate waiting: Option<Box<Item>>,
 }
 
 impl Fence {
     pub(crate) unsafe fn new(device: DeviceRef, token_ref: TokenRef) -> Result<Self> {
         let info = vk::EventCreateInfo {
             s_type: vk::StructureType::EventCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::EventCreateFlags::empty(),
         };
 
-        let vk_device: &::AshDevice = device.vk_device();
+        let vk_device: &crate::AshDevice = device.vk_device();
         let mut vk_event = vk::Event::null();
 
         // Skip all event operations on MoltenVK -- Events are not supported.
@@ -72,7 +72,7 @@ impl Fence {
             match vk_device.fp_v1_0().create_event(
                 vk_device.handle(),
                 &info,
-                ::null(),
+                crate::null(),
                 &mut vk_event,
             ) {
                 vk::Result::Success => {}
@@ -108,11 +108,11 @@ impl Drop for FenceData {
     fn drop(&mut self) {
         let ref device = self.device;
         if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
-            let vk_device: &::AshDevice = self.device.vk_device();
+            let vk_device: &crate::AshDevice = self.device.vk_device();
             unsafe {
                 vk_device
                     .fp_v1_0()
-                    .destroy_event(vk_device.handle(), self.vk_event, ::null());
+                    .destroy_event(vk_device.handle(), self.vk_event, crate::null());
             }
         }
     }

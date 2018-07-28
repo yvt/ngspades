@@ -7,15 +7,17 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
+use std::fmt;
 use std::ops::Range;
 use std::sync::Arc;
 
-use base;
-use base::{Error, ErrorKind, Result};
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use buffer::Buffer;
-use device::DeviceRef;
-use utils::{
+use crate::buffer::Buffer;
+use crate::device::DeviceRef;
+use crate::utils::{
     translate_access_type_flags, translate_generic_error_unwrap, translate_pipeline_stage_flags,
 };
 
@@ -33,7 +35,7 @@ pub struct CmdBuffer {
     uncommited: Option<Uncommited>,
 }
 
-zangfx_impl_object! { CmdBuffer: base::CmdBuffer, ::Debug }
+zangfx_impl_object! { CmdBuffer: dyn base::CmdBuffer, dyn (crate::Debug) }
 
 #[derive(Debug)]
 struct Uncommited {
@@ -62,10 +64,10 @@ enum Encoder {
 }
 
 #[derive(Default)]
-struct CallbackSet(Vec<Box<FnMut() + Sync + Send>>);
+struct CallbackSet(Vec<Box<dyn FnMut() + Sync + Send>>);
 
-impl ::Debug for CallbackSet {
-    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl fmt::Debug for CallbackSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("CallbackSet")
             .field(&format!("[{} elements]", self.0.len()))
             .finish()
@@ -178,8 +180,8 @@ impl base::CmdBuffer for CmdBuffer {
     fn encode_render(
         &mut self,
         render_target_table: &base::RenderTargetTableRef,
-    ) -> &mut base::RenderCmdEncoder {
-        use renderpass::RenderTargetTable;
+    ) -> &mut dyn base::RenderCmdEncoder {
+        use crate::renderpass::RenderTargetTable;
         use std::mem::replace;
 
         let rtt: &RenderTargetTable = render_target_table
@@ -207,7 +209,7 @@ impl base::CmdBuffer for CmdBuffer {
             _ => unreachable!(),
         }
     }
-    fn encode_compute(&mut self) -> &mut base::ComputeCmdEncoder {
+    fn encode_compute(&mut self) -> &mut dyn base::ComputeCmdEncoder {
         use std::mem::replace;
 
         let uncommited = self
@@ -230,7 +232,7 @@ impl base::CmdBuffer for CmdBuffer {
             _ => unreachable!(),
         }
     }
-    fn encode_copy(&mut self) -> &mut base::CopyCmdEncoder {
+    fn encode_copy(&mut self) -> &mut dyn base::CopyCmdEncoder {
         use std::mem::replace;
 
         let uncommited = self
@@ -253,7 +255,7 @@ impl base::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn on_complete(&mut self, cb: Box<FnMut(Result<()>) + Sync + Send>) {
+    fn on_complete(&mut self, cb: Box<dyn FnMut(Result<()>) + Sync + Send>) {
         let uncommited = self
             .uncommited
             .as_mut()

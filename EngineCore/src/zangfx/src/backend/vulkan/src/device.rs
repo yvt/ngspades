@@ -10,9 +10,10 @@ use std::sync::Arc;
 use ash::version::*;
 use ash::vk;
 
-use base::Result;
-use {arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader, utils};
-use {base, AshDevice};
+use crate::AshDevice;
+use crate::{arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader, utils};
+use zangfx_base::Result;
+use zangfx_base::{self as base, interfaces, vtable_for, zangfx_impl_object};
 
 /// Unsafe reference to a Vulkan device object that is internally held by
 /// `Device`.
@@ -28,11 +29,11 @@ unsafe impl Sync for DeviceRef {}
 unsafe impl Send for DeviceRef {}
 
 impl DeviceRef {
-    pub fn vk_device(&self) -> &AshDevice {
+    crate fn vk_device(&self) -> &AshDevice {
         unsafe { &*self.0 }
     }
 
-    pub fn caps(&self) -> &limits::DeviceCaps {
+    crate fn caps(&self) -> &limits::DeviceCaps {
         unsafe { &*self.1 }
     }
 }
@@ -45,7 +46,7 @@ pub struct Device {
     queue_pool: Arc<cmd::queue::QueuePool>,
 }
 
-zangfx_impl_object! { Device: base::Device, ::Debug }
+zangfx_impl_object! { Device: dyn base::Device, dyn (crate::Debug) }
 
 unsafe impl Send for Device {}
 unsafe impl Sync for Device {}
@@ -84,14 +85,14 @@ impl Device {
 }
 
 use std::fmt;
-impl ::Debug for Device {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Debug for Device {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Device").finish()
     }
 }
 
 impl base::Device for Device {
-    fn caps(&self) -> &base::DeviceCaps {
+    fn caps(&self) -> &dyn base::DeviceCaps {
         &*self.caps
     }
 
@@ -173,7 +174,7 @@ impl base::Device for Device {
         arg_table_sig: &base::ArgTableSigRef,
         updates: &[(
             (&base::ArgPoolRef, &base::ArgTableRef),
-            &[base::ArgUpdateSet],
+            &[base::ArgUpdateSet<'_>],
         )],
     ) -> Result<()> {
         let vk_device = self.vk_device();

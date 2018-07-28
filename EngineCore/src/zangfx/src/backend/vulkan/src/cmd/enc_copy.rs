@@ -7,15 +7,18 @@ use ash::version::*;
 use ash::vk;
 use std::ops::Range;
 
-use base;
-use common::IntoWithPad;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_common::IntoWithPad;
 
 use super::enc::{CommonCmdEncoder, FenceSet};
 use super::fence::Fence;
-use buffer::Buffer;
-use device::DeviceRef;
-use image::Image;
-use utils::{translate_image_aspect, translate_image_layout, translate_image_subresource_layers};
+use crate::buffer::Buffer;
+use crate::device::DeviceRef;
+use crate::image::Image;
+use crate::utils::{
+    translate_image_aspect, translate_image_layout, translate_image_subresource_layers,
+};
 
 #[derive(Debug)]
 pub(super) struct CopyEncoder {
@@ -25,10 +28,10 @@ pub(super) struct CopyEncoder {
 }
 
 zangfx_impl_object! { CopyEncoder:
-base::CmdEncoder, base::CopyCmdEncoder, ::Debug }
+dyn base::CmdEncoder, dyn base::CopyCmdEncoder, dyn (crate::Debug) }
 
 impl CopyEncoder {
-    pub unsafe fn new(
+    crate unsafe fn new(
         device: DeviceRef,
         vk_cmd_buffer: vk::CommandBuffer,
         fence_set: FenceSet,
@@ -40,7 +43,7 @@ impl CopyEncoder {
         }
     }
 
-    pub fn finish(self) -> FenceSet {
+    crate fn finish(self) -> FenceSet {
         self.fence_set
     }
 

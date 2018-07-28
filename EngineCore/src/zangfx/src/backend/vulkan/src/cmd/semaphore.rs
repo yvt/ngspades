@@ -11,11 +11,12 @@ use ash::version::*;
 use ash::vk;
 use refeq::RefEqArc;
 
-use base;
-use base::Result;
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
-use utils::translate_generic_error_unwrap;
+use crate::utils::translate_generic_error_unwrap;
 
 /// Implementation of `SemaphoreBuilder` for Vulkan.
 #[derive(Debug)]
@@ -24,7 +25,7 @@ pub struct SemaphoreBuilder {
     raw: vk::Semaphore,
 }
 
-zangfx_impl_object! { SemaphoreBuilder: base::SemaphoreBuilder, ::Debug }
+zangfx_impl_object! { SemaphoreBuilder: dyn base::SemaphoreBuilder, dyn (crate::Debug) }
 
 impl SemaphoreBuilder {
     pub(crate) unsafe fn new(device: DeviceRef) -> Self {
@@ -79,7 +80,7 @@ impl Semaphore {
             flags: vk::SemaphoreCreateFlags::empty(),
         };
 
-        let vk_device: &::AshDevice = device.vk_device();
+        let vk_device: &crate::AshDevice = device.vk_device();
 
         let vk_semaphore = vk_device
             .create_semaphore(&info, None)
@@ -100,7 +101,7 @@ impl Semaphore {
 
 impl Drop for SemaphoreData {
     fn drop(&mut self) {
-        let vk_device: &::AshDevice = self.device.vk_device();
+        let vk_device: &crate::AshDevice = self.device.vk_device();
         unsafe {
             vk_device.destroy_semaphore(self.vk_semaphore, None);
         }
