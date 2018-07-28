@@ -6,14 +6,36 @@
 //! Implementation of `Sampler` for Vulkan.
 use ash::version::*;
 use ash::vk;
+use parking_lot::Mutex;
 use std::ops::Range;
 
 use crate::device::DeviceRef;
+use crate::AshDevice;
 use zangfx_base as base;
 use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use crate::utils::{translate_compare_op, translate_generic_error_unwrap};
+
+crate struct SamplerPool {
+    samplers: Mutex<Vec<vk::Sampler>>,
+}
+
+impl SamplerPool {
+    crate fn new() -> Self {
+        Self {
+            samplers: Mutex::new(Vec::new()),
+        }
+    }
+
+    crate fn destroy(&mut self, vk_device: &AshDevice) {
+        for vk_sampler in self.samplers.get_mut().drain(..) {
+            unsafe {
+                vk_device.destroy_sampler(vk_sampler, None);
+            }
+        }
+    }
+}
 
 /// Implementation of `SamplerBuilder` for Vulkan.
 #[derive(Debug)]
@@ -135,9 +157,21 @@ impl base::SamplerBuilder for SamplerBuilder {
             },
         };
 
+        let ref pool = self.device.sampler_pool();
+        let mut samplers = pool.samplers.lock();
+
+        // TODO: De-duplicate samplers?
+
+        samplers.reserve(1);
+
         let vk_device = self.device.vk_device();
         let vk_sampler = unsafe { vk_device.create_sampler(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
+
+        // Insert the created sampler into the global pool so that it is
+        // automatically destroyed with the device
+        samplers.push(vk_sampler);
+
         Ok(Sampler { vk_sampler }.into())
     }
 }
@@ -160,10 +194,6 @@ impl Sampler {
 
     pub fn vk_sampler(&self) -> vk::Sampler {
         self.vk_sampler
-    }
-
-    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
-        vk_device.destroy_sampler(self.vk_sampler, None);
     }
 }
 

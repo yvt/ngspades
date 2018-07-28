@@ -18,6 +18,7 @@ use zangfx_base::{self as base, interfaces, vtable_for, zangfx_impl_object};
 crate struct DeviceInfo {
     vk_device: AshDevice,
     caps: limits::DeviceCaps,
+    sampler_pool: sampler::SamplerPool,
 }
 
 crate type DeviceRef = Arc<DeviceInfo>;
@@ -29,6 +30,16 @@ impl DeviceInfo {
 
     crate fn caps(&self) -> &limits::DeviceCaps {
         &self.caps
+    }
+
+    crate fn sampler_pool(&self) -> &sampler::SamplerPool {
+        &self.sampler_pool
+    }
+}
+
+impl Drop for DeviceInfo {
+    fn drop(&mut self) {
+        self.sampler_pool.destroy(&self.vk_device);
     }
 }
 
@@ -59,8 +70,13 @@ impl Device {
     ) -> Result<Self> {
         let caps = limits::DeviceCaps::new(info, config)?;
         let queue_pool = cmd::queue::QueuePool::new(&caps.config);
+        let sampler_pool = sampler::SamplerPool::new();
 
-        let device_ref = Arc::new(DeviceInfo { vk_device, caps });
+        let device_ref = Arc::new(DeviceInfo {
+            vk_device,
+            caps,
+            sampler_pool,
+        });
 
         Ok(Self {
             device_ref,
