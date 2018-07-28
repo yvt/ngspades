@@ -7,7 +7,7 @@ use ash::version::*;
 use ash::vk;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 
 /// Translates a subset of `vk::Result` values into `core::GenericError`.
 ///
@@ -203,7 +203,8 @@ pub fn translate_image_subresource_layers(
 }
 
 pub fn translate_image_layout(value: base::ImageLayout, is_depth_stencil: bool) -> vk::ImageLayout {
-    match (value, is_depth_stencil) {
+    unimplemented!()
+    /*match (value, is_depth_stencil) {
         (base::ImageLayout::Undefined, _) => vk::ImageLayout::Undefined,
         (base::ImageLayout::General, _) => vk::ImageLayout::General,
         (base::ImageLayout::RenderWrite, false) => vk::ImageLayout::ColorAttachmentOptimal,
@@ -216,7 +217,7 @@ pub fn translate_image_layout(value: base::ImageLayout, is_depth_stencil: bool) 
         (base::ImageLayout::CopyRead, _) => vk::ImageLayout::TransferSrcOptimal,
         (base::ImageLayout::CopyWrite, _) => vk::ImageLayout::TransferDstOptimal,
         (base::ImageLayout::Present, _) => vk::ImageLayout::PresentSrcKhr,
-    }
+    }*/
 }
 
 pub fn translate_image_aspect(value: base::ImageAspect) -> vk::ImageAspectFlags {

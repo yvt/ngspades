@@ -11,7 +11,7 @@ use ash::version::*;
 use refeq::RefEqArc;
 
 use base;
-use common::{Error, ErrorKind, Rect2D, Result};
+use base::{Error, ErrorKind, Rect2D, Result};
 use base::StaticOrDynamic::*;
 
 use device::DeviceRef;
@@ -91,7 +91,7 @@ impl ComputePipelineBuilder {
 impl base::ComputePipelineBuilder for ComputePipelineBuilder {
     fn compute_shader(
         &mut self,
-        library: &base::Library,
+        library: &base::LibraryRef,
         entry_point: &str,
     ) -> &mut base::ComputePipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
@@ -99,19 +99,15 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
         self
     }
 
-    fn root_sig(&mut self, v: &base::RootSig) -> &mut base::ComputePipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut base::ComputePipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
     }
 
-    fn build(&mut self) -> Result<base::ComputePipeline> {
-        let compute_shader = self.compute_shader
-            .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "compute_shader"))?;
-        let root_sig = self.root_sig
-            .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "root_sig"))?;
+    fn build(&mut self) -> Result<base::ComputePipelineRef> {
+        let compute_shader = self.compute_shader.as_ref().expect("compute_shader");
+        let root_sig = self.root_sig.as_ref().expect("root_sig");
 
         let stage = new_shader_stage_description(
             base::ShaderStage::Compute,
@@ -145,7 +141,7 @@ pub struct ComputePipeline {
     data: RefEqArc<ComputePipelineData>,
 }
 
-zangfx_impl_handle! { ComputePipeline, base::ComputePipeline }
+zangfx_impl_handle! { ComputePipeline, base::ComputePipelineRef }
 
 #[derive(Debug)]
 struct ComputePipelineData {
@@ -223,7 +219,7 @@ impl RenderPipelineBuilder {
 impl base::RenderPipelineBuilder for RenderPipelineBuilder {
     fn vertex_shader(
         &mut self,
-        library: &base::Library,
+        library: &base::LibraryRef,
         entry_point: &str,
     ) -> &mut base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
@@ -233,7 +229,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
     fn fragment_shader(
         &mut self,
-        library: &base::Library,
+        library: &base::LibraryRef,
         entry_point: &str,
     ) -> &mut base::RenderPipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
@@ -241,7 +237,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         self
     }
 
-    fn root_sig(&mut self, v: &base::RootSig) -> &mut base::RenderPipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut base::RenderPipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
@@ -249,7 +245,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
     fn render_pass(
         &mut self,
-        v: &base::RenderPass,
+        v: &base::RenderPassRef,
         subpass: base::SubpassIndex,
     ) -> &mut base::RenderPipelineBuilder {
         let render_pass: &RenderPass = v.downcast_ref().expect("bad render pass type");
@@ -305,14 +301,14 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         self.rasterizer.as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<base::RenderPipeline> {
+    fn build(&mut self) -> Result<base::RenderPipelineRef> {
         let root_sig = self.root_sig
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "root_sig"))?;
+            .expect("root_sig");
 
         let &(ref render_pass, subpass) = self.render_pass
             .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "render_pass"))?;
+            .expect("render_pass");
 
         let mut dyn_states = Vec::new();
 
@@ -976,7 +972,7 @@ pub struct RenderPipeline {
     data: RefEqArc<RenderPipelineData>,
 }
 
-zangfx_impl_handle! { RenderPipeline, base::RenderPipeline }
+zangfx_impl_handle! { RenderPipeline, base::RenderPipelineRef }
 
 #[derive(Debug)]
 struct RenderPipelineData {

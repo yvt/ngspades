@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use base;
-use common::Result;
+use base::Result;
 
 use device::DeviceRef;
 use super::buffer::CmdBuffer;
@@ -22,7 +22,7 @@ pub struct CmdPool {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdPool: base::CmdPool, ::Debug }
+// zangfx_impl_object! { CmdPool: base::CmdPool, ::Debug }
 
 impl CmdPool {
     pub(super) fn new(
@@ -38,9 +38,9 @@ impl CmdPool {
             scheduler,
         })
     }
-}
+/* }
 
-impl base::CmdPool for CmdPool {
+impl base::CmdPool for CmdPool { */
     unsafe fn new_cmd_buffer(&mut self) -> Result<Box<base::CmdBuffer>> {
         CmdBuffer::new(
             self.device,

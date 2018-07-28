@@ -11,7 +11,7 @@ use std::ops::Range;
 use arrayvec::ArrayVec;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 
 use device::DeviceRef;
 use utils::{translate_access_type_flags, translate_generic_error_unwrap,
@@ -142,27 +142,12 @@ impl Uncommited {
     }
 }
 
-fn already_commited_error() -> Error {
-    Error::with_detail(
-        ErrorKind::InvalidUsage,
-        "command buffer is already commited",
-    )
-}
-
 impl base::CmdBuffer for CmdBuffer {
-    fn enqueue(&mut self) -> Result<()> {
-        Ok(())
-    }
-
     fn commit(&mut self) -> Result<()> {
-        // Commiting a command buffer implicitly enqueues it
-        self.enqueue()?;
-
         {
             let uncommited = self.uncommited
                 .as_mut()
-                .ok_or_else(already_commited_error)
-                .unwrap();
+                .expect("command buffer is already commited");
 
             uncommited.clear_encoder();
 
@@ -190,7 +175,7 @@ impl base::CmdBuffer for CmdBuffer {
 
     fn encode_render(
         &mut self,
-        render_target_table: &base::RenderTargetTable,
+        render_target_table: &base::RenderTargetTableRef,
     ) -> &mut base::RenderCmdEncoder {
         use std::mem::replace;
         use renderpass::RenderTargetTable;
@@ -201,8 +186,7 @@ impl base::CmdBuffer for CmdBuffer {
 
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let encoder = unsafe {
@@ -225,8 +209,7 @@ impl base::CmdBuffer for CmdBuffer {
 
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let encoder = unsafe {
@@ -248,8 +231,7 @@ impl base::CmdBuffer for CmdBuffer {
 
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let encoder = unsafe {
@@ -266,29 +248,27 @@ impl base::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn on_complete(&mut self, cb: Box<FnMut() + Sync + Send>) {
+    fn on_complete(&mut self, cb: Box<FnMut(Result<()>) + Sync + Send>) {
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
-        uncommited.completion_callbacks.0.push(cb);
+            .expect("command buffer is already commited");
+        unimplemented!()
+        // uncommited.completion_callbacks.0.push(cb);
     }
 
-    fn wait_semaphore(&mut self, semaphore: &base::Semaphore, dst_stage: base::StageFlags) {
+    fn wait_semaphore(&mut self, semaphore: &base::SemaphoreRef, dst_stage: base::StageFlags) {
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
         let stage = translate_pipeline_stage_flags(dst_stage);
         uncommited.wait_semaphores.push((our_semaphore, stage));
     }
 
-    fn signal_semaphore(&mut self, semaphore: &base::Semaphore, _src_stage: base::StageFlags) {
+    fn signal_semaphore(&mut self, semaphore: &base::SemaphoreRef, _src_stage: base::StageFlags) {
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
         uncommited.signal_semaphores.push(our_semaphore);
     }
@@ -296,12 +276,11 @@ impl base::CmdBuffer for CmdBuffer {
     fn host_barrier(
         &mut self,
         src_access: base::AccessTypeFlags,
-        buffers: &[(Range<base::DeviceSize>, &base::Buffer)],
+        buffers: &[(Range<base::DeviceSize>, &base::BufferRef)],
     ) {
         let uncommited = self.uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let vk_device = uncommited.device.vk_device();
@@ -342,18 +321,20 @@ impl base::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn queue_acquire_barrier(
+    fn queue_ownership_acquire(
         &mut self,
         _src_queue_family: base::QueueFamily,
-        _barrier: &base::Barrier,
+        _dst_access: base::AccessTypeFlags,
+        _transfer: &base::QueueOwnershipTransfer<'_>,
     ) {
         unimplemented!()
     }
 
-    fn queue_release_barrier(
+    fn queue_ownership_release(
         &mut self,
         _dst_queue_family: base::QueueFamily,
-        _barrier: &base::Barrier,
+        _src_access: base::AccessTypeFlags,
+        _transfer: &base::QueueOwnershipTransfer<'_>,
     ) {
         unimplemented!()
     }

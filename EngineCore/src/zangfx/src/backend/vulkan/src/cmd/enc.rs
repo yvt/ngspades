@@ -11,7 +11,6 @@ use base;
 
 use cmd::fence::Fence;
 use device::DeviceRef;
-use cmd::barrier::Barrier;
 use arg::layout::RootSig;
 use arg::pool::ArgTable;
 use pipeline::{ComputePipeline, RenderPipeline};
@@ -110,9 +109,10 @@ impl CommonCmdEncoder {
     pub fn wait_fence(
         &mut self,
         fence: &Fence,
-        src_stage: base::StageFlags,
-        barrier: &base::Barrier,
+        dst_access: base::AccessTypeFlags,
     ) {
+        unimplemented!()
+        /*
         let traits = self.device.caps().info.traits;
         if traits.intersects(DeviceTrait::MoltenVK) {
             // Skip all event operations on MoltenVK
@@ -156,15 +156,16 @@ impl CommonCmdEncoder {
                 data.image_barriers.len() as u32,
                 data.image_barriers.as_ptr(),
             );
-        }
+        }*/
     }
 
     /// Implementation of `update_fence` used by all command encoders.
     ///
     /// When calling this from a render encoder, this must be called after
     /// ending a render pass.
-    pub fn update_fence(&mut self, fence: &Fence, src_stage: base::StageFlags) {
-        let traits = self.device.caps().info.traits;
+    pub fn update_fence(&mut self, fence: &Fence, src_access: base::AccessTypeFlags) {
+        unimplemented!()
+        /*let traits = self.device.caps().info.traits;
         if traits.intersects(DeviceTrait::MoltenVK) {
             // Skip all event operations on MoltenVK
             return;
@@ -181,11 +182,17 @@ impl CommonCmdEncoder {
                     translate_pipeline_stage_flags(src_stage)
                 },
             );
-        }
+        }*/
     }
 
-    pub fn barrier(&mut self, barrier: &base::Barrier) {
-        let my_barrier: &Barrier = barrier.downcast_ref().expect("bad barrier type");
+    pub fn barrier_core(
+        &mut self,
+        obj: base::ResourceSet<'_>,
+        src_access: base::AccessTypeFlags,
+        dst_access: base::AccessTypeFlags,
+    ) {
+        unimplemented!()
+        /* let my_barrier: &Barrier = barrier.downcast_ref().expect("bad barrier type");
         let data = my_barrier.data();
 
         let device = self.device.vk_device();
@@ -207,7 +214,7 @@ impl CommonCmdEncoder {
                 &data.buffer_barriers,
                 &data.image_barriers,
             );
-        }
+        } */
     }
 }
 
@@ -236,14 +243,16 @@ impl DescSetBindingTable {
         self.bound_root_sig = Some(root_sig.clone());
     }
 
-    pub fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&base::ArgTable]) {
+    pub fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
         use std::cmp::min;
 
         if tables.len() == 0 {
             return;
         }
 
-        for (i, table) in tables.iter().enumerate() {
+        // TODO: Add reference
+
+        for (i, (_pool, table)) in tables.iter().enumerate() {
             let my_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.desc_sets[i + index] = my_table.vk_descriptor_set();
         }

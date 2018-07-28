@@ -10,7 +10,7 @@ use ash::vk;
 use ash::version::*;
 use parking_lot::Mutex;
 
-use common::Result;
+use base::Result;
 
 use device::DeviceRef;
 use utils::translate_generic_error_unwrap;

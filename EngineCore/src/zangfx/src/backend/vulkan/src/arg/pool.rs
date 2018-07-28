@@ -7,9 +7,10 @@
 use ash::vk;
 use ash::version::*;
 use arrayvec::ArrayVec;
+use std::sync::Arc;
 
 use base;
-use common::Result;
+use base::Result;
 use device::DeviceRef;
 
 use utils::translate_generic_error_unwrap;
@@ -40,10 +41,15 @@ impl ArgPoolBuilder {
 }
 
 impl base::ArgPoolBuilder for ArgPoolBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::ArgPoolBuilder {
+        unimplemented!();
+        self
+    }
+
     fn reserve_table_sig(
         &mut self,
         count: usize,
-        table: &base::ArgTableSig,
+        table: &base::ArgTableSigRef,
     ) -> &mut base::ArgPoolBuilder {
         let our_table: &ArgTableSig = table
             .downcast_ref()
@@ -69,7 +75,7 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<Box<base::ArgPool>> {
+    fn build(&mut self) -> Result<base::ArgPoolRef> {
         let mut flags = vk::DescriptorPoolCreateFlags::empty();
 
         if self.enable_destroy_tables {
@@ -90,7 +96,7 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         let vk_device = self.device.vk_device();
         let vk_d_pool = unsafe { vk_device.create_descriptor_pool(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(Box::new(ArgPool::new(self.device, vk_d_pool)))
+        Ok(Arc::new(ArgPool::new(self.device, vk_d_pool)))
     }
 }
 
@@ -125,10 +131,12 @@ impl Drop for ArgPool {
 
 impl base::ArgPool for ArgPool {
     fn new_tables(
-        &mut self,
+        &self,
         count: usize,
-        table: &base::ArgTableSig,
-    ) -> Result<Option<Vec<base::ArgTable>>> {
+        table: &base::ArgTableSigRef,
+    ) -> Result<Option<Vec<base::ArgTableRef>>> {
+        // TODO: Synchronize accesses
+
         use std::cmp::min;
         use std::mem::replace;
 
@@ -137,7 +145,7 @@ impl base::ArgPool for ArgPool {
             .expect("bad argument table signature type");
 
         // Allocate descriptor sets in chunk of 256 sets
-        struct PartialTableSet<'a>(&'a mut ArgPool, Vec<base::ArgTable>);
+        struct PartialTableSet<'a>(&'a mut ArgPool, Vec<base::ArgTableRef>);
         impl<'a> Drop for PartialTableSet<'a> {
             fn drop(&mut self) {
                 use base::ArgPool;
@@ -154,7 +162,7 @@ impl base::ArgPool for ArgPool {
         let device = self.device;
         let vk_d_pool = self.vk_d_pool;
 
-        let mut result_set = PartialTableSet(self, Vec::with_capacity(count));
+        let mut result_set = PartialTableSet(/* self */ unimplemented!(), Vec::with_capacity(count));
 
         let set_layout = sig.vk_descriptor_set_layout();
         let set_layouts: ArrayVec<[_; 256]> = (0..min(256, count)).map(|_| set_layout).collect();
@@ -193,7 +201,8 @@ impl base::ArgPool for ArgPool {
         Ok(Some(replace(&mut result_set.1, Vec::new())))
     }
 
-    fn destroy_tables(&mut self, tables: &[&base::ArgTable]) -> Result<()> {
+    fn destroy_tables(&self, tables: &[&base::ArgTableRef]) -> Result<()> {
+        // TODO: Synchronize accesses
         let device = self.device.vk_device();
         for chunk in tables.chunks(256) {
             let sets: ArrayVec<[_; 256]> = chunk
@@ -210,7 +219,8 @@ impl base::ArgPool for ArgPool {
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&self) -> Result<()> {
+        // TODO: Synchronize accesses
         let device = self.device.vk_device();
         unsafe {
             device.reset_descriptor_pool(self.vk_d_pool, vk::DescriptorPoolResetFlags::empty())
@@ -224,7 +234,7 @@ pub struct ArgTable {
     vk_ds: vk::DescriptorSet,
 }
 
-zangfx_impl_handle! { ArgTable, base::ArgTable }
+zangfx_impl_handle! { ArgTable, base::ArgTableRef }
 
 unsafe impl Sync for ArgTable {}
 unsafe impl Send for ArgTable {}

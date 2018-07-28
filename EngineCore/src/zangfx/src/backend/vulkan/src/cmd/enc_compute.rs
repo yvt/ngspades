@@ -64,38 +64,42 @@ impl base::CmdEncoder for ComputeEncoder {
         self.common().debug_marker(label)
     }
 
-    fn use_resource(&mut self, _usage: base::ResourceUsage, _objs: &[base::ResourceRef]) {
-        // No-op on Vulkan backend
+    fn use_resource_core(&mut self, _usage: base::ResourceUsageFlags, _objs: base::ResourceSet<'_>) {
+        unimplemented!()
     }
 
-    fn use_heap(&mut self, _heaps: &[&base::Heap]) {
-        // No-op on Vulkan backend
+    fn use_heap(&mut self, _heaps: &[&base::HeapRef]) {
+        unimplemented!()
     }
 
     fn wait_fence(
         &mut self,
-        fence: &base::Fence,
-        src_stage: base::StageFlags,
-        barrier: &base::Barrier,
+        fence: &base::FenceRef,
+        dst_access: base::AccessTypeFlags,
     ) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        self.common().wait_fence(&our_fence, src_stage, barrier);
+        self.common().wait_fence(&our_fence, dst_access);
         self.fence_set.wait_fence(our_fence);
     }
 
-    fn update_fence(&mut self, fence: &base::Fence, src_stage: base::StageFlags) {
+    fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        self.common().update_fence(&our_fence, src_stage);
+        self.common().update_fence(&our_fence, src_access);
         self.fence_set.signal_fence(our_fence);
     }
 
-    fn barrier(&mut self, barrier: &base::Barrier) {
-        self.common().barrier(barrier)
+    fn barrier_core(
+        &mut self,
+        obj: base::ResourceSet<'_>,
+        src_access: base::AccessTypeFlags,
+        dst_access: base::AccessTypeFlags,
+    ) {
+        self.common().barrier_core(obj, src_access, dst_access)
     }
 }
 
 impl base::ComputeCmdEncoder for ComputeEncoder {
-    fn bind_pipeline(&mut self, pipeline: &base::ComputePipeline) {
+    fn bind_pipeline(&mut self, pipeline: &base::ComputePipelineRef) {
         let my_pipeline: &ComputePipeline =
             pipeline.downcast_ref().expect("bad compute pipeline type");
 
@@ -114,7 +118,7 @@ impl base::ComputeCmdEncoder for ComputeEncoder {
         self.ref_table.insert_compute_pipeline(my_pipeline);
     }
 
-    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&base::ArgTable]) {
+    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
         self.desc_set_binding_table.bind_arg_table(index, tables);
     }
 
@@ -137,7 +141,7 @@ impl base::ComputeCmdEncoder for ComputeEncoder {
         }
     }
 
-    fn dispatch_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    fn dispatch_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
 
         self.desc_set_binding_table.flush(

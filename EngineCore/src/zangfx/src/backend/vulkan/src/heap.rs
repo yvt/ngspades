@@ -9,9 +9,10 @@ use ash::version::*;
 use parking_lot::Mutex;
 use xalloc::{SysTlsf, SysTlsfRegion};
 use iterpool::{Pool, PoolPtr};
+use std::sync::Arc;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 
 use device::DeviceRef;
 use utils::{get_memory_req, translate_generic_error_unwrap, translate_map_memory_error_unwrap};
@@ -48,12 +49,10 @@ impl base::DynamicHeapBuilder for DynamicHeapBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<Box<base::Heap>> {
-        let size = self.size
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "size"))?;
-        let memory_type = self.memory_type
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "memory_type"))?;
-        Heap::new(self.device, size, memory_type, size).map(|x| Box::new(x) as _)
+    fn build(&mut self) -> Result<base::HeapRef> {
+        let size = self.size.expect("size");
+        let memory_type = self.memory_type.expect("memory_type");
+        Heap::new(self.device, size, memory_type, size).map(|x| Arc::new(x) as _)
     }
 }
 
@@ -80,28 +79,38 @@ impl DedicatedHeapBuilder {
 }
 
 impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::DedicatedHeapBuilder {
+        unimplemented!();
+        self
+    }
+
     fn memory_type(&mut self, v: base::MemoryType) -> &mut base::DedicatedHeapBuilder {
         self.memory_type = Some(v);
         self
     }
 
-    fn prebind(&mut self, obj: base::ResourceRef) {
+    fn enable_use_heap(&mut self) -> &mut base::DedicatedHeapBuilder {
+        unimplemented!();
+        self
+    }
+
+    fn bind(&mut self, obj: base::ResourceRef) {
         match get_memory_req(self.device.vk_device(), obj) {
             Ok(req) => self.allocs.push((req.size, req.align)),
             // Save the error and return it from `build`.
             Err(err) => self.error = Some(err),
         }
+        unimplemented!()
     }
 
-    fn build(&mut self) -> Result<Box<base::Heap>> {
+    fn build(&mut self) -> Result<base::HeapRef> {
         if let Some(error) = self.error.take() {
             // We can't return the full `Error` twice because it's not `Clone`.
             self.error = Some(Error::new(error.kind()));
             return Err(error);
         }
 
-        let memory_type = self.memory_type
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "memory_type"))?;
+        let memory_type = self.memory_type.expect("memory_type");
         let mut heap_size = 0;
 
         // Since dedicated heaps do not support aliasing (yet), estimating the
@@ -116,7 +125,7 @@ impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
             heap_size += size;
         }
 
-        Heap::new(self.device, heap_size, memory_type, heap_size).map(|x| Box::new(x) as _)
+        Heap::new(self.device, heap_size, memory_type, heap_size).map(|x| Arc::new(x) as _)
     }
 }
 
@@ -127,7 +136,7 @@ struct HeapAlloc {
     ptr: *mut u8,
 }
 
-zangfx_impl_handle! { HeapAlloc, base::HeapAlloc }
+// zangfx_impl_handle! { HeapAlloc, base::HeapAllocRef }
 
 unsafe impl Sync for HeapAlloc {}
 unsafe impl Send for HeapAlloc {}
@@ -218,7 +227,7 @@ impl Drop for Heap {
 }
 
 impl base::Heap for Heap {
-    fn bind(&self, obj: base::ResourceRef) -> Result<Option<base::HeapAlloc>> {
+    fn bind(&self, obj: base::ResourceRef) -> Result<bool> {
         let vk_device = self.device.vk_device();
         let req = get_memory_req(vk_device, obj)?;
 
@@ -239,7 +248,7 @@ impl base::Heap for Heap {
         }
         let (region, offset) = match state.allocator.alloc_aligned(req.size, req.align) {
             Some(allocation) => allocation,
-            None => return Ok(None),
+            None => return unimplemented!(),//  Ok(None),
         };
         let mut region = Alloc(Some(region), &mut state.allocator);
 
@@ -272,11 +281,13 @@ impl base::Heap for Heap {
             unsafe { self.ptr.offset(offset as isize) }
         };
 
-        Ok(Some(HeapAlloc { pool_ptr, ptr }.into()))
+        unimplemented!()
+        // Ok(Some(HeapAlloc { pool_ptr, ptr }.into()))
     }
 
-    fn make_aliasable(&self, alloc: &base::HeapAlloc) -> Result<()> {
-        let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+    fn make_aliasable(&self, _obj: base::ResourceRef) -> Result<()> {
+        unimplemented!()
+        /* let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         let mut state = self.state.lock();
         let state = &mut *state; // enable split borrowing
 
@@ -287,10 +298,10 @@ impl base::Heap for Heap {
                 state.allocator.dealloc_unchecked(region);
             }
         }
-        Ok(())
+        Ok(()) */
     }
 
-    fn unbind(&self, alloc: &base::HeapAlloc) -> Result<()> {
+    /* fn unbind(&self, alloc: &base::HeapAllocRef) -> Result<()> {
         let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         let mut state = self.state.lock();
 
@@ -304,8 +315,8 @@ impl base::Heap for Heap {
         Ok(())
     }
 
-    fn as_ptr(&self, alloc: &base::HeapAlloc) -> Result<*mut u8> {
+    fn as_ptr(&self, alloc: &base::HeapAllocRef) -> Result<*mut u8> {
         let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
         Ok(alloc.ptr)
-    }
+    } */
 }

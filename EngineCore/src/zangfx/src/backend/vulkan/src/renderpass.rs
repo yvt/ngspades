@@ -9,7 +9,8 @@ use ash::version::*;
 use refeq::RefEqArc;
 
 use base;
-use common::{Error, ErrorKind, IntoWithPad, Result};
+use base::{Error, ErrorKind, Result};
+use common::IntoWithPad;
 use device::DeviceRef;
 use formats::translate_image_format;
 use image::Image;
@@ -57,24 +58,17 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         self.targets[index].as_mut().unwrap()
     }
 
-    fn end(&mut self) -> &mut base::RenderPassBuilder {
-        self.subpass = vk::VK_SUBPASS_EXTERNAL;
-        self
-    }
-
     fn subpass_dep(
         &mut self,
-        from: Option<base::SubpassIndex>,
+        from: base::SubpassIndex,
         src_access: base::AccessTypeFlags,
         dst_access: base::AccessTypeFlags,
     ) -> &mut base::RenderPassBuilder {
-        let from = if let Some(from) = from {
-            from as u32
-        } else {
-            vk::VK_SUBPASS_EXTERNAL
-        };
+        let from = from as u32;
 
-        assert_ne!(from, self.subpass);
+        if from == self.subpass {
+            unimplemented!();
+        }
 
         let src_access_mask = translate_access_type_flags(src_access);
         let dst_access_mask = translate_access_type_flags(dst_access);
@@ -100,17 +94,17 @@ impl base::RenderPassBuilder for RenderPassBuilder {
 
     fn subpass_color_targets(
         &mut self,
-        targets: &[Option<(base::RenderPassTargetIndex, base::ImageLayout)>],
-    ) -> &mut base::RenderPassBuilder {
+        targets: &[Option<base::RenderPassTargetIndex>],
+    ) {
         assert_eq!(self.subpass, 0);
 
         self.color_attachments.clear();
         self.color_attachments
             .extend(targets.iter().map(|maybe_target| {
-                if let &Some((i, layout)) = maybe_target {
+                if let &Some(i) = maybe_target {
                     vk::AttachmentReference {
                         attachment: i as u32,
-                        layout: translate_image_layout(layout, false),
+                        layout: unimplemented!(),// translate_image_layout(layout, false),
                     }
                 } else {
                     vk::AttachmentReference {
@@ -119,25 +113,21 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                     }
                 }
             }));
-
-        self
     }
 
     fn subpass_ds_target(
         &mut self,
-        target: Option<(base::RenderPassTargetIndex, base::ImageLayout)>,
-    ) -> &mut base::RenderPassBuilder {
+        target: Option<base::RenderPassTargetIndex>,
+    ) {
         assert_eq!(self.subpass, 0);
 
-        self.depth_stencil_attachment = target.map(|(i, layout)| vk::AttachmentReference {
+        self.depth_stencil_attachment = target.map(|i| vk::AttachmentReference {
             attachment: i as u32,
-            layout: translate_image_layout(layout, true),
+            layout: unimplemented!(),// translate_image_layout(layout, true),
         });
-
-        self
     }
 
-    fn build(&mut self) -> Result<base::RenderPass> {
+    fn build(&mut self) -> Result<base::RenderPassRef> {
         let vk_device = self.device.vk_device();
 
         let vk_subpass = vk::SubpassDescription {
@@ -217,8 +207,8 @@ impl RenderPassTargetBuilder {
             },
             // No default value is defined for `format`
             format: base::ImageFormat::RFloat32,
-            initial_layout: base::ImageLayout::Undefined,
-            final_layout: base::ImageLayout::ShaderRead,
+            initial_layout: unimplemented!(),//base::ImageLayout::Undefined,
+            final_layout: unimplemented!(),//base::ImageLayout::ShaderRead,
         }
     }
 
@@ -259,6 +249,7 @@ impl base::RenderPassTarget for RenderPassTargetBuilder {
         self
     }
 
+/*
     fn set_initial_layout(&mut self, v: base::ImageLayout) -> &mut base::RenderPassTarget {
         // The actual layout cannot be decided without knowing whether the image
         // has the depth/stencil format.
@@ -270,7 +261,7 @@ impl base::RenderPassTarget for RenderPassTargetBuilder {
         // has the depth/stencil format.
         self.final_layout = v;
         self
-    }
+    } */
 }
 
 fn translate_load_op(load_op: base::LoadOp) -> vk::AttachmentLoadOp {
@@ -294,7 +285,7 @@ pub struct RenderPass {
     data: RefEqArc<RenderPassData>,
 }
 
-zangfx_impl_handle! { RenderPass, base::RenderPass }
+zangfx_impl_handle! { RenderPass, base::RenderPassRef }
 
 #[derive(Debug)]
 struct RenderPassData {
@@ -415,7 +406,7 @@ impl RenderTargetTableBuilder {
 }
 
 impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
-    fn render_pass(&mut self, v: &base::RenderPass) -> &mut base::RenderTargetTableBuilder {
+    fn render_pass(&mut self, v: &base::RenderPassRef) -> &mut base::RenderTargetTableBuilder {
         let our_rp: &RenderPass = v.downcast_ref().expect("bad render pass type");
         self.render_pass = Some(our_rp.clone());
         self
@@ -434,7 +425,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
     fn target(
         &mut self,
         index: base::RenderPassTargetIndex,
-        view: &base::Image,
+        view: &base::ImageRef,
     ) -> &mut base::RenderTarget {
         use std::mem::uninitialized;
         if self.targets.len() <= index {
@@ -452,12 +443,9 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         self.targets[index].as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<base::RenderTargetTable> {
-        let render_pass: RenderPass = self.render_pass
-            .clone()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "render_pass"))?;
-        let extents = self.extents
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "extents"))?;
+    fn build(&mut self) -> Result<base::RenderTargetTableRef> {
+        let render_pass: RenderPass = self.render_pass.clone().expect("render_pass");
+        let extents = self.extents.expect("extents");
 
         let vk_device = self.device.vk_device();
 
@@ -586,7 +574,7 @@ pub struct RenderTargetTable {
     data: RefEqArc<RenderTargetTableData>,
 }
 
-zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTable }
+zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTableRef }
 
 #[derive(Debug)]
 struct RenderTargetTableData {

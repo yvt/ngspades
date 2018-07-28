@@ -71,13 +71,14 @@ impl RenderEncoder {
         }
 
         // Process deferred-signaled fences after ending a render pass
-        use std::mem::replace;
+        return unimplemented!();
+        /* use std::mem::replace;
         for (fence, src_stage) in replace(&mut self.signal_fences, Vec::new()) {
             self.common().update_fence(&fence, src_stage);
             self.fence_set.signal_fence(fence);
-        }
+        } */
 
-        (self.fence_set, self.ref_table)
+        // (self.fence_set, self.ref_table)
     }
 
     fn common(&self) -> CommonCmdEncoder {
@@ -98,41 +99,42 @@ impl base::CmdEncoder for RenderEncoder {
         self.common().debug_marker(label)
     }
 
-    fn use_resource(&mut self, _usage: base::ResourceUsage, _objs: &[base::ResourceRef]) {
-        // No-op on Vulkan backend
+    fn use_resource_core(&mut self, _usage: base::ResourceUsageFlags, _objs: base::ResourceSet<'_>) {
+        unimplemented!()
     }
 
-    fn use_heap(&mut self, _heaps: &[&base::Heap]) {
-        // No-op on Vulkan backend
+    fn use_heap(&mut self, _heaps: &[&base::HeapRef]) {
+        unimplemented!()
     }
 
     fn wait_fence(
         &mut self,
-        fence: &base::Fence,
-        _src_stage: base::StageFlags,
-        _barrier: &base::Barrier,
+        fence: &base::FenceRef,
+        dst_access: base::AccessTypeFlags,
     ) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        // Do not call `CommonCmdEncoder::wait_fence` here - the barrier is
-        // already defined by the render pass. Inserting a fence wait command is
-        // overkill.
+        self.common().wait_fence(&our_fence, dst_access);
         self.fence_set.wait_fence(our_fence);
     }
 
-    fn update_fence(&mut self, fence: &base::Fence, src_stage: base::StageFlags) {
+    fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        // Defer the fence signaling until the render pass is done. It's not
-        // allowed inside a render pass.
-        self.signal_fences.push((our_fence, src_stage));
+        self.common().update_fence(&our_fence, src_access);
+        self.fence_set.signal_fence(our_fence);
     }
 
-    fn barrier(&mut self, barrier: &base::Barrier) {
-        self.common().barrier(barrier)
+    fn barrier_core(
+        &mut self,
+        obj: base::ResourceSet<'_>,
+        src_access: base::AccessTypeFlags,
+        dst_access: base::AccessTypeFlags,
+    ) {
+        self.common().barrier_core(obj, src_access, dst_access)
     }
 }
 
 impl base::RenderCmdEncoder for RenderEncoder {
-    fn bind_pipeline(&mut self, pipeline: &base::RenderPipeline) {
+    fn bind_pipeline(&mut self, pipeline: &base::RenderPipelineRef) {
         let my_pipeline: &RenderPipeline =
             pipeline.downcast_ref().expect("bad render pipeline type");
 
@@ -247,14 +249,14 @@ impl base::RenderCmdEncoder for RenderEncoder {
         }
     }
 
-    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&base::ArgTable]) {
+    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
         self.desc_set_binding_table.bind_arg_table(index, tables);
     }
 
     fn bind_vertex_buffers(
         &mut self,
         mut index: base::VertexBufferIndex,
-        buffers: &[(&base::Buffer, base::DeviceSize)],
+        buffers: &[(&base::BufferRef, base::DeviceSize)],
     ) {
         let vk_device = self.device.vk_device();
         for items in buffers.chunks(32) {
@@ -280,7 +282,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
 
     fn bind_index_buffer(
         &mut self,
-        buffer: &base::Buffer,
+        buffer: &base::BufferRef,
         offset: base::DeviceSize,
         format: base::IndexFormat,
     ) {
@@ -343,7 +345,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
         }
     }
 
-    fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    fn draw_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         self.desc_set_binding_table.flush(
             self.device,
             self.vk_cmd_buffer,
@@ -357,7 +359,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
         }
     }
 
-    fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    fn draw_indexed_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         self.desc_set_binding_table.flush(
             self.device,
             self.vk_cmd_buffer,

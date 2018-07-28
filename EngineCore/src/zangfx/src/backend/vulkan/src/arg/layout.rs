@@ -9,7 +9,7 @@ use ash::vk;
 use ash::version::*;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 use device::DeviceRef;
 
 use utils::{translate_generic_error_unwrap, translate_shader_stage_flags};
@@ -53,7 +53,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
         e.as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<base::ArgTableSig> {
+    fn build(&mut self) -> Result<base::ArgTableSigRef> {
         let bindings: Vec<_> = self.args
             .iter()
             .filter_map(|x| x.as_ref())
@@ -117,7 +117,7 @@ pub struct ArgTableSig {
     data: Arc<ArgTableSigData>,
 }
 
-zangfx_impl_handle! { ArgTableSig, base::ArgTableSig }
+zangfx_impl_handle! { ArgTableSig, base::ArgTableSigRef }
 
 unsafe impl Sync for ArgTableSigData {}
 unsafe impl Send for ArgTableSigData {}
@@ -201,7 +201,7 @@ impl base::RootSigBuilder for RootSigBuilder {
     fn arg_table(
         &mut self,
         index: base::ArgTableIndex,
-        x: &base::ArgTableSig,
+        x: &base::ArgTableSigRef,
     ) -> &mut base::RootSigBuilder {
         let our_table: &ArgTableSig = x.downcast_ref().expect("bad argument table signature type");
         if self.tables.len() <= index {
@@ -211,12 +211,9 @@ impl base::RootSigBuilder for RootSigBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<base::RootSig> {
+    fn build(&mut self) -> Result<base::RootSigRef> {
         if self.tables.len() > ::MAX_NUM_ARG_TABLES {
-            return Err(Error::with_detail(
-                ErrorKind::NotSupported,
-                "Exceeds the backend limit of the number of argument tables",
-            ));
+            panic!("Exceeds the backend limit of the number of argument tables");
         }
 
         let set_layouts: Vec<_> = self.tables
@@ -253,7 +250,7 @@ pub struct RootSig {
     data: Arc<RootSigData>,
 }
 
-zangfx_impl_handle! { RootSig, base::RootSig }
+zangfx_impl_handle! { RootSig, base::RootSigRef }
 
 unsafe impl Sync for RootSigData {}
 unsafe impl Send for RootSigData {}

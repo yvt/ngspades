@@ -9,7 +9,7 @@ use ash::vk;
 use ash::version::*;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 use device::DeviceRef;
 
 use utils::translate_generic_error_unwrap;
@@ -38,16 +38,13 @@ impl base::LibraryBuilder for LibraryBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<base::Library> {
+    fn build(&mut self) -> Result<base::LibraryRef> {
         let spirv_code = self.spirv_code
             .clone()
-            .ok_or(Error::new(ErrorKind::InvalidUsage))?;
+            .expect("spirv_code");
 
         if spirv_code.len() >= (<u32>::max_value() / 4) as usize {
-            return Err(Error::with_detail(
-                ErrorKind::NotSupported,
-                "shader is too big",
-            ));
+            panic!("shader is too big");
         }
 
         let info = vk::ShaderModuleCreateInfo {
@@ -71,7 +68,7 @@ pub struct Library {
     data: Arc<LibraryData>,
 }
 
-zangfx_impl_handle! { Library, base::Library }
+zangfx_impl_handle! { Library, base::LibraryRef }
 
 #[derive(Debug)]
 struct LibraryData {

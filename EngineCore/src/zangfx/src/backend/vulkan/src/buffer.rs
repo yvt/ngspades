@@ -8,7 +8,7 @@ use ash::vk;
 use ash::version::*;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 use device::DeviceRef;
 
 use utils::translate_generic_error_unwrap;
@@ -34,6 +34,11 @@ impl BufferBuilder {
 }
 
 impl base::BufferBuilder for BufferBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::BufferBuilder {
+        unimplemented!();
+        self
+    }
+
     fn size(&mut self, v: base::DeviceSize) -> &mut base::BufferBuilder {
         self.size = Some(v);
         self
@@ -44,9 +49,8 @@ impl base::BufferBuilder for BufferBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<base::Buffer> {
-        let size = self.size
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "size"))?;
+    fn build(&mut self) -> Result<base::BufferRef> {
+        let size = self.size.expect("size");
 
         let mut usage = vk::BufferUsageFlags::empty();
         if self.usage.contains(base::BufferUsage::Vertex) {
@@ -95,7 +99,7 @@ pub struct Buffer {
     vk_buffer: vk::Buffer,
 }
 
-zangfx_impl_handle! { Buffer, base::Buffer }
+zangfx_impl_handle! { Buffer, base::BufferRef }
 
 unsafe impl Sync for Buffer {}
 unsafe impl Send for Buffer {}
@@ -111,5 +115,23 @@ impl Buffer {
 
     pub(super) unsafe fn destroy(&self, vk_device: &::AshDevice) {
         vk_device.destroy_buffer(self.vk_buffer, None);
+    }
+}
+
+unsafe impl base::Buffer for Buffer {
+    fn as_ptr(&self) -> *mut u8 {
+        unimplemented!()
+    }
+
+    fn len(&self) -> base::DeviceSize {
+        unimplemented!()
+    }
+
+    fn make_proxy(&mut self, queue: &base::CmdQueueRef) -> base::BufferRef {
+        unimplemented!()
+    }
+
+    fn get_memory_req(&self) -> Result<base::MemoryReq> {
+        unimplemented!()
     }
 }

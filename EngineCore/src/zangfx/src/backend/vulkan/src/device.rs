@@ -12,7 +12,7 @@ use ash::version::*;
 
 use {base, AshDevice};
 use {arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader, utils};
-use common::Result;
+use base::Result;
 
 /// Unsafe reference to a Vulkan device object that is internally held by
 /// `Device`.
@@ -95,7 +95,11 @@ impl base::Device for Device {
         &*self.caps
     }
 
-    fn build_cmd_queue(&self) -> Box<base::CmdQueueBuilder> {
+    fn global_heap(&self, memory_type: base::MemoryType) -> &base::HeapRef {
+        unimplemented!()
+    }
+
+    fn build_cmd_queue(&self) -> base::CmdQueueBuilderRef {
         unsafe {
             Box::new(cmd::queue::CmdQueueBuilder::new(
                 self.new_device_ref(),
@@ -104,59 +108,51 @@ impl base::Device for Device {
         }
     }
 
-    fn build_semaphore(&self) -> Box<base::SemaphoreBuilder> {
+    fn build_semaphore(&self) -> base::SemaphoreBuilderRef {
         unsafe { Box::new(cmd::semaphore::SemaphoreBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_dynamic_heap(&self) -> Box<base::DynamicHeapBuilder> {
+    fn build_dynamic_heap(&self) -> base::DynamicHeapBuilderRef {
         unsafe { Box::new(heap::DynamicHeapBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_dedicated_heap(&self) -> Box<base::DedicatedHeapBuilder> {
+    fn build_dedicated_heap(&self) -> base::DedicatedHeapBuilderRef {
         unsafe { Box::new(heap::DedicatedHeapBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_barrier(&self) -> Box<base::BarrierBuilder> {
-        Box::new(cmd::barrier::BarrierBuilder::new())
-    }
-
-    fn build_image(&self) -> Box<base::ImageBuilder> {
+    fn build_image(&self) -> base::ImageBuilderRef {
         unsafe { Box::new(image::ImageBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_buffer(&self) -> Box<base::BufferBuilder> {
+    fn build_buffer(&self) -> base::BufferBuilderRef {
         unsafe { Box::new(buffer::BufferBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_sampler(&self) -> Box<base::SamplerBuilder> {
+    fn build_sampler(&self) -> base::SamplerBuilderRef {
         unsafe { Box::new(sampler::SamplerBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_image_view(&self) -> Box<base::ImageViewBuilder> {
-        unsafe { Box::new(image::ImageViewBuilder::new(self.new_device_ref())) }
-    }
-
-    fn build_library(&self) -> Box<base::LibraryBuilder> {
+    fn build_library(&self) -> base::LibraryBuilderRef {
         unsafe { Box::new(shader::LibraryBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_arg_table_sig(&self) -> Box<base::ArgTableSigBuilder> {
+    fn build_arg_table_sig(&self) -> base::ArgTableSigBuilderRef {
         unsafe { Box::new(arg::layout::ArgTableSigBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_root_sig(&self) -> Box<base::RootSigBuilder> {
+    fn build_root_sig(&self) -> base::RootSigBuilderRef {
         unsafe { Box::new(arg::layout::RootSigBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_arg_pool(&self) -> Box<base::ArgPoolBuilder> {
+    fn build_arg_pool(&self) -> base::ArgPoolBuilderRef {
         unsafe { Box::new(arg::pool::ArgPoolBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_render_pass(&self) -> Box<base::RenderPassBuilder> {
+    fn build_render_pass(&self) -> base::RenderPassBuilderRef {
         unsafe { Box::new(renderpass::RenderPassBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_render_target_table(&self) -> Box<base::RenderTargetTableBuilder> {
+    fn build_render_target_table(&self) -> base::RenderTargetTableBuilderRef {
         unsafe {
             Box::new(renderpass::RenderTargetTableBuilder::new(
                 self.new_device_ref(),
@@ -164,54 +160,18 @@ impl base::Device for Device {
         }
     }
 
-    fn build_render_pipeline(&self) -> Box<base::RenderPipelineBuilder> {
+    fn build_render_pipeline(&self) -> base::RenderPipelineBuilderRef {
         unsafe { Box::new(pipeline::RenderPipelineBuilder::new(self.new_device_ref())) }
     }
 
-    fn build_compute_pipeline(&self) -> Box<base::ComputePipelineBuilder> {
+    fn build_compute_pipeline(&self) -> base::ComputePipelineBuilderRef {
         unsafe { Box::new(pipeline::ComputePipelineBuilder::new(self.new_device_ref())) }
-    }
-
-    fn destroy_image(&self, obj: &base::Image) -> Result<()> {
-        let our_image: &image::Image = obj.downcast_ref().expect("bad image type");
-        unsafe {
-            our_image.destroy(self.vk_device());
-        }
-        Ok(())
-    }
-
-    fn destroy_buffer(&self, obj: &base::Buffer) -> Result<()> {
-        let our_buffer: &buffer::Buffer = obj.downcast_ref().expect("bad buffer type");
-        unsafe {
-            our_buffer.destroy(self.vk_device());
-        }
-        Ok(())
-    }
-
-    fn destroy_sampler(&self, obj: &base::Sampler) -> Result<()> {
-        let our_sampler: &sampler::Sampler = obj.downcast_ref().expect("bad sampler type");
-        unsafe {
-            our_sampler.destroy(self.vk_device());
-        }
-        Ok(())
-    }
-
-    fn destroy_image_view(&self, obj: &base::ImageView) -> Result<()> {
-        let our_image_view: &image::ImageView = obj.downcast_ref().expect("bad image view type");
-        unsafe {
-            our_image_view.destroy(self.vk_device());
-        }
-        Ok(())
-    }
-
-    fn get_memory_req(&self, obj: base::ResourceRef) -> Result<base::MemoryReq> {
-        utils::get_memory_req(self.vk_device(), obj)
     }
 
     fn update_arg_tables(
         &self,
-        arg_table_sig: &base::ArgTableSig,
-        updates: &[(&base::ArgTable, &[base::ArgUpdateSet])],
+        arg_table_sig: &base::ArgTableSigRef,
+        updates: &[((&base::ArgPoolRef, &base::ArgTableRef), &[base::ArgUpdateSet])],
     ) -> Result<()> {
         let vk_device = self.vk_device();
         let table_sig: &arg::layout::ArgTableSig = arg_table_sig
@@ -237,7 +197,7 @@ impl base::Device for Device {
             v.as_ptr().wrapping_offset(v.len() as isize)
         }
 
-        for &(table, update_sets) in updates.iter() {
+        for &((_pool, table), update_sets) in updates.iter() {
             let table: &arg::pool::ArgTable =
                 table.downcast_ref().expect("bad argument table type");
             for &(arg_i, mut array_i, objs) in update_sets.iter() {
@@ -281,8 +241,9 @@ impl base::Device for Device {
                                 descriptor_count += 1;
                             }
                         }
-                        base::ArgSlice::ImageView(views) => {
-                            while !write_images.is_full() && i < views.len() {
+                        base::ArgSlice::Image(views) => {
+                            unimplemented!()
+                            /*while !write_images.is_full() && i < views.len() {
                                 let view = views[i];
                                 let view: &image::ImageView =
                                     view.downcast_ref().expect("bad image view type");
@@ -294,7 +255,7 @@ impl base::Device for Device {
                                 });
                                 i += 1;
                                 descriptor_count += 1;
-                            }
+                            } */
                         }
                         base::ArgSlice::Sampler(samplers) => {
                             while !write_images.is_full() && i < samplers.len() {

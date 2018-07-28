@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use tokenlock::{Token, TokenRef};
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 use device::DeviceRef;
 
 use utils::translate_generic_error_unwrap;
@@ -100,23 +100,16 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<Box<base::CmdQueue>> {
+    fn build(&mut self) -> Result<base::CmdQueueRef> {
         if self.max_num_outstanding_cmd_buffers < 1 {
-            return Err(Error::with_detail(
-                ErrorKind::InvalidUsage,
-                "max_num_outstanding_cmd_buffers",
-            ));
+            panic!("max_num_outstanding_cmd_buffers");
         }
 
         if self.max_num_outstanding_batches < 1 {
-            return Err(Error::with_detail(
-                ErrorKind::InvalidUsage,
-                "max_num_outstanding_batches",
-            ));
+            panic!("max_num_outstanding_batches");
         }
 
-        let queue_family = self.queue_family
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "queue_family"))?;
+        let queue_family = self.queue_family.expect("queue_family");
 
         let index = self.queue_pool.allocate_queue(queue_family);
 
@@ -127,7 +120,7 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
         let num_cbs = self.max_num_outstanding_cmd_buffers;
 
         CmdQueue::new(self.device, vk_queue, queue_family, num_fences, num_cbs)
-            .map(|x| Box::new(x) as _)
+            .map(|x| Arc::new(x) as _)
     }
 }
 
@@ -184,17 +177,22 @@ impl CmdQueue {
 }
 
 impl base::CmdQueue for CmdQueue {
-    fn new_cmd_pool(&self) -> Result<Box<base::CmdPool>> {
+    /* fn new_cmd_pool(&self) -> Result<Box<base::CmdPool>> {
         CmdPool::new(
             self.device,
             Arc::clone(&self.scheduler()),
             self.queue_family_index,
             self.num_cbs,
         ).map(|x| Box::new(x) as _)
+    } */
+
+    fn new_cmd_buffer(&self) -> Result<base::CmdBufferRef> {
+        unimplemented!()
     }
 
-    fn new_fence(&self) -> Result<base::Fence> {
-        unsafe { Fence::new(self.device, self.scheduler().token_ref.clone()) }.map(base::Fence::new)
+
+    fn new_fence(&self) -> Result<base::FenceRef> {
+        unsafe { Fence::new(self.device, self.scheduler().token_ref.clone()) }.map(base::FenceRef::new)
     }
 
     fn flush(&self) {

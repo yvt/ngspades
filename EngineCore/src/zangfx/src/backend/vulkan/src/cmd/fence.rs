@@ -24,7 +24,7 @@ use tokenlock::{TokenLock, TokenRef};
 use refeq::RefEqArc;
 
 use base;
-use common::Result;
+use base::Result;
 use device::DeviceRef;
 use limits::DeviceTrait;
 
@@ -39,7 +39,7 @@ pub struct Fence {
     data: RefEqArc<FenceData>,
 }
 
-zangfx_impl_handle! { Fence, base::Fence }
+zangfx_impl_handle! { Fence, base::FenceRef }
 
 #[derive(Debug)]
 struct FenceData {

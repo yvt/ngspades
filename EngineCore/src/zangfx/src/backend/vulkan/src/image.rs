@@ -9,7 +9,7 @@ use ash::vk;
 use ash::version::*;
 
 use base;
-use common::{Error, ErrorKind, Result};
+use base::{Error, ErrorKind, Result};
 use common::BinaryInteger;
 
 use device::DeviceRef;
@@ -52,6 +52,11 @@ impl ImageBuilder {
 }
 
 impl base::ImageBuilder for ImageBuilder {
+    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut base::ImageBuilder {
+        unimplemented!();
+        self
+    }
+
     fn extents(&mut self, v: &[u32]) -> &mut base::ImageBuilder {
         self.extents = Some(match v.len() {
             1 => ImageExtents::OneD(v[0]),
@@ -87,12 +92,10 @@ impl base::ImageBuilder for ImageBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<base::Image> {
-        let extents = self.extents
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "extents"))?;
+    fn build(&mut self) -> Result<base::ImageRef> {
+        let extents = self.extents.expect("extents");
 
-        let format = self.format
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "format"))?;
+        let format = self.format.expect("format");
 
         use ash::vk::ImageViewType::*;
         let (image_view_type, dims) = match (extents, self.num_layers) {
@@ -104,10 +107,7 @@ impl base::ImageBuilder for ImageBuilder {
             (ImageExtents::Cube(x), None) => (Cube, [x, x, 1]),
             (ImageExtents::Cube(x), Some(_)) => (CubeArray, [x, x, 1]),
             _ => {
-                return Err(Error::with_detail(
-                    ErrorKind::InvalidUsage,
-                    "unsupported image type",
-                ))
+                panic!("unsupported image type");
             }
         };
 
@@ -187,7 +187,7 @@ pub struct Image {
     meta: ImageMeta,
 }
 
-zangfx_impl_handle! { Image, base::Image }
+zangfx_impl_handle! { Image, base::ImageRef }
 
 unsafe impl Sync for Image {}
 unsafe impl Send for Image {}
@@ -207,6 +207,21 @@ impl Image {
 
     pub(super) unsafe fn destroy(&self, vk_device: &::AshDevice) {
         vk_device.destroy_image(self.vk_image, None);
+    }
+}
+
+impl base::Image for Image {
+    fn build_image_view(&self) -> base::ImageViewBuilderRef {
+        unimplemented!()
+        // unsafe { Box::new(image::ImageViewBuilder::new(self.new_device_ref())) }
+    }
+
+    fn make_proxy(&mut self, queue: &base::CmdQueueRef) -> base::ImageRef {
+        unimplemented!()
+    }
+
+    fn get_memory_req(&self) -> Result<base::MemoryReq> {
+        unimplemented!()
     }
 }
 
@@ -283,7 +298,6 @@ pub struct ImageViewBuilder {
     subrange: base::ImageSubRange,
     format: Option<base::ImageFormat>,
     image_type: Option<base::ImageType>,
-    layout: base::ImageLayout,
 }
 
 zangfx_impl_object! { ImageViewBuilder: base::ImageViewBuilder, ::Debug }
@@ -296,17 +310,16 @@ impl ImageViewBuilder {
             subrange: Default::default(),
             format: None,
             image_type: None,
-            layout: base::ImageLayout::ShaderRead,
         }
     }
 }
 
 impl base::ImageViewBuilder for ImageViewBuilder {
-    fn image(&mut self, v: &base::Image) -> &mut base::ImageViewBuilder {
+    /* fn image(&mut self, v: &base::ImageRef) -> &mut base::ImageViewBuilder {
         let my_image: &Image = v.downcast_ref().expect("bad image type");
         self.image = Some(my_image.clone());
         self
-    }
+    } */
 
     fn subrange(&mut self, v: &base::ImageSubRange) -> &mut base::ImageViewBuilder {
         self.subrange = v.clone();
@@ -323,15 +336,8 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         self
     }
 
-    fn layout(&mut self, v: base::ImageLayout) -> &mut base::ImageViewBuilder {
-        self.layout = v;
-        self
-    }
-
-    fn build(&mut self) -> Result<base::ImageView> {
-        let image: &Image = self.image
-            .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "image"))?;
+    fn build(&mut self) -> Result<base::ImageRef> {
+        let image: &Image = self.image.as_ref().expect("image");
 
         let flags = vk::ImageViewCreateFlags::empty();
         // flags: "reserved for future use"
@@ -356,7 +362,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             .image_aspects()
             .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT);
 
-        let meta = ImageViewMeta::new(translate_image_layout(self.layout, is_ds));
+        let meta = ImageViewMeta::new(/* translate_image_layout(self.layout, is_ds) */ unimplemented!());
 
         let info = vk::ImageViewCreateInfo {
             s_type: vk::StructureType::ImageViewCreateInfo,
@@ -380,10 +386,12 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         let vk_device = self.device.vk_device();
         let vk_image_view = unsafe { vk_device.create_image_view(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(ImageView {
+
+        unimplemented!()
+        /* Ok(ImageView {
             vk_image_view,
             meta,
-        }.into())
+        }.into()) */
     }
 }
 
@@ -394,7 +402,7 @@ pub struct ImageView {
     meta: ImageViewMeta,
 }
 
-zangfx_impl_handle! { ImageView, base::ImageView }
+// zangfx_impl_handle! { ImageView, base::ImageView }
 
 unsafe impl Sync for ImageView {}
 unsafe impl Send for ImageView {}

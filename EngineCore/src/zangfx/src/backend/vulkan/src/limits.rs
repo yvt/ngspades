@@ -10,7 +10,7 @@ use base;
 use ash;
 use ash::version::*;
 use ash::vk::{self, VK_FALSE};
-use common::Result;
+use base::Result;
 use ngsenumflags::BitFlags;
 
 use formats::{translate_image_format, translate_vertex_format};
@@ -242,22 +242,16 @@ impl DeviceConfig {
         Self::default()
     }
 
-    fn validate(&mut self, device_info: &DeviceInfo) -> Result<()> {
-        use common::{Error, ErrorKind};
+    fn validate(&mut self, device_info: &DeviceInfo) {
+        use base::{Error, ErrorKind};
 
         for &(qf_index, q_index) in self.queues.iter() {
             if let Some(qf) = device_info.queue_families.get(qf_index as usize) {
                 if q_index as usize >= qf.count {
-                    return Err(Error::with_detail(
-                        ErrorKind::InvalidUsage,
-                        "queues: invalid queue index",
-                    ));
+                    panic!("queues: invalid queue index");
                 }
             } else {
-                return Err(Error::with_detail(
-                    ErrorKind::InvalidUsage,
-                    "queues: invalid queue family index",
-                ));
+                panic!("queues: invalid queue family index");
             }
         }
 
@@ -265,13 +259,8 @@ impl DeviceConfig {
         let queues = self.queues.as_mut_slice();
         queues.sort();
         if queues.iter().zip(queues[1..].iter()).any(|(x, y)| x == y) {
-            return Err(Error::with_detail(
-                ErrorKind::InvalidUsage,
-                "queues: duplicate entry",
-            ));
+            panic!("queues: duplicate entry");
         }
-
-        Ok(())
     }
 }
 
@@ -289,7 +278,8 @@ impl DeviceCaps {
     /// Construct a `DeviceCaps`. Also perform a validation on the given
     /// `DeviceConfig`.
     pub(super) fn new(info: DeviceInfo, mut config: DeviceConfig) -> Result<Self> {
-        config.validate(&info)?;
+        // TODO: Consider changing the return type
+        config.validate(&info);
 
         let available_qfs = info.queue_families
             .iter()

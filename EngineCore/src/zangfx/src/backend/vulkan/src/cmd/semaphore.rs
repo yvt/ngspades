@@ -12,7 +12,7 @@ use ash::version::*;
 use refeq::RefEqArc;
 
 use base;
-use common::Result;
+use base::Result;
 use device::DeviceRef;
 
 use utils::translate_generic_error_unwrap;
@@ -43,7 +43,7 @@ impl SemaphoreBuilder {
 }
 
 impl base::SemaphoreBuilder for SemaphoreBuilder {
-    fn build(&mut self) -> Result<base::Semaphore> {
+    fn build(&mut self) -> Result<base::SemaphoreRef> {
         if self.raw == vk::Semaphore::null() {
             Ok(unsafe { Semaphore::new(self.device)?.into() })
         } else {
@@ -63,7 +63,7 @@ pub struct Semaphore {
     data: RefEqArc<SemaphoreData>,
 }
 
-zangfx_impl_handle! { Semaphore, base::Semaphore }
+zangfx_impl_handle! { Semaphore, base::SemaphoreRef }
 
 #[derive(Debug)]
 struct SemaphoreData {

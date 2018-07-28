@@ -9,7 +9,7 @@ use ash::version::*;
 use std::ops::Range;
 
 use base;
-use common::Result;
+use base::Result;
 use device::DeviceRef;
 
 use utils::{translate_compare_op, translate_generic_error_unwrap};
@@ -97,7 +97,7 @@ impl base::SamplerBuilder for SamplerBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<base::Sampler> {
+    fn build(&mut self) -> Result<base::SamplerRef> {
         let info = vk::SamplerCreateInfo {
             s_type: vk::StructureType::SamplerCreateInfo,
             p_next: ::null(),
@@ -146,7 +146,7 @@ pub struct Sampler {
     vk_sampler: vk::Sampler,
 }
 
-zangfx_impl_handle! { Sampler, base::Sampler }
+zangfx_impl_handle! { Sampler, base::SamplerRef }
 
 unsafe impl Sync for Sampler {}
 unsafe impl Send for Sampler {}
