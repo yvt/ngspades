@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of argument tables for Vulkan.
-use std::ops::{AddAssign, Index, IndexMut, Mul};
-use ash::vk;
 use arrayvec::ArrayVec;
+use ash::vk;
+use std::ops::{AddAssign, Index, IndexMut, Mul};
 
 use base;
 
@@ -14,8 +14,8 @@ pub mod layout;
 pub mod pool;
 
 fn translate_descriptor_type(ty: base::ArgType) -> vk::DescriptorType {
-    use base::ArgType;
     use ash::vk::DescriptorType::*;
+    use base::ArgType;
     match ty {
         ArgType::StorageImage => StorageImage,
         ArgType::SampledImage => SampledImage,

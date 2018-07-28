@@ -9,10 +9,10 @@ use std::sync::Arc;
 use base;
 use base::Result;
 
-use device::DeviceRef;
 use super::buffer::CmdBuffer;
 use super::bufferpool::VkCmdBufferPool;
 use super::queue::Scheduler;
+use device::DeviceRef;
 
 /// Implementation of `CmdPool` for Vulkan.
 #[derive(Debug)]
@@ -38,7 +38,7 @@ impl CmdPool {
             scheduler,
         })
     }
-/* }
+    /* }
 
 impl base::CmdPool for CmdPool { */
     unsafe fn new_cmd_buffer(&mut self) -> Result<Box<base::CmdBuffer>> {

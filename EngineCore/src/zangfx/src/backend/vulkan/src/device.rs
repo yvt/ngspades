@@ -4,15 +4,15 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Device` for Vulkan.
-use std::sync::Arc;
 use arrayvec::ArrayVec;
+use std::sync::Arc;
 
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 
-use {base, AshDevice};
-use {arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader, utils};
 use base::Result;
+use {arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader, utils};
+use {base, AshDevice};
 
 /// Unsafe reference to a Vulkan device object that is internally held by
 /// `Device`.
@@ -171,7 +171,10 @@ impl base::Device for Device {
     fn update_arg_tables(
         &self,
         arg_table_sig: &base::ArgTableSigRef,
-        updates: &[((&base::ArgPoolRef, &base::ArgTableRef), &[base::ArgUpdateSet])],
+        updates: &[(
+            (&base::ArgPoolRef, &base::ArgTableRef),
+            &[base::ArgUpdateSet],
+        )],
     ) -> Result<()> {
         let vk_device = self.vk_device();
         let table_sig: &arg::layout::ArgTableSig = arg_table_sig
@@ -183,14 +186,14 @@ impl base::Device for Device {
         let mut write_buffers: ArrayVec<[vk::DescriptorBufferInfo; 256]> = ArrayVec::new();
 
         macro_rules! flush {
-            () => ({
+            () => {{
                 unsafe {
                     vk_device.update_descriptor_sets(writes.as_slice(), &[]);
                 }
                 writes.clear();
                 write_images.clear();
                 write_buffers.clear();
-            })
+            }};
         }
 
         fn vec_end_ptr<T>(v: &[T]) -> *const T {

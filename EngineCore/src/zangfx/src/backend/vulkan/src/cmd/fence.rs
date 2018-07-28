@@ -18,18 +18,18 @@
 //!    have to signal `VkEvent`s in a render pass.
 //!  - Fences still determine the execution ordering of command buffers.
 //!
-use ash::vk;
 use ash::version::*;
-use tokenlock::{TokenLock, TokenRef};
+use ash::vk;
 use refeq::RefEqArc;
+use tokenlock::{TokenLock, TokenRef};
 
 use base;
 use base::Result;
 use device::DeviceRef;
 use limits::DeviceTrait;
 
-use utils::translate_generic_error_unwrap;
 use cmd::queue::Item;
+use utils::translate_generic_error_unwrap;
 
 // TODO: recycle fences after use
 

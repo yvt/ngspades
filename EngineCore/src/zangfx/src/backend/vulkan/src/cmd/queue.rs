@@ -4,24 +4,24 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdQueue` for Vulkan.
-use std::sync::Arc;
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use parking_lot::Mutex;
+use std::sync::Arc;
 use tokenlock::{Token, TokenRef};
 
 use base;
 use base::{Error, ErrorKind, Result};
 use device::DeviceRef;
 
-use utils::translate_generic_error_unwrap;
 use limits::DeviceConfig;
+use utils::translate_generic_error_unwrap;
 
-use super::monitor::{Monitor, MonitorHandler};
-use super::fence::Fence;
-use super::enc::{FenceSet, RefTable};
 use super::buffer::BufferCompleteCallback;
 use super::bufferpool::VkCmdBufferPoolItem;
+use super::enc::{FenceSet, RefTable};
+use super::fence::Fence;
+use super::monitor::{Monitor, MonitorHandler};
 use super::pool::CmdPool;
 use super::semaphore::Semaphore;
 
@@ -190,9 +190,9 @@ impl base::CmdQueue for CmdQueue {
         unimplemented!()
     }
 
-
     fn new_fence(&self) -> Result<base::FenceRef> {
-        unsafe { Fence::new(self.device, self.scheduler().token_ref.clone()) }.map(base::FenceRef::new)
+        unsafe { Fence::new(self.device, self.scheduler().token_ref.clone()) }
+            .map(base::FenceRef::new)
     }
 
     fn flush(&self) {
@@ -409,20 +409,22 @@ impl SchedulerData {
         let mut cur_num_signal_sems = 0;
 
         macro_rules! flush {
-            () => (if cur_num_cmd_buffers > 0 {
-                let vk_submit_info = vk::SubmitInfo {
-                    s_type: vk::StructureType::SubmitInfo,
-                    p_next: ::null(),
-                    wait_semaphore_count: cur_num_wait_sems as u32,
-                    p_wait_semaphores: p_wait_sems,
-                    p_wait_dst_stage_mask: p_wait_sem_stages,
-                    command_buffer_count: cur_num_cmd_buffers as u32,
-                    p_command_buffers: p_cmd_buffers,
-                    signal_semaphore_count: cur_num_signal_sems as u32,
-                    p_signal_semaphores: p_signal_sems,
-                };
-                vk_submit_infos.push(vk_submit_info);
-            })
+            () => {
+                if cur_num_cmd_buffers > 0 {
+                    let vk_submit_info = vk::SubmitInfo {
+                        s_type: vk::StructureType::SubmitInfo,
+                        p_next: ::null(),
+                        wait_semaphore_count: cur_num_wait_sems as u32,
+                        p_wait_semaphores: p_wait_sems,
+                        p_wait_dst_stage_mask: p_wait_sem_stages,
+                        command_buffer_count: cur_num_cmd_buffers as u32,
+                        p_command_buffers: p_cmd_buffers,
+                        signal_semaphore_count: cur_num_signal_sems as u32,
+                        p_signal_semaphores: p_signal_sems,
+                    };
+                    vk_submit_infos.push(vk_submit_info);
+                }
+            };
         }
 
         for item in ItemIter(scheduled_items.as_ref()) {

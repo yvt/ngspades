@@ -3,13 +3,13 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 
 use base;
+use buffer::Buffer;
 use device::DeviceRef;
 use pipeline::ComputePipeline;
-use buffer::Buffer;
 
 use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
 use super::fence::Fence;
@@ -64,7 +64,11 @@ impl base::CmdEncoder for ComputeEncoder {
         self.common().debug_marker(label)
     }
 
-    fn use_resource_core(&mut self, _usage: base::ResourceUsageFlags, _objs: base::ResourceSet<'_>) {
+    fn use_resource_core(
+        &mut self,
+        _usage: base::ResourceUsageFlags,
+        _objs: base::ResourceSet<'_>,
+    ) {
         unimplemented!()
     }
 
@@ -72,11 +76,7 @@ impl base::CmdEncoder for ComputeEncoder {
         unimplemented!()
     }
 
-    fn wait_fence(
-        &mut self,
-        fence: &base::FenceRef,
-        dst_access: base::AccessTypeFlags,
-    ) {
+    fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().wait_fence(&our_fence, dst_access);
         self.fence_set.wait_fence(our_fence);
@@ -118,7 +118,11 @@ impl base::ComputeCmdEncoder for ComputeEncoder {
         self.ref_table.insert_compute_pipeline(my_pipeline);
     }
 
-    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+    fn bind_arg_table(
+        &mut self,
+        index: base::ArgTableIndex,
+        tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
+    ) {
         self.desc_set_binding_table.bind_arg_table(index, tables);
     }
 

@@ -7,8 +7,8 @@
 //!
 //! ZanGFX semaphores are functionally equivalent to Vulkan's semaphores.
 //!
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use refeq::RefEqArc;
 
 use base;

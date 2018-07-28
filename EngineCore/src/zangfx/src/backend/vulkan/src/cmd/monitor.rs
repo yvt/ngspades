@@ -3,12 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::thread;
-use std::sync::Arc;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use parking_lot::Mutex;
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::Arc;
+use std::thread;
 
 use base::Result;
 
@@ -76,16 +76,18 @@ where
             let ref sender = monitor.fence_sender;
             for _ in 0..num_fences {
                 sender
-                    .send(unsafe {
-                        device.vk_device().create_fence(
-                            &vk::FenceCreateInfo {
-                                s_type: vk::StructureType::FenceCreateInfo,
-                                p_next: ::null(),
-                                flags: vk::FenceCreateFlags::empty(),
-                            },
-                            None,
-                        )
-                    }.map_err(translate_generic_error_unwrap)?)
+                    .send(
+                        unsafe {
+                            device.vk_device().create_fence(
+                                &vk::FenceCreateInfo {
+                                    s_type: vk::StructureType::FenceCreateInfo,
+                                    p_next: ::null(),
+                                    flags: vk::FenceCreateFlags::empty(),
+                                },
+                                None,
+                            )
+                        }.map_err(translate_generic_error_unwrap)?,
+                    )
                     .unwrap();
             }
         }

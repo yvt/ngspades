@@ -3,11 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
+use ash::version::*;
+use ash::vk;
+use parking_lot::Mutex;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Arc;
-use ash::vk;
-use ash::version::*;
-use parking_lot::Mutex;
 
 use base::Result;
 

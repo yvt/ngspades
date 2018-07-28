@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Sampler` for Vulkan.
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use std::ops::Range;
 
 use base;
@@ -120,7 +120,8 @@ impl base::SamplerBuilder for SamplerBuilder {
             } else {
                 vk::VK_FALSE
             },
-            compare_op: self.cmp_fn
+            compare_op: self
+                .cmp_fn
                 .map(translate_compare_op)
                 .unwrap_or(vk::CompareOp::Never),
             min_lod: self.lod_clamp.start,

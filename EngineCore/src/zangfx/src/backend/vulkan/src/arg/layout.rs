@@ -4,16 +4,16 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of argument table layout for Vulkan.
-use std::sync::Arc;
-use ash::vk;
 use ash::version::*;
+use ash::vk;
+use std::sync::Arc;
 
 use base;
 use base::{Error, ErrorKind, Result};
 use device::DeviceRef;
 
-use utils::{translate_generic_error_unwrap, translate_shader_stage_flags};
 use super::{translate_descriptor_type, DescriptorCount};
+use utils::{translate_generic_error_unwrap, translate_shader_stage_flags};
 
 /// Implementation of `ArgTableSigBuilder` for Vulkan.
 #[derive(Debug)]
@@ -54,13 +54,15 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
     }
 
     fn build(&mut self) -> Result<base::ArgTableSigRef> {
-        let bindings: Vec<_> = self.args
+        let bindings: Vec<_> = self
+            .args
             .iter()
             .filter_map(|x| x.as_ref())
             .map(|arg| arg.vk_binding.clone())
             .collect();
 
-        let desc_types = self.args
+        let desc_types = self
+            .args
             .iter()
             .map(|arg| arg.as_ref().map(|arg| arg.vk_binding.descriptor_type))
             .collect();
@@ -216,7 +218,8 @@ impl base::RootSigBuilder for RootSigBuilder {
             panic!("Exceeds the backend limit of the number of argument tables");
         }
 
-        let set_layouts: Vec<_> = self.tables
+        let set_layouts: Vec<_> = self
+            .tables
             .iter()
             .map(|x| {
                 x.as_ref()

@@ -4,24 +4,26 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of pipelines for Vulkan.
+use ash::version::*;
+use ash::vk;
+use refeq::RefEqArc;
 use std::ffi;
 use std::ops::Range;
-use ash::vk;
-use ash::version::*;
-use refeq::RefEqArc;
 
 use base;
-use base::{Error, ErrorKind, Rect2D, Result};
 use base::StaticOrDynamic::*;
+use base::{Error, ErrorKind, Rect2D, Result};
 
-use device::DeviceRef;
-use shader::Library;
 use arg::layout::RootSig;
-use renderpass::RenderPass;
+use device::DeviceRef;
 use formats::translate_vertex_format;
-use utils::{translate_bool, translate_color_channel_flags, translate_compare_op,
-            translate_generic_error_unwrap, translate_sample_count, translate_shader_stage,
-            translate_rect2d_u32, clip_rect2d_u31};
+use renderpass::RenderPass;
+use shader::Library;
+use utils::{
+    clip_rect2d_u31, translate_bool, translate_color_channel_flags, translate_compare_op,
+    translate_generic_error_unwrap, translate_rect2d_u32, translate_sample_count,
+    translate_shader_stage,
+};
 
 /// Constructs `vk::PipelineShaderStageCreateInfo`.
 ///
@@ -302,21 +304,19 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
     }
 
     fn build(&mut self) -> Result<base::RenderPipelineRef> {
-        let root_sig = self.root_sig
-            .as_ref()
-            .expect("root_sig");
+        let root_sig = self.root_sig.as_ref().expect("root_sig");
 
-        let &(ref render_pass, subpass) = self.render_pass
-            .as_ref()
-            .expect("render_pass");
+        let &(ref render_pass, subpass) = self.render_pass.as_ref().expect("render_pass");
 
         let mut dyn_states = Vec::new();
 
-        let vertex_stage = self.vertex_shader
+        let vertex_stage = self
+            .vertex_shader
             .as_ref()
             .map(|s| new_shader_stage_description(base::ShaderStage::Vertex, &s.0, &s.1));
 
-        let fragment_stage = self.fragment_shader
+        let fragment_stage = self
+            .fragment_shader
             .as_ref()
             .map(|s| new_shader_stage_description(base::ShaderStage::Fragment, &s.0, &s.1));
 
@@ -325,12 +325,14 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             .filter_map(|s| s.as_ref().map(|s| s.0.clone()))
             .collect();
 
-        let vertex_buffers: Vec<_> = self.vertex_buffers
+        let vertex_buffers: Vec<_> = self
+            .vertex_buffers
             .iter()
             .filter_map(|vb| vb.as_ref().map(|vb| vb.vk_binding()))
             .collect();
 
-        let vertex_attrs: Vec<_> = self.vertex_attrs
+        let vertex_attrs: Vec<_> = self
+            .vertex_attrs
             .iter()
             .filter_map(|va| va.clone())
             .collect();
@@ -564,7 +566,8 @@ impl<'a> LlRasterizer<'a> {
         };
 
         let stencil_test_enable = builder.stencil_ops.iter().any(|ops| {
-            ops.fail_op != vk::StencilOp::Keep || ops.pass_op != vk::StencilOp::Keep
+            ops.fail_op != vk::StencilOp::Keep
+                || ops.pass_op != vk::StencilOp::Keep
                 || ops.depth_fail_op != vk::StencilOp::Keep
         });
 
@@ -649,7 +652,8 @@ impl<'a> LlRasterizer<'a> {
     fn partial_states(&self) -> RasterizerPartialStates {
         let scissors;
         if self.static_scissors.is_none() {
-            scissors = self.builder
+            scissors = self
+                .builder
                 .scissors
                 .iter()
                 .take(self.builder.num_viewports)
@@ -869,7 +873,8 @@ impl RasterizerColorTargetBuilder {
                 src_alpha_blend_factor: vk::BlendFactor::One,
                 dst_alpha_blend_factor: vk::BlendFactor::Zero,
                 alpha_blend_op: vk::BlendOp::Add,
-                color_write_mask: vk::COLOR_COMPONENT_R_BIT | vk::COLOR_COMPONENT_G_BIT
+                color_write_mask: vk::COLOR_COMPONENT_R_BIT
+                    | vk::COLOR_COMPONENT_G_BIT
                     | vk::COLOR_COMPONENT_B_BIT
                     | vk::COLOR_COMPONENT_A_BIT,
             },

@@ -3,20 +3,20 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use std::collections::HashSet;
 
 use base;
 
-use cmd::fence::Fence;
-use device::DeviceRef;
 use arg::layout::RootSig;
 use arg::pool::ArgTable;
+use cmd::fence::Fence;
+use device::DeviceRef;
+use limits::DeviceTrait;
 use pipeline::{ComputePipeline, RenderPipeline};
 use renderpass::RenderTargetTable;
 use utils::translate_pipeline_stage_flags;
-use limits::DeviceTrait;
 
 #[derive(Debug, Default)]
 pub struct FenceSet {
@@ -106,11 +106,7 @@ impl CommonCmdEncoder {
     /// A render pass automatically inserts memory barriers as defined by
     /// external subpass dependencies, and ZanGFX requires that they must be
     /// a conservative approximation of the barrier inserted by fences.
-    pub fn wait_fence(
-        &mut self,
-        fence: &Fence,
-        dst_access: base::AccessTypeFlags,
-    ) {
+    pub fn wait_fence(&mut self, fence: &Fence, dst_access: base::AccessTypeFlags) {
         unimplemented!()
         /*
         let traits = self.device.caps().info.traits;
@@ -243,7 +239,11 @@ impl DescSetBindingTable {
         self.bound_root_sig = Some(root_sig.clone());
     }
 
-    pub fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[(&base::ArgPoolRef, &base::ArgTableRef)]) {
+    pub fn bind_arg_table(
+        &mut self,
+        index: base::ArgTableIndex,
+        tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
+    ) {
         use std::cmp::min;
 
         if tables.len() == 0 {

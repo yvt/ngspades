@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Image` for Vulkan.
-use std::mem::transmute;
-use ash::vk;
 use ash::version::*;
+use ash::vk;
+use std::mem::transmute;
 
 use base;
 use base::{Error, ErrorKind, Result};
@@ -14,8 +14,9 @@ use common::BinaryInteger;
 
 use device::DeviceRef;
 use formats::translate_image_format;
-use utils::{translate_generic_error_unwrap, translate_image_layout,
-            translate_image_subresource_range};
+use utils::{
+    translate_generic_error_unwrap, translate_image_layout, translate_image_subresource_range,
+};
 
 /// Implementation of `ImageBuilder` for Vulkan.
 #[derive(Debug)]
@@ -342,7 +343,8 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         let flags = vk::ImageViewCreateFlags::empty();
         // flags: "reserved for future use"
 
-        let view_type = self.image_type
+        let view_type = self
+            .image_type
             .map(|t| match t {
                 base::ImageType::OneD => vk::ImageViewType::Type1d,
                 base::ImageType::TwoD => vk::ImageViewType::Type2d,
@@ -353,7 +355,8 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             })
             .unwrap_or(image.meta().image_view_type());
 
-        let format = self.format
+        let format = self
+            .format
             .map(|f| translate_image_format(f).expect("unsupported image format"))
             .unwrap_or(image.meta().format());
 
@@ -362,7 +365,9 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             .image_aspects()
             .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT);
 
-        let meta = ImageViewMeta::new(/* translate_image_layout(self.layout, is_ds) */ unimplemented!());
+        let meta = ImageViewMeta::new(
+            /* translate_image_layout(self.layout, is_ds) */ unimplemented!(),
+        );
 
         let info = vk::ImageViewCreateInfo {
             s_type: vk::StructureType::ImageViewCreateInfo,

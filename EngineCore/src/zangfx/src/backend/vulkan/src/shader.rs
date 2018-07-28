@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Library` for Vulkan.
-use std::sync::Arc;
-use ash::vk;
 use ash::version::*;
+use ash::vk;
+use std::sync::Arc;
 
 use base;
 use base::{Error, ErrorKind, Result};
@@ -39,9 +39,7 @@ impl base::LibraryBuilder for LibraryBuilder {
     }
 
     fn build(&mut self) -> Result<base::LibraryRef> {
-        let spirv_code = self.spirv_code
-            .clone()
-            .expect("spirv_code");
+        let spirv_code = self.spirv_code.clone().expect("spirv_code");
 
         if spirv_code.len() >= (<u32>::max_value() / 4) as usize {
             panic!("shader is too big");

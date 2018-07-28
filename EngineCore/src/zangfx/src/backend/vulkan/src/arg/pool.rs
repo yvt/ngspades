@@ -4,17 +4,17 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of argument table and pool for Vulkan.
-use ash::vk;
-use ash::version::*;
 use arrayvec::ArrayVec;
+use ash::version::*;
+use ash::vk;
 use std::sync::Arc;
 
 use base;
 use base::Result;
 use device::DeviceRef;
 
-use utils::translate_generic_error_unwrap;
 use super::{translate_descriptor_type, DescriptorCount};
+use utils::translate_generic_error_unwrap;
 
 use super::layout::ArgTableSig;
 
@@ -162,7 +162,8 @@ impl base::ArgPool for ArgPool {
         let device = self.device;
         let vk_d_pool = self.vk_d_pool;
 
-        let mut result_set = PartialTableSet(/* self */ unimplemented!(), Vec::with_capacity(count));
+        let mut result_set =
+            PartialTableSet(/* self */ unimplemented!(), Vec::with_capacity(count));
 
         let set_layout = sig.vk_descriptor_set_layout();
         let set_layouts: ArrayVec<[_; 256]> = (0..min(256, count)).map(|_| set_layout).collect();

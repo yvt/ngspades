@@ -5,13 +5,13 @@
 //
 //! Implementation of `DeviceCaps` for Vulkan, and configurations of the
 //! backend.
-use std::collections::HashMap;
-use base;
 use ash;
 use ash::version::*;
 use ash::vk::{self, VK_FALSE};
+use base;
 use base::Result;
 use ngsenumflags::BitFlags;
+use std::collections::HashMap;
 
 use formats::{translate_image_format, translate_vertex_format};
 use utils::translate_generic_error_unwrap;
@@ -53,7 +53,8 @@ impl DeviceInfo {
 
         use std::ffi::CStr;
         let mvk_ext_name = CStr::from_bytes_with_nul(b"VK_MVK_moltenvk\0").unwrap();
-        let is_molten_vk = exts.iter()
+        let is_molten_vk = exts
+            .iter()
             .any(|p| unsafe { CStr::from_ptr(p.extension_name.as_ptr()) } == mvk_ext_name);
         if is_molten_vk {
             traits |= DeviceTrait::MoltenVK;
@@ -281,7 +282,8 @@ impl DeviceCaps {
         // TODO: Consider changing the return type
         config.validate(&info);
 
-        let available_qfs = info.queue_families
+        let available_qfs = info
+            .queue_families
             .iter()
             .enumerate()
             .map(|(qf_i, qf)| base::QueueFamilyInfo {

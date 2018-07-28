@@ -10,11 +10,11 @@ extern crate zangfx_base as base;
 extern crate zangfx_test;
 extern crate zangfx_vulkan as backend;
 
+use ash::extensions::DebugReport;
+use ash::version::*;
+use std::ffi::{CStr, CString};
 use std::ops::Deref;
 use std::ptr::{null, null_mut};
-use std::ffi::{CStr, CString};
-use ash::version::*;
-use ash::extensions::DebugReport;
 
 struct TestDriver;
 
@@ -200,7 +200,8 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
 
                 // Allocate some queues
                 use std::cmp::min;
-                let queues = info.queue_families
+                let queues = info
+                    .queue_families
                     .iter()
                     .enumerate()
                     .map(|(i, prop)| ash::vk::DeviceQueueCreateInfo {

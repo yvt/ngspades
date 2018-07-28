@@ -4,26 +4,27 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdBuffer` for Vulkan.
+use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
-use std::sync::Arc;
 use std::ops::Range;
-use arrayvec::ArrayVec;
+use std::sync::Arc;
 
 use base;
 use base::{Error, ErrorKind, Result};
 
-use device::DeviceRef;
-use utils::{translate_access_type_flags, translate_generic_error_unwrap,
-            translate_pipeline_stage_flags};
 use buffer::Buffer;
+use device::DeviceRef;
+use utils::{
+    translate_access_type_flags, translate_generic_error_unwrap, translate_pipeline_stage_flags,
+};
 
-use super::queue::{CommitedBuffer, Scheduler};
-use super::enc::{FenceSet, RefTable};
-use super::enc_copy::CopyEncoder;
-use super::enc_compute::ComputeEncoder;
-use super::enc_render::RenderEncoder;
 use super::bufferpool::VkCmdBufferPoolItem;
+use super::enc::{FenceSet, RefTable};
+use super::enc_compute::ComputeEncoder;
+use super::enc_copy::CopyEncoder;
+use super::enc_render::RenderEncoder;
+use super::queue::{CommitedBuffer, Scheduler};
 use super::semaphore::Semaphore;
 
 /// Implementation of `CmdBuffer` for Vulkan.
@@ -145,7 +146,8 @@ impl Uncommited {
 impl base::CmdBuffer for CmdBuffer {
     fn commit(&mut self) -> Result<()> {
         {
-            let uncommited = self.uncommited
+            let uncommited = self
+                .uncommited
                 .as_mut()
                 .expect("command buffer is already commited");
 
@@ -177,14 +179,15 @@ impl base::CmdBuffer for CmdBuffer {
         &mut self,
         render_target_table: &base::RenderTargetTableRef,
     ) -> &mut base::RenderCmdEncoder {
-        use std::mem::replace;
         use renderpass::RenderTargetTable;
+        use std::mem::replace;
 
         let rtt: &RenderTargetTable = render_target_table
             .downcast_ref()
             .expect("bad render target table type");
 
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         uncommited.clear_encoder();
@@ -207,7 +210,8 @@ impl base::CmdBuffer for CmdBuffer {
     fn encode_compute(&mut self) -> &mut base::ComputeCmdEncoder {
         use std::mem::replace;
 
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         uncommited.clear_encoder();
@@ -229,7 +233,8 @@ impl base::CmdBuffer for CmdBuffer {
     fn encode_copy(&mut self) -> &mut base::CopyCmdEncoder {
         use std::mem::replace;
 
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         uncommited.clear_encoder();
@@ -249,7 +254,8 @@ impl base::CmdBuffer for CmdBuffer {
     }
 
     fn on_complete(&mut self, cb: Box<FnMut(Result<()>) + Sync + Send>) {
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         unimplemented!()
@@ -257,7 +263,8 @@ impl base::CmdBuffer for CmdBuffer {
     }
 
     fn wait_semaphore(&mut self, semaphore: &base::SemaphoreRef, dst_stage: base::StageFlags) {
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
@@ -266,7 +273,8 @@ impl base::CmdBuffer for CmdBuffer {
     }
 
     fn signal_semaphore(&mut self, semaphore: &base::SemaphoreRef, _src_stage: base::StageFlags) {
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
@@ -278,7 +286,8 @@ impl base::CmdBuffer for CmdBuffer {
         src_access: base::AccessTypeFlags,
         buffers: &[(Range<base::DeviceSize>, &base::BufferRef)],
     ) {
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
             .expect("command buffer is already commited");
         uncommited.clear_encoder();

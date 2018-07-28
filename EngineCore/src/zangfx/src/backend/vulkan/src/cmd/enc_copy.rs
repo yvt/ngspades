@@ -3,19 +3,19 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use std::ops::Range;
 
 use base;
 use common::IntoWithPad;
 
-use device::DeviceRef;
-use buffer::Buffer;
-use image::Image;
-use utils::{translate_image_aspect, translate_image_layout, translate_image_subresource_layers};
 use super::enc::{CommonCmdEncoder, FenceSet};
 use super::fence::Fence;
+use buffer::Buffer;
+use device::DeviceRef;
+use image::Image;
+use utils::{translate_image_aspect, translate_image_layout, translate_image_subresource_layers};
 
 #[derive(Debug)]
 pub(super) struct CopyEncoder {
@@ -62,7 +62,11 @@ impl base::CmdEncoder for CopyEncoder {
         self.common().debug_marker(label)
     }
 
-    fn use_resource_core(&mut self, _usage: base::ResourceUsageFlags, _objs: base::ResourceSet<'_>) {
+    fn use_resource_core(
+        &mut self,
+        _usage: base::ResourceUsageFlags,
+        _objs: base::ResourceSet<'_>,
+    ) {
         unimplemented!()
     }
 
@@ -70,11 +74,7 @@ impl base::CmdEncoder for CopyEncoder {
         unimplemented!()
     }
 
-    fn wait_fence(
-        &mut self,
-        fence: &base::FenceRef,
-        dst_access: base::AccessTypeFlags,
-    ) {
+    fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().wait_fence(&our_fence, dst_access);
         self.fence_set.wait_fence(our_fence);
@@ -134,13 +134,11 @@ impl base::CopyCmdEncoder for CopyEncoder {
                 self.vk_cmd_buffer,
                 my_src.vk_buffer(),
                 my_dst.vk_buffer(),
-                &[
-                    vk::BufferCopy {
-                        src_offset,
-                        dst_offset,
-                        size,
-                    },
-                ],
+                &[vk::BufferCopy {
+                    src_offset,
+                    dst_offset,
+                    size,
+                }],
             );
         }
     }
@@ -171,27 +169,25 @@ impl base::CopyCmdEncoder for CopyEncoder {
                 my_src.vk_buffer(),
                 my_dst.vk_image(),
                 translate_image_layout(dst_layout, dst_aspect != base::ImageAspect::Color),
-                &[
-                    vk::BufferImageCopy {
-                        buffer_offset: src_range.offset,
-                        buffer_row_length: src_range.row_stride as u32,
-                        buffer_image_height: src_range.plane_stride as u32,
-                        image_subresource: translate_image_subresource_layers(
-                            dst_range,
-                            translate_image_aspect(dst_aspect),
-                        ),
-                        image_offset: vk::Offset3D {
-                            x: dst_origin[0] as i32,
-                            y: dst_origin[1] as i32,
-                            z: dst_origin[2] as i32,
-                        },
-                        image_extent: vk::Extent3D {
-                            width: size[0],
-                            height: size[1],
-                            depth: size[2],
-                        },
+                &[vk::BufferImageCopy {
+                    buffer_offset: src_range.offset,
+                    buffer_row_length: src_range.row_stride as u32,
+                    buffer_image_height: src_range.plane_stride as u32,
+                    image_subresource: translate_image_subresource_layers(
+                        dst_range,
+                        translate_image_aspect(dst_aspect),
+                    ),
+                    image_offset: vk::Offset3D {
+                        x: dst_origin[0] as i32,
+                        y: dst_origin[1] as i32,
+                        z: dst_origin[2] as i32,
                     },
-                ],
+                    image_extent: vk::Extent3D {
+                        width: size[0],
+                        height: size[1],
+                        depth: size[2],
+                    },
+                }],
             );
         }
     }
@@ -287,27 +283,25 @@ impl base::CopyCmdEncoder for CopyEncoder {
                 translate_image_layout(src_layout, is_depth_stencil),
                 my_dst.vk_image(),
                 translate_image_layout(dst_layout, is_depth_stencil),
-                &[
-                    vk::ImageCopy {
-                        src_subresource: translate_image_subresource_layers(src_range, src_aspect),
-                        src_offset: vk::Offset3D {
-                            x: src_origin[0] as i32,
-                            y: src_origin[1] as i32,
-                            z: src_origin[2] as i32,
-                        },
-                        dst_subresource: translate_image_subresource_layers(dst_range, dst_aspect),
-                        dst_offset: vk::Offset3D {
-                            x: dst_origin[0] as i32,
-                            y: dst_origin[1] as i32,
-                            z: dst_origin[2] as i32,
-                        },
-                        extent: vk::Extent3D {
-                            width: size[0],
-                            height: size[1],
-                            depth: size[2],
-                        },
+                &[vk::ImageCopy {
+                    src_subresource: translate_image_subresource_layers(src_range, src_aspect),
+                    src_offset: vk::Offset3D {
+                        x: src_origin[0] as i32,
+                        y: src_origin[1] as i32,
+                        z: src_origin[2] as i32,
                     },
-                ],
+                    dst_subresource: translate_image_subresource_layers(dst_range, dst_aspect),
+                    dst_offset: vk::Offset3D {
+                        x: dst_origin[0] as i32,
+                        y: dst_origin[1] as i32,
+                        z: dst_origin[2] as i32,
+                    },
+                    extent: vk::Extent3D {
+                        width: size[0],
+                        height: size[1],
+                        depth: size[2],
+                    },
+                }],
             );
         }
     }

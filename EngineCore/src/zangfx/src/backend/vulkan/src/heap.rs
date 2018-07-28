@@ -4,12 +4,12 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Heap` and related types for Vulkan.
-use ash::vk;
 use ash::version::*;
-use parking_lot::Mutex;
-use xalloc::{SysTlsf, SysTlsfRegion};
+use ash::vk;
 use iterpool::{Pool, PoolPtr};
+use parking_lot::Mutex;
 use std::sync::Arc;
+use xalloc::{SysTlsf, SysTlsfRegion};
 
 use base;
 use base::{Error, ErrorKind, Result};
@@ -248,7 +248,7 @@ impl base::Heap for Heap {
         }
         let (region, offset) = match state.allocator.alloc_aligned(req.size, req.align) {
             Some(allocation) => allocation,
-            None => return unimplemented!(),//  Ok(None),
+            None => return unimplemented!(), //  Ok(None),
         };
         let mut region = Alloc(Some(region), &mut state.allocator);
 

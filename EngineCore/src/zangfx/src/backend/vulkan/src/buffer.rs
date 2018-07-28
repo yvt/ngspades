@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Buffer` for Vulkan.
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 
 use base;
 use base::{Error, ErrorKind, Result};

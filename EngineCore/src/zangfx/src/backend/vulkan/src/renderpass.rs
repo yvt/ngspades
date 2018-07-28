@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `RenderPass` for Vulkan.
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use refeq::RefEqArc;
 
 use base;
@@ -15,8 +15,10 @@ use device::DeviceRef;
 use formats::translate_image_format;
 use image::Image;
 
-use utils::{translate_access_type_flags, translate_generic_error_unwrap, translate_image_layout,
-            translate_pipeline_stage_flags};
+use utils::{
+    translate_access_type_flags, translate_generic_error_unwrap, translate_image_layout,
+    translate_pipeline_stage_flags,
+};
 
 /// Implementation of `RenderPassBuilder` for Vulkan.
 #[derive(Debug)]
@@ -92,10 +94,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         self
     }
 
-    fn subpass_color_targets(
-        &mut self,
-        targets: &[Option<base::RenderPassTargetIndex>],
-    ) {
+    fn subpass_color_targets(&mut self, targets: &[Option<base::RenderPassTargetIndex>]) {
         assert_eq!(self.subpass, 0);
 
         self.color_attachments.clear();
@@ -104,7 +103,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                 if let &Some(i) = maybe_target {
                     vk::AttachmentReference {
                         attachment: i as u32,
-                        layout: unimplemented!(),// translate_image_layout(layout, false),
+                        layout: unimplemented!(), // translate_image_layout(layout, false),
                     }
                 } else {
                     vk::AttachmentReference {
@@ -115,15 +114,12 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             }));
     }
 
-    fn subpass_ds_target(
-        &mut self,
-        target: Option<base::RenderPassTargetIndex>,
-    ) {
+    fn subpass_ds_target(&mut self, target: Option<base::RenderPassTargetIndex>) {
         assert_eq!(self.subpass, 0);
 
         self.depth_stencil_attachment = target.map(|i| vk::AttachmentReference {
             attachment: i as u32,
-            layout: unimplemented!(),// translate_image_layout(layout, true),
+            layout: unimplemented!(), // translate_image_layout(layout, true),
         });
     }
 
@@ -138,7 +134,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             color_attachment_count: self.color_attachments.len() as u32,
             p_color_attachments: self.color_attachments.as_ptr(),
             p_resolve_attachments: ::null(),
-            p_depth_stencil_attachment: self.depth_stencil_attachment
+            p_depth_stencil_attachment: self
+                .depth_stencil_attachment
                 .as_ref()
                 .map(|x| x as *const _)
                 .unwrap_or(::null()),
@@ -146,7 +143,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             p_preserve_attachments: ::null(),
         };
 
-        let vk_attachments: Vec<_> = self.targets
+        let vk_attachments: Vec<_> = self
+            .targets
             .iter()
             .map(|target| {
                 target
@@ -207,8 +205,8 @@ impl RenderPassTargetBuilder {
             },
             // No default value is defined for `format`
             format: base::ImageFormat::RFloat32,
-            initial_layout: unimplemented!(),//base::ImageLayout::Undefined,
-            final_layout: unimplemented!(),//base::ImageLayout::ShaderRead,
+            initial_layout: unimplemented!(), //base::ImageLayout::Undefined,
+            final_layout: unimplemented!(),   //base::ImageLayout::ShaderRead,
         }
     }
 
@@ -249,7 +247,7 @@ impl base::RenderPassTarget for RenderPassTargetBuilder {
         self
     }
 
-/*
+    /*
     fn set_initial_layout(&mut self, v: base::ImageLayout) -> &mut base::RenderPassTarget {
         // The actual layout cannot be decided without knowing whether the image
         // has the depth/stencil format.
@@ -494,7 +492,8 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
             },
         };
 
-        let clear_values = self.targets
+        let clear_values = self
+            .targets
             .iter()
             .map(|target| target.as_ref().unwrap().clear_value.clone())
             .collect();
