@@ -11,7 +11,7 @@ use ash::version::*;
 use ash::vk;
 
 use crate::AshDevice;
-use crate::{arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader, utils};
+use crate::{arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader};
 use zangfx_base::Result;
 use zangfx_base::{self as base, interfaces, vtable_for, zangfx_impl_object};
 

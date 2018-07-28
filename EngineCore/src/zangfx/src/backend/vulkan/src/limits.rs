@@ -246,8 +246,6 @@ impl DeviceConfig {
     }
 
     fn validate(&mut self, device_info: &DeviceInfo) {
-        use zangfx_base::{Error, ErrorKind};
-
         for &(qf_index, q_index) in self.queues.iter() {
             if let Some(qf) = device_info.queue_families.get(qf_index as usize) {
                 if q_index as usize >= qf.count {

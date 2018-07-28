@@ -6,10 +6,10 @@
 use ash::vk::{self, Format};
 use zangfx_base::{
     ImageFormat,
-    Normalizedness::{self, Normalized, Unnormalized},
-    ScalarFormat::{self, F32, I16, I32, I8},
-    Signedness::{self, Signed, Unsigned},
-    VecWidth::{self, Scalar, Vector2, Vector3, Vector4},
+    Normalizedness::{Normalized, Unnormalized},
+    ScalarFormat::{F32, I16, I32, I8},
+    Signedness::{Signed, Unsigned},
+    VecWidth::{Scalar, Vector2, Vector3, Vector4},
     VertexFormat,
 };
 

@@ -10,13 +10,13 @@ use std::mem::transmute;
 
 use zangfx_base as base;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
-use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::Result;
 use zangfx_common::BinaryInteger;
 
 use crate::device::DeviceRef;
 use crate::formats::translate_image_format;
 use crate::utils::{
-    translate_generic_error_unwrap, translate_image_layout, translate_image_subresource_range,
+    translate_generic_error_unwrap, translate_image_subresource_range,
 };
 
 /// Implementation of `ImageBuilder` for Vulkan.

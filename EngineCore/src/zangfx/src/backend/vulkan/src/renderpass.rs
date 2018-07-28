@@ -14,7 +14,7 @@ use crate::formats::translate_image_format;
 use crate::image::Image;
 use zangfx_base as base;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
-use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::Result;
 use zangfx_common::IntoWithPad;
 
 use crate::utils::{

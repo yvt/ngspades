@@ -13,10 +13,8 @@ use crate::arg::layout::RootSig;
 use crate::arg::pool::ArgTable;
 use crate::cmd::fence::Fence;
 use crate::device::DeviceRef;
-use crate::limits::DeviceTrait;
 use crate::pipeline::{ComputePipeline, RenderPipeline};
 use crate::renderpass::RenderTargetTable;
-use crate::utils::translate_pipeline_stage_flags;
 
 #[derive(Debug, Default)]
 crate struct FenceSet {

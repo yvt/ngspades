@@ -13,7 +13,7 @@ use tokenlock::{Token, TokenRef};
 use crate::device::DeviceRef;
 use zangfx_base as base;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
-use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::Result;
 
 use crate::limits::DeviceConfig;
 use crate::utils::translate_generic_error_unwrap;
@@ -23,7 +23,6 @@ use super::bufferpool::VkCmdBufferPoolItem;
 use super::enc::{FenceSet, RefTable};
 use super::fence::Fence;
 use super::monitor::{Monitor, MonitorHandler};
-use super::pool::CmdPool;
 use super::semaphore::Semaphore;
 
 #[derive(Debug)]

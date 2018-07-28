@@ -10,7 +10,7 @@ use ash::vk;
 use crate::device::DeviceRef;
 use zangfx_base as base;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
-use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::Result;
 
 use crate::utils::translate_generic_error_unwrap;
 
