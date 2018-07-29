@@ -357,7 +357,7 @@ pub(crate) struct BufferCompleteCallback {
 }
 
 impl BufferCompleteCallback {
-    pub(super) fn on_complete(&mut self, mut result: &mut impl FnMut() -> Result<()>) {
+    pub(super) fn on_complete(&mut self, result: &mut impl FnMut() -> Result<()>) {
         for mut callback in self.completion_callbacks.0.drain(..) {
             callback(result());
         }
