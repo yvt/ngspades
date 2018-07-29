@@ -1548,6 +1548,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "snowflake"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "spirv-cross"
 version = "0.1.0"
 dependencies = [
@@ -2261,6 +2266,7 @@ dependencies = [
  "ngsenumflags_derive 0.2.2",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
+ "snowflake 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",
  "xalloc 0.2.3",
  "zangfx_base 0.1.0",
@@ -2413,6 +2419,7 @@ dependencies = [
 "checksum smallvec 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "f90c5e5fe535e48807ab94fc611d323935f39d4660c52b26b96446a7b33aef10"
 "checksum smallvec 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "26df3bb03ca5eac2e64192b723d51f56c1b1e0860e7c766281f4598f181acdc8"
 "checksum smithay-client-toolkit 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2051bffc6cbf271176e8ba1527f801b6444567daee15951ff5152aaaf7777b2f"
+"checksum snowflake 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "27207bb65232eda1f588cf46db2fee75c0808d557f6b3cf19a75f5d6d7c94df1"
 "checksum spirv_headers 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "388a49827d9f7fedb32d2d8d8c6970ac4a6650fe65c480ab924fdb4efceae3d4"
 "checksum stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ffbc596e092fe5f598b12ef46cc03754085ac2f4d8c739ad61c4ae266cc3b3fa"
 "checksum strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bb4f380125926a99e52bc279241539c018323fab05ad6368b56f93d9369ff550"

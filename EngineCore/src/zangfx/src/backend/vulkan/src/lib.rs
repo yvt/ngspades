@@ -31,6 +31,7 @@ pub mod image;
 pub mod limits;
 pub mod pipeline;
 pub mod renderpass;
+mod resstate;
 pub mod sampler;
 pub mod shader;
 mod utils;
@@ -42,3 +43,7 @@ pub type AshDevice = ash::Device<ash::version::V1_0>;
 pub use crate::utils::translate_generic_error;
 
 pub const MAX_NUM_ARG_TABLES: usize = 32;
+
+/// The maximum number of command buffers (per queue) that can be active
+/// simultaneously.
+pub const MAX_NUM_ACTIVE_CMD_BUFFERS: usize = 16;
