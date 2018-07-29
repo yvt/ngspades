@@ -10,6 +10,7 @@ extern crate zangfx_base as base;
 extern crate zangfx_test;
 extern crate zangfx_vulkan as backend;
 
+use std::sync::Arc;
 use ash::extensions::DebugReport;
 use ash::version::*;
 use std::ffi::{CStr, CString};
@@ -95,7 +96,7 @@ impl Drop for DebugReportScope {
 }
 
 impl zangfx_test::backend_tests::TestDriver for TestDriver {
-    fn for_each_device(&self, runner: &mut FnMut(&base::device::Device)) {
+    fn for_each_device(&self, runner: &mut FnMut(&base::DeviceRef)) {
         unsafe {
             let entry = match ash::Entry::<V1_0>::new() {
                 Ok(entry) => entry,
@@ -245,7 +246,12 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                 let gfx_device =
                     backend::device::Device::new(ash::Device::clone(&device), info, config)
                         .expect("Failed to create a ZanGFX device.");
-                runner(&gfx_device);
+
+                let gfx_device_ref: base::DeviceRef = Arc::new(gfx_device);
+
+                runner(&gfx_device_ref);
+
+                // FIXME: Ensure the device is idle after each test run
             }
         }
     }
