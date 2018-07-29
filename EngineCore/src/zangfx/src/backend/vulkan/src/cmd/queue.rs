@@ -24,6 +24,7 @@ use super::enc::{FenceSet, RefTable};
 use super::fence::Fence;
 use super::monitor::{Monitor, MonitorHandler};
 use super::semaphore::Semaphore;
+use crate::resstate;
 
 #[derive(Debug)]
 pub(crate) struct QueuePool {
@@ -138,6 +139,7 @@ pub struct CmdQueue {
     num_cbs: usize,
     monitor: Monitor<BatchDoneHandler>,
     scheduler: Option<Arc<Scheduler>>,
+    resstate_queue: resstate::Queue,
 }
 
 zangfx_impl_object! { CmdQueue: dyn base::CmdQueue, dyn (crate::Debug) }
@@ -159,6 +161,11 @@ impl CmdQueue {
     ) -> Result<Self> {
         let scheduler_data = SchedulerData::default();
 
+        let (resstate_queue, _) = resstate::new_queue();
+
+        // Set the default queue used during resource creation.
+        device.set_default_resstate_queue_if_missing(resstate_queue.queue_id());
+
         Ok(Self {
             vk_queue,
             queue_family_index,
@@ -169,6 +176,7 @@ impl CmdQueue {
                 data: Mutex::new(scheduler_data),
             })),
             device,
+            resstate_queue,
         })
     }
 
@@ -178,6 +186,11 @@ impl CmdQueue {
 
     pub fn vk_queue(&self) -> vk::Queue {
         self.vk_queue
+    }
+
+    /// The queue identifier for resource state tracking.
+    crate fn resstate_queue_id(&self) -> resstate::QueueId {
+        self.resstate_queue.queue_id()
     }
 }
 

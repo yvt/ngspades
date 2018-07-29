@@ -9,6 +9,20 @@
 //! predecessor, NgsGFX. For this reason, ZanGFX is designed to run efficiently
 //! on Vulkan.
 //!
+//! # Inter-queue operations
+//!
+//! This backend supports inter-queue operations.
+//!
+//! ## Backend-specific behaviors
+//!
+//! *Default queue*: The base interface specifies that how the default value of
+//! `*Builder::queue` is determined is backend-dependent. In this backend,
+//! `Device` maintains the default queue to be used during object creation. The
+//! first created `CmdQueue` from it will be used as the default unless it is
+//! explicitly specified via [`crate::device::Device::set_default_queue`]. If
+//! there is no default value set at the point when it is required (i.e., when
+//! a builder's `build` is called), a panic will occur.
+//!
 //! # Limitations
 //!
 //!  - The number of argument tables per root signature is limited to 32

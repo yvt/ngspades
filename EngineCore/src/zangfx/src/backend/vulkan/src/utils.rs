@@ -302,3 +302,30 @@ crate fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::Co
 
     mask
 }
+
+use crate::device::DeviceRef;
+use crate::resstate::QueueId;
+
+/// Implements the `queue` property of builders.
+#[derive(Debug, Default, Clone, Copy)]
+crate struct QueueIdBuilder(Option<QueueId>);
+
+impl QueueIdBuilder {
+    crate fn new() -> Self {
+        Default::default()
+    }
+
+    crate fn set(&mut self, queue: &base::CmdQueueRef) {
+        self.0 = Some(queue_id_from_queue(queue));
+    }
+
+    crate fn get(&self, device: &DeviceRef) -> QueueId {
+        self.0.unwrap_or_else(|| device.default_resstate_queue())
+    }
+}
+
+crate fn queue_id_from_queue(queue: &base::CmdQueueRef) -> QueueId {
+    use crate::cmd::queue::CmdQueue;
+    let my_cmd_queue: &CmdQueue = queue.query_ref().expect("bad cmd queue type");
+    my_cmd_queue.resstate_queue_id()
+}

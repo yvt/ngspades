@@ -5,13 +5,16 @@
 //
 //! Implementation of `Device` for Vulkan.
 use arrayvec::ArrayVec;
+use parking_lot::RwLock;
 use std::sync::Arc;
 
 use ash::version::*;
 use ash::vk;
 
 use crate::AshDevice;
-use crate::{arg, buffer, cmd, heap, image, limits, pipeline, renderpass, sampler, shader};
+use crate::{
+    arg, buffer, cmd, heap, image, limits, pipeline, renderpass, resstate, sampler, shader,
+};
 use zangfx_base::Result;
 use zangfx_base::{self as base, interfaces, vtable_for, zangfx_impl_object};
 
@@ -19,6 +22,10 @@ crate struct DeviceInfo {
     vk_device: AshDevice,
     caps: limits::DeviceCaps,
     sampler_pool: sampler::SamplerPool,
+
+    /// The default queue identifier (for resource state tracking) used during
+    /// object creation.
+    default_resstate_queue: RwLock<Option<resstate::QueueId>>,
 }
 
 crate type DeviceRef = Arc<DeviceInfo>;
@@ -34,6 +41,24 @@ impl DeviceInfo {
 
     crate fn sampler_pool(&self) -> &sampler::SamplerPool {
         &self.sampler_pool
+    }
+
+    /// Get the default `resstate::QueueId`. Panics if none is set.
+    crate fn default_resstate_queue(&self) -> resstate::QueueId {
+        self.default_resstate_queue
+            .read()
+            .expect("no default queue is set")
+    }
+
+    crate fn set_default_resstate_queue(&self, queue_id: resstate::QueueId) {
+        *self.default_resstate_queue.write() = Some(queue_id);
+    }
+
+    crate fn set_default_resstate_queue_if_missing(&self, queue_id: resstate::QueueId) {
+        let mut cell = self.default_resstate_queue.write();
+        if cell.is_none() {
+            *cell = Some(queue_id);
+        }
     }
 }
 
@@ -76,6 +101,7 @@ impl Device {
             vk_device,
             caps,
             sampler_pool,
+            default_resstate_queue: RwLock::new(None),
         });
 
         Ok(Self {
@@ -86,6 +112,15 @@ impl Device {
 
     pub fn vk_device(&self) -> &AshDevice {
         &self.device_ref.vk_device()
+    }
+
+    /// Set the default queue to be used during object creation.
+    ///
+    /// See [the crate documentation](../index.html) for more details about
+    /// inter-queue operations.
+    pub fn set_default_queue(&self, queue: &cmd::queue::CmdQueue) {
+        self.device_ref
+            .set_default_resstate_queue(queue.resstate_queue_id());
     }
 
     crate fn device_ref(&self) -> &DeviceRef {
