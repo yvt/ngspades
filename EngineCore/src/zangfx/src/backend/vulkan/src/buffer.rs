@@ -14,7 +14,9 @@ use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use crate::resstate;
-use crate::utils::{queue_id_from_queue, translate_generic_error_unwrap, QueueIdBuilder};
+use crate::utils::{
+    queue_id_from_queue, translate_generic_error_unwrap, translate_memory_req, QueueIdBuilder,
+};
 
 /// Implementation of `BufferBuilder` for Vulkan.
 #[derive(Debug)]
@@ -178,6 +180,9 @@ unsafe impl base::Buffer for Buffer {
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
-        unimplemented!()
+        let vk_device = self.vulkan_buffer.device.vk_device();
+        Ok(translate_memory_req(
+            &vk_device.get_buffer_memory_requirements(self.vk_buffer()),
+        ))
     }
 }

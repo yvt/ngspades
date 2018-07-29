@@ -17,7 +17,7 @@ use zangfx_base::{Error, Result};
 
 use crate::device::DeviceRef;
 use crate::utils::{
-    get_memory_req, translate_generic_error_unwrap, translate_map_memory_error_unwrap,
+    translate_generic_error_unwrap, translate_map_memory_error_unwrap,
 };
 use crate::{buffer, image};
 
@@ -98,7 +98,7 @@ impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
     }
 
     fn bind(&mut self, obj: base::ResourceRef<'_>) {
-        match get_memory_req(self.device.vk_device(), obj) {
+        match obj.get_memory_req() {
             Ok(req) => self.allocs.push((req.size, req.align)),
             // Save the error and return it from `build`.
             Err(err) => self.error = Some(err),
@@ -235,7 +235,7 @@ impl Drop for Heap {
 impl base::Heap for Heap {
     fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
         let vk_device = self.device.vk_device();
-        let req = get_memory_req(vk_device, obj)?;
+        let req = obj.get_memory_req()?;
 
         // Start allocation...
         let mut state = self.state.lock();

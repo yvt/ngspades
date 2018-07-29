@@ -3,13 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::version::*;
 use ash::vk;
 use ngsenumflags::flags;
 use std::ops;
 
 use zangfx_base as base;
-use zangfx_base::{Error, ErrorKind, Result};
+use zangfx_base::{Error, ErrorKind};
 
 /// Translates a subset of `vk::Result` values into `core::GenericError`.
 ///
@@ -55,26 +54,12 @@ pub(crate) fn translate_map_memory_error_unwrap(result: vk::Result) -> Error {
     translate_map_memory_error(result).unwrap()
 }
 
-crate fn get_memory_req(
-    vk_device: &crate::AshDevice,
-    obj: base::ResourceRef<'_>,
-) -> Result<base::MemoryReq> {
-    use crate::{buffer, image};
-    let req = match obj {
-        base::ResourceRef::Buffer(buffer) => {
-            let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
-            vk_device.get_buffer_memory_requirements(our_buffer.vk_buffer())
-        }
-        base::ResourceRef::Image(image) => {
-            let our_image: &image::Image = image.downcast_ref().expect("bad image type");
-            vk_device.get_image_memory_requirements(our_image.vk_image())
-        }
-    };
-    Ok(base::MemoryReq {
+crate fn translate_memory_req(req: &vk::MemoryRequirements) -> base::MemoryReq {
+    base::MemoryReq {
         size: req.size,
         align: req.alignment,
         memory_types: req.memory_type_bits,
-    })
+    }
 }
 
 crate fn translate_shader_stage(value: base::ShaderStage) -> vk::ShaderStageFlags {

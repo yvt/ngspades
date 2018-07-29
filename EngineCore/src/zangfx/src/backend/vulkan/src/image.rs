@@ -18,7 +18,7 @@ use crate::formats::translate_image_format;
 use crate::resstate;
 use crate::utils::{
     offset_range, queue_id_from_queue, translate_generic_error_unwrap,
-    translate_image_subresource_range, QueueIdBuilder,
+    translate_image_subresource_range, translate_memory_req, QueueIdBuilder,
 };
 
 /// Implementation of `ImageBuilder` for Vulkan.
@@ -435,7 +435,10 @@ impl base::Image for Image {
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
-        unimplemented!()
+        let vk_device = self.image_view.vulkan_image.device.vk_device();
+        Ok(translate_memory_req(
+            &vk_device.get_image_memory_requirements(self.vk_image()),
+        ))
     }
 }
 
