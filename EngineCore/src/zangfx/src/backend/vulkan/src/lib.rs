@@ -13,6 +13,8 @@
 //!
 //!  - The number of argument tables per root signature is limited to 32
 //!    (`MAX_NUM_ARG_TABLES`).
+//!  - The number of referenced resources per command buffer is limited to
+//!    around 4 billions.
 //!
 #![feature(unsize)]
 #![feature(rust_2018_preview)]

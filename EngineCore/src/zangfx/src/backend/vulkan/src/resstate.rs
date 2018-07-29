@@ -42,6 +42,43 @@ impl Queue {
     }
 }
 
+/// Represents a nullable index into a reference table. It always uses a 32-bit
+/// integer to reduce memory footprint.
+#[derive(Eq, PartialEq, Copy, Clone)]
+struct RefTableIndex(u32);
+
+impl RefTableIndex {
+    const NONE: Self = RefTableIndex(0xffffffffu32);
+
+    fn get(&self) -> Option<usize> {
+        if *self == Self::NONE {
+            None
+        } else {
+            Some(self.0 as usize)
+        }
+    }
+}
+
+impl From<Option<usize>> for RefTableIndex {
+    fn from(x: Option<usize>) -> Self {
+        if let Some(x) = x {
+            if x >= Self::NONE.0 as usize {
+                panic!("too many referenced resources");
+            }
+            RefTableIndex(x as u32)
+        } else {
+            Self::NONE
+        }
+    }
+}
+
+use std::fmt;
+impl fmt::Debug for RefTableIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("RefTableIndex").field(&self.get()).finish()
+    }
+}
+
 /// Represents an exclusive ownership of state data associated with a command
 /// buffer.
 #[derive(Debug)]
@@ -62,7 +99,7 @@ crate struct TrackedState<State> {
 
     /// Each element at index `i` specifies an index into the reference table
     /// (`RefTable`) of the corresponding command buffer at the index `i`.
-    ref_table_indices: [UnsafeCell<Option<usize>>; MAX_NUM_ACTIVE_CMD_BUFFERS],
+    ref_table_indices: [UnsafeCell<RefTableIndex>; MAX_NUM_ACTIVE_CMD_BUFFERS],
 }
 
 unsafe impl<State> Sync for TrackedState<State> {}
@@ -97,10 +134,13 @@ crate fn new_queue() -> (Queue, Vec<CmdBuffer>) {
 impl<State> TrackedState<State> {
     /// Construct a `TrackedState`.
     crate fn new(queue_id: QueueId, latest: State) -> Self {
+        use std::mem::transmute;
         Self {
             queue_id,
             latest: UnsafeCell::new(latest),
-            ref_table_indices: Default::default(),
+            ref_table_indices: unsafe {
+                transmute([RefTableIndex::NONE; MAX_NUM_ACTIVE_CMD_BUFFERS])
+            },
         }
     }
 
@@ -119,7 +159,7 @@ impl<State> TrackedState<State> {
     /// Get a mutable reference to an element of `ref_table_indices`
     /// corresponding to a given command buffer. Panics if the resource is not
     /// associated with the queue of the command buffer.
-    fn ref_table_index_mut<'a>(&'a self, cmd_buffer: &'a mut CmdBuffer) -> &'a mut Option<usize> {
+    fn ref_table_index_mut<'a>(&'a self, cmd_buffer: &'a mut CmdBuffer) -> &'a mut RefTableIndex {
         unsafe {
             assert_eq!(self.queue_id, cmd_buffer.queue_id, "queue mismatch");
             &mut *self.ref_table_indices.get_unchecked(cmd_buffer.index).get()
@@ -140,12 +180,12 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
     /// is inserted using the value returned by `<Op as Default>::default()`.
     crate fn get_index_for_resource(&mut self, cmd_buffer: &mut CmdBuffer, res: &Res) -> usize {
         let index = res.tracked_state().ref_table_index_mut(cmd_buffer);
-        if let &mut Some(index) = index {
+        if let Some(index) = index.get() {
             index
         } else {
             let new_index = self.0.len();
             self.0.push((res.clone(), Op::default()));
-            *index = Some(new_index);
+            *index = Some(new_index).into();
 
             new_index
         }
@@ -179,7 +219,7 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
             let tracked_state = res.tracked_state();
 
             let ref_table_index = tracked_state.ref_table_index_mut(cmd_buffer);
-            debug_assert_eq!(*ref_table_index, Some(i));
+            debug_assert_eq!(ref_table_index.get(), Some(i));
 
             // The runtime check performed by `latest_mut` is superfluous
             // in practice, but can't omit it without making it unsound
@@ -189,7 +229,7 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
 
             // The resource is no longer referenced by this refernece table, so
             // clear the index
-            *ref_table_index = None;
+            *ref_table_index = None.into();
         }
     }
 }
