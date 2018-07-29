@@ -6,18 +6,21 @@
 //! Implementation of `Buffer` for Vulkan.
 use ash::version::*;
 use ash::vk;
+use std::sync::Arc;
 
 use crate::device::DeviceRef;
 use zangfx_base as base;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
-use crate::utils::translate_generic_error_unwrap;
+use crate::resstate;
+use crate::utils::{queue_id_from_queue, translate_generic_error_unwrap, QueueIdBuilder};
 
 /// Implementation of `BufferBuilder` for Vulkan.
 #[derive(Debug)]
 pub struct BufferBuilder {
     device: DeviceRef,
+    queue_id: QueueIdBuilder,
     size: Option<base::DeviceSize>,
     usage: base::BufferUsageFlags,
 }
@@ -28,6 +31,7 @@ impl BufferBuilder {
     crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
+            queue_id: QueueIdBuilder::new(),
             size: None,
             usage: base::BufferUsage::default_flags(),
         }
@@ -36,7 +40,7 @@ impl BufferBuilder {
 
 impl base::BufferBuilder for BufferBuilder {
     fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::BufferBuilder {
-        unimplemented!();
+        self.queue_id.set(queue);
         self
     }
 
@@ -87,35 +91,66 @@ impl base::BufferBuilder for BufferBuilder {
             p_queue_family_indices: ::null(),
         };
 
-        let vk_device = self.device.vk_device();
-        let vk_buffer = unsafe { vk_device.create_buffer(&info, None) }
-            .map_err(translate_generic_error_unwrap)?;
-        Ok(Buffer { vk_buffer }.into())
+        let device = self.device.clone();
+        let vk_buffer = unsafe {
+            let vk_device = device.vk_device();
+            vk_device.create_buffer(&info, None)
+        }.map_err(translate_generic_error_unwrap)?;
+
+        let vulkan_buffer = Arc::new(VulkanBuffer {
+            device,
+            vk_buffer,
+            len: size,
+        });
+
+        let queue_id = self.queue_id.get(&vulkan_buffer.device);
+        let tracked_state = Arc::new(resstate::TrackedState::new(queue_id, ()));
+
+        Ok(Buffer {
+            vulkan_buffer,
+            tracked_state,
+        }.into())
     }
 }
 
 /// Implementation of `Buffer` for Vulkan.
 #[derive(Debug, Clone)]
 pub struct Buffer {
-    vk_buffer: vk::Buffer,
+    vulkan_buffer: Arc<VulkanBuffer>,
+
+    /// The container for the tracked state of an image on a particular queue.
+    tracked_state: Arc<resstate::TrackedState<BufferState>>,
 }
 
 zangfx_impl_handle! { Buffer, base::BufferRef }
 
-unsafe impl Sync for Buffer {}
-unsafe impl Send for Buffer {}
+#[derive(Debug)]
+struct VulkanBuffer {
+    device: DeviceRef,
+    vk_buffer: vk::Buffer,
+    len: base::DeviceSize,
+    // TODO: Heap binding
+}
+
+type BufferState = ();
+
+impl Drop for VulkanBuffer {
+    fn drop(&mut self) {
+        unsafe {
+            let vk_device = self.device.vk_device();
+            vk_device.destroy_buffer(self.vk_buffer, None);
+        }
+    }
+}
 
 impl Buffer {
-    pub unsafe fn from_raw(vk_buffer: vk::Buffer) -> Self {
+    // TODO: `Buffer::from_raw`
+    /* pub unsafe fn from_raw(vk_buffer: vk::Buffer) -> Self {
         Self { vk_buffer }
-    }
+    } */
 
     pub fn vk_buffer(&self) -> vk::Buffer {
-        self.vk_buffer
-    }
-
-    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
-        vk_device.destroy_buffer(self.vk_buffer, None);
+        self.vulkan_buffer.vk_buffer
     }
 }
 
@@ -125,11 +160,21 @@ unsafe impl base::Buffer for Buffer {
     }
 
     fn len(&self) -> base::DeviceSize {
-        unimplemented!()
+        self.vulkan_buffer.len
     }
 
     fn make_proxy(&self, queue: &base::CmdQueueRef) -> base::BufferRef {
-        unimplemented!()
+        let queue_id = queue_id_from_queue(queue);
+
+        let vulkan_buffer = self.vulkan_buffer.clone();
+
+        // Create a fresh tracked state for the target queue
+        let tracked_state = Arc::new(resstate::TrackedState::new(queue_id, ()));
+
+        Buffer {
+            vulkan_buffer,
+            tracked_state,
+        }.into()
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
