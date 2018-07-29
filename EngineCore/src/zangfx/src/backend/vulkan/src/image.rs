@@ -218,7 +218,7 @@ impl base::Image for Image {
         // unsafe { Box::new(image::ImageViewBuilder::new(self.new_device_ref())) }
     }
 
-    fn make_proxy(&mut self, queue: &base::CmdQueueRef) -> base::ImageRef {
+    fn make_proxy(&self, queue: &base::CmdQueueRef) -> base::ImageRef {
         unimplemented!()
     }
 

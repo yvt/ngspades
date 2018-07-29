@@ -43,7 +43,7 @@ pub trait Image: CloneHandle<ImageRef> {
     /// # Valid Usage
     ///
     ///  - The image must not an image view.
-    fn make_proxy(&mut self, queue: &CmdQueueRef) -> ImageRef {
+    fn make_proxy(&self, queue: &CmdQueueRef) -> ImageRef {
         let _ = queue;
         panic!("Inter-queue operation is not supported by this backend.");
     }
@@ -89,7 +89,7 @@ pub unsafe trait Buffer: CloneHandle<BufferRef> {
     ///
     /// The default implementation panics with a message indicating that the
     /// backend does not support inter-queue operation.
-    fn make_proxy(&mut self, queue: &CmdQueueRef) -> BufferRef {
+    fn make_proxy(&self, queue: &CmdQueueRef) -> BufferRef {
         let _ = queue;
         panic!("Inter-queue operation is not supported by this backend.");
     }

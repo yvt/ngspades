@@ -128,7 +128,7 @@ unsafe impl base::Buffer for Buffer {
         unimplemented!()
     }
 
-    fn make_proxy(&mut self, queue: &base::CmdQueueRef) -> base::BufferRef {
+    fn make_proxy(&self, queue: &base::CmdQueueRef) -> base::BufferRef {
         unimplemented!()
     }
 
