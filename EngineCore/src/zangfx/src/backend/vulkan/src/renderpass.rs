@@ -13,13 +13,12 @@ use crate::device::DeviceRef;
 use crate::formats::translate_image_format;
 use crate::image::Image;
 use zangfx_base as base;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_common::IntoWithPad;
 
 use crate::utils::{
-    translate_access_type_flags, translate_generic_error_unwrap, translate_image_layout,
-    translate_pipeline_stage_flags,
+    translate_access_type_flags, translate_generic_error_unwrap, translate_pipeline_stage_flags,
 };
 
 /// Implementation of `RenderPassBuilder` for Vulkan.
@@ -216,8 +215,8 @@ impl RenderPassTargetBuilder {
 
         let format = self.format;
         let is_depth_stencil = format.has_depth() || format.has_stencil();
-        vk_desc.initial_layout = translate_image_layout(self.initial_layout, is_depth_stencil);
-        vk_desc.final_layout = translate_image_layout(self.final_layout, is_depth_stencil);
+        vk_desc.initial_layout = unimplemented!(); //translate_image_layout(self.initial_layout, is_depth_stencil);
+        vk_desc.final_layout = unimplemented!(); //translate_image_layout(self.final_layout, is_depth_stencil);
 
         vk_desc
     }
@@ -458,7 +457,8 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 
             let image: &Image = &target.image;
 
-            let vk_image_view_info = vk::ImageViewCreateInfo {
+            let vk_image_view_info = unimplemented!();
+            /*vk::ImageViewCreateInfo {
                 s_type: vk::StructureType::ImageViewCreateInfo,
                 p_next: ::null(),
                 flags,
@@ -478,7 +478,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
                     level_count: 1,
                     layer_count: self.num_layers,
                 },
-            };
+            };*/
 
             let vk_image_view = unsafe { vk_device.create_image_view(&vk_image_view_info, None) }
                 .map_err(translate_generic_error_unwrap)?;

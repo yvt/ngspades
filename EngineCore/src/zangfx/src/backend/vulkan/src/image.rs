@@ -6,23 +6,26 @@
 //! Implementation of `Image` for Vulkan.
 use ash::version::*;
 use ash::vk;
-use std::mem::transmute;
+use std::ops;
+use std::sync::Arc;
 
 use zangfx_base as base;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::Result;
-use zangfx_common::BinaryInteger;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use crate::device::DeviceRef;
 use crate::formats::translate_image_format;
+use crate::resstate;
 use crate::utils::{
-    translate_generic_error_unwrap, translate_image_subresource_range,
+    offset_range, queue_id_from_queue, translate_generic_error_unwrap,
+    translate_image_subresource_range, QueueIdBuilder,
 };
 
 /// Implementation of `ImageBuilder` for Vulkan.
 #[derive(Debug)]
 pub struct ImageBuilder {
     device: DeviceRef,
+    queue_id: QueueIdBuilder,
     extents: Option<ImageExtents>,
     num_layers: Option<u32>,
     num_mip_levels: u32,
@@ -44,6 +47,7 @@ impl ImageBuilder {
     crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
+            queue_id: QueueIdBuilder::new(),
             extents: None,
             num_layers: None,
             num_mip_levels: 1,
@@ -55,7 +59,7 @@ impl ImageBuilder {
 
 impl base::ImageBuilder for ImageBuilder {
     fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::ImageBuilder {
-        unimplemented!();
+        self.queue_id.set(queue);
         self
     }
 
@@ -149,8 +153,6 @@ impl base::ImageBuilder for ImageBuilder {
 
         let format = translate_image_format(format).expect("unsupported image format");
 
-        let meta = ImageMeta::new(image_view_type, aspect, format);
-
         let info = vk::ImageCreateInfo {
             s_type: vk::StructureType::ImageCreateInfo,
             p_next: ::null(),
@@ -173,57 +175,276 @@ impl base::ImageBuilder for ImageBuilder {
             initial_layout: vk::ImageLayout::Undefined,
         };
 
-        let vk_device = self.device.vk_device();
-        let vk_image =
-            unsafe { vk_device.create_image(&info, None) }.map_err(translate_generic_error_unwrap)?;
-        Ok(Image { vk_image, meta }.into())
+        let device = self.device.clone();
+        let vk_image = unsafe {
+            let vk_device = device.vk_device();
+            vk_device.create_image(&info, None)
+        }.map_err(translate_generic_error_unwrap)?;
+
+        let num_layers = match image_view_type {
+            Type3d => dims[2],
+            _ => array_layers,
+        };
+
+        let vulkan_image = Arc::new(VulkanImage {
+            device,
+            vk_image,
+            num_layers,
+            num_mip_levels: self.num_mip_levels,
+            usage: self.usage,
+            aspects: aspect,
+        });
+
+        let state = ImageState::new(&vulkan_image);
+
+        let image_view = Arc::new(ImageView::new(
+            vulkan_image,
+            ImageSubRange {
+                mip_levels: 0..self.num_mip_levels,
+                layers: 0..num_layers,
+            },
+            image_view_type,
+            format,
+        )?);
+
+        let queue_id = self.queue_id.get(&image_view.vulkan_image.device);
+
+        let image_state_container = Arc::new(resstate::TrackedState::new(queue_id, state));
+
+        Ok(Image {
+            image_view,
+            image_state_container,
+        }.into())
     }
 }
 
 /// Implementation of `Image` for Vulkan.
 #[derive(Debug, Clone)]
 pub struct Image {
-    vk_image: vk::Image,
+    image_view: Arc<ImageView>,
 
-    /// The image's metadata. Used as default values for creating image views.
-    meta: ImageMeta,
+    /// The container for the tracked state of an image on a particular queue.
+    /// Shared among all views of an image.
+    image_state_container: Arc<resstate::TrackedState<ImageState>>,
 }
 
 zangfx_impl_handle! { Image, base::ImageRef }
 
-unsafe impl Sync for Image {}
-unsafe impl Send for Image {}
+/// An image view representing a subresource of an image.
+#[derive(Debug)]
+crate struct ImageView {
+    vulkan_image: Arc<VulkanImage>,
+    vk_image_view: vk::ImageView,
+    format: vk::Format,
+    range: ImageSubRange,
+    view_type: vk::ImageViewType,
+}
+
+impl Drop for ImageView {
+    fn drop(&mut self) {
+        unsafe {
+            let vk_device = self.vulkan_image.device.vk_device();
+            vk_device.destroy_image_view(self.vk_image_view, None);
+        }
+    }
+}
+
+/// The smart pointer for `vk::Image`.
+#[derive(Debug)]
+struct VulkanImage {
+    device: DeviceRef,
+    vk_image: vk::Image,
+    num_layers: u32,
+    num_mip_levels: u32,
+    usage: base::ImageUsageFlags,
+    aspects: vk::ImageAspectFlags,
+    // TODO: Heap binding
+}
+
+impl Drop for VulkanImage {
+    fn drop(&mut self) {
+        unsafe {
+            let vk_device = self.device.vk_device();
+            vk_device.destroy_image(self.vk_image, None);
+        }
+    }
+}
+
+/// The tracked state of an image on a particular queue.
+#[derive(Debug)]
+crate struct ImageState {
+    // TODO: Image state
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+crate struct ImageSubRange {
+    crate mip_levels: ops::Range<u32>,
+    crate layers: ops::Range<u32>,
+}
 
 impl Image {
-    pub unsafe fn from_raw(vk_image: vk::Image, meta: ImageMeta) -> Self {
+    // TODO: `Image::frm_raw`
+    /*pub unsafe fn from_raw(vk_image: vk::Image, meta: ImageMeta) -> Self {
         Self { vk_image, meta }
-    }
+    }*/
 
     pub fn vk_image(&self) -> vk::Image {
-        self.vk_image
+        self.image_view.vulkan_image.vk_image
     }
 
-    pub(super) fn meta(&self) -> ImageMeta {
-        self.meta
+    pub fn vk_image_view(&self) -> vk::ImageView {
+        self.image_view.vk_image_view
     }
 
-    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
-        vk_device.destroy_image(self.vk_image, None);
+    crate fn aspects(&self) -> vk::ImageAspectFlags {
+        self.image_view.vulkan_image.aspects
+    }
+
+    crate fn translate_layout(&self, value: base::ImageLayout) -> vk::ImageLayout {
+        self.image_view.vulkan_image.translate_layout(value)
+    }
+
+    crate fn resolve_vk_subresource_layers(
+        &self,
+        value: &base::ImageLayerRange,
+        aspect_mask: vk::ImageAspectFlags,
+    ) -> vk::ImageSubresourceLayers {
+        self.image_view
+            .resolve_vk_subresource_layers(value, aspect_mask)
+    }
+}
+
+impl ImageState {
+    fn new(_vulkan_image: &Arc<VulkanImage>) -> Self {
+        Self {}
+    }
+}
+
+impl ImageView {
+    fn new(
+        vulkan_image: Arc<VulkanImage>,
+        subrange: ImageSubRange,
+        view_type: vk::ImageViewType,
+        format: vk::Format,
+    ) -> Result<Self> {
+        let flags = vk::ImageViewCreateFlags::empty();
+        // flags: "reserved for future use"
+
+        let info = vk::ImageViewCreateInfo {
+            s_type: vk::StructureType::ImageViewCreateInfo,
+            p_next: ::null(),
+            flags,
+            image: vulkan_image.vk_image,
+            view_type,
+            format,
+            components: vk::ComponentMapping {
+                r: vk::ComponentSwizzle::Identity,
+                g: vk::ComponentSwizzle::Identity,
+                b: vk::ComponentSwizzle::Identity,
+                a: vk::ComponentSwizzle::Identity,
+            },
+            subresource_range: translate_image_subresource_range(
+                &(subrange.clone()).into(),
+                vulkan_image.aspects,
+            ),
+        };
+
+        let vk_image_view = unsafe {
+            let vk_device = vulkan_image.device.vk_device();
+            vk_device.create_image_view(&info, None)
+        }.map_err(translate_generic_error_unwrap)?;
+
+        Ok(Self {
+            vulkan_image,
+            vk_image_view,
+            format,
+            range: subrange,
+            view_type,
+        })
+    }
+
+    fn resolve_subrange(&self, range: &base::ImageSubRange) -> ImageSubRange {
+        let ref base_mip_levels = self.range.mip_levels;
+        let ref base_layers = self.range.layers;
+        ImageSubRange {
+            mip_levels: offset_range(
+                range
+                    .mip_levels
+                    .clone()
+                    .unwrap_or_else(|| 0..(base_mip_levels.end - base_mip_levels.start)),
+                base_mip_levels.start,
+            ),
+            layers: offset_range(
+                range
+                    .layers
+                    .clone()
+                    .unwrap_or_else(|| 0..(base_layers.end - base_layers.start)),
+                base_layers.start,
+            ),
+        }
+    }
+
+    fn resolve_vk_subresource_layers(
+        &self,
+        value: &base::ImageLayerRange,
+        aspect_mask: vk::ImageAspectFlags,
+    ) -> vk::ImageSubresourceLayers {
+        let ref layers = value.layers;
+
+        let ref base_mip_levels = self.range.mip_levels;
+        let ref base_layers = self.range.layers;
+
+        vk::ImageSubresourceLayers {
+            aspect_mask,
+            mip_level: value.mip_level + base_mip_levels.start,
+            base_array_layer: layers.start + base_layers.start,
+            layer_count: layers.end - layers.start,
+        }
+    }
+}
+
+impl VulkanImage {
+    crate fn translate_layout(&self, value: base::ImageLayout) -> vk::ImageLayout {
+        translate_image_layout(
+            self.usage,
+            value,
+            self.aspects
+                .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT),
+        )
     }
 }
 
 impl base::Image for Image {
     fn build_image_view(&self) -> base::ImageViewBuilderRef {
-        unimplemented!()
-        // unsafe { Box::new(image::ImageViewBuilder::new(self.new_device_ref())) }
+        Box::new(ImageViewBuilder::new(self.clone()))
     }
 
     fn make_proxy(&self, queue: &base::CmdQueueRef) -> base::ImageRef {
-        unimplemented!()
+        let queue_id = queue_id_from_queue(queue);
+
+        let image_view = self.image_view.clone();
+
+        // Create a fresh tracked state for the target queue
+        let state = ImageState::new(&self.image_view.vulkan_image);
+        let image_state_container = Arc::new(resstate::TrackedState::new(queue_id, state));
+
+        Image {
+            image_view,
+            image_state_container,
+        }.into()
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
         unimplemented!()
+    }
+}
+
+impl Into<base::ImageSubRange> for ImageSubRange {
+    fn into(self) -> base::ImageSubRange {
+        base::ImageSubRange {
+            mip_levels: Some(self.mip_levels.clone()),
+            layers: Some(self.layers.clone()),
+        }
     }
 }
 
@@ -254,49 +475,38 @@ fn translate_image_usage(
     usage
 }
 
-/// Compact representation of image metadata. Stored in `Image` along with
-/// the vulkan image handle.
-///
-/// # Bit Fields
-///
-///  - `[2:0]`: The default mage view type
-///  - `[6:3]`: The image aspect flags valid for the image
-///  - `[14:7]`: THe image format
-///
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ImageMeta(u16);
+crate fn translate_image_layout(
+    usage: base::ImageUsageFlags,
+    value: base::ImageLayout,
+    is_depth_stencil: bool,
+) -> vk::ImageLayout {
+    let mutable = usage.contains(base::ImageUsage::Mutable);
+    let storage = usage.contains(base::ImageUsage::Storage);
 
-impl ImageMeta {
-    pub fn new(
-        image_view_type: vk::ImageViewType,
-        image_aspects: vk::ImageAspectFlags,
-        format: vk::Format,
-    ) -> Self {
-        let mut bits = 0;
-        bits |= image_view_type as u16;
-        bits |= (image_aspects.flags() as u16) << 3;
-        bits |= (format as u16) << 7;
-        ImageMeta(bits)
-    }
+    match (value, is_depth_stencil, mutable, storage) {
+        // The `Mutable` flag takes precedence over anything - It forces the use
+        // of the generic image layout
+        (_, _, true, _) => vk::ImageLayout::General,
 
-    pub fn image_view_type(&self) -> vk::ImageViewType {
-        unsafe { transmute(self.0.extract_u32(0..3)) }
-    }
+        // Layouts for the fixed-function pipeline
+        (base::ImageLayout::Render, false, false, _) => vk::ImageLayout::ColorAttachmentOptimal,
+        (base::ImageLayout::Render, true, false, _) => {
+            vk::ImageLayout::DepthStencilAttachmentOptimal
+        }
+        (base::ImageLayout::CopyRead, _, false, _) => vk::ImageLayout::TransferSrcOptimal,
+        (base::ImageLayout::CopyWrite, _, false, _) => vk::ImageLayout::TransferDstOptimal,
 
-    pub fn image_aspects(&self) -> vk::ImageAspectFlags {
-        vk::ImageAspectFlags::from_flags(self.0.extract_u32(3..7)).unwrap()
-    }
-
-    pub fn format(&self) -> vk::Format {
-        unsafe { transmute(self.0.extract_u32(7..15)) }
+        // Can use the `SHADER_READ_ONLY` if the image is never used as a
+        // storage image
+        (base::ImageLayout::Shader, _, false, false) => vk::ImageLayout::ShaderReadOnlyOptimal,
+        (base::ImageLayout::Shader, _, false, true) => vk::ImageLayout::General,
     }
 }
 
 /// Implementation of `ImageViewBuilder` for Vulkan.
 #[derive(Debug)]
 pub struct ImageViewBuilder {
-    device: DeviceRef,
-    image: Option<Image>,
+    image: Image,
     subrange: base::ImageSubRange,
     format: Option<base::ImageFormat>,
     image_type: Option<base::ImageType>,
@@ -305,10 +515,9 @@ pub struct ImageViewBuilder {
 zangfx_impl_object! { ImageViewBuilder: dyn base::ImageViewBuilder, dyn (crate::Debug) }
 
 impl ImageViewBuilder {
-    crate fn new(device: DeviceRef) -> Self {
+    fn new(image: Image) -> Self {
         Self {
-            device,
-            image: None,
+            image,
             subrange: Default::default(),
             format: None,
             image_type: None,
@@ -317,12 +526,6 @@ impl ImageViewBuilder {
 }
 
 impl base::ImageViewBuilder for ImageViewBuilder {
-    /* fn image(&mut self, v: &base::ImageRef) -> &mut base::ImageViewBuilder {
-        let my_image: &Image = v.downcast_ref().expect("bad image type");
-        self.image = Some(my_image.clone());
-        self
-    } */
-
     fn subrange(&mut self, v: &base::ImageSubRange) -> &mut dyn base::ImageViewBuilder {
         self.subrange = v.clone();
         self
@@ -339,10 +542,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
     }
 
     fn build(&mut self) -> Result<base::ImageRef> {
-        let image: &Image = self.image.as_ref().expect("image");
-
-        let flags = vk::ImageViewCreateFlags::empty();
-        // flags: "reserved for future use"
+        let ref image: Image = self.image;
 
         let view_type = self
             .image_type
@@ -354,134 +554,25 @@ impl base::ImageViewBuilder for ImageViewBuilder {
                 base::ImageType::Cube => vk::ImageViewType::Cube,
                 base::ImageType::CubeArray => vk::ImageViewType::CubeArray,
             })
-            .unwrap_or(image.meta().image_view_type());
+            .unwrap_or(image.image_view.view_type);
 
         let format = self
             .format
             .map(|f| translate_image_format(f).expect("unsupported image format"))
-            .unwrap_or(image.meta().format());
+            .unwrap_or(image.image_view.format);
 
-        let is_ds = image
-            .meta()
-            .image_aspects()
-            .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT);
-
-        let meta = ImageViewMeta::new(
-            /* translate_image_layout(self.layout, is_ds) */ unimplemented!(),
-        );
-
-        let info = vk::ImageViewCreateInfo {
-            s_type: vk::StructureType::ImageViewCreateInfo,
-            p_next: ::null(),
-            flags,
-            image: image.vk_image(),
+        let image_view = Arc::new(ImageView::new(
+            image.image_view.vulkan_image.clone(),
+            image.image_view.resolve_subrange(&self.subrange),
             view_type,
             format,
-            components: vk::ComponentMapping {
-                r: vk::ComponentSwizzle::Identity,
-                g: vk::ComponentSwizzle::Identity,
-                b: vk::ComponentSwizzle::Identity,
-                a: vk::ComponentSwizzle::Identity,
-            },
-            subresource_range: translate_image_subresource_range(
-                &self.subrange,
-                image.meta().image_aspects(),
-            ),
-        };
+        )?);
 
-        let vk_device = self.device.vk_device();
-        let vk_image_view = unsafe { vk_device.create_image_view(&info, None) }
-            .map_err(translate_generic_error_unwrap)?;
+        let image_state_container = image.image_state_container.clone();
 
-        unimplemented!()
-        /* Ok(ImageView {
-            vk_image_view,
-            meta,
-        }.into()) */
-    }
-}
-
-/// Implementation of `ImageView` for Vulkan.
-#[derive(Debug, Clone)]
-pub struct ImageView {
-    vk_image_view: vk::ImageView,
-    meta: ImageViewMeta,
-}
-
-// zangfx_impl_handle! { ImageView, base::ImageView }
-
-unsafe impl Sync for ImageView {}
-unsafe impl Send for ImageView {}
-
-impl ImageView {
-    pub unsafe fn from_raw(vk_image_view: vk::ImageView, meta: ImageViewMeta) -> Self {
-        Self {
-            vk_image_view,
-            meta,
-        }
-    }
-
-    pub fn vk_image_view(&self) -> vk::ImageView {
-        self.vk_image_view
-    }
-
-    pub(super) fn meta(&self) -> ImageViewMeta {
-        self.meta
-    }
-
-    pub(super) unsafe fn destroy(&self, vk_device: &crate::AshDevice) {
-        vk_device.destroy_image_view(self.vk_image_view, None);
-    }
-}
-
-/// Compact representation of image view metadata. Stored in `ImageView` along
-/// with the vulkan image view handle.
-///
-/// # Bit Fields
-///
-///  - `[0]`: The image layout
-///
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ImageViewMeta(u8);
-
-impl ImageViewMeta {
-    pub fn new(image_layout: vk::ImageLayout) -> Self {
-        let mut bits = 0;
-        match image_layout {
-            vk::ImageLayout::General => {
-                bits.set_bit(0);
-            }
-            vk::ImageLayout::ShaderReadOnlyOptimal => {}
-            _ => panic!("bad image layout"),
-        }
-        ImageViewMeta(bits)
-    }
-
-    pub fn image_layout(&self) -> vk::ImageLayout {
-        if self.0.get_bit(0) {
-            vk::ImageLayout::General
-        } else {
-            vk::ImageLayout::ShaderReadOnlyOptimal
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn image_meta() {
-        let meta = ImageMeta::new(
-            vk::ImageViewType::Type2dArray,
-            vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_METADATA_BIT,
-            vk::Format::R8Sscaled,
-        );
-        assert_eq!(meta.image_view_type(), vk::ImageViewType::Type2dArray);
-        assert_eq!(
-            meta.image_aspects(),
-            vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_METADATA_BIT
-        );
-        assert_eq!(meta.format(), vk::Format::R8Sscaled);
+        Ok(Image {
+            image_view,
+            image_state_container,
+        }.into())
     }
 }

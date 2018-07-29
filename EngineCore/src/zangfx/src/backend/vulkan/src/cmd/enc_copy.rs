@@ -16,9 +16,7 @@ use super::fence::Fence;
 use crate::buffer::Buffer;
 use crate::device::DeviceRef;
 use crate::image::Image;
-use crate::utils::{
-    translate_image_aspect, translate_image_layout, translate_image_subresource_layers,
-};
+use crate::utils::translate_image_aspect;
 
 #[derive(Debug)]
 pub(super) struct CopyEncoder {
@@ -146,6 +144,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
         }
     }
 
+    // TODO: automatic image layout transitions
+
     fn copy_buffer_to_image(
         &mut self,
         src: &base::BufferRef,
@@ -156,8 +156,6 @@ impl base::CopyCmdEncoder for CopyEncoder {
         dst_origin: &[u32],
         size: &[u32],
     ) {
-        let dst_layout = unimplemented!();
-
         let my_src: &Buffer = src.downcast_ref().expect("bad source buffer type");
         let my_dst: &Image = dst.downcast_ref().expect("bad destination image type");
 
@@ -171,12 +169,12 @@ impl base::CopyCmdEncoder for CopyEncoder {
                 self.vk_cmd_buffer,
                 my_src.vk_buffer(),
                 my_dst.vk_image(),
-                translate_image_layout(dst_layout, dst_aspect != base::ImageAspect::Color),
+                my_dst.translate_layout(base::ImageLayout::CopyWrite),
                 &[vk::BufferImageCopy {
                     buffer_offset: src_range.offset,
                     buffer_row_length: src_range.row_stride as u32,
                     buffer_image_height: src_range.plane_stride as u32,
-                    image_subresource: translate_image_subresource_layers(
+                    image_subresource: my_dst.resolve_vk_subresource_layers(
                         dst_range,
                         translate_image_aspect(dst_aspect),
                     ),
@@ -205,8 +203,6 @@ impl base::CopyCmdEncoder for CopyEncoder {
         dst_range: &base::BufferImageRange,
         size: &[u32],
     ) {
-        let src_layout = unimplemented!();
-
         let my_src: &Image = src.downcast_ref().expect("bad source image type");
         let my_dst: &Buffer = dst.downcast_ref().expect("bad destination buffer type");
 
@@ -219,14 +215,14 @@ impl base::CopyCmdEncoder for CopyEncoder {
             vk_device.fp_v1_0().cmd_copy_image_to_buffer(
                 self.vk_cmd_buffer,
                 my_src.vk_image(),
-                translate_image_layout(src_layout, src_aspect != base::ImageAspect::Color),
+                my_src.translate_layout(base::ImageLayout::CopyRead),
                 my_dst.vk_buffer(),
                 1,
                 &vk::BufferImageCopy {
                     buffer_offset: dst_range.offset,
                     buffer_row_length: dst_range.row_stride as u32,
                     buffer_image_height: dst_range.plane_stride as u32,
-                    image_subresource: translate_image_subresource_layers(
+                    image_subresource: my_src.resolve_vk_subresource_layers(
                         src_range,
                         translate_image_aspect(src_aspect),
                     ),
@@ -255,9 +251,6 @@ impl base::CopyCmdEncoder for CopyEncoder {
         dst_origin: &[u32],
         size: &[u32],
     ) {
-        let src_layout = unimplemented!();
-        let dst_layout = unimplemented!();
-
         let my_src: &Image = src.downcast_ref().expect("bad source image type");
         let my_dst: &Image = dst.downcast_ref().expect("bad destination image type");
 
@@ -267,8 +260,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
         assert_eq!(src_range.layers.len(), dst_range.layers.len());
 
-        let src_aspect = my_src.meta().image_aspects();
-        let dst_aspect = my_dst.meta().image_aspects();
+        let src_aspect = my_src.aspects();
+        let dst_aspect = my_dst.aspects();
 
         assert_eq!(
             src_aspect, dst_aspect,
@@ -283,17 +276,17 @@ impl base::CopyCmdEncoder for CopyEncoder {
             vk_device.cmd_copy_image(
                 self.vk_cmd_buffer,
                 my_src.vk_image(),
-                translate_image_layout(src_layout, is_depth_stencil),
+                my_src.translate_layout(base::ImageLayout::CopyRead),
                 my_dst.vk_image(),
-                translate_image_layout(dst_layout, is_depth_stencil),
+                my_dst.translate_layout(base::ImageLayout::CopyWrite),
                 &[vk::ImageCopy {
-                    src_subresource: translate_image_subresource_layers(src_range, src_aspect),
+                    src_subresource: my_src.resolve_vk_subresource_layers(src_range, src_aspect),
                     src_offset: vk::Offset3D {
                         x: src_origin[0] as i32,
                         y: src_origin[1] as i32,
                         z: src_origin[2] as i32,
                     },
-                    dst_subresource: translate_image_subresource_layers(dst_range, dst_aspect),
+                    dst_subresource: my_dst.resolve_vk_subresource_layers(dst_range, dst_aspect),
                     dst_offset: vk::Offset3D {
                         x: dst_origin[0] as i32,
                         y: dst_origin[1] as i32,

@@ -6,6 +6,7 @@
 use ash::version::*;
 use ash::vk;
 use ngsenumflags::flags;
+use std::ops;
 
 use zangfx_base as base;
 use zangfx_base::{Error, ErrorKind, Result};
@@ -206,27 +207,6 @@ crate fn translate_image_subresource_layers(
     }
 }
 
-crate fn translate_image_layout(
-    _value: base::ImageLayout,
-    _is_depth_stencil: bool,
-) -> vk::ImageLayout {
-    unimplemented!()
-    /*match (value, is_depth_stencil) {
-        (base::ImageLayout::Undefined, _) => vk::ImageLayout::Undefined,
-        (base::ImageLayout::General, _) => vk::ImageLayout::General,
-        (base::ImageLayout::RenderWrite, false) => vk::ImageLayout::ColorAttachmentOptimal,
-        (base::ImageLayout::RenderWrite, true) => vk::ImageLayout::DepthStencilAttachmentOptimal,
-        (base::ImageLayout::RenderRead, false) => {
-            panic!("color render target cannot use the RenderRead layout")
-        }
-        (base::ImageLayout::RenderRead, true) => vk::ImageLayout::DepthStencilReadOnlyOptimal,
-        (base::ImageLayout::ShaderRead, _) => vk::ImageLayout::ShaderReadOnlyOptimal,
-        (base::ImageLayout::CopyRead, _) => vk::ImageLayout::TransferSrcOptimal,
-        (base::ImageLayout::CopyWrite, _) => vk::ImageLayout::TransferDstOptimal,
-        (base::ImageLayout::Present, _) => vk::ImageLayout::PresentSrcKhr,
-    }*/
-}
-
 crate fn translate_image_aspect(value: base::ImageAspect) -> vk::ImageAspectFlags {
     match value {
         base::ImageAspect::Color => vk::IMAGE_ASPECT_COLOR_BIT,
@@ -301,6 +281,13 @@ crate fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::Co
     }
 
     mask
+}
+
+crate fn offset_range<T: ops::Add<RHS>, RHS: Clone>(
+    range: ops::Range<T>,
+    offset: RHS,
+) -> ops::Range<T::Output> {
+    range.start + offset.clone()..range.end + offset
 }
 
 use crate::device::DeviceRef;
