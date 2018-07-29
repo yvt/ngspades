@@ -479,13 +479,19 @@ impl SchedulerData {
             flush!();
         }
 
-        // TODO: safe handling of error
-        unsafe { vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence()) }
-            .map_err(translate_generic_error_unwrap)
-            .unwrap();
+        let done_handler = BatchDoneHandler { scheduled_items };
+
+        let result = unsafe {
+            vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence())
+        };
+
+        if let Err(err) = result {
+            done_handler.finish(|| Err(translate_generic_error_unwrap(err)));
+            return;
+        }
 
         // Call `BatchDoneHandler::on_fence_signaled` when the batch is complete
-        fence.finish(BatchDoneHandler { scheduled_items });
+        fence.finish(done_handler);
     }
 }
 
@@ -494,8 +500,8 @@ pub(super) struct BatchDoneHandler {
     scheduled_items: Option<Box<Item>>,
 }
 
-impl MonitorHandler for BatchDoneHandler {
-    fn on_fence_signaled(self) {
+impl BatchDoneHandler {
+    fn finish(self, mut result: impl FnMut() -> Result<()>) {
         let mut scheduled_items = self.scheduled_items;
 
         // Release objects first (because completion callbacks might tear
@@ -510,8 +516,14 @@ impl MonitorHandler for BatchDoneHandler {
 
         // Call the completion callbacks
         while let Some(mut item) = { scheduled_items } {
-            item.commited.completion_handler.on_complete();
+            item.commited.completion_handler.on_complete(&mut result);
             scheduled_items = item.next;
         }
+    }
+}
+
+impl MonitorHandler for BatchDoneHandler {
+    fn on_fence_signaled(self) {
+        self.finish(|| Ok(()))
     }
 }

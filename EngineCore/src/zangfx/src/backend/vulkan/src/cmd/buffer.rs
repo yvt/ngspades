@@ -64,7 +64,7 @@ enum Encoder {
 }
 
 #[derive(Default)]
-struct CallbackSet(Vec<Box<dyn FnMut() + Sync + Send>>);
+struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
 
 impl fmt::Debug for CallbackSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -260,8 +260,8 @@ impl base::CmdBuffer for CmdBuffer {
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        unimplemented!()
-        // uncommited.completion_callbacks.0.push(cb);
+
+        uncommited.completion_callbacks.0.push(cb);
     }
 
     fn wait_semaphore(&mut self, semaphore: &base::SemaphoreRef, dst_stage: base::StageFlags) {
@@ -357,9 +357,9 @@ pub(crate) struct BufferCompleteCallback {
 }
 
 impl BufferCompleteCallback {
-    pub(super) fn on_complete(&mut self) {
+    pub(super) fn on_complete(&mut self, mut result: &mut impl FnMut() -> Result<()>) {
         for mut callback in self.completion_callbacks.0.drain(..) {
-            callback();
+            callback(result());
         }
     }
 }
