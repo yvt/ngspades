@@ -209,11 +209,11 @@ impl base::ImageBuilder for ImageBuilder {
 
         let queue_id = self.queue_id.get(&image_view.vulkan_image.device);
 
-        let image_state_container = Arc::new(resstate::TrackedState::new(queue_id, state));
+        let tracked_state = Arc::new(resstate::TrackedState::new(queue_id, state));
 
         Ok(Image {
             image_view,
-            image_state_container,
+            tracked_state,
         }.into())
     }
 }
@@ -225,7 +225,7 @@ pub struct Image {
 
     /// The container for the tracked state of an image on a particular queue.
     /// Shared among all views of an image.
-    image_state_container: Arc<resstate::TrackedState<ImageState>>,
+    tracked_state: Arc<resstate::TrackedState<ImageState>>,
 }
 
 zangfx_impl_handle! { Image, base::ImageRef }
@@ -426,11 +426,11 @@ impl base::Image for Image {
 
         // Create a fresh tracked state for the target queue
         let state = ImageState::new(&self.image_view.vulkan_image);
-        let image_state_container = Arc::new(resstate::TrackedState::new(queue_id, state));
+        let tracked_state = Arc::new(resstate::TrackedState::new(queue_id, state));
 
         Image {
             image_view,
-            image_state_container,
+            tracked_state,
         }.into()
     }
 
@@ -568,11 +568,11 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             format,
         )?);
 
-        let image_state_container = image.image_state_container.clone();
+        let tracked_state = image.tracked_state.clone();
 
         Ok(Image {
             image_view,
-            image_state_container,
+            tracked_state,
         }.into())
     }
 }
