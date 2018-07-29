@@ -14,6 +14,7 @@
 //!    how the `State` will be transformed when the corresponding command buffer
 //!    is executed.
 //!
+use lazy_static::lazy_static;
 use snowflake::ProcessUniqueId;
 use std::cell::UnsafeCell;
 
@@ -24,6 +25,14 @@ use crate::MAX_NUM_ACTIVE_CMD_BUFFERS;
 crate struct QueueId(ProcessUniqueId);
 
 impl QueueId {
+    /// Return a dummy `QueueId` value associated with no queue.
+    crate fn dummy_value() -> QueueId {
+        lazy_static! {
+            static ref DUMMY_VALUE: ProcessUniqueId = ProcessUniqueId::new();
+        }
+        QueueId(*DUMMY_VALUE)
+    }
+
     fn new() -> Self {
         QueueId(ProcessUniqueId::new())
     }

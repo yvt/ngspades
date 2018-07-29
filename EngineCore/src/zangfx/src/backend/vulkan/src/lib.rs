@@ -21,7 +21,8 @@
 //! first created `CmdQueue` from it will be used as the default unless it is
 //! explicitly specified via [`crate::device::Device::set_default_queue`]. If
 //! there is no default value set at the point when it is required (i.e., when
-//! a builder's `build` is called), a panic will occur.
+//! a builder's `build` is called), a dummy value that is not associated with
+//! any queue will be used instead.
 //!
 //! # Limitations
 //!

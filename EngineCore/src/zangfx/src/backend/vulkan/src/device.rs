@@ -43,11 +43,11 @@ impl DeviceInfo {
         &self.sampler_pool
     }
 
-    /// Get the default `resstate::QueueId`. Panics if none is set.
+    /// Get the default `resstate::QueueId`. Returns a dummy value if none is set.
     crate fn default_resstate_queue(&self) -> resstate::QueueId {
         self.default_resstate_queue
             .read()
-            .expect("no default queue is set")
+            .unwrap_or_else(resstate::QueueId::dummy_value)
     }
 
     crate fn set_default_resstate_queue(&self, queue_id: resstate::QueueId) {
