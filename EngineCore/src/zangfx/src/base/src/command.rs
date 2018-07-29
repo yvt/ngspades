@@ -505,7 +505,11 @@ pub trait CmdEncoder: Object {
     ///
     /// This ensures the resources are resident starting from the point where
     /// this command is inserted and until the end of the current command
-    /// encoder or subpass.
+    /// encoder or subpass. You must call this method for every resource
+    /// indirectly referenced by argument tables.
+    ///
+    /// If you have an image and image view created from it, calling this method
+    /// only on the image does not make the metadata of the image view resident.
     ///
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
     /// argument tables.
