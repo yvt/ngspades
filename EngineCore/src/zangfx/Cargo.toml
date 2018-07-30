@@ -10,7 +10,7 @@ default = []
 zangfx_base = { path = "src/base" }
 zangfx_common = { path = "src/common" }
 zangfx_utils = { path = "src/utils" }
-# zangfx_vulkan = { path = "src/backend/vulkan" }
+zangfx_vulkan = { path = "src/backend/vulkan" }
 
 [target.'cfg(target_os="macos")'.dependencies]
 zangfx_metal = { path = "src/backend/metal" }
