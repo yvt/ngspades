@@ -102,6 +102,11 @@ pub trait DedicatedHeapBuilder: Object {
     /// transitioned to the Allocated state. The dedicated allocation list will
     /// be cleared.
     ///
+    /// If the creation fails, the allocation states of the resources included
+    /// in the dedicated allocation list will be left in unknown states.
+    /// The ramification of this behavior is that applications will not be able
+    /// to retry the binding of the same resources using other heaps.
+    ///
     /// # Valid Usage
     ///
     /// - All mandatory properties must have their values set before this method
