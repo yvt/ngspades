@@ -73,6 +73,7 @@ impl Drop for DeviceInfo {
 pub struct Device {
     device_ref: DeviceRef,
     queue_pool: Arc<cmd::queue::QueuePool>,
+    global_heaps: Vec<base::HeapRef>,
 }
 
 zangfx_impl_object! { Device: dyn base::Device, dyn (crate::Debug) }
@@ -104,9 +105,20 @@ impl Device {
             default_resstate_queue: RwLock::new(None),
         });
 
+        let global_heaps = (device_ref.caps.config.heap_strategies)
+            .iter()
+            .enumerate()
+            .map(|(i, heap_strategy)| {
+                let global_heap =
+                    heap::GlobalHeap::new(device_ref.clone(), heap_strategy.unwrap(), i as _);
+                Arc::new(global_heap) as base::HeapRef
+            })
+            .collect();
+
         Ok(Self {
             device_ref,
             queue_pool: Arc::new(queue_pool),
+            global_heaps,
         })
     }
 
@@ -144,7 +156,9 @@ impl base::Device for Device {
     }
 
     fn global_heap(&self, memory_type: base::MemoryType) -> &base::HeapRef {
-        unimplemented!()
+        self.global_heaps
+            .get(memory_type as usize)
+            .expect("bad memory type")
     }
 
     fn build_cmd_queue(&self) -> base::CmdQueueBuilderRef {

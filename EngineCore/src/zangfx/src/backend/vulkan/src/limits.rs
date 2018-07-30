@@ -237,6 +237,20 @@ pub struct DeviceConfig {
     /// Specifies a set of pairs denoting a queue family index and queue index
     /// allocated for ZanGFX.
     pub queues: Vec<(u32, u32)>,
+
+    /// Optionally specifies a `HeapStrategy` for each memory type.
+    pub heap_strategies: Vec<Option<HeapStrategy>>,
+}
+
+/// Defines global heaps' memory allocation strategy for a specific memory type.
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub struct HeapStrategy {
+    /// The size of "small resource" zones.
+    pub small_zone_size: base::DeviceSize,
+
+    /// The size threshold that determines whether a resource should be
+    /// allocated in "small resource" zones or not.
+    pub size_threshold: base::DeviceSize,
 }
 
 impl DeviceConfig {
@@ -261,6 +275,49 @@ impl DeviceConfig {
         queues.sort();
         if queues.iter().zip(queues[1..].iter()).any(|(x, y)| x == y) {
             panic!("queues: duplicate entry");
+        }
+
+        // Check the `Vec` of `HeapStrategy`s
+        for (i, heap_strategy) in self.heap_strategies.iter().enumerate() {
+            if heap_strategy.is_some() && i >= device_info.memory_types.len() {
+                panic!("heap_strategies: invalid memory type index");
+            }
+        }
+
+        self.heap_strategies
+            .resize(device_info.memory_types.len(), None);
+
+        for (i, heap_strategy) in self.heap_strategies.iter_mut().enumerate() {
+            if heap_strategy.is_none() {
+                let region_i = device_info.memory_types[i].region as usize;
+                let r_size = device_info.memory_regions[region_i].size;
+                *heap_strategy = Some(HeapStrategy::default_with_region_size(r_size))
+            }
+
+            // Validate the contents of `HeapStrategy`
+            let hs = heap_strategy.unwrap();
+            assert!(hs.size_threshold <= hs.small_zone_size);
+        }
+    }
+}
+
+impl HeapStrategy {
+    /// Provide a reasonable default value of `HeapStrategy` using the
+    /// specified memory region size, based on some heuristics.
+    pub fn default_with_region_size(size: base::DeviceSize) -> HeapStrategy {
+        assert_ne!(size, 0);
+        if size < 65536 {
+            Self {
+                small_zone_size: 64,
+                size_threshold: 0,
+            }
+        } else if size > 1024u64 * 1024 * 1024 * 4 {
+            Self::default_with_region_size(1024u64 * 1024 * 1024 * 4)
+        } else {
+            Self {
+                small_zone_size: size >> 9,
+                size_threshold: size >> 11,
+            }
         }
     }
 }
