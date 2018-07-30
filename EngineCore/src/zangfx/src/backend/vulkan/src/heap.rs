@@ -5,20 +5,22 @@
 //
 //! Implementation of `Heap` and related types for Vulkan.
 use ash::version::*;
-use ash::vk;
-use iterpool::{Pool, PoolPtr};
+use ash::{prelude::VkResult, vk};
 use parking_lot::Mutex;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicPtr, Ordering},
+    Arc,
+};
+use tokenlock::Token;
 use xalloc::{SysTlsf, SysTlsfRegion};
 
 use zangfx_base as base;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_base::{Error, Result};
+use zangfx_common::{TokenCell, TokenCellRef};
 
 use crate::device::DeviceRef;
-use crate::utils::{
-    translate_generic_error_unwrap, translate_map_memory_error_unwrap,
-};
+use crate::utils::{translate_generic_error_unwrap, translate_map_memory_error_unwrap};
 use crate::{buffer, image};
 
 /// Implementation of `DynamicHeapBuilder` for Vulkan.
@@ -132,55 +134,68 @@ impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
     }
 }
 
-/// Implementation of `HeapAlloc` for Vulkan.
-#[derive(Debug, Clone)]
-struct HeapAlloc {
-    pool_ptr: PoolPtr,
-    ptr: *mut u8,
-}
-
-// zangfx_impl_handle! { HeapAlloc, base::HeapAllocRef }
-
-unsafe impl Sync for HeapAlloc {}
-unsafe impl Send for HeapAlloc {}
-
 /// Implementation of `Heap` for Vulkan.
 #[derive(Debug)]
 pub struct Heap {
-    device: DeviceRef,
-    ptr: *mut u8,
-    vk_mem: vk::DeviceMemory,
+    vulkan_memory: Arc<VulkanMemory>,
     state: Mutex<HeapState>,
 }
 
 zangfx_impl_object! { Heap: dyn base::Heap, dyn (crate::Debug) }
 
-unsafe impl Send for Heap {}
-unsafe impl Sync for Heap {}
-
 #[derive(Debug)]
 struct HeapState {
     allocator: SysTlsf<base::DeviceSize>,
-    allocations: Pool<HeapAllocData>,
+
+    /// The token used to take an ownership of `HeapBindingInfo::binding`.
+    token: Token,
 }
 
+/// A (kind of) smart pointer of `vk::DeviceMemory`.
 #[derive(Debug)]
-struct HeapAllocData {
+struct VulkanMemory {
+    device: DeviceRef,
+    vk_mem: vk::DeviceMemory,
+    ptr: *mut u8,
+}
+
+unsafe impl Send for VulkanMemory {}
+unsafe impl Sync for VulkanMemory {}
+
+/// Describes a binding between a resource and heap. Stored on a resource.
+#[derive(Debug)]
+crate struct HeapBindingInfo {
+    binding: TokenCell<Option<HeapBinding>>,
+
+    /// The host-visible pointer to the contents. Only valid for host-visible
+    /// buffers.
+    ptr: AtomicPtr<u8>,
+}
+
+/// A part of `HeapBindingInfo` that requires a mutable borrow to a heap's
+/// internal data to access.
+#[derive(Debug)]
+struct HeapBinding {
+    vulkan_memory: Arc<VulkanMemory>,
     region: Option<SysTlsfRegion>,
 }
 
-impl Heap {
-    fn new(
-        device: DeviceRef,
-        size: base::DeviceSize,
-        ty: base::MemoryType,
-        arena_size: base::DeviceSize,
-    ) -> Result<Self> {
-        let state = Mutex::new(HeapState {
-            allocator: SysTlsf::new(arena_size),
-            allocations: Pool::new(),
-        });
+/// A resource object that can be bound to a heap.
+crate trait Bindable {
+    fn memory_req(&self) -> base::MemoryReq;
+    fn binding_info(&self) -> &HeapBindingInfo;
 
+    /// Call either `bind_buffer_memory` or `bind_image_memory` depending on the
+    /// resource type.
+    unsafe fn bind(
+        &self,
+        vk_device_memory: vk::DeviceMemory,
+        offset: vk::DeviceSize,
+    ) -> VkResult<()>;
+}
+
+impl VulkanMemory {
+    fn new(device: DeviceRef, size: base::DeviceSize, ty: base::MemoryType) -> Result<Self> {
         let vk_mem = unsafe {
             device.vk_device().allocate_memory(
                 &vk::MemoryAllocateInfo {
@@ -194,37 +209,37 @@ impl Heap {
         }.map_err(translate_generic_error_unwrap)?;
 
         // Create `Heap` ASAP before any operations that possibly cause unwinding
-        let mut heap = Heap {
+        let mut vulkan_memory = VulkanMemory {
             device,
             ptr: ::null_mut(),
             vk_mem,
-            state,
         };
 
         // Map the host-visible memory (this might fail, which is why we built
-        // `Heap` first)
-        let memory_type_caps = heap.device.caps().info.memory_types[ty as usize].caps;
+        // `vulkan_memory` first)
+        let memory_type_caps = vulkan_memory.device.caps().info.memory_types[ty as usize].caps;
         let is_host_visible = memory_type_caps.contains(base::MemoryTypeCaps::HostVisible);
         if is_host_visible {
-            heap.ptr = unsafe {
-                heap.device.vk_device().map_memory(
-                    heap.vk_mem,
+            vulkan_memory.ptr = unsafe {
+                vulkan_memory.device.vk_device().map_memory(
+                    vulkan_memory.vk_mem,
                     0,
                     size,
                     vk::MemoryMapFlags::empty(),
                 )
-            }.map_err(translate_map_memory_error_unwrap)? as *mut u8;
+            }.map_err(translate_map_memory_error_unwrap)?
+                as *mut u8;
         }
 
-        Ok(heap)
+        Ok(vulkan_memory)
     }
 
-    pub fn vk_device_memory(&self) -> vk::DeviceMemory {
+    crate fn vk_device_memory(&self) -> vk::DeviceMemory {
         self.vk_mem
     }
 }
 
-impl Drop for Heap {
+impl Drop for VulkanMemory {
     fn drop(&mut self) {
         unsafe {
             self.device.vk_device().free_memory(self.vk_mem, None);
@@ -232,97 +247,158 @@ impl Drop for Heap {
     }
 }
 
+impl HeapBindingInfo {
+    crate fn new() -> Self {
+        Self {
+            binding: TokenCell::new(None),
+            ptr: Default::default(),
+        }
+    }
+
+    crate fn as_ptr(&self) -> *mut u8 {
+        let ptr = self.ptr.load(Ordering::Relaxed);
+        if ptr.is_null() {
+            panic!("resource is not bound or not host-visible");
+        }
+        ptr
+    }
+}
+
+impl Heap {
+    fn new(
+        device: DeviceRef,
+        size: base::DeviceSize,
+        ty: base::MemoryType,
+        arena_size: base::DeviceSize,
+    ) -> Result<Self> {
+        let state = Mutex::new(HeapState {
+            allocator: SysTlsf::new(arena_size),
+            token: Token::new(),
+        });
+
+        let vulkan_memory = VulkanMemory::new(device, size, ty)?;
+
+        let heap = Heap {
+            vulkan_memory: Arc::new(vulkan_memory),
+            state,
+        };
+
+        Ok(heap)
+    }
+
+    pub fn vk_device_memory(&self) -> vk::DeviceMemory {
+        self.vulkan_memory.vk_device_memory()
+    }
+}
+
+fn bindable_from_resource_ref(obj: base::ResourceRef<'_>) -> &dyn Bindable {
+    match obj {
+        base::ResourceRef::Buffer(buffer) => {
+            let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
+            our_buffer
+        }
+        base::ResourceRef::Image(image) => {
+            let our_image: &image::Image = image.downcast_ref().expect("bad image type");
+            our_image
+        }
+    }
+}
+
 impl base::Heap for Heap {
     fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
-        let vk_device = self.device.vk_device();
-        let req = obj.get_memory_req()?;
+        use std::mem::ManuallyDrop;
+
+        let bindable = bindable_from_resource_ref(obj);
+        let req = bindable.memory_req();
 
         // Start allocation...
         let mut state = self.state.lock();
         let state = &mut *state; // enable split borrowing
+
+        // Claim an exclusive ownership of `HeapBindingInfo::binding` of the
+        // resource.
+        struct Binding<'a>(ManuallyDrop<TokenCellRef<'a, Option<HeapBinding>>>);
+        impl<'a> Drop for Binding<'a> {
+            fn drop(&mut self) {
+                // Move out the contents
+                let guard = unsafe { ::std::ptr::read(&*self.0) };
+                if guard.is_none() {
+                    // Something went wrong. Relinquish the ownership.
+                    TokenCellRef::release(guard);
+                }
+            }
+        }
+
+        let binding_info = bindable.binding_info();
+        let binding = binding_info
+            .binding
+            .acquire(&mut state.token)
+            .expect("resource is already, or is being bound to another heap");
+        let mut binding = Binding(ManuallyDrop::new(binding));
 
         // Allocate a memory region for the resource
         struct Alloc<'a>(Option<SysTlsfRegion>, &'a mut SysTlsf<base::DeviceSize>);
         impl<'a> Drop for Alloc<'a> {
             fn drop(&mut self) {
                 if let Some(r) = self.0.take() {
-                    unsafe {
-                        self.1.dealloc_unchecked(r);
-                    }
+                    // Something went wrong. Undo the allocation.
+                    unsafe { self.1.dealloc_unchecked(r) };
                 }
             }
         }
+
         let (region, offset) = match state.allocator.alloc_aligned(req.size, req.align) {
             Some(allocation) => allocation,
-            None => return unimplemented!(), //  Ok(None),
+            None => return Ok(false),
         };
         let mut region = Alloc(Some(region), &mut state.allocator);
 
         // Bind the resource to the memory region
-        match obj {
-            base::ResourceRef::Buffer(buffer) => {
-                let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
-                unsafe {
-                    vk_device.bind_buffer_memory(our_buffer.vk_buffer(), self.vk_mem, offset)
-                }.map_err(translate_map_memory_error_unwrap)?;
-            }
-            base::ResourceRef::Image(image) => {
-                let our_image: &image::Image = image.downcast_ref().expect("bad image type");
-                unsafe { vk_device.bind_image_memory(our_image.vk_image(), self.vk_mem, offset) }
-                    .map_err(translate_map_memory_error_unwrap)?;
-            }
-        }
+        // This is an irreversible operation.
+        unsafe { bindable.bind(self.vulkan_memory.vk_device_memory(), offset) }
+            .map_err(translate_map_memory_error_unwrap)?;
 
-        // Insert it to the internal pool -- First we only allocate a place in
-        // it, and then move `region` into it. We do it this way for an extra
-        // exception safety.
-        let pool_ptr = state.allocations.allocate(HeapAllocData { region: None });
-        state.allocations[pool_ptr].region = Some(region.0.take().unwrap());
+        // Store the binding info to the resource
+        let vulkan_memory = Arc::clone(&self.vulkan_memory);
+
+        **binding.0 = Some(HeapBinding {
+            vulkan_memory,
+            region: Some(region.0.take().unwrap()),
+        });
 
         // Compute the virtual memory of the allocated object
-        let ptr = if self.ptr.is_null() {
-            // We must not call `offset` on an invalid pointer -- it's UB
+        let memory_ptr = self.vulkan_memory.ptr;
+        let ptr = if memory_ptr.is_null() {
             ::null_mut()
         } else {
-            unsafe { self.ptr.offset(offset as isize) }
+            memory_ptr.wrapping_offset(offset as isize)
         };
 
-        unimplemented!()
-        // Ok(Some(HeapAlloc { pool_ptr, ptr }.into()))
+        binding_info.ptr.store(ptr, Ordering::Relaxed);
+
+        Ok(true)
     }
 
-    fn make_aliasable(&self, _obj: base::ResourceRef<'_>) -> Result<()> {
-        unimplemented!()
-        /* let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
+    fn make_aliasable(&self, obj: base::ResourceRef<'_>) -> Result<()> {
+        let bindable = bindable_from_resource_ref(obj);
+        let binding_info = bindable.binding_info();
+
         let mut state = self.state.lock();
         let state = &mut *state; // enable split borrowing
 
-        // Keep it in the pool, but deallocate the region
-        let ref mut alloc_data = state.allocations[alloc.pool_ptr];
-        if let Some(region) = alloc_data.region.take() {
+        let mut binding_maybe = binding_info
+            .binding
+            .borrow(&mut state.token)
+            .expect("resource is not bound to this heap");
+
+        let binding = binding_maybe.as_mut().unwrap();
+
+        if let Some(region) = binding.region.take() {
             unsafe {
                 state.allocator.dealloc_unchecked(region);
             }
         }
-        Ok(()) */
-    }
 
-    /* fn unbind(&self, alloc: &base::HeapAllocRef) -> Result<()> {
-        let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        let mut state = self.state.lock();
-
-        // Remove it from the pool, and deallocate the region
-        let mut alloc_data = state.allocations.deallocate(alloc.pool_ptr).unwrap();
-        if let Some(region) = alloc_data.region.take() {
-            unsafe {
-                state.allocator.dealloc_unchecked(region);
-            }
-        }
         Ok(())
     }
-
-    fn as_ptr(&self, alloc: &base::HeapAllocRef) -> Result<*mut u8> {
-        let alloc: &HeapAlloc = alloc.downcast_ref().expect("bad heap alloc type");
-        Ok(alloc.ptr)
-    } */
 }

@@ -5,7 +5,7 @@
 //
 //! Implementation of `Buffer` for Vulkan.
 use ash::version::*;
-use ash::vk;
+use ash::{vk, prelude::VkResult};
 use std::sync::Arc;
 
 use crate::device::DeviceRef;
@@ -13,10 +13,10 @@ use zangfx_base as base;
 use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
-use crate::resstate;
 use crate::utils::{
     queue_id_from_queue, translate_generic_error_unwrap, translate_memory_req, QueueIdBuilder,
 };
+use crate::{heap, resstate};
 
 /// Implementation of `BufferBuilder` for Vulkan.
 #[derive(Debug)]
@@ -103,6 +103,7 @@ impl base::BufferBuilder for BufferBuilder {
             device,
             vk_buffer,
             len: size,
+            binding_info: heap::HeapBindingInfo::new(),
         });
 
         let queue_id = self.queue_id.get(&vulkan_buffer.device);
@@ -131,7 +132,7 @@ struct VulkanBuffer {
     device: DeviceRef,
     vk_buffer: vk::Buffer,
     len: base::DeviceSize,
-    // TODO: Heap binding
+    binding_info: heap::HeapBindingInfo,
 }
 
 type BufferState = ();
@@ -156,9 +157,16 @@ impl Buffer {
     }
 }
 
+impl VulkanBuffer {
+    fn memory_req(&self) -> base::MemoryReq {
+        let vk_device = self.device.vk_device();
+        translate_memory_req(&vk_device.get_buffer_memory_requirements(self.vk_buffer))
+    }
+}
+
 unsafe impl base::Buffer for Buffer {
     fn as_ptr(&self) -> *mut u8 {
-        unimplemented!()
+        self.vulkan_buffer.binding_info.as_ptr()
     }
 
     fn len(&self) -> base::DeviceSize {
@@ -180,9 +188,25 @@ unsafe impl base::Buffer for Buffer {
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
+        Ok(self.vulkan_buffer.memory_req())
+    }
+}
+
+impl heap::Bindable for Buffer {
+    fn memory_req(&self) -> base::MemoryReq {
+        self.vulkan_buffer.memory_req()
+    }
+
+    fn binding_info(&self) -> &heap::HeapBindingInfo {
+        &self.vulkan_buffer.binding_info
+    }
+
+    unsafe fn bind(
+        &self,
+        vk_device_memory: vk::DeviceMemory,
+        offset: vk::DeviceSize,
+    ) -> VkResult<()> {
         let vk_device = self.vulkan_buffer.device.vk_device();
-        Ok(translate_memory_req(
-            &vk_device.get_buffer_memory_requirements(self.vk_buffer()),
-        ))
+        vk_device.bind_buffer_memory(self.vk_buffer(), vk_device_memory, offset)
     }
 }

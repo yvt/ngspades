@@ -5,7 +5,7 @@
 //
 //! Implementation of `Image` for Vulkan.
 use ash::version::*;
-use ash::vk;
+use ash::{prelude::VkResult, vk};
 use std::ops;
 use std::sync::Arc;
 
@@ -15,11 +15,11 @@ use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object
 
 use crate::device::DeviceRef;
 use crate::formats::translate_image_format;
-use crate::resstate;
 use crate::utils::{
     offset_range, queue_id_from_queue, translate_generic_error_unwrap,
     translate_image_subresource_range, translate_memory_req, QueueIdBuilder,
 };
+use crate::{heap, resstate};
 
 /// Implementation of `ImageBuilder` for Vulkan.
 #[derive(Debug)]
@@ -193,6 +193,7 @@ impl base::ImageBuilder for ImageBuilder {
             num_mip_levels: self.num_mip_levels,
             usage: self.usage,
             aspects: aspect,
+            binding_info: heap::HeapBindingInfo::new(),
         });
 
         let state = ImageState::new(&vulkan_image);
@@ -258,7 +259,7 @@ struct VulkanImage {
     num_mip_levels: u32,
     usage: base::ImageUsageFlags,
     aspects: vk::ImageAspectFlags,
-    // TODO: Heap binding
+    binding_info: heap::HeapBindingInfo,
 }
 
 impl Drop for VulkanImage {
@@ -412,6 +413,11 @@ impl VulkanImage {
                 .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT),
         )
     }
+
+    fn memory_req(&self) -> base::MemoryReq {
+        let vk_device = self.device.vk_device();
+        translate_memory_req(&vk_device.get_image_memory_requirements(self.vk_image))
+    }
 }
 
 impl base::Image for Image {
@@ -435,10 +441,26 @@ impl base::Image for Image {
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
+        Ok(self.image_view.vulkan_image.memory_req())
+    }
+}
+
+impl heap::Bindable for Image {
+    fn memory_req(&self) -> base::MemoryReq {
+        self.image_view.vulkan_image.memory_req()
+    }
+
+    fn binding_info(&self) -> &heap::HeapBindingInfo {
+        &self.image_view.vulkan_image.binding_info
+    }
+
+    unsafe fn bind(
+        &self,
+        vk_device_memory: vk::DeviceMemory,
+        offset: vk::DeviceSize,
+    ) -> VkResult<()> {
         let vk_device = self.image_view.vulkan_image.device.vk_device();
-        Ok(translate_memory_req(
-            &vk_device.get_image_memory_requirements(self.vk_image()),
-        ))
+        vk_device.bind_image_memory(self.vk_image(), vk_device_memory, offset)
     }
 }
 
