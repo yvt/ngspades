@@ -95,7 +95,7 @@ pub trait DedicatedHeapBuilder: Object {
 
     // FIXME: resource aliasing?
 
-    /// Build a `Heap`.
+    /// Build a [`Heap`].
     ///
     /// After a successful construction of a `Heap`,  all resources in the
     /// dedicated allocation list will be bound to the created heap and will be
@@ -116,8 +116,8 @@ pub trait DedicatedHeapBuilder: Object {
     ///   every resource in  the dedicated allocation list must be associated
     ///   with the queue specified by [`DedicatedHeapBuilder::queue`].
     /// - Every resource in the dedicated allocation list must follow all rules
-    ///   specified in the Valid Usage of `Heap::bind` (except for the one about
-    ///   the heap type).
+    ///   specified in the Valid Usage of [`Heap::bind`] (except for the one
+    ///   about the heap type).
     ///
     fn build(&mut self) -> Result<HeapRef>;
 }
@@ -146,9 +146,8 @@ pub trait Heap: Object {
     ///    created from.
     ///  - `obj` must be in the Prototype state.
     ///  - `obj` must not be a proxy object.
-    ///  - The heap must be a dynamic heap, i.e. have been created using a
-    ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
-    ///    method.)
+    ///  - The heap must not be a dedicated heap, i.e. have not been created
+    ///    using a [`DedicatedHeapBuilder`].
     ///  - If `obj` refers to an image, this heap must not be associated with a
     ///    host-visible memory type.
     ///
@@ -164,8 +163,7 @@ pub trait Heap: Object {
     ///
     ///  - `obj` must be bound to this heap.
     ///  - The heap must be a dynamic heap, i.e. have been created using a
-    ///    `DynamicHeapBuilder`. (Dedicated heaps are not supported by this
-    ///    method.)
+    ///    [`DynamicHeapBuilder`].
     ///
     fn make_aliasable(&self, obj: resources::ResourceRef<'_>) -> Result<()>;
 }
