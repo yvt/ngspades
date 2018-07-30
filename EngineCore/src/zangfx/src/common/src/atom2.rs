@@ -133,6 +133,11 @@ impl<T: PtrSized> AtomicArc<T> {
         self.swap(None, order)
     }
 
+    pub fn is_equal_to<P: AsRawPtr<T::Value>>(&self, other: &P, order: Ordering) -> bool {
+        let other_ptr = other.as_raw_ptr();
+        self.ptr.load(order) == other_ptr as *mut T::Value
+    }
+
     /// Stores a value into the storage if the current value is the same as the
     /// `current` value.
     ///
