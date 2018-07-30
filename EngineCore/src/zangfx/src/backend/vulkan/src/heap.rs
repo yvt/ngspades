@@ -304,16 +304,11 @@ fn bindable_from_resource_ref(obj: base::ResourceRef<'_>) -> &dyn Bindable {
     }
 }
 
-impl base::Heap for Heap {
-    fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
+impl HeapState {
+    fn bind(&mut self, vulkan_memory: &Arc<VulkanMemory>, bindable: &dyn Bindable) -> Result<bool> {
         use std::mem::ManuallyDrop;
 
-        let bindable = bindable_from_resource_ref(obj);
         let req = bindable.memory_req();
-
-        // Start allocation...
-        let mut state = self.state.lock();
-        let state = &mut *state; // enable split borrowing
 
         // Claim an exclusive ownership of `HeapBindingInfo::binding` of the
         // resource.
@@ -332,7 +327,7 @@ impl base::Heap for Heap {
         let binding_info = bindable.binding_info();
         let binding = binding_info
             .binding
-            .acquire(&mut state.token)
+            .acquire(&mut self.token)
             .expect("resource is already, or is being bound to another heap");
         let mut binding = Binding(ManuallyDrop::new(binding));
 
@@ -347,27 +342,25 @@ impl base::Heap for Heap {
             }
         }
 
-        let (region, offset) = match state.allocator.alloc_aligned(req.size, req.align) {
+        let (region, offset) = match self.allocator.alloc_aligned(req.size, req.align) {
             Some(allocation) => allocation,
             None => return Ok(false),
         };
-        let mut region = Alloc(Some(region), &mut state.allocator);
+        let mut region = Alloc(Some(region), &mut self.allocator);
 
         // Bind the resource to the memory region
         // This is an irreversible operation.
-        unsafe { bindable.bind(self.vulkan_memory.vk_device_memory(), offset) }
+        unsafe { bindable.bind(vulkan_memory.vk_device_memory(), offset) }
             .map_err(translate_map_memory_error_unwrap)?;
 
         // Store the binding info to the resource
-        let vulkan_memory = Arc::clone(&self.vulkan_memory);
-
         **binding.0 = Some(HeapBinding {
-            vulkan_memory,
+            vulkan_memory: Arc::clone(vulkan_memory),
             region: Some(region.0.take().unwrap()),
         });
 
         // Compute the virtual memory of the allocated object
-        let memory_ptr = self.vulkan_memory.ptr;
+        let memory_ptr = vulkan_memory.ptr;
         let ptr = if memory_ptr.is_null() {
             ::null_mut()
         } else {
@@ -379,26 +372,40 @@ impl base::Heap for Heap {
         Ok(true)
     }
 
-    fn make_aliasable(&self, obj: base::ResourceRef<'_>) -> Result<()> {
-        let bindable = bindable_from_resource_ref(obj);
+    fn make_aliasable(&mut self, bindable: &dyn Bindable) -> Result<()> {
         let binding_info = bindable.binding_info();
-
-        let mut state = self.state.lock();
-        let state = &mut *state; // enable split borrowing
 
         let mut binding_maybe = binding_info
             .binding
-            .borrow(&mut state.token)
+            .borrow(&mut self.token)
             .expect("resource is not bound to this heap");
 
         let binding = binding_maybe.as_mut().unwrap();
 
         if let Some(region) = binding.region.take() {
             unsafe {
-                state.allocator.dealloc_unchecked(region);
+                self.allocator.dealloc_unchecked(region);
             }
         }
 
         Ok(())
+    }
+}
+
+impl base::Heap for Heap {
+    fn bind(&self, obj: base::ResourceRef<'_>) -> Result<bool> {
+        let bindable = bindable_from_resource_ref(obj);
+
+        let mut state = self.state.lock();
+
+        state.bind(&self.vulkan_memory, bindable)
+    }
+
+    fn make_aliasable(&self, obj: base::ResourceRef<'_>) -> Result<()> {
+        let bindable = bindable_from_resource_ref(obj);
+
+        let mut state = self.state.lock();
+
+        state.make_aliasable(bindable)
     }
 }
