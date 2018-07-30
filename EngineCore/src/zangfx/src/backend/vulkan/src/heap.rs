@@ -15,8 +15,8 @@ use tokenlock::Token;
 use xalloc::{SysTlsf, SysTlsfRegion};
 
 use zangfx_base as base;
+use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
-use zangfx_base::{Error, Result};
 use zangfx_common::{TokenCell, TokenCellRef};
 
 use crate::device::DeviceRef;
@@ -66,8 +66,35 @@ impl base::DynamicHeapBuilder for DynamicHeapBuilder {
 pub struct DedicatedHeapBuilder {
     device: DeviceRef,
     memory_type: Option<base::MemoryType>,
-    allocs: Vec<(base::DeviceSize, base::DeviceSize)>,
-    error: Option<Error>,
+    allocs: Vec<Resource>,
+}
+
+#[derive(Debug, Clone)]
+enum Resource {
+    Image(image::Image),
+    Buffer(buffer::Buffer),
+}
+
+impl Resource {
+    fn clone_from(obj: base::ResourceRef<'_>) -> Self {
+        match obj {
+            base::ResourceRef::Buffer(buffer) => {
+                let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
+                Resource::Buffer(our_buffer.clone())
+            }
+            base::ResourceRef::Image(image) => {
+                let our_image: &image::Image = image.downcast_ref().expect("bad image type");
+                Resource::Image(our_image.clone())
+            }
+        }
+    }
+
+    fn bindable(&self) -> &dyn Bindable {
+        match self {
+            Resource::Image(x) => x,
+            Resource::Buffer(x) => x,
+        }
+    }
 }
 
 zangfx_impl_object! { DedicatedHeapBuilder: dyn base::DedicatedHeapBuilder, dyn (crate::Debug) }
@@ -78,15 +105,13 @@ impl DedicatedHeapBuilder {
             device,
             memory_type: None,
             allocs: Vec::new(),
-            error: None,
         }
     }
 }
 
 impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
-    fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::DedicatedHeapBuilder {
-        unimplemented!();
-        self
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::DedicatedHeapBuilder {
+        unimplemented!()
     }
 
     fn memory_type(&mut self, v: base::MemoryType) -> &mut dyn base::DedicatedHeapBuilder {
@@ -95,28 +120,19 @@ impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
     }
 
     fn enable_use_heap(&mut self) -> &mut dyn base::DedicatedHeapBuilder {
-        unimplemented!();
-        self
-    }
-
-    fn bind(&mut self, obj: base::ResourceRef<'_>) {
-        match obj.get_memory_req() {
-            Ok(req) => self.allocs.push((req.size, req.align)),
-            // Save the error and return it from `build`.
-            Err(err) => self.error = Some(err),
-        }
         unimplemented!()
     }
 
+    fn bind(&mut self, obj: base::ResourceRef<'_>) {
+        self.allocs.push(Resource::clone_from(obj));
+    }
+
     fn build(&mut self) -> Result<base::HeapRef> {
-        if let Some(error) = self.error.take() {
-            // We can't return the full `Error` twice because it's not `Clone`.
-            self.error = Some(Error::new(error.kind()));
-            return Err(error);
-        }
+        use std::mem::replace;
 
         let memory_type = self.memory_type.expect("memory_type");
-        let mut heap_size = 0;
+
+        let allocs = replace(&mut self.allocs, Vec::new());
 
         // Since dedicated heaps do not support aliasing (yet), estimating the
         // required heap size is easy peasy cheesy¹.
@@ -125,12 +141,25 @@ impl base::DedicatedHeapBuilder for DedicatedHeapBuilder {
         // We'll need it to deterministically operate `SysTlsf`s.
         //
         // ¹ http://mlp.wikia.com/wiki/File:Pinkie_Pie_%22easy-peasy-cheesy!%22_S7E18.png
-        for &(size, align) in self.allocs.iter() {
-            heap_size = (heap_size + align - 1) & !(align - 1);
-            heap_size += size;
+        let mut heap_size = 0;
+        for resource in allocs.iter() {
+            let req = resource.bindable().memory_req();
+            heap_size = (heap_size + req.align - 1) & !(req.align - 1);
+            heap_size += req.size;
         }
 
-        Heap::new(self.device.clone(), heap_size, memory_type, heap_size).map(|x| Arc::new(x) as _)
+        let mut heap = Heap::new(self.device.clone(), heap_size, memory_type, heap_size)?;
+
+        // Bind resources
+        for resource in allocs.iter() {
+            let success = heap
+                .state
+                .get_mut()
+                .bind(&heap.vulkan_memory, resource.bindable())?;
+            assert!(success, "allocation has unexpectecdly failed");
+        }
+
+        Ok(Arc::new(heap))
     }
 }
 
