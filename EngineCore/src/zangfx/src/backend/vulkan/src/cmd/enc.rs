@@ -59,6 +59,12 @@ impl RefTable {
         Default::default()
     }
 
+    crate fn clear(&mut self) {
+        self.compute_pipelines.clear();
+        self.render_pipelines.clear();
+        self.render_target_tables.clear();
+    }
+
     crate fn insert_compute_pipeline(&mut self, obj: &ComputePipeline) {
         self.compute_pipelines.insert(obj.clone());
     }

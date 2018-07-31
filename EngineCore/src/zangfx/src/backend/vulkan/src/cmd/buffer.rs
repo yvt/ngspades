@@ -12,8 +12,8 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use zangfx_base as base;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
 use crate::buffer::Buffer;
 use crate::device::DeviceRef;
@@ -21,36 +21,38 @@ use crate::utils::{
     translate_access_type_flags, translate_generic_error_unwrap, translate_pipeline_stage_flags,
 };
 
-use super::bufferpool::VkCmdBufferPoolItem;
+use super::bufferpool::{CbPoolContent, CbPoolItem};
 use super::enc::{FenceSet, RefTable};
 use super::enc_compute::ComputeEncoder;
 use super::enc_copy::CopyEncoder;
 use super::enc_render::RenderEncoder;
-use super::queue::{CommitedBuffer, Scheduler};
+use super::queue::Scheduler;
 use super::semaphore::Semaphore;
 
 /// Implementation of `CmdBuffer` for Vulkan.
 #[derive(Debug)]
 pub struct CmdBuffer {
-    uncommited: Option<Uncommited>,
+    uncommited: Option<CbPoolItem<Box<CmdBufferData>>>,
 }
 
 zangfx_impl_object! { CmdBuffer: dyn base::CmdBuffer, dyn (crate::Debug) }
 
 #[derive(Debug)]
-struct Uncommited {
+crate struct CmdBufferData {
     device: DeviceRef,
     scheduler: Arc<Scheduler>,
-    vk_cmd_buffer_pool_item: VkCmdBufferPoolItem,
+    vk_cmd_pool: vk::CommandPool,
 
-    fence_set: FenceSet,
+    crate passes: Vec<Pass>,
+
+    crate fence_set: FenceSet,
     ref_table: RefTable,
 
-    wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
-    signal_semaphores: Vec<Semaphore>,
+    crate wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
+    crate signal_semaphores: Vec<Semaphore>,
 
     /// The set of registered completion callbacks.
-    completion_callbacks: CallbackSet,
+    crate completion_callbacks: CallbackSet,
 
     /// Currently active encoder.
     encoder: Option<Encoder>,
@@ -64,7 +66,14 @@ enum Encoder {
 }
 
 #[derive(Default)]
-struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
+crate struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
+
+/// A set of commands and dependencies encoded in a single encoder.
+#[derive(Debug)]
+crate struct Pass {
+    crate vk_cmd_buffer: vk::CommandBuffer,
+    // TODO
+}
 
 impl fmt::Debug for CallbackSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -74,43 +83,19 @@ impl fmt::Debug for CallbackSet {
     }
 }
 
+impl CallbackSet {
+    crate fn on_complete(&mut self, result: &mut impl FnMut() -> Result<()>) {
+        for mut callback in self.0.drain(..) {
+            callback(result());
+        }
+    }
+}
+
 impl CmdBuffer {
-    pub(super) fn new(
-        device: DeviceRef,
-        vk_cmd_buffer_pool_item: VkCmdBufferPoolItem,
-        scheduler: Arc<Scheduler>,
-    ) -> Result<Self> {
-        let vk_device = device.vk_device();
-
-        let uncommited = Uncommited {
-            device: device.clone(),
-            scheduler,
-            vk_cmd_buffer_pool_item,
-            fence_set: FenceSet::new(),
-            ref_table: RefTable::new(),
-            wait_semaphores: Vec::new(),
-            signal_semaphores: Vec::new(),
-            completion_callbacks: Default::default(),
-            encoder: None,
-        };
-
-        let cmd_buffer = Self {
-            uncommited: Some(uncommited),
-        };
-
-        unsafe {
-            vk_device.begin_command_buffer(
-                cmd_buffer.uncommited.as_ref().unwrap().vk_cmd_buffer(),
-                &vk::CommandBufferBeginInfo {
-                    s_type: vk::StructureType::CommandBufferBeginInfo,
-                    p_next: ::null(),
-                    flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                    p_inheritance_info: ::null(),
-                },
-            )
-        }.map_err(translate_generic_error_unwrap)?;
-
-        Ok(cmd_buffer)
+    crate fn new(data: CbPoolItem<Box<CmdBufferData>>) -> Self {
+        Self {
+            uncommited: Some(data),
+        }
     }
 
     /// Return the underlying Vulkan command buffer. Returns `None` if the
@@ -120,7 +105,39 @@ impl CmdBuffer {
     }
 }
 
-impl Uncommited {
+impl CmdBufferData {
+    crate fn new(
+        device: DeviceRef,
+        queue_family_index: u32,
+        scheduler: Arc<Scheduler>,
+    ) -> Result<Self> {
+        let vk_cmd_pool = unsafe {
+            let vk_device = device.vk_device();
+            vk_device.create_command_pool(
+                &vk::CommandPoolCreateInfo {
+                    s_type: vk::StructureType::CommandPoolCreateInfo,
+                    p_next: crate::null(),
+                    flags: vk::COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                    queue_family_index,
+                },
+                None,
+            )
+        }.map_err(translate_generic_error_unwrap)?;
+
+        Ok(CmdBufferData {
+            device: device.clone(),
+            scheduler,
+            vk_cmd_pool,
+            passes: Vec::new(),
+            fence_set: FenceSet::new(),
+            ref_table: RefTable::new(),
+            wait_semaphores: Vec::new(),
+            signal_semaphores: Vec::new(),
+            completion_callbacks: Default::default(),
+            encoder: None,
+        })
+    }
+
     /// Clear `self.encoder` and take `fence_set` back from it.
     fn clear_encoder(&mut self) {
         if let Some(enc) = self.encoder.take() {
@@ -141,7 +158,43 @@ impl Uncommited {
     }
 
     fn vk_cmd_buffer(&self) -> vk::CommandBuffer {
-        self.vk_cmd_buffer_pool_item.vk_cmd_buffer()
+        unimplemented!()
+    }
+
+    crate fn reset(&mut self) {
+        let vk_device = self.device.vk_device();
+        for pass in self.passes.drain(..) {
+            unsafe {
+                vk_device.free_command_buffers(self.vk_cmd_pool, &[pass.vk_cmd_buffer]);
+            }
+        }
+
+        self.fence_set.wait_fences.clear();
+        self.fence_set.signal_fences.clear();
+        self.ref_table.clear();
+        self.wait_semaphores.clear();
+        self.signal_semaphores.clear();
+        self.completion_callbacks.0.clear();
+
+        // TODO
+    }
+}
+
+impl CbPoolContent for CmdBufferData {
+    /// Called when `CmdBufferData` is returned to a pool.
+    fn reset(&mut self) {
+        self.reset()
+    }
+}
+
+impl Drop for CmdBufferData {
+    fn drop(&mut self) {
+        let vk_device = self.device.vk_device();
+        unsafe {
+            // This operation automatically frees all command buffers allocated
+            // from the pool
+            vk_device.destroy_command_pool(self.vk_cmd_pool, None);
+        }
     }
 }
 
@@ -162,17 +215,9 @@ impl base::CmdBuffer for CmdBuffer {
         }
 
         let uncommited = self.uncommited.take().unwrap();
+        let scheduler = uncommited.scheduler.clone();
 
-        uncommited.scheduler.commit(CommitedBuffer {
-            fence_set: uncommited.fence_set,
-            ref_table: Some(uncommited.ref_table),
-            vk_cmd_buffer_pool_item: Some(uncommited.vk_cmd_buffer_pool_item),
-            completion_handler: BufferCompleteCallback {
-                completion_callbacks: uncommited.completion_callbacks,
-            },
-            wait_semaphores: uncommited.wait_semaphores,
-            signal_semaphores: uncommited.signal_semaphores,
-        });
+        scheduler.commit(uncommited);
 
         Ok(())
     }
@@ -315,8 +360,7 @@ impl base::CmdBuffer for CmdBuffer {
                         offset: range.start,
                         size: range.end - range.start,
                     }
-                })
-                .collect();
+                }).collect();
 
             unsafe {
                 vk_device.cmd_pipeline_barrier(
@@ -348,18 +392,5 @@ impl base::CmdBuffer for CmdBuffer {
         _transfer: &base::QueueOwnershipTransfer<'_>,
     ) {
         unimplemented!()
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct BufferCompleteCallback {
-    completion_callbacks: CallbackSet,
-}
-
-impl BufferCompleteCallback {
-    pub(super) fn on_complete(&mut self, result: &mut impl FnMut() -> Result<()>) {
-        for mut callback in self.completion_callbacks.0.drain(..) {
-            callback(result());
-        }
     }
 }

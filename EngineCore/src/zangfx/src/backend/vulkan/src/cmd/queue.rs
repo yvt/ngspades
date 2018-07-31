@@ -12,14 +12,14 @@ use tokenlock::{Token, TokenRef};
 
 use crate::device::DeviceRef;
 use zangfx_base as base;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
 use crate::limits::DeviceConfig;
 use crate::utils::translate_generic_error_unwrap;
 
-use super::buffer::BufferCompleteCallback;
-use super::bufferpool::VkCmdBufferPoolItem;
+use super::buffer::{CmdBuffer, CmdBufferData};
+use super::bufferpool::{CbPool, CbPoolItem};
 use super::enc::{FenceSet, RefTable};
 use super::fence::Fence;
 use super::monitor::{Monitor, MonitorHandler};
@@ -60,7 +60,6 @@ pub struct CmdQueueBuilder {
     device: DeviceRef,
     queue_pool: Arc<QueuePool>,
 
-    max_num_outstanding_cmd_buffers: usize,
     max_num_outstanding_batches: usize,
     queue_family: Option<base::QueueFamily>,
 }
@@ -72,18 +71,9 @@ impl CmdQueueBuilder {
         Self {
             device,
             queue_pool,
-            max_num_outstanding_cmd_buffers: 64,
             max_num_outstanding_batches: 8,
             queue_family: None,
         }
-    }
-
-    /// Set the maximum number of outstanding command buffers per command pool.
-    ///
-    /// Defaults to `64`.
-    pub fn max_num_outstanding_cmd_buffers(&mut self, v: usize) -> &mut Self {
-        self.max_num_outstanding_cmd_buffers = v;
-        self
     }
 
     /// Set the maximum number of outstanding batches.
@@ -102,10 +92,6 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
     }
 
     fn build(&mut self) -> Result<base::CmdQueueRef> {
-        if self.max_num_outstanding_cmd_buffers < 1 {
-            panic!("max_num_outstanding_cmd_buffers");
-        }
-
         if self.max_num_outstanding_batches < 1 {
             panic!("max_num_outstanding_batches");
         }
@@ -118,15 +104,9 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
         let vk_queue = unsafe { vk_device.get_device_queue(queue_family, index) };
 
         let num_fences = self.max_num_outstanding_batches;
-        let num_cbs = self.max_num_outstanding_cmd_buffers;
 
-        CmdQueue::new(
-            self.device.clone(),
-            vk_queue,
-            queue_family,
-            num_fences,
-            num_cbs,
-        ).map(|x| Arc::new(x) as _)
+        CmdQueue::new(self.device.clone(), vk_queue, queue_family, num_fences)
+            .map(|x| Arc::new(x) as _)
     }
 }
 
@@ -136,7 +116,7 @@ pub struct CmdQueue {
     device: DeviceRef,
     vk_queue: vk::Queue,
     queue_family_index: u32,
-    num_cbs: usize,
+    cb_pool: CbPool<Box<CmdBufferData>>,
     monitor: Monitor<BatchDoneHandler>,
     scheduler: Option<Arc<Scheduler>>,
     resstate_queue: resstate::Queue,
@@ -157,24 +137,29 @@ impl CmdQueue {
         vk_queue: vk::Queue,
         queue_family_index: u32,
         num_fences: usize,
-        num_cbs: usize,
     ) -> Result<Self> {
         let scheduler_data = SchedulerData::default();
 
-        let (resstate_queue, _) = resstate::new_queue();
+        let (resstate_queue, resstate_cbs) = resstate::new_queue();
 
         // Set the default queue used during resource creation.
         device.set_default_resstate_queue_if_missing(resstate_queue.queue_id());
 
+        let scheduler = Arc::new(Scheduler {
+            token_ref: (&scheduler_data.token).into(),
+            data: Mutex::new(scheduler_data),
+        });
+
+        let cb_pool = CbPool::new(resstate_cbs.into_iter().map(|resstate_cb| {
+            CmdBufferData::new(device.clone(), queue_family_index, scheduler.clone()).map(Box::new)
+        }))?;
+
         Ok(Self {
             vk_queue,
             queue_family_index,
-            num_cbs,
+            cb_pool,
             monitor: Monitor::new(device.clone(), vk_queue, num_fences)?,
-            scheduler: Some(Arc::new(Scheduler {
-                token_ref: (&scheduler_data.token).into(),
-                data: Mutex::new(scheduler_data),
-            })),
+            scheduler: Some(scheduler),
             device,
             resstate_queue,
         })
@@ -195,17 +180,8 @@ impl CmdQueue {
 }
 
 impl base::CmdQueue for CmdQueue {
-    /* fn new_cmd_pool(&self) -> Result<Box<base::CmdPool>> {
-        CmdPool::new(
-            self.device,
-            Arc::clone(&self.scheduler()),
-            self.queue_family_index,
-            self.num_cbs,
-        ).map(|x| Box::new(x) as _)
-    } */
-
     fn new_cmd_buffer(&self) -> Result<base::CmdBufferRef> {
-        unimplemented!()
+        Ok(Box::new(CmdBuffer::new(self.cb_pool.allocate())))
     }
 
     fn new_fence(&self) -> Result<base::FenceRef> {
@@ -222,7 +198,7 @@ impl base::CmdQueue for CmdQueue {
 }
 
 #[derive(Debug)]
-pub(super) struct Scheduler {
+crate struct Scheduler {
     data: Mutex<SchedulerData>,
 
     /// Used to *construct* scheduler-specific data in `Fence`s.
@@ -239,8 +215,8 @@ struct SchedulerData {
 }
 
 #[derive(Debug)]
-pub(super) struct Item {
-    commited: CommitedBuffer,
+crate struct Item {
+    commited: CbPoolItem<Box<CmdBufferData>>,
 
     /// The current index into `FenceSet::wait_fences` impeding the
     /// execution of this queue item.
@@ -270,21 +246,11 @@ fn for_each_item_mut<T: FnMut(&mut Item)>(item_or_none: &mut Option<Box<Item>>, 
     }
 }
 
-#[derive(Debug)]
-pub(super) struct CommitedBuffer {
-    crate fence_set: FenceSet,
-    crate ref_table: Option<RefTable>,
-    crate vk_cmd_buffer_pool_item: Option<VkCmdBufferPoolItem>,
-    crate completion_handler: BufferCompleteCallback,
-    crate wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
-    crate signal_semaphores: Vec<Semaphore>,
-}
-
 impl Scheduler {
     /// Called by a command buffer's method.
-    crate fn commit(&self, commited_buffer: CommitedBuffer) {
+    crate fn commit(&self, commited: CbPoolItem<Box<CmdBufferData>>) {
         let mut item = Box::new(Item {
-            commited: commited_buffer,
+            commited,
             wait_fence_index: 0,
             next: None,
         });
@@ -398,7 +364,8 @@ impl SchedulerData {
 
         for item in ItemIter(scheduled_items.as_ref()) {
             let ref commited = item.commited;
-            num_cmd_buffers += 1;
+            // TODO: Take patched command buffers into account
+            num_cmd_buffers += commited.passes.len();
             num_wait_semaphores += commited.wait_semaphores.len();
             num_signal_semaphores += commited.signal_semaphores.len();
         }
@@ -446,7 +413,7 @@ impl SchedulerData {
         }
 
         for item in ItemIter(scheduled_items.as_ref()) {
-            let ref commited: CommitedBuffer = item.commited;
+            let ref commited = item.commited;
 
             if commited.wait_semaphores.len() > 0 {
                 terminate_current_batch = true;
@@ -466,13 +433,10 @@ impl SchedulerData {
 
             terminate_current_batch = false;
 
-            let vk_cmd_buffer = commited
-                .vk_cmd_buffer_pool_item
-                .as_ref()
-                .unwrap()
-                .vk_cmd_buffer();
-            vk_cmd_buffers.push(vk_cmd_buffer);
-            cur_num_cmd_buffers += 1;
+            for pass in commited.passes.iter() {
+                vk_cmd_buffers.push(pass.vk_cmd_buffer);
+                cur_num_cmd_buffers += 1;
+            }
 
             let ref wait_sems = commited.wait_semaphores;
             vk_wait_sems.extend(wait_sems.iter().map(|&(ref sem, _)| sem.vk_semaphore()));
@@ -488,15 +452,14 @@ impl SchedulerData {
             }
         }
 
-        if cur_num_cmd_buffers > 0 {
+        if cur_num_cmd_buffers > 0 || cur_num_signal_sems > 0 || cur_num_wait_sems > 0 {
             flush!();
         }
 
         let done_handler = BatchDoneHandler { scheduled_items };
 
-        let result = unsafe {
-            vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence())
-        };
+        let result =
+            unsafe { vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence()) };
 
         if let Err(err) = result {
             done_handler.finish(|| Err(translate_generic_error_unwrap(err)));
@@ -520,16 +483,13 @@ impl BatchDoneHandler {
         // Release objects first (because completion callbacks might tear
         // down the device)
         for_each_item_mut(&mut scheduled_items, |item| {
-            let ref mut commited: CommitedBuffer = item.commited;
-            commited.ref_table = None;
-            commited.vk_cmd_buffer_pool_item = None;
-            commited.wait_semaphores.clear();
-            commited.signal_semaphores.clear();
+            let ref mut commited = item.commited;
+            commited.reset();
         });
 
         // Call the completion callbacks
         while let Some(mut item) = { scheduled_items } {
-            item.commited.completion_handler.on_complete(&mut result);
+            item.commited.completion_callbacks.on_complete(&mut result);
             scheduled_items = item.next;
         }
     }

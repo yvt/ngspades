@@ -12,6 +12,5 @@ mod enc_copy;
 mod enc_render;
 pub mod fence;
 mod monitor;
-pub mod pool;
 pub mod queue;
 pub mod semaphore;
