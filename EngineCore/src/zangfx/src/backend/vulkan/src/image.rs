@@ -500,6 +500,14 @@ fn translate_image_usage(
     usage
 }
 
+/// Color attachments always use this layout.
+crate const IMAGE_LAYOUT_COLOR_ATTACHMENT: vk::ImageLayout =
+    vk::ImageLayout::ColorAttachmentOptimal;
+
+/// Depth/stencil attachments always use this layout.
+crate const IMAGE_LAYOUT_DS_ATTACHMENT: vk::ImageLayout =
+    vk::ImageLayout::DepthStencilAttachmentOptimal;
+
 crate fn translate_image_layout(
     usage: base::ImageUsageFlags,
     value: base::ImageLayout,

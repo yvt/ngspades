@@ -11,7 +11,7 @@ use std::ops;
 
 use crate::device::DeviceRef;
 use crate::formats::translate_image_format;
-use crate::image::Image;
+use crate::image::{Image, IMAGE_LAYOUT_COLOR_ATTACHMENT, IMAGE_LAYOUT_DS_ATTACHMENT};
 use zangfx_base as base;
 use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
@@ -69,10 +69,6 @@ impl base::RenderPassBuilder for RenderPassBuilder {
     ) -> &mut dyn base::RenderPassBuilder {
         let from = from as u32;
 
-        if from == self.subpass {
-            unimplemented!();
-        }
-
         let src_access_mask = translate_access_type_flags(src_access);
         let dst_access_mask = translate_access_type_flags(dst_access);
 
@@ -104,7 +100,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                 if let &Some(i) = maybe_target {
                     vk::AttachmentReference {
                         attachment: i as u32,
-                        layout: unimplemented!(), // translate_image_layout(layout, false),
+                        layout: IMAGE_LAYOUT_COLOR_ATTACHMENT,
                     }
                 } else {
                     vk::AttachmentReference {
@@ -120,7 +116,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
 
         self.depth_stencil_attachment = target.map(|i| vk::AttachmentReference {
             attachment: i as u32,
-            layout: unimplemented!(), // translate_image_layout(layout, true),
+            layout: IMAGE_LAYOUT_DS_ATTACHMENT,
         });
     }
 
@@ -152,8 +148,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                     .as_ref()
                     .expect("render target bindings must be tightly arranged")
                     .vk_desc()
-            })
-            .collect();
+            }).collect();
 
         let vk_info = vk::RenderPassCreateInfo {
             s_type: vk::StructureType::RenderPassCreateInfo,
@@ -183,8 +178,6 @@ impl base::RenderPassBuilder for RenderPassBuilder {
 struct RenderPassTargetBuilder {
     vk_desc: vk::AttachmentDescription,
     format: base::ImageFormat,
-    initial_layout: base::ImageLayout,
-    final_layout: base::ImageLayout,
 }
 
 zangfx_impl_object! { RenderPassTargetBuilder: dyn base::RenderPassTarget, dyn (crate::Debug) }
@@ -205,8 +198,6 @@ impl RenderPassTargetBuilder {
             },
             // No default value is defined for `format`
             format: base::ImageFormat::RFloat32,
-            initial_layout: unimplemented!(), //base::ImageLayout::Undefined,
-            final_layout: unimplemented!(),   //base::ImageLayout::ShaderRead,
         }
     }
 
@@ -215,8 +206,19 @@ impl RenderPassTargetBuilder {
 
         let format = self.format;
         let is_depth_stencil = format.has_depth() || format.has_stencil();
-        vk_desc.initial_layout = unimplemented!(); //translate_image_layout(self.initial_layout, is_depth_stencil);
-        vk_desc.final_layout = unimplemented!(); //translate_image_layout(self.final_layout, is_depth_stencil);
+
+        let render_layout = if is_depth_stencil {
+            IMAGE_LAYOUT_DS_ATTACHMENT
+        } else {
+            IMAGE_LAYOUT_COLOR_ATTACHMENT
+        };
+
+        vk_desc.initial_layout = if vk_desc.load_op == vk::AttachmentLoadOp::Load {
+            render_layout
+        } else {
+            vk::ImageLayout::Undefined
+        };
+        vk_desc.final_layout = render_layout;
 
         vk_desc
     }
@@ -246,20 +248,6 @@ impl base::RenderPassTarget for RenderPassTargetBuilder {
         self.vk_desc.stencil_store_op = translate_store_op(v);
         self
     }
-
-    /*
-    fn set_initial_layout(&mut self, v: base::ImageLayout) -> &mut dyn base::RenderPassTarget {
-        // The actual layout cannot be decided without knowing whether the image
-        // has the depth/stencil format.
-        self.initial_layout = v;
-        self
-    }
-    fn set_final_layout(&mut self, v: base::ImageLayout) -> &mut dyn base::RenderPassTarget {
-        // The actual layout cannot be decided without knowing whether the image
-        // has the depth/stencil format.
-        self.final_layout = v;
-        self
-    } */
 }
 
 fn translate_load_op(load_op: base::LoadOp) -> vk::AttachmentLoadOp {
@@ -665,7 +653,6 @@ impl fmt::Debug for ClearValue {
                     int32: self.0.color.int32,
                     depth_stencil: self.0.depth,
                 }
-            })
-            .finish()
+            }).finish()
     }
 }
