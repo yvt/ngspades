@@ -375,6 +375,21 @@ impl SchedulerData {
             return;
         }
 
+        // Resolve barriers
+        let mut finalize_result = Ok(());
+        for_each_item_mut(&mut scheduled_items, |item| {
+            if let Err(e) = item.commited.finalize(&mut self.resstate_queue) {
+                finalize_result = Err(e);
+            }
+        });
+
+        let done_handler = BatchDoneHandler { scheduled_items };
+
+        if let Err(err) = finalize_result {
+            done_handler.finish(|| Err(translate_generic_error_unwrap(err)));
+            return;
+        }
+
         // Create submission batches
         let fence = monitor.get_fence();
         let vk_device = device.vk_device();
@@ -383,10 +398,12 @@ impl SchedulerData {
         let mut num_wait_semaphores = 0;
         let mut num_signal_semaphores = 0;
 
-        for item in ItemIter(scheduled_items.as_ref()) {
+        for item in ItemIter(done_handler.scheduled_items.as_ref()) {
             let ref commited = item.commited;
-            // TODO: Take patched command buffers into account
             num_cmd_buffers += commited.passes.len();
+            if commited.vk_prelude_cmd_buffer.is_some() {
+                num_cmd_buffers += 1;
+            }
             num_wait_semaphores += commited.wait_semaphores.len();
             num_signal_semaphores += commited.signal_semaphores.len();
         }
@@ -433,7 +450,7 @@ impl SchedulerData {
             };
         }
 
-        for item in ItemIter(scheduled_items.as_ref()) {
+        for item in ItemIter(done_handler.scheduled_items.as_ref()) {
             let ref commited = item.commited;
 
             if commited.wait_semaphores.len() > 0 {
@@ -454,6 +471,10 @@ impl SchedulerData {
 
             terminate_current_batch = false;
 
+            if let Some(vk_cmd_buffer) = commited.vk_prelude_cmd_buffer {
+                vk_cmd_buffers.push(vk_cmd_buffer);
+                cur_num_cmd_buffers += 1;
+            }
             for pass in commited.passes.iter() {
                 vk_cmd_buffers.push(pass.vk_cmd_buffer);
                 cur_num_cmd_buffers += 1;
@@ -476,8 +497,6 @@ impl SchedulerData {
         if cur_num_cmd_buffers > 0 || cur_num_signal_sems > 0 || cur_num_wait_sems > 0 {
             flush!();
         }
-
-        let done_handler = BatchDoneHandler { scheduled_items };
 
         let result =
             unsafe { vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence()) };

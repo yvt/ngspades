@@ -50,8 +50,23 @@ struct FenceData {
 
 #[derive(Debug)]
 crate struct FenceScheduleData {
+    /*
+     * Command buffer scheduling - These fields are used by the scheduler to
+     * determine the order in which command buffers are executed
+     */
+    /// Indicates whether this fence is signaled.
     crate signaled: bool,
+
+    /// Command queue items waiting for this fence to be signaled.
     crate waiting: Option<Box<Item>>,
+
+    /*
+     * Command buffer patching - This field is used after the ommand buffer
+     * execution order is determined.
+     */
+    /// If this fence has been signaled, this field indicates the source access
+    /// type flags.
+    crate src_access: Option<base::AccessTypeFlags>,
 }
 
 impl Fence {
@@ -89,6 +104,7 @@ impl Fence {
                     FenceScheduleData {
                         signaled: false,
                         waiting: None,
+                        src_access: None,
                     },
                 ),
             }),

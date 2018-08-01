@@ -16,6 +16,7 @@ use crate::arg::pool::ArgTable;
 use crate::buffer::Buffer;
 use crate::cmd::fence::Fence;
 use crate::device::DeviceRef;
+use crate::limits::DeviceTrait;
 use crate::pipeline::{ComputePipeline, RenderPipeline};
 use crate::renderpass::RenderTargetTable;
 use crate::resstate::{CmdBuffer, RefTable};
@@ -28,6 +29,8 @@ use super::{CmdBufferData, EncodingState, Pass};
 crate struct FenceSet {
     /// A set of fence that must be signaled before executing the command
     /// buffer.
+    ///
+    /// Fences which are signaled by the same command buffer are not included.
     ///
     /// Each entry is an index into `RefTableSet::fences`.
     crate wait_fences: Vec<usize>,
@@ -60,6 +63,8 @@ impl FenceSet {
         let ref_entry = ref_table_set
             .fences
             .get_mut(&mut ref_table_set.cmd_buffer, fence);
+
+        debug_assert!(!ref_entry.op.signaled, "fence is already signaled");
 
         self.signal_fences.push(ref_entry.index);
     }
@@ -257,7 +262,11 @@ impl CmdBufferData {
         }.unwrap();
         // TODO: Handle command buffer beginning error
 
-        self.passes.push(Pass { vk_cmd_buffer });
+        self.passes.push(Pass {
+            vk_cmd_buffer,
+            signal_fences: Vec::new(),
+            wait_fences: Vec::new(),
+        });
         self.state = EncodingState::Render;
 
         self.desc_set_binding_table.reset();
@@ -346,6 +355,30 @@ impl CmdBufferData {
     ) {
         unimplemented!()
     }
+
+    /// Encode `vkCmdSetEvent` to do the fence updating operation.
+    crate fn cmd_update_fence(&self, fence: &Fence, src_access: base::AccessTypeFlags) {
+        let traits = self.device.caps().info.traits;
+        if traits.intersects(DeviceTrait::MoltenVK) {
+            // Skip all event operations on MoltenVK
+            return;
+        }
+
+        let src_stage = base::AccessType::union_supported_stages(src_access);
+
+        let device = self.device.vk_device();
+        unsafe {
+            device.fp_v1_0().cmd_set_event(
+                self.vk_cmd_buffer(),
+                fence.vk_event(),
+                if src_stage.is_empty() {
+                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                } else {
+                    translate_pipeline_stage_flags(src_stage)
+                },
+            );
+        }
+    }
 }
 
 impl base::CmdEncoder for CmdBufferData {
@@ -374,15 +407,58 @@ impl base::CmdEncoder for CmdBufferData {
     }
 
     fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
-        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        unimplemented!();
-        self.fence_set.wait_fence(&mut self.ref_table, &our_fence);
+        let our_fence = fence.downcast_ref().expect("bad fence type");
+
+        // 1. Add the fence to the reference table
+        // 2. A fence describes a inter-command buffer depdendency which has
+        //    a significance on command buffer scheduling.
+        self.fence_set.wait_fence(&mut self.ref_table, our_fence);
+
+        // 3. A fence describes a inter-pass dependency.
+        let fence_index = {
+            let ref mut ref_table = self.ref_table;
+            ref_table
+                .fences
+                .get_index_for_resource(&mut ref_table.cmd_buffer, our_fence)
+        };
+
+        {
+            let current_pass = self.passes.last_mut().unwrap();
+            current_pass.wait_fences.push((fence_index, dst_access));
+        }
+
+        // 4. `vkCmdWaitEvents` is inserted during command buffer submission.
+        //    We don't know the source stage flags at this point yet.
     }
 
     fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
-        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        unimplemented!();
-        self.fence_set.signal_fence(&mut self.ref_table, &our_fence);
+        let our_fence = fence.downcast_ref().expect("bad fence type");
+
+        // 1. Add the fence to the reference table
+        // 2. A fence describes a inter-command buffer depdendency which has
+        //    a significance on command buffer scheduling.
+        self.fence_set.signal_fence(&mut self.ref_table, our_fence);
+
+        // 3. A fence describes a inter-pass dependency.
+        let fence_index = {
+            let ref mut ref_table = self.ref_table;
+            ref_table
+                .fences
+                .get_index_for_resource(&mut ref_table.cmd_buffer, our_fence)
+        };
+
+        {
+            let current_pass = self.passes.last_mut().unwrap();
+            current_pass.signal_fences.push((fence_index, src_access));
+        }
+
+        // 4. Insert `vkCmdSetEvent`.
+        if self.state == EncodingState::Render {
+            // `vkCmdSetEvent` is not allowed inside a render pass
+            self.deferred_signal_fences.push((fence_index, src_access));
+        } else {
+            self.cmd_update_fence(our_fence, src_access);
+        }
     }
 
     fn barrier_core(

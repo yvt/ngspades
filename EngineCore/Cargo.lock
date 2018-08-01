@@ -2269,6 +2269,7 @@ dependencies = [
  "ngsenumflags_derive 0.2.2",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "refeq 0.1.0",
+ "smallvec 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "snowflake 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokenlock 0.1.4",
  "xalloc 0.2.3",

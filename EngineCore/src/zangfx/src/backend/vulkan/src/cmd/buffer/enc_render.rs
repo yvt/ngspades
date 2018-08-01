@@ -37,14 +37,27 @@ impl CmdBufferData {
     crate fn end_render_pass(&mut self) {
         assert_eq!(self.state, EncodingState::Render);
 
-        let vk_device = self.device.vk_device();
         unsafe {
+            let vk_device = self.device.vk_device();
             vk_device.cmd_end_render_pass(self.vk_cmd_buffer());
         }
 
         self.state = EncodingState::NotRender;
 
-        // TODO: Process deferred fences
+        // Process deferred fences
+        if self.deferred_signal_fences.len() > 0 {
+            // Can't drain `self.deferred_signal_fences` directly because
+            // `self.cmd_update_fence` needs a reference to `self`
+            use std::mem::replace;
+            let mut deferred_signal_fences = replace(&mut self.deferred_signal_fences, Vec::new());
+
+            for (fence_i, src_access) in deferred_signal_fences.drain(..) {
+                let fence = self.ref_table.fences.get_by_index(fence_i).resource;
+                self.cmd_update_fence(fence, src_access);
+            }
+
+            replace(&mut self.deferred_signal_fences, deferred_signal_fences);
+        }
     }
 }
 
