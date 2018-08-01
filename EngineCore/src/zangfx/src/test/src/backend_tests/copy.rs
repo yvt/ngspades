@@ -12,12 +12,21 @@ use zangfx_utils::prelude::*;
 
 pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
     driver.for_each_copy_queue(&mut |device, qf| {
+        println!("- Creating a command queue");
+        let queue = device
+            .build_cmd_queue()
+            .queue_family(qf)
+            .label("Main queue")
+            .build()
+            .unwrap();
+
         println!("- Creating a buffer");
         let buffer1 = device
             .build_buffer()
             .label("Buffer 1")
             .size(65536)
             .usage(flags![gfx::BufferUsage::{CopyWrite}])
+            .queue(&queue)
             .build()
             .unwrap();
 
@@ -45,14 +54,6 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
         for x in buffer1_view {
             x.store(0);
         }
-
-        println!("- Creating a command queue");
-        let queue = device
-            .build_cmd_queue()
-            .queue_family(qf)
-            .label("Main queue")
-            .build()
-            .unwrap();
 
         println!("- Creating a command buffer");
         let mut buffer = queue.new_cmd_buffer().unwrap();
@@ -92,12 +93,21 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
 
 pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
     driver.for_each_copy_queue(&mut |device, qf| {
+        println!("- Creating a command queue");
+        let queue = device
+            .build_cmd_queue()
+            .queue_family(qf)
+            .label("Main queue")
+            .build()
+            .unwrap();
+
         println!("- Creating buffers");
         let buffer1 = device
             .build_buffer()
             .label("Buffer 1")
             .size(65536)
             .usage(flags![gfx::BufferUsage::{CopyRead}])
+            .queue(&queue)
             .build()
             .unwrap();
         let buffer2 = device
@@ -105,6 +115,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             .label("Buffer 2")
             .size(65536)
             .usage(flags![gfx::BufferUsage::{CopyWrite}])
+            .queue(&queue)
             .build()
             .unwrap();
 
@@ -138,14 +149,6 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
         for x in buffer2_view {
             x.store(0);
         }
-
-        println!("- Creating a command queue");
-        let queue = device
-            .build_cmd_queue()
-            .queue_family(qf)
-            .label("Main queue")
-            .build()
-            .unwrap();
 
         println!("- Creating a command buffer");
         let mut buffer = queue.new_cmd_buffer().unwrap();

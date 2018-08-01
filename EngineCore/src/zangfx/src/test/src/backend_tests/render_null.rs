@@ -42,6 +42,7 @@ pub fn render_null<T: TestDriver>(driver: T) {
             .extents(&[256, 256])
             .format(<u8>::as_rgba_norm())
             .usage(flags![gfx::ImageUsage::{Render}])
+            .queue(&queue)
             .build()
             .unwrap();
 

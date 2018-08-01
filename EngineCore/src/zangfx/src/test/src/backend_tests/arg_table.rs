@@ -105,6 +105,14 @@ pub fn arg_table_sampler<T: TestDriver>(driver: T) {
 /// it can be used successfully.
 pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
     driver.for_each_compute_queue(&mut |device, qf| {
+        println!("- Creating a command queue");
+        let queue = device
+            .build_cmd_queue()
+            .queue_family(qf)
+            .label("Main queue")
+            .build()
+            .unwrap();
+
         println!("- Creating an argument table signature");
         let arg_table_sig = {
             let mut builder = device.build_arg_table_sig();
@@ -133,12 +141,13 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
             .build_buffer()
             .size(4096)
             .usage(flags![gfx::BufferUsage::{Storage | Uniform}])
+            .queue(&queue)
             .build()
             .unwrap();
 
         println!("- Creating images");
         let mut builder = device.build_image();
-        builder.format(<u8>::as_rgba_norm());
+        builder.format(<u8>::as_rgba_norm()).queue(&queue);
 
         let image_cube = builder.extents_cube(1).build().unwrap();
 
@@ -204,14 +213,6 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         buffer_view[INPUT3_OFFSET / 4].store(810);
         buffer_view[INPUT4_OFFSET / 4].store(1919);
 
-        println!("- Creating a command queue");
-        let queue = device
-            .build_cmd_queue()
-            .queue_family(qf)
-            .label("Main queue")
-            .build()
-            .unwrap();
-
         println!("- Creating a library");
         let library = device.new_library(SPIRV_READ.as_u32_slice()).unwrap();
 
@@ -219,6 +220,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         let pool: gfx::ArgPoolRef = device
             .build_arg_pool()
             .reserve_table_sig(1, &arg_table_sig)
+            .queue(&queue)
             .build()
             .unwrap();
 
@@ -247,8 +249,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
                     (7, 0, [&image_2ds][..].into()),
                     (9, 0, [&sampler][..].into()),
                 ],
-            )
-            .unwrap();
+            ).unwrap();
 
         println!("- Creating a pipeline");
         let pipeline = device

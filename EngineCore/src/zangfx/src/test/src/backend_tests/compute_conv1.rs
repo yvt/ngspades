@@ -53,12 +53,21 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             *e = i as u32;
         }
 
+        println!("- Creating a command queue");
+        let queue = device
+            .build_cmd_queue()
+            .queue_family(qf)
+            .label("Main queue")
+            .build()
+            .unwrap();
+
         println!("- Creating buffers");
         let input_buffer = device
             .build_buffer()
             .label("Input buffer")
             .size(input_bytes)
             .usage(flags![gfx::BufferUsage::{Storage}])
+            .queue(&queue)
             .build()
             .unwrap();
         let kernel_buffer = device
@@ -66,6 +75,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .label("Kernel buffer")
             .size(kernel_bytes)
             .usage(flags![gfx::BufferUsage::{Uniform}])
+            .queue(&queue)
             .build()
             .unwrap();
         let output_buffer = device
@@ -73,6 +83,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .label("Output buffer")
             .size(output_bytes)
             .usage(flags![gfx::BufferUsage::{Storage}])
+            .queue(&queue)
             .build()
             .unwrap();
         let indirect_buffer = device
@@ -80,6 +91,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .label("Indirect argument buffer")
             .size(indirect_bytes)
             .usage(flags![gfx::BufferUsage::{IndirectDraw}])
+            .queue(&queue)
             .build()
             .unwrap();
 
@@ -89,7 +101,8 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             &kernel_buffer,
             &output_buffer,
             &indirect_buffer,
-        ].iter()
+        ]
+            .iter()
             .map(|r| r.get_memory_req().unwrap().memory_types)
             .fold(!0, |x, y| x & y);
         let memory_type = utils::choose_memory_type(
@@ -125,14 +138,6 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         kernel_view.copy_from_slice(&kernel_data);
         indirect_view.copy_from_slice(&indirect_data);
 
-        println!("- Creating a command queue");
-        let queue = device
-            .build_cmd_queue()
-            .queue_family(qf)
-            .label("Main queue")
-            .build()
-            .unwrap();
-
         println!("- Creating a library");
         let library = device.new_library(SPIRV_CONV.as_u32_slice()).unwrap();
 
@@ -158,6 +163,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         let arg_pool: gfx::ArgPoolRef = device
             .build_arg_pool()
             .reserve_table_sig(2, &arg_table_sig)
+            .queue(&queue)
             .build()
             .unwrap();
 
@@ -191,8 +197,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
                         [(0..kernel_bytes, &kernel_buffer)][..].into(),
                     ),
                 ],
-            )
-            .unwrap();
+            ).unwrap();
 
         println!("- Creating a pipeline");
         let pipeline = device
