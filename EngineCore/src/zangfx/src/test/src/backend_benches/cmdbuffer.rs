@@ -71,11 +71,3 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
 pub fn cb_throughput_100<T: BenchDriver>(driver: T, b: &mut Bencher) {
     cb_throughput(driver, b, 10);
 }
-
-pub fn cb_throughput_200<T: BenchDriver>(driver: T, b: &mut Bencher) {
-    cb_throughput(driver, b, 20);
-}
-
-pub fn cb_throughput_400<T: BenchDriver>(driver: T, b: &mut Bencher) {
-    cb_throughput(driver, b, 40);
-}
