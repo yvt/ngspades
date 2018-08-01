@@ -3,20 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::version::*;
-use ash::vk;
 use parking_lot::Mutex;
 use std::mem::ManuallyDrop;
 use std::ops;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
-use std::sync::Arc;
 
 use zangfx_base::Result;
-
-use crate::device::DeviceRef;
-use crate::utils::translate_generic_error_unwrap;
-
-use super::buffer::CmdBufferData;
 
 /// A thread-safe pool type that maintains a fixed number of items.
 #[derive(Debug)]
@@ -63,8 +55,6 @@ impl<T: CbPoolContent> CbPool<T> {
     /// Allocate an empty item. Might block if there are an excessive
     /// number of outstanding allocated items.
     crate fn allocate(&self) -> CbPoolItem<T> {
-        use std::mem::drop;
-
         let send = self.send.clone();
 
         let data = self.data.lock();

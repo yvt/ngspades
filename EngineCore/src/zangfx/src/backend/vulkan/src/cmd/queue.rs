@@ -19,10 +19,8 @@ use crate::utils::translate_generic_error_unwrap;
 
 use super::buffer::{CmdBuffer, CmdBufferData};
 use super::bufferpool::{CbPool, CbPoolItem};
-use super::enc::FenceSet;
 use super::fence::Fence;
 use super::monitor::{Monitor, MonitorHandler};
-use super::semaphore::Semaphore;
 use crate::resstate;
 
 #[derive(Debug)]

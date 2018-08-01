@@ -8,96 +8,15 @@ use ash::vk;
 use std::ops::Range;
 
 use zangfx_base as base;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_common::IntoWithPad;
 
-use super::enc::{CommonCmdEncoder, FenceSet};
-use super::fence::Fence;
 use crate::buffer::Buffer;
-use crate::device::DeviceRef;
 use crate::image::Image;
 use crate::utils::translate_image_aspect;
 
-#[derive(Debug)]
-pub(super) struct CopyEncoder {
-    device: DeviceRef,
-    vk_cmd_buffer: vk::CommandBuffer,
-    fence_set: FenceSet,
-}
+use super::CmdBufferData;
 
-zangfx_impl_object! { CopyEncoder:
-dyn base::CmdEncoder, dyn base::CopyCmdEncoder, dyn (crate::Debug) }
-
-impl CopyEncoder {
-    crate unsafe fn new(
-        device: DeviceRef,
-        vk_cmd_buffer: vk::CommandBuffer,
-        fence_set: FenceSet,
-    ) -> Self {
-        Self {
-            device,
-            vk_cmd_buffer,
-            fence_set,
-        }
-    }
-
-    crate fn finish(self) -> FenceSet {
-        self.fence_set
-    }
-
-    fn common(&self) -> CommonCmdEncoder {
-        CommonCmdEncoder::new(self.device.clone(), self.vk_cmd_buffer)
-    }
-}
-
-impl base::CmdEncoder for CopyEncoder {
-    fn begin_debug_group(&mut self, label: &str) {
-        self.common().begin_debug_group(label)
-    }
-
-    fn end_debug_group(&mut self) {
-        self.common().end_debug_group()
-    }
-
-    fn debug_marker(&mut self, label: &str) {
-        self.common().debug_marker(label)
-    }
-
-    fn use_resource_core(
-        &mut self,
-        _usage: base::ResourceUsageFlags,
-        _objs: base::ResourceSet<'_>,
-    ) {
-        unimplemented!()
-    }
-
-    fn use_heap(&mut self, _heaps: &[&base::HeapRef]) {
-        unimplemented!()
-    }
-
-    fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
-        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        self.common().wait_fence(&our_fence, dst_access);
-        unimplemented!(); // self.fence_set.wait_fence(&our_fence);
-    }
-
-    fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
-        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        self.common().update_fence(&our_fence, src_access);
-        unimplemented!(); // self.fence_set.signal_fence(&our_fence);
-    }
-
-    fn barrier_core(
-        &mut self,
-        obj: base::ResourceSet<'_>,
-        src_access: base::AccessTypeFlags,
-        dst_access: base::AccessTypeFlags,
-    ) {
-        self.common().barrier_core(obj, src_access, dst_access)
-    }
-}
-
-impl base::CopyCmdEncoder for CopyEncoder {
+impl base::CopyCmdEncoder for CmdBufferData {
     fn fill_buffer(&mut self, buffer: &base::BufferRef, range: Range<base::DeviceSize>, value: u8) {
         if range.start >= range.end {
             return;
@@ -109,7 +28,7 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
         unsafe {
             vk_device.cmd_fill_buffer(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 my_buffer.vk_buffer(),
                 range.start,
                 range.end - range.start,
@@ -132,7 +51,7 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
         unsafe {
             vk_device.cmd_copy_buffer(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 my_src.vk_buffer(),
                 my_dst.vk_buffer(),
                 &[vk::BufferCopy {
@@ -166,7 +85,7 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
         unsafe {
             vk_device.cmd_copy_buffer_to_image(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 my_src.vk_buffer(),
                 my_dst.vk_image(),
                 my_dst.translate_layout(base::ImageLayout::CopyWrite),
@@ -213,7 +132,7 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
         unsafe {
             vk_device.fp_v1_0().cmd_copy_image_to_buffer(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 my_src.vk_image(),
                 my_src.translate_layout(base::ImageLayout::CopyRead),
                 my_dst.vk_buffer(),
@@ -274,7 +193,7 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
         unsafe {
             vk_device.cmd_copy_image(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 my_src.vk_image(),
                 my_src.translate_layout(base::ImageLayout::CopyRead),
                 my_dst.vk_image(),

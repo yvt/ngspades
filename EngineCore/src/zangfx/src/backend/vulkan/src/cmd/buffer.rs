@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdBuffer` for Vulkan.
-use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
 use std::fmt;
@@ -15,20 +14,20 @@ use zangfx_base as base;
 use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use crate::buffer::Buffer;
 use crate::device::DeviceRef;
 use crate::resstate;
-use crate::utils::{
-    translate_access_type_flags, translate_generic_error_unwrap, translate_pipeline_stage_flags,
-};
+use crate::utils::translate_generic_error_unwrap;
 
 use super::bufferpool::{CbPoolContent, CbPoolItem};
-use super::enc::{FenceSet, RefTableSet};
-use super::enc_compute::ComputeEncoder;
-use super::enc_copy::CopyEncoder;
-use super::enc_render::RenderEncoder;
 use super::queue::Scheduler;
 use super::semaphore::Semaphore;
+
+mod enc;
+mod enc_compute;
+mod enc_copy;
+mod enc_render;
+
+use self::enc::{DescSetBindingTable, FenceSet, RefTableSet};
 
 /// Implementation of `CmdBuffer` for Vulkan.
 #[derive(Debug)]
@@ -38,6 +37,17 @@ pub struct CmdBuffer {
 
 zangfx_impl_object! { CmdBuffer: dyn base::CmdBuffer, dyn (crate::Debug) }
 
+/// Stores the state of a command buffer, whether it is currently being
+/// encoded or not.
+///
+/// This type implements the `*CmdEncoder` traits. `CmdBufferData` is accessed
+/// via `&mut dyn (Copy|Render|Compute)?CmdEncoder` only when it is being
+/// encoded.
+/// See the `enc`, `enc_compute`, `enc_copy`, and `enc_render` modules for code
+/// relevant to command buffer encoding.
+///
+/// Some fields are not used after encoding is done. They are reused after
+/// a command buffer is returned to a pool and is allocated again.
 #[derive(Debug)]
 crate struct CmdBufferData {
     device: DeviceRef,
@@ -55,15 +65,40 @@ crate struct CmdBufferData {
     /// The set of registered completion callbacks.
     crate completion_callbacks: CallbackSet,
 
-    /// Currently active encoder.
-    encoder: Option<Encoder>,
+    /*
+     * The following fields are used only when encoding
+     */
+    /// The current encoding state.
+    state: EncodingState,
+
+    /// Manages bound descriptor sets.
+    desc_set_binding_table: DescSetBindingTable,
+
+    /// A list of fences to be signaled after the current render pass is done.
+    /// (`vkCmdSetEvent` is invalid inside a render pass.)
+    deferred_signal_fences: Vec<(usize, base::StageFlags)>,
 }
 
-#[derive(Debug)]
-enum Encoder {
-    Copy(CopyEncoder),
-    Compute(ComputeEncoder),
-    Render(RenderEncoder),
+zangfx_impl_object! {
+    CmdBufferData:
+        dyn base::CmdEncoder,
+        dyn base::RenderCmdEncoder,
+        dyn base::CopyCmdEncoder,
+        dyn base::ComputeCmdEncoder,
+        dyn (crate::Debug)
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum EncodingState {
+    None,
+
+    /// We are currently encoding `passes.last().unwrap()` and we are outside a
+    /// render pass.
+    NotRender,
+
+    /// We are currently encoding `passes.last().unwrap()` and we are inside a
+    /// render pass.
+    Render,
 }
 
 #[derive(Default)]
@@ -137,34 +172,15 @@ impl CmdBufferData {
             wait_semaphores: Vec::new(),
             signal_semaphores: Vec::new(),
             completion_callbacks: Default::default(),
-            encoder: None,
+            state: EncodingState::None,
+            desc_set_binding_table: DescSetBindingTable::new(),
+            deferred_signal_fences: Vec::new(),
         })
     }
 
-    /// Clear `self.encoder` and take `fence_set` back from it.
-    fn clear_encoder(&mut self) {
-        if let Some(enc) = self.encoder.take() {
-            match enc {
-                Encoder::Copy(e) => self.fence_set = e.finish(),
-                Encoder::Compute(e) => {
-                    let (fence_set, ref_table) = e.finish();
-                    self.fence_set = fence_set;
-                    self.ref_table = ref_table;
-                }
-                Encoder::Render(e) => {
-                    let (fence_set, ref_table) = e.finish();
-                    self.fence_set = fence_set;
-                    self.ref_table = ref_table;
-                }
-            }
-        }
-    }
-
-    fn vk_cmd_buffer(&self) -> vk::CommandBuffer {
-        unimplemented!()
-    }
-
     crate fn reset(&mut self) {
+        self.end_pass();
+
         let vk_device = self.device.vk_device();
         for pass in self.passes.drain(..) {
             unsafe {
@@ -203,21 +219,12 @@ impl Drop for CmdBufferData {
 
 impl base::CmdBuffer for CmdBuffer {
     fn commit(&mut self) -> Result<()> {
-        {
-            let uncommited = self
-                .uncommited
-                .as_mut()
-                .expect("command buffer is already commited");
+        let mut uncommited = self
+            .uncommited
+            .take()
+            .expect("command buffer is already commited");
+        uncommited.end_pass();
 
-            uncommited.clear_encoder();
-
-            let vk_device = uncommited.device.vk_device();
-
-            unsafe { vk_device.end_command_buffer(uncommited.vk_cmd_buffer()) }
-                .map_err(translate_generic_error_unwrap)?;
-        }
-
-        let uncommited = self.uncommited.take().unwrap();
         let scheduler = uncommited.scheduler.clone();
 
         scheduler.commit(uncommited);
@@ -230,7 +237,6 @@ impl base::CmdBuffer for CmdBuffer {
         render_target_table: &base::RenderTargetTableRef,
     ) -> &mut dyn base::RenderCmdEncoder {
         use crate::renderpass::RenderTargetTable;
-        use std::mem::replace;
 
         let rtt: &RenderTargetTable = render_target_table
             .downcast_ref()
@@ -240,67 +246,31 @@ impl base::CmdBuffer for CmdBuffer {
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        uncommited.clear_encoder();
 
-        let encoder = unsafe {
-            RenderEncoder::new(
-                uncommited.device.clone(),
-                uncommited.vk_cmd_buffer(),
-                unimplemented!(), // replace(&mut uncommited.fence_set, Default::default()),
-                unimplemented!(), // replace(&mut uncommited.ref_table, Default::default()),
-                rtt,
-            )
-        };
-        uncommited.encoder = Some(Encoder::Render(encoder));
-        match uncommited.encoder {
-            Some(Encoder::Render(ref mut e)) => e,
-            _ => unreachable!(),
-        }
+        uncommited.begin_pass();
+        uncommited.begin_render_pass(rtt);
+
+        &mut ***uncommited
     }
     fn encode_compute(&mut self) -> &mut dyn base::ComputeCmdEncoder {
-        use std::mem::replace;
-
         let uncommited = self
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        uncommited.clear_encoder();
 
-        let encoder = unsafe {
-            ComputeEncoder::new(
-                uncommited.device.clone(),
-                uncommited.vk_cmd_buffer(),
-                unimplemented!(), // replace(&mut uncommited.fence_set, Default::default()),
-                unimplemented!(), // replace(&mut uncommited.ref_table, Default::default()),
-            )
-        };
-        uncommited.encoder = Some(Encoder::Compute(encoder));
-        match uncommited.encoder {
-            Some(Encoder::Compute(ref mut e)) => e,
-            _ => unreachable!(),
-        }
+        uncommited.begin_pass();
+
+        &mut ***uncommited
     }
     fn encode_copy(&mut self) -> &mut dyn base::CopyCmdEncoder {
-        use std::mem::replace;
-
         let uncommited = self
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        uncommited.clear_encoder();
 
-        let encoder = unsafe {
-            CopyEncoder::new(
-                uncommited.device.clone(),
-                uncommited.vk_cmd_buffer(),
-                unimplemented!(), // replace(&mut uncommited.fence_set, Default::default()),
-            )
-        };
-        uncommited.encoder = Some(Encoder::Copy(encoder));
-        match uncommited.encoder {
-            Some(Encoder::Copy(ref mut e)) => e,
-            _ => unreachable!(),
-        }
+        uncommited.begin_pass();
+
+        &mut ***uncommited
     }
 
     fn on_complete(&mut self, cb: Box<dyn FnMut(Result<()>) + Sync + Send>) {
@@ -317,18 +287,17 @@ impl base::CmdBuffer for CmdBuffer {
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
-        let stage = translate_pipeline_stage_flags(dst_stage);
-        uncommited.wait_semaphores.push((our_semaphore, stage));
+        let our_semaphore = semaphore.downcast_ref().expect("bad semaphore type");
+        uncommited.wait_semaphore(our_semaphore, dst_stage);
     }
 
-    fn signal_semaphore(&mut self, semaphore: &base::SemaphoreRef, _src_stage: base::StageFlags) {
+    fn signal_semaphore(&mut self, semaphore: &base::SemaphoreRef, src_stage: base::StageFlags) {
         let uncommited = self
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        let our_semaphore = Semaphore::clone(semaphore.downcast_ref().expect("bad semaphore type"));
-        uncommited.signal_semaphores.push(our_semaphore);
+        let our_semaphore = semaphore.downcast_ref().expect("bad semaphore type");
+        uncommited.signal_semaphore(our_semaphore, src_stage);
     }
 
     fn host_barrier(
@@ -340,60 +309,32 @@ impl base::CmdBuffer for CmdBuffer {
             .uncommited
             .as_mut()
             .expect("command buffer is already commited");
-        uncommited.clear_encoder();
-
-        let vk_device = uncommited.device.vk_device();
-
-        let src_access_mask = translate_access_type_flags(src_access);
-        let src_stages =
-            translate_pipeline_stage_flags(base::AccessType::union_supported_stages(src_access));
-        for buffers in buffers.chunks(64) {
-            let buf_barriers: ArrayVec<[_; 64]> = buffers
-                .iter()
-                .map(|&(ref range, ref buffer)| {
-                    let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
-                    vk::BufferMemoryBarrier {
-                        s_type: vk::StructureType::BufferMemoryBarrier,
-                        p_next: ::null(),
-                        src_access_mask,
-                        dst_access_mask: vk::ACCESS_HOST_READ_BIT,
-                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                        buffer: my_buffer.vk_buffer(),
-                        offset: range.start,
-                        size: range.end - range.start,
-                    }
-                }).collect();
-
-            unsafe {
-                vk_device.cmd_pipeline_barrier(
-                    uncommited.vk_cmd_buffer(),
-                    src_stages,
-                    vk::PIPELINE_STAGE_HOST_BIT,
-                    vk::DependencyFlags::empty(),
-                    &[],
-                    buf_barriers.as_slice(),
-                    &[],
-                );
-            }
-        }
+        uncommited.host_barrier(src_access, buffers);
     }
 
     fn queue_ownership_acquire(
         &mut self,
-        _src_queue_family: base::QueueFamily,
-        _dst_access: base::AccessTypeFlags,
-        _transfer: &base::QueueOwnershipTransfer<'_>,
+        src_queue_family: base::QueueFamily,
+        dst_access: base::AccessTypeFlags,
+        transfer: &base::QueueOwnershipTransfer<'_>,
     ) {
-        unimplemented!()
+        let uncommited = self
+            .uncommited
+            .as_mut()
+            .expect("command buffer is already commited");
+        uncommited.queue_ownership_acquire(src_queue_family, dst_access, transfer)
     }
 
     fn queue_ownership_release(
         &mut self,
-        _dst_queue_family: base::QueueFamily,
-        _src_access: base::AccessTypeFlags,
-        _transfer: &base::QueueOwnershipTransfer<'_>,
+        dst_queue_family: base::QueueFamily,
+        src_access: base::AccessTypeFlags,
+        transfer: &base::QueueOwnershipTransfer<'_>,
     ) {
-        unimplemented!()
+        let uncommited = self
+            .uncommited
+            .as_mut()
+            .expect("command buffer is already commited");
+        uncommited.queue_ownership_release(dst_queue_family, src_access, transfer)
     }
 }
