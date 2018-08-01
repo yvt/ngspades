@@ -182,15 +182,10 @@ impl base::ImageBuilder for ImageBuilder {
             vk_device.create_image(&info, None)
         }.map_err(translate_generic_error_unwrap)?;
 
-        let num_layers = match image_view_type {
-            Type3d => dims[2],
-            _ => array_layers,
-        };
-
         let vulkan_image = Arc::new(VulkanImage {
             device,
             vk_image,
-            num_layers,
+            num_layers: array_layers,
             num_mip_levels: self.num_mip_levels,
             usage: self.usage,
             aspects: aspect,
@@ -203,7 +198,7 @@ impl base::ImageBuilder for ImageBuilder {
             vulkan_image,
             ImageSubRange {
                 mip_levels: 0..self.num_mip_levels,
-                layers: 0..num_layers,
+                layers: 0..array_layers,
             },
             image_view_type,
             format,
