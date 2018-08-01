@@ -12,7 +12,7 @@ use std::ops::Range;
 use zangfx_base as base;
 
 use crate::arg::layout::RootSig;
-use crate::arg::pool::ArgTable;
+use crate::arg::pool::{ArgPool, ArgPoolDataRef, ArgTable};
 use crate::buffer::Buffer;
 use crate::cmd::fence::Fence;
 use crate::device::DeviceRef;
@@ -89,6 +89,7 @@ crate struct RefTableSet {
     render_target_tables: HashSet<RenderTargetTable>,
 
     crate fences: RefTable<Fence, FenceOp>,
+    crate arg_pools: RefTable<ArgPoolDataRef, ()>,
 }
 
 /// The locally tracked state of a fence for a command buffer.
@@ -109,11 +110,13 @@ impl RefTableSet {
             compute_pipelines: Default::default(),
             render_pipelines: Default::default(),
             render_target_tables: Default::default(),
+            arg_pools: Default::default(),
         }
     }
 
     crate fn clear(&mut self) {
         self.fences.clear(&mut self.cmd_buffer, |_, _| {});
+        self.arg_pools.clear(&mut self.cmd_buffer, |_, _| {});
         self.compute_pipelines.clear();
         self.render_pipelines.clear();
         self.render_target_tables.clear();
@@ -129,6 +132,11 @@ impl RefTableSet {
 
     crate fn insert_render_target_table(&mut self, obj: &RenderTargetTable) {
         self.render_target_tables.insert(obj.clone());
+    }
+
+    crate fn insert_arg_pool(&mut self, obj: &ArgPool) {
+        self.arg_pools
+            .get_index_for_resource(&mut self.cmd_buffer, obj.data());
     }
 }
 
@@ -163,6 +171,7 @@ impl DescSetBindingTable {
 
     crate fn bind_arg_table(
         &mut self,
+        ref_table: &mut RefTableSet,
         index: base::ArgTableIndex,
         tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
     ) {
@@ -172,11 +181,13 @@ impl DescSetBindingTable {
             return;
         }
 
-        // TODO: Add reference
-
-        for (i, (_pool, table)) in tables.iter().enumerate() {
+        for (i, (pool, table)) in tables.iter().enumerate() {
             let my_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.desc_sets[i + index] = my_table.vk_descriptor_set();
+
+            // Add the pool to the reference table
+            let my_pool: &ArgPool = pool.query_ref().expect("bad argument pool type");
+            ref_table.insert_arg_pool(my_pool);
         }
 
         self.start_dirty = min(self.start_dirty, index);

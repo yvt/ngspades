@@ -37,7 +37,8 @@ impl base::ComputeCmdEncoder for CmdBufferData {
         index: base::ArgTableIndex,
         tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
     ) {
-        self.desc_set_binding_table.bind_arg_table(index, tables);
+        self.desc_set_binding_table
+            .bind_arg_table(&mut self.ref_table, index, tables);
     }
 
     fn dispatch(&mut self, workgroup_count: &[u32]) {

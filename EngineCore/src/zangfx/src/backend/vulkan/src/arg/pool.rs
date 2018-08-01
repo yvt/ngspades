@@ -7,6 +7,7 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
+use parking_lot::ReentrantMutex;
 use std::sync::Arc;
 
 use crate::device::DeviceRef;
@@ -15,7 +16,8 @@ use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
 use super::{translate_descriptor_type, DescriptorCount};
-use crate::utils::translate_generic_error_unwrap;
+use crate::resstate;
+use crate::utils::{translate_generic_error_unwrap, QueueIdBuilder};
 
 use super::layout::ArgTableSig;
 
@@ -23,6 +25,7 @@ use super::layout::ArgTableSig;
 #[derive(Debug)]
 pub struct ArgPoolBuilder {
     device: DeviceRef,
+    queue_id: QueueIdBuilder,
     num_sets: u32,
     count: DescriptorCount,
     enable_destroy_tables: bool,
@@ -34,6 +37,7 @@ impl ArgPoolBuilder {
     crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
+            queue_id: QueueIdBuilder::new(),
             count: DescriptorCount::new(),
             num_sets: 0,
             enable_destroy_tables: false,
@@ -43,7 +47,7 @@ impl ArgPoolBuilder {
 
 impl base::ArgPoolBuilder for ArgPoolBuilder {
     fn queue(&mut self, queue: &base::CmdQueueRef) -> &mut dyn base::ArgPoolBuilder {
-        unimplemented!();
+        self.queue_id.set(queue);
         self
     }
 
@@ -85,6 +89,8 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
 
         let pool_sizes = self.count.as_pool_sizes();
 
+        let queue_id = self.queue_id.get(&self.device);
+
         let info = vk::DescriptorPoolCreateInfo {
             s_type: vk::StructureType::DescriptorPoolCreateInfo,
             p_next: ::null(),
@@ -97,30 +103,60 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         let vk_device = self.device.vk_device();
         let vk_d_pool = unsafe { vk_device.create_descriptor_pool(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(Arc::new(ArgPool::new(self.device.clone(), vk_d_pool)))
+        Ok(Arc::new(ArgPool::new(
+            self.device.clone(),
+            queue_id,
+            vk_d_pool,
+        )))
     }
 }
 
 /// Implementation of `ArgPool` for Vulkan.
 #[derive(Debug)]
-pub struct ArgPool {
+pub struct ArgPool(ArgPoolDataRef);
+
+#[derive(Debug)]
+crate struct ArgPoolData {
     device: DeviceRef,
     vk_d_pool: vk::DescriptorPool,
+    mutex: ReentrantMutex<()>,
+    tracked_state: resstate::TrackedState<()>,
 }
+
+crate type ArgPoolDataRef = Arc<ArgPoolData>;
 
 zangfx_impl_object! { ArgPool: dyn base::ArgPool, dyn (crate::Debug) }
 
 impl ArgPool {
-    fn new(device: DeviceRef, vk_d_pool: vk::DescriptorPool) -> Self {
-        Self { device, vk_d_pool }
+    fn new(device: DeviceRef, queue_id: resstate::QueueId, vk_d_pool: vk::DescriptorPool) -> Self {
+        let mutex = ReentrantMutex::new(());
+        let tracked_state = resstate::TrackedState::new(queue_id, ());
+        ArgPool(Arc::new(ArgPoolData {
+            device,
+            vk_d_pool,
+            mutex,
+            tracked_state,
+        }))
     }
 
     pub fn vk_descriptor_pool(&self) -> vk::DescriptorPool {
-        self.vk_d_pool
+        self.0.vk_d_pool
+    }
+
+    crate fn data(&self) -> &ArgPoolDataRef {
+        &self.0
     }
 }
 
-impl Drop for ArgPool {
+impl resstate::Resource for ArgPoolDataRef {
+    type State = ();
+
+    fn tracked_state(&self) -> &resstate::TrackedState<Self::State> {
+        &self.tracked_state
+    }
+}
+
+impl Drop for ArgPoolData {
     fn drop(&mut self) {
         unsafe {
             self.device
@@ -136,7 +172,25 @@ impl base::ArgPool for ArgPool {
         count: usize,
         table: &base::ArgTableSigRef,
     ) -> Result<Option<Vec<base::ArgTableRef>>> {
-        // TODO: Synchronize accesses
+        self.0.new_tables(count, table)
+    }
+
+    fn destroy_tables(&self, tables: &[&base::ArgTableRef]) -> Result<()> {
+        self.0.destroy_tables(tables)
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.0.reset()
+    }
+}
+
+impl ArgPoolData {
+    fn new_tables(
+        &self,
+        count: usize,
+        table: &base::ArgTableSigRef,
+    ) -> Result<Option<Vec<base::ArgTableRef>>> {
+        let _lock = self.mutex.lock();
 
         use std::cmp::min;
         use std::mem::replace;
@@ -146,11 +200,9 @@ impl base::ArgPool for ArgPool {
             .expect("bad argument table signature type");
 
         // Allocate descriptor sets in chunk of 256 sets
-        struct PartialTableSet<'a>(&'a mut ArgPool, Vec<base::ArgTableRef>);
+        struct PartialTableSet<'a>(&'a ArgPoolData, Vec<base::ArgTableRef>);
         impl<'a> Drop for PartialTableSet<'a> {
             fn drop(&mut self) {
-                use zangfx_base::ArgPool;
-
                 // Conversion `&[T]` to `&[&T]`
                 for chunk in self.1.chunks(256) {
                     let sets: ArrayVec<[_; 256]> = chunk.iter().collect();
@@ -163,8 +215,7 @@ impl base::ArgPool for ArgPool {
         let ref device = self.device;
         let vk_d_pool = self.vk_d_pool;
 
-        let mut result_set =
-            PartialTableSet(/* self */ unimplemented!(), Vec::with_capacity(count));
+        let mut result_set = PartialTableSet(self, Vec::with_capacity(count));
 
         let set_layout = sig.vk_descriptor_set_layout();
         let set_layouts: ArrayVec<[_; 256]> = (0..min(256, count)).map(|_| set_layout).collect();
@@ -204,7 +255,7 @@ impl base::ArgPool for ArgPool {
     }
 
     fn destroy_tables(&self, tables: &[&base::ArgTableRef]) -> Result<()> {
-        // TODO: Synchronize accesses
+        let _lock = self.mutex.lock();
         let device = self.device.vk_device();
         for chunk in tables.chunks(256) {
             let sets: ArrayVec<[_; 256]> = chunk
@@ -212,8 +263,7 @@ impl base::ArgPool for ArgPool {
                 .map(|x| {
                     let table: &ArgTable = x.downcast_ref().expect("bad argument table type");
                     table.vk_descriptor_set()
-                })
-                .collect();
+                }).collect();
             unsafe {
                 device.free_descriptor_sets(self.vk_d_pool, &sets);
             }
@@ -222,7 +272,7 @@ impl base::ArgPool for ArgPool {
     }
 
     fn reset(&self) -> Result<()> {
-        // TODO: Synchronize accesses
+        let _lock = self.mutex.lock();
         let device = self.device.vk_device();
         unsafe {
             device.reset_descriptor_pool(self.vk_d_pool, vk::DescriptorPoolResetFlags::empty())
