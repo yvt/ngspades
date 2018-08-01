@@ -524,13 +524,17 @@ impl BatchDoneHandler {
         // down the device)
         for_each_item_mut(&mut scheduled_items, |item| {
             let ref mut commited = item.commited;
-            commited.reset();
+            commited.reset_all_but_completion_callbacks();
         });
 
         // Call the completion callbacks
         while let Some(mut item) = { scheduled_items } {
             item.commited.completion_callbacks.on_complete(&mut result);
+            item.commited.reset_completion_callbacks();
             scheduled_items = item.next;
+            // FIXME: `item` being dropped here means
+            //        `reset_all_but_completion_callbacks` is called twice, which
+            //        I don't like
         }
     }
 }

@@ -197,7 +197,11 @@ impl CmdBufferData {
         })
     }
 
-    crate fn reset(&mut self) {
+    crate fn reset_completion_callbacks(&mut self) {
+        self.completion_callbacks.0.clear();
+    }
+
+    crate fn reset_all_but_completion_callbacks(&mut self) {
         self.end_pass();
         self.deferred_signal_fences.clear();
         self.desc_set_binding_table.reset();
@@ -220,9 +224,13 @@ impl CmdBufferData {
         self.ref_table.clear();
         self.wait_semaphores.clear();
         self.signal_semaphores.clear();
-        self.completion_callbacks.0.clear();
 
         // TODO
+    }
+
+    crate fn reset(&mut self) {
+        self.reset_all_but_completion_callbacks();
+        self.reset_completion_callbacks();
     }
 }
 
