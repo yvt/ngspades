@@ -314,21 +314,20 @@ impl base::Device for Device {
                                 descriptor_count += 1;
                             }
                         }
-                        base::ArgSlice::Image(views) => {
-                            unimplemented!()
-                            /*while !write_images.is_full() && i < views.len() {
-                                let view = views[i];
-                                let view: &image::ImageView =
-                                    view.downcast_ref().expect("bad image view type");
+                        base::ArgSlice::Image(images) => {
+                            while !write_images.is_full() && i < images.len() {
+                                let image = images[i];
+                                let image: &image::Image =
+                                    image.downcast_ref().expect("bad image type");
 
                                 write_images.push(vk::DescriptorImageInfo {
                                     sampler: vk::Sampler::null(),
-                                    image_view: view.vk_image_view(),
-                                    image_layout: view.meta().image_layout(),
+                                    image_view: image.vk_image_view(),
+                                    image_layout: image.translate_layout(base::ImageLayout::Shader),
                                 });
                                 i += 1;
                                 descriptor_count += 1;
-                            } */
+                            }
                         }
                         base::ArgSlice::Sampler(samplers) => {
                             while !write_images.is_full() && i < samplers.len() {
