@@ -11,6 +11,7 @@ extern crate zangfx_base as base;
 extern crate zangfx_test;
 extern crate zangfx_vulkan as backend;
 
+use std::sync::Arc;
 use ash::version::*;
 use std::ffi::CStr;
 use std::ops::Deref;
@@ -53,7 +54,7 @@ impl Deref for UniqueDevice {
 }
 
 impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
-    fn choose_device(&self, runner: &mut FnMut(&base::device::Device)) {
+    fn choose_device(&self, runner: &mut FnMut(&base::device::DeviceRef)) {
         unsafe {
             let entry = match ash::Entry::<V1_0>::new() {
                 Ok(entry) => entry,
@@ -156,7 +157,10 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                 let gfx_device =
                     backend::device::Device::new(ash::Device::clone(&device), info, config)
                         .expect("Failed to create a ZanGFX device.");
-                runner(&gfx_device);
+
+                let gfx_device_ref: base::DeviceRef = Arc::new(gfx_device);
+
+                runner(&gfx_device_ref);
 
                 break;
             }
