@@ -12,6 +12,7 @@ use std::sync::Arc;
 use zangfx_base as base;
 use zangfx_base::Result;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_common::{FreezableCell, FreezableCellRef};
 
 use crate::device::DeviceRef;
 use crate::formats::translate_image_format;
@@ -198,7 +199,7 @@ impl base::ImageBuilder for ImageBuilder {
 
         let state = ImageState::new(&vulkan_image);
 
-        let image_view = Arc::new(ImageView::new(
+        let image_view = Arc::new(ImageView::new_prototype(
             vulkan_image,
             ImageSubRange {
                 mip_levels: 0..self.num_mip_levels,
@@ -206,7 +207,7 @@ impl base::ImageBuilder for ImageBuilder {
             },
             image_view_type,
             format,
-        )?);
+        ));
 
         let queue_id = self.queue_id.get(&image_view.vulkan_image.device);
 
@@ -235,7 +236,15 @@ zangfx_impl_handle! { Image, base::ImageRef }
 #[derive(Debug)]
 crate struct ImageView {
     vulkan_image: Arc<VulkanImage>,
-    vk_image_view: vk::ImageView,
+    /// The Vulkan image view handle. If this `ImageView` is created as the
+    /// primary image view of an image (i.e., not created by `build_image_view`),
+    /// this can be in the "unfrozen" state, containing a null handle.
+    /// This is because `VkImageView` cannot be created until `VkImage` is bound
+    /// to a `VkDeviceMemory`.
+    ///
+    /// Otherwise, this is guaranteed to be in the "frozen" state, containing a
+    /// non-null handle.
+    vk_image_view: FreezableCell<vk::ImageView>,
     format: vk::Format,
     range: ImageSubRange,
     view_type: vk::ImageViewType,
@@ -243,9 +252,12 @@ crate struct ImageView {
 
 impl Drop for ImageView {
     fn drop(&mut self) {
-        unsafe {
-            let vk_device = self.vulkan_image.device.vk_device();
-            vk_device.destroy_image_view(self.vk_image_view, None);
+        let vk_image_view = *self.vk_image_view.get_mut();
+        if vk_image_view != vk::ImageView::null() {
+            unsafe {
+                let vk_device = self.vulkan_image.device.vk_device();
+                vk_device.destroy_image_view(vk_image_view, None);
+            }
         }
     }
 }
@@ -294,7 +306,9 @@ impl Image {
     }
 
     pub fn vk_image_view(&self) -> vk::ImageView {
-        self.image_view.vk_image_view
+        *(self.image_view.vk_image_view)
+            .frozen_borrow()
+            .expect("image is not bound to a heap")
     }
 
     crate fn aspects(&self) -> vk::ImageAspectFlags {
@@ -322,6 +336,24 @@ impl ImageState {
 }
 
 impl ImageView {
+    /// Construct an `ImageView` but does not create a `VkImageView`. Must be
+    /// `materialize()`-ed before using it.
+    fn new_prototype(
+        vulkan_image: Arc<VulkanImage>,
+        subrange: ImageSubRange,
+        view_type: vk::ImageViewType,
+        format: vk::Format,
+    ) -> Self {
+        Self {
+            vulkan_image,
+            vk_image_view: FreezableCell::new_unfrozen(vk::ImageView::null()),
+            format,
+            range: subrange,
+            view_type,
+        }
+    }
+
+    /// Construct an `ImageView` along with a `VkImageView`.
     fn new(
         vulkan_image: Arc<VulkanImage>,
         subrange: ImageSubRange,
@@ -357,11 +389,47 @@ impl ImageView {
 
         Ok(Self {
             vulkan_image,
-            vk_image_view,
+            vk_image_view: FreezableCell::new_frozen(vk_image_view),
             format,
             range: subrange,
             view_type,
         })
+    }
+
+    fn materialize(&self) -> VkResult<()> {
+        let mut vk_image_view_cell = self.vk_image_view.unfrozen_borrow_mut().unwrap();
+
+        let flags = vk::ImageViewCreateFlags::empty();
+        // flags: "reserved for future use"
+
+        let info = vk::ImageViewCreateInfo {
+            s_type: vk::StructureType::ImageViewCreateInfo,
+            p_next: ::null(),
+            flags,
+            image: self.vulkan_image.vk_image,
+            view_type: self.view_type,
+            format: self.format,
+            components: vk::ComponentMapping {
+                r: vk::ComponentSwizzle::Identity,
+                g: vk::ComponentSwizzle::Identity,
+                b: vk::ComponentSwizzle::Identity,
+                a: vk::ComponentSwizzle::Identity,
+            },
+            subresource_range: translate_image_subresource_range(
+                &(self.range.clone()).into(),
+                self.vulkan_image.aspects,
+            ),
+        };
+
+        let vk_image_view = unsafe {
+            let vk_device = self.vulkan_image.device.vk_device();
+            vk_device.create_image_view(&info, None)
+        }?;
+
+        *vk_image_view_cell = vk_image_view;
+        FreezableCellRef::freeze(vk_image_view_cell);
+
+        Ok(())
     }
 
     fn resolve_subrange(&self, range: &base::ImageSubRange) -> ImageSubRange {
@@ -460,7 +528,13 @@ impl heap::Bindable for Image {
         offset: vk::DeviceSize,
     ) -> VkResult<()> {
         let vk_device = self.image_view.vulkan_image.device.vk_device();
-        vk_device.bind_image_memory(self.vk_image(), vk_device_memory, offset)
+        vk_device.bind_image_memory(self.vk_image(), vk_device_memory, offset)?;
+
+        // Now that the image is bound to a device memory, we can create a
+        // primary image view for it.
+        self.image_view.materialize()?;
+
+        Ok(())
     }
 }
 
@@ -586,8 +660,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
                 base::ImageType::ThreeD => vk::ImageViewType::Type3d,
                 base::ImageType::Cube => vk::ImageViewType::Cube,
                 base::ImageType::CubeArray => vk::ImageViewType::CubeArray,
-            })
-            .unwrap_or(image.image_view.view_type);
+            }).unwrap_or(image.image_view.view_type);
 
         let format = self
             .format

@@ -14,12 +14,14 @@ extern crate tokenlock;
 
 mod atom2;
 mod barc;
+mod freeze;
 mod geom;
 mod int;
 mod smallbox;
 mod tokencell;
 pub use self::atom2::*;
 pub use self::barc::*;
+pub use self::freeze::*;
 pub use self::geom::*;
 pub use self::int::*;
 pub use self::smallbox::*;
