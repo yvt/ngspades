@@ -65,6 +65,7 @@ impl FenceSet {
             .get_mut(&mut ref_table_set.cmd_buffer, fence);
 
         debug_assert!(!ref_entry.op.signaled, "fence is already signaled");
+        ref_entry.op.signaled = true;
 
         self.signal_fences.push(ref_entry.index);
     }
