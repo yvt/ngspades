@@ -21,6 +21,7 @@ use crate::utils::{clip_rect2d_u31, translate_rect2d_u32};
 impl CmdBufferData {
     crate fn begin_render_pass(&mut self, rtt: &RenderTargetTable) {
         assert_eq!(self.state, EncodingState::NotRender);
+        self.state = EncodingState::Render;
 
         let vk_device = self.device.vk_device();
         unsafe {

@@ -267,7 +267,7 @@ impl CmdBufferData {
             signal_fences: Vec::new(),
             wait_fences: Vec::new(),
         });
-        self.state = EncodingState::Render;
+        self.state = EncodingState::NotRender;
 
         self.desc_set_binding_table.reset();
     }
