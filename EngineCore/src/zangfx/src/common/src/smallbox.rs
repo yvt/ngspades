@@ -10,9 +10,9 @@ use std::raw::TraitObject;
 ///
 /// **`T` must specify a trait object type like `SomeTrait`**. Using other types
 /// results in an undefined behavior. This restriction cannot be enforced by
-/// trait bound `SmallBox::new` is marked and therefore it is a developer's
+/// trait bounds applied to `SmallBox::new` and therefore it is a developer's
 /// responsibility to ensure this restriction is fulfilled. To prevent forming
-/// an unsafe instance of `SmallBox`, `SmallBox::new` is marked as `unsafe`.
+/// an invalid instance of `SmallBox`, `SmallBox::new` is marked as `unsafe`.
 ///
 /// The size of data that can be stored in a single `SmallBox` is limited to
 /// `size_of::<S>()`. Furthermore, the alignment requirement of the
