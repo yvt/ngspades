@@ -15,11 +15,20 @@ use crate::cmd::fence::Fence;
 use crate::device::DeviceRef;
 use crate::pipeline::{ComputePipeline, RenderPipeline};
 use crate::renderpass::RenderTargetTable;
+use crate::resstate::{CmdBuffer, RefTable};
 
 #[derive(Debug, Default)]
 crate struct FenceSet {
-    crate wait_fences: Vec<Fence>,
-    crate signal_fences: HashSet<Fence>,
+    /// A set of fence that must be signaled before executing the command
+    /// buffer.
+    ///
+    /// Each entry is an index into `RefTableSet::fences`.
+    crate wait_fences: Vec<usize>,
+
+    /// A set of fence that will be signaled by the command buffer.
+    ///
+    /// Each entry is an index into `RefTableSet::fences`.
+    crate signal_fences: Vec<usize>,
 }
 
 impl FenceSet {
@@ -27,16 +36,25 @@ impl FenceSet {
         Default::default()
     }
 
-    crate fn wait_fence(&mut self, fence: Fence) {
-        if self.signal_fences.contains(&fence) {
-            // Found a matching fence signaling operating in the same CB
+    crate fn wait_fence(&mut self, ref_table_set: &mut RefTableSet, fence: &Fence) {
+        let ref_entry = ref_table_set
+            .fences
+            .get_mut(&mut ref_table_set.cmd_buffer, fence);
+
+        if ref_entry.op.signaled {
+            // Found a matching fence signaling operation in the same CB
             return;
         }
-        self.wait_fences.push(fence);
+
+        self.wait_fences.push(ref_entry.index);
     }
 
-    crate fn signal_fence(&mut self, fence: Fence) {
-        self.signal_fences.insert(fence);
+    crate fn signal_fence(&mut self, ref_table_set: &mut RefTableSet, fence: &Fence) {
+        let ref_entry = ref_table_set
+            .fences
+            .get_mut(&mut ref_table_set.cmd_buffer, fence);
+
+        self.signal_fences.push(ref_entry.index);
     }
 }
 
@@ -46,20 +64,43 @@ impl FenceSet {
 ///  1. To pass objects with a command buffer to the queue scheduler.
 ///  2. To retain references to the objects until the exection of the command
 ///     buffer is done.
+///  3. Resource state tracking.
 ///
-#[derive(Debug, Default)]
-crate struct RefTable {
+#[derive(Debug)]
+crate struct RefTableSet {
+    /// The access token used to access the per-command buffer resource states.
+    cmd_buffer: CmdBuffer,
+
     compute_pipelines: HashSet<ComputePipeline>,
     render_pipelines: HashSet<RenderPipeline>,
     render_target_tables: HashSet<RenderTargetTable>,
+
+    crate fences: RefTable<Fence, FenceOp>,
 }
 
-impl RefTable {
-    crate fn new() -> Self {
-        Default::default()
+/// The locally tracked state of a fence for a command buffer.
+#[derive(Debug, Default)]
+crate struct FenceOp {
+    /// If this is `true`, this fence is signaled by one of the commands
+    /// previously encoded to the same `CmdBuffer`.
+    ///
+    /// `true` iff this fence is in `FenceSet::signal_fences`.
+    crate signaled: bool,
+}
+
+impl RefTableSet {
+    crate fn new(resstate_cb: CmdBuffer) -> Self {
+        Self {
+            cmd_buffer: resstate_cb,
+            fences: Default::default(),
+            compute_pipelines: Default::default(),
+            render_pipelines: Default::default(),
+            render_target_tables: Default::default(),
+        }
     }
 
     crate fn clear(&mut self) {
+        self.fences.clear(&mut self.cmd_buffer, |_, _| {});
         self.compute_pipelines.clear();
         self.render_pipelines.clear();
         self.render_target_tables.clear();

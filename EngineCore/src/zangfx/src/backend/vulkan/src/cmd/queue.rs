@@ -19,7 +19,7 @@ use crate::utils::translate_generic_error_unwrap;
 
 use super::buffer::{CmdBuffer, CmdBufferData};
 use super::bufferpool::{CbPool, CbPoolItem};
-use super::enc::{FenceSet, RefTable};
+use super::enc::FenceSet;
 use super::fence::Fence;
 use super::monitor::{Monitor, MonitorHandler};
 use super::semaphore::Semaphore;
@@ -146,7 +146,12 @@ impl CmdQueue {
         let scheduler = Arc::new(Scheduler::new(scheduler_data));
 
         let cb_pool = CbPool::new(resstate_cbs.into_iter().map(|resstate_cb| {
-            CmdBufferData::new(device.clone(), queue_family_index, scheduler.clone()).map(Box::new)
+            CmdBufferData::new(
+                device.clone(),
+                queue_family_index,
+                scheduler.clone(),
+                resstate_cb,
+            ).map(Box::new)
         }))?;
 
         Ok(Self {
@@ -298,8 +303,12 @@ impl SchedulerData {
 
                 // Check fences the queue item waits on
                 let mut i = item.wait_fence_index;
-                while let Some(fence) = item.commited.fence_set.wait_fences.get(i) {
+                while let Some(&fence_i) = item.commited.fence_set.wait_fences.get(i) {
+                    let entry = item.commited.ref_table.fences.get_by_index(fence_i);
+                    let fence = entry.resource;
+
                     let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
+
                     if sched_data.signaled {
                         // The fence is signaled by one of the command buffers
                         // that are already scheduled
@@ -313,12 +322,15 @@ impl SchedulerData {
                 if item.wait_fence_index < item.commited.fence_set.wait_fences.len() {
                     // The scheduling of this item is blocked by one of its waiting
                     // fence.
+
                     // First we need to break the borrowing chain (from `item` to
                     // the fence) because we are moving the `item` to the fence's
                     // wait queue. It is definitely safe to move `item` around while
                     // keeping a reference to `fence`.
                     let fence: &Fence = unsafe {
-                        let ref fence = item.commited.fence_set.wait_fences[item.wait_fence_index];
+                        let fence_i = item.commited.fence_set.wait_fences[item.wait_fence_index];
+                        let entry = item.commited.ref_table.fences.get_by_index(fence_i);
+                        let fence = entry.resource;
                         &*(fence as *const _)
                     };
 
@@ -330,7 +342,10 @@ impl SchedulerData {
                     // The item is schedulable. Schedule the item, and unblock
                     // other items waiting on a fence that was just signaled by
                     // this item.
-                    for fence in item.commited.fence_set.signal_fences.iter() {
+                    let ref mut commited = *item.commited;
+                    for &fence_i in commited.fence_set.signal_fences.iter() {
+                        let entry = commited.ref_table.fences.get_by_index(fence_i);
+                        let fence = entry.resource;
                         let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
 
                         // Mark the fence as signaled

@@ -12,7 +12,7 @@ use crate::pipeline::ComputePipeline;
 use zangfx_base as base;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
+use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTableSet};
 use super::fence::Fence;
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub(super) struct ComputeEncoder {
     device: DeviceRef,
     vk_cmd_buffer: vk::CommandBuffer,
     fence_set: FenceSet,
-    ref_table: RefTable,
+    ref_table: RefTableSet,
     desc_set_binding_table: DescSetBindingTable,
 }
 
@@ -32,7 +32,7 @@ impl ComputeEncoder {
         device: DeviceRef,
         vk_cmd_buffer: vk::CommandBuffer,
         fence_set: FenceSet,
-        ref_table: RefTable,
+        ref_table: RefTableSet,
     ) -> Self {
         Self {
             device,
@@ -43,7 +43,7 @@ impl ComputeEncoder {
         }
     }
 
-    crate fn finish(self) -> (FenceSet, RefTable) {
+    crate fn finish(self) -> (FenceSet, RefTableSet) {
         (self.fence_set, self.ref_table)
     }
 
@@ -80,13 +80,13 @@ impl base::CmdEncoder for ComputeEncoder {
     fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().wait_fence(&our_fence, dst_access);
-        self.fence_set.wait_fence(our_fence);
+        self.fence_set.wait_fence(&mut self.ref_table, &our_fence);
     }
 
     fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().update_fence(&our_fence, src_access);
-        self.fence_set.signal_fence(our_fence);
+        self.fence_set.signal_fence(&mut self.ref_table, &our_fence);
     }
 
     fn barrier_core(

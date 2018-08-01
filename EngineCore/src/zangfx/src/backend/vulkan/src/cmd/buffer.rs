@@ -17,12 +17,13 @@ use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
 use crate::buffer::Buffer;
 use crate::device::DeviceRef;
+use crate::resstate;
 use crate::utils::{
     translate_access_type_flags, translate_generic_error_unwrap, translate_pipeline_stage_flags,
 };
 
 use super::bufferpool::{CbPoolContent, CbPoolItem};
-use super::enc::{FenceSet, RefTable};
+use super::enc::{FenceSet, RefTableSet};
 use super::enc_compute::ComputeEncoder;
 use super::enc_copy::CopyEncoder;
 use super::enc_render::RenderEncoder;
@@ -46,7 +47,7 @@ crate struct CmdBufferData {
     crate passes: Vec<Pass>,
 
     crate fence_set: FenceSet,
-    ref_table: RefTable,
+    crate ref_table: RefTableSet,
 
     crate wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
     crate signal_semaphores: Vec<Semaphore>,
@@ -68,7 +69,8 @@ enum Encoder {
 #[derive(Default)]
 crate struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
 
-/// A set of commands and dependencies encoded in a single encoder.
+/// A set of commands and dependencies encoded in a single encoder. Passes also
+/// define the boundaries where command patching can happen.
 #[derive(Debug)]
 crate struct Pass {
     crate vk_cmd_buffer: vk::CommandBuffer,
@@ -110,6 +112,7 @@ impl CmdBufferData {
         device: DeviceRef,
         queue_family_index: u32,
         scheduler: Arc<Scheduler>,
+        resstate_cb: resstate::CmdBuffer,
     ) -> Result<Self> {
         let vk_cmd_pool = unsafe {
             let vk_device = device.vk_device();
@@ -130,7 +133,7 @@ impl CmdBufferData {
             vk_cmd_pool,
             passes: Vec::new(),
             fence_set: FenceSet::new(),
-            ref_table: RefTable::new(),
+            ref_table: RefTableSet::new(resstate_cb),
             wait_semaphores: Vec::new(),
             signal_semaphores: Vec::new(),
             completion_callbacks: Default::default(),
@@ -243,8 +246,8 @@ impl base::CmdBuffer for CmdBuffer {
             RenderEncoder::new(
                 uncommited.device.clone(),
                 uncommited.vk_cmd_buffer(),
-                replace(&mut uncommited.fence_set, Default::default()),
-                replace(&mut uncommited.ref_table, Default::default()),
+                unimplemented!(), // replace(&mut uncommited.fence_set, Default::default()),
+                unimplemented!(), // replace(&mut uncommited.ref_table, Default::default()),
                 rtt,
             )
         };
@@ -267,8 +270,8 @@ impl base::CmdBuffer for CmdBuffer {
             ComputeEncoder::new(
                 uncommited.device.clone(),
                 uncommited.vk_cmd_buffer(),
-                replace(&mut uncommited.fence_set, Default::default()),
-                replace(&mut uncommited.ref_table, Default::default()),
+                unimplemented!(), // replace(&mut uncommited.fence_set, Default::default()),
+                unimplemented!(), // replace(&mut uncommited.ref_table, Default::default()),
             )
         };
         uncommited.encoder = Some(Encoder::Compute(encoder));
@@ -290,7 +293,7 @@ impl base::CmdBuffer for CmdBuffer {
             CopyEncoder::new(
                 uncommited.device.clone(),
                 uncommited.vk_cmd_buffer(),
-                replace(&mut uncommited.fence_set, Default::default()),
+                unimplemented!(), // replace(&mut uncommited.fence_set, Default::default()),
             )
         };
         uncommited.encoder = Some(Encoder::Copy(encoder));

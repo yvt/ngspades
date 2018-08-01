@@ -12,7 +12,7 @@ use zangfx_base as base;
 use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 use zangfx_common::Rect2D;
 
-use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
+use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTableSet};
 use super::fence::Fence;
 use crate::buffer::Buffer;
 use crate::device::DeviceRef;
@@ -25,7 +25,7 @@ pub(super) struct RenderEncoder {
     device: DeviceRef,
     vk_cmd_buffer: vk::CommandBuffer,
     fence_set: FenceSet,
-    ref_table: RefTable,
+    ref_table: RefTableSet,
     desc_set_binding_table: DescSetBindingTable,
     /// Deferred-signaled fences
     signal_fences: Vec<(Fence, base::StageFlags)>,
@@ -39,7 +39,7 @@ impl RenderEncoder {
         device: DeviceRef,
         vk_cmd_buffer: vk::CommandBuffer,
         fence_set: FenceSet,
-        ref_table: RefTable,
+        ref_table: RefTableSet,
         rtt: &RenderTargetTable,
     ) -> Self {
         let mut enc = Self {
@@ -65,7 +65,7 @@ impl RenderEncoder {
         enc
     }
 
-    crate fn finish(mut self) -> (FenceSet, RefTable) {
+    crate fn finish(mut self) -> (FenceSet, RefTableSet) {
         unsafe {
             let vk_device = self.device.vk_device();
             vk_device.cmd_end_render_pass(self.vk_cmd_buffer);
@@ -115,13 +115,13 @@ impl base::CmdEncoder for RenderEncoder {
     fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().wait_fence(&our_fence, dst_access);
-        self.fence_set.wait_fence(our_fence);
+        self.fence_set.wait_fence(&mut self.ref_table, &our_fence);
     }
 
     fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().update_fence(&our_fence, src_access);
-        self.fence_set.signal_fence(our_fence);
+        self.fence_set.signal_fence(&mut self.ref_table, &our_fence);
     }
 
     fn barrier_core(
@@ -216,8 +216,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
                     height: vp.height,
                     min_depth: vp.min_depth,
                     max_depth: vp.max_depth,
-                })
-                .collect();
+                }).collect();
             unsafe {
                 vk_device.fp_v1_0().cmd_set_viewport(
                     self.vk_cmd_buffer,
@@ -270,8 +269,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
                 .map(|&(buffer, _)| {
                     let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
                     buffer.vk_buffer()
-                })
-                .collect();
+                }).collect();
             let offsets: ArrayVec<[_; 32]> = items.iter().map(|&(_, offset)| offset).collect();
             unsafe {
                 vk_device.cmd_bind_vertex_buffers(

@@ -78,13 +78,13 @@ impl base::CmdEncoder for CopyEncoder {
     fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().wait_fence(&our_fence, dst_access);
-        self.fence_set.wait_fence(our_fence);
+        unimplemented!(); // self.fence_set.wait_fence(&our_fence);
     }
 
     fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.common().update_fence(&our_fence, src_access);
-        self.fence_set.signal_fence(our_fence);
+        unimplemented!(); // self.fence_set.signal_fence(&our_fence);
     }
 
     fn barrier_core(

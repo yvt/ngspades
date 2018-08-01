@@ -176,12 +176,32 @@ impl<State> TrackedState<State> {
     }
 }
 
-impl<Res: Resource, Op: Default> RefTable<Res, Op> {
-    crate fn new() -> Self {
+#[derive(Debug)]
+crate struct RefTableEntry<'a, Res: 'a, Op: 'a> {
+    crate index: usize,
+    crate resource: &'a Res,
+    crate op: &'a Op,
+}
+
+#[derive(Debug)]
+crate struct RefTableEntryMut<'a, Res: 'a, Op: 'a> {
+    crate index: usize,
+    crate resource: &'a Res,
+    crate op: &'a mut Op,
+}
+
+impl<Res, Op> Default for RefTable<Res, Op> {
+    fn default() -> Self {
         RefTable(Vec::new())
     }
+}
 
-    /// Get the index of the `Op` describing how the resource state
+impl<Res: Resource, Op: Default> RefTable<Res, Op> {
+    crate fn new() -> Self {
+        Default::default()
+    }
+
+    /// Get the index of the entry describing how the resource state
     /// represented by `res` will be transformed during the execution of
     /// the command buffer represented by `cmd_buffer`.
     ///
@@ -200,18 +220,34 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
         }
     }
 
-    /// Get a mutable reference to the `Op` describing how the resource state
-    /// represented by `res` will be transformed during the execution of
-    /// the command buffer represented by `cmd_buffer`.
-    crate fn get_op_mut_for_resource(&mut self, cmd_buffer: &mut CmdBuffer, res: &Res) -> &mut Op {
+    /// Get a mutable reference to an entry by resource.
+    crate fn get_mut(
+        &mut self,
+        cmd_buffer: &mut CmdBuffer,
+        res: &Res,
+    ) -> RefTableEntryMut<'_, Res, Op> {
         let index = self.get_index_for_resource(cmd_buffer, res);
-        &mut self.0[index].1
+        self.get_mut_by_index(index)
     }
 
     /// Get a mutable reference to an entry by index.
-    crate fn get_by_index(&mut self, index: usize) -> (&Res, &mut Op) {
+    crate fn get_mut_by_index(&mut self, index: usize) -> RefTableEntryMut<'_, Res, Op> {
         let ref mut e = self.0[index];
-        (&e.0, &mut e.1)
+        RefTableEntryMut {
+            index,
+            resource: &e.0,
+            op: &mut e.1,
+        }
+    }
+
+    /// Get a reference to an entry by index.
+    crate fn get_by_index(&self, index: usize) -> RefTableEntry<'_, Res, Op> {
+        let ref e = self.0[index];
+        RefTableEntry {
+            index,
+            resource: &e.0,
+            op: &e.1,
+        }
     }
 
     /// Clear the reference table. Additionally, transform the `latest`
@@ -220,10 +256,12 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
     ///
     /// For each referenced resource, `f` is called with the `latest` and `Op`
     /// of the resource.
-    crate fn commit<F>(&mut self, queue: &mut Queue, cmd_buffer: &mut CmdBuffer, mut f: F)
-    where
-        F: FnMut(&mut Res::State, Op),
-    {
+    crate fn commit(
+        &mut self,
+        queue: &mut Queue,
+        cmd_buffer: &mut CmdBuffer,
+        mut f: impl FnMut(&Res, &mut Res::State, Op),
+    ) {
         for (i, (res, op)) in self.0.drain(..).enumerate() {
             let tracked_state = res.tracked_state();
 
@@ -234,7 +272,24 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
             // in practice, but can't omit it without making it unsound
             // (Unless, `Resource` is `unsafe trait`...)
             let latest = tracked_state.latest_mut(queue);
-            f(latest, op);
+            f(&res, latest, op);
+
+            // The resource is no longer referenced by this refernece table, so
+            // clear the index
+            *ref_table_index = None.into();
+        }
+    }
+
+    /// Clear the reference table without modifying `latest`. `f` is called with
+    /// each referenced resource.
+    crate fn clear(&mut self, cmd_buffer: &mut CmdBuffer, mut f: impl FnMut(&Res, Op)) {
+        for (i, (res, op)) in self.0.drain(..).enumerate() {
+            let tracked_state = res.tracked_state();
+
+            let ref_table_index = tracked_state.ref_table_index_mut(cmd_buffer);
+            debug_assert_eq!(ref_table_index.get(), Some(i));
+
+            f(&res, op);
 
             // The resource is no longer referenced by this refernece table, so
             // clear the index
@@ -279,7 +334,7 @@ mod tests {
             let mut cb = cbs.pop().unwrap();
             let mut ref_table = RefTable::new();
 
-            *ref_table.get_op_mut_for_resource(&mut cb, &res) += "[cb1]";
+            *ref_table.get_mut(&mut cb, &res).op += "[cb1]";
 
             (cb, ref_table)
         };
@@ -288,14 +343,14 @@ mod tests {
             let mut cb = cbs.pop().unwrap();
             let mut ref_table = RefTable::new();
 
-            *ref_table.get_op_mut_for_resource(&mut cb, &res) += "[cb2]";
+            *ref_table.get_mut(&mut cb, &res).op += "[cb2]";
 
             (cb, ref_table)
         };
 
         // Execute command buffers
         for (cb, ref_table) in &mut [cb2, cb1] {
-            ref_table.commit(&mut queue, cb, |latest, op: MyResourceOp| {
+            ref_table.commit(&mut queue, cb, |_res, latest, op: MyResourceOp| {
                 *latest += "-";
                 *latest += &op;
             })
