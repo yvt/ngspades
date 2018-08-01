@@ -8,7 +8,6 @@ use ash::version::*;
 use ash::vk;
 use parking_lot::Mutex;
 use std::sync::Arc;
-use tokenlock::{Token, TokenRef};
 
 use crate::device::DeviceRef;
 use zangfx_base as base;
@@ -119,7 +118,6 @@ pub struct CmdQueue {
     cb_pool: CbPool<Box<CmdBufferData>>,
     monitor: Monitor<BatchDoneHandler>,
     scheduler: Option<Arc<Scheduler>>,
-    resstate_queue: resstate::Queue,
 }
 
 zangfx_impl_object! { CmdQueue: dyn base::CmdQueue, dyn (crate::Debug) }
@@ -138,17 +136,14 @@ impl CmdQueue {
         queue_family_index: u32,
         num_fences: usize,
     ) -> Result<Self> {
-        let scheduler_data = SchedulerData::default();
-
+        // Initialize the resource state tracking on the newly created queue
         let (resstate_queue, resstate_cbs) = resstate::new_queue();
 
         // Set the default queue used during resource creation.
         device.set_default_resstate_queue_if_missing(resstate_queue.queue_id());
 
-        let scheduler = Arc::new(Scheduler {
-            token_ref: (&scheduler_data.token).into(),
-            data: Mutex::new(scheduler_data),
-        });
+        let scheduler_data = SchedulerData::new(resstate_queue);
+        let scheduler = Arc::new(Scheduler::new(scheduler_data));
 
         let cb_pool = CbPool::new(resstate_cbs.into_iter().map(|resstate_cb| {
             CmdBufferData::new(device.clone(), queue_family_index, scheduler.clone()).map(Box::new)
@@ -161,7 +156,6 @@ impl CmdQueue {
             monitor: Monitor::new(device.clone(), vk_queue, num_fences)?,
             scheduler: Some(scheduler),
             device,
-            resstate_queue,
         })
     }
 
@@ -175,7 +169,7 @@ impl CmdQueue {
 
     /// The queue identifier for resource state tracking.
     crate fn resstate_queue_id(&self) -> resstate::QueueId {
-        self.resstate_queue.queue_id()
+        self.scheduler().resstate_queue_id
     }
 }
 
@@ -185,7 +179,7 @@ impl base::CmdQueue for CmdQueue {
     }
 
     fn new_fence(&self) -> Result<base::FenceRef> {
-        unsafe { Fence::new(self.device.clone(), self.scheduler().token_ref.clone()) }
+        unsafe { Fence::new(self.device.clone(), self.resstate_queue_id()) }
             .map(base::FenceRef::new)
     }
 
@@ -201,17 +195,16 @@ impl base::CmdQueue for CmdQueue {
 crate struct Scheduler {
     data: Mutex<SchedulerData>,
 
-    /// Used to *construct* scheduler-specific data in `Fence`s.
-    token_ref: TokenRef,
+    resstate_queue_id: resstate::QueueId,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct SchedulerData {
     /// Queue items to be processed.
     pending_items: Option<Box<Item>>,
 
-    /// Used to *access* scheduler-specific data in `Fence`s.
-    token: Token,
+    /// The access token used to access per-queue resource states.
+    resstate_queue: resstate::Queue,
 }
 
 #[derive(Debug)]
@@ -247,6 +240,13 @@ fn for_each_item_mut<T: FnMut(&mut Item)>(item_or_none: &mut Option<Box<Item>>, 
 }
 
 impl Scheduler {
+    fn new(data: SchedulerData) -> Self {
+        Self {
+            resstate_queue_id: data.resstate_queue.queue_id(),
+            data: Mutex::new(data),
+        }
+    }
+
     /// Called by a command buffer's method.
     crate fn commit(&self, commited: CbPoolItem<Box<CmdBufferData>>) {
         let mut item = Box::new(Item {
@@ -270,6 +270,12 @@ impl Drop for SchedulerData {
 }
 
 impl SchedulerData {
+    fn new(resstate_queue: resstate::Queue) -> Self {
+        Self {
+            pending_items: None,
+            resstate_queue,
+        }
+    }
     /// Schedule and submit the queue items in `self.pending_items`. Leave
     /// unschedulable items (i.e. those which wait on fences which are not
     /// signaled by any commited items) in `self.pending_items`.
@@ -279,6 +285,8 @@ impl SchedulerData {
         device: &DeviceRef,
         vk_queue: vk::Queue,
     ) {
+        use crate::resstate::Resource; // for `tracked_state()`
+
         let mut scheduled_items = None;
 
         // Schedule as many items as possible.
@@ -291,7 +299,7 @@ impl SchedulerData {
                 // Check fences the queue item waits on
                 let mut i = item.wait_fence_index;
                 while let Some(fence) = item.commited.fence_set.wait_fences.get(i) {
-                    let sched_data = fence.schedule_data().write(&mut self.token).unwrap();
+                    let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
                     if sched_data.signaled {
                         // The fence is signaled by one of the command buffers
                         // that are already scheduled
@@ -315,7 +323,7 @@ impl SchedulerData {
                     };
 
                     // Insert `item` to the fence's wait queue.
-                    let sched_data = fence.schedule_data().write(&mut self.token).unwrap();
+                    let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
                     item.next = sched_data.waiting.take();
                     sched_data.waiting = Some(item);
                 } else {
@@ -323,7 +331,7 @@ impl SchedulerData {
                     // other items waiting on a fence that was just signaled by
                     // this item.
                     for fence in item.commited.fence_set.signal_fences.iter() {
-                        let sched_data = fence.schedule_data().write(&mut self.token).unwrap();
+                        let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
 
                         // Mark the fence as signaled
                         sched_data.signaled = true;

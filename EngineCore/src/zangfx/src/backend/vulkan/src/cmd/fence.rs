@@ -21,14 +21,14 @@
 use ash::version::*;
 use ash::vk;
 use refeq::RefEqArc;
-use tokenlock::{TokenLock, TokenRef};
 
-use crate::device::DeviceRef;
-use crate::limits::DeviceTrait;
 use zangfx_base as base;
 use zangfx_base::{zangfx_impl_handle, Result};
 
 use crate::cmd::queue::Item;
+use crate::device::DeviceRef;
+use crate::limits::DeviceTrait;
+use crate::resstate;
 use crate::utils::translate_generic_error_unwrap;
 
 // TODO: recycle fences after use
@@ -45,17 +45,17 @@ zangfx_impl_handle! { Fence, base::FenceRef }
 struct FenceData {
     device: DeviceRef,
     vk_event: vk::Event,
-    schedule: TokenLock<FenceScheduleData>,
+    tracked_state: resstate::TrackedState<FenceScheduleData>,
 }
 
 #[derive(Debug)]
-pub(super) struct FenceScheduleData {
+crate struct FenceScheduleData {
     crate signaled: bool,
     crate waiting: Option<Box<Item>>,
 }
 
 impl Fence {
-    pub(crate) unsafe fn new(device: DeviceRef, token_ref: TokenRef) -> Result<Self> {
+    crate unsafe fn new(device: DeviceRef, queue_id: resstate::QueueId) -> Result<Self> {
         let info = vk::EventCreateInfo {
             s_type: vk::StructureType::EventCreateInfo,
             p_next: crate::null(),
@@ -84,8 +84,8 @@ impl Fence {
             data: RefEqArc::new(FenceData {
                 device,
                 vk_event,
-                schedule: TokenLock::new(
-                    token_ref,
+                tracked_state: resstate::TrackedState::new(
+                    queue_id,
                     FenceScheduleData {
                         signaled: false,
                         waiting: None,
@@ -98,9 +98,13 @@ impl Fence {
     pub fn vk_event(&self) -> vk::Event {
         self.data.vk_event
     }
+}
 
-    pub(super) fn schedule_data(&self) -> &TokenLock<FenceScheduleData> {
-        &self.data.schedule
+impl resstate::Resource for Fence {
+    type State = FenceScheduleData;
+
+    fn tracked_state(&self) -> &resstate::TrackedState<Self::State> {
+        &self.data.tracked_state
     }
 }
 
