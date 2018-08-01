@@ -24,6 +24,8 @@ impl base::CopyCmdEncoder for CmdBufferData {
         let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
         let vk_device = self.device.vk_device();
 
+        self.ref_table.insert_buffer(my_buffer);
+
         let data = (value as u32) * 0x1010101;
 
         unsafe {
@@ -48,6 +50,9 @@ impl base::CopyCmdEncoder for CmdBufferData {
         let my_src: &Buffer = src.downcast_ref().expect("bad buffer type");
         let my_dst: &Buffer = dst.downcast_ref().expect("bad buffer type");
         let vk_device = self.device.vk_device();
+
+        self.ref_table.insert_buffer(my_src);
+        self.ref_table.insert_buffer(my_dst);
 
         unsafe {
             vk_device.cmd_copy_buffer(
@@ -77,6 +82,9 @@ impl base::CopyCmdEncoder for CmdBufferData {
     ) {
         let my_src: &Buffer = src.downcast_ref().expect("bad source buffer type");
         let my_dst: &Image = dst.downcast_ref().expect("bad destination image type");
+
+        self.ref_table.insert_buffer(my_src);
+        // TODO: Ref-count image
 
         let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);
         let size: [u32; 3] = size.into_with_pad(1);
@@ -124,6 +132,9 @@ impl base::CopyCmdEncoder for CmdBufferData {
     ) {
         let my_src: &Image = src.downcast_ref().expect("bad source image type");
         let my_dst: &Buffer = dst.downcast_ref().expect("bad destination buffer type");
+
+        self.ref_table.insert_buffer(my_dst);
+        // TODO: Ref-count image
 
         let src_origin: [u32; 3] = src_origin.into_with_pad(0);
         let size: [u32; 3] = size.into_with_pad(1);

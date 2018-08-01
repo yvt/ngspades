@@ -90,6 +90,7 @@ crate struct RefTableSet {
 
     crate fences: RefTable<Fence, FenceOp>,
     crate arg_pools: RefTable<ArgPoolDataRef, ()>,
+    crate buffers: RefTable<Buffer, ()>,
 }
 
 /// The locally tracked state of a fence for a command buffer.
@@ -111,12 +112,14 @@ impl RefTableSet {
             render_pipelines: Default::default(),
             render_target_tables: Default::default(),
             arg_pools: Default::default(),
+            buffers: Default::default(),
         }
     }
 
     crate fn clear(&mut self) {
         self.fences.clear(&mut self.cmd_buffer, |_, _| {});
         self.arg_pools.clear(&mut self.cmd_buffer, |_, _| {});
+        self.buffers.clear(&mut self.cmd_buffer, |_, _| {});
         self.compute_pipelines.clear();
         self.render_pipelines.clear();
         self.render_target_tables.clear();
@@ -137,6 +140,11 @@ impl RefTableSet {
     crate fn insert_arg_pool(&mut self, obj: &ArgPool) {
         self.arg_pools
             .get_index_for_resource(&mut self.cmd_buffer, obj.data());
+    }
+
+    crate fn insert_buffer(&mut self, obj: &Buffer) {
+        self.buffers
+            .get_index_for_resource(&mut self.cmd_buffer, obj);
     }
 }
 
@@ -313,6 +321,11 @@ impl CmdBufferData {
             self.begin_pass();
         }
 
+        for (_, buffer) in buffers.iter() {
+            let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+            self.ref_table.insert_buffer(buffer);
+        }
+
         let vk_device = self.device.vk_device();
 
         let src_access_mask = translate_access_type_flags(src_access);
@@ -323,6 +336,7 @@ impl CmdBufferData {
                 .iter()
                 .map(|&(ref range, ref buffer)| {
                     let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
                     vk::BufferMemoryBarrier {
                         s_type: vk::StructureType::BufferMemoryBarrier,
                         p_next: ::null(),
@@ -406,12 +420,13 @@ impl base::CmdEncoder for CmdBufferData {
         // TODO: debug commands
     }
 
-    fn use_resource_core(
-        &mut self,
-        _usage: base::ResourceUsageFlags,
-        _objs: base::ResourceSet<'_>,
-    ) {
-        unimplemented!()
+    fn use_resource_core(&mut self, _usage: base::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
+        for buffer in objs.buffers() {
+            let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+            self.ref_table.insert_buffer(buffer);
+        }
+
+        // TODO: Ref-count images
     }
 
     fn use_heap(&mut self, _heaps: &[&base::HeapRef]) {

@@ -192,6 +192,12 @@ impl base::RenderCmdEncoder for CmdBufferData {
         buffers: &[(&base::BufferRef, base::DeviceSize)],
     ) {
         let vk_device = self.device.vk_device();
+
+        for (buffer, _) in buffers.iter() {
+            let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+            self.ref_table.insert_buffer(buffer);
+        }
+
         for items in buffers.chunks(32) {
             let buffers: ArrayVec<[_; 32]> = items
                 .iter()
@@ -220,6 +226,9 @@ impl base::RenderCmdEncoder for CmdBufferData {
     ) {
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+        self.ref_table.insert_buffer(buffer);
+
         unsafe {
             vk_device.cmd_bind_index_buffer(
                 self.vk_cmd_buffer(),
@@ -292,6 +301,9 @@ impl base::RenderCmdEncoder for CmdBufferData {
 
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+        self.ref_table.insert_buffer(buffer);
+
         unsafe {
             vk_device.cmd_draw_indirect(vk_cmd_buffer, buffer.vk_buffer(), offset, 1, 0);
         }
@@ -308,6 +320,9 @@ impl base::RenderCmdEncoder for CmdBufferData {
 
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+        self.ref_table.insert_buffer(buffer);
+
         unsafe {
             vk_device.cmd_draw_indexed_indirect(vk_cmd_buffer, buffer.vk_buffer(), offset, 1, 0);
         }

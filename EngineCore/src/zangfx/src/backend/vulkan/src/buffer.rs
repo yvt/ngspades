@@ -164,6 +164,14 @@ impl VulkanBuffer {
     }
 }
 
+impl resstate::Resource for Buffer {
+    type State = BufferState;
+
+    fn tracked_state(&self) -> &resstate::TrackedState<Self::State> {
+        &self.tracked_state
+    }
+}
+
 unsafe impl base::Buffer for Buffer {
     fn as_ptr(&self) -> *mut u8 {
         self.vulkan_buffer.binding_info.as_ptr()

@@ -66,6 +66,8 @@ impl base::ComputeCmdEncoder for CmdBufferData {
         let vk_cmd_buffer = self.vk_cmd_buffer();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
 
+        self.ref_table.insert_buffer(buffer);
+
         self.desc_set_binding_table.flush(
             &self.device,
             vk_cmd_buffer,
