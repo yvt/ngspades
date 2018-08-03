@@ -73,16 +73,6 @@ impl CmdBufferData {
         let vk_device = device.vk_device();
 
         let traits = device.caps().info.traits;
-        if traits.intersects(DeviceTrait::MoltenVK) {
-            // Skip all event/barrier operations on MoltenVK
-            unsafe {
-                for pass in self.passes.iter() {
-                    vk_device.end_command_buffer(pass.vk_cmd_buffer)?;
-                }
-            }
-
-            return Ok(());
-        }
 
         let vk_cmd_pool = self.vk_cmd_pool;
 
@@ -175,7 +165,9 @@ impl CmdBufferData {
                 sched_data.units[unit_i].layout = Some(final_layout);
             }
 
-            if vk_events.len() > 0 {
+            // Events are not supported by MoltenVK and will cause
+            // a `FeatureNotPresent` error
+            if vk_events.len() > 0 && !traits.intersects(DeviceTrait::MoltenVK) {
                 let src_stage = base::AccessType::union_supported_stages(event_src_access);
                 let dst_stage = base::AccessType::union_supported_stages(barrier_dst_access);
 
