@@ -273,7 +273,7 @@ impl base::Device for Device {
         for &((_pool, table), update_sets) in updates.iter() {
             let table: &arg::pool::ArgTable =
                 table.downcast_ref().expect("bad argument table type");
-            for &(arg_i, mut array_i, objs) in update_sets.iter() {
+            for &(arg_i, array_i, objs) in update_sets.iter() {
                 if objs.len() == 0 {
                     continue;
                 }
@@ -290,7 +290,7 @@ impl base::Device for Device {
                         p_next: ::null(),
                         dst_set: table.vk_descriptor_set(),
                         dst_binding: arg_i as u32,
-                        dst_array_element: array_i as u32,
+                        dst_array_element: (array_i + i) as u32,
                         descriptor_count: 0, // set later
                         descriptor_type,
                         p_image_info: vec_end_ptr(&write_images),

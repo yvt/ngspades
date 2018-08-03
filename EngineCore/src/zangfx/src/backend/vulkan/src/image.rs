@@ -341,6 +341,10 @@ impl Image {
             .resolve_vk_subresource_layers(value, aspect_mask)
     }
 
+    fn resolve_layer_range(&self, value: &base::ImageLayerRange) -> base::ImageLayerRange {
+        self.image_view.resolve_layer_range(value)
+    }
+
     crate fn image_view(&self) -> &Arc<ImageView> {
         &self.image_view
     }
@@ -506,16 +510,21 @@ impl ImageView {
         value: &base::ImageLayerRange,
         aspect_mask: vk::ImageAspectFlags,
     ) -> vk::ImageSubresourceLayers {
+        crate::utils::translate_image_subresource_layers(
+            &self.resolve_layer_range(value),
+            aspect_mask,
+        )
+    }
+
+    fn resolve_layer_range(&self, value: &base::ImageLayerRange) -> base::ImageLayerRange {
         let ref layers = value.layers;
 
         let ref base_mip_levels = self.range.mip_levels;
         let ref base_layers = self.range.layers;
 
-        vk::ImageSubresourceLayers {
-            aspect_mask,
+        base::ImageLayerRange {
             mip_level: value.mip_level + base_mip_levels.start,
-            base_array_layer: layers.start + base_layers.start,
-            layer_count: layers.end - layers.start,
+            layers: layers.start + base_layers.start..layers.end + base_layers.start,
         }
     }
 }
@@ -827,10 +836,10 @@ impl ImageStateAddresser {
         image: &Image,
         range: &base::ImageLayerRange,
     ) -> impl Iterator<Item = usize> {
-        let vk_range = image.resolve_vk_subresource_layers(range, image.aspects());
+        let abs_range = image.resolve_layer_range(range);
         self.indices_for_subrange(&ImageSubRange {
-            mip_levels: vk_range.mip_level..vk_range.mip_level + 1,
-            layers: vk_range.base_array_layer..vk_range.base_array_layer + vk_range.layer_count,
+            mip_levels: abs_range.mip_level..abs_range.mip_level + 1,
+            layers: abs_range.layers,
         })
     }
 
@@ -842,17 +851,14 @@ impl ImageStateAddresser {
         range2: &base::ImageLayerRange,
     ) -> bool {
         debug_assert_eq!(image1.vk_image(), image2.vk_image());
-        let aspects = image1.aspects();
-        let vk_range1 = image1.resolve_vk_subresource_layers(range1, aspects);
-        let vk_range2 = image2.resolve_vk_subresource_layers(range2, aspects);
-        if self.track_per_mip && vk_range1.mip_level != vk_range2.mip_level {
+        let abs_range1 = image1.resolve_layer_range(range1);
+        let abs_range2 = image2.resolve_layer_range(range2);
+        if self.track_per_mip && abs_range1.mip_level != abs_range2.mip_level {
             return false;
         }
         if self.track_per_layer {
-            let ref layers1 =
-                vk_range1.base_array_layer..vk_range1.base_array_layer + vk_range1.layer_count;
-            let ref layers2 =
-                vk_range2.base_array_layer..vk_range2.base_array_layer + vk_range2.layer_count;
+            let ref layers1 = abs_range1.layers;
+            let ref layers2 = abs_range2.layers;
             layers1.start < layers2.end && layers1.end > layers2.start
         } else {
             true

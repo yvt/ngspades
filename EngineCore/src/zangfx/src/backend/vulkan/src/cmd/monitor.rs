@@ -102,7 +102,7 @@ where
         cmd_receiver: Receiver<Cmd<T>>,
     ) {
         let device = shared.device.vk_device();
-        for mut cmd in cmd_receiver.iter() {
+        for cmd in cmd_receiver.iter() {
             // Wait until the fence is signaled
             let timeout = 60_000_000_000; // a minute
             loop {

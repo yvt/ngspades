@@ -513,7 +513,7 @@ impl CmdBufferData {
 }
 
 impl base::CmdEncoder for CmdBufferData {
-    fn begin_debug_group(&mut self, label: &str) {
+    fn begin_debug_group(&mut self, _label: &str) {
         // TODO: debug commands
     }
 
@@ -521,7 +521,7 @@ impl base::CmdEncoder for CmdBufferData {
         // TODO: debug commands
     }
 
-    fn debug_marker(&mut self, label: &str) {
+    fn debug_marker(&mut self, _label: &str) {
         // TODO: debug commands
     }
 
@@ -598,9 +598,9 @@ impl base::CmdEncoder for CmdBufferData {
 
     fn barrier_core(
         &mut self,
-        obj: base::ResourceSet<'_>,
-        src_access: base::AccessTypeFlags,
-        dst_access: base::AccessTypeFlags,
+        _obj: base::ResourceSet<'_>,
+        _src_access: base::AccessTypeFlags,
+        _dst_access: base::AccessTypeFlags,
     ) {
         unimplemented!()
     }

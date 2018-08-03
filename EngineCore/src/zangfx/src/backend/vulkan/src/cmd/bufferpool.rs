@@ -36,7 +36,7 @@ crate trait CbPoolContent {
 }
 
 impl<T: CbPoolContent> CbPool<T> {
-    crate fn new<I>(mut items: I) -> Result<Self>
+    crate fn new<I>(items: I) -> Result<Self>
     where
         I: Iterator<Item = Result<T>> + ExactSizeIterator,
     {

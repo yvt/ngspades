@@ -201,6 +201,7 @@ impl<Res, Op> Default for RefTable<Res, Op> {
 }
 
 impl<Res: Resource, Op: Default> RefTable<Res, Op> {
+    #[allow(dead_code)]
     crate fn new() -> Self {
         Default::default()
     }
@@ -268,6 +269,7 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
     ///
     /// For each referenced resource, `f` is called with the `latest` and `Op`
     /// of the resource.
+    #[allow(dead_code)]
     crate fn commit(
         &mut self,
         queue: &mut Queue,
@@ -342,7 +344,7 @@ mod tests {
         debug_assert_eq!(res.tracked_state.latest_mut(&mut queue), ":)");
 
         // Create command buffers
-        let mut cb1 = {
+        let cb1 = {
             let mut cb = cbs.pop().unwrap();
             let mut ref_table = RefTable::new();
 
@@ -351,7 +353,7 @@ mod tests {
             (cb, ref_table)
         };
 
-        let mut cb2 = {
+        let cb2 = {
             let mut cb = cbs.pop().unwrap();
             let mut ref_table = RefTable::new();
 
