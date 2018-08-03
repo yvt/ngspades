@@ -32,6 +32,8 @@ impl CmdBufferData {
             );
         }
 
+        // TODO: Call `use_image_for_pass`
+
         self.ref_table.insert_render_target_table(rtt);
     }
 

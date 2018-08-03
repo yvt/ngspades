@@ -6,6 +6,8 @@
 //! Implementation of `Image` for Vulkan.
 use ash::version::*;
 use ash::{prelude::VkResult, vk};
+use ngsenumflags::flags;
+use smallvec::{smallvec, SmallVec};
 use std::ops;
 use std::sync::Arc;
 
@@ -192,7 +194,9 @@ impl base::ImageBuilder for ImageBuilder {
             binding_info: heap::HeapBindingInfo::new(),
         });
 
-        let state = ImageState::new(&vulkan_image);
+        let state = ImageState::new(&vulkan_image, true);
+
+        let queue_id = self.queue_id.get(&vulkan_image.device);
 
         let image_view = Arc::new(ImageView::new_prototype(
             vulkan_image,
@@ -202,9 +206,8 @@ impl base::ImageBuilder for ImageBuilder {
             },
             image_view_type,
             format,
+            queue_id,
         ));
-
-        let queue_id = self.queue_id.get(&image_view.vulkan_image.device);
 
         let tracked_state = Arc::new(resstate::TrackedState::new(queue_id, state));
 
@@ -243,7 +246,12 @@ crate struct ImageView {
     format: vk::Format,
     range: ImageSubRange,
     view_type: vk::ImageViewType,
+
+    /// Used for automatic lifetime tracking.
+    tracked_state: resstate::TrackedState<ImageViewState>,
 }
+
+crate type ImageViewState = ();
 
 impl Drop for ImageView {
     fn drop(&mut self) {
@@ -281,7 +289,17 @@ impl Drop for VulkanImage {
 /// The tracked state of an image on a particular queue.
 #[derive(Debug)]
 crate struct ImageState {
-    // TODO: Image state
+    /// `ImageUnitState` for each state-tracking unit. The subresource each
+    /// element represents varies depending on the image usage flags.
+    /// The mapping can be computed by using `ImageStateAddresser`
+    crate units: SmallVec<[ImageUnitState; 1]>,
+}
+
+/// The tracked state of an image layer on a particular queue.
+#[derive(Debug, Clone)]
+crate struct ImageUnitState {
+    /// The current image layout.
+    crate layout: Option<vk::ImageLayout>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -322,11 +340,42 @@ impl Image {
         self.image_view
             .resolve_vk_subresource_layers(value, aspect_mask)
     }
+
+    crate fn image_view(&self) -> &Arc<ImageView> {
+        &self.image_view
+    }
+}
+
+impl resstate::Resource for Image {
+    type State = ImageState;
+
+    fn tracked_state(&self) -> &resstate::TrackedState<Self::State> {
+        &self.tracked_state
+    }
+}
+
+impl resstate::Resource for Arc<ImageView> {
+    type State = ImageViewState;
+
+    fn tracked_state(&self) -> &resstate::TrackedState<Self::State> {
+        &self.tracked_state
+    }
 }
 
 impl ImageState {
-    fn new(_vulkan_image: &Arc<VulkanImage>) -> Self {
-        Self {}
+    fn new(vulkan_image: &VulkanImage, owned: bool) -> Self {
+        let addresser = ImageStateAddresser::from_vulkan_image(&vulkan_image);
+        let substate = ImageUnitState {
+            layout: if owned {
+                Some(vk::ImageLayout::Undefined)
+            } else {
+                None
+            },
+        };
+
+        Self {
+            units: smallvec![substate; addresser.len()],
+        }
     }
 }
 
@@ -338,6 +387,7 @@ impl ImageView {
         subrange: ImageSubRange,
         view_type: vk::ImageViewType,
         format: vk::Format,
+        queue_id: resstate::QueueId,
     ) -> Self {
         Self {
             vulkan_image,
@@ -345,6 +395,7 @@ impl ImageView {
             format,
             range: subrange,
             view_type,
+            tracked_state: resstate::TrackedState::new(queue_id, ()),
         }
     }
 
@@ -354,6 +405,7 @@ impl ImageView {
         subrange: ImageSubRange,
         view_type: vk::ImageViewType,
         format: vk::Format,
+        queue_id: resstate::QueueId,
     ) -> Result<Self> {
         let flags = vk::ImageViewCreateFlags::empty();
         // flags: "reserved for future use"
@@ -388,6 +440,7 @@ impl ImageView {
             format,
             range: subrange,
             view_type,
+            tracked_state: resstate::TrackedState::new(queue_id, ()),
         })
     }
 
@@ -494,7 +547,9 @@ impl base::Image for Image {
         let image_view = self.image_view.clone();
 
         // Create a fresh tracked state for the target queue
-        let state = ImageState::new(&self.image_view.vulkan_image);
+        // FIXME: Image proxies are marked as "not owned by this queue".
+        //        Is this behavior documentated somewhere?
+        let state = ImageState::new(&self.image_view.vulkan_image, false);
         let tracked_state = Arc::new(resstate::TrackedState::new(queue_id, state));
 
         Image {
@@ -667,6 +722,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             image.image_view.resolve_subrange(&self.subrange),
             view_type,
             format,
+            image.tracked_state.queue_id(),
         )?);
 
         let tracked_state = image.tracked_state.clone();
@@ -675,5 +731,159 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             image_view,
             tracked_state,
         }.into())
+    }
+}
+
+/// Maps mipmap levels and array layers to a subset of elements in an image
+/// state vector.
+#[derive(Debug)]
+crate struct ImageStateAddresser {
+    num_layers: u32,
+    num_mip_levels: u32,
+    num_tracked_layers: usize,
+    num_tracked_mip_levels: usize,
+    track_per_layer: bool,
+    track_per_mip: bool,
+}
+
+impl ImageStateAddresser {
+    /// Construct a `ImageStateAddresser` that can be used to compute the
+    /// tracking-state unit indices for accessing the state of a given image.
+    ///
+    /// Since image views do not have states by themselves, this method returns
+    /// an `ImageStateAddresser` of the backing image if an image view is
+    /// given.
+    crate fn from_image(image: &Image) -> Self {
+        Self::from_vulkan_image(&image.image_view.vulkan_image)
+    }
+
+    fn from_vulkan_image(image: &VulkanImage) -> Self {
+        let usage = image.usage;
+
+        // Q. Why `Render` is included here?
+        // A. If the image is marked as a render target, every layer/mip level
+        // must be tracked to support the use cases where a portion of an image
+        // is used as a render target and at the same time another portion is
+        // access by a shader.
+        let track_per_layer =
+            usage.intersects(flags![base::ImageUsage::{TrackStatePerMipmapLevel | Render}]);
+        let track_per_mip =
+            usage.intersects(flags![base::ImageUsage::{TrackStatePerArrayLayer | Render}]);
+
+        Self {
+            num_layers: image.num_layers,
+            num_mip_levels: image.num_mip_levels,
+            num_tracked_layers: if track_per_layer {
+                image.num_layers as usize
+            } else {
+                1
+            },
+            num_tracked_mip_levels: if track_per_mip {
+                image.num_mip_levels as usize
+            } else {
+                1
+            },
+            track_per_layer,
+            track_per_mip,
+        }
+    }
+
+    /// Get the length of a state vector.
+    crate fn len(&self) -> usize {
+        self.num_tracked_layers * self.num_tracked_mip_levels
+    }
+
+    /// Return an iterator representing a subresource range of the image.
+    fn indices_for_subrange(&self, range: &ImageSubRange) -> impl Iterator<Item = usize> {
+        use itertools::Itertools;
+
+        let mip_levels = if self.track_per_mip {
+            range.mip_levels.clone()
+        } else {
+            0..1
+        };
+        let layers = if self.track_per_layer {
+            range.layers.clone()
+        } else {
+            0..1
+        };
+
+        let num_tracked_mip_levels = self.num_tracked_mip_levels;
+
+        layers
+            .cartesian_product(mip_levels)
+            .map(move |(layer, mip_level)| {
+                mip_level as usize + layer as usize * num_tracked_mip_levels
+            })
+    }
+
+    /// Return an iterator representing a subresource range of the image (view).
+    crate fn indices_for_image(&self, image: &Image) -> impl Iterator<Item = usize> {
+        self.indices_for_subrange(&image.image_view.range)
+    }
+
+    crate fn indices_for_image_and_layer_range(
+        &self,
+        image: &Image,
+        range: &base::ImageLayerRange,
+    ) -> impl Iterator<Item = usize> {
+        let vk_range = image.resolve_vk_subresource_layers(range, image.aspects());
+        self.indices_for_subrange(&ImageSubRange {
+            mip_levels: vk_range.mip_level..vk_range.mip_level + 1,
+            layers: vk_range.base_array_layer..vk_range.base_array_layer + vk_range.layer_count,
+        })
+    }
+
+    crate fn layer_range_intersects(
+        &self,
+        image1: &Image,
+        range1: &base::ImageLayerRange,
+        image2: &Image,
+        range2: &base::ImageLayerRange,
+    ) -> bool {
+        debug_assert_eq!(image1.vk_image(), image2.vk_image());
+        let aspects = image1.aspects();
+        let vk_range1 = image1.resolve_vk_subresource_layers(range1, aspects);
+        let vk_range2 = image2.resolve_vk_subresource_layers(range2, aspects);
+        if self.track_per_mip && vk_range1.mip_level != vk_range2.mip_level {
+            return false;
+        }
+        if self.track_per_layer {
+            let ref layers1 =
+                vk_range1.base_array_layer..vk_range1.base_array_layer + vk_range1.layer_count;
+            let ref layers2 =
+                vk_range2.base_array_layer..vk_range2.base_array_layer + vk_range2.layer_count;
+            layers1.start < layers2.end && layers1.end > layers2.start
+        } else {
+            true
+        }
+    }
+
+    crate fn subrange_for_index(&self, i: usize) -> ImageSubRange {
+        if self.num_tracked_mip_levels == 1 {
+            ImageSubRange {
+                mip_levels: 0..self.num_mip_levels,
+                layers: if self.track_per_layer {
+                    i as u32..(i + 1) as u32
+                } else {
+                    0..self.num_layers
+                },
+            }
+        } else if self.num_tracked_layers == 1 {
+            debug_assert!(self.track_per_mip);
+            ImageSubRange {
+                layers: 0..self.num_layers,
+                mip_levels: i as u32..(i + 1) as u32,
+            }
+        } else {
+            debug_assert!(self.track_per_mip);
+            debug_assert!(self.track_per_layer);
+            let layer = (i / self.num_tracked_mip_levels) as u32;
+            let mip_level = (i % self.num_tracked_mip_levels) as u32;
+            ImageSubRange {
+                layers: layer..layer + 1,
+                mip_levels: mip_level..mip_level + 1,
+            }
+        }
     }
 }

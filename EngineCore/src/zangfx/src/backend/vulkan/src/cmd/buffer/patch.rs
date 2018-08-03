@@ -13,9 +13,12 @@ use smallvec::SmallVec;
 use zangfx_base as base;
 
 use crate::device::DeviceRef;
+use crate::image::ImageStateAddresser;
 use crate::limits::DeviceTrait;
 use crate::resstate::Queue;
-use crate::utils::{translate_access_type_flags, translate_pipeline_stage_flags};
+use crate::utils::{
+    translate_access_type_flags, translate_image_subresource_range, translate_pipeline_stage_flags,
+};
 
 use super::CmdBufferData;
 
@@ -98,6 +101,8 @@ impl CmdBufferData {
             };
         }
 
+        let ref mut vk_image_barriers = self.temp.vk_image_barriers;
+
         let ref ref_table = self.ref_table;
 
         let max_num_wait_fences = (self.passes.iter())
@@ -122,6 +127,46 @@ impl CmdBufferData {
                     .expect("attempted to wait on an unsignalled fence");
 
                 barrier_dst_access |= dst_access;
+            }
+
+            vk_image_barriers.clear();
+            vk_image_barriers.reserve(pass.image_barriers.len());
+            for image_barrier in pass.image_barriers.iter() {
+                let image_i = image_barrier.image_index;
+                let unit_i = image_barrier.unit_index;
+                let initial_layout = image_barrier.initial_layout;
+                let final_layout = image_barrier.final_layout;
+
+                let image = ref_table.images.get_by_index(image_i).resource;
+                let sched_data = image.tracked_state().latest_mut(resstate_queue);
+
+                let old_layout = sched_data.units[unit_i].layout;
+
+                if old_layout != Some(initial_layout) {
+                    let addresser = ImageStateAddresser::from_image(image);
+
+                    vk_image_barriers.push(vk::ImageMemoryBarrier {
+                        s_type: vk::StructureType::ImageMemoryBarrier,
+                        p_next: crate::null(),
+                        src_access_mask: translate_access_type_flags(event_src_access),
+                        dst_access_mask: translate_access_type_flags(barrier_dst_access),
+                        old_layout: if let Some(layout) = old_layout {
+                            layout
+                        } else {
+                            vk::ImageLayout::Undefined
+                        },
+                        new_layout: initial_layout,
+                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        image: image.vk_image(),
+                        subresource_range: translate_image_subresource_range(
+                            &addresser.subrange_for_index(unit_i).into(),
+                            image.aspects(),
+                        ),
+                    });
+                }
+
+                sched_data.units[unit_i].layout = Some(final_layout);
             }
 
             if vk_events.len() > 0 {
@@ -168,8 +213,8 @@ impl CmdBufferData {
                         &barrier,
                         0,
                         ::null(),
-                        0,
-                        ::null(),
+                        vk_image_barriers.len() as u32,
+                        vk_image_barriers.as_ptr(),
                     );
                 }
             }

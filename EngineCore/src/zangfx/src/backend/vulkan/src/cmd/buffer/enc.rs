@@ -6,8 +6,10 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
+use smallvec::SmallVec;
 use std::collections::HashSet;
 use std::ops::Range;
+use std::sync::Arc;
 
 use zangfx_base as base;
 
@@ -16,6 +18,7 @@ use crate::arg::pool::{ArgPool, ArgPoolDataRef, ArgTable};
 use crate::buffer::Buffer;
 use crate::cmd::fence::Fence;
 use crate::device::DeviceRef;
+use crate::image::{Image, ImageStateAddresser, ImageView};
 use crate::limits::DeviceTrait;
 use crate::pipeline::{ComputePipeline, RenderPipeline};
 use crate::renderpass::RenderTargetTable;
@@ -23,7 +26,7 @@ use crate::resstate::{CmdBuffer, RefTable};
 use crate::utils::{translate_access_type_flags, translate_pipeline_stage_flags};
 
 use super::super::semaphore::Semaphore;
-use super::{CmdBufferData, EncodingState, Pass};
+use super::{CmdBufferData, EncodingState, Pass, PassImageBarrier};
 
 #[derive(Debug, Default)]
 crate struct FenceSet {
@@ -91,6 +94,8 @@ crate struct RefTableSet {
     crate fences: RefTable<Fence, FenceOp>,
     crate arg_pools: RefTable<ArgPoolDataRef, ()>,
     crate buffers: RefTable<Buffer, ()>,
+    crate images: RefTable<Image, ImageOp>,
+    crate image_views: RefTable<Arc<ImageView>, ()>,
 }
 
 /// The locally tracked state of a fence for a command buffer.
@@ -103,6 +108,25 @@ crate struct FenceOp {
     crate signaled: bool,
 }
 
+/// The locally tracked state of an image for a command buffer.
+#[derive(Debug, Default)]
+crate struct ImageOp {
+    crate units: SmallVec<[Option<ImageUnitOp>; 1]>,
+}
+
+#[derive(Debug, Clone)]
+crate struct ImageUnitOp {
+    /// The layout which the image is known to be.
+    crate layout: vk::ImageLayout,
+
+    /// The first value is the pass index where this layer was accessed for the
+    /// last time. The second value is an index into `image_barriers`.
+    ///
+    /// This is only set and read by copy commands to determine if memory
+    /// barriers have to be inserted between copy commands.
+    crate last_pass: (usize, usize),
+}
+
 impl RefTableSet {
     crate fn new(resstate_cb: CmdBuffer) -> Self {
         Self {
@@ -113,6 +137,8 @@ impl RefTableSet {
             render_target_tables: Default::default(),
             arg_pools: Default::default(),
             buffers: Default::default(),
+            images: Default::default(),
+            image_views: Default::default(),
         }
     }
 
@@ -120,6 +146,8 @@ impl RefTableSet {
         self.fences.clear(&mut self.cmd_buffer, |_, _| {});
         self.arg_pools.clear(&mut self.cmd_buffer, |_, _| {});
         self.buffers.clear(&mut self.cmd_buffer, |_, _| {});
+        self.images.clear(&mut self.cmd_buffer, |_, _| {});
+        self.image_views.clear(&mut self.cmd_buffer, |_, _| {});
         self.compute_pipelines.clear();
         self.render_pipelines.clear();
         self.render_target_tables.clear();
@@ -145,6 +173,40 @@ impl RefTableSet {
     crate fn insert_buffer(&mut self, obj: &Buffer) {
         self.buffers
             .get_index_for_resource(&mut self.cmd_buffer, obj);
+    }
+
+    crate fn insert_image(&mut self, obj: &Image) -> (usize, &mut ImageOp) {
+        let entry = self.images.get_mut(&mut self.cmd_buffer, obj);
+        if entry.op.units.len() == 0 {
+            // Initialize `ImageOp`
+            let num_units = ImageStateAddresser::from_image(obj).len();
+            entry.op.units.resize(num_units, None);
+        }
+        (entry.index, entry.op)
+    }
+
+    /// Track the lifetime of `vk::ImageView` of `Image`.
+    ///
+    /// Note: Image states must be handled separately.
+    crate fn insert_image_view(&mut self, obj: &Image) {
+        let image_view = obj.image_view();
+
+        // There can be an `Image` referring the same `ImageState` as `obj` does
+        // in `self.images`. We can return now if it also refers to the same
+        // image view.
+        // (One `ImageState` can be shared among multiple image views.)
+        let i = self
+            .images
+            .try_get_index_for_resource(&mut self.cmd_buffer, obj);
+        if let Some(i) = i {
+            let entry = self.images.get_by_index(i);
+            if Arc::ptr_eq(obj.image_view(), entry.resource.image_view()) {
+                return;
+            }
+        }
+
+        self.image_views
+            .get_index_for_resource(&mut self.cmd_buffer, image_view);
     }
 }
 
@@ -286,6 +348,7 @@ impl CmdBufferData {
             vk_cmd_buffer,
             signal_fences: Vec::new(),
             wait_fences: Vec::new(),
+            image_barriers: Vec::new(),
         });
         self.state = EncodingState::NotRender;
 
@@ -405,6 +468,48 @@ impl CmdBufferData {
             );
         }
     }
+
+    /// Encode necessary image layout transitions for its use within the current
+    /// pass. Furthermore, add a given image to the reference table. Image
+    /// layout transitions are recorded into `Pass::image_barriers`, which means
+    /// they happen before all commands in the current pass.
+    ///
+    /// This cannot be used for copy commands that requires per-command (not
+    /// just pass) tracking, unless they operate on images having a "mutable"
+    /// usage flag.
+    crate fn use_image_for_pass(&mut self, layout: vk::ImageLayout, image: &Image) {
+        let addresser = ImageStateAddresser::from_image(image);
+
+        let (image_index, op) = self.ref_table.insert_image(image);
+
+        let current_pass = self.passes.last_mut().unwrap();
+
+        // For each state-tracking unit...
+        for i in addresser.indices_for_image(image) {
+            let current_layout;
+            if let Some(ref unit_op) = op.units[i] {
+                current_layout = unit_op.layout;
+            } else {
+                current_layout = vk::ImageLayout::Undefined;
+            }
+
+            if current_layout != layout {
+                current_pass.image_barriers.push(PassImageBarrier {
+                    image_index,
+                    unit_index: i,
+                    initial_layout: layout,
+                    final_layout: layout,
+                });
+
+                op.units[i] = Some(ImageUnitOp {
+                    layout,
+                    last_pass: (<usize>::max_value(), <usize>::max_value()),
+                });
+            }
+        }
+
+        self.ref_table.insert_image_view(image);
+    }
 }
 
 impl base::CmdEncoder for CmdBufferData {
@@ -426,7 +531,10 @@ impl base::CmdEncoder for CmdBufferData {
             self.ref_table.insert_buffer(buffer);
         }
 
-        // TODO: Ref-count images
+        for image in objs.images() {
+            let image: &Image = image.downcast_ref().expect("bad image type");
+            self.use_image_for_pass(image.translate_layout(base::ImageLayout::Shader), image);
+        }
     }
 
     fn use_heap(&mut self, _heaps: &[&base::HeapRef]) {

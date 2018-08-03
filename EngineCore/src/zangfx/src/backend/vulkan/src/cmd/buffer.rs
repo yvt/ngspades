@@ -70,6 +70,8 @@ crate struct CmdBufferData {
     /// The set of registered completion callbacks.
     crate completion_callbacks: CallbackSet,
 
+    temp: CmdBufferTemp,
+
     /*
      * The following fields are used only when encoding
      */
@@ -106,6 +108,15 @@ enum EncodingState {
     Render,
 }
 
+/// Temporary variables.
+#[derive(Debug, Default)]
+crate struct CmdBufferTemp {
+    vk_image_barriers: Vec<vk::ImageMemoryBarrier>,
+}
+
+unsafe impl Send for CmdBufferTemp {}
+unsafe impl Sync for CmdBufferTemp {}
+
 #[derive(Default)]
 crate struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
 
@@ -127,7 +138,28 @@ crate struct Pass {
     ///
     /// Each entry is an index into `RefTableSet::fences`.
     crate signal_fences: Vec<(usize, base::AccessTypeFlags)>,
-    // TODO
+
+    crate image_barriers: Vec<PassImageBarrier>,
+}
+
+/// Represents a layout transition of an image before/after a pass.
+#[derive(Debug)]
+crate struct PassImageBarrier {
+    /// An index into `RefTableSet::images`.
+    crate image_index: usize,
+
+    /// An index representing a state-tracking unit
+    /// (as defined by `ImageStateAddresser`).
+    crate unit_index: usize,
+
+    /// The layout which the pass expects the image layer to be in.
+    ///
+    /// `patch.rs` will insert image memory barriers to ensure that the image
+    /// is in this layout when the pass is executed.
+    crate initial_layout: vk::ImageLayout,
+
+    /// The layout of the image layer after the execution of the pass.
+    crate final_layout: vk::ImageLayout,
 }
 
 impl fmt::Debug for CallbackSet {
@@ -194,6 +226,7 @@ impl CmdBufferData {
             state: EncodingState::None,
             desc_set_binding_table: DescSetBindingTable::new(),
             deferred_signal_fences: Vec::new(),
+            temp: Default::default(),
         })
     }
 
@@ -224,8 +257,6 @@ impl CmdBufferData {
         self.ref_table.clear();
         self.wait_semaphores.clear();
         self.signal_semaphores.clear();
-
-        // TODO
     }
 
     crate fn reset(&mut self) {

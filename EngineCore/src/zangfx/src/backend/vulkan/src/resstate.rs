@@ -153,6 +153,10 @@ impl<State> TrackedState<State> {
         }
     }
 
+    crate fn queue_id(&self) -> QueueId {
+        self.queue_id
+    }
+
     /// Get a mutable reference to `latest` of `self`. Panics if the resource is
     /// not associated with a specified queue.
     ///
@@ -218,6 +222,14 @@ impl<Res: Resource, Op: Default> RefTable<Res, Op> {
 
             new_index
         }
+    }
+
+    crate fn try_get_index_for_resource(
+        &self,
+        cmd_buffer: &mut CmdBuffer,
+        res: &Res,
+    ) -> Option<usize> {
+        res.tracked_state().ref_table_index_mut(cmd_buffer).get()
     }
 
     /// Get a mutable reference to an entry by resource.
