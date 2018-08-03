@@ -600,6 +600,14 @@ impl<P: Painter> PhysicalDevice<P> {
         painter: &mut P,
     ) {
         let surface = self.surfaces.remove(&surface_ref).unwrap();
+
+        painter.remove_surface(
+            &self.wm_device,
+            self.device_data.as_mut().unwrap(),
+            &surface_ref,
+            surface.surface_data,
+        );
+
         let _vk_surface = UniqueSurfaceKHR(surface_loader, surface.vk_surface);
         if let Some(swapchain) = surface.swapchain {
             let _vk_swapchain = UniqueSwapchainKHR(&self.swapchain_loader, swapchain.vk_swapchain);
@@ -608,13 +616,6 @@ impl<P: Painter> PhysicalDevice<P> {
             }
             self.swapchain_manager.remove_swapchain(surface_ref);
         }
-
-        painter.remove_surface(
-            &self.wm_device,
-            self.device_data.as_mut().unwrap(),
-            &surface_ref,
-            surface.surface_data,
-        );
     }
 
     fn get_winit_window(&self, surface_ref: SurfaceRef) -> Option<&Window> {
