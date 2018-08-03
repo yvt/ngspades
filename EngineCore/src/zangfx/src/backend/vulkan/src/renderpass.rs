@@ -7,7 +7,6 @@
 use ash::version::*;
 use ash::vk;
 use refeq::RefEqArc;
-use std::ops;
 
 use crate::device::DeviceRef;
 use crate::formats::translate_image_format;
@@ -313,47 +312,6 @@ impl Drop for RenderPassData {
     }
 }
 
-/// Image views that are destroyed automatically.
-#[derive(Debug)]
-struct UniqueImageViews {
-    device: DeviceRef,
-    image_views: Vec<vk::ImageView>,
-}
-
-impl UniqueImageViews {
-    unsafe fn with_capacity(device: DeviceRef, capacity: usize) -> Self {
-        Self {
-            device,
-            image_views: Vec::with_capacity(capacity),
-        }
-    }
-}
-
-impl ops::Deref for UniqueImageViews {
-    type Target = Vec<vk::ImageView>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.image_views
-    }
-}
-
-impl ops::DerefMut for UniqueImageViews {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.image_views
-    }
-}
-
-impl Drop for UniqueImageViews {
-    fn drop(&mut self) {
-        let vk_device = self.device.vk_device();
-        for image_view in self.image_views.drain(..) {
-            unsafe {
-                vk_device.destroy_image_view(image_view, None);
-            }
-        }
-    }
-}
-
 /// Implementation of `RenderTargetTableBuilder` for Vulkan.
 #[derive(Debug)]
 pub struct RenderTargetTableBuilder {
@@ -435,43 +393,25 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 
         let vk_device = self.device.vk_device();
 
-        let mut image_views =
-            unsafe { UniqueImageViews::with_capacity(self.device.clone(), self.targets.len()) };
-        for target in self.targets.iter() {
-            let target = target.as_ref().unwrap();
+        let images: Vec<_> = self
+            .targets
+            .iter()
+            .map(|target| {
+                let target = target.as_ref().expect("target");
 
-            let flags = vk::ImageViewCreateFlags::empty();
-            // flags: "reserved for future use"
+                let image = (&target.image as &dyn base::Image)
+                    .build_image_view()
+                    .subrange(&base::ImageSubRange {
+                        layers: Some(target.layer..target.layer + self.num_layers),
+                        mip_levels: Some(target.mip_level..target.mip_level + 1),
+                    }).image_type(base::ImageType::TwoDArray)
+                    .build()?;
 
-            let image: &Image = &target.image;
+                let our_image: &Image = image.downcast_ref().unwrap();
+                Ok(our_image.clone())
+            }).collect::<Result<_>>()?;
 
-            let vk_image_view_info = unimplemented!();
-            /*vk::ImageViewCreateInfo {
-                s_type: vk::StructureType::ImageViewCreateInfo,
-                p_next: ::null(),
-                flags,
-                image: image.vk_image(),
-                view_type: vk::ImageViewType::Type2dArray,
-                format: image.meta().format(),
-                components: vk::ComponentMapping {
-                    r: vk::ComponentSwizzle::Identity,
-                    g: vk::ComponentSwizzle::Identity,
-                    b: vk::ComponentSwizzle::Identity,
-                    a: vk::ComponentSwizzle::Identity,
-                },
-                subresource_range: vk::ImageSubresourceRange {
-                    aspect_mask: image.meta().image_aspects(),
-                    base_mip_level: target.mip_level,
-                    base_array_layer: target.layer,
-                    level_count: 1,
-                    layer_count: self.num_layers,
-                },
-            };*/
-
-            let vk_image_view = unsafe { vk_device.create_image_view(&vk_image_view_info, None) }
-                .map_err(translate_generic_error_unwrap)?;
-            image_views.push(vk_image_view);
-        }
+        let image_views: Vec<_> = images.iter().map(|image| image.vk_image_view()).collect();
 
         let render_area = vk::Rect2D {
             offset: vk::Offset2D { x: 0, y: 0 },
@@ -507,7 +447,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
                 self.device.clone(),
                 vk_framebuffer,
                 render_pass,
-                image_views,
+                images,
                 render_area,
                 clear_values,
             )
@@ -570,7 +510,7 @@ struct RenderTargetTableData {
     vk_framebuffer: vk::Framebuffer,
     render_pass: RenderPass,
     /// Contains the attachments of the framebuffer.
-    image_views: UniqueImageViews,
+    images: Vec<Image>,
     render_area: vk::Rect2D,
     clear_values: Vec<ClearValue>,
 }
@@ -580,7 +520,7 @@ impl RenderTargetTable {
         device: DeviceRef,
         vk_framebuffer: vk::Framebuffer,
         render_pass: RenderPass,
-        image_views: UniqueImageViews,
+        images: Vec<Image>,
         render_area: vk::Rect2D,
         clear_values: Vec<ClearValue>,
     ) -> Self {
@@ -589,7 +529,7 @@ impl RenderTargetTable {
                 device,
                 vk_framebuffer,
                 render_pass,
-                image_views,
+                images,
                 render_area,
                 clear_values,
             }),
@@ -600,15 +540,15 @@ impl RenderTargetTable {
         self.data.vk_framebuffer
     }
 
-    pub(crate) fn render_pass(&self) -> &RenderPass {
+    crate fn render_pass(&self) -> &RenderPass {
         &self.data.render_pass
     }
 
-    pub(crate) fn render_area(&self) -> &vk::Rect2D {
+    crate fn render_area(&self) -> &vk::Rect2D {
         &self.data.render_area
     }
 
-    pub(crate) fn render_pass_begin_info(&self) -> vk::RenderPassBeginInfo {
+    crate fn render_pass_begin_info(&self) -> vk::RenderPassBeginInfo {
         vk::RenderPassBeginInfo {
             s_type: vk::StructureType::RenderPassBeginInfo,
             p_next: ::null(),
@@ -618,6 +558,10 @@ impl RenderTargetTable {
             clear_value_count: self.data.clear_values.len() as u32,
             p_clear_values: self.data.clear_values.as_ptr() as *const _,
         }
+    }
+
+    crate fn images(&self) -> &[Image] {
+        &self.data.images
     }
 }
 

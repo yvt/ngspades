@@ -23,8 +23,8 @@ impl CmdBufferData {
         assert_eq!(self.state, EncodingState::NotRender);
         self.state = EncodingState::Render;
 
-        let vk_device = self.device.vk_device();
         unsafe {
+            let vk_device = self.device.vk_device();
             vk_device.cmd_begin_render_pass(
                 self.vk_cmd_buffer(),
                 &rtt.render_pass_begin_info(),
@@ -32,7 +32,19 @@ impl CmdBufferData {
             );
         }
 
-        // TODO: Call `use_image_for_pass`
+        for image in rtt.images() {
+            let is_ds = image
+                .aspects()
+                .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT);
+            self.use_image_for_pass(
+                if is_ds {
+                    vk::ImageLayout::DepthStencilAttachmentOptimal
+                } else {
+                    vk::ImageLayout::ColorAttachmentOptimal
+                },
+                image,
+            );
+        }
 
         self.ref_table.insert_render_target_table(rtt);
     }
