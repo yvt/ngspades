@@ -160,6 +160,9 @@ crate struct PassImageBarrier {
 
     /// The layout of the image layer after the execution of the pass.
     crate final_layout: vk::ImageLayout,
+
+    /// The access types that expects the image to be in the specific layout.
+    crate access: base::AccessTypeFlags,
 }
 
 impl fmt::Debug for CallbackSet {

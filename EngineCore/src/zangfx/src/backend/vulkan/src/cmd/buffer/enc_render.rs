@@ -6,6 +6,7 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
+use ngsenumflags::flags;
 use std::ops::Range;
 
 use zangfx_base as base;
@@ -35,7 +36,12 @@ impl CmdBufferData {
         let images = rtt.images();
         let layouts = rtt.render_pass().attachment_layouts();
         for (image, [initial_layout, final_layout]) in images.iter().zip(layouts) {
-            self.use_image_for_pass(*initial_layout, *final_layout, image);
+            self.use_image_for_pass(
+                *initial_layout,
+                *final_layout,
+                flags![base::AccessType::{ColorRead | ColorWrite}],
+                image,
+            );
         }
 
         self.ref_table.insert_render_target_table(rtt);

@@ -6,6 +6,7 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
+use ngsenumflags::flags;
 use smallvec::SmallVec;
 use std::collections::HashSet;
 use std::ops::Range;
@@ -481,6 +482,7 @@ impl CmdBufferData {
         &mut self,
         layout: vk::ImageLayout,
         final_layout: vk::ImageLayout,
+        access: base::AccessTypeFlags,
         image: &Image,
     ) {
         let addresser = ImageStateAddresser::from_image(image);
@@ -504,6 +506,7 @@ impl CmdBufferData {
                     unit_index: i,
                     initial_layout: layout,
                     final_layout,
+                    access,
                 });
 
                 op.units[i] = Some(ImageUnitOp {
@@ -530,16 +533,29 @@ impl base::CmdEncoder for CmdBufferData {
         // TODO: debug commands
     }
 
-    fn use_resource_core(&mut self, _usage: base::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
+    fn use_resource_core(&mut self, usage: base::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
         for buffer in objs.buffers() {
             let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
             self.ref_table.insert_buffer(buffer);
         }
 
+        // TODO: Add "access type" to the base API
+        let access = usage
+            .iter()
+            .map(|usage| match usage {
+                base::ResourceUsage::Read | base::ResourceUsage::Sample => {
+                    flags![base::AccessType::{
+                VertexUniformRead | VertexRead | FragmentUniformRead | FragmentRead |
+                ComputeUniformRead | ComputeRead}]
+                }
+                base::ResourceUsage::Write => flags![base::AccessType::{
+                VertexWrite | FragmentWrite | ComputeWrite}],
+            }).fold(base::AccessTypeFlags::empty(), |x, y| x | y);
+
         for image in objs.images() {
             let image: &Image = image.downcast_ref().expect("bad image type");
             let layout = image.translate_layout(base::ImageLayout::Shader);
-            self.use_image_for_pass(layout, layout, image);
+            self.use_image_for_pass(layout, layout, access, image);
         }
     }
 

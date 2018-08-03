@@ -129,6 +129,10 @@ impl CmdBufferData {
                 barrier_dst_access |= dst_access;
             }
 
+            for image_barrier in pass.image_barriers.iter() {
+                barrier_dst_access |= image_barrier.access;
+            }
+
             vk_image_barriers.clear();
             vk_image_barriers.reserve(pass.image_barriers.len());
             for image_barrier in pass.image_barriers.iter() {
@@ -219,9 +223,25 @@ impl CmdBufferData {
                         vk_image_barriers.as_ptr(),
                     );
                 }
-            }
+            } else if vk_image_barriers.len() > 0 {
+                let dst_stage = base::AccessType::union_supported_stages(barrier_dst_access);
 
-            // TODO: Image layout transition
+                unsafe {
+                    vk_device.cmd_pipeline_barrier(
+                        vk_prev_cmd_buffer!(),
+                        vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        if dst_stage.is_empty() {
+                            vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                        } else {
+                            translate_pipeline_stage_flags(dst_stage)
+                        },
+                        vk::DependencyFlags::empty(),
+                        &[],
+                        &[],
+                        &vk_image_barriers,
+                    );
+                }
+            }
 
             // Update `src_access` of signaled fences
             for &(fence_i, src_access) in pass.signal_fences.iter() {
