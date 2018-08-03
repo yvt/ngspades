@@ -605,9 +605,36 @@ impl base::CmdEncoder for CmdBufferData {
     fn barrier_core(
         &mut self,
         _obj: base::ResourceSet<'_>,
-        _src_access: base::AccessTypeFlags,
-        _dst_access: base::AccessTypeFlags,
+        src_access: base::AccessTypeFlags,
+        dst_access: base::AccessTypeFlags,
     ) {
-        unimplemented!()
+        let src_stage = base::AccessType::union_supported_stages(src_access);
+        let dst_stage = base::AccessType::union_supported_stages(dst_access);
+
+        let vk_device = self.device.vk_device();
+        unsafe {
+            vk_device.cmd_pipeline_barrier(
+                self.vk_cmd_buffer(),
+                if src_stage.is_empty() {
+                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                } else {
+                    translate_pipeline_stage_flags(src_stage)
+                },
+                if dst_stage.is_empty() {
+                    vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                } else {
+                    translate_pipeline_stage_flags(dst_stage)
+                },
+                vk::DependencyFlags::empty(),
+                &[vk::MemoryBarrier {
+                    s_type: vk::StructureType::MemoryBarrier,
+                    p_next: ::null(),
+                    src_access_mask: translate_access_type_flags(src_access),
+                    dst_access_mask: translate_access_type_flags(dst_access),
+                }],
+                &[],
+                &[],
+            );
+        }
     }
 }
