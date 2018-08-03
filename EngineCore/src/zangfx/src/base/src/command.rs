@@ -511,8 +511,11 @@ pub trait CmdEncoder: Object {
     /// If you have an image and image view created from it, calling this method
     /// only on the image does not make the metadata of the image view resident.
     ///
-    /// This method is no-op on `CopyCmdEncoder` since it does not use any
-    /// argument tables.
+    /// This method is practically no-op on `CopyCmdEncoder` since it does not
+    /// use any argument tables, although it may incur a run-time overhead.
+    ///
+    /// If `self` is a render command encoder, `objs` must not overlap with its
+    /// render targets.
     fn use_resource_core(&mut self, usage: ResourceUsageFlags, objs: resources::ResourceSet<'_>);
 
     /// Declare that the resources in the specified heaps are referenced by the
