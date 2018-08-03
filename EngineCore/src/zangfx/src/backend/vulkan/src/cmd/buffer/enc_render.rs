@@ -32,18 +32,10 @@ impl CmdBufferData {
             );
         }
 
-        for image in rtt.images() {
-            let is_ds = image
-                .aspects()
-                .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT);
-            self.use_image_for_pass(
-                if is_ds {
-                    vk::ImageLayout::DepthStencilAttachmentOptimal
-                } else {
-                    vk::ImageLayout::ColorAttachmentOptimal
-                },
-                image,
-            );
+        let images = rtt.images();
+        let layouts = rtt.render_pass().attachment_layouts();
+        for (image, [initial_layout, final_layout]) in images.iter().zip(layouts) {
+            self.use_image_for_pass(*initial_layout, *final_layout, image);
         }
 
         self.ref_table.insert_render_target_table(rtt);

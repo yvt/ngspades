@@ -149,6 +149,11 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                     .vk_desc()
             }).collect();
 
+        let attachment_layouts: Vec<_> = vk_attachments
+            .iter()
+            .map(|vk_a| [vk_a.initial_layout, vk_a.final_layout])
+            .collect();
+
         let vk_info = vk::RenderPassCreateInfo {
             s_type: vk::StructureType::RenderPassCreateInfo,
             p_next: ::null(),
@@ -168,7 +173,12 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             .map_err(translate_generic_error_unwrap)?;
 
         Ok(unsafe {
-            RenderPass::from_raw(self.device.clone(), vk_render_pass, num_color_attachments)
+            RenderPass::from_raw(
+                self.device.clone(),
+                vk_render_pass,
+                num_color_attachments,
+                attachment_layouts,
+            )
         }.into())
     }
 }
@@ -277,6 +287,7 @@ struct RenderPassData {
     device: DeviceRef,
     vk_render_pass: vk::RenderPass,
     num_color_attachments: usize,
+    attachment_layouts: Vec<[vk::ImageLayout; 2]>,
 }
 
 impl RenderPass {
@@ -284,12 +295,14 @@ impl RenderPass {
         device: DeviceRef,
         vk_render_pass: vk::RenderPass,
         num_color_attachments: usize,
+        attachment_layouts: Vec<[vk::ImageLayout; 2]>,
     ) -> Self {
         Self {
             data: RefEqArc::new(RenderPassData {
                 device,
                 vk_render_pass,
                 num_color_attachments,
+                attachment_layouts,
             }),
         }
     }
@@ -298,8 +311,12 @@ impl RenderPass {
         self.data.vk_render_pass
     }
 
-    pub(crate) fn num_color_attachments(&self, _subpass: usize) -> usize {
+    crate fn num_color_attachments(&self, _subpass: usize) -> usize {
         self.data.num_color_attachments
+    }
+
+    crate fn attachment_layouts(&self) -> &[[vk::ImageLayout; 2]] {
+        &self.data.attachment_layouts
     }
 }
 

@@ -477,7 +477,12 @@ impl CmdBufferData {
     /// This cannot be used for copy commands that requires per-command (not
     /// just pass) tracking, unless they operate on images having a "mutable"
     /// usage flag.
-    crate fn use_image_for_pass(&mut self, layout: vk::ImageLayout, image: &Image) {
+    crate fn use_image_for_pass(
+        &mut self,
+        layout: vk::ImageLayout,
+        final_layout: vk::ImageLayout,
+        image: &Image,
+    ) {
         let addresser = ImageStateAddresser::from_image(image);
 
         let (image_index, op) = self.ref_table.insert_image(image);
@@ -498,7 +503,7 @@ impl CmdBufferData {
                     image_index,
                     unit_index: i,
                     initial_layout: layout,
-                    final_layout: layout,
+                    final_layout,
                 });
 
                 op.units[i] = Some(ImageUnitOp {
@@ -533,7 +538,8 @@ impl base::CmdEncoder for CmdBufferData {
 
         for image in objs.images() {
             let image: &Image = image.downcast_ref().expect("bad image type");
-            self.use_image_for_pass(image.translate_layout(base::ImageLayout::Shader), image);
+            let layout = image.translate_layout(base::ImageLayout::Shader);
+            self.use_image_for_pass(layout, layout, image);
         }
     }
 

@@ -34,7 +34,7 @@ impl CmdBufferData {
         if image.translate_layout(base::ImageLayout::CopyRead) == vk::ImageLayout::General {
             // Per-command tracking is not necessary if the layouts for
             // `CopyRead` and `CopyWrite` are identical
-            return self.use_image_for_pass(layout, image);
+            return self.use_image_for_pass(layout, layout, image);
         }
 
         let vk_cmd_buffer = self.vk_cmd_buffer();

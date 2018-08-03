@@ -142,7 +142,9 @@ impl CmdBufferData {
 
                 let old_layout = sched_data.units[unit_i].layout;
 
-                if old_layout != Some(initial_layout) {
+                if old_layout != Some(initial_layout)
+                    && initial_layout != vk::ImageLayout::Undefined
+                {
                     let addresser = ImageStateAddresser::from_image(image);
 
                     vk_image_barriers.push(vk::ImageMemoryBarrier {
