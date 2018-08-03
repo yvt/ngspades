@@ -187,8 +187,14 @@ impl CmdBuffer {
 
     /// Return the underlying Vulkan command buffer. Returns `None` if the
     /// command buffer is already committed (i.e. submitted to the queue).
-    pub fn vk_cmd_buffer(&self) -> Option<vk::CommandBuffer> {
-        self.uncommited.as_ref().map(|x| x.vk_cmd_buffer())
+    pub fn vk_cmd_buffer(&mut self) -> Option<vk::CommandBuffer> {
+        let uncommited = self.uncommited.as_mut()?;
+        if uncommited.state == EncodingState::Render {
+            uncommited.end_render_pass();
+        } else if uncommited.state == EncodingState::None {
+            uncommited.begin_pass();
+        }
+        Some(uncommited.vk_cmd_buffer())
     }
 }
 
