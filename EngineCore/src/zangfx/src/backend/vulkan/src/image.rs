@@ -192,6 +192,7 @@ impl base::ImageBuilder for ImageBuilder {
             usage: self.usage,
             aspects: aspect,
             binding_info: heap::HeapBindingInfo::new(),
+            destroy_manually: false,
         });
 
         let state = ImageState::new(&vulkan_image, true);
@@ -215,6 +216,58 @@ impl base::ImageBuilder for ImageBuilder {
             image_view,
             tracked_state,
         }.into())
+    }
+}
+
+/// Used to import a raw Vulkan image handle.
+#[derive(Debug, Clone, Copy)]
+pub struct ImportImage {
+    pub vk_image: vk::Image,
+    pub format: vk::Format,
+    pub view_type: vk::ImageViewType,
+    pub num_mip_levels: u32,
+    pub num_layers: u32,
+    pub usage: base::ImageUsageFlags,
+    pub aspects: vk::ImageAspectFlags,
+    pub destroy_manually: bool,
+}
+
+impl ImportImage {
+    pub unsafe fn build(&self, queue: &crate::cmd::queue::CmdQueue) -> Result<Image> {
+        let device = queue.device().clone();
+
+        let vulkan_image = Arc::new(VulkanImage {
+            device,
+            vk_image: self.vk_image,
+            num_layers: self.num_layers,
+            num_mip_levels: self.num_mip_levels,
+            usage: self.usage,
+            aspects: self.aspects,
+            binding_info: heap::HeapBindingInfo::new(),
+            destroy_manually: self.destroy_manually,
+        });
+
+        let state = ImageState::new(&vulkan_image, true);
+
+        let queue_id = queue.resstate_queue_id();
+
+        let image_view = Arc::new(ImageView::new(
+            vulkan_image,
+            ImageSubRange {
+                mip_levels: 0..self.num_mip_levels,
+                layers: 0..self.num_layers,
+            },
+            self.view_type,
+            self.format,
+            queue_id,
+        )?);
+
+        let tracked_state = Arc::new(resstate::TrackedState::new(queue_id, state));
+
+        Ok(Image {
+            image_view,
+            tracked_state,
+        })
     }
 }
 
@@ -275,13 +328,16 @@ struct VulkanImage {
     usage: base::ImageUsageFlags,
     aspects: vk::ImageAspectFlags,
     binding_info: heap::HeapBindingInfo,
+    destroy_manually: bool,
 }
 
 impl Drop for VulkanImage {
     fn drop(&mut self) {
-        unsafe {
-            let vk_device = self.device.vk_device();
-            vk_device.destroy_image(self.vk_image, None);
+        if !self.destroy_manually {
+            unsafe {
+                let vk_device = self.device.vk_device();
+                vk_device.destroy_image(self.vk_image, None);
+            }
         }
     }
 }
@@ -328,7 +384,7 @@ impl Image {
         self.image_view.vulkan_image.aspects
     }
 
-    crate fn translate_layout(&self, value: base::ImageLayout) -> vk::ImageLayout {
+    pub fn translate_layout(&self, value: base::ImageLayout) -> vk::ImageLayout {
         self.image_view.vulkan_image.translate_layout(value)
     }
 

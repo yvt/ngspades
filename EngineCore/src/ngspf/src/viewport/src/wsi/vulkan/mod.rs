@@ -20,10 +20,14 @@ use winit::{EventsLoopProxy, Window};
 
 use zangfx::{
     backends::vulkan::{
-        self as be, ash::{self, extensions as ext, version::*, vk},
-        cmd::queue::CmdQueue as BeCmdQueue, cmd::semaphore::Semaphore as BeSemaphore,
+        self as be,
+        ash::{self, extensions as ext, version::*, vk},
+        cmd::buffer::CmdBuffer as BeCmdBuffer,
+        cmd::queue::CmdQueue as BeCmdQueue,
+        cmd::semaphore::Semaphore as BeSemaphore,
     },
-    base::{self as gfx, Result as GfxResult}, common::{Error, ErrorKind}, prelude::*,
+    base::{self as gfx, Error, ErrorKind, Result as GfxResult},
+    prelude::*,
     utils::CbStateTracker,
 };
 
@@ -159,8 +163,7 @@ impl<P: Painter> WindowManager<P> {
                     Ok(None) => None,
                     Err(x) => Some(Err(x)),
                 }
-            })
-            .collect::<Result<_, _>>()
+            }).collect::<Result<_, _>>()
             .expect("Failed to examine the properties of Vulkan physical devices.");
 
         Self {
@@ -218,8 +221,7 @@ impl<P: Painter> WindowManager<P> {
                 .filter_map(|info| {
                     info.queue_family_compatible_with_surface(&self.surface_loader, *vk_surface)
                         .map(|qf| (info, qf))
-                })
-                .nth(0)
+                }).nth(0)
                 .expect("Failed to find a compatible Vulkan physical device for a surface.");
 
             self.next_device_id = self.next_device_id.checked_add(1).unwrap();
@@ -301,7 +303,6 @@ struct PhysicalDevice<P: Painter> {
     presentation_queue: ManuallyDrop<Arc<gfx::CmdQueue>>,
     /// The queue family index used for presentation.
     presentation_queue_family: gfx::QueueFamily,
-    presentation_cmd_pool: ManuallyDrop<Box<gfx::CmdPool>>,
 
     device_data: Option<P::DeviceData>,
 }
@@ -318,7 +319,6 @@ where
             .field("wm_device", &self.wm_device)
             .field("presentation_queue", &self.presentation_queue)
             .field("presentation_queue_family", &self.presentation_queue_family)
-            .field("presentation_cmd_pool", &self.presentation_cmd_pool)
             .field("device_data", &self.device_data)
             .field("swapchain_manager", &self.swapchain_manager)
             .field("surfaces", &self.surfaces)
@@ -333,7 +333,6 @@ impl<P: Painter> Drop for PhysicalDevice<P> {
 
         // Drop the GFX `Device` before destroying `VkDevice`
         unsafe {
-            ManuallyDrop::drop(&mut self.presentation_cmd_pool);
             ManuallyDrop::drop(&mut self.swapchain_manager);
             ManuallyDrop::drop(&mut self.presentation_queue);
         }
@@ -397,8 +396,7 @@ impl<P: Painter> PhysicalDevice<P> {
                 } else {
                     None
                 }
-            })
-            .collect();
+            }).collect();
 
         let vk_device = {
             let mut builder =
@@ -454,8 +452,6 @@ impl<P: Painter> PhysicalDevice<P> {
                     .into()
             };
 
-        let presentation_cmd_pool = presentation_queue.new_cmd_pool()?;
-
         let wm_device = WmDevice {
             device: gfx_device.into(),
             main_queue: GfxQueue {
@@ -489,7 +485,6 @@ impl<P: Painter> PhysicalDevice<P> {
 
             presentation_queue: ManuallyDrop::new(presentation_queue),
             presentation_queue_family,
-            presentation_cmd_pool: ManuallyDrop::new(presentation_cmd_pool),
 
             device_data: Some(device_data),
         })
@@ -566,11 +561,17 @@ impl<P: Painter> PhysicalDevice<P> {
                 .add_swapchain(surface_ref, *vk_swapchain)
                 .expect("Failed to setup a swapchain.");
 
-            let image_meta = vk_props.to_image_meta();
+            let import_image = vk_props.to_import_image();
+
+            let main_queue: &BeCmdQueue = self.wm_device.main_queue.queue.query_ref().unwrap();
 
             swapchain = Some(
-                Swapchain::new(*vk_swapchain, &self.swapchain_loader, &image_meta)
-                    .expect("Failed to acquire images from a swapchain."),
+                Swapchain::new(
+                    *vk_swapchain,
+                    &self.swapchain_loader,
+                    &import_image,
+                    main_queue,
+                ).expect("Failed to acquire images from a swapchain."),
             );
 
             vk_swapchain.into_inner(); // Release
@@ -688,11 +689,18 @@ impl<P: Painter> PhysicalDevice<P> {
                         .add_swapchain(surface_ref, *vk_swapchain)
                         .expect("Failed to setup a swapchain.");
 
-                    let image_meta = new_props.to_image_meta();
+                    let import_image = new_props.to_import_image();
+
+                    let main_queue: &BeCmdQueue =
+                        self.wm_device.main_queue.queue.query_ref().unwrap();
 
                     swapchain = Some(
-                        Swapchain::new(*vk_swapchain, &self.swapchain_loader, &image_meta)
-                            .expect("Failed to acquire images from a swapchain."),
+                        Swapchain::new(
+                            *vk_swapchain,
+                            &self.swapchain_loader,
+                            &import_image,
+                            main_queue,
+                        ).expect("Failed to acquire images from a swapchain."),
                     );
                     surface.vk_props = new_props.clone();
                     vk_swapchain.into_inner(); // Release
@@ -726,7 +734,6 @@ impl<P: Painter> PhysicalDevice<P> {
         let device_data = self.device_data.as_mut().unwrap();
         let ref presentation_queue = &*self.presentation_queue;
         let presentation_queue_family = self.presentation_queue_family;
-        let ref mut presentation_cmd_pool = self.presentation_cmd_pool;
         let ref swapchain_loader = self.swapchain_loader;
 
         self.swapchain_manager
@@ -750,7 +757,6 @@ impl<P: Painter> PhysicalDevice<P> {
                         swapchain_loader,
                         presentation_queue,
                         presentation_queue_family,
-                        presentation_cmd_pool,
                         device_data,
                         &surface_ref,
                         &mut surface.surface_data,
@@ -774,8 +780,7 @@ impl<P: Painter> PhysicalDevice<P> {
                     surfaces.get_mut(&surface_ref).unwrap().last_error = Some(error);
                     Ok(())
                 }
-            })
-            .expect("Failed to update some swapchains.");
+            }).expect("Failed to update some swapchains.");
     }
 }
 
@@ -835,7 +840,8 @@ impl Swapchain {
     fn new(
         vk_swapchain: vk::SwapchainKHR,
         swapchain_loader: &ext::Swapchain,
-        image_meta: &be::image::ImageMeta,
+        import_image: &be::image::ImportImage,
+        queue: &BeCmdQueue,
     ) -> Result<Self, SurfaceError> {
         let vk_images = swapchain_loader
             .get_swapchain_images_khr(vk_swapchain)
@@ -843,8 +849,12 @@ impl Swapchain {
 
         let images = vk_images
             .iter()
-            .map(|vk_image| unsafe { be::image::Image::from_raw(*vk_image, image_meta.clone()) })
-            .collect();
+            .map(|&vk_image| unsafe {
+                be::image::ImportImage {
+                    vk_image,
+                    ..import_image.clone()
+                }.build(queue)
+            }).collect::<GfxResult<_>>()?;
 
         Ok(Self {
             vk_swapchain,
@@ -864,7 +874,6 @@ impl Swapchain {
         swapchain_loader: &ext::Swapchain,
         presentation_queue: &Arc<gfx::CmdQueue>,
         presentation_queue_family: gfx::QueueFamily,
-        presentation_cmd_pool: &mut Box<gfx::CmdPool>,
         device_data: &mut P::DeviceData,
         surface_ref: &SurfaceRef,
         surface_data: &mut P::SurfaceData,
@@ -874,21 +883,20 @@ impl Swapchain {
             device: &'a WmDevice,
             swapchain_loader: &'a ext::Swapchain,
             vk_swapchain: vk::SwapchainKHR,
-            image: gfx::Image,
+            image: gfx::ImageRef,
             image_index: u32,
             pixel_ratio: f32,
             surface_props: &'a SurfaceProps,
             be_semaphore: &'a BeSemaphore,
             presentation_queue: &'a Arc<gfx::CmdQueue>,
             presentation_queue_family: gfx::QueueFamily,
-            presentation_cmd_pool: &'a mut Box<gfx::CmdPool>,
             needs_ownership_transfer: Option<gfx::QueueFamily>,
             queue_present_result: Option<Result<(), SwapchainUpdateError>>,
             cb_state_tracker: &'a mut Option<CbStateTracker>,
         }
 
         impl<'a> super::Drawable for Drawable<'a> {
-            fn image(&self) -> &gfx::Image {
+            fn image(&self) -> &gfx::ImageRef {
                 &self.image
             }
 
@@ -902,68 +910,117 @@ impl Swapchain {
 
             fn encode_prepare_present(
                 &mut self,
-                cmd_buffer: &mut gfx::CmdBuffer,
+                cmd_buffer: &mut gfx::CmdBufferRef,
                 queue_family: gfx::QueueFamily,
                 stage: gfx::StageFlags,
                 access: gfx::AccessTypeFlags,
             ) {
-                let gfx_semaphore: gfx::Semaphore = self.be_semaphore.clone().into();
+                let gfx_semaphore: gfx::SemaphoreRef = self.be_semaphore.clone().into();
                 cmd_buffer.wait_semaphore(&gfx_semaphore, stage);
 
-                self.needs_ownership_transfer = if queue_family != self.presentation_queue_family {
-                    Some(queue_family)
-                } else {
-                    None
-                };
+                // Perform image layout transition (the "present" image layout is
+                // out of the scope of ZanGFX)
+                {
+                    let cmd_buffer: &mut BeCmdBuffer = cmd_buffer.query_mut().unwrap();
+                    let image: &be::image::Image = self.image.downcast_ref().unwrap();
 
-                // Perform the releasing part of queue ownership transfer operation if needed
-                if self.needs_ownership_transfer.is_some() {
-                    let barrier = self
-                        .device
-                        .device
-                        .build_barrier()
-                        .image(
-                            access,
-                            flags![gfx::AccessType::{}],
-                            &self.image,
-                            gfx::ImageLayout::Present,
-                            gfx::ImageLayout::Present,
-                            &Default::default(),
-                        )
-                        .build()
-                        .unwrap();
-                    cmd_buffer.queue_release_barrier(self.presentation_queue_family, &barrier);
+                    assert_eq!(access, flags![gfx::AccessType::{ColorWrite}]);
+                    assert_eq!(stage, flags![gfx::Stage::{RenderOutput}]);
+
+                    let mut barrier = vk::ImageMemoryBarrier {
+                        s_type: vk::StructureType::ImageMemoryBarrier,
+                        p_next: ::null(),
+                        src_access_mask: vk::ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                        dst_access_mask: vk::AccessFlags::empty(),
+                        old_layout: image.translate_layout(gfx::ImageLayout::Render),
+                        new_layout: vk::ImageLayout::PresentSrcKhr,
+                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        image: image.vk_image(),
+                        subresource_range: vk::ImageSubresourceRange {
+                            aspect_mask: vk::IMAGE_ASPECT_COLOR_BIT,
+                            base_mip_level: 0,
+                            base_array_layer: 0,
+                            level_count: vk::VK_REMAINING_MIP_LEVELS,
+                            layer_count: vk::VK_REMAINING_ARRAY_LAYERS,
+                        },
+                    };
+
+                    if queue_family != self.presentation_queue_family {
+                        // Perform the releasing part of queue ownership transfer operation if needed
+                        barrier.src_queue_family_index = queue_family;
+                        barrier.dst_queue_family_index = self.presentation_queue_family;
+                    }
+
+                    let vk_cmd_buffer = cmd_buffer.vk_cmd_buffer().unwrap();
+                    let be_device: &be::device::Device = self.device.device.query_ref().unwrap();
+
+                    unsafe {
+                        be_device.vk_device().cmd_pipeline_barrier(
+                            vk_cmd_buffer,
+                            vk::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                            vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                            vk::DependencyFlags::empty(),
+                            &[],
+                            &[],
+                            &[barrier],
+                        );
+                    }
                 }
 
                 cmd_buffer.signal_semaphore(&gfx_semaphore, stage);
             }
 
             fn enqueue_present(&mut self) {
-                let gfx_semaphore: gfx::Semaphore = self.be_semaphore.clone().into();
+                let gfx_semaphore: gfx::SemaphoreRef = self.be_semaphore.clone().into();
 
                 // Perform the acquiring part of queue ownership transfer operation if needed
                 if let Some(src_queue_family) = self.needs_ownership_transfer {
                     let mut cmd_buffer = self
-                        .presentation_cmd_pool
-                        .begin_cmd_buffer()
+                        .presentation_queue
+                        .new_cmd_buffer()
                         .expect("Failed to create a command buffer.");
                     cmd_buffer.wait_semaphore(&gfx_semaphore, flags![gfx::Stage::{}]);
 
-                    let barrier = self
-                        .device
-                        .device
-                        .build_barrier()
-                        .image(
-                            flags![gfx::AccessType::{}],
-                            flags![gfx::AccessType::{}],
-                            &self.image,
-                            gfx::ImageLayout::Present,
-                            gfx::ImageLayout::Present,
-                            &Default::default(),
-                        )
-                        .build()
-                        .unwrap();
-                    cmd_buffer.queue_acquire_barrier(src_queue_family, &barrier);
+                    {
+                        let cmd_buffer: &mut BeCmdBuffer = cmd_buffer.query_mut().unwrap();
+                        let image: &be::image::Image = self.image.downcast_ref().unwrap();
+
+                        let mut barrier = vk::ImageMemoryBarrier {
+                            s_type: vk::StructureType::ImageMemoryBarrier,
+                            p_next: ::null(),
+                            src_access_mask: vk::AccessFlags::empty(),
+                            dst_access_mask: vk::AccessFlags::empty(),
+                            old_layout: image.translate_layout(gfx::ImageLayout::Render),
+                            new_layout: vk::ImageLayout::PresentSrcKhr,
+                            src_queue_family_index: src_queue_family,
+                            dst_queue_family_index: self.presentation_queue_family,
+                            image: image.vk_image(),
+                            subresource_range: vk::ImageSubresourceRange {
+                                aspect_mask: vk::IMAGE_ASPECT_COLOR_BIT,
+                                base_mip_level: 0,
+                                base_array_layer: 0,
+                                level_count: vk::VK_REMAINING_MIP_LEVELS,
+                                layer_count: vk::VK_REMAINING_ARRAY_LAYERS,
+                            },
+                        };
+
+                        let vk_cmd_buffer = cmd_buffer.vk_cmd_buffer().unwrap();
+                        let be_device: &be::device::Device =
+                            self.device.device.query_ref().unwrap();
+
+                        unsafe {
+                            be_device.vk_device().cmd_pipeline_barrier(
+                                vk_cmd_buffer,
+                                vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                vk::DependencyFlags::empty(),
+                                &[],
+                                &[],
+                                &[barrier],
+                            );
+                        }
+                    }
 
                     if let Some(cb_state_tracker) = self.cb_state_tracker.take() {
                         cb_state_tracker.wait();
@@ -1013,7 +1070,6 @@ impl Swapchain {
             be_semaphore,
             presentation_queue,
             presentation_queue_family,
-            presentation_cmd_pool,
             needs_ownership_transfer: None,
             queue_present_result: None,
             cb_state_tracker: &mut self.cb_state_tracker,
@@ -1029,7 +1085,9 @@ impl Swapchain {
         );
 
         // Return the result of the present command (whether it's an error or not)
-        drawable.queue_present_result.expect("enqueue_present was not called")
+        drawable
+            .queue_present_result
+            .expect("enqueue_present was not called")
     }
 }
 
@@ -1053,10 +1111,7 @@ fn optimal_props(
     let pixel_ratio = window.get_hidpi_factor();
     let phys_extents = window_extents.to_physical(pixel_ratio);
     let extents = match surface_caps.current_extent.width {
-        x if x == <u32>::max_value() => [
-            phys_extents.width as u32,
-            phys_extents.height as u32,
-        ],
+        x if x == <u32>::max_value() => [phys_extents.width as u32, phys_extents.height as u32],
         _ => [
             surface_caps.current_extent.width,
             surface_caps.current_extent.height,
@@ -1165,8 +1220,7 @@ where
             // Return the first one that matches the search criteria
             gfx_supported_formats
                 .find(|x| x.0 == format.unwrap_or(x.0) && x.1 == color_space.unwrap_or(x.1))
-        })
-        .nth(0)
+        }).nth(0)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1189,12 +1243,17 @@ impl VkSurfaceProps {
         }
     }
 
-    fn to_image_meta(&self) -> be::image::ImageMeta {
-        be::image::ImageMeta::new(
-            vk::ImageViewType::Type2d,
-            vk::IMAGE_ASPECT_COLOR_BIT,
-            be::formats::translate_image_format(self.format).unwrap(),
-        )
+    fn to_import_image(&self) -> be::image::ImportImage {
+        be::image::ImportImage {
+            vk_image: vk::Image::null(),
+            format: be::formats::translate_image_format(self.format).unwrap(),
+            view_type: vk::ImageViewType::Type2d,
+            num_mip_levels: 1,
+            num_layers: 1,
+            usage: flags![gfx::ImageUsage::{}],
+            aspects: vk::IMAGE_ASPECT_COLOR_BIT,
+            destroy_manually: true,
+        }
     }
 
     /// Construct a `SwapchainCreateInfoKHR`. Returns `None` if a swapchain
@@ -1270,6 +1329,12 @@ impl From<vk::Result> for SurfaceError {
         } else {
             SurfaceError::Other(utils::translate_generic_error_unwrap(x))
         }
+    }
+}
+
+impl From<Error> for SurfaceError {
+    fn from(x: Error) -> Self {
+        SurfaceError::Other(x)
     }
 }
 

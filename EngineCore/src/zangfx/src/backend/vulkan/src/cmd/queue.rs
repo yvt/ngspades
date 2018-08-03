@@ -166,6 +166,10 @@ impl CmdQueue {
         self.scheduler.as_ref().unwrap()
     }
 
+    crate fn device(&self) -> &DeviceRef {
+        &self.device
+    }
+
     pub fn vk_queue(&self) -> vk::Queue {
         self.vk_queue
     }
