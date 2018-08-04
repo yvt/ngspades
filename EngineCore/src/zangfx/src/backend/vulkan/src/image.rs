@@ -365,11 +365,6 @@ crate struct ImageSubRange {
 }
 
 impl Image {
-    // TODO: `Image::frm_raw`
-    /*pub unsafe fn from_raw(vk_image: vk::Image, meta: ImageMeta) -> Self {
-        Self { vk_image, meta }
-    }*/
-
     pub fn vk_image(&self) -> vk::Image {
         self.image_view.vulkan_image.vk_image
     }
