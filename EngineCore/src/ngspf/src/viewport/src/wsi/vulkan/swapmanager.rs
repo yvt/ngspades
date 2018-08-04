@@ -137,6 +137,12 @@ impl Drop for SwapchainManager {
                 vk_device.destroy_fence(swapchain.vk_fence, None);
             }
         }
+
+        for vk_fence in self.retired_fences.drain(..) {
+            unsafe {
+                vk_device.destroy_fence(vk_fence, None);
+            }
+        }
     }
 }
 
