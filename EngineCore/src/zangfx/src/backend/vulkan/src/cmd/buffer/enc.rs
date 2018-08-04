@@ -500,7 +500,7 @@ impl CmdBufferData {
                 current_layout = vk::ImageLayout::Undefined;
             }
 
-            if current_layout != layout {
+            if current_layout != layout || current_layout != final_layout {
                 current_pass.image_barriers.push(PassImageBarrier {
                     image_index,
                     unit_index: i,
