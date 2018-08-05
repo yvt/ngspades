@@ -701,15 +701,18 @@ crate fn translate_image_layout(
     let storage = usage.contains(base::ImageUsage::Storage);
 
     match (value, is_depth_stencil, mutable, storage) {
-        // The `Mutable` flag takes precedence over anything - It forces the use
-        // of the generic image layout
+        // The render layouts cannot be controlled via the `Mutable` flag
+        // because image layouts are specified as a part of the render pass
+        // creation parameters (not framebuffers). We would have to re-create
+        // render passes in order to change the layout.
+        (base::ImageLayout::Render, false, _, _) => IMAGE_LAYOUT_COLOR_ATTACHMENT,
+        (base::ImageLayout::Render, true, _, _) => IMAGE_LAYOUT_DS_ATTACHMENT,
+
+        // The `Mutable` flag forces the use of the generic image layout
+        // whenever possible
         (_, _, true, _) => vk::ImageLayout::General,
 
         // Layouts for the fixed-function pipeline
-        (base::ImageLayout::Render, false, false, _) => vk::ImageLayout::ColorAttachmentOptimal,
-        (base::ImageLayout::Render, true, false, _) => {
-            vk::ImageLayout::DepthStencilAttachmentOptimal
-        }
         (base::ImageLayout::CopyRead, _, false, _) => vk::ImageLayout::TransferSrcOptimal,
         (base::ImageLayout::CopyWrite, _, false, _) => vk::ImageLayout::TransferDstOptimal,
 
