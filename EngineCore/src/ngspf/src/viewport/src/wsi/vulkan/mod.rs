@@ -339,7 +339,7 @@ impl<P: Painter> Drop for PhysicalDevice<P> {
 
         // Drop objects in the right order
         use std::ptr::read;
-        let wm_device = unsafe { read(&*self.wm_device) };
+        let mut wm_device = unsafe { read(&*self.wm_device) };
         drop(wm_device.main_queue);
         drop(wm_device.copy_queue);
 
