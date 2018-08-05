@@ -4,26 +4,24 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdQueue` for Vulkan.
-use std::sync::Arc;
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use parking_lot::Mutex;
-use tokenlock::{Token, TokenRef};
+use std::sync::Arc;
 
-use base;
-use common::{Error, ErrorKind, Result};
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use utils::translate_generic_error_unwrap;
-use limits::DeviceConfig;
+use crate::limits::DeviceConfig;
+use crate::utils::translate_generic_error_unwrap;
 
-use super::monitor::{Monitor, MonitorHandler};
+use super::buffer::{CmdBuffer, CmdBufferData};
+use super::bufferpool::{CbPool, CbPoolItem};
 use super::fence::Fence;
-use super::enc::{FenceSet, RefTable};
-use super::buffer::BufferCompleteCallback;
-use super::bufferpool::VkCmdBufferPoolItem;
-use super::pool::CmdPool;
-use super::semaphore::Semaphore;
+use super::monitor::{Monitor, MonitorHandler};
+use crate::resstate;
 
 #[derive(Debug)]
 pub(crate) struct QueuePool {
@@ -31,7 +29,7 @@ pub(crate) struct QueuePool {
 }
 
 impl QueuePool {
-    pub fn new(config: &DeviceConfig) -> Self {
+    crate fn new(config: &DeviceConfig) -> Self {
         let ref queues = config.queues;
 
         let num_qf = queues.iter().map(|&(qf, _)| qf + 1).max().unwrap_or(0);
@@ -46,7 +44,7 @@ impl QueuePool {
         }
     }
 
-    pub fn allocate_queue(&self, queue_family: base::QueueFamily) -> u32 {
+    crate fn allocate_queue(&self, queue_family: base::QueueFamily) -> u32 {
         self.pools.lock()[queue_family as usize]
             .pop()
             .expect("out of queues")
@@ -59,30 +57,20 @@ pub struct CmdQueueBuilder {
     device: DeviceRef,
     queue_pool: Arc<QueuePool>,
 
-    max_num_outstanding_cmd_buffers: usize,
     max_num_outstanding_batches: usize,
     queue_family: Option<base::QueueFamily>,
 }
 
-zangfx_impl_object! { CmdQueueBuilder: base::CmdQueueBuilder, ::Debug }
+zangfx_impl_object! { CmdQueueBuilder: dyn base::CmdQueueBuilder, dyn (crate::Debug) }
 
 impl CmdQueueBuilder {
     pub(crate) unsafe fn new(device: DeviceRef, queue_pool: Arc<QueuePool>) -> Self {
         Self {
             device,
             queue_pool,
-            max_num_outstanding_cmd_buffers: 64,
             max_num_outstanding_batches: 8,
             queue_family: None,
         }
-    }
-
-    /// Set the maximum number of outstanding command buffers per command pool.
-    ///
-    /// Defaults to `64`.
-    pub fn max_num_outstanding_cmd_buffers(&mut self, v: usize) -> &mut Self {
-        self.max_num_outstanding_cmd_buffers = v;
-        self
     }
 
     /// Set the maximum number of outstanding batches.
@@ -95,28 +83,17 @@ impl CmdQueueBuilder {
 }
 
 impl base::CmdQueueBuilder for CmdQueueBuilder {
-    fn queue_family(&mut self, v: base::QueueFamily) -> &mut base::CmdQueueBuilder {
+    fn queue_family(&mut self, v: base::QueueFamily) -> &mut dyn base::CmdQueueBuilder {
         self.queue_family = Some(v);
         self
     }
 
-    fn build(&mut self) -> Result<Box<base::CmdQueue>> {
-        if self.max_num_outstanding_cmd_buffers < 1 {
-            return Err(Error::with_detail(
-                ErrorKind::InvalidUsage,
-                "max_num_outstanding_cmd_buffers",
-            ));
-        }
-
+    fn build(&mut self) -> Result<base::CmdQueueRef> {
         if self.max_num_outstanding_batches < 1 {
-            return Err(Error::with_detail(
-                ErrorKind::InvalidUsage,
-                "max_num_outstanding_batches",
-            ));
+            panic!("max_num_outstanding_batches");
         }
 
-        let queue_family = self.queue_family
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "queue_family"))?;
+        let queue_family = self.queue_family.expect("queue_family");
 
         let index = self.queue_pool.allocate_queue(queue_family);
 
@@ -124,10 +101,9 @@ impl base::CmdQueueBuilder for CmdQueueBuilder {
         let vk_queue = unsafe { vk_device.get_device_queue(queue_family, index) };
 
         let num_fences = self.max_num_outstanding_batches;
-        let num_cbs = self.max_num_outstanding_cmd_buffers;
 
-        CmdQueue::new(self.device, vk_queue, queue_family, num_fences, num_cbs)
-            .map(|x| Box::new(x) as _)
+        CmdQueue::new(self.device.clone(), vk_queue, queue_family, num_fences)
+            .map(|x| Arc::new(x) as _)
     }
 }
 
@@ -137,12 +113,12 @@ pub struct CmdQueue {
     device: DeviceRef,
     vk_queue: vk::Queue,
     queue_family_index: u32,
-    num_cbs: usize,
+    cb_pool: CbPool<Box<CmdBufferData>>,
     monitor: Monitor<BatchDoneHandler>,
     scheduler: Option<Arc<Scheduler>>,
 }
 
-zangfx_impl_object! { CmdQueue: base::CmdQueue, ::Debug }
+zangfx_impl_object! { CmdQueue: dyn base::CmdQueue, dyn (crate::Debug) }
 
 impl Drop for CmdQueue {
     fn drop(&mut self) {
@@ -157,20 +133,32 @@ impl CmdQueue {
         vk_queue: vk::Queue,
         queue_family_index: u32,
         num_fences: usize,
-        num_cbs: usize,
     ) -> Result<Self> {
-        let scheduler_data = SchedulerData::default();
+        // Initialize the resource state tracking on the newly created queue
+        let (resstate_queue, resstate_cbs) = resstate::new_queue();
+
+        // Set the default queue used during resource creation.
+        device.set_default_resstate_queue_if_missing(resstate_queue.queue_id());
+
+        let scheduler_data = SchedulerData::new(resstate_queue);
+        let scheduler = Arc::new(Scheduler::new(scheduler_data));
+
+        let cb_pool = CbPool::new(resstate_cbs.into_iter().map(|resstate_cb| {
+            CmdBufferData::new(
+                device.clone(),
+                queue_family_index,
+                scheduler.clone(),
+                resstate_cb,
+            ).map(Box::new)
+        }))?;
 
         Ok(Self {
-            device,
             vk_queue,
             queue_family_index,
-            num_cbs,
-            monitor: Monitor::new(device, vk_queue, num_fences)?,
-            scheduler: Some(Arc::new(Scheduler {
-                token_ref: (&scheduler_data.token).into(),
-                data: Mutex::new(scheduler_data),
-            })),
+            cb_pool,
+            monitor: Monitor::new(device.clone(), vk_queue, num_fences)?,
+            scheduler: Some(scheduler),
+            device,
         })
     }
 
@@ -178,53 +166,57 @@ impl CmdQueue {
         self.scheduler.as_ref().unwrap()
     }
 
+    crate fn device(&self) -> &DeviceRef {
+        &self.device
+    }
+
     pub fn vk_queue(&self) -> vk::Queue {
         self.vk_queue
+    }
+
+    /// The queue identifier for resource state tracking.
+    crate fn resstate_queue_id(&self) -> resstate::QueueId {
+        self.scheduler().resstate_queue_id
     }
 }
 
 impl base::CmdQueue for CmdQueue {
-    fn new_cmd_pool(&self) -> Result<Box<base::CmdPool>> {
-        CmdPool::new(
-            self.device,
-            Arc::clone(&self.scheduler()),
-            self.queue_family_index,
-            self.num_cbs,
-        ).map(|x| Box::new(x) as _)
+    fn new_cmd_buffer(&self) -> Result<base::CmdBufferRef> {
+        Ok(Box::new(CmdBuffer::new(self.cb_pool.allocate())))
     }
 
-    fn new_fence(&self) -> Result<base::Fence> {
-        unsafe { Fence::new(self.device, self.scheduler().token_ref.clone()) }.map(base::Fence::new)
+    fn new_fence(&self) -> Result<base::FenceRef> {
+        unsafe { Fence::new(self.device.clone(), self.resstate_queue_id()) }
+            .map(base::FenceRef::new)
     }
 
     fn flush(&self) {
         self.scheduler()
             .data
             .lock()
-            .flush(&self.monitor, self.device, self.vk_queue);
+            .flush(&self.monitor, &self.device, self.vk_queue);
     }
 }
 
 #[derive(Debug)]
-pub(super) struct Scheduler {
+crate struct Scheduler {
     data: Mutex<SchedulerData>,
 
-    /// Used to *construct* scheduler-specific data in `Fence`s.
-    token_ref: TokenRef,
+    resstate_queue_id: resstate::QueueId,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct SchedulerData {
     /// Queue items to be processed.
     pending_items: Option<Box<Item>>,
 
-    /// Used to *access* scheduler-specific data in `Fence`s.
-    token: Token,
+    /// The access token used to access per-queue resource states.
+    resstate_queue: resstate::Queue,
 }
 
 #[derive(Debug)]
-pub(super) struct Item {
-    commited: CommitedBuffer,
+crate struct Item {
+    commited: CbPoolItem<Box<CmdBufferData>>,
 
     /// The current index into `FenceSet::wait_fences` impeding the
     /// execution of this queue item.
@@ -254,21 +246,18 @@ fn for_each_item_mut<T: FnMut(&mut Item)>(item_or_none: &mut Option<Box<Item>>, 
     }
 }
 
-#[derive(Debug)]
-pub(super) struct CommitedBuffer {
-    pub fence_set: FenceSet,
-    pub ref_table: Option<RefTable>,
-    pub vk_cmd_buffer_pool_item: Option<VkCmdBufferPoolItem>,
-    pub completion_handler: BufferCompleteCallback,
-    pub wait_semaphores: Vec<(Semaphore, vk::PipelineStageFlags)>,
-    pub signal_semaphores: Vec<Semaphore>,
-}
-
 impl Scheduler {
+    fn new(data: SchedulerData) -> Self {
+        Self {
+            resstate_queue_id: data.resstate_queue.queue_id(),
+            data: Mutex::new(data),
+        }
+    }
+
     /// Called by a command buffer's method.
-    pub fn commit(&self, commited_buffer: CommitedBuffer) {
+    crate fn commit(&self, commited: CbPoolItem<Box<CmdBufferData>>) {
         let mut item = Box::new(Item {
-            commited: commited_buffer,
+            commited,
             wait_fence_index: 0,
             next: None,
         });
@@ -288,15 +277,23 @@ impl Drop for SchedulerData {
 }
 
 impl SchedulerData {
+    fn new(resstate_queue: resstate::Queue) -> Self {
+        Self {
+            pending_items: None,
+            resstate_queue,
+        }
+    }
     /// Schedule and submit the queue items in `self.pending_items`. Leave
     /// unschedulable items (i.e. those which wait on fences which are not
     /// signaled by any commited items) in `self.pending_items`.
     fn flush(
         &mut self,
         monitor: &Monitor<BatchDoneHandler>,
-        device: DeviceRef,
+        device: &DeviceRef,
         vk_queue: vk::Queue,
     ) {
+        use crate::resstate::Resource; // for `tracked_state()`
+
         let mut scheduled_items = None;
 
         // Schedule as many items as possible.
@@ -308,8 +305,12 @@ impl SchedulerData {
 
                 // Check fences the queue item waits on
                 let mut i = item.wait_fence_index;
-                while let Some(fence) = item.commited.fence_set.wait_fences.get(i) {
-                    let sched_data = fence.schedule_data().write(&mut self.token).unwrap();
+                while let Some(&fence_i) = item.commited.fence_set.wait_fences.get(i) {
+                    let entry = item.commited.ref_table.fences.get_by_index(fence_i);
+                    let fence = entry.resource;
+
+                    let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
+
                     if sched_data.signaled {
                         // The fence is signaled by one of the command buffers
                         // that are already scheduled
@@ -323,25 +324,31 @@ impl SchedulerData {
                 if item.wait_fence_index < item.commited.fence_set.wait_fences.len() {
                     // The scheduling of this item is blocked by one of its waiting
                     // fence.
+
                     // First we need to break the borrowing chain (from `item` to
                     // the fence) because we are moving the `item` to the fence's
                     // wait queue. It is definitely safe to move `item` around while
                     // keeping a reference to `fence`.
                     let fence: &Fence = unsafe {
-                        let ref fence = item.commited.fence_set.wait_fences[item.wait_fence_index];
+                        let fence_i = item.commited.fence_set.wait_fences[item.wait_fence_index];
+                        let entry = item.commited.ref_table.fences.get_by_index(fence_i);
+                        let fence = entry.resource;
                         &*(fence as *const _)
                     };
 
                     // Insert `item` to the fence's wait queue.
-                    let sched_data = fence.schedule_data().write(&mut self.token).unwrap();
+                    let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
                     item.next = sched_data.waiting.take();
                     sched_data.waiting = Some(item);
                 } else {
                     // The item is schedulable. Schedule the item, and unblock
                     // other items waiting on a fence that was just signaled by
                     // this item.
-                    for fence in item.commited.fence_set.signal_fences.iter() {
-                        let sched_data = fence.schedule_data().write(&mut self.token).unwrap();
+                    let ref mut commited = *item.commited;
+                    for &fence_i in commited.fence_set.signal_fences.iter() {
+                        let entry = commited.ref_table.fences.get_by_index(fence_i);
+                        let fence = entry.resource;
+                        let sched_data = fence.tracked_state().latest_mut(&mut self.resstate_queue);
 
                         // Mark the fence as signaled
                         sched_data.signaled = true;
@@ -372,6 +379,21 @@ impl SchedulerData {
             return;
         }
 
+        // Resolve barriers
+        let mut finalize_result = Ok(());
+        for_each_item_mut(&mut scheduled_items, |item| {
+            if let Err(e) = item.commited.finalize(&mut self.resstate_queue) {
+                finalize_result = Err(e);
+            }
+        });
+
+        let done_handler = BatchDoneHandler { scheduled_items };
+
+        if let Err(err) = finalize_result {
+            done_handler.finish(|| Err(translate_generic_error_unwrap(err)));
+            return;
+        }
+
         // Create submission batches
         let fence = monitor.get_fence();
         let vk_device = device.vk_device();
@@ -380,9 +402,12 @@ impl SchedulerData {
         let mut num_wait_semaphores = 0;
         let mut num_signal_semaphores = 0;
 
-        for item in ItemIter(scheduled_items.as_ref()) {
+        for item in ItemIter(done_handler.scheduled_items.as_ref()) {
             let ref commited = item.commited;
-            num_cmd_buffers += 1;
+            num_cmd_buffers += commited.passes.len();
+            if commited.vk_prelude_cmd_buffer.is_some() {
+                num_cmd_buffers += 1;
+            }
             num_wait_semaphores += commited.wait_semaphores.len();
             num_signal_semaphores += commited.signal_semaphores.len();
         }
@@ -411,24 +436,26 @@ impl SchedulerData {
         let mut cur_num_signal_sems = 0;
 
         macro_rules! flush {
-            () => (if cur_num_cmd_buffers > 0 {
-                let vk_submit_info = vk::SubmitInfo {
-                    s_type: vk::StructureType::SubmitInfo,
-                    p_next: ::null(),
-                    wait_semaphore_count: cur_num_wait_sems as u32,
-                    p_wait_semaphores: p_wait_sems,
-                    p_wait_dst_stage_mask: p_wait_sem_stages,
-                    command_buffer_count: cur_num_cmd_buffers as u32,
-                    p_command_buffers: p_cmd_buffers,
-                    signal_semaphore_count: cur_num_signal_sems as u32,
-                    p_signal_semaphores: p_signal_sems,
-                };
-                vk_submit_infos.push(vk_submit_info);
-            })
+            () => {
+                if cur_num_cmd_buffers > 0 {
+                    let vk_submit_info = vk::SubmitInfo {
+                        s_type: vk::StructureType::SubmitInfo,
+                        p_next: ::null(),
+                        wait_semaphore_count: cur_num_wait_sems as u32,
+                        p_wait_semaphores: p_wait_sems,
+                        p_wait_dst_stage_mask: p_wait_sem_stages,
+                        command_buffer_count: cur_num_cmd_buffers as u32,
+                        p_command_buffers: p_cmd_buffers,
+                        signal_semaphore_count: cur_num_signal_sems as u32,
+                        p_signal_semaphores: p_signal_sems,
+                    };
+                    vk_submit_infos.push(vk_submit_info);
+                }
+            };
         }
 
-        for item in ItemIter(scheduled_items.as_ref()) {
-            let ref commited: CommitedBuffer = item.commited;
+        for item in ItemIter(done_handler.scheduled_items.as_ref()) {
+            let ref commited = item.commited;
 
             if commited.wait_semaphores.len() > 0 {
                 terminate_current_batch = true;
@@ -448,13 +475,14 @@ impl SchedulerData {
 
             terminate_current_batch = false;
 
-            let vk_cmd_buffer = commited
-                .vk_cmd_buffer_pool_item
-                .as_ref()
-                .unwrap()
-                .vk_cmd_buffer();
-            vk_cmd_buffers.push(vk_cmd_buffer);
-            cur_num_cmd_buffers += 1;
+            if let Some(vk_cmd_buffer) = commited.vk_prelude_cmd_buffer {
+                vk_cmd_buffers.push(vk_cmd_buffer);
+                cur_num_cmd_buffers += 1;
+            }
+            for pass in commited.passes.iter() {
+                vk_cmd_buffers.push(pass.vk_cmd_buffer);
+                cur_num_cmd_buffers += 1;
+            }
 
             let ref wait_sems = commited.wait_semaphores;
             vk_wait_sems.extend(wait_sems.iter().map(|&(ref sem, _)| sem.vk_semaphore()));
@@ -470,17 +498,20 @@ impl SchedulerData {
             }
         }
 
-        if cur_num_cmd_buffers > 0 {
+        if cur_num_cmd_buffers > 0 || cur_num_signal_sems > 0 || cur_num_wait_sems > 0 {
             flush!();
         }
 
-        // TODO: safe handling of error
-        unsafe { vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence()) }
-            .map_err(translate_generic_error_unwrap)
-            .unwrap();
+        let result =
+            unsafe { vk_device.queue_submit(vk_queue, &vk_submit_infos, fence.vk_fence()) };
+
+        if let Err(err) = result {
+            done_handler.finish(|| Err(translate_generic_error_unwrap(err)));
+            return;
+        }
 
         // Call `BatchDoneHandler::on_fence_signaled` when the batch is complete
-        fence.finish(BatchDoneHandler { scheduled_items });
+        fence.finish(done_handler);
     }
 }
 
@@ -489,24 +520,31 @@ pub(super) struct BatchDoneHandler {
     scheduled_items: Option<Box<Item>>,
 }
 
-impl MonitorHandler for BatchDoneHandler {
-    fn on_fence_signaled(self) {
+impl BatchDoneHandler {
+    fn finish(self, mut result: impl FnMut() -> Result<()>) {
         let mut scheduled_items = self.scheduled_items;
 
         // Release objects first (because completion callbacks might tear
         // down the device)
         for_each_item_mut(&mut scheduled_items, |item| {
-            let ref mut commited: CommitedBuffer = item.commited;
-            commited.ref_table = None;
-            commited.vk_cmd_buffer_pool_item = None;
-            commited.wait_semaphores.clear();
-            commited.signal_semaphores.clear();
+            let ref mut commited = item.commited;
+            commited.reset_all_but_completion_callbacks();
         });
 
         // Call the completion callbacks
         while let Some(mut item) = { scheduled_items } {
-            item.commited.completion_handler.on_complete();
+            item.commited.completion_callbacks.on_complete(&mut result);
+            item.commited.reset_completion_callbacks();
             scheduled_items = item.next;
+            // FIXME: `item` being dropped here means
+            //        `reset_all_but_completion_callbacks` is called twice, which
+            //        I don't like
         }
+    }
+}
+
+impl MonitorHandler for BatchDoneHandler {
+    fn on_fence_signaled(self) {
+        self.finish(|| Ok(()))
     }
 }

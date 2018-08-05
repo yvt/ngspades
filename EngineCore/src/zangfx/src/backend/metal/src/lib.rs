@@ -50,54 +50,45 @@
 //!   16-byte aligned types (e.g., `vec4` or structs containing one) as element
 //!   types for arrays defined in uniform buffers.
 //!
-extern crate arrayvec;
-extern crate block;
-extern crate cocoa;
-extern crate iterpool;
-#[macro_use(flags)]
-extern crate ngsenumflags;
-extern crate parking_lot;
-extern crate refeq;
-extern crate rspirv;
-extern crate spirv_headers;
-extern crate tokenlock;
-extern crate xalloc;
-#[macro_use]
-extern crate zangfx_base as base;
-extern crate zangfx_common as common;
+#![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
+
+#[allow(rust_2018_idioms)]
 pub extern crate zangfx_metal_rs as metal;
-extern crate zangfx_spirv_cross as spirv_cross;
+
+#[doc(no_inline)]
+pub use zangfx_metal_rs as metal;
 
 pub mod arg;
 pub mod buffer;
 pub mod cmd;
+pub mod computepipeline;
 pub mod device;
 pub mod formats;
 pub mod heap;
 pub mod image;
 pub mod limits;
-pub mod computepipeline;
-pub mod renderpipeline;
 pub mod renderpass;
+pub mod renderpipeline;
 pub mod sampler;
 pub mod shader;
 mod utils;
 
 use std::fmt::Debug;
 
-pub const MEMORY_REGION_GLOBAL: base::MemoryRegionIndex = 0;
+pub const MEMORY_REGION_GLOBAL: zangfx_base::MemoryRegionIndex = 0;
 
-pub const MEMORY_TYPE_PRIVATE: base::MemoryType = 0;
-pub const MEMORY_TYPE_SHARED: base::MemoryType = 1;
+pub const MEMORY_TYPE_PRIVATE: zangfx_base::MemoryType = 0;
+pub const MEMORY_TYPE_SHARED: zangfx_base::MemoryType = 1;
 
 pub const MEMORY_TYPE_ALL_BITS: u32 = 0b11;
 
-pub const QUEUE_FAMILY_UNIVERSAL: base::QueueFamily = 0;
+pub const QUEUE_FAMILY_UNIVERSAL: zangfx_base::QueueFamily = 0;
 
 pub const MAX_NUM_VERTEX_BUFFERS: usize = 16;
 
 /// The memory alignment requirement for uniform buffers.
-pub const UNIFORM_BUFFER_MIN_ALIGN: base::DeviceSize = 256;
+pub const UNIFORM_BUFFER_MIN_ALIGN: zangfx_base::DeviceSize = 256;
 
 /// The memory alignment requirement for storage buffers.
-pub const STORAGE_BUFFER_MIN_ALIGN: base::DeviceSize = 16;
+pub const STORAGE_BUFFER_MIN_ALIGN: zangfx_base::DeviceSize = 16;

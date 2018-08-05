@@ -4,21 +4,20 @@
 // This source code is a part of Nightingales.
 //
 use std::sync::Arc;
-use metal;
+use zangfx_metal_rs as metal;
 
-use base::{self, handles, pipeline, shader};
-use common::{Error, ErrorKind, Result};
-use arg::rootsig::RootSig;
-use shader::Library;
+use crate::arg::rootsig::RootSig;
+use crate::shader::Library;
+use zangfx_base::{self as base, pipeline, shader};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use utils::{nil_error, OCPtr};
+use crate::utils::{nil_error, OCPtr};
 
 /// Implementation of `ComputePipelineBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct ComputePipelineBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
 
     compute_shader: Option<(Library, String)>,
     root_sig: Option<RootSig>,
@@ -27,7 +26,7 @@ pub struct ComputePipelineBuilder {
 }
 
 zangfx_impl_object! { ComputePipelineBuilder:
-pipeline::ComputePipelineBuilder, ::Debug, base::SetLabel }
+dyn pipeline::ComputePipelineBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for ComputePipelineBuilder {}
 unsafe impl Sync for ComputePipelineBuilder {}
@@ -35,10 +34,10 @@ unsafe impl Sync for ComputePipelineBuilder {}
 impl ComputePipelineBuilder {
     /// Construct a `ComputePipelineBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             compute_shader: None,
             root_sig: None,
             label: None,
@@ -55,27 +54,23 @@ impl base::SetLabel for ComputePipelineBuilder {
 impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
     fn compute_shader(
         &mut self,
-        library: &handles::Library,
+        library: &base::LibraryRef,
         entry_point: &str,
-    ) -> &mut pipeline::ComputePipelineBuilder {
+    ) -> &mut dyn pipeline::ComputePipelineBuilder {
         let my_library: &Library = library.downcast_ref().expect("bad library type");
         self.compute_shader = Some((my_library.clone(), entry_point.to_owned()));
         self
     }
 
-    fn root_sig(&mut self, v: &handles::RootSig) -> &mut pipeline::ComputePipelineBuilder {
+    fn root_sig(&mut self, v: &base::RootSigRef) -> &mut dyn pipeline::ComputePipelineBuilder {
         let my_root_sig: &RootSig = v.downcast_ref().expect("bad root signature type");
         self.root_sig = Some(my_root_sig.clone());
         self
     }
 
-    fn build(&mut self) -> Result<handles::ComputePipeline> {
-        let compute_shader = self.compute_shader
-            .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "compute_shader"))?;
-        let root_sig = self.root_sig
-            .as_ref()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "root_sig"))?;
+    fn build(&mut self) -> Result<base::ComputePipelineRef> {
+        let compute_shader = self.compute_shader.as_ref().expect("compute_shader");
+        let root_sig = self.root_sig.as_ref().expect("root_sig");
 
         let metal_desc = unsafe {
             OCPtr::from_raw(metal::MTLComputePipelineDescriptor::alloc().init())
@@ -87,7 +82,7 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             shader::ShaderStage::Compute,
             root_sig,
             ::std::iter::empty(),
-            self.metal_device,
+            *self.metal_device,
             &self.label,
         )?;
         metal_desc.set_compute_function(*compute_fn);
@@ -103,7 +98,8 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             metal_desc.set_label(label);
         }
 
-        let metal_pipeline = self.metal_device
+        let metal_pipeline = self
+            .metal_device
             .new_compute_pipeline_state(*metal_desc)
             .map_err(|e| Error::with_detail(ErrorKind::Other, e))
             .and_then(|p| {
@@ -144,9 +140,9 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
             threads_per_threadgroup,
         };
 
-        Ok(handles::ComputePipeline::new(ComputePipeline {
+        Ok(ComputePipeline {
             data: Arc::new(data),
-        }))
+        }.into())
     }
 }
 
@@ -156,7 +152,7 @@ pub struct ComputePipeline {
     data: Arc<ComputePipelineData>,
 }
 
-zangfx_impl_handle! { ComputePipeline, handles::ComputePipeline }
+zangfx_impl_handle! { ComputePipeline, base::ComputePipelineRef }
 
 #[derive(Debug)]
 struct ComputePipelineData {

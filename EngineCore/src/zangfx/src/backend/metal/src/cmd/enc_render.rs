@@ -4,31 +4,31 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use metal::MTLRenderCommandEncoder;
-use base::{self, command, handles, heap, StageFlags};
-use common::Rect2D;
+use zangfx_base::{self as base, command, heap};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_common::Rect2D;
+use zangfx_metal_rs::MTLRenderCommandEncoder;
 
-use utils::{translate_render_stage, OCPtr};
-use cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
-use cmd::fence::Fence;
-use cmd::barrier::Barrier;
-use renderpipeline::RenderStateManager;
+use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands, UseResources};
+use crate::cmd::fence::Fence;
+use crate::renderpipeline::RenderStateManager;
+use crate::utils::{translate_render_stage, OCPtr};
 
 #[derive(Debug)]
-pub struct RenderEncoder {
+crate struct RenderEncoder {
     metal_encoder: OCPtr<MTLRenderCommandEncoder>,
     fence_set: CmdBufferFenceSet,
     state: RenderStateManager,
 }
 
 zangfx_impl_object! { RenderEncoder:
-command::CmdEncoder, command::RenderCmdEncoder, ::Debug }
+dyn command::CmdEncoder, dyn command::RenderCmdEncoder, dyn crate::Debug }
 
 unsafe impl Send for RenderEncoder {}
 unsafe impl Sync for RenderEncoder {}
 
 impl RenderEncoder {
-    pub unsafe fn new(
+    crate unsafe fn new(
         metal_encoder: MTLRenderCommandEncoder,
         fence_set: CmdBufferFenceSet,
         extents: [u32; 2],
@@ -59,47 +59,51 @@ impl command::CmdEncoder for RenderEncoder {
         self.metal_encoder.debug_marker(label);
     }
 
-    fn use_resource(&mut self, usage: command::ResourceUsage, objs: &[handles::ResourceRef]) {
+    fn use_resource_core(&mut self, usage: base::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
         self.metal_encoder.use_gfx_resource(usage, objs);
     }
 
-    fn use_heap(&mut self, heaps: &[&heap::Heap]) {
+    fn use_heap(&mut self, heaps: &[&heap::HeapRef]) {
         self.metal_encoder.use_gfx_heap(heaps);
     }
 
-    fn wait_fence(
-        &mut self,
-        fence: &handles::Fence,
-        _src_stage: StageFlags,
-        barrier: &handles::Barrier,
-    ) {
-        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        let our_barrier: &Barrier = barrier.downcast_ref().expect("bad barrier type");
+    fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
+        use zangfx_base::AccessType;
 
-        let stages = our_barrier.metal_dst_stage();
+        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
+
+        let stages = translate_render_stage(AccessType::union_supported_stages(dst_access));
         self.metal_encoder
             .wait_for_fence_before_stages(our_fence.metal_fence(), stages);
 
         self.fence_set.wait_fence(our_fence);
     }
 
-    fn update_fence(&mut self, fence: &handles::Fence, src_stage: StageFlags) {
+    fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
+        use zangfx_base::AccessType;
+
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
 
-        let stages = translate_render_stage(src_stage);
+        let stages = translate_render_stage(AccessType::union_supported_stages(src_access));
         self.metal_encoder
             .update_fence_after_stages(our_fence.metal_fence(), stages);
 
         self.fence_set.signal_fence(our_fence);
     }
 
-    fn barrier(&mut self, _barrier: &handles::Barrier) {
+    fn barrier_core(
+        &mut self,
+        _obj: base::ResourceSet<'_>,
+        _src_access: base::AccessTypeFlags,
+        _dst_access: base::AccessTypeFlags,
+    ) {
+        // FIXME: `textureBarrier` is deprecated in macOS 10.14
         self.metal_encoder.texture_barrier();
     }
 }
 
 impl command::RenderCmdEncoder for RenderEncoder {
-    fn bind_pipeline(&mut self, pipeline: &handles::RenderPipeline) {
+    fn bind_pipeline(&mut self, pipeline: &base::RenderPipelineRef) {
         self.state.bind_pipeline(pipeline);
     }
 
@@ -127,21 +131,25 @@ impl command::RenderCmdEncoder for RenderEncoder {
         self.state.set_scissors(start_viewport, value);
     }
 
-    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&handles::ArgTable]) {
+    fn bind_arg_table(
+        &mut self,
+        index: base::ArgTableIndex,
+        tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
+    ) {
         self.state.bind_arg_table(index, tables);
     }
 
     fn bind_vertex_buffers(
         &mut self,
         index: base::VertexBufferIndex,
-        buffers: &[(&handles::Buffer, base::DeviceSize)],
+        buffers: &[(&base::BufferRef, base::DeviceSize)],
     ) {
         self.state.bind_vertex_buffers(index, buffers);
     }
 
     fn bind_index_buffer(
         &mut self,
-        buffer: &handles::Buffer,
+        buffer: &base::BufferRef,
         offset: base::DeviceSize,
         format: base::IndexFormat,
     ) {
@@ -162,11 +170,11 @@ impl command::RenderCmdEncoder for RenderEncoder {
             .draw_indexed(index_buffer_range, vertex_offset, instance_range);
     }
 
-    fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    fn draw_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         self.state.draw_indirect(buffer, offset);
     }
 
-    fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    fn draw_indexed_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
         self.state.draw_indexed_indirect(buffer, offset);
     }
 }

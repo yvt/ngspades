@@ -4,19 +4,19 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdQueue` for Metal.
-use std::sync::Arc;
-use std::collections::HashSet;
-use parking_lot::Mutex;
-use tokenlock::{Token, TokenRef};
-use metal::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 use block;
+use parking_lot::Mutex;
+use std::collections::HashSet;
+use std::sync::Arc;
+use tokenlock::{Token, TokenRef};
+use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 
-use base::{self, command, handles, QueueFamily};
-use common::Result;
-use utils::{nil_error, OCPtr};
+use crate::utils::{nil_error, OCPtr};
+use zangfx_base::{self as base, command, QueueFamily, Result};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use super::enc::CmdBufferFenceSet;
 use super::buffer::CmdBuffer;
+use super::enc::CmdBufferFenceSet;
 use super::fence::Fence;
 
 /// Implementation of `CmdQueueBuilder` for Metal.
@@ -26,7 +26,7 @@ pub struct CmdQueueBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { CmdQueueBuilder: command::CmdQueueBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { CmdQueueBuilder: dyn command::CmdQueueBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for CmdQueueBuilder {}
 unsafe impl Sync for CmdQueueBuilder {}
@@ -50,12 +50,12 @@ impl base::SetLabel for CmdQueueBuilder {
 }
 
 impl command::CmdQueueBuilder for CmdQueueBuilder {
-    fn queue_family(&mut self, _: QueueFamily) -> &mut command::CmdQueueBuilder {
+    fn queue_family(&mut self, _: QueueFamily) -> &mut dyn command::CmdQueueBuilder {
         // Ignore it since we know we only have exactly one queue family
         self
     }
 
-    fn build(&mut self) -> Result<Box<command::CmdQueue>> {
+    fn build(&mut self) -> Result<command::CmdQueueRef> {
         let metal_queue = self.metal_device.new_command_queue();
         if metal_queue.is_null() {
             Err(nil_error("MTLDevice newCommandQueue"))
@@ -63,7 +63,7 @@ impl command::CmdQueueBuilder for CmdQueueBuilder {
             if let Some(ref label) = self.label {
                 metal_queue.set_label(label);
             }
-            unsafe { Ok(Box::new(CmdQueue::from_raw(metal_queue))) }
+            unsafe { Ok(Arc::new(CmdQueue::from_raw(metal_queue))) }
         }
     }
 }
@@ -76,7 +76,7 @@ pub struct CmdQueue {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdQueue: command::CmdQueue, ::Debug }
+zangfx_impl_object! { CmdQueue: dyn command::CmdQueue, dyn crate::Debug }
 
 unsafe impl Send for CmdQueue {}
 unsafe impl Sync for CmdQueue {}
@@ -109,8 +109,8 @@ pub(super) struct Item {
 
 #[derive(Debug)]
 pub(super) struct CommitedBuffer {
-    pub metal_buffer: OCPtr<MTLCommandBuffer>,
-    pub fence_set: CmdBufferFenceSet,
+    crate metal_buffer: OCPtr<MTLCommandBuffer>,
+    crate fence_set: CmdBufferFenceSet,
 }
 
 impl CmdQueue {
@@ -129,7 +129,7 @@ impl CmdQueue {
 }
 
 impl Scheduler {
-    pub fn commit(&self, commited_buffer: CommitedBuffer) {
+    crate fn commit(&self, commited_buffer: CommitedBuffer) {
         let mut item = Box::new(Item {
             commited: commited_buffer,
             wait_fence_index: 0,
@@ -257,37 +257,19 @@ impl SchedulerData {
 }
 
 impl command::CmdQueue for CmdQueue {
-    fn new_cmd_pool(&self) -> Result<Box<command::CmdPool>> {
-        Ok(Box::new(CmdPool {
-            metal_queue: self.metal_queue.clone(),
-            scheduler: self.scheduler.clone(),
-        }))
+    fn new_cmd_buffer(&self) -> Result<command::CmdBufferRef> {
+        unsafe {
+            CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler))
+                .map(|cb| Box::new(cb) as _)
+        }
     }
 
-    fn new_fence(&self) -> Result<handles::Fence> {
+    fn new_fence(&self) -> Result<base::FenceRef> {
         unsafe { Fence::new(self.device, self.scheduler.token_ref.clone()) }
-            .map(handles::Fence::new)
+            .map(base::FenceRef::new)
     }
 
     fn flush(&self) {
         Scheduler::flush(&self.scheduler);
-    }
-}
-
-/// Implementation of `CmdPool` for Metal.
-#[derive(Debug)]
-pub struct CmdPool {
-    metal_queue: OCPtr<MTLCommandQueue>,
-    scheduler: Arc<Scheduler>,
-}
-
-zangfx_impl_object! { CmdPool: command::CmdPool, ::Debug }
-
-unsafe impl Send for CmdPool {}
-unsafe impl Sync for CmdPool {}
-
-impl command::CmdPool for CmdPool {
-    unsafe fn new_cmd_buffer(&mut self) -> Result<Box<command::CmdBuffer>> {
-        CmdBuffer::new(*self.metal_queue, Arc::clone(&self.scheduler)).map(|cb| Box::new(cb) as _)
     }
 }

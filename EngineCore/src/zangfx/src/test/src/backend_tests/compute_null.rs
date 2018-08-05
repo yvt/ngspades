@@ -4,7 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use gfx::prelude::*;
+use include_data::include_data;
+use zangfx_base::prelude::*;
 
 static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
@@ -28,11 +29,8 @@ pub fn compute_null<T: TestDriver>(driver: T) {
             .build()
             .unwrap();
 
-        println!("- Creating a command pool");
-        let mut pool = queue.new_cmd_pool().unwrap();
-
         println!("- Creating a command buffer");
-        let mut buffer = pool.begin_cmd_buffer().unwrap();
+        let mut buffer = queue.new_cmd_buffer().unwrap();
 
         println!("- Encoding the command buffer");
         {

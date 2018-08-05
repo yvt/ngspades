@@ -6,29 +6,17 @@
 //! This crate is a part of [ZanGFX](../zangfx/index.html) and provides the base
 //! interface for backend implementations.
 #![feature(unsize)]
-#![feature(use_extern_macros)]
+#![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
 
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate ngsenumflags;
-#[macro_use]
-extern crate ngsenumflags_derive;
-
-extern crate itervalues;
-#[macro_use]
-extern crate itervalues_derive;
-
-#[macro_use]
-extern crate query_interface;
+pub use zangfx_common as common;
 
 // Rexport macros from `query_interface`
-pub use query_interface::{interfaces, vtable_for, mopo};
-
-extern crate zangfx_common as common;
+#[doc(no_inline)]
+pub use query_interface::{interfaces, mopo, vtable_for};
 
 // `handles` defines a macro
+#[macro_use]
 pub mod handles;
 // `objects` defines a macro too
 #[macro_use]
@@ -38,6 +26,7 @@ pub mod arg;
 pub mod command;
 pub mod debug;
 pub mod device;
+pub mod error;
 mod flags;
 pub use self::flags::*;
 pub mod formats;
@@ -117,82 +106,54 @@ pub struct Viewport {
     pub max_depth: f32,
 }
 
-define_object! { arg::ArgTableSigBuilder }
-define_object! { arg::ArgSig }
-define_object! { arg::RootSigBuilder }
-define_object! { arg::ArgPoolBuilder }
-define_object! { arg::ArgPool }
-define_object! { command::CmdQueueBuilder }
-define_object! { command::CmdQueue }
-define_object! { command::CmdBuffer }
-define_object! { command::CmdPool }
-define_object! { command::RenderCmdEncoder }
-define_object! { command::ComputeCmdEncoder }
-define_object! { command::CopyCmdEncoder }
-define_object! { command::CmdEncoder }
-define_object! { device::Device }
-define_object! { heap::DynamicHeapBuilder }
-define_object! { heap::DedicatedHeapBuilder }
-define_object! { heap::Heap }
-define_object! { pass::RenderPassBuilder }
-define_object! { pass::RenderPassTarget }
-define_object! { pass::RenderTargetTableBuilder }
-define_object! { pipeline::ComputePipelineBuilder }
-define_object! { pipeline::RenderPipelineBuilder }
-define_object! { resources::ImageBuilder }
-define_object! { resources::BufferBuilder }
-define_object! { sampler::SamplerBuilder }
-define_object! { shader::LibraryBuilder }
-define_object! { sync::BarrierBuilder }
+define_object! { dyn ArgTableSigBuilder }
+define_object! { dyn ArgSig }
+define_object! { dyn RootSigBuilder }
+define_object! { dyn ArgPoolBuilder }
+define_object! { dyn ArgPool }
+define_object! { dyn CmdQueueBuilder }
+define_object! { dyn CmdQueue }
+define_object! { dyn CmdBuffer }
+define_object! { dyn RenderCmdEncoder }
+define_object! { dyn ComputeCmdEncoder }
+define_object! { dyn CopyCmdEncoder }
+define_object! { dyn CmdEncoder }
+define_object! { dyn Device }
+define_object! { dyn DynamicHeapBuilder }
+define_object! { dyn DedicatedHeapBuilder }
+define_object! { dyn Heap }
+define_object! { dyn RenderPassBuilder }
+define_object! { dyn RenderPassTarget }
+define_object! { dyn RenderTargetTableBuilder }
+define_object! { dyn ComputePipelineBuilder }
+define_object! { dyn RenderPipelineBuilder }
+define_object! { dyn ImageBuilder }
+define_object! { dyn BufferBuilder }
+define_object! { dyn SamplerBuilder }
+define_object! { dyn LibraryBuilder }
 
 /// The `zangfx_base` prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use command::CmdPoolExt;
-    #[doc(no_inline)]
-    pub use device::DeviceExt;
-    #[doc(no_inline)]
-    pub use handles::HandleImpl;
-    #[doc(no_inline)]
-    pub use formats::{AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
-                      IntAsScalarFormat};
-    #[doc(no_inline)]
-    pub use pipeline::RasterizerExt;
-    #[doc(no_inline)]
-    pub use debug::Label;
+    pub use crate::{
+        command::CmdEncoderExt,
+        debug::Label,
+        device::DeviceExt,
+        formats::{
+            AsIndexFormat, FloatAsImageFormat, FloatAsScalarFormat, IntAsImageFormat,
+            IntAsScalarFormat,
+        },
+        handles::CloneHandle,
+        pipeline::RasterizerExt,
+    };
 }
 
 // Import all objects
 #[doc(no_inline)]
-pub use handles::*;
-#[doc(no_inline)]
-pub use objects::*;
-#[doc(no_inline)]
-pub use arg::*;
-#[doc(no_inline)]
-pub use command::*;
-#[doc(no_inline)]
-pub use device::*;
-#[doc(no_inline)]
-pub use formats::*;
-#[doc(no_inline)]
-pub use heap::*;
-#[doc(no_inline)]
-pub use limits::*;
-#[doc(no_inline)]
-pub use pass::*;
-#[doc(no_inline)]
-pub use pipeline::*;
-#[doc(no_inline)]
-pub use resources::*;
-#[doc(no_inline)]
-pub use sampler::*;
-#[doc(no_inline)]
-pub use shader::*;
-#[doc(no_inline)]
-pub use sync::*;
-#[doc(no_inline)]
-pub use debug::*;
+pub use crate::{
+    arg::*, command::*, debug::*, device::*, error::*, formats::*, handles::*, heap::*, limits::*,
+    objects::*, pass::*, pipeline::*, resources::*, sampler::*, shader::*, sync::*,
+};
 
 #[doc(no_inline)]
-pub use common::{Rect2D, Result};
+pub use zangfx_common::Rect2D;

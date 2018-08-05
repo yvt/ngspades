@@ -5,16 +5,18 @@
 //
 //! Implementation of `DeviceCaps` for Vulkan, and configurations of the
 //! backend.
-use std::collections::HashMap;
-use base;
 use ash;
 use ash::version::*;
 use ash::vk::{self, VK_FALSE};
-use common::Result;
-use ngsenumflags::BitFlags;
+use ngsenumflags::{flags, BitFlags};
+use ngsenumflags_derive::NgsEnumFlags;
+use std::collections::HashMap;
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
 
-use formats::{translate_image_format, translate_vertex_format};
-use utils::translate_generic_error_unwrap;
+use crate::formats::{translate_image_format, translate_vertex_format};
+use crate::utils::translate_generic_error_unwrap;
 
 /// Properties of a Vulkan physical device as recognized by the ZanGFX Vulkan
 /// backend.
@@ -53,7 +55,8 @@ impl DeviceInfo {
 
         use std::ffi::CStr;
         let mvk_ext_name = CStr::from_bytes_with_nul(b"VK_MVK_moltenvk\0").unwrap();
-        let is_molten_vk = exts.iter()
+        let is_molten_vk = exts
+            .iter()
             .any(|p| unsafe { CStr::from_ptr(p.extension_name.as_ptr()) } == mvk_ext_name);
         if is_molten_vk {
             traits |= DeviceTrait::MoltenVK;
@@ -234,6 +237,20 @@ pub struct DeviceConfig {
     /// Specifies a set of pairs denoting a queue family index and queue index
     /// allocated for ZanGFX.
     pub queues: Vec<(u32, u32)>,
+
+    /// Optionally specifies a `HeapStrategy` for each memory type.
+    pub heap_strategies: Vec<Option<HeapStrategy>>,
+}
+
+/// Defines global heaps' memory allocation strategy for a specific memory type.
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub struct HeapStrategy {
+    /// The size of "small resource" zones.
+    pub small_zone_size: base::DeviceSize,
+
+    /// The size threshold that determines whether a resource should be
+    /// allocated in "small resource" zones or not.
+    pub size_threshold: base::DeviceSize,
 }
 
 impl DeviceConfig {
@@ -242,22 +259,14 @@ impl DeviceConfig {
         Self::default()
     }
 
-    fn validate(&mut self, device_info: &DeviceInfo) -> Result<()> {
-        use common::{Error, ErrorKind};
-
+    fn validate(&mut self, device_info: &DeviceInfo) {
         for &(qf_index, q_index) in self.queues.iter() {
             if let Some(qf) = device_info.queue_families.get(qf_index as usize) {
                 if q_index as usize >= qf.count {
-                    return Err(Error::with_detail(
-                        ErrorKind::InvalidUsage,
-                        "queues: invalid queue index",
-                    ));
+                    panic!("queues: invalid queue index");
                 }
             } else {
-                return Err(Error::with_detail(
-                    ErrorKind::InvalidUsage,
-                    "queues: invalid queue family index",
-                ));
+                panic!("queues: invalid queue family index");
             }
         }
 
@@ -265,13 +274,51 @@ impl DeviceConfig {
         let queues = self.queues.as_mut_slice();
         queues.sort();
         if queues.iter().zip(queues[1..].iter()).any(|(x, y)| x == y) {
-            return Err(Error::with_detail(
-                ErrorKind::InvalidUsage,
-                "queues: duplicate entry",
-            ));
+            panic!("queues: duplicate entry");
         }
 
-        Ok(())
+        // Check the `Vec` of `HeapStrategy`s
+        for (i, heap_strategy) in self.heap_strategies.iter().enumerate() {
+            if heap_strategy.is_some() && i >= device_info.memory_types.len() {
+                panic!("heap_strategies: invalid memory type index");
+            }
+        }
+
+        self.heap_strategies
+            .resize(device_info.memory_types.len(), None);
+
+        for (i, heap_strategy) in self.heap_strategies.iter_mut().enumerate() {
+            if heap_strategy.is_none() {
+                let region_i = device_info.memory_types[i].region as usize;
+                let r_size = device_info.memory_regions[region_i].size;
+                *heap_strategy = Some(HeapStrategy::default_with_region_size(r_size))
+            }
+
+            // Validate the contents of `HeapStrategy`
+            let hs = heap_strategy.unwrap();
+            assert!(hs.size_threshold <= hs.small_zone_size);
+        }
+    }
+}
+
+impl HeapStrategy {
+    /// Provide a reasonable default value of `HeapStrategy` using the
+    /// specified memory region size, based on some heuristics.
+    pub fn default_with_region_size(size: base::DeviceSize) -> HeapStrategy {
+        assert_ne!(size, 0);
+        if size < 65536 {
+            Self {
+                small_zone_size: 64,
+                size_threshold: 0,
+            }
+        } else if size > 1024u64 * 1024 * 1024 * 4 {
+            Self::default_with_region_size(1024u64 * 1024 * 1024 * 4)
+        } else {
+            Self {
+                small_zone_size: size >> 9,
+                size_threshold: size >> 11,
+            }
+        }
     }
 }
 
@@ -283,15 +330,17 @@ pub struct DeviceCaps {
     available_qfs: Vec<base::QueueFamilyInfo>,
 }
 
-zangfx_impl_object! { DeviceCaps: base::DeviceCaps, ::Debug }
+zangfx_impl_object! { DeviceCaps: dyn base::DeviceCaps, dyn (crate::Debug) }
 
 impl DeviceCaps {
     /// Construct a `DeviceCaps`. Also perform a validation on the given
     /// `DeviceConfig`.
     pub(super) fn new(info: DeviceInfo, mut config: DeviceConfig) -> Result<Self> {
-        config.validate(&info)?;
+        // TODO: Consider changing the return type
+        config.validate(&info);
 
-        let available_qfs = info.queue_families
+        let available_qfs = info
+            .queue_families
             .iter()
             .enumerate()
             .map(|(qf_i, qf)| base::QueueFamilyInfo {

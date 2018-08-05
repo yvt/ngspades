@@ -5,9 +5,9 @@
 //
 //! Implementation of argument tables for Metal.
 mod allocator;
-pub mod tablesig;
 pub mod rootsig;
 pub mod table;
+pub mod tablesig;
 
 /// Pointer size used for argument tables.
 pub type ArgSize = u32;

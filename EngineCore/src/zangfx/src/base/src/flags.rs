@@ -3,8 +3,13 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngsenumflags::BitFlags;
-use common::BinaryInteger;
+use lazy_static::lazy_static;
+use {
+    ngsenumflags::{flags, BitFlags},
+    ngsenumflags_derive::NgsEnumFlags,
+};
+
+use zangfx_common::BinaryInteger;
 
 /// Specifies a pipeline stage.
 #[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]

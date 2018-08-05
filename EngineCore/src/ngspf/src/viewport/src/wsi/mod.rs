@@ -3,7 +3,6 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::sync::Arc;
 use zangfx::base as gfx;
 
 #[cfg(target_os = "macos")]
@@ -23,14 +22,14 @@ pub use self::autoreleasepool::*;
 
 #[derive(Debug, Clone)]
 pub struct GfxQueue {
-    pub queue: Arc<gfx::CmdQueue>,
+    pub queue: gfx::CmdQueueRef,
     pub queue_family: gfx::QueueFamily,
 }
 
 /// ZanGFX device and relevant objects managed by the window manager.
 #[derive(Debug, Clone)]
 pub struct WmDevice {
-    pub device: Arc<gfx::Device>,
+    pub device: gfx::DeviceRef,
     pub main_queue: GfxQueue,
     pub copy_queue: Option<GfxQueue>,
 }
@@ -116,7 +115,7 @@ pub trait Painter {
 
 /// Passed by the window manager.
 pub trait Drawable {
-    fn image(&self) -> &gfx::Image;
+    fn image(&self) -> &gfx::ImageRef;
     fn surface_props(&self) -> &SurfaceProps;
 
     fn pixel_ratio(&self) -> f32 {
@@ -139,7 +138,7 @@ pub trait Drawable {
     ///
     fn encode_prepare_present(
         &mut self,
-        cmd_buffer: &mut gfx::CmdBuffer,
+        cmd_buffer: &mut gfx::CmdBufferRef,
         queue_family: gfx::QueueFamily,
         stage: gfx::StageFlags,
         access: gfx::AccessTypeFlags,

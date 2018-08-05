@@ -6,7 +6,6 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
-use std::sync::Arc;
 
 use cgmath::{prelude::*, Matrix4, Vector2, Vector3, Vector4};
 use refeq::RefEqArc;
@@ -30,23 +29,21 @@ use wsi;
 /// `Compositor` does not free device allocations when dropped.
 #[derive(Debug)]
 pub struct Compositor {
-    device: Arc<gfx::Device>,
-    main_queue: Arc<gfx::CmdQueue>,
+    device: gfx::DeviceRef,
+    main_queue: gfx::CmdQueueRef,
     statesets: Vec<Stateset>,
     shaders: CompositorShaders,
-    cmd_pool: Box<gfx::CmdPool>,
     port_dispatch_queue: xdispatch::Queue,
 
     temp_res_pool: TempResPool,
     image_manager: ImageManager,
 
-    box_vertices: gfxut::UniqueBuffer<Arc<gfx::Device>>,
+    box_vertices: gfx::BufferRef,
 
-    white_image: gfxut::UniqueImage<Arc<gfx::Device>>,
-    white_image_view: gfxut::UniqueImageView<Arc<gfx::Device>>,
+    white_image: gfx::ImageRef,
 
-    sampler_repeat: gfxut::UniqueSampler<Arc<gfx::Device>>,
-    sampler_clamp: gfxut::UniqueSampler<Arc<gfx::Device>>,
+    sampler_repeat: gfx::SamplerRef,
+    sampler_clamp: gfx::SamplerRef,
 
     buffer_memory_type: gfx::MemoryType,
     backing_store_memory_type: gfx::MemoryType,
@@ -57,10 +54,10 @@ pub struct Compositor {
 
 #[derive(Debug)]
 struct CompositorShaders {
-    composite_arg_table_sigs: [gfx::ArgTableSig; 2],
-    composite_root_sig: gfx::RootSig,
-    composite_library_frag: gfx::Library,
-    composite_library_vert: gfx::Library,
+    composite_arg_table_sigs: [gfx::ArgTableSigRef; 2],
+    composite_root_sig: gfx::RootSigRef,
+    composite_library_frag: gfx::LibraryRef,
+    composite_library_vert: gfx::LibraryRef,
 }
 
 static BOX_VERTICES: &[[u16; 2]] = &[[0, 0], [1, 0], [0, 1], [1, 1]];
@@ -114,16 +111,12 @@ mod composite {
 #[derive(Debug)]
 struct Stateset {
     framebuffer_format: gfx::ImageFormat,
-    render_passes: Vec<gfx::RenderPass>,
+    render_passes: Vec<gfx::RenderPassRef>,
 
-    composite_pipeline: gfx::RenderPipeline,
+    composite_pipeline: gfx::RenderPipelineRef,
 }
 
 const RENDER_PASS_BIT_CLEAR: usize = 1 << 0;
-const RENDER_PASS_BIT_USAGE_MASK: usize = 0b11 << 1;
-const RENDER_PASS_BIT_USAGE_PRESENT: usize = 0b00 << 1;
-const RENDER_PASS_BIT_USAGE_SHADER_READ: usize = 0b01 << 1;
-const RENDER_PASS_BIT_USAGE_GENERAL: usize = 0b10 << 1;
 
 #[derive(Debug)]
 pub struct CompositorWindow {
@@ -145,7 +138,7 @@ pub struct CompositeFrame {
     cb_state_tracker: gfxut::CbStateTracker,
     temp_res_table: TempResTable,
     image_ref_table: ImageRefTable,
-    arg_pool: Box<gfx::ArgPool>,
+    arg_pool: gfx::ArgPoolRef,
 }
 
 #[derive(Debug)]
@@ -159,9 +152,7 @@ impl Compositor {
         let device = gfx_objects.device.clone();
         let main_queue = gfx_objects.main_queue.queue.clone();
 
-        let cmd_pool = gfx_objects.main_queue.queue.new_cmd_pool()?;
-
-        let mut temp_res_pool = TempResPool::new(Arc::clone(&device))?;
+        let temp_res_pool = TempResPool::new(device.clone())?;
         let mut image_manager = ImageManager::new(&device, &main_queue)?;
 
         let composite_arg_table_sigs = [
@@ -214,32 +205,29 @@ impl Compositor {
             .extents(&[1, 1])
             .format(gfx::ImageFormat::SrgbBgra8)
             .build()?;
-        let white_image = gfxut::UniqueImage::new(device.clone(), white_image);
         {
             let memory_type = device
                 .choose_memory_type(
-                    device.get_memory_req((&*white_image).into())?.memory_types,
+                    white_image.get_memory_req()?.memory_types,
                     flags![gfx::MemoryTypeCaps::{DeviceLocal}],
                     flags![gfx::MemoryTypeCaps::{}],
                 )
                 .unwrap();
-            temp_res_pool
-                .heap_mut()
-                .bind_dynamic(memory_type, &*white_image)?;
+
+            if !device.global_heap(memory_type).bind((&white_image).into())? {
+                return Err(gfx::ErrorKind::OutOfDeviceMemory.into());
+            }
 
             let uploader = image_manager.uploader_mut();
             uploader.stage_images(
                 [StageImage::new_default(
-                    &*white_image,
-                    gfx::ImageLayout::ShaderRead,
+                    &white_image,
                     &[0xffffffffu32],
                     &[1, 1],
                 )].iter()
                     .cloned(),
             )?;
         }
-        let white_image_view = device.new_image_view(&*white_image, gfx::ImageLayout::ShaderRead)?;
-        let white_image_view = gfxut::UniqueImageView::new(device.clone(), white_image_view);
 
         use std::mem::size_of_val;
         let box_vertices = device
@@ -247,35 +235,36 @@ impl Compositor {
             .size(size_of_val(BOX_VERTICES) as u64)
             .usage(flags![gfx::BufferUsage::{Vertex | CopyWrite}])
             .build()?;
-        let box_vertices = gfxut::UniqueBuffer::new(device.clone(), box_vertices);
         {
             let memory_type = device
                 .choose_memory_type(
-                    device.get_memory_req((&*box_vertices).into())?.memory_types,
+                    box_vertices.get_memory_req()?.memory_types,
                     flags![gfx::MemoryTypeCaps::{DeviceLocal}],
                     flags![gfx::MemoryTypeCaps::{}],
                 )
                 .unwrap();
-            temp_res_pool
-                .heap_mut()
-                .bind_dynamic(memory_type, &*box_vertices)?;
+
+            if !device
+                .global_heap(memory_type)
+                .bind((&box_vertices).into())?
+            {
+                return Err(gfx::ErrorKind::OutOfDeviceMemory.into());
+            }
 
             let uploader = image_manager.uploader_mut();
             uploader.upload(
-                [StageBuffer::new(&*box_vertices, 0, BOX_VERTICES)]
+                [StageBuffer::new(&box_vertices, 0, BOX_VERTICES)]
                     .iter()
                     .cloned(),
             )?;
         }
 
         let sampler_repeat = device.build_sampler().build()?;
-        let sampler_repeat = gfxut::UniqueSampler::new(device.clone(), sampler_repeat);
 
         let sampler_clamp = device
             .build_sampler()
             .address_mode(&[gfx::AddressMode::ClampToEdge])
             .build()?;
-        let sampler_clamp = gfxut::UniqueSampler::new(device.clone(), sampler_clamp);
 
         // Make sure all resources are staged
         main_queue.flush();
@@ -297,30 +286,20 @@ impl Compositor {
             shaders,
             image_manager,
             temp_res_pool,
-            cmd_pool,
             port_dispatch_queue,
 
             box_vertices,
 
             white_image,
-            white_image_view,
 
             sampler_repeat,
             sampler_clamp,
 
             buffer_memory_type: device
-                .memory_type_for_buffer(
-                    flags![gfx::BufferUsage::{Storage}],
-                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                )?
+                .try_choose_memory_type_shared(flags![gfx::BufferUsage::{Storage}])?
                 .unwrap(),
             backing_store_memory_type: device
-                .memory_type_for_image(
-                    gfx::ImageFormat::SrgbBgra8,
-                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                    flags![gfx::MemoryTypeCaps::{}],
-                )?
+                .try_choose_memory_type_private(gfx::ImageFormat::SrgbBgra8)?
                 .unwrap(),
 
             device,
@@ -393,14 +372,14 @@ impl CompositorWindow {
 
         #[derive(Debug, Clone)]
         enum ImageContents {
-            Image(gfx::ImageView, gfx::Image),
+            Image(gfx::ImageRef),
             ManagedImage(ImageRef),
             Port(RefEqArc<Port>),
         }
 
-        impl From<(gfx::ImageView, gfx::Image)> for ImageContents {
-            fn from(x: (gfx::ImageView, gfx::Image)) -> Self {
-                ImageContents::Image(x.0, x.1)
+        impl From<gfx::ImageRef> for ImageContents {
+            fn from(x: gfx::ImageRef) -> Self {
+                ImageContents::Image(x)
             }
         }
 
@@ -409,7 +388,7 @@ impl CompositorWindow {
             frame: &'a PresenterFrame,
 
             sprites: Vec<composite::Sprite>,
-            contents: Vec<[(ImageContents, gfx::Sampler); 2]>,
+            contents: Vec<[(ImageContents, gfx::SamplerRef); 2]>,
             cmds: Vec<Vec<Cmd>>,
             rts: Vec<RenderTarget>,
 
@@ -418,19 +397,18 @@ impl CompositorWindow {
         }
 
         struct RenderTarget {
-            image: gfx::Image,
+            image: gfx::ImageRef,
             extents: Vector2<u32>,
         }
 
         struct RasterContext<'a> {
             cmd_group_i: usize,
             begin_pass_cmd_i: usize,
-            image: (&'a gfx::Image, &'a gfx::ImageView),
+            image: &'a gfx::ImageRef,
         }
 
         struct BackDropInfo {
-            image_view: gfx::ImageView,
-            image: gfx::Image,
+            image: gfx::ImageRef,
             uv_matrix: Matrix4<f32>,
         }
 
@@ -498,10 +476,7 @@ impl CompositorWindow {
                 }
                 &Solid(rgba) => Some((
                     (
-                        (
-                            c.compositor.white_image_view.clone(),
-                            c.compositor.white_image.clone(),
-                        ).into(),
+                        c.compositor.white_image.clone().into(),
                         c.compositor.sampler_clamp.clone(),
                     ),
                     Matrix4::identity(),
@@ -520,10 +495,7 @@ impl CompositorWindow {
                 &BackDrop => {
                     let backdrop = backdrop.expect("BackDrop used without FlattenContents");
                     Some((
-                        (
-                            (backdrop.image_view, backdrop.image).into(),
-                            c.compositor.sampler_clamp.clone(),
-                        ),
+                        (backdrop.image.into(), c.compositor.sampler_clamp.clone()),
                         backdrop.uv_matrix,
                         composite::SpriteFlags::empty(),
                         Vector4::new(1.0, 1.0, 1.0, opacity),
@@ -537,10 +509,7 @@ impl CompositorWindow {
                 c.contents.push([
                     image_contents,
                     (
-                        (
-                            c.compositor.white_image_view.clone(),
-                            c.compositor.white_image.clone(),
-                        ).into(),
+                        c.compositor.white_image.clone().into(),
                         c.compositor.sampler_clamp.clone(),
                     ),
                 ]);
@@ -629,8 +598,6 @@ impl CompositorWindow {
                             ref mut rt_i,
                         } => {
                             saved = Some((*pass_i, *rt_i));
-                            *pass_i = *pass_i & !RENDER_PASS_BIT_USAGE_MASK
-                                | RENDER_PASS_BIT_USAGE_SHADER_READ;
                         }
                         _ => unreachable!(),
                     }
@@ -638,8 +605,7 @@ impl CompositorWindow {
                     cmd_group_i = rc.cmd_group_i;
 
                     backdrop = Some(BackDropInfo {
-                        image_view: rc.image.1.clone(),
-                        image: rc.image.0.clone(),
+                        image: rc.image.clone(),
                         uv_matrix: Matrix4::from_translation(Vector3::new(0.5, 0.5, 0.0))
                             * Matrix4::from_nonuniform_scale(0.5, 0.5, 1.0)
                             * model_matrix,
@@ -662,21 +628,11 @@ impl CompositorWindow {
                     .usage(flags![gfx::ImageUsage::{Render | Sampled}])
                     .build()?;
 
-                c.compositor
-                    .temp_res_pool
-                    .add_image(&mut c.temp_res_table, image.clone());
                 c.compositor.temp_res_pool.bind(
                     &mut c.temp_res_table,
                     c.compositor.backing_store_memory_type,
                     &image,
                 )?;
-                let image_view = c
-                    .compositor
-                    .device
-                    .new_image_view(&image, gfx::ImageLayout::ShaderRead)?;
-                c.compositor
-                    .temp_res_pool
-                    .add_image_view(&mut c.temp_res_table, image_view.clone());
 
                 c.rts.push(RenderTarget {
                     image: image.clone(),
@@ -686,7 +642,7 @@ impl CompositorWindow {
                 let rt_i = c.rts.len() - 1;
 
                 c.cmds[cmd_group_i].push(Cmd::BeginPass {
-                    pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_SHADER_READ,
+                    pass_i: RENDER_PASS_BIT_CLEAR,
                     rt_i,
                 });
 
@@ -695,7 +651,7 @@ impl CompositorWindow {
                     let mut new_rc = RasterContext {
                         cmd_group_i,
                         begin_pass_cmd_i: c.cmds[cmd_group_i].len() - 1,
-                        image: (&image, &image_view),
+                        image: &image,
                     };
                     render_inner(cc, c, &mut new_rc, layer, inner_matrix, 1.0, backdrop)?;
                 }
@@ -706,7 +662,7 @@ impl CompositorWindow {
                     let (pass_i, rt_i) = saved.unwrap();
                     // Restart the interrupted render pass
                     c.cmds[rc.cmd_group_i].push(Cmd::BeginPass {
-                        pass_i: pass_i & RENDER_PASS_BIT_USAGE_MASK,
+                        pass_i: pass_i & !RENDER_PASS_BIT_CLEAR,
                         rt_i,
                     });
                     rc.begin_pass_cmd_i = c.cmds[rc.cmd_group_i].len() - 1;
@@ -724,21 +680,11 @@ impl CompositorWindow {
                         .usage(flags![gfx::ImageUsage::{Render | Sampled}])
                         .build()?;
 
-                    c.compositor
-                        .temp_res_pool
-                        .add_image(&mut c.temp_res_table, mask_image.clone());
                     c.compositor.temp_res_pool.bind(
                         &mut c.temp_res_table,
                         c.compositor.backing_store_memory_type,
                         &mask_image,
                     )?;
-                    let mask_image_view = c
-                        .compositor
-                        .device
-                        .new_image_view(&mask_image, gfx::ImageLayout::ShaderRead)?;
-                    c.compositor
-                        .temp_res_pool
-                        .add_image_view(&mut c.temp_res_table, mask_image_view.clone());
 
                     c.rts.push(RenderTarget {
                         image: mask_image.clone(),
@@ -748,7 +694,7 @@ impl CompositorWindow {
                     let mask_rt_i = c.rts.len() - 1;
 
                     c.cmds.push(vec![Cmd::BeginPass {
-                        pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_SHADER_READ,
+                        pass_i: RENDER_PASS_BIT_CLEAR,
                         rt_i: mask_rt_i,
                     }]);
                     let mask_cmd_group_i = c.cmds.len() - 1;
@@ -757,7 +703,7 @@ impl CompositorWindow {
                         let mut mask_rc = RasterContext {
                             cmd_group_i: mask_cmd_group_i,
                             begin_pass_cmd_i: 0,
-                            image: (&mask_image, &mask_image_view),
+                            image: &mask_image,
                         };
 
                         mask.for_each_node_of_r(|layer: &Layer| {
@@ -767,16 +713,10 @@ impl CompositorWindow {
 
                     c.cmds[mask_cmd_group_i].push(Cmd::EndPass);
 
-                    (
-                        (mask_image_view, mask_image).into(),
-                        c.compositor.sampler_clamp.clone(),
-                    )
+                    (mask_image.into(), c.compositor.sampler_clamp.clone())
                 } else {
                     (
-                        (
-                            c.compositor.white_image_view.clone(),
-                            c.compositor.white_image.clone(),
-                        ).into(),
+                        c.compositor.white_image.clone().into(),
                         c.compositor.sampler_clamp.clone(),
                     )
                 };
@@ -786,10 +726,7 @@ impl CompositorWindow {
                 let instance_i = c.sprites.len();
                 let contents_i = c.contents.len();
                 c.contents.push([
-                    (
-                        (image_view, image).into(),
-                        c.compositor.sampler_clamp.clone(),
-                    ),
+                    (image.into(), c.compositor.sampler_clamp.clone()),
                     mask_contents,
                 ]);
                 c.sprites.push(composite::Sprite {
@@ -846,7 +783,7 @@ impl CompositorWindow {
             rts: Vec::with_capacity(self.num_rts * 2),
         };
         c.cmds.push(vec![Cmd::BeginPass {
-            pass_i: RENDER_PASS_BIT_CLEAR | RENDER_PASS_BIT_USAGE_PRESENT,
+            pass_i: RENDER_PASS_BIT_CLEAR,
             rt_i: 0,
         }]);
         c.rts.push(RenderTarget {
@@ -854,21 +791,13 @@ impl CompositorWindow {
             extents: Vector2::from(surface_props.extents),
         });
         if let &Some(ref root) = root {
-            let drawable_image_view = c
-                .compositor
-                .device
-                .new_image_view(drawable.image(), gfx::ImageLayout::ShaderRead)?;
-            c.compositor
-                .temp_res_pool
-                .add_image_view(&mut c.temp_res_table, drawable_image_view.clone());
-
             let root_matrix = Matrix4::from_translation(Vector3::new(-1.0, -1.0, 0.5))
                 * Matrix4::from_nonuniform_scale(2.0 / dpi_width, 2.0 / dpi_height, 0.0);
 
             let mut rc = RasterContext {
                 cmd_group_i: 0,
                 begin_pass_cmd_i: 0,
-                image: (drawable.image(), &drawable_image_view),
+                image: drawable.image(),
             };
 
             root.for_each_node_of_r(|layer: &Layer| {
@@ -885,7 +814,7 @@ impl CompositorWindow {
         // Collect various data
         struct RtData {
             viewport: gfx::Viewport,
-            framebuffer: [Option<gfx::RenderTargetTable>; 6],
+            framebuffer: [Option<gfx::RenderTargetTableRef>; 6],
             rt: RenderTarget,
         }
 
@@ -916,10 +845,7 @@ impl CompositorWindow {
             .size(sprites_size)
             .usage(flags![gfx::BufferUsage::{Storage}])
             .build()?;
-        compositor
-            .temp_res_pool
-            .add_buffer(&mut c.temp_res_table, sprites_buf.clone());
-        let sprites_alloc = compositor.temp_res_pool.bind(
+        compositor.temp_res_pool.bind(
             &mut c.temp_res_table,
             compositor.buffer_memory_type,
             &sprites_buf,
@@ -928,7 +854,7 @@ impl CompositorWindow {
             use std::slice::from_raw_parts_mut;
             let sprites_slice = unsafe {
                 from_raw_parts_mut(
-                    compositor.temp_res_pool.as_ptr(&sprites_alloc)? as *mut composite::Sprite,
+                    sprites_buf.as_ptr() as *mut composite::Sprite,
                     c.sprites.len(),
                 )
             };
@@ -943,31 +869,24 @@ impl CompositorWindow {
             .cloned();
 
         // Resolve all image view references
-        let contents_images: Vec<[(gfx::ImageView, gfx::Image); 2]> = c
+        let contents_images: Vec<[gfx::ImageRef; 2]> = c
             .contents
             .iter()
             .map(|contents| {
                 [
                     match contents[0].0 {
-                        ImageContents::Image(ref image_view, ref image) => {
-                            (image_view.clone(), image.clone())
-                        }
+                        ImageContents::Image(ref image) => image.clone(),
                         ImageContents::ManagedImage(ref image_ref) => {
                             let resident_image = compositor.image_manager.get(&image_ref).unwrap();
-                            (
-                                resident_image.image_view().clone(),
-                                resident_image.image().clone(),
-                            )
+                            resident_image.image().clone()
                         }
                         ImageContents::Port(ref port) => {
                             let port_output = port_frame.get_output(port).unwrap();
-                            (port_output.image_view.clone(), port_output.image.clone())
+                            port_output.image.clone()
                         }
                     },
                     match contents[1].0 {
-                        ImageContents::Image(ref image_view, ref image) => {
-                            (image_view.clone(), image.clone())
-                        }
+                        ImageContents::Image(ref image) => image.clone(),
                         _ => unreachable!(),
                     },
                 ]
@@ -975,7 +894,7 @@ impl CompositorWindow {
             .collect();
 
         // Make argument tables
-        let mut arg_pool;
+        let arg_pool;
         let at_global;
         let at_contents;
         {
@@ -999,6 +918,7 @@ impl CompositorWindow {
 
             compositor.device.update_arg_table(
                 &shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL],
+                &arg_pool,
                 &at_global,
                 &[(
                     composite::ARG_G_SPRITE_PARAMS,
@@ -1014,14 +934,12 @@ impl CompositorWindow {
                 )?
                 .unwrap();
 
-            let mut at_contents_image_views = Vec::with_capacity(c.contents.len() * 2);
+            let mut at_contents_images = Vec::with_capacity(c.contents.len() * 2);
             let mut at_contents_samplers = Vec::with_capacity(c.contents.len() * 2);
 
             for (contents, images) in c.contents.iter().zip(contents_images.iter()) {
-                for (&(_, ref sampler), &(ref image_view, _)) in
-                    contents[0..2].iter().zip(images.iter())
-                {
-                    at_contents_image_views.push(image_view);
+                for (&(_, ref sampler), image) in contents[0..2].iter().zip(images.iter()) {
+                    at_contents_images.push(image);
                     at_contents_samplers.push(sampler);
                 }
             }
@@ -1032,12 +950,12 @@ impl CompositorWindow {
                 at_contents_update_sets.push((
                     composite::ARG_C_IMAGE,
                     0,
-                    (&at_contents_image_views[i * 2..][..1]).into(),
+                    (&at_contents_images[i * 2..][..1]).into(),
                 ));
                 at_contents_update_sets.push((
                     composite::ARG_C_MASK,
                     0,
-                    (&at_contents_image_views[i * 2 + 1..][..1]).into(),
+                    (&at_contents_images[i * 2 + 1..][..1]).into(),
                 ));
                 at_contents_update_sets.push((
                     composite::ARG_C_IMAGE_SAMPLER,
@@ -1054,7 +972,7 @@ impl CompositorWindow {
             let at_contents_updates: Vec<_> = at_contents_update_sets
                 .chunks(4)
                 .zip(at_contents.iter())
-                .map(|(update_sets, arg_table)| (arg_table, update_sets))
+                .map(|(update_sets, arg_table)| ((&arg_pool, arg_table), update_sets))
                 .collect();
 
             compositor.device.update_arg_tables(
@@ -1077,10 +995,9 @@ impl CompositorWindow {
         }
 
         // Create an execution barrier
-        let simple_barrier = compositor.device.build_barrier().build()?;
 
         // Encode the command buffer
-        let mut cb = compositor.cmd_pool.begin_cmd_buffer()?;
+        let mut cb = compositor.main_queue.new_cmd_buffer()?;
         let cb_state_tracker = gfxut::CbStateTracker::new(&mut *cb);
         {
             let mut it = c.cmds.iter().rev().flat_map(|cmds| cmds.iter());
@@ -1104,15 +1021,15 @@ impl CompositorWindow {
                     enc = cb.encode_render(fb);
 
                     if let Some(ref fence) = fence.take() {
-                        enc.wait_fence(fence, flags![gfx::Stage::{Copy}], &simple_barrier);
+                        enc.wait_fence(fence, flags![gfx::AccessType::{FragmentRead}]);
                     }
 
                     enc.bind_pipeline(&compositor.statesets[0].composite_pipeline);
                     enc.bind_vertex_buffers(0, &[(&compositor.box_vertices, 0)]);
                     enc.set_viewports(0, &[rt_data[rt_i].viewport]);
-                    enc.bind_arg_table(composite::ARG_TABLE_GLOBAL, &[&at_global]);
+                    enc.bind_arg_table(composite::ARG_TABLE_GLOBAL, &[(&arg_pool, &at_global)]);
 
-                    enc.use_resource(gfx::ResourceUsage::Read, &[(&sprites_buf).into()]);
+                    enc.use_resource_read(&sprites_buf);
                 } else {
                     unreachable!();
                 }
@@ -1137,35 +1054,23 @@ impl CompositorWindow {
                             match c.contents[contents_i][0].0 {
                                 ImageContents::Port(ref port) => {
                                     let port_output = port_frame.get_output(port).unwrap();
-                                    let (src_stage, src_access) = port_output.fence_src;
 
-                                    let barrier = compositor
-                                        .device
-                                        .build_barrier()
-                                        .image(
-                                            src_access,
-                                            flags![gfx::AccessType::{FragmentRead}],
-                                            &port_output.image,
-                                            port_output.image_layout,
-                                            gfx::ImageLayout::ShaderRead,
-                                            &Default::default(),
-                                        )
-                                        .build()?;
-
-                                    enc.wait_fence(&port_output.fence, src_stage, &barrier);
+                                    enc.wait_fence(
+                                        &port_output.fence,
+                                        flags![gfx::AccessType::{FragmentRead}],
+                                    );
                                 }
                                 _ => {}
                             }
-                            enc.use_resource(
-                                gfx::ResourceUsage::Sample,
+                            enc.use_resource_read(
                                 &[
-                                    (&contents_images[contents_i][0].1).into(),
-                                    (&contents_images[contents_i][1].1).into(),
-                                ],
+                                    &contents_images[contents_i][0],
+                                    &contents_images[contents_i][1],
+                                ][..],
                             );
                             enc.bind_arg_table(
                                 composite::ARG_TABLE_CONTENTS,
-                                &[&at_contents[contents_i]],
+                                &[(&arg_pool, &at_contents[contents_i])],
                             );
                             let instance_i = instance_i as u32;
                             let count = count as u32;
@@ -1177,7 +1082,7 @@ impl CompositorWindow {
         }
 
         drawable.encode_prepare_present(
-            &mut *cb,
+            &mut cb,
             compositor.gfx_objects.main_queue.queue_family,
             flags![gfx::Stage::{RenderOutput}],
             flags![gfx::AccessType::{ColorWrite}],
@@ -1209,10 +1114,8 @@ impl Stateset {
         shaders: &CompositorShaders,
         framebuffer_format: gfx::ImageFormat,
     ) -> Result<Self> {
-        let render_passes: Vec<_> = (0..6)
+        let render_passes: Vec<_> = (0..2)
             .map(|i| {
-                let usage = i & RENDER_PASS_BIT_USAGE_MASK;
-
                 let mut builder = device.build_render_pass();
                 builder.label("Compositor render pass");
 
@@ -1224,21 +1127,9 @@ impl Stateset {
                     } else {
                         gfx::LoadOp::Load
                     })
-                    .set_store_op(gfx::StoreOp::Store)
-                    .set_initial_layout(if (i & RENDER_PASS_BIT_CLEAR) != 0 {
-                        gfx::ImageLayout::Undefined
-                    } else {
-                        gfx::ImageLayout::General
-                    })
-                    .set_final_layout(match usage {
-                        RENDER_PASS_BIT_USAGE_PRESENT => gfx::ImageLayout::Present,
-                        RENDER_PASS_BIT_USAGE_SHADER_READ => gfx::ImageLayout::ShaderRead,
-                        RENDER_PASS_BIT_USAGE_GENERAL => gfx::ImageLayout::General,
-                        _ => unreachable!(),
-                    });
+                    .set_store_op(gfx::StoreOp::Store);
 
-                builder.subpass_color_targets(&[Some((0, gfx::ImageLayout::RenderWrite))]);
-                builder.end();
+                builder.subpass_color_targets(&[Some(0)]);
 
                 builder.build()
             })

@@ -4,14 +4,14 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Fence` for Metal.
-use base::handles;
-use common::Result;
-use tokenlock::{TokenLock, TokenRef};
-use metal::{MTLDevice, MTLFence};
 use refeq::RefEqArc;
+use tokenlock::{TokenLock, TokenRef};
+use zangfx_base::zangfx_impl_handle;
+use zangfx_base::{self as base, Result};
+use zangfx_metal_rs::{MTLDevice, MTLFence};
 
-use utils::{nil_error, OCPtr};
-use cmd::queue::Item;
+use crate::cmd::queue::Item;
+use crate::utils::{nil_error, OCPtr};
 
 // TODO: recycle fences after use
 
@@ -21,7 +21,7 @@ pub struct Fence {
     data: RefEqArc<FenceData>,
 }
 
-zangfx_impl_handle! { Fence, handles::Fence }
+zangfx_impl_handle! { Fence, base::FenceRef }
 
 #[derive(Debug)]
 struct FenceData {
@@ -31,8 +31,8 @@ struct FenceData {
 
 #[derive(Debug)]
 pub(super) struct FenceScheduleData {
-    pub signaled: bool,
-    pub waiting: Option<Box<Item>>,
+    crate signaled: bool,
+    crate waiting: Option<Box<Item>>,
 }
 
 unsafe impl Send for Fence {}

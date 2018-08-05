@@ -4,19 +4,20 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Library` for Metal.
-use std::sync::Arc;
 use std::fmt;
+use std::sync::Arc;
 
-use metal;
 use rspirv::mr;
 use spirv_headers;
-use spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
+use zangfx_metal_rs as metal;
+use zangfx_spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
-use base::{self, handles, shader};
-use common::{Error, ErrorKind, Result};
+use zangfx_base::{self as base, shader};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use arg::rootsig::RootSig;
-use utils::{nil_error, OCPtr};
+use crate::arg::rootsig::RootSig;
+use crate::utils::{nil_error, OCPtr};
 
 // TODO: recycle fences after use
 
@@ -27,7 +28,7 @@ pub struct LibraryBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { LibraryBuilder: shader::LibraryBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { LibraryBuilder: dyn shader::LibraryBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 impl LibraryBuilder {
     pub fn new() -> Self {
@@ -42,16 +43,14 @@ impl base::SetLabel for LibraryBuilder {
 }
 
 impl shader::LibraryBuilder for LibraryBuilder {
-    fn spirv_code(&mut self, v: &[u32]) -> &mut shader::LibraryBuilder {
+    fn spirv_code(&mut self, v: &[u32]) -> &mut dyn shader::LibraryBuilder {
         self.spirv_code = Some(Vec::from(v));
         self
     }
 
-    fn build(&mut self) -> Result<handles::Library> {
-        let spirv_code = self.spirv_code
-            .clone()
-            .ok_or(Error::new(ErrorKind::InvalidUsage))?;
-        Library::new(spirv_code, self.label.clone()).map(handles::Library::new)
+    fn build(&mut self) -> Result<base::LibraryRef> {
+        let spirv_code = self.spirv_code.clone().expect("spirv_code");
+        Library::new(spirv_code, self.label.clone()).map(base::LibraryRef::new)
     }
 }
 
@@ -61,7 +60,7 @@ pub struct Library {
     data: Arc<LibraryData>,
 }
 
-zangfx_impl_handle! { Library, handles::Library }
+zangfx_impl_handle! { Library, base::LibraryRef }
 
 #[derive(Debug)]
 struct LibraryData {
@@ -165,24 +164,27 @@ impl Library {
         let options = unsafe { OCPtr::from_raw(metal::MTLCompileOptions::alloc().init()) }.unwrap();
         options.set_language_version(metal::MTLLanguageVersion::V2_0);
 
-        let lib = OCPtr::new(metal_device
-            .new_library_with_source(&code, *options)
-            .map_err(|e| {
-                Error::with_detail(
-                    ErrorKind::Other,
-                    ShaderCompilationFailed {
-                        reason: e,
-                        code: code.clone(),
-                    },
-                )
-            })?).unwrap();
+        let lib = OCPtr::new(
+            metal_device
+                .new_library_with_source(&code, *options)
+                .map_err(|e| {
+                    Error::with_detail(
+                        ErrorKind::Other,
+                        ShaderCompilationFailed {
+                            reason: e,
+                            code: code.clone(),
+                        },
+                    )
+                })?,
+        ).unwrap();
 
         if self.data.label.is_some() || pipeline_name.is_some() {
             let pipeline_name = pipeline_name
                 .as_ref()
                 .map(String::as_str)
                 .unwrap_or("(none)");
-            let library_name = self.data
+            let library_name = self
+                .data
                 .label
                 .as_ref()
                 .map(String::as_str)
@@ -217,7 +219,7 @@ impl ::std::error::Error for ShaderTranspilationFailed {
 }
 
 impl fmt::Display for ShaderTranspilationFailed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "Failed to transpile a shader code due to the following reason: {}",
@@ -239,7 +241,7 @@ impl ::std::error::Error for ShaderCompilationFailed {
 }
 
 impl fmt::Display for ShaderCompilationFailed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "Failed to compile the transpiled MSL code due to the following reason: {}\n\
@@ -252,9 +254,9 @@ impl fmt::Display for ShaderCompilationFailed {
 
 /// Vertex attribute information provided to `ShaderModule::get_function`.
 pub(crate) struct ShaderVertexAttrInfo {
-    pub binding: usize,
-    pub msl_buffer_index: usize,
-    pub offset: u32,
-    pub stride: u32,
-    pub input_rate: metal::MTLVertexStepFunction,
+    crate binding: usize,
+    crate msl_buffer_index: usize,
+    crate offset: u32,
+    crate stride: u32,
+    crate input_rate: metal::MTLVertexStepFunction,
 }

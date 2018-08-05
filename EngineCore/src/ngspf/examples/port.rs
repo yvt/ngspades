@@ -99,14 +99,12 @@ mod triangle {
 
     #[derive(Debug)]
     struct MyPortInstance {
-        device: Arc<gfx::Device>,
+        device: gfx::DeviceRef,
         data: Arc<PortData>,
         main_queue: GfxQueue,
-        heap: Box<gfx::Heap>,
-        vertex_buffer: gfx::Buffer,
-        pipeline: gfx::RenderPipeline,
-        render_pass: gfx::RenderPass,
-        cmd_pool: Box<gfx::CmdPool>,
+        vertex_buffer: gfx::BufferRef,
+        pipeline: gfx::RenderPipelineRef,
+        render_pass: gfx::RenderPassRef,
     }
 
     impl MyPortInstance {
@@ -114,23 +112,7 @@ mod triangle {
             let device = gfx_objects.device.clone();
             let main_queue = gfx_objects.main_queue.clone();
 
-            let heap = device
-                .build_dynamic_heap()
-                .memory_type(
-                    device
-                        .memory_type_for_buffer(
-                            flags![gfx::BufferUsage::{Vertex}],
-                            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                        )
-                        .unwrap()
-                        .unwrap(),
-                )
-                .size(4096)
-                .build()
-                .unwrap();
-
-            let vertex_buffer = Self::make_vertex_buffer(&*device, &*heap);
+            let vertex_buffer = Self::make_vertex_buffer(&device);
 
             let render_pass = {
                 let mut builder = device.build_render_pass();
@@ -139,32 +121,27 @@ mod triangle {
                     .set_format(RT_FORMAT)
                     .set_load_op(gfx::LoadOp::Clear)
                     .set_store_op(gfx::StoreOp::Store);
-                builder.subpass_color_targets(&[Some((0, gfx::ImageLayout::RenderWrite))]);
-                builder.end();
+                builder.subpass_color_targets(&[Some(0)]);
                 builder.label("Port render pass");
                 builder.build().unwrap()
             };
 
             let pipeline = Self::make_pipeline(&*device, &render_pass);
 
-            let cmd_pool = main_queue.queue.new_cmd_pool().unwrap();
-
             Self {
                 device,
                 data,
                 main_queue,
-                heap,
                 vertex_buffer,
                 pipeline,
                 render_pass,
-                cmd_pool,
             }
         }
 
         fn make_pipeline(
             device: &gfx::Device,
-            render_pass: &gfx::RenderPass,
-        ) -> gfx::RenderPipeline {
+            render_pass: &gfx::RenderPassRef,
+        ) -> gfx::RenderPipelineRef {
             let vertex_shader = device.new_library(SPIRV_VERT.as_u32_slice()).unwrap();
             let fragment_shader = device.new_library(SPIRV_FRAG.as_u32_slice()).unwrap();
 
@@ -194,7 +171,7 @@ mod triangle {
             builder.build().unwrap()
         }
 
-        fn make_vertex_buffer(device: &gfx::Device, heap: &gfx::Heap) -> gfx::Buffer {
+        fn make_vertex_buffer(device: &gfx::DeviceRef) -> gfx::BufferRef {
             let vertices = [
                 Vertex {
                     position: [-0.5f32, 0.5f32, 0f32],
@@ -222,10 +199,22 @@ mod triangle {
                 .build()
                 .unwrap();
 
-            let alloc = heap.bind((&buffer).into()).unwrap().unwrap();
-            let slice: &mut [Vertex] = unsafe {
-                from_raw_parts_mut(heap.as_ptr(&alloc).unwrap() as *mut Vertex, vertices.len())
-            };
+            let memory_type = device
+                .choose_memory_type(
+                    buffer.get_memory_req().unwrap().memory_types,
+                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+                )
+                .unwrap();
+
+            let success = device
+                .global_heap(memory_type)
+                .bind((&buffer).into())
+                .unwrap();
+            assert!(success);
+
+            let slice: &mut [Vertex] =
+                unsafe { from_raw_parts_mut(buffer.as_ptr() as *mut Vertex, vertices.len()) };
             slice.copy_from_slice(&vertices);
 
             buffer
@@ -267,7 +256,7 @@ mod triangle {
                     .build()?
             };
 
-            let mut buffer = self.cmd_pool.begin_cmd_buffer()?;
+            let mut buffer = self.main_queue.queue.new_cmd_buffer()?;
             {
                 let e = buffer.encode_render(&rtt);
                 e.bind_pipeline(&self.pipeline);
@@ -275,7 +264,7 @@ mod triangle {
                 e.set_viewports(0, &[viewport]);
                 e.draw(0..3, frame_index..frame_index + 1); // easiest way to pass a number
 
-                e.update_fence(&context.fence, flags![gfx::Stage::{RenderOutput}]);
+                e.update_fence(&context.fence, flags![gfx::AccessType::{ColorWrite}]);
             }
             buffer.commit().unwrap();
 

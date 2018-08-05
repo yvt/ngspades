@@ -6,7 +6,7 @@
 use refeq::RefEqArc;
 use std::collections::HashMap;
 use xdispatch;
-use zangfx::{base as gfx, base::Result, prelude::*};
+use zangfx::{base as gfx, base::Result};
 
 use core::{NodeRef, PresenterFrame};
 
@@ -27,12 +27,8 @@ pub(crate) struct PortRenderFrame<'a> {
 
 #[derive(Debug)]
 pub(crate) struct PortRenderOutput {
-    pub image: gfx::Image,
-    /// The image view of `image`. Always in the `ShaderRead` layout.
-    pub image_view: gfx::ImageView,
-    pub fence: gfx::Fence,
-    pub fence_src: (gfx::StageFlags, gfx::AccessTypeFlags),
-    pub image_layout: gfx::ImageLayout,
+    pub image: gfx::ImageRef,
+    pub fence: gfx::FenceRef,
 }
 
 impl<'a> Drop for PortRenderFrame<'a> {
@@ -87,7 +83,6 @@ impl<'a> PortRenderFrame<'a> {
                         let image;
                         let image_extents;
                         let image_format;
-                        let image_layout;
                         let fence;
                         {
                             let port_instance = port_instance.lock().unwrap();
@@ -96,7 +91,6 @@ impl<'a> PortRenderFrame<'a> {
                             let ref device = gfx_objects.device;
                             image_format = port_instance.image_format();
                             image_extents = port_instance.image_extents();
-                            image_layout = port_instance.image_layout();
                             let image_usage =
                                 port_instance.image_usage() | gfx::ImageUsage::Sampled;
                             image = device
@@ -105,24 +99,16 @@ impl<'a> PortRenderFrame<'a> {
                                 .format(image_format)
                                 .usage(image_usage)
                                 .build()?;
-                            temp_res_pool.add_image(&mut temp_res_table, image.clone());
                             temp_res_pool.bind(&mut temp_res_table, image_memory_type, &image)?;
-                            let image_view =
-                                device.new_image_view(&image, gfx::ImageLayout::ShaderRead)?;
-                            temp_res_pool.add_image_view(&mut temp_res_table, image_view.clone());
 
                             // Create a fence
                             fence = gfx_objects.main_queue.queue.new_fence()?;
-                            let fence_src = port_instance.fence_src();
 
                             outputs.insert(
                                 port.clone(),
                                 PortRenderOutput {
                                     image: image.clone(),
-                                    image_view,
-                                    image_layout,
                                     fence: fence.clone(),
-                                    fence_src,
                                 },
                             );
                         }

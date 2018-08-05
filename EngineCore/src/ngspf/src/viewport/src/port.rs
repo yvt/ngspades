@@ -50,27 +50,16 @@ pub struct PortRenderContext {
     /// (Internally, this image is allocated from `TempResPool` and is retained
     /// by `TempResFrame`, which is recycled when the device completes the
     /// execution of a command buffer.)
-    pub image: gfx::Image,
+    pub image: gfx::ImageRef,
     pub image_props: PortImageProps,
     /// The fence to be updated after rendering.
-    pub fence: gfx::Fence,
+    pub fence: gfx::FenceRef,
     /// Set this to `true` to continuously update the screen.
     pub schedule_next_frame: bool,
 }
 
 /// Trait for rendering custom contents as layer contents.
 pub trait PortInstance: fmt::Debug + Send + Sync + 'static {
-    /// The source stage/access flags of the fence`.
-    ///
-    /// The default implementation returns
-    ///`(flags![gfx::Stage::{RenderOutput}], flags![gfx::AccessType::{ColorWrite}])`.
-    fn fence_src(&self) -> (gfx::StageFlags, gfx::AccessTypeFlags) {
-        (
-            flags![gfx::Stage::{RenderOutput}],
-            flags![gfx::AccessType::{ColorWrite}],
-        )
-    }
-
     /// The usage of the backing store image (`PortRenderContext::image`).
     fn image_usage(&self) -> gfx::ImageUsageFlags {
         flags![gfx::ImageUsage::{Render}]
@@ -79,11 +68,6 @@ pub trait PortInstance: fmt::Debug + Send + Sync + 'static {
     /// The format of the backing store image (`PortRenderContext::image`).
     fn image_format(&self) -> gfx::ImageFormat {
         gfx::ImageFormat::SrgbRgba8
-    }
-
-    /// The final image layout of the backing store image (`PortRenderContext::image`).
-    fn image_layout(&self) -> gfx::ImageLayout {
-        gfx::ImageLayout::ShaderRead
     }
 
     /// The size of the backing store image (`PortRenderContext::image`).

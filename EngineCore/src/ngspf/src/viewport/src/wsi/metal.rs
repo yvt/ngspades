@@ -109,7 +109,8 @@ fn resize_drawable(layer: &OCPtr<metal::CAMetalLayer>, window: &Window) -> bool 
     // we're sure the window exists
     let dpi_factor = window.get_hidpi_factor();
     let (mut w, mut h) = (window.get_inner_size().unwrap())
-        .to_physical(dpi_factor).into();
+        .to_physical(dpi_factor)
+        .into();
     if w == 0 {
         w = 1;
     }
@@ -138,7 +139,7 @@ fn surface_props_from_layer(layer: &OCPtr<metal::CAMetalLayer>) -> SurfaceProps 
 impl<P: Painter> WindowManager<P> {
     pub fn new(mut painter: P, events_loop_proxy: EventsLoopProxy, _app_info: &AppInfo) -> Self {
         let device = unsafe { be::device::Device::new_system_default().unwrap() };
-        let device: Arc<gfx::Device> = Arc::new(device);
+        let device: gfx::DeviceRef = Arc::new(device);
 
         let main_queue = device
             .build_cmd_queue()
@@ -284,22 +285,15 @@ impl<P: Painter> WindowManager<P> {
             return;
         }
 
-        struct Drawable<'a> {
-            device: &'a gfx::Device,
-            image: gfx::Image,
+        struct Drawable {
+            image: gfx::ImageRef,
             surface_props: SurfaceProps,
             metal_drawable: Option<OCPtr<metal::CAMetalDrawable>>,
             pixel_ratio: f32,
         }
 
-        impl<'a> Drop for Drawable<'a> {
-            fn drop(&mut self) {
-                self.device.destroy_image(&self.image).unwrap();
-            }
-        }
-
-        impl<'a> super::Drawable for Drawable<'a> {
-            fn image(&self) -> &gfx::Image {
+        impl super::Drawable for Drawable {
+            fn image(&self) -> &gfx::ImageRef {
                 &self.image
             }
 
@@ -313,7 +307,7 @@ impl<P: Painter> WindowManager<P> {
 
             fn encode_prepare_present(
                 &mut self,
-                cmd_buffer: &mut gfx::CmdBuffer,
+                cmd_buffer: &mut gfx::CmdBufferRef,
                 _: gfx::QueueFamily,
                 _: gfx::StageFlags,
                 _: gfx::AccessTypeFlags,
@@ -362,7 +356,6 @@ impl<P: Painter> WindowManager<P> {
                     }
 
                     let mut drawable = Drawable {
-                        device: &*self.wm_device.device,
                         image: unsafe { be::image::Image::from_raw(metal_texture) }.into(),
                         surface_props,
                         metal_drawable: Some(OCPtr::new(metal_drawable).unwrap()),

@@ -3,12 +3,14 @@
 //
 // This source code is a part of Nightingales.
 //
+use ngsenumflags::flags;
 use std::u32;
 
-use {base, metal};
-use base::limits;
+use zangfx_base::{self as base, limits};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_metal_rs as metal;
 
-use MEMORY_REGION_GLOBAL;
+use crate::MEMORY_REGION_GLOBAL;
 
 /// Feature sets for Metal.
 ///
@@ -29,7 +31,7 @@ pub struct DeviceCaps {
     d24_s8_supported: bool,
 }
 
-zangfx_impl_object! { DeviceCaps: limits::DeviceCaps, ::Debug }
+zangfx_impl_object! { DeviceCaps: dyn limits::DeviceCaps, dyn crate::Debug }
 
 impl DeviceCaps {
     pub(crate) fn new(device: metal::MTLDevice) -> Self {
@@ -63,8 +65,8 @@ impl DeviceCaps {
             ],
             max_num_compute_workgroup_invocations: 256,
             max_compute_workgroup_count: [u32::max_value(); 3],
-            uniform_buffer_align: ::UNIFORM_BUFFER_MIN_ALIGN,
-            storage_buffer_align: ::STORAGE_BUFFER_MIN_ALIGN,
+            uniform_buffer_align: crate::UNIFORM_BUFFER_MIN_ALIGN,
+            storage_buffer_align: crate::STORAGE_BUFFER_MIN_ALIGN,
         };
 
         let working_set_size = device.recommended_max_working_set_size();
@@ -80,18 +82,14 @@ impl DeviceCaps {
             },
         ];
 
-        let memory_regions = [
-            limits::MemoryRegionInfo {
-                size: working_set_size,
-            },
-        ];
+        let memory_regions = [limits::MemoryRegionInfo {
+            size: working_set_size,
+        }];
 
-        let queue_families = [
-            limits::QueueFamilyInfo {
-                caps: flags![limits::QueueFamilyCaps::{Render | Compute | Copy}],
-                count: <usize>::max_value(),
-            },
-        ];
+        let queue_families = [limits::QueueFamilyInfo {
+            caps: flags![limits::QueueFamilyCaps::{Render | Compute | Copy}],
+            count: <usize>::max_value(),
+        }];
 
         Self {
             limits,
@@ -112,11 +110,11 @@ impl limits::DeviceCaps for DeviceCaps {
         &self,
         format: base::formats::ImageFormat,
     ) -> limits::ImageFormatCapsFlags {
-        use formats::translate_image_format;
-        use base::formats::ImageFormat;
-        use base::formats::Signedness::*;
-        use base::formats::Normalizedness::*;
-        use base::limits::ImageFormatCaps::*;
+        use crate::formats::translate_image_format;
+        use zangfx_base::formats::ImageFormat;
+        use zangfx_base::formats::Normalizedness::*;
+        use zangfx_base::formats::Signedness::*;
+        use zangfx_base::limits::ImageFormatCaps::*;
 
         let trans = CopyRead | CopyWrite;
         let all = Sampled | SampledFilterLinear | Storage | Render | RenderBlend | trans; // + MSAA w/Resolve
@@ -191,7 +189,7 @@ impl limits::DeviceCaps for DeviceCaps {
         &self,
         format: base::formats::VertexFormat,
     ) -> limits::VertexFormatCapsFlags {
-        use formats::translate_vertex_format;
+        use crate::formats::translate_vertex_format;
         if translate_vertex_format(format).is_some() {
             limits::VertexFormatCaps::Vertex.into()
         } else {

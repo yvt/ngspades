@@ -6,144 +6,87 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
+use ngsenumflags::flags;
 use std::ops::Range;
 
-use base;
-use common::Rect2D;
+use zangfx_base as base;
+use zangfx_common::Rect2D;
 
-use super::enc::{CommonCmdEncoder, DescSetBindingTable, FenceSet, RefTable};
-use super::fence::Fence;
-use buffer::Buffer;
-use device::DeviceRef;
-use pipeline::RenderPipeline;
-use renderpass::RenderTargetTable;
-use utils::{clip_rect2d_u31, translate_rect2d_u32};
+use super::{CmdBufferData, EncodingState};
 
-#[derive(Debug)]
-pub(super) struct RenderEncoder {
-    device: DeviceRef,
-    vk_cmd_buffer: vk::CommandBuffer,
-    fence_set: FenceSet,
-    ref_table: RefTable,
-    desc_set_binding_table: DescSetBindingTable,
-    /// Deferred-signaled fences
-    signal_fences: Vec<(Fence, base::StageFlags)>,
-}
+use crate::buffer::Buffer;
+use crate::pipeline::RenderPipeline;
+use crate::renderpass::RenderTargetTable;
+use crate::utils::{clip_rect2d_u31, translate_rect2d_u32};
 
-zangfx_impl_object! { RenderEncoder:
-base::CmdEncoder, base::RenderCmdEncoder, ::Debug }
+impl CmdBufferData {
+    crate fn begin_render_pass(&mut self, rtt: &RenderTargetTable) {
+        assert_eq!(self.state, EncodingState::NotRender);
+        self.state = EncodingState::Render;
 
-impl RenderEncoder {
-    pub unsafe fn new(
-        device: DeviceRef,
-        vk_cmd_buffer: vk::CommandBuffer,
-        fence_set: FenceSet,
-        ref_table: RefTable,
-        rtt: &RenderTargetTable,
-    ) -> Self {
-        let mut enc = Self {
-            device,
-            vk_cmd_buffer,
-            fence_set,
-            ref_table,
-            desc_set_binding_table: DescSetBindingTable::new(),
-            signal_fences: Vec::new(),
-        };
-
-        {
-            let vk_device = enc.device.vk_device();
+        unsafe {
+            let vk_device = self.device.vk_device();
             vk_device.cmd_begin_render_pass(
-                enc.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 &rtt.render_pass_begin_info(),
                 vk::SubpassContents::Inline,
             );
-
-            enc.ref_table.insert_render_target_table(rtt);
         }
 
-        enc
+        let images = rtt.images();
+        let layouts = rtt.render_pass().attachment_layouts();
+        for (image, [initial_layout, final_layout]) in images.iter().zip(layouts) {
+            self.use_image_for_pass(
+                *initial_layout,
+                *final_layout,
+                flags![base::AccessType::{ColorRead | ColorWrite}],
+                image,
+            );
+        }
+
+        self.ref_table.insert_render_target_table(rtt);
     }
 
-    pub fn finish(mut self) -> (FenceSet, RefTable) {
+    crate fn end_render_pass(&mut self) {
+        assert_eq!(self.state, EncodingState::Render);
+
         unsafe {
             let vk_device = self.device.vk_device();
-            vk_device.cmd_end_render_pass(self.vk_cmd_buffer);
+            vk_device.cmd_end_render_pass(self.vk_cmd_buffer());
         }
 
-        // Process deferred-signaled fences after ending a render pass
-        use std::mem::replace;
-        for (fence, src_stage) in replace(&mut self.signal_fences, Vec::new()) {
-            self.common().update_fence(&fence, src_stage);
-            self.fence_set.signal_fence(fence);
+        self.state = EncodingState::NotRender;
+
+        // Process deferred fences
+        if self.deferred_signal_fences.len() > 0 {
+            // Can't drain `self.deferred_signal_fences` directly because
+            // `self.cmd_update_fence` needs a reference to `self`
+            use std::mem::replace;
+            let mut deferred_signal_fences = replace(&mut self.deferred_signal_fences, Vec::new());
+
+            for (fence_i, src_access) in deferred_signal_fences.drain(..) {
+                let fence = self.ref_table.fences.get_by_index(fence_i).resource;
+                self.cmd_update_fence(fence, src_access);
+            }
+
+            replace(&mut self.deferred_signal_fences, deferred_signal_fences);
         }
-
-        (self.fence_set, self.ref_table)
-    }
-
-    fn common(&self) -> CommonCmdEncoder {
-        CommonCmdEncoder::new(self.device, self.vk_cmd_buffer)
     }
 }
 
-impl base::CmdEncoder for RenderEncoder {
-    fn begin_debug_group(&mut self, label: &str) {
-        self.common().begin_debug_group(label)
-    }
-
-    fn end_debug_group(&mut self) {
-        self.common().end_debug_group()
-    }
-
-    fn debug_marker(&mut self, label: &str) {
-        self.common().debug_marker(label)
-    }
-
-    fn use_resource(&mut self, _usage: base::ResourceUsage, _objs: &[base::ResourceRef]) {
-        // No-op on Vulkan backend
-    }
-
-    fn use_heap(&mut self, _heaps: &[&base::Heap]) {
-        // No-op on Vulkan backend
-    }
-
-    fn wait_fence(
-        &mut self,
-        fence: &base::Fence,
-        _src_stage: base::StageFlags,
-        _barrier: &base::Barrier,
-    ) {
-        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        // Do not call `CommonCmdEncoder::wait_fence` here - the barrier is
-        // already defined by the render pass. Inserting a fence wait command is
-        // overkill.
-        self.fence_set.wait_fence(our_fence);
-    }
-
-    fn update_fence(&mut self, fence: &base::Fence, src_stage: base::StageFlags) {
-        let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
-        // Defer the fence signaling until the render pass is done. It's not
-        // allowed inside a render pass.
-        self.signal_fences.push((our_fence, src_stage));
-    }
-
-    fn barrier(&mut self, barrier: &base::Barrier) {
-        self.common().barrier(barrier)
-    }
-}
-
-impl base::RenderCmdEncoder for RenderEncoder {
-    fn bind_pipeline(&mut self, pipeline: &base::RenderPipeline) {
+impl base::RenderCmdEncoder for CmdBufferData {
+    fn bind_pipeline(&mut self, pipeline: &base::RenderPipelineRef) {
         let my_pipeline: &RenderPipeline =
             pipeline.downcast_ref().expect("bad render pipeline type");
 
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.cmd_bind_pipeline(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 vk::PipelineBindPoint::Graphics,
                 my_pipeline.vk_pipeline(),
             );
-            my_pipeline.encode_partial_states(self.vk_cmd_buffer);
+            my_pipeline.encode_partial_states(self.vk_cmd_buffer());
         }
 
         self.desc_set_binding_table
@@ -156,7 +99,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.cmd_set_blend_constants(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 [value[0], value[1], value[2], value[3]],
             );
         }
@@ -167,7 +110,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.fp_v1_0().cmd_set_depth_bias(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 value.constant_factor,
                 value.clamp,
                 value.slope_factor,
@@ -181,7 +124,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
         unsafe {
             vk_device
                 .fp_v1_0()
-                .cmd_set_depth_bounds(self.vk_cmd_buffer, value.start, value.end);
+                .cmd_set_depth_bounds(self.vk_cmd_buffer(), value.start, value.end);
         }
     }
 
@@ -189,12 +132,12 @@ impl base::RenderCmdEncoder for RenderEncoder {
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.fp_v1_0().cmd_set_stencil_reference(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 vk::STENCIL_FACE_FRONT_BIT,
                 values[0],
             );
             vk_device.fp_v1_0().cmd_set_stencil_reference(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 vk::STENCIL_FACE_BACK_BIT,
                 values[1],
             );
@@ -213,11 +156,10 @@ impl base::RenderCmdEncoder for RenderEncoder {
                     height: vp.height,
                     min_depth: vp.min_depth,
                     max_depth: vp.max_depth,
-                })
-                .collect();
+                }).collect();
             unsafe {
                 vk_device.fp_v1_0().cmd_set_viewport(
-                    self.vk_cmd_buffer,
+                    self.vk_cmd_buffer(),
                     start_viewport as u32,
                     viewports.len() as u32,
                     viewports.as_ptr(),
@@ -237,7 +179,7 @@ impl base::RenderCmdEncoder for RenderEncoder {
                 .collect();
             unsafe {
                 vk_device.fp_v1_0().cmd_set_scissor(
-                    self.vk_cmd_buffer,
+                    self.vk_cmd_buffer(),
                     start_viewport as u32,
                     rects.len() as u32,
                     rects.as_ptr(),
@@ -247,28 +189,38 @@ impl base::RenderCmdEncoder for RenderEncoder {
         }
     }
 
-    fn bind_arg_table(&mut self, index: base::ArgTableIndex, tables: &[&base::ArgTable]) {
-        self.desc_set_binding_table.bind_arg_table(index, tables);
+    fn bind_arg_table(
+        &mut self,
+        index: base::ArgTableIndex,
+        tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
+    ) {
+        self.desc_set_binding_table
+            .bind_arg_table(&mut self.ref_table, index, tables);
     }
 
     fn bind_vertex_buffers(
         &mut self,
         mut index: base::VertexBufferIndex,
-        buffers: &[(&base::Buffer, base::DeviceSize)],
+        buffers: &[(&base::BufferRef, base::DeviceSize)],
     ) {
         let vk_device = self.device.vk_device();
+
+        for (buffer, _) in buffers.iter() {
+            let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+            self.ref_table.insert_buffer(buffer);
+        }
+
         for items in buffers.chunks(32) {
             let buffers: ArrayVec<[_; 32]> = items
                 .iter()
                 .map(|&(buffer, _)| {
                     let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
                     buffer.vk_buffer()
-                })
-                .collect();
+                }).collect();
             let offsets: ArrayVec<[_; 32]> = items.iter().map(|&(_, offset)| offset).collect();
             unsafe {
                 vk_device.cmd_bind_vertex_buffers(
-                    self.vk_cmd_buffer,
+                    self.vk_cmd_buffer(),
                     index as u32,
                     &buffers,
                     &offsets,
@@ -280,15 +232,18 @@ impl base::RenderCmdEncoder for RenderEncoder {
 
     fn bind_index_buffer(
         &mut self,
-        buffer: &base::Buffer,
+        buffer: &base::BufferRef,
         offset: base::DeviceSize,
         format: base::IndexFormat,
     ) {
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+        self.ref_table.insert_buffer(buffer);
+
         unsafe {
             vk_device.cmd_bind_index_buffer(
-                self.vk_cmd_buffer,
+                self.vk_cmd_buffer(),
                 buffer.vk_buffer(),
                 offset,
                 match format {
@@ -300,16 +255,18 @@ impl base::RenderCmdEncoder for RenderEncoder {
     }
 
     fn draw(&mut self, vertex_range: Range<u32>, instance_range: Range<u32>) {
+        let vk_cmd_buffer = self.vk_cmd_buffer();
+
         self.desc_set_binding_table.flush(
-            self.device,
-            self.vk_cmd_buffer,
+            &self.device,
+            vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );
 
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.cmd_draw(
-                self.vk_cmd_buffer,
+                vk_cmd_buffer,
                 vertex_range.len() as u32,
                 instance_range.len() as u32,
                 vertex_range.start,
@@ -324,16 +281,18 @@ impl base::RenderCmdEncoder for RenderEncoder {
         vertex_offset: u32,
         instance_range: Range<u32>,
     ) {
+        let vk_cmd_buffer = self.vk_cmd_buffer();
+
         self.desc_set_binding_table.flush(
-            self.device,
-            self.vk_cmd_buffer,
+            &self.device,
+            vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );
 
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.cmd_draw_indexed(
-                self.vk_cmd_buffer,
+                vk_cmd_buffer,
                 index_buffer_range.len() as u32,
                 instance_range.len() as u32,
                 index_buffer_range.start,
@@ -343,37 +302,41 @@ impl base::RenderCmdEncoder for RenderEncoder {
         }
     }
 
-    fn draw_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    fn draw_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
+        let vk_cmd_buffer = self.vk_cmd_buffer();
+
         self.desc_set_binding_table.flush(
-            self.device,
-            self.vk_cmd_buffer,
+            &self.device,
+            vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );
 
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+        self.ref_table.insert_buffer(buffer);
+
         unsafe {
-            vk_device.cmd_draw_indirect(self.vk_cmd_buffer, buffer.vk_buffer(), offset, 1, 0);
+            vk_device.cmd_draw_indirect(vk_cmd_buffer, buffer.vk_buffer(), offset, 1, 0);
         }
     }
 
-    fn draw_indexed_indirect(&mut self, buffer: &base::Buffer, offset: base::DeviceSize) {
+    fn draw_indexed_indirect(&mut self, buffer: &base::BufferRef, offset: base::DeviceSize) {
+        let vk_cmd_buffer = self.vk_cmd_buffer();
+
         self.desc_set_binding_table.flush(
-            self.device,
-            self.vk_cmd_buffer,
+            &self.device,
+            vk_cmd_buffer,
             vk::PipelineBindPoint::Graphics,
         );
 
         let vk_device = self.device.vk_device();
         let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+        self.ref_table.insert_buffer(buffer);
+
         unsafe {
-            vk_device.cmd_draw_indexed_indirect(
-                self.vk_cmd_buffer,
-                buffer.vk_buffer(),
-                offset,
-                1,
-                0,
-            );
+            vk_device.cmd_draw_indexed_indirect(vk_cmd_buffer, buffer.vk_buffer(), offset, 1, 0);
         }
     }
 }

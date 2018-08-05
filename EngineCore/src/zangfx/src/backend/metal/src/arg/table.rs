@@ -4,16 +4,19 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `ArgPool` and `ArgTable` for Metal.
-use metal;
+use parking_lot::Mutex;
+use std::sync::Arc;
+use zangfx_metal_rs as metal;
 
-use base::{self, arg, handles};
-use common::{Error, ErrorKind, Result};
+use zangfx_base::Result;
+use zangfx_base::{self as base, arg};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
-use utils::{nil_error, OCPtr};
+use crate::utils::{nil_error, OCPtr};
 
-use super::ArgSize;
-use super::tablesig::ArgTableSig;
 use super::allocator::{Allocation, Allocator, StackAllocator, TlsfAllocator};
+use super::tablesig::ArgTableSig;
+use super::ArgSize;
 
 /// Device-specific characteristics of argument buffers' layout.
 ///
@@ -30,8 +33,8 @@ pub(crate) struct ArgLayoutInfo {
 
 impl ArgLayoutInfo {
     /// Compute the `ArgLayoutInfo` for a given device.
-    pub unsafe fn new(metal_device: metal::MTLDevice) -> Result<Self> {
-        use base::arg::ArgTableSigBuilder;
+    crate unsafe fn new(metal_device: metal::MTLDevice) -> Result<Self> {
+        use zangfx_base::arg::ArgTableSigBuilder;
         let mut builder = super::tablesig::ArgTableSigBuilder::new(metal_device);
         builder.arg(0, arg::ArgType::StorageImage);
 
@@ -68,9 +71,7 @@ impl ArgLayoutInfo {
 /// Implementation of `ArgPoolBuilder` for Metal.
 #[derive(Debug)]
 pub struct ArgPoolBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     layout: ArgLayoutInfo,
 
     size: ArgSize,
@@ -79,7 +80,7 @@ pub struct ArgPoolBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { ArgPoolBuilder: arg::ArgPoolBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { ArgPoolBuilder: dyn arg::ArgPoolBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for ArgPoolBuilder {}
 unsafe impl Sync for ArgPoolBuilder {}
@@ -87,10 +88,10 @@ unsafe impl Sync for ArgPoolBuilder {}
 impl ArgPoolBuilder {
     /// Construct an `ArgPoolBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub(crate) unsafe fn new(metal_device: metal::MTLDevice, layout: ArgLayoutInfo) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             layout,
             size: 0,
             enable_destroy_tables: false,
@@ -106,11 +107,15 @@ impl base::SetLabel for ArgPoolBuilder {
 }
 
 impl arg::ArgPoolBuilder for ArgPoolBuilder {
+    fn queue(&mut self, _queue: &base::CmdQueueRef) -> &mut dyn base::ArgPoolBuilder {
+        self
+    }
+
     fn reserve_table_sig(
         &mut self,
         count: usize,
-        table: &handles::ArgTableSig,
-    ) -> &mut arg::ArgPoolBuilder {
+        table: &arg::ArgTableSigRef,
+    ) -> &mut dyn arg::ArgPoolBuilder {
         if count == 0 {
             return self;
         }
@@ -129,8 +134,8 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         self
     }
 
-    fn reserve_arg(&mut self, count: usize, ty: arg::ArgType) -> &mut arg::ArgPoolBuilder {
-        use base::arg::ArgType::*;
+    fn reserve_arg(&mut self, count: usize, ty: arg::ArgType) -> &mut dyn arg::ArgPoolBuilder {
+        use zangfx_base::arg::ArgType::*;
         self.size += match ty {
             StorageImage | SampledImage => self.layout.texture_size,
             Sampler => self.layout.sampler_size,
@@ -139,19 +144,19 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         self
     }
 
-    fn reserve_table(&mut self, count: usize) -> &mut arg::ArgPoolBuilder {
+    fn reserve_table(&mut self, count: usize) -> &mut dyn arg::ArgPoolBuilder {
         self.size += self.layout.table_size * count as ArgSize;
         self
     }
 
-    fn enable_destroy_tables(&mut self) -> &mut arg::ArgPoolBuilder {
+    fn enable_destroy_tables(&mut self) -> &mut dyn arg::ArgPoolBuilder {
         self.enable_destroy_tables = true;
         self
     }
 
-    fn build(&mut self) -> Result<Box<arg::ArgPool>> {
+    fn build(&mut self) -> Result<arg::ArgPoolRef> {
         if self.size == 0 {
-            return Ok(Box::new(ZeroSizedArgPool));
+            return Ok(Arc::new(ZeroSizedArgPool));
         }
 
         // Allocate a buffer for the newly created argument pool
@@ -167,9 +172,9 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
         }
 
         if self.enable_destroy_tables {
-            Ok(Box::new(DynamicArgPool(BaseArgPool::new(metal_buffer))))
+            Ok(Arc::new(DynamicArgPool(BaseArgPool::new(metal_buffer))))
         } else {
-            Ok(Box::new(StackArgPool(BaseArgPool::new(metal_buffer))))
+            Ok(Arc::new(StackArgPool(BaseArgPool::new(metal_buffer))))
         }
     }
 }
@@ -179,7 +184,7 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
 #[derive(Debug)]
 struct BaseArgPool<T> {
     metal_buffer: OCPtr<metal::MTLBuffer>,
-    allocator: T,
+    allocator: Mutex<T>,
 }
 
 unsafe impl<T> Send for BaseArgPool<T> {}
@@ -190,23 +195,25 @@ impl<T: Allocator> BaseArgPool<T> {
         let size = metal_buffer.length() as ArgSize;
         Self {
             metal_buffer,
-            allocator: T::new(size),
+            allocator: Mutex::new(T::new(size)),
         }
     }
 
     fn new_tables(
-        &mut self,
+        &self,
         count: usize,
-        table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
+        table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
         let our_sig: &ArgTableSig = table
             .downcast_ref()
             .expect("bad argument table signature type");
         let (size, align) = (our_sig.encoded_size(), our_sig.encoded_alignment());
 
+        let mut allocator = self.allocator.lock();
+
         let mut alloc_infos = Vec::with_capacity(count);
         for _ in 0..count {
-            if let Some(alloc_info) = self.allocator.allocate(size, align) {
+            if let Some(alloc_info) = allocator.allocate(size, align) {
                 alloc_infos.push(alloc_info);
             } else {
                 break;
@@ -216,7 +223,7 @@ impl<T: Allocator> BaseArgPool<T> {
         if alloc_infos.len() < count {
             // Allocation has failed -- rollback
             for (_, alloc) in alloc_infos {
-                self.allocator.deallocate(alloc);
+                allocator.deallocate(alloc);
             }
             return Ok(None);
         }
@@ -229,22 +236,24 @@ impl<T: Allocator> BaseArgPool<T> {
                     offset,
                     allocation,
                 };
-                handles::ArgTable::new(our_table)
+                arg::ArgTableRef::new(our_table)
             })
             .collect();
         Ok(Some(tables))
     }
 
-    fn destroy_tables(&mut self, tables: &[&handles::ArgTable]) -> Result<()> {
+    fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
+        let mut allocator = self.allocator.lock();
         for table in tables.iter() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
-            self.allocator.deallocate(our_table.clone().allocation);
+            allocator.deallocate(our_table.clone().allocation);
         }
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<()> {
-        self.allocator.reset();
+    fn reset(&self) -> Result<()> {
+        let mut allocator = self.allocator.lock();
+        allocator.reset();
         Ok(())
     }
 }
@@ -254,22 +263,22 @@ impl<T: Allocator> BaseArgPool<T> {
 #[derive(Debug)]
 pub struct StackArgPool(BaseArgPool<StackAllocator>);
 
-zangfx_impl_object! { StackArgPool: arg::ArgPool, ::Debug }
+zangfx_impl_object! { StackArgPool: dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for StackArgPool {
     fn new_tables(
-        &mut self,
+        &self,
         count: usize,
-        table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
+        table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
         self.0.new_tables(count, table)
     }
 
-    fn destroy_tables(&mut self, tables: &[&handles::ArgTable]) -> Result<()> {
+    fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
         self.0.destroy_tables(tables)
     }
 
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&self) -> Result<()> {
         self.0.reset()
     }
 }
@@ -278,22 +287,22 @@ impl arg::ArgPool for StackArgPool {
 #[derive(Debug)]
 pub struct DynamicArgPool(BaseArgPool<TlsfAllocator>);
 
-zangfx_impl_object! { DynamicArgPool: arg::ArgPool, ::Debug }
+zangfx_impl_object! { DynamicArgPool: dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for DynamicArgPool {
     fn new_tables(
-        &mut self,
+        &self,
         count: usize,
-        table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
+        table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
         self.0.new_tables(count, table)
     }
 
-    fn destroy_tables(&mut self, tables: &[&handles::ArgTable]) -> Result<()> {
+    fn destroy_tables(&self, tables: &[&arg::ArgTableRef]) -> Result<()> {
         self.0.destroy_tables(tables)
     }
 
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&self) -> Result<()> {
         self.0.reset()
     }
 }
@@ -302,25 +311,22 @@ impl arg::ArgPool for DynamicArgPool {
 #[derive(Debug)]
 pub struct ZeroSizedArgPool;
 
-zangfx_impl_object! { ZeroSizedArgPool: arg::ArgPool, ::Debug }
+zangfx_impl_object! { ZeroSizedArgPool: dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for ZeroSizedArgPool {
     fn new_tables(
-        &mut self,
+        &self,
         _count: usize,
-        _table: &handles::ArgTableSig,
-    ) -> Result<Option<Vec<handles::ArgTable>>> {
+        _table: &arg::ArgTableSigRef,
+    ) -> Result<Option<Vec<arg::ArgTableRef>>> {
         Ok(None)
     }
 
-    fn destroy_tables(&mut self, _: &[&handles::ArgTable]) -> Result<()> {
-        Err(Error::with_detail(
-            ErrorKind::InvalidUsage,
-            "ZeroSizedArgPool does not support allocation at all",
-        ))
+    fn destroy_tables(&self, _: &[&arg::ArgTableRef]) -> Result<()> {
+        panic!("ZeroSizedArgPool does not support allocation at all")
     }
 
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&self) -> Result<()> {
         Ok(())
     }
 }
@@ -333,7 +339,7 @@ pub struct ArgTable {
     allocation: Allocation,
 }
 
-zangfx_impl_handle! { ArgTable, handles::ArgTable }
+zangfx_impl_handle! { ArgTable, arg::ArgTableRef }
 
 unsafe impl Send for ArgTable {}
 unsafe impl Sync for ArgTable {}

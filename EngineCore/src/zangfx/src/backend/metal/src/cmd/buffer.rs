@@ -4,22 +4,23 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `CmdBuffer` for Metal.
+use atomic_refcell::AtomicRefCell;
 use std::fmt;
-use std::sync::Arc;
 use std::mem::replace;
-use parking_lot::Mutex;
-use metal::{MTLCommandBuffer, MTLCommandQueue};
+use std::sync::Arc;
+use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandBufferStatus, MTLCommandQueue};
 
-use base::{self, command, handles};
-use common::{Error, ErrorKind, Result};
-use utils::{nil_error, OCPtr};
-use renderpass::RenderTargetTable;
+use crate::renderpass::RenderTargetTable;
+use crate::utils::{nil_error, OCPtr};
+use zangfx_base::{self as base, command};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{Error, ErrorKind, Result};
 
-use super::queue::{CommitedBuffer, Scheduler};
 use super::enc::CmdBufferFenceSet;
 use super::enc_compute::ComputeEncoder;
 use super::enc_copy::CopyEncoder;
 use super::enc_render::RenderEncoder;
+use super::queue::{CommitedBuffer, Scheduler};
 
 /// Implementation of `CmdBuffer` for Metal.
 #[derive(Debug)]
@@ -31,7 +32,7 @@ pub struct CmdBuffer {
     scheduler: Arc<Scheduler>,
 }
 
-zangfx_impl_object! { CmdBuffer: command::CmdBuffer, ::Debug, base::SetLabel }
+zangfx_impl_object! { CmdBuffer: dyn command::CmdBuffer, dyn crate::Debug, dyn base::SetLabel }
 
 #[derive(Debug)]
 struct UncommitedBuffer {
@@ -47,7 +48,7 @@ struct UncommitedBuffer {
 }
 
 #[derive(Default)]
-struct CallbackSet(Vec<Box<FnMut() + Sync + Send>>);
+struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
 
 #[derive(Debug)]
 enum Encoder {
@@ -58,13 +59,6 @@ enum Encoder {
 
 unsafe impl Send for CmdBuffer {}
 unsafe impl Sync for CmdBuffer {}
-
-fn already_commited_error() -> Error {
-    Error::with_detail(
-        ErrorKind::InvalidUsage,
-        "command buffer is already commited",
-    )
-}
 
 impl CmdBuffer {
     pub(super) unsafe fn new(
@@ -95,7 +89,7 @@ impl CmdBuffer {
 }
 
 impl fmt::Debug for CallbackSet {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("CallbackSet")
             .field(&format!("[{} elements]", self.0.len()))
             .finish()
@@ -134,27 +128,32 @@ impl base::SetLabel for CmdBuffer {
 }
 
 impl command::CmdBuffer for CmdBuffer {
-    fn enqueue(&mut self) -> Result<()> {
-        Ok(())
-    }
-
     fn commit(&mut self) -> Result<()> {
         use block;
         use std::mem::replace;
 
-        // Commiting a command buffer implicitly enqueues it
-        self.enqueue()?;
-
-        let mut uncommited = self.uncommited.take().ok_or_else(already_commited_error)?;
+        let mut uncommited = self
+            .uncommited
+            .take()
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         // Pass the completion callbacks to `MTLCommandBuffer`
         let callbacks = replace(&mut uncommited.completion_callbacks, Default::default());
         if callbacks.0.len() > 0 {
-            let callbacks_cell = Mutex::new(callbacks.0);
+            let callbacks_cell = AtomicRefCell::new(callbacks.0);
+            let metal_buffer = Clone::clone(&uncommited.metal_buffer);
             let block = block::ConcreteBlock::new(move |_| {
-                for cb in callbacks_cell.lock().iter_mut() {
-                    cb();
+                // TODO: Return error details (`MTLCommandBufferError`?)
+
+                // `Error` is not `Clone`, so it must be re-created for every
+                // iteration.
+                let status = metal_buffer.status();
+                for cb in callbacks_cell.borrow_mut().iter_mut() {
+                    cb(match status {
+                        MTLCommandBufferStatus::Completed => Ok(()),
+                        _ => Err(Error::new(ErrorKind::Other)),
+                    });
                 }
             });
             uncommited.metal_buffer.add_completed_handler(&block.copy());
@@ -171,16 +170,16 @@ impl command::CmdBuffer for CmdBuffer {
 
     fn encode_render(
         &mut self,
-        render_target_table: &handles::RenderTargetTable,
-    ) -> &mut command::RenderCmdEncoder {
+        render_target_table: &base::RenderTargetTableRef,
+    ) -> &mut dyn command::RenderCmdEncoder {
         let our_rt_table: &RenderTargetTable = render_target_table
             .downcast_ref()
             .expect("bad render target table type");
 
-        let uncommited = self.uncommited
+        let uncommited = self
+            .uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let metal_encoder = uncommited
@@ -202,11 +201,11 @@ impl command::CmdBuffer for CmdBuffer {
             _ => unreachable!(),
         }
     }
-    fn encode_compute(&mut self) -> &mut command::ComputeCmdEncoder {
-        let uncommited = self.uncommited
+    fn encode_compute(&mut self) -> &mut dyn command::ComputeCmdEncoder {
+        let uncommited = self
+            .uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let metal_encoder = uncommited.metal_buffer.new_compute_command_encoder();
@@ -225,11 +224,11 @@ impl command::CmdBuffer for CmdBuffer {
             _ => unreachable!(),
         }
     }
-    fn encode_copy(&mut self) -> &mut command::CopyCmdEncoder {
-        let uncommited = self.uncommited
+    fn encode_copy(&mut self) -> &mut dyn command::CopyCmdEncoder {
+        let uncommited = self
+            .uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.clear_encoder();
 
         let metal_encoder = uncommited.metal_buffer.new_blit_command_encoder();
@@ -249,11 +248,11 @@ impl command::CmdBuffer for CmdBuffer {
         }
     }
 
-    fn on_complete(&mut self, cb: Box<FnMut() + Sync + Send>) {
-        let uncommited = self.uncommited
+    fn on_complete(&mut self, cb: Box<dyn FnMut(Result<()>) + Sync + Send>) {
+        let uncommited = self
+            .uncommited
             .as_mut()
-            .ok_or_else(already_commited_error)
-            .unwrap();
+            .expect("command buffer is already commited");
         uncommited.completion_callbacks.0.push(cb);
     }
 }

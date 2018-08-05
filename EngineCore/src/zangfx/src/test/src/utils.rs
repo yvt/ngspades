@@ -5,9 +5,9 @@
 //
 use std::time::Duration;
 
-use gfx;
+use zangfx_base as gfx;
 
-pub use gfxut::*;
+pub use zangfx_utils::*;
 
 /// Tracks the execution state of a command buffer.
 ///
@@ -16,7 +16,7 @@ pub use gfxut::*;
 pub struct CmdBufferAwaiter(CbStateTracker);
 
 impl CmdBufferAwaiter {
-    pub fn new(buffer: &mut gfx::CmdBuffer) -> Self {
+    pub fn new(buffer: &mut dyn gfx::CmdBuffer) -> Self {
         CmdBufferAwaiter(CbStateTracker::new(buffer))
     }
 
@@ -26,7 +26,7 @@ impl CmdBufferAwaiter {
 }
 
 pub fn choose_memory_type(
-    device: &gfx::Device,
+    device: &gfx::DeviceRef,
     valid_memory_types: u32,
     optimal_caps: gfx::MemoryTypeCapsFlags,
     required_caps: gfx::MemoryTypeCapsFlags,

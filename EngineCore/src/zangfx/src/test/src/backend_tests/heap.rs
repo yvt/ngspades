@@ -3,9 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use gfx;
-use common::BinaryInteger;
-use super::{utils, TestDriver};
+use super::TestDriver;
+use ngsenumflags::flags;
+use zangfx_base as gfx;
+use zangfx_common::BinaryInteger;
 
 pub fn heap_dynamic_create<T: TestDriver>(driver: T) {
     driver.for_each_device(&mut |device| {
@@ -55,10 +56,10 @@ pub fn heap_dynamic_alloc_buffer<T: TestDriver>(driver: T) {
             .usage(flags![gfx::BufferUsage::{CopyRead | CopyWrite}]);
 
         println!("- Creating a buffer");
-        let mut buffer = utils::UniqueBuffer::new(device, builder.build().unwrap());
+        let mut buffer = builder.build().unwrap();
 
         println!("- Querying the memory requirement for the buffer");
-        let req = device.get_memory_req((&*buffer).into()).unwrap();
+        let req = buffer.get_memory_req().unwrap();
         println!("- Memory requirement = {:?}", req);
 
         for memory_type in req.memory_types.one_digits() {
@@ -73,22 +74,21 @@ pub fn heap_dynamic_alloc_buffer<T: TestDriver>(driver: T) {
                 .unwrap();
 
             println!("  - Allocating a storage for the buffer");
-            let alloc = heap.bind((&*buffer).into())
-                .expect("'bind' failed")
-                .expect("allocation failed");
+            let alloc = heap.bind((&buffer).into()).expect("'bind' failed");
+            assert!(alloc, "allocation failed");
 
             println!("  - Retrieving the pointer to the storage");
             if memory_types[memory_type as usize]
                 .caps
                 .intersects(gfx::MemoryTypeCaps::HostVisible)
             {
-                println!("    Pointer = {:p}", heap.as_ptr(&alloc).unwrap());
+                println!("    Pointer = {:p}", buffer.as_ptr());
             } else {
                 println!("    Skipped: Not host visible");
             }
 
             println!("- Recreating a buffer");
-            buffer = utils::UniqueBuffer::new(device, builder.build().unwrap());
+            buffer = builder.build().unwrap();
         }
     });
 }
@@ -101,10 +101,10 @@ pub fn heap_dynamic_alloc_image<T: TestDriver>(driver: T) {
             .format(gfx::ImageFormat::SrgbRgba8);
 
         println!("- Creating an image");
-        let mut image = utils::UniqueImage::new(device, builder.build().unwrap());
+        let mut image = builder.build().unwrap();
 
         println!("- Querying the memory requirement for the image");
-        let req = device.get_memory_req((&*image).into()).unwrap();
+        let req = image.get_memory_req().unwrap();
         println!("- Memory requirement = {:?}", req);
 
         for memory_type in req.memory_types.one_digits() {
@@ -119,18 +119,11 @@ pub fn heap_dynamic_alloc_image<T: TestDriver>(driver: T) {
                 .unwrap();
 
             println!("  - Allocating a storage for the image");
-            heap.bind((&*image).into())
-                .expect("'bind' failed")
-                .expect("allocation failed");
-
-            println!("  - Creating an image view");
-            {
-                let image_view = device.build_image_view().image(&*image).build().unwrap();
-                utils::UniqueImageView::new(device, image_view);
-            }
+            let alloc = heap.bind((&image).into()).expect("'bind' failed");
+            assert!(alloc, "allocation failed");
 
             println!("- Recreating a image");
-            image = utils::UniqueImage::new(device, builder.build().unwrap());
+            image = builder.build().unwrap();
         }
     });
 }
@@ -167,40 +160,35 @@ pub fn heap_dedicated_alloc_buffer<T: TestDriver>(driver: T) {
             .usage(flags![gfx::BufferUsage::{CopyRead | CopyWrite}]);
 
         println!("- Creating a buffer");
-        let mut buffer = utils::UniqueBuffer::new(device, builder.build().unwrap());
+        let mut buffer = builder.build().unwrap();
 
         println!("- Querying the memory requirement for the buffer");
-        let req = device.get_memory_req((&*buffer).into()).unwrap();
+        let req = buffer.get_memory_req().unwrap();
         println!("- Memory requirement = {:?}", req);
 
         for memory_type in req.memory_types.one_digits() {
             println!("- Trying the memory type '{}'", memory_type);
             println!("  - Creating a heap");
 
-            let heap = {
+            let _heap = {
                 let mut builder = device.build_dedicated_heap();
                 builder.memory_type(memory_type);
-                builder.prebind((&*buffer).into());
+                builder.bind((&buffer).into());
                 builder.build().unwrap()
             };
-
-            println!("  - Allocating a storage for the buffer");
-            let alloc = heap.bind((&*buffer).into())
-                .expect("'bind' failed")
-                .expect("allocation failed");
 
             println!("  - Retrieving the pointer to the storage");
             if memory_types[memory_type as usize]
                 .caps
                 .intersects(gfx::MemoryTypeCaps::HostVisible)
             {
-                println!("    Pointer = {:p}", heap.as_ptr(&alloc).unwrap());
+                println!("    Pointer = {:p}", buffer.as_ptr());
             } else {
                 println!("    Skipped: Not host visible");
             }
 
             println!("- Recreating a buffer");
-            buffer = utils::UniqueBuffer::new(device, builder.build().unwrap());
+            buffer = builder.build().unwrap();
         }
     });
 }
@@ -213,36 +201,25 @@ pub fn heap_dedicated_alloc_image<T: TestDriver>(driver: T) {
             .format(gfx::ImageFormat::SrgbRgba8);
 
         println!("- Creating an image");
-        let mut image = utils::UniqueImage::new(device, builder.build().unwrap());
+        let mut image = builder.build().unwrap();
 
         println!("- Querying the memory requirement for the image");
-        let req = device.get_memory_req((&*image).into()).unwrap();
+        let req = image.get_memory_req().unwrap();
         println!("- Memory requirement = {:?}", req);
 
         for memory_type in req.memory_types.one_digits() {
             println!("- Trying the memory type '{}'", memory_type);
             println!("  - Creating a heap");
 
-            let heap = {
+            let _heap = {
                 let mut builder = device.build_dedicated_heap();
                 builder.memory_type(memory_type);
-                builder.prebind((&*image).into());
+                builder.bind((&image).into());
                 builder.build().unwrap()
             };
 
-            println!("  - Allocating a storage for the image");
-            heap.bind((&*image).into())
-                .expect("'bind' failed")
-                .expect("allocation failed");
-
-            println!("  - Creating an image view");
-            {
-                let image_view = device.build_image_view().image(&*image).build().unwrap();
-                utils::UniqueImageView::new(device, image_view);
-            }
-
             println!("- Recreating a image");
-            image = utils::UniqueImage::new(device, builder.build().unwrap());
+            image = builder.build().unwrap();
         }
     });
 }

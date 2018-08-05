@@ -5,14 +5,12 @@
 //
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
-use std::sync::Arc;
 
 use iterpool::{Pool, PoolPtr};
 
 use zangfx::base as gfx;
 use zangfx::base::Result;
-use zangfx::prelude::*;
-use zangfx::utils::{self, uploader, DeviceUtils};
+use zangfx::utils::{uploader, DeviceUtils};
 
 use canvas::{ImageData, ImageRef};
 use core::prelude::*;
@@ -53,7 +51,7 @@ use gfxutils::{HeapSet, HeapSetAlloc};
 ///
 #[derive(Debug)]
 pub struct ImageManager {
-    device: Arc<gfx::Device>,
+    device: gfx::DeviceRef,
     uploader: uploader::Uploader,
     image_heap: HeapSet,
     images: Pool<Image>,
@@ -85,8 +83,7 @@ struct Image {
 
 #[derive(Debug)]
 struct ResidentImageData {
-    image: gfx::Image,
-    image_view: gfx::ImageView,
+    image: gfx::ImageRef,
     alloc: HeapSetAlloc,
     session_id: uploader::SessionId,
 }
@@ -101,13 +98,10 @@ fn bytes_of_image(image_ref: &ImageRef, frame: &PresenterFrame) -> usize {
 }
 
 fn uncommit_image(
-    device: &gfx::Device,
     heap_set: &mut HeapSet,
     resident_image: &ResidentImageData,
 ) -> Result<()> {
-    heap_set.unbind(&resident_image.alloc)?;
-    device.destroy_image(&resident_image.image)?;
-    device.destroy_image_view(&resident_image.image_view)?;
+    heap_set.unbind(&resident_image.alloc, (&resident_image.image).into())?;
     Ok(())
 }
 
@@ -116,32 +110,28 @@ impl Drop for ImageManager {
         for (_, image_ptr) in self.image_map.drain() {
             let mut image = self.images.deallocate(image_ptr).unwrap();
             if let Some(resident) = image.resident.take() {
-                uncommit_image(&*self.device, &mut self.image_heap, &resident).unwrap();
+                uncommit_image(&mut self.image_heap, &resident).unwrap();
             }
         }
     }
 }
 
 impl ImageManager {
-    pub fn new(device: &Arc<gfx::Device>, main_queue: &Arc<gfx::CmdQueue>) -> Result<Self> {
+    pub fn new(device: &gfx::DeviceRef, main_queue: &gfx::CmdQueueRef) -> Result<Self> {
         let uploader = uploader::Uploader::new(uploader::UploaderParams {
-            device: Arc::clone(device),
-            queue: Arc::clone(main_queue),
+            device: device.clone(),
+            queue: main_queue.clone(),
             max_bytes_per_session: 8_000_000,
             max_bytes_ongoing: 32_000_000,
         })?;
 
         let image_memory_type = device
-            .memory_type_for_image(
-                gfx::ImageFormat::SrgbRgba8,
-                flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                flags![gfx::MemoryTypeCaps::{}],
-            )?
+            .try_choose_memory_type_private(gfx::ImageFormat::SrgbRgba8)?
             .unwrap();
 
         Ok(Self {
             image_heap: HeapSet::new(device, image_memory_type),
-            device: Arc::clone(device),
+            device: device.clone(),
             uploader,
             images: Pool::new(),
             image_map: HashMap::new(),
@@ -177,7 +167,7 @@ impl ImageManager {
             let mut image = self.images.deallocate(image_ptr).unwrap();
             self.image_map.remove(&image.image_ref);
             if let Some(resident) = image.resident.take() {
-                uncommit_image(&*self.device, &mut self.image_heap, &resident)?;
+                uncommit_image( &mut self.image_heap, &resident)?;
             }
         }
 
@@ -238,7 +228,6 @@ impl ImageManager {
                     .format(gfx::ImageFormat::SrgbRgba8)
                     .usage(flags![gfx::ImageUsage::{CopyWrite | Sampled}])
                     .build()?;
-                let gfx_image = utils::UniqueImage::new(&**device, gfx_image);
 
                 Ok(gfx_image)
             })
@@ -246,8 +235,8 @@ impl ImageManager {
         let gfx_images = gfx_images?;
 
         // Allocate a heap to hold all those images
-        fn to_res<'a>(x: &'a utils::UniqueImage<&gfx::Device>) -> gfx::ResourceRef<'a> {
-            (&**x).into()
+        fn to_res<'a>(x: &'a gfx::ImageRef) -> gfx::ResourceRef<'a> {
+            x.into()
         }
         let allocs = self.image_heap.bind_multi(gfx_images.iter().map(to_res))?;
 
@@ -260,27 +249,17 @@ impl ImageManager {
         {
             let ref mut image: Image = images[image_ptr];
 
-            let gfx_image_view = self
-                .device
-                .new_image_view(&*gfx_image, gfx::ImageLayout::ShaderRead)?;
-            let gfx_image_view = utils::UniqueImageView::new(&*self.device, gfx_image_view);
-
             image.resident = Some(ResidentImageData {
-                image: gfx_image.into_inner().1,
-                image_view: gfx_image_view.into_inner().1,
+                image: gfx_image,
                 alloc,
                 session_id: 0, // set later
             });
         }
 
         // Initiate the upload
-        use std::cell::RefCell;
-        let barrier_builder = RefCell::new(None);
         struct UploadRequest<'a> {
-            device: &'a gfx::Device,
             frame: &'a PresenterFrame,
             image: &'a Image,
-            barrier_builder: &'a RefCell<Option<Box<gfx::BarrierBuilder>>>,
         }
         impl<'a> uploader::UploadRequest for UploadRequest<'a> {
             fn size(&self) -> usize {
@@ -306,7 +285,7 @@ impl ImageManager {
             fn copy(
                 &self,
                 encoder: &mut gfx::CopyCmdEncoder,
-                staging_buffer: &gfx::Buffer,
+                staging_buffer: &gfx::BufferRef,
                 staging_buffer_range: Range<gfx::DeviceSize>,
             ) -> Result<()> {
                 let image_data = self.image.image_ref.image_data();
@@ -316,22 +295,6 @@ impl ImageManager {
 
                 let resident: &ResidentImageData = self.image.resident.as_ref().unwrap();
 
-                {
-                    let barrier = self
-                        .device
-                        .build_barrier()
-                        .image(
-                            flags![gfx::AccessType::{}],
-                            flags![gfx::AccessType::{CopyWrite}],
-                            &resident.image,
-                            gfx::ImageLayout::Undefined,
-                            gfx::ImageLayout::CopyWrite,
-                            &Default::default(),
-                        )
-                        .build()?;
-                    encoder.barrier(&barrier);
-                }
-
                 encoder.copy_buffer_to_image(
                     staging_buffer,
                     &gfx::BufferImageRange {
@@ -340,7 +303,6 @@ impl ImageManager {
                         plane_stride: 0,
                     },
                     &resident.image,
-                    gfx::ImageLayout::CopyWrite,
                     gfx::ImageAspect::Color,
                     &gfx::ImageLayerRange {
                         mip_level: 0,
@@ -350,40 +312,6 @@ impl ImageManager {
                     &size.cast::<u32>().unwrap()[0..2],
                 );
 
-                // Insert a image layout transition for all images in this
-                // upload session
-                let mut builder = self.barrier_builder.borrow_mut();
-                if builder.is_none() {
-                    *builder = Some(self.device.build_barrier());
-                }
-                let builder = builder.as_mut().unwrap();
-                builder.image(
-                    flags![gfx::AccessType::{CopyWrite}],
-                    flags![gfx::AccessType::{FragmentRead}],
-                    &resident.image,
-                    gfx::ImageLayout::CopyWrite,
-                    gfx::ImageLayout::ShaderRead,
-                    &Default::default(),
-                );
-
-                Ok(())
-            }
-
-            fn post_copy(
-                &self,
-                encoder: &mut gfx::CopyCmdEncoder,
-                _: &gfx::Buffer,
-                _: Range<gfx::DeviceSize>,
-            ) -> Result<()> {
-                // For each upload session, this method is called after `copy`
-                // was called for all images in the same session.
-                // `self.barrier_builder` contains all image barriers for all
-                // those images.
-                let mut builder = self.barrier_builder.borrow_mut();
-                if let Some(mut builder) = builder.take() {
-                    let barrier: gfx::Barrier = builder.build()?;
-                    encoder.barrier(&barrier);
-                }
                 Ok(())
             }
         }
@@ -392,10 +320,8 @@ impl ImageManager {
             .upload(self.new_images_list.iter().map(&|&image_ptr| {
                 let ref image: Image = images[image_ptr];
                 UploadRequest {
-                    device: &**device,
                     frame,
                     image,
-                    barrier_builder: &barrier_builder,
                 }
             }))?;
 
@@ -415,7 +341,7 @@ impl ImageManager {
             let mut image = images.deallocate(image_ptr).unwrap();
             self.image_map.remove(&image.image_ref);
             if let Some(resident) = image.resident.take() {
-                uncommit_image(&**device, &mut self.image_heap, &resident)?;
+                uncommit_image(&mut self.image_heap, &resident)?;
             }
         }
 
@@ -431,18 +357,14 @@ impl ImageManager {
         })
     }
 
-    pub fn get_fence_for_session(&self, session_id: uploader::SessionId) -> Option<&gfx::Fence> {
+    pub fn get_fence_for_session(&self, session_id: uploader::SessionId) -> Option<&gfx::FenceRef> {
         self.uploader.get_fence(session_id)
     }
 }
 
 impl<'a> ResidentImage<'a> {
-    pub fn image(&self) -> &'a gfx::Image {
+    pub fn image(&self) -> &'a gfx::ImageRef {
         &self.data.image
-    }
-
-    pub fn image_view(&self) -> &'a gfx::ImageView {
-        &self.data.image_view
     }
 
     #[allow(dead_code)]

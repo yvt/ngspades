@@ -3,12 +3,15 @@
 //
 // This source code is a part of Nightingales.
 //
-use base::{ImageFormat, Normalizedness, ScalarFormat, Signedness, VecWidth, VertexFormat};
-use self::Signedness::{Signed, Unsigned};
-use self::Normalizedness::{Normalized, Unnormalized};
-use self::VecWidth::{Scalar, Vector2, Vector3, Vector4};
-use self::ScalarFormat::{F32, I16, I32, I8};
 use ash::vk::{self, Format};
+use zangfx_base::{
+    ImageFormat,
+    Normalizedness::{Normalized, Unnormalized},
+    ScalarFormat::{F32, I16, I32, I8},
+    Signedness::{Signed, Unsigned},
+    VecWidth::{Scalar, Vector2, Vector3, Vector4},
+    VertexFormat,
+};
 
 pub fn translate_image_format(format: ImageFormat) -> Option<vk::Format> {
     match format {

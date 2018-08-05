@@ -4,15 +4,38 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `Sampler` for Vulkan.
-use ash::vk;
 use ash::version::*;
+use ash::vk;
+use parking_lot::Mutex;
 use std::ops::Range;
 
-use base;
-use common::Result;
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use crate::AshDevice;
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
-use utils::{translate_compare_op, translate_generic_error_unwrap};
+use crate::utils::{translate_compare_op, translate_generic_error_unwrap};
+
+crate struct SamplerPool {
+    samplers: Mutex<Vec<vk::Sampler>>,
+}
+
+impl SamplerPool {
+    crate fn new() -> Self {
+        Self {
+            samplers: Mutex::new(Vec::new()),
+        }
+    }
+
+    crate fn destroy(&mut self, vk_device: &AshDevice) {
+        for vk_sampler in self.samplers.get_mut().drain(..) {
+            unsafe {
+                vk_device.destroy_sampler(vk_sampler, None);
+            }
+        }
+    }
+}
 
 /// Implementation of `SamplerBuilder` for Vulkan.
 #[derive(Debug)]
@@ -30,10 +53,10 @@ pub struct SamplerBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { SamplerBuilder: base::SamplerBuilder, ::Debug }
+zangfx_impl_object! { SamplerBuilder: dyn base::SamplerBuilder, dyn (crate::Debug) }
 
 impl SamplerBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             mag_filter: base::Filter::Linear,
@@ -51,53 +74,53 @@ impl SamplerBuilder {
 }
 
 impl base::SamplerBuilder for SamplerBuilder {
-    fn mag_filter(&mut self, v: base::Filter) -> &mut base::SamplerBuilder {
+    fn mag_filter(&mut self, v: base::Filter) -> &mut dyn base::SamplerBuilder {
         self.mag_filter = v;
         self
     }
 
-    fn min_filter(&mut self, v: base::Filter) -> &mut base::SamplerBuilder {
+    fn min_filter(&mut self, v: base::Filter) -> &mut dyn base::SamplerBuilder {
         self.min_filter = v;
         self
     }
 
-    fn address_mode(&mut self, v: &[base::AddressMode]) -> &mut base::SamplerBuilder {
-        use common::IntoWithPad;
+    fn address_mode(&mut self, v: &[base::AddressMode]) -> &mut dyn base::SamplerBuilder {
+        use zangfx_common::IntoWithPad;
         self.address_mode = v.into_with_pad(v.last().cloned().unwrap_or(base::AddressMode::Repeat));
         self
     }
 
-    fn mipmap_mode(&mut self, v: base::MipmapMode) -> &mut base::SamplerBuilder {
+    fn mipmap_mode(&mut self, v: base::MipmapMode) -> &mut dyn base::SamplerBuilder {
         self.mipmap_mode = v;
         self
     }
 
-    fn lod_clamp(&mut self, v: Range<f32>) -> &mut base::SamplerBuilder {
+    fn lod_clamp(&mut self, v: Range<f32>) -> &mut dyn base::SamplerBuilder {
         self.lod_clamp = v;
         self
     }
 
-    fn max_anisotropy(&mut self, v: u32) -> &mut base::SamplerBuilder {
+    fn max_anisotropy(&mut self, v: u32) -> &mut dyn base::SamplerBuilder {
         self.max_anisotropy = v;
         self
     }
 
-    fn cmp_fn(&mut self, v: Option<base::CmpFn>) -> &mut base::SamplerBuilder {
+    fn cmp_fn(&mut self, v: Option<base::CmpFn>) -> &mut dyn base::SamplerBuilder {
         self.cmp_fn = v;
         self
     }
 
-    fn border_color(&mut self, v: base::BorderColor) -> &mut base::SamplerBuilder {
+    fn border_color(&mut self, v: base::BorderColor) -> &mut dyn base::SamplerBuilder {
         self.border_color = v;
         self
     }
 
-    fn unnorm_coords(&mut self, v: bool) -> &mut base::SamplerBuilder {
+    fn unnorm_coords(&mut self, v: bool) -> &mut dyn base::SamplerBuilder {
         self.unnorm_coords = v;
         self
     }
 
-    fn build(&mut self) -> Result<base::Sampler> {
+    fn build(&mut self) -> Result<base::SamplerRef> {
         let info = vk::SamplerCreateInfo {
             s_type: vk::StructureType::SamplerCreateInfo,
             p_next: ::null(),
@@ -120,7 +143,8 @@ impl base::SamplerBuilder for SamplerBuilder {
             } else {
                 vk::VK_FALSE
             },
-            compare_op: self.cmp_fn
+            compare_op: self
+                .cmp_fn
                 .map(translate_compare_op)
                 .unwrap_or(vk::CompareOp::Never),
             min_lod: self.lod_clamp.start,
@@ -133,9 +157,21 @@ impl base::SamplerBuilder for SamplerBuilder {
             },
         };
 
+        let ref pool = self.device.sampler_pool();
+        let mut samplers = pool.samplers.lock();
+
+        // TODO: De-duplicate samplers?
+
+        samplers.reserve(1);
+
         let vk_device = self.device.vk_device();
         let vk_sampler = unsafe { vk_device.create_sampler(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
+
+        // Insert the created sampler into the global pool so that it is
+        // automatically destroyed with the device
+        samplers.push(vk_sampler);
+
         Ok(Sampler { vk_sampler }.into())
     }
 }
@@ -146,7 +182,7 @@ pub struct Sampler {
     vk_sampler: vk::Sampler,
 }
 
-zangfx_impl_handle! { Sampler, base::Sampler }
+zangfx_impl_handle! { Sampler, base::SamplerRef }
 
 unsafe impl Sync for Sampler {}
 unsafe impl Send for Sampler {}
@@ -158,10 +194,6 @@ impl Sampler {
 
     pub fn vk_sampler(&self) -> vk::Sampler {
         self.vk_sampler
-    }
-
-    pub(super) unsafe fn destroy(&self, vk_device: &::AshDevice) {
-        vk_device.destroy_sampler(self.vk_sampler, None);
     }
 }
 

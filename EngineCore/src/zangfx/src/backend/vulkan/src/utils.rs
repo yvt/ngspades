@@ -3,11 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
-use ash::version::*;
 use ash::vk;
+use ngsenumflags::flags;
+use std::ops;
 
-use base;
-use common::{Error, ErrorKind, Result};
+use zangfx_base as base;
+use zangfx_base::{Error, ErrorKind};
 
 /// Translates a subset of `vk::Result` values into `core::GenericError`.
 ///
@@ -36,7 +37,7 @@ pub fn translate_generic_error(result: vk::Result) -> ::std::result::Result<Erro
 ///  - `ErrorDeviceLost`
 ///  - `ErrorOutOfHostMemory` (escalated to a panic)
 ///
-pub fn translate_generic_error_unwrap(result: vk::Result) -> Error {
+crate fn translate_generic_error_unwrap(result: vk::Result) -> Error {
     translate_generic_error(result).unwrap()
 }
 
@@ -53,26 +54,15 @@ pub(crate) fn translate_map_memory_error_unwrap(result: vk::Result) -> Error {
     translate_map_memory_error(result).unwrap()
 }
 
-pub fn get_memory_req(vk_device: &::AshDevice, obj: base::ResourceRef) -> Result<base::MemoryReq> {
-    use {buffer, image};
-    let req = match obj {
-        base::ResourceRef::Buffer(buffer) => {
-            let our_buffer: &buffer::Buffer = buffer.downcast_ref().expect("bad buffer type");
-            vk_device.get_buffer_memory_requirements(our_buffer.vk_buffer())
-        }
-        base::ResourceRef::Image(image) => {
-            let our_image: &image::Image = image.downcast_ref().expect("bad image type");
-            vk_device.get_image_memory_requirements(our_image.vk_image())
-        }
-    };
-    Ok(base::MemoryReq {
+crate fn translate_memory_req(req: &vk::MemoryRequirements) -> base::MemoryReq {
+    base::MemoryReq {
         size: req.size,
         align: req.alignment,
         memory_types: req.memory_type_bits,
-    })
+    }
 }
 
-pub fn translate_shader_stage(value: base::ShaderStage) -> vk::ShaderStageFlags {
+crate fn translate_shader_stage(value: base::ShaderStage) -> vk::ShaderStageFlags {
     match value {
         base::ShaderStage::Vertex => vk::SHADER_STAGE_VERTEX_BIT,
         base::ShaderStage::Fragment => vk::SHADER_STAGE_FRAGMENT_BIT,
@@ -80,7 +70,7 @@ pub fn translate_shader_stage(value: base::ShaderStage) -> vk::ShaderStageFlags 
     }
 }
 
-pub fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::ShaderStageFlags {
+crate fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::ShaderStageFlags {
     let mut ret = vk::ShaderStageFlags::empty();
     if value.contains(base::ShaderStage::Vertex) {
         ret |= vk::SHADER_STAGE_VERTEX_BIT;
@@ -94,7 +84,7 @@ pub fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::Shader
     ret
 }
 
-pub fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::AccessFlags {
+crate fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::AccessFlags {
     let mut ret = vk::AccessFlags::empty();
     if value.contains(base::AccessType::IndirectDrawRead) {
         ret |= vk::ACCESS_INDIRECT_COMMAND_READ_BIT;
@@ -138,7 +128,7 @@ pub fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::AccessFl
     ret
 }
 
-pub fn translate_pipeline_stage_flags(value: base::StageFlags) -> vk::PipelineStageFlags {
+crate fn translate_pipeline_stage_flags(value: base::StageFlags) -> vk::PipelineStageFlags {
     let mut ret = vk::PipelineStageFlags::empty();
     if value.contains(base::Stage::IndirectDraw) {
         ret |= vk::PIPELINE_STAGE_DRAW_INDIRECT_BIT;
@@ -170,7 +160,7 @@ pub fn translate_pipeline_stage_flags(value: base::StageFlags) -> vk::PipelineSt
     ret
 }
 
-pub fn translate_image_subresource_range(
+crate fn translate_image_subresource_range(
     value: &base::ImageSubRange,
     aspect_mask: vk::ImageAspectFlags,
 ) -> vk::ImageSubresourceRange {
@@ -189,7 +179,7 @@ pub fn translate_image_subresource_range(
     }
 }
 
-pub fn translate_image_subresource_layers(
+crate fn translate_image_subresource_layers(
     value: &base::ImageLayerRange,
     aspect_mask: vk::ImageAspectFlags,
 ) -> vk::ImageSubresourceLayers {
@@ -202,24 +192,7 @@ pub fn translate_image_subresource_layers(
     }
 }
 
-pub fn translate_image_layout(value: base::ImageLayout, is_depth_stencil: bool) -> vk::ImageLayout {
-    match (value, is_depth_stencil) {
-        (base::ImageLayout::Undefined, _) => vk::ImageLayout::Undefined,
-        (base::ImageLayout::General, _) => vk::ImageLayout::General,
-        (base::ImageLayout::RenderWrite, false) => vk::ImageLayout::ColorAttachmentOptimal,
-        (base::ImageLayout::RenderWrite, true) => vk::ImageLayout::DepthStencilAttachmentOptimal,
-        (base::ImageLayout::RenderRead, false) => {
-            panic!("color render target cannot use the RenderRead layout")
-        }
-        (base::ImageLayout::RenderRead, true) => vk::ImageLayout::DepthStencilReadOnlyOptimal,
-        (base::ImageLayout::ShaderRead, _) => vk::ImageLayout::ShaderReadOnlyOptimal,
-        (base::ImageLayout::CopyRead, _) => vk::ImageLayout::TransferSrcOptimal,
-        (base::ImageLayout::CopyWrite, _) => vk::ImageLayout::TransferDstOptimal,
-        (base::ImageLayout::Present, _) => vk::ImageLayout::PresentSrcKhr,
-    }
-}
-
-pub fn translate_image_aspect(value: base::ImageAspect) -> vk::ImageAspectFlags {
+crate fn translate_image_aspect(value: base::ImageAspect) -> vk::ImageAspectFlags {
     match value {
         base::ImageAspect::Color => vk::IMAGE_ASPECT_COLOR_BIT,
         base::ImageAspect::Depth => vk::IMAGE_ASPECT_DEPTH_BIT,
@@ -227,7 +200,7 @@ pub fn translate_image_aspect(value: base::ImageAspect) -> vk::ImageAspectFlags 
     }
 }
 
-pub fn translate_compare_op(value: base::CmpFn) -> vk::CompareOp {
+crate fn translate_compare_op(value: base::CmpFn) -> vk::CompareOp {
     match value {
         base::CmpFn::Never => vk::CompareOp::Never,
         base::CmpFn::Less => vk::CompareOp::Less,
@@ -240,7 +213,7 @@ pub fn translate_compare_op(value: base::CmpFn) -> vk::CompareOp {
     }
 }
 
-pub fn translate_rect2d_u32(value: &base::Rect2D<u32>) -> vk::Rect2D {
+crate fn translate_rect2d_u32(value: &base::Rect2D<u32>) -> vk::Rect2D {
     vk::Rect2D {
         offset: vk::Offset2D {
             x: value.min[0] as i32,
@@ -253,7 +226,7 @@ pub fn translate_rect2d_u32(value: &base::Rect2D<u32>) -> vk::Rect2D {
     }
 }
 
-pub fn clip_rect2d_u31(value: vk::Rect2D) -> vk::Rect2D {
+crate fn clip_rect2d_u31(value: vk::Rect2D) -> vk::Rect2D {
     use std::cmp::min;
     vk::Rect2D {
         offset: value.offset,
@@ -264,7 +237,7 @@ pub fn clip_rect2d_u31(value: vk::Rect2D) -> vk::Rect2D {
     }
 }
 
-pub fn translate_bool(value: bool) -> vk::Bool32 {
+crate fn translate_bool(value: bool) -> vk::Bool32 {
     if value {
         vk::VK_TRUE
     } else {
@@ -272,11 +245,11 @@ pub fn translate_bool(value: bool) -> vk::Bool32 {
     }
 }
 
-pub fn translate_sample_count(value: u32) -> vk::SampleCountFlags {
+crate fn translate_sample_count(value: u32) -> vk::SampleCountFlags {
     vk::SampleCountFlags::from_flags(value).expect("invalid sample count")
 }
 
-pub fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::ColorComponentFlags {
+crate fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::ColorComponentFlags {
     let mut mask = vk::ColorComponentFlags::empty();
 
     if value.contains(base::ColorChannel::Red) {
@@ -293,4 +266,38 @@ pub fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::Colo
     }
 
     mask
+}
+
+crate fn offset_range<T: ops::Add<RHS>, RHS: Clone>(
+    range: ops::Range<T>,
+    offset: RHS,
+) -> ops::Range<T::Output> {
+    range.start + offset.clone()..range.end + offset
+}
+
+use crate::device::DeviceRef;
+use crate::resstate::QueueId;
+
+/// Implements the `queue` property of builders.
+#[derive(Debug, Default, Clone, Copy)]
+crate struct QueueIdBuilder(Option<QueueId>);
+
+impl QueueIdBuilder {
+    crate fn new() -> Self {
+        Default::default()
+    }
+
+    crate fn set(&mut self, queue: &base::CmdQueueRef) {
+        self.0 = Some(queue_id_from_queue(queue));
+    }
+
+    crate fn get(&self, device: &DeviceRef) -> QueueId {
+        self.0.unwrap_or_else(|| device.default_resstate_queue())
+    }
+}
+
+crate fn queue_id_from_queue(queue: &base::CmdQueueRef) -> QueueId {
+    use crate::cmd::queue::CmdQueue;
+    let my_cmd_queue: &CmdQueue = queue.query_ref().expect("bad cmd queue type");
+    my_cmd_queue.resstate_queue_id()
 }

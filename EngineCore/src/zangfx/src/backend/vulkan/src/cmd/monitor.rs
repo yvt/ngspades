@@ -3,17 +3,17 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::thread;
-use std::sync::Arc;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use parking_lot::Mutex;
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::Arc;
+use std::thread;
 
-use common::Result;
+use zangfx_base::Result;
 
-use device::DeviceRef;
-use utils::translate_generic_error_unwrap;
+use crate::device::DeviceRef;
+use crate::utils::translate_generic_error_unwrap;
 
 /// Maintains a set of fences, and calls a provided callback function when one
 /// of them are signaled.
@@ -47,7 +47,7 @@ impl<T> Monitor<T>
 where
     T: MonitorHandler,
 {
-    pub fn new(device: DeviceRef, queue: vk::Queue, num_fences: usize) -> Result<Self> {
+    crate fn new(device: DeviceRef, queue: vk::Queue, num_fences: usize) -> Result<Self> {
         let (fence_sender, fence_receiver) = sync_channel(num_fences);
         let (cmd_sender, cmd_receiver) = sync_channel(num_fences + 1);
 
@@ -76,16 +76,19 @@ where
             let ref sender = monitor.fence_sender;
             for _ in 0..num_fences {
                 sender
-                    .send(unsafe {
-                        device.vk_device().create_fence(
-                            &vk::FenceCreateInfo {
-                                s_type: vk::StructureType::FenceCreateInfo,
-                                p_next: ::null(),
-                                flags: vk::FenceCreateFlags::empty(),
-                            },
-                            None,
-                        )
-                    }.map_err(translate_generic_error_unwrap)?)
+                    .send(
+                        unsafe {
+                            let ref vk_device = monitor.shared.device.vk_device();
+                            vk_device.create_fence(
+                                &vk::FenceCreateInfo {
+                                    s_type: vk::StructureType::FenceCreateInfo,
+                                    p_next: crate::null(),
+                                    flags: vk::FenceCreateFlags::empty(),
+                                },
+                                None,
+                            )
+                        }.map_err(translate_generic_error_unwrap)?,
+                    )
                     .unwrap();
             }
         }
@@ -99,7 +102,7 @@ where
         cmd_receiver: Receiver<Cmd<T>>,
     ) {
         let device = shared.device.vk_device();
-        for mut cmd in cmd_receiver.iter() {
+        for cmd in cmd_receiver.iter() {
             // Wait until the fence is signaled
             let timeout = 60_000_000_000; // a minute
             loop {
@@ -122,7 +125,7 @@ where
         }
     }
 
-    pub fn get_fence(&self) -> MonitorFence<T> {
+    crate fn get_fence(&self) -> MonitorFence<'_, T> {
         let fence = self.fence_receiver.lock().recv().unwrap();
         MonitorFence {
             monitor: Some(self),
@@ -161,12 +164,12 @@ pub(super) struct MonitorFence<'a, T: 'a> {
 }
 
 impl<'a, T: 'a> MonitorFence<'a, T> {
-    pub fn vk_fence(&self) -> vk::Fence {
+    crate fn vk_fence(&self) -> vk::Fence {
         self.fence
     }
 
     /// Register a callback function for the fence.
-    pub fn finish(mut self, callback: T) {
+    crate fn finish(mut self, callback: T) {
         let monitor = self.monitor.take().unwrap();
         monitor
             .cmd_sender

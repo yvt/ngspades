@@ -4,17 +4,17 @@
 // This source code is a part of Nightingales.
 //
 //! Provides an information regarding a device's capabilities and limits.
-use Object;
-use ngsenumflags::BitFlags;
+use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 
-use formats::{ImageFormat, VertexFormat};
-use {DeviceSize, MemoryRegionIndex};
+use crate::formats::{ImageFormat, VertexFormat};
+use crate::Object;
+use crate::{DeviceSize, MemoryRegionIndex};
 
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceLimits {
     /// Indicates whether [`Heap::make_aliasable`] is supported or not.
     ///
-    /// [`Heap::make_aliasable`]: make_aliasable
+    /// [`Heap::make_aliasable`]: crate::Heap::make_aliasable
     pub supports_heap_aliasing: bool,
 
     /// Indicates whether *creating* semaphores (inter-queue synchronization) are
@@ -111,15 +111,14 @@ pub enum MemoryTypeCaps {
     /// Indicates that the coherency of the memory contents between the host and
     /// the device is maintained automatically. Note that even with this flag
     /// you still have to insert appropriate memory barriers by issuing
-    /// [`acquire_host_buffer`] and/or [`release_host_buffer`] commands.
+    /// [`host_barrier`] commands.
     ///
     /// For a memory type without this flag, you must perform cache maintenance
     /// operations manually. (Currently API does not define a way to do this.
     /// Therefore, host-visible memory types without this flag are practially
     /// useless.)
     ///
-    /// [`acquire_host_buffer`]: CmdBuffer::acquire_host_buffer
-    /// [`release_host_buffer`]: CmdBuffer::release_host_buffer
+    /// [`host_barrier`]: crate::CmdBuffer::host_barrier
     HostCoherent = 0b0010,
     HostCached = 0b0100,
     DeviceLocal = 0b1000,

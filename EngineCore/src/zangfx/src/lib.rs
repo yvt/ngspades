@@ -38,15 +38,13 @@
 //! | argument pool            | (heap and buffer)      | descriptor pool       | descriptor heap         |
 //! | root signature           | ?                      | pipeline layout       | root signature          |
 //! | command queue            | command queue          | queue                 | ?                       |
-//! | command pool             | -                      | command pool          | ?                       |
 //! | command buffer           | command buffer         | command buffer        | ?                       |
 //! | completion handler       | completed handler      | (fence)               | ?                       |
 //! | fence                    | fence                  | event                 | ?                       |
 //! | semaphore                | scheduled handler      | semaphore             | ?                       |
 //! | library                  | library                | shader module         | ?                       |
 //! | buffer                   | buffer                 | buffer                | ?                       |
-//! | image                    | texture                | image                 | ?                       |
-//! | image view               | (texture view)         | image view            | ?                       |
+//! | image                    | texture                | image + image view    | ?                       |
 //! | heap                     | heap                   | device memory         | resource heap           |
 //! | render pipeline          | render pipeline state  | graphics pipeline     | graphics pipeline state |
 //! | compute pipeline         | compute pipeline state | compute pipeline      | ?                       |
@@ -74,6 +72,7 @@
 //! - **Min** - minification
 //! - **Mip** - mipmap, mipmapping
 //! - **Norm** - normalize, normalized
+//! - **Ref** - reference
 //! - **Res** - resource
 //! - **Sig** - signature
 //! - **Src** - source
@@ -130,87 +129,109 @@
 //!
 //! ## Objects
 //!
-//! The object model of ZanGFX is based around two categories of objects:
+//! Objects in ZanGFX are reified as memory-based objects. Each object type
+//! optionally provides a corresponding trait type defining operations allowed
+//! on the object type.
 //!
-//! 1. Normal **objects**. The examples of objects include `Device` and
-//!    `CmdQueue`.
+//! The object model of ZanGFX is mainly based around two categories of objects:
 //!
-//!    Each object provides an interface defined by the trait representing its
-//!    object type. The object traits implement `query_ref` and similar methods
-//!    (provided by `query_interface`'s [`mopo!`]) via which additional traits
-//!    implemented by it can be queried. See the documentation of the crate
-//!    [`query_interface`] for details.
+//! 1. **Handle-based objects**. The examples of objects include `Device`,
+//!    `Image`, and `CmdQueue`. They are passed around in a boxed form like
+//!    `DeviceRef` (which is a type alias for `Arc<dyn Device>`).
 //!
-//!    Objects are passed around in a boxed form like `Box<Trait>` or
-//!    `Arc<Trait>`.
+//!    Handles can be further divided into two types depending on
+//!    how exactly they are boxed. See the module-level documentation of
+//!    [`zangfx_base::handles`] for more details.
 //!
-//! 2. Light-weight **handles**. The examples of handles include `Image` and
-//!    `Fence`.
+//! 2. **Unsynchronized objects**. The examples of unsynchronized objects
+//!    include `CmdBuffer`. As with handle-based objects, they are passed around
+//!    in a boxed form like `CmdBufferRef` (which is a type alias for
+//!    `Box<dyn CmdBuffer>`). The difference is that unsynchronized objects do
+//!    not use `Arc`-like cloning behaviors or internal synchronization
+//!    mechanism but rather rely on Rust's language features to protect them
+//!    from simultaneous updates from multiple threads.
 //!
-//!    Handles do not provide methods by themselves. Instead, they are solely
-//!    manipulated via the methods provided by objects.
+//! For the objects *except for* those having fat handle types, their traits
+//! implement `query_ref` and similar methods (provided by `query_interface`'s
+//! [`mopo!`]) via which additional traits implemented by it can be queried.
+//! See the documentation of the crate [`query_interface`] for details.
 //!
-//!    Handles are capsuled using a type-erasure container type like
-//!    `SmallBox<HandleImpl<Image>, S>`. `HandleImpl` is a trait implemented by
-//!    all handle implementations and has `AsRef<Any>` in its trait bounds.
-//!    You can use this to downcast a handle to a known concrete type.
+//! The following table shows all object types defined by ZanGFX:
 //!
-//!    Some handle types require manual memory management. Others require
-//!    a peculiar way to manage their lifetimes. Consult their documentation for
-//!    more information.
+//! |        Trait        |      Type      | Invalidated when¹  |
+//! | ------------------- | -------------- | ------------------ |
+//! | `.*Builder`         | unsynchronized |                    |
+//! | `Device`            | boxed handle   |                    |
+//! | `ArgTableSig`       | fat handle     |                    |
+//! | `RootSig`           | fat handle     |                    |
+//! | `ArgPool`           | boxed handle   |                    |
+//! | `ArgTable`          | fat handle     | `ArgPool` methods² |
+//! | `CmdQueue`          | boxed handle   |                    |
+//! | `CmdBuffer`         | unsynchronized |                    |
+//! | `Fence`             | fat handle     |                    |
+//! | `Semaphore`         | fat handle     |                    |
+//! | `RenderPass`        | fat handle     |                    |
+//! | `RenderTargetTable` | fat handle     |                    |
+//! | `Heap`              | boxed handle   |                    |
+//! | `Image`             | fat handle     |                    |
+//! | `Buffer`            | fat handle     |                    |
+//! | `Sampler`           | fat handle     |                    |
+//! | `Library`           | fat handle     |                    |
+//! | `RenderPipeline`    | fat handle     |                    |
+//! | `ComputePipeline`   | fat handle     |                    |
 //!
-//! The following table shows all objects and handles defined by ZanGFX as well
-//! as the requirements for their manual reference tracking:
+//! ¹ The **Invalidated when** column denotes the actions that render objects
+//! of that type invalid when executed.
 //!
-//! |         Name        |  Type  |    Is destroyed on    |         Dependents¹         |
-//! | ------------------- | ------ | --------------------- | --------------------------- |
-//! | `.*Builder`         | object | drop                  |                             |
-//! | `Device`            | object | drop                  | GPU and everything          |
-//! | `ArgTableSig`       | handle | automatic             |                             |
-//! | `RootSig`           | handle | automatic             |                             |
-//! | `ArgPool`           | object | drop                  |                             |
-//! | `ArgTable`          | handle | Pool `destroy_tables` | GPU, `CmdBuffer`            |
-//! |                     |        | Pool `reset`          |                             |
-//! |                     |        | Pool `drop`           |                             |
-//! | `CmdQueue`          | object | drop                  | GPU, `CmdBuffer`, `CmdPool` |
-//! | `CmdPool`           | object | automatic             |                             |
-//! | `CmdBuffer`         | object | automatic             |                             |
-//! | `Barrier`           | handle | automatic             |                             |
-//! | `Fence`             | handle | automatic             |                             |
-//! | `Semaphore`         | handle | automatic             |                             |
-//! | `RenderPass`        | handle | automatic             |                             |
-//! | `RenderTargetTable` | handle | automatic             |                             |
-//! | `Heap`              | object | drop                  | `Image`, `Buffer`           |
-//! | `HeapAlloc`         | handle | automatic             |                             |
-//! | `Image`             | handle | `destroy_image`²      | GPU, `RenderTargetTable`,   |
-//! |                     |        |                       | `Barrier`, `ImageView`      |
-//! | `Buffer`            | handle | `destroy_buffer`²     | GPU, `ArgTable`, `Barrier`  |
-//! | `Sampler`           | handle | `destroy_sampler`     | `ArgTable`                  |
-//! | `ImageView`         | handle | `destroy_image_view`  | `ArgTable`                  |
-//! | `Library`           | handle | automatic             |                             |
-//! | `RenderPipeline`    | handle | automatic             |                             |
-//! | `ComputePipeline`   | handle | automatic             |                             |
+//! ² `ArgTable` points a region allocated inside an `ArgPool`. `ArgTable`s are
+//! invalidated when the region was explicitly deallocated by calling methods on
+//! `ArgPool`, or when an `ArgPool` containing them is dropped.
 //!
-//! ¹ The **Dependents** column denotes the objects that possibly contain a weak
-//! reference to a certain object and require it to operate properly. For example,
+//! ## Inter-queue operation
 //!
-//! - Builders are no longer usable (and might cause an *undefined behavior*
-//!   if you try to call a method of it) once their parent device was destroyed.
+//! Each image, buffer, dedicated heap (with `use_heap` enabled), fence, and
+//! argument pool object is associated with a single queue.
+//! The automatic resource state tracking works on the per-queue basis — it does
+//! not have knowledge outside a single queue.
 //!
-//! - If you submit a command buffer that includes a reference to a buffer. You must
-//!   not destroy the buffer nor its heap until the completion of the command
-//!   buffer.
+//! The queue to which an object belongs is specified as a part of the object
+//! creation parameter. The default value is defined in a backend-specific
+//! fashion.
 //!
-//! - You must first wait on queue idle and drop all objects before dropping a
-//!   `Device`.
+//! The application must create a *proxy object* to use it from a different
+//! queue. Furthermore, the application must perfom appropriate synchronization.
+//! Specifically, in order to use objects in a different queue from one where
+//! they were previously used, the application must do the following:
 //!
-//! Strong/lifetimed references are *not* included in **Dependents**. In other words,
-//! those shown in Dependents are the only dependencies you must track manually.
+//! - Use semaphores or command buffer completion callbacks to ensure the proper
+//!   ordering of command buffer execution.
+//! - Perform a *queue family ownership transfer operation*. This includes:
+//!     - Executing a *queue family ownership release operation* on the
+//!       source queue.
+//!     - Executing a *queue family ownership acquire operation* on the
+//!       destination queue.
 //!
-//! ² Images and buffers are invalidated when the heap they were allocated from was
-//! destroyed. Invalidated images and buffers are no longer usable, but you still
-//! have to explicitly destroy them via `destroy_image` and/or `destroy_buffer`.
+//! The following objects and operations require matching associated queues:
 //!
+//!  - Heaps passed to `use_heap`.
+//!  - Resources (buffers/images) passed to any methods of `*CmdEncoder`
+//!    and `CmdBuffer` that accept them, which include but are not limited to:
+//!    `use_resource`, `draw_indirect`, and `host_barrier`.
+//!  - Render target images (specified via `RenderTargetTableBuilder`) passed to
+//!    `encoder_render`.
+//!  - Fences passed to `update_fence` or `wait_fence`. (Note: Proxies cannot be
+//!    created for fences.)
+//!  - Resources passed to `DedicatedHeapBuilder::bind` if `use_heap` is enabled
+//!    on the created heap.
+//!
+//! Some operations (e.g., `use_heap`) do not work on proxy objects.
+//!
+//! Every object can have up to one proxy or original object created for each
+//! queue.
+//! Creating more is not allowed and might lead to an undefined behavior on
+//! unsafe backend implementations.
+//!
+//! [`zangfx_base::handles`]: ../zangfx_base/handles/index.html
 //! [`query_interface`]: ../query_interface/index.html
 //! [`mopo!`]: ../query_interface/macro.mopo.html
 //!

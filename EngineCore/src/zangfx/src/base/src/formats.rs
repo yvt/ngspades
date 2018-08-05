@@ -14,8 +14,9 @@
 //!     - Depth/stencil operations are undefined on all non-depth/stencil formats.
 //!     - Color attachment operations are undeifned on all depth/stencil formats.
 //!
+use lazy_static::lazy_static;
 use std::ops;
-use itervalues::IterValues;
+use {itervalues::IterValues, itervalues_derive::IterValues};
 
 /// Image format.
 ///
@@ -584,7 +585,7 @@ macro_rules! impl_int_as_scalar_format {
                 ScalarFormat::$idt($signedness, Normalizedness::Unnormalized)
             }
         }
-    }
+    };
 }
 
 impl_int_as_scalar_format!(u8, Signedness::Unsigned, I8);
@@ -652,8 +653,8 @@ pub trait IntAsImageFormat: Sized {
 }
 
 fn scalar_to_red(value: ScalarFormat) -> ImageFormat {
-    use ScalarFormat::*;
-    use ImageFormat::*;
+    use crate::ImageFormat::*;
+    use crate::ScalarFormat::*;
     match value {
         I8(sgn, norm) => R8(sgn, norm),
         I16(sgn, norm) => R16(sgn, norm),
@@ -663,8 +664,8 @@ fn scalar_to_red(value: ScalarFormat) -> ImageFormat {
 }
 
 fn scalar_to_rg(value: ScalarFormat) -> ImageFormat {
-    use ScalarFormat::*;
-    use ImageFormat::*;
+    use crate::ImageFormat::*;
+    use crate::ScalarFormat::*;
     match value {
         I8(sgn, norm) => Rg8(sgn, norm),
         I16(sgn, norm) => Rg16(sgn, norm),
@@ -674,8 +675,8 @@ fn scalar_to_rg(value: ScalarFormat) -> ImageFormat {
 }
 
 fn scalar_to_rgba(value: ScalarFormat) -> ImageFormat {
-    use ScalarFormat::*;
-    use ImageFormat::*;
+    use crate::ImageFormat::*;
+    use crate::ScalarFormat::*;
     match value {
         I8(sgn, norm) => Rgba8(sgn, norm),
         I16(sgn, norm) => Rgba16(sgn, norm),

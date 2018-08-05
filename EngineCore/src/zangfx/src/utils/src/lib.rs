@@ -4,26 +4,23 @@
 // This source code is a part of Nightingales.
 //
 //! [ZanGFX](../zangfx/index.html) utility library.
-extern crate itertools;
-extern crate zangfx_base as base;
-extern crate zangfx_common as common;
-#[macro_use]
-extern crate ngsenumflags;
+#![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
+#![feature(never_type)]
 
+mod buffer;
 pub mod cbstatetracker;
 mod device;
-pub mod smartref;
 pub mod uploader;
 mod uploaderutils;
 
+pub use crate::buffer::*;
 #[doc(no_inline)]
-pub use cbstatetracker::*;
-pub use device::DeviceUtils;
-#[doc(no_inline)]
-pub use smartref::*;
+pub use crate::cbstatetracker::*;
+pub use crate::device::*;
 
 /// ZanGFX Utils prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use DeviceUtils;
+    pub use crate::{DeviceUtils, BufferUtils};
 }

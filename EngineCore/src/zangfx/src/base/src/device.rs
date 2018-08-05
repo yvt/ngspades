@@ -4,10 +4,14 @@
 // This source code is a part of Nightingales.
 //
 //! Device object.
-use Object;
-use common::Result;
-use {arg, command, handles, heap, limits, pass, pipeline, resources, sampler, shader, sync};
-use {ArgArrayIndex, ArgIndex};
+use std::sync::Arc;
+
+use crate::{arg, command, heap, limits, pass, pipeline, resources, sampler, shader, sync};
+use crate::{ArgArrayIndex, ArgIndex, MemoryType};
+use crate::{Object, Result};
+
+/// A boxed handle representing a device object.
+pub type DeviceRef = Arc<dyn Device>;
 
 /// Trait for device objects.
 ///
@@ -15,10 +19,19 @@ use {ArgArrayIndex, ArgIndex};
 /// `Device`. Drop the `Device` to destroy the associated device object
 /// (cf. handle types).
 pub trait Device: Object {
-    fn caps(&self) -> &limits::DeviceCaps;
+    fn caps(&self) -> &dyn limits::DeviceCaps;
+
+    /// Retrieve a reference to a global heap of the specified memory type,
+    /// maintained by this device.
+    ///
+    /// A global heap is a special kind of heap that supports dynamic allocation
+    /// (like dynamic heaps) and automatic resizing. When a resource bound to
+    /// a global heap is released, the memory region allocated to it is
+    /// automatically reclaimed (as if `make_aliases` is called).
+    fn global_heap(&self, memory_type: MemoryType) -> &heap::HeapRef;
 
     /// Create a `CmdQueueBuilder` associated with this device.
-    fn build_cmd_queue(&self) -> Box<command::CmdQueueBuilder>;
+    fn build_cmd_queue(&self) -> command::CmdQueueBuilderRef;
 
     /// Create a `SemaphoreBuilder` associated with this device.
     ///
@@ -27,91 +40,70 @@ pub trait Device: Object {
     /// The default implementation returns a [`NotSupportedSemaphoreBuilder`].
     ///
     /// [`new_semaphore`]: DeviceExt::new_semaphore
-    /// [`NotSupportedSemaphoreBuilder`]: NotSupportedSemaphoreBuilder
-    fn build_semaphore(&self) -> Box<sync::SemaphoreBuilder> {
+    /// [`NotSupportedSemaphoreBuilder`]: crate::sync::NotSupportedSemaphoreBuilder
+    fn build_semaphore(&self) -> sync::SemaphoreBuilderRef {
         Box::new(sync::NotSupportedSemaphoreBuilder)
     }
 
     /// Create a `DynamicHeapBuilder` associated with this device.
-    fn build_dynamic_heap(&self) -> Box<heap::DynamicHeapBuilder>;
+    fn build_dynamic_heap(&self) -> heap::DynamicHeapBuilderRef;
 
     /// Create a `DedicatedHeapBuilder` associated with this device.
-    fn build_dedicated_heap(&self) -> Box<heap::DedicatedHeapBuilder>;
-
-    /// Create an `BarrierBuilder` associated with this device.
-    fn build_barrier(&self) -> Box<sync::BarrierBuilder>;
+    fn build_dedicated_heap(&self) -> heap::DedicatedHeapBuilderRef;
 
     /// Create an `ImageBuilder` associated with this device.
-    fn build_image(&self) -> Box<resources::ImageBuilder>;
+    fn build_image(&self) -> resources::ImageBuilderRef;
 
     /// Create a `BufferBuilder` associated with this device.
-    fn build_buffer(&self) -> Box<resources::BufferBuilder>;
+    fn build_buffer(&self) -> resources::BufferBuilderRef;
 
     /// Create a `SamplerBuilder` associated with this device.
-    fn build_sampler(&self) -> Box<sampler::SamplerBuilder>;
-
-    /// Create an `ImageViewBuilder` associated with this device.
-    fn build_image_view(&self) -> Box<resources::ImageViewBuilder>;
+    fn build_sampler(&self) -> sampler::SamplerBuilderRef;
 
     /// Create a `LibraryBuilder` associated with this device.
-    fn build_library(&self) -> Box<shader::LibraryBuilder>;
+    fn build_library(&self) -> shader::LibraryBuilderRef;
 
     /// Create a `ArgTableSigBuilder` associated with this device.
-    fn build_arg_table_sig(&self) -> Box<arg::ArgTableSigBuilder>;
+    fn build_arg_table_sig(&self) -> arg::ArgTableSigBuilderRef;
 
     /// Create a `RootSigBuilder` associated with this device.
-    fn build_root_sig(&self) -> Box<arg::RootSigBuilder>;
+    fn build_root_sig(&self) -> arg::RootSigBuilderRef;
 
     /// Create a `ArgPoolBuilder` associated with this device.
-    fn build_arg_pool(&self) -> Box<arg::ArgPoolBuilder>;
+    fn build_arg_pool(&self) -> arg::ArgPoolBuilderRef;
 
     /// Create a `RenderPassBuilder` associated with this device.
-    fn build_render_pass(&self) -> Box<pass::RenderPassBuilder>;
+    fn build_render_pass(&self) -> pass::RenderPassBuilderRef;
 
     /// Create a `RenderTargetTableBuilder` associated with this device.
-    fn build_render_target_table(&self) -> Box<pass::RenderTargetTableBuilder>;
+    fn build_render_target_table(&self) -> pass::RenderTargetTableBuilderRef;
 
     /// Create a `RenderPipelineBuilder` associated with this device.
-    fn build_render_pipeline(&self) -> Box<pipeline::RenderPipelineBuilder>;
+    fn build_render_pipeline(&self) -> pipeline::RenderPipelineBuilderRef;
 
     /// Create a `ComputePipelineBuilder` associated with this device.
-    fn build_compute_pipeline(&self) -> Box<pipeline::ComputePipelineBuilder>;
-
-    /// Destroy an `Image` associated with this device.
-    fn destroy_image(&self, obj: &handles::Image) -> Result<()>;
-
-    /// Destroy a `Buffer` associated with this device.
-    fn destroy_buffer(&self, obj: &handles::Buffer) -> Result<()>;
-
-    /// Destroy a `Sampler` associated with this device.
-    fn destroy_sampler(&self, obj: &handles::Sampler) -> Result<()>;
-
-    /// Destroy an `ImageView` associated with this device.
-    fn destroy_image_view(&self, obj: &handles::ImageView) -> Result<()>;
-
-    /// Retrieve the memory requirements for a given resource.
-    fn get_memory_req(&self, obj: handles::ResourceRef) -> Result<resources::MemoryReq>;
+    fn build_compute_pipeline(&self) -> pipeline::ComputePipelineBuilderRef;
 
     /// Update given argument tables.
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::device::Device;
-    ///     # use zangfx_base::handles::{ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::*;
     ///     # fn test(
     ///     #     device: &Device,
-    ///     #     arg_table: &ArgTable,
-    ///     #     arg_table_sig: &ArgTableSig,
-    ///     #     image_views: &[&ImageView],
-    ///     #     buffer: &Buffer
+    ///     #     arg_pool: &ArgPoolRef,
+    ///     #     arg_table: &ArgTableRef,
+    ///     #     arg_table_sig: &ArgTableSigRef,
+    ///     #     images: &[&ImageRef],
+    ///     #     buffer: &BufferRef
     ///     # ) {
     ///     device.update_arg_tables(
     ///         arg_table_sig,
     ///         &[(
-    ///             arg_table,
+    ///             (arg_pool, arg_table),
     ///             &[
     ///                 // The index range 0..2 of the argument 0
-    ///                 (0, 0, [image_views[0], image_views[1]][..].into()),
+    ///                 (0, 0, [images[0], images[1]][..].into()),
     ///
     ///                 // The index range 2..3 of the argument 1
     ///                 (1, 2, [(0..1024, buffer)][..].into()),
@@ -122,29 +114,30 @@ pub trait Device: Object {
     ///
     fn update_arg_tables(
         &self,
-        arg_table_sig: &handles::ArgTableSig,
-        updates: &[(&handles::ArgTable, &[ArgUpdateSet])],
+        arg_table_sig: &arg::ArgTableSigRef,
+        updates: &[((&arg::ArgPoolRef, &arg::ArgTableRef), &[ArgUpdateSet<'_>])],
     ) -> Result<()>;
 
     /// Update a given argument table.
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::device::Device;
-    ///     # use zangfx_base::handles::{ImageView, Buffer, ArgTable, ArgTableSig};
+    ///     # use zangfx_base::*;
     ///     # fn test(
     ///     #     device: &Device,
-    ///     #     arg_table: &ArgTable,
-    ///     #     arg_table_sig: &ArgTableSig,
-    ///     #     image_views: &[&ImageView],
-    ///     #     buffer: &Buffer
+    ///     #     arg_pool: &ArgPoolRef,
+    ///     #     arg_table: &ArgTableRef,
+    ///     #     arg_table_sig: &ArgTableSigRef,
+    ///     #     images: &[&ImageRef],
+    ///     #     buffer: &BufferRef
     ///     # ) {
     ///     device.update_arg_table(
     ///         arg_table_sig,
+    ///         arg_pool,
     ///         arg_table,
     ///         &[
     ///             // The index range 0..2 of the argument 0
-    ///             (0, 0, [image_views[0], image_views[1]][..].into()),
+    ///             (0, 0, [images[0], images[1]][..].into()),
     ///
     ///             // The index range 2..3 of the argument 1
     ///             (1, 2, [(0..1024, buffer)][..].into()),
@@ -154,19 +147,20 @@ pub trait Device: Object {
     ///
     fn update_arg_table(
         &self,
-        arg_table_sig: &handles::ArgTableSig,
-        arg_table: &handles::ArgTable,
-        updates: &[ArgUpdateSet],
+        arg_table_sig: &arg::ArgTableSigRef,
+        arg_pool: &arg::ArgPoolRef,
+        arg_table: &arg::ArgTableRef,
+        updates: &[ArgUpdateSet<'_>],
     ) -> Result<()> {
-        self.update_arg_tables(arg_table_sig, &[(arg_table, updates)])
+        self.update_arg_tables(arg_table_sig, &[((arg_pool, arg_table), updates)])
     }
 
     /// Create a autorelease pool and call the specified function inside it.
     ///
-    /// On the macOS platform, the lifetimes of most Cocoa objects are managed by
-    /// reference counting. In some cases, the lifetimes of objects are temporarily
-    /// extended by inserting references to them into the current autorelease pool
-    /// associated with each thread.
+    /// On the macOS platform, the lifetimes of most Objective-C objects are
+    /// managed by reference counting. In some cases, the lifetimes of objects
+    /// are temporarily extended by inserting references to them into the
+    /// current autorelease pool associated with each thread.
     ///
     /// In standard macOS applications, a default autorelease pool is automatically
     /// provided and it is drained at every cycle of the event loop. However,
@@ -204,14 +198,14 @@ pub trait Device: Object {
     ///     });
     ///     # }
     ///
-    fn autorelease_pool_scope_core(&self, cb: &mut FnMut(&mut AutoreleasePool)) {
+    fn autorelease_pool_scope_core(&self, cb: &mut dyn FnMut(&mut dyn AutoreleasePool)) {
         cb(&mut NullAutoreleasePool);
     }
 }
 
 /// Utilies for [`Device`](Device).
 pub trait DeviceExt: Device {
-    /// Create a `Library` associated with this device using a supplied SPIRV
+    /// Create a `LibraryRef` associated with this device using a supplied SPIRV
     /// code.
     ///
     /// This is a shorthand method for [`build_library`].
@@ -220,7 +214,7 @@ pub trait DeviceExt: Device {
     ///
     /// # Examples
     ///
-    ///     # use zangfx_base::device::Device;
+    ///     # use zangfx_base::*;
     ///     use zangfx_base::prelude::*;
     ///     # fn test(device: &Device) {
     ///     device
@@ -229,11 +223,11 @@ pub trait DeviceExt: Device {
     ///                      invalid SPIR-V code.");
     ///     # }
     ///
-    fn new_library(&self, spirv_code: &[u32]) -> Result<handles::Library> {
+    fn new_library(&self, spirv_code: &[u32]) -> Result<shader::LibraryRef> {
         self.build_library().spirv_code(spirv_code).build()
     }
 
-    /// Create a `Semaphore` associated with this device.
+    /// Create a `SemaphoreRef` associated with this device.
     ///
     /// This is a shorthand method for [`build_semaphore`].
     ///
@@ -247,30 +241,8 @@ pub trait DeviceExt: Device {
     ///     let semaphore = device.new_semaphore().unwrap();
     ///     # }
     ///
-    fn new_semaphore(&self) -> Result<handles::Semaphore> {
+    fn new_semaphore(&self) -> Result<sync::SemaphoreRef> {
         self.build_semaphore().build()
-    }
-
-    /// Create a `ImageView` associated with this device.
-    ///
-    /// This is a shorthand method for [`build_image_view`].
-    ///
-    /// [`build_image_view`]: Device::build_image_view
-    ///
-    /// # Examples
-    ///
-    ///     # use zangfx_base::*;
-    ///     use zangfx_base::prelude::*;
-    ///     # fn test(device: &Device, image: Image) {
-    ///     let image_view = device.new_image_view(&image, ImageLayout::ShaderRead).unwrap();
-    ///     # }
-    ///
-    fn new_image_view(
-        &self,
-        image: &handles::Image,
-        layout: resources::ImageLayout,
-    ) -> Result<handles::ImageView> {
-        self.build_image_view().image(image).layout(layout).build()
     }
 
     /// Create a autorelease pool and call the specified function inside it.
@@ -294,7 +266,7 @@ pub trait DeviceExt: Device {
     ///
     fn autorelease_pool_scope<T, S>(&self, cb: T) -> S
     where
-        T: FnOnce(&mut AutoreleasePool) -> S,
+        T: FnOnce(&mut dyn AutoreleasePool) -> S,
     {
         use std::mem::replace;
         enum State<T, S> {
@@ -337,13 +309,11 @@ impl<T: ?Sized + Device> DeviceExt for T {}
 ///
 /// See the documentation of [`update_arg_table`](Device::update_arg_table) for
 /// example.
-pub type ArgUpdateSet<'a> = (ArgIndex, ArgArrayIndex, handles::ArgSlice<'a>);
+pub type ArgUpdateSet<'a> = (ArgIndex, ArgArrayIndex, resources::ArgSlice<'a>);
 
 /// An autorelease pool.
 ///
-/// See [`Backend::autorelease_pool_scope`] for more.
-///
-/// [`Backend::autorelease_pool_scope`]: trait.Backend.html#method.autorelease_pool_scope
+/// See [`Device::autorelease_pool_scope_core`] for more.
 pub trait AutoreleasePool {
     fn drain(&mut self);
 }

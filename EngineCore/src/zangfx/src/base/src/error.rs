@@ -3,10 +3,25 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::fmt;
 use std::error::Error as StdError;
+use std::fmt;
 
 /// Generic error types.
+///
+/// This enumerate type includes common error causes.
+///
+/// Some causes are intentionally excluded. They are mostly attributed to logic
+/// errors and simply returning them would obfucate the exact location where
+/// the error was detected, making debugging harder. The following list shows
+/// the excluded causes:
+///
+///  - *Not supported*: The requested feature is not supported by, or exceeds
+///    the limits of the hardware or the backend.
+///
+///  - *Invalid usage*: API contract violation was detected.
+///
+/// These errors are simply not detected, or in the cases they are detected,
+/// they will be escalated to `panic!`.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ErrorKind {
     /// Ran out of device memory during an operation.
@@ -20,20 +35,6 @@ pub enum ErrorKind {
     /// operation.
     DeviceLost,
 
-    /// The requested feature is not supported by, or exceeds the limits of the
-    /// hardware or the backend.
-    ///
-    /// An unsafe implementation may choose to cause an undefined behavior or
-    /// panic rather than returning this error code.
-    NotSupported,
-
-    /// API contract violation was detected.
-    ///
-    /// An unsafe implementation may choose to cause an undefined behavior or
-    /// panic rather than returning this error code. A safe implmenetation may
-    /// choose to escalate the usage error to panic.
-    InvalidUsage,
-
     /// Any error that is not part of this list.
     Other,
 }
@@ -43,8 +44,6 @@ impl ErrorKind {
         match *self {
             ErrorKind::OutOfDeviceMemory => "out of device memory",
             ErrorKind::DeviceLost => "device lost",
-            ErrorKind::NotSupported => "not supported",
-            ErrorKind::InvalidUsage => "invalid usage",
             ErrorKind::Other => "uncategorized error",
         }
     }
@@ -54,7 +53,7 @@ impl ErrorKind {
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,
-    error: Option<Box<StdError + Send + Sync>>,
+    error: Option<Box<dyn StdError + Send + Sync>>,
 }
 
 impl Error {
@@ -63,7 +62,7 @@ impl Error {
     }
     pub fn with_detail<E>(kind: ErrorKind, error: E) -> Self
     where
-        E: Into<Box<StdError + Send + Sync>>,
+        E: Into<Box<dyn StdError + Send + Sync>>,
     {
         Self {
             kind,
@@ -71,12 +70,12 @@ impl Error {
         }
     }
 
-    pub fn get_ref(&self) -> Option<&(StdError + Send + Sync + 'static)> {
+    pub fn get_ref(&self) -> Option<&(dyn StdError + Send + Sync + 'static)> {
         use std::ops::Deref;
         self.error.as_ref().map(Deref::deref)
     }
 
-    pub fn get_mut(&mut self) -> Option<&mut (StdError + Send + Sync + 'static)> {
+    pub fn get_mut(&mut self) -> Option<&mut (dyn StdError + Send + Sync + 'static)> {
         use std::ops::DerefMut;
         self.error.as_mut().map(DerefMut::deref_mut)
     }
@@ -87,7 +86,7 @@ impl Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref error) = self.error {
             error.fmt(fmt)
         } else {
@@ -105,7 +104,7 @@ impl StdError for Error {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         self.error.as_ref().and_then(|x| x.cause())
     }
 }

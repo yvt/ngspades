@@ -4,16 +4,17 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of argument table layout for Vulkan.
-use std::sync::Arc;
-use ash::vk;
 use ash::version::*;
+use ash::vk;
+use std::sync::Arc;
 
-use base;
-use common::{Error, ErrorKind, Result};
-use device::DeviceRef;
+use crate::device::DeviceRef;
+use zangfx_base as base;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::Result;
 
-use utils::{translate_generic_error_unwrap, translate_shader_stage_flags};
 use super::{translate_descriptor_type, DescriptorCount};
+use crate::utils::{translate_generic_error_unwrap, translate_shader_stage_flags};
 
 /// Implementation of `ArgTableSigBuilder` for Vulkan.
 #[derive(Debug)]
@@ -22,10 +23,10 @@ pub struct ArgTableSigBuilder {
     args: Vec<Option<ArgSig>>,
 }
 
-zangfx_impl_object! { ArgTableSigBuilder: base::ArgTableSigBuilder, ::Debug }
+zangfx_impl_object! { ArgTableSigBuilder: dyn base::ArgTableSigBuilder, dyn (crate::Debug) }
 
 impl ArgTableSigBuilder {
-    pub(crate) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             args: Vec::new(),
@@ -34,7 +35,7 @@ impl ArgTableSigBuilder {
 }
 
 impl base::ArgTableSigBuilder for ArgTableSigBuilder {
-    fn arg(&mut self, index: base::ArgIndex, ty: base::ArgType) -> &mut base::ArgSig {
+    fn arg(&mut self, index: base::ArgIndex, ty: base::ArgType) -> &mut dyn base::ArgSig {
         if index >= self.args.len() {
             self.args.resize(index + 1, None);
         }
@@ -53,14 +54,16 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
         e.as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<base::ArgTableSig> {
-        let bindings: Vec<_> = self.args
+    fn build(&mut self) -> Result<base::ArgTableSigRef> {
+        let bindings: Vec<_> = self
+            .args
             .iter()
             .filter_map(|x| x.as_ref())
             .map(|arg| arg.vk_binding.clone())
             .collect();
 
-        let desc_types = self.args
+        let desc_types = self
+            .args
             .iter()
             .map(|arg| arg.as_ref().map(|arg| arg.vk_binding.descriptor_type))
             .collect();
@@ -79,7 +82,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
         let vk_device = self.device.vk_device();
         let vk_ds_layout = unsafe { vk_device.create_descriptor_set_layout(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(ArgTableSig::new(self.device, vk_ds_layout, desc_count, desc_types).into())
+        Ok(ArgTableSig::new(self.device.clone(), vk_ds_layout, desc_count, desc_types).into())
     }
 }
 
@@ -89,23 +92,23 @@ pub struct ArgSig {
     vk_binding: vk::DescriptorSetLayoutBinding,
 }
 
-zangfx_impl_object! { ArgSig: base::ArgSig, ::Debug }
+zangfx_impl_object! { ArgSig: dyn base::ArgSig, dyn (crate::Debug) }
 
 unsafe impl Send for ArgSig {}
 unsafe impl Sync for ArgSig {}
 
 impl base::ArgSig for ArgSig {
-    fn set_len(&mut self, x: base::ArgArrayIndex) -> &mut base::ArgSig {
+    fn set_len(&mut self, x: base::ArgArrayIndex) -> &mut dyn base::ArgSig {
         self.vk_binding.descriptor_count = x as u32;
         self
     }
 
-    fn set_stages(&mut self, x: base::ShaderStageFlags) -> &mut base::ArgSig {
+    fn set_stages(&mut self, x: base::ShaderStageFlags) -> &mut dyn base::ArgSig {
         self.vk_binding.stage_flags = translate_shader_stage_flags(x);
         self
     }
 
-    fn set_image_aspect(&mut self, _: base::ImageAspect) -> &mut base::ArgSig {
+    fn set_image_aspect(&mut self, _: base::ImageAspect) -> &mut dyn base::ArgSig {
         // No-op: Vulkan doen't need this information
         self
     }
@@ -117,7 +120,7 @@ pub struct ArgTableSig {
     data: Arc<ArgTableSigData>,
 }
 
-zangfx_impl_handle! { ArgTableSig, base::ArgTableSig }
+zangfx_impl_handle! { ArgTableSig, base::ArgTableSigRef }
 
 unsafe impl Sync for ArgTableSigData {}
 unsafe impl Send for ArgTableSigData {}
@@ -186,10 +189,10 @@ pub struct RootSigBuilder {
     tables: Vec<Option<ArgTableSig>>,
 }
 
-zangfx_impl_object! { RootSigBuilder: base::RootSigBuilder, ::Debug }
+zangfx_impl_object! { RootSigBuilder: dyn base::RootSigBuilder, dyn (crate::Debug) }
 
 impl RootSigBuilder {
-    pub(crate) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             tables: Vec::new(),
@@ -201,8 +204,8 @@ impl base::RootSigBuilder for RootSigBuilder {
     fn arg_table(
         &mut self,
         index: base::ArgTableIndex,
-        x: &base::ArgTableSig,
-    ) -> &mut base::RootSigBuilder {
+        x: &base::ArgTableSigRef,
+    ) -> &mut dyn base::RootSigBuilder {
         let our_table: &ArgTableSig = x.downcast_ref().expect("bad argument table signature type");
         if self.tables.len() <= index {
             self.tables.resize(index + 1, None);
@@ -211,15 +214,13 @@ impl base::RootSigBuilder for RootSigBuilder {
         self
     }
 
-    fn build(&mut self) -> Result<base::RootSig> {
+    fn build(&mut self) -> Result<base::RootSigRef> {
         if self.tables.len() > ::MAX_NUM_ARG_TABLES {
-            return Err(Error::with_detail(
-                ErrorKind::NotSupported,
-                "Exceeds the backend limit of the number of argument tables",
-            ));
+            panic!("Exceeds the backend limit of the number of argument tables");
         }
 
-        let set_layouts: Vec<_> = self.tables
+        let set_layouts: Vec<_> = self
+            .tables
             .iter()
             .map(|x| {
                 x.as_ref()
@@ -243,7 +244,7 @@ impl base::RootSigBuilder for RootSigBuilder {
         let vk_device = self.device.vk_device();
         let vk_p_layout = unsafe { vk_device.create_pipeline_layout(&info, None) }
             .map_err(translate_generic_error_unwrap)?;
-        Ok(RootSig::new(self.device, vk_p_layout, tables).into())
+        Ok(RootSig::new(self.device.clone(), vk_p_layout, tables).into())
     }
 }
 
@@ -253,7 +254,7 @@ pub struct RootSig {
     data: Arc<RootSigData>,
 }
 
-zangfx_impl_handle! { RootSig, base::RootSig }
+zangfx_impl_handle! { RootSig, base::RootSigRef }
 
 unsafe impl Sync for RootSigData {}
 unsafe impl Send for RootSigData {}

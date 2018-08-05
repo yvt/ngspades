@@ -37,18 +37,16 @@
 //!    submitted command buffers. Staging buffers are returned to the heap upon
 //!    the retirement of their associated upload sessions.
 //!
-use std::sync::Arc;
+use itertools::unfold;
+use ngsenumflags::flags;
 use std::collections::VecDeque;
 use std::ops::Range;
-use itertools::unfold;
 
-use base::{self, Result};
-use base::prelude::*;
-use cbstatetracker::CbStateTracker;
-use smartref::UniqueBuffer;
-use DeviceUtils;
+use crate::cbstatetracker::CbStateTracker;
+use crate::DeviceUtils;
+use zangfx_base::{self as base, Result};
 
-pub use uploaderutils::*;
+pub use crate::uploaderutils::*;
 
 /// Represents a session ID of `Uploader`.
 ///
@@ -59,9 +57,9 @@ pub type SessionId = u64;
 /// Parameters for `Uploader`.
 #[derive(Debug, Clone)]
 pub struct UploaderParams {
-    pub device: Arc<base::Device>,
+    pub device: base::DeviceRef,
 
-    pub queue: Arc<base::CmdQueue>,
+    pub queue: base::CmdQueueRef,
 
     /// The maximum number of bytes transferred per session.
     pub max_bytes_per_session: usize,
@@ -81,8 +79,8 @@ pub trait UploadRequest {
     /// Encode copy commands.
     fn copy(
         &self,
-        _encoder: &mut base::CopyCmdEncoder,
-        _staging_buffer: &base::Buffer,
+        _encoder: &mut dyn base::CopyCmdEncoder,
+        _staging_buffer: &base::BufferRef,
         _staging_buffer_range: Range<base::DeviceSize>,
     ) -> Result<()> {
         Ok(())
@@ -92,15 +90,15 @@ pub trait UploadRequest {
     /// the same session.
     fn post_copy(
         &self,
-        _encoder: &mut base::CopyCmdEncoder,
-        _staging_buffer: &base::Buffer,
+        _encoder: &mut dyn base::CopyCmdEncoder,
+        _staging_buffer: &base::BufferRef,
         _staging_buffer_range: Range<base::DeviceSize>,
     ) -> Result<()> {
         Ok(())
     }
 
     /// Encode commands outside a command encoder.
-    fn post_encoder(&self, _cmd_buffer: &mut base::CmdBuffer) -> Result<()> {
+    fn post_encoder(&self, _cmd_buffer: &mut dyn base::CmdBuffer) -> Result<()> {
         Ok(())
     }
 
@@ -113,12 +111,10 @@ pub trait UploadRequest {
 /// See the module-level documentation for details.
 #[derive(Debug)]
 pub struct Uploader {
-    device: Arc<base::Device>,
-    queue: Arc<base::CmdQueue>,
-    cmd_pool: Box<base::CmdPool>,
+    device: base::DeviceRef,
+    queue: base::CmdQueueRef,
     /// The dynamic heap from which staging buffers are allocated from.
-    heap: Box<base::Heap>,
-    empty_barrier: base::Barrier,
+    heap: base::HeapRef,
 
     max_bytes_per_session: usize,
     max_bytes_ongoing: usize,
@@ -138,47 +134,37 @@ impl Uploader {
         let device = params.device;
         let queue = params.queue;
 
-        let cmd_pool = queue.new_cmd_pool()?;
-
         let heap = device
             .build_dynamic_heap()
             .memory_type(
                 device
-                    .memory_type_for_buffer(
-                        flags![base::BufferUsage::{CopyRead}],
-                        flags![base::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                        flags![base::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                    )?
+                    .try_choose_memory_type_shared(flags![base::BufferUsage::{CopyRead}])?
                     .unwrap(),
             )
             .size(params.max_bytes_ongoing as u64)
             .build()?;
 
-        let empty_barrier = device.build_barrier().build()?;
-
         Ok(Self {
             device,
             queue,
-            cmd_pool,
             heap,
-            empty_barrier,
             max_bytes_per_session: params.max_bytes_per_session,
             max_bytes_ongoing: params.max_bytes_ongoing,
             sessions: SessionRing::new(),
         })
     }
 
-    pub fn device(&self) -> &Arc<base::Device> {
+    pub fn device(&self) -> &base::DeviceRef {
         &self.device
     }
 
-    pub fn queue(&self) -> &Arc<base::CmdQueue> {
+    pub fn queue(&self) -> &base::CmdQueueRef {
         &self.queue
     }
 
     /// Check the completion of sessions.
     pub fn recycle(&mut self) -> Result<()> {
-        self.sessions.recycle(&*self.device, &*self.heap)?;
+        self.sessions.recycle(&*self.heap)?;
         Ok(())
     }
 
@@ -215,7 +201,7 @@ impl Uploader {
     /// # Panics
     ///
     ///  - The session with the specified ID has not been created yet.
-    pub fn get_fence(&self, session: SessionId) -> Option<&base::Fence> {
+    pub fn get_fence(&self, session: SessionId) -> Option<&base::FenceRef> {
         if session < self.sessions.session_start_id {
             self.sessions.last_fence.as_ref()
         } else {
@@ -297,29 +283,29 @@ impl Uploader {
             };
 
             // Suballocate the staging buffer
-            let buffer = self.device
+            let buffer = self
+                .device
                 .build_buffer()
                 .size(session_size as _)
                 .usage(flags![base::BufferUsage::{CopyRead}])
                 .build()?;
-            let buffer = UniqueBuffer::new(&*self.device, buffer);
 
-            let alloc = loop {
+            loop {
                 macro_rules! try_bind {
                     () => {
-                        if let Some(alloc) = self.heap.bind((&*buffer).into())? {
-                            break alloc;
+                        if self.heap.bind((&buffer).into())? {
+                            break;
                         }
-                    }
+                    };
                 }
                 macro_rules! try_recycle {
                     () => {
-                        if self.sessions.recycle(&*self.device, &*self.heap)? {
+                        if self.sessions.recycle(&*self.heap)? {
                             // Now that some sessions are recycled, there may
                             // be a room in the staging bufefr heap.
                             try_bind!();
                         }
-                    }
+                    };
                 }
 
                 try_bind!();
@@ -333,12 +319,12 @@ impl Uploader {
                 try_recycle!();
 
                 unreachable!();
-            };
+            }
 
             // Populate the staging buffer
             {
                 use std::slice::from_raw_parts_mut;
-                let ptr = self.heap.as_ptr(&alloc)?;
+                let ptr = buffer.as_ptr();
                 let slice = unsafe { from_raw_parts_mut(ptr, session_size) };
                 for (request, range) in sub_requests_with_range() {
                     request.populate(&mut slice[range]);
@@ -346,26 +332,26 @@ impl Uploader {
             }
 
             // Construct the command buffer
-            let mut cmd_buffer: base::SafeCmdBuffer = self.cmd_pool.begin_cmd_buffer()?;
+            let mut cmd_buffer = self.queue.new_cmd_buffer()?;
             let fence = self.queue.new_fence()?;
             {
                 let encoder = cmd_buffer.encode_copy();
                 if let Some(ref fence) = self.sessions.last_fence {
                     // Enforce ordering
-                    encoder.wait_fence(fence, flags![base::Stage::{Copy}], &self.empty_barrier);
+                    encoder.wait_fence(fence, flags![base::AccessType::{CopyRead | CopyWrite}]);
                 }
 
                 // Encode copy commands
                 for (request, range) in sub_requests_with_range() {
                     let range = range.start as u64..range.end as u64;
-                    request.copy(encoder, &*buffer, range)?;
+                    request.copy(encoder, &buffer, range)?;
                 }
                 for (request, range) in sub_requests_with_range() {
                     let range = range.start as u64..range.end as u64;
-                    request.post_copy(encoder, &*buffer, range)?;
+                    request.post_copy(encoder, &buffer, range)?;
                 }
 
-                encoder.update_fence(&fence, flags![base::Stage::{Copy}]);
+                encoder.update_fence(&fence, flags![base::AccessType::{CopyRead | CopyWrite}]);
             }
             for request in sub_requests.clone() {
                 request.post_encoder(&mut *cmd_buffer)?;
@@ -381,8 +367,7 @@ impl Uploader {
             self.sessions.sessions.push_back(Session {
                 cb_state_tracker,
                 fence,
-                alloc,
-                buffer: buffer.into_inner().1,
+                buffer,
             });
 
             for request in sub_requests.clone() {
@@ -403,7 +388,7 @@ struct SessionRing {
     /// Ongoing session FIFO.
     sessions: VecDeque<Session>,
     /// The fence signaled by the last retired session.
-    last_fence: Option<base::Fence>,
+    last_fence: Option<base::FenceRef>,
 }
 
 #[derive(Debug)]
@@ -411,11 +396,9 @@ struct Session {
     /// Tracks the state of the command buffer of the session.
     cb_state_tracker: CbStateTracker,
     /// The fence signaled on the completion of the session.
-    fence: base::Fence,
-    /// An allocation from `Uploader::heap`.
-    alloc: base::HeapAlloc,
+    fence: base::FenceRef,
     /// The staging buffer.
-    buffer: base::Buffer,
+    buffer: base::BufferRef,
 }
 
 impl SessionRing {
@@ -434,7 +417,7 @@ impl SessionRing {
 
     /// Check the completion of sessions. Returns a flag indicating whether at
     /// least one session has retired or not.
-    fn recycle(&mut self, device: &base::Device, heap: &base::Heap) -> Result<bool> {
+    fn recycle(&mut self, heap: &dyn base::Heap) -> Result<bool> {
         let mut some_retired = false;
 
         while self.sessions.len() > 0 && self.sessions[0].cb_state_tracker.is_completed() {
@@ -444,8 +427,7 @@ impl SessionRing {
             let session = self.sessions.pop_front().unwrap();
             self.session_start_id += 1;
 
-            device.destroy_buffer(&session.buffer)?;
-            heap.unbind(&session.alloc)?;
+            heap.make_aliasable((&session.buffer).into())?;
             self.last_fence = Some(session.fence);
         }
 

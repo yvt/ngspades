@@ -12,24 +12,22 @@ use zangfx::base as gfx;
 
 #[derive(Debug)]
 pub struct HeapSet {
-    device: Arc<gfx::Device>,
+    device: gfx::DeviceRef,
     heaps: Pool<Heap>,
     memory_type: gfx::MemoryType,
     dynamic_heap_list: intrusive_list::ListHead,
     dynamic_heap_size: gfx::DeviceSize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct HeapSetAlloc {
     /// A pointer to an item in `HeapSet::heaps`.
     heap_ptr: PoolPtr,
-    /// ZanGFX heap allocation.
-    alloc: gfx::HeapAlloc,
 }
 
 #[derive(Debug)]
 struct Heap {
-    gfx_heap: Box<gfx::Heap>,
+    gfx_heap: gfx::HeapRef,
     /// The number of allocations in this heap.
     use_count: usize,
     /// Is this heap dynamic?
@@ -39,9 +37,9 @@ struct Heap {
 }
 
 impl HeapSet {
-    pub fn new(device: &Arc<gfx::Device>, memory_type: gfx::MemoryType) -> Self {
+    pub fn new(device: &gfx::DeviceRef, memory_type: gfx::MemoryType) -> Self {
         Self {
-            device: Arc::clone(device),
+            device: device.clone(),
             heaps: Pool::new(),
             memory_type,
             dynamic_heap_list: intrusive_list::ListHead::new(),
@@ -49,7 +47,7 @@ impl HeapSet {
         }
     }
 
-    pub fn unbind(&mut self, alloc: &HeapSetAlloc) -> Result<()> {
+    pub fn unbind(&mut self, alloc: &HeapSetAlloc, resource: gfx::ResourceRef) -> Result<()> {
         let dealloc;
         let unlink_dynamic_heap;
         {
@@ -63,7 +61,7 @@ impl HeapSet {
                 dealloc = false;
                 unlink_dynamic_heap = false;
                 if heap.dynamic {
-                    heap.gfx_heap.unbind(&alloc.alloc)?;
+                    heap.gfx_heap.make_aliasable(resource)?;
                 }
             }
         }
@@ -84,7 +82,7 @@ impl HeapSet {
         resource: T,
     ) -> Result<HeapSetAlloc> {
         let resource_ref = resource.into();
-        let size = self.device.get_memory_req(resource_ref)?.size;
+        let size = resource_ref.get_memory_req()?.size;
 
         if size > self.dynamic_heap_size / 2 {
             // Too big to fit in a dynamic heap
@@ -102,23 +100,23 @@ impl HeapSet {
             .accessor_mut(&mut self.heaps, |x| &mut x.dynamic_heap_link)
             .iter_mut()
         {
-            let alloc = heap.gfx_heap.bind(resource_ref)?;
-            if let Some(alloc) = alloc {
+            let success = heap.gfx_heap.bind(resource_ref)?;
+            if success {
                 // The allocation was successful
                 heap.use_count += 1;
-                result = Some((alloc, heap_ptr));
+                result = Some(heap_ptr);
                 break;
             }
         }
 
-        if let Some((alloc, heap_ptr)) = result {
+        if let Some(heap_ptr) = result {
             // Move the heap to the front of the list
             let mut list = self
                 .dynamic_heap_list
                 .accessor_mut(&mut self.heaps, |x| &mut x.dynamic_heap_link);
             list.remove(heap_ptr);
             list.push_front(heap_ptr);
-            return Ok(HeapSetAlloc { heap_ptr, alloc });
+            return Ok(HeapSetAlloc { heap_ptr });
         }
 
         // Create a new heap
@@ -128,7 +126,8 @@ impl HeapSet {
             .memory_type(self.memory_type)
             .size(self.dynamic_heap_size)
             .build()?;
-        let alloc = gfx_heap.bind(resource_ref)?.unwrap();
+        let success = gfx_heap.bind(resource_ref)?;
+        assert!(success);
         let heap_ptr = self.heaps.allocate(Heap {
             gfx_heap,
             use_count: 1,
@@ -139,7 +138,7 @@ impl HeapSet {
             .accessor_mut(&mut self.heaps, |x| &mut x.dynamic_heap_link)
             .push_front(heap_ptr);
 
-        Ok(HeapSetAlloc { heap_ptr, alloc })
+        Ok(HeapSetAlloc { heap_ptr })
     }
 
     /// Bind multiple resources.
@@ -151,43 +150,25 @@ impl HeapSet {
     {
         // Allocate a ZanGFX dedicated heap to hold all those resources
         let mut builder = self.device.build_dedicated_heap();
+        let mut num_resources = 0;
         builder.memory_type(self.memory_type);
         for resource in resources.clone() {
-            builder.prebind(resource);
+            builder.bind(resource);
+            num_resources += 1;
         }
         let gfx_heap = builder.build()?;
 
         let heap_ptr = self.heaps.allocate(Heap {
             gfx_heap,
-            use_count: 0,
+            use_count: num_resources,
             dynamic: false,
             dynamic_heap_link: None,
         });
 
-        // Suballocate resources from the heap and construct `HeapSetAlloc`s
-        let allocs = {
-            let ref mut heap = self.heaps[heap_ptr];
-            resources
-                .clone()
-                .map(|resource| {
-                    let alloc = heap.gfx_heap.bind(resource)?.unwrap();
-                    heap.use_count += 1;
-                    Ok(HeapSetAlloc { heap_ptr, alloc })
-                })
-                .collect::<Result<Vec<_>>>()
-        };
+        // FIXME: wtf
+        let allocs = vec![HeapSetAlloc { heap_ptr }; num_resources];
 
-        if allocs.is_err() {
-            // Rollback the changes
-            self.heaps.deallocate(heap_ptr);
-        }
-
-        allocs
-    }
-
-    pub fn as_ptr(&self, alloc: &HeapSetAlloc) -> Result<*mut u8> {
-        let heap = self.heaps.get(alloc.heap_ptr).unwrap();
-        heap.gfx_heap.as_ptr(&alloc.alloc)
+        Ok(allocs)
     }
 }
 
@@ -198,7 +179,7 @@ pub struct MultiHeapSet {
     heap_sets: Vec<HeapSet>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct MultiHeapSetAlloc {
     memory_type: gfx::MemoryType,
     alloc: HeapSetAlloc,
@@ -212,8 +193,8 @@ impl MultiHeapSet {
         }
     }
 
-    pub fn unbind(&mut self, alloc: &MultiHeapSetAlloc) -> Result<()> {
-        self.heap_sets[alloc.memory_type as usize].unbind(&alloc.alloc)
+    pub fn unbind(&mut self, alloc: &MultiHeapSetAlloc, resource: gfx::ResourceRef) -> Result<()> {
+        self.heap_sets[alloc.memory_type as usize].unbind(&alloc.alloc, resource)
     }
 
     /// Bind a resource using an existing or newly created dynamic heap.
@@ -229,9 +210,5 @@ impl MultiHeapSet {
         self.heap_sets[memory_type as usize]
             .bind_dynamic(resource)
             .map(|alloc| MultiHeapSetAlloc { alloc, memory_type })
-    }
-
-    pub fn as_ptr(&self, alloc: &MultiHeapSetAlloc) -> Result<*mut u8> {
-        self.heap_sets[alloc.memory_type as usize].as_ptr(&alloc.alloc)
     }
 }

@@ -5,19 +5,18 @@
 //
 //! Implementation of `Sampler` for Metal.
 use std::ops::Range;
-use base::{self, handles, sampler, CmpFn};
-use common::Result;
-use metal;
-use metal::NSObjectProtocol;
+use zangfx_base::Result;
+use zangfx_base::{self as base, sampler, CmpFn};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_metal_rs as metal;
+use zangfx_metal_rs::NSObjectProtocol;
 
-use utils::{nil_error, translate_cmp_fn, OCPtr};
+use crate::utils::{nil_error, translate_cmp_fn, OCPtr};
 
 /// Implementation of `SamplerBuilder` for Metal.
 #[derive(Debug, Clone)]
 pub struct SamplerBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     mag_filter: sampler::Filter,
     min_filter: sampler::Filter,
     address_mode: [sampler::AddressMode; 3],
@@ -30,7 +29,7 @@ pub struct SamplerBuilder {
     label: Option<String>,
 }
 
-zangfx_impl_object! { SamplerBuilder: sampler::SamplerBuilder, ::Debug, base::SetLabel }
+zangfx_impl_object! { SamplerBuilder: dyn sampler::SamplerBuilder, dyn crate::Debug, dyn base::SetLabel }
 
 unsafe impl Send for SamplerBuilder {}
 unsafe impl Sync for SamplerBuilder {}
@@ -38,10 +37,10 @@ unsafe impl Sync for SamplerBuilder {}
 impl SamplerBuilder {
     /// Construct a `SamplerBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             mag_filter: sampler::Filter::Linear,
             min_filter: sampler::Filter::Linear,
             address_mode: [sampler::AddressMode::Repeat; 3],
@@ -63,53 +62,54 @@ impl base::SetLabel for SamplerBuilder {
 }
 
 impl sampler::SamplerBuilder for SamplerBuilder {
-    fn mag_filter(&mut self, v: sampler::Filter) -> &mut sampler::SamplerBuilder {
+    fn mag_filter(&mut self, v: sampler::Filter) -> &mut dyn sampler::SamplerBuilder {
         self.mag_filter = v;
         self
     }
 
-    fn min_filter(&mut self, v: sampler::Filter) -> &mut sampler::SamplerBuilder {
+    fn min_filter(&mut self, v: sampler::Filter) -> &mut dyn sampler::SamplerBuilder {
         self.min_filter = v;
         self
     }
 
-    fn address_mode(&mut self, v: &[sampler::AddressMode]) -> &mut sampler::SamplerBuilder {
-        use common::IntoWithPad;
-        self.address_mode = v.into_with_pad(v.last().cloned().unwrap_or(sampler::AddressMode::Repeat));
+    fn address_mode(&mut self, v: &[sampler::AddressMode]) -> &mut dyn sampler::SamplerBuilder {
+        use zangfx_common::IntoWithPad;
+        self.address_mode =
+            v.into_with_pad(v.last().cloned().unwrap_or(sampler::AddressMode::Repeat));
         self
     }
 
-    fn mipmap_mode(&mut self, v: sampler::MipmapMode) -> &mut sampler::SamplerBuilder {
+    fn mipmap_mode(&mut self, v: sampler::MipmapMode) -> &mut dyn sampler::SamplerBuilder {
         self.mipmap_mode = v;
         self
     }
 
-    fn lod_clamp(&mut self, v: Range<f32>) -> &mut sampler::SamplerBuilder {
+    fn lod_clamp(&mut self, v: Range<f32>) -> &mut dyn sampler::SamplerBuilder {
         self.lod_clamp = v;
         self
     }
 
-    fn max_anisotropy(&mut self, v: u32) -> &mut sampler::SamplerBuilder {
+    fn max_anisotropy(&mut self, v: u32) -> &mut dyn sampler::SamplerBuilder {
         self.max_anisotropy = v;
         self
     }
 
-    fn cmp_fn(&mut self, v: Option<CmpFn>) -> &mut sampler::SamplerBuilder {
+    fn cmp_fn(&mut self, v: Option<CmpFn>) -> &mut dyn sampler::SamplerBuilder {
         self.cmp_fn = v;
         self
     }
 
-    fn border_color(&mut self, v: sampler::BorderColor) -> &mut sampler::SamplerBuilder {
+    fn border_color(&mut self, v: sampler::BorderColor) -> &mut dyn sampler::SamplerBuilder {
         self.border_color = v;
         self
     }
 
-    fn unnorm_coords(&mut self, v: bool) -> &mut sampler::SamplerBuilder {
+    fn unnorm_coords(&mut self, v: bool) -> &mut dyn sampler::SamplerBuilder {
         self.unnorm_coords = v;
         self
     }
 
-    fn build(&mut self) -> Result<handles::Sampler> {
+    fn build(&mut self) -> Result<base::SamplerRef> {
         let metal_desc = unsafe { OCPtr::from_raw(metal::MTLSamplerDescriptor::new()) }
             .ok_or(nil_error("MTLSamplerDescriptor new"))?;
         metal_desc.set_min_filter(translate_filter(self.min_filter));
@@ -140,7 +140,7 @@ impl sampler::SamplerBuilder for SamplerBuilder {
         }
         unsafe {
             metal_sampler.retain();
-            Ok(handles::Sampler::new(Sampler::from_raw(metal_sampler)))
+            Ok(base::SamplerRef::new(Sampler::from_raw(metal_sampler)))
         }
     }
 }
@@ -188,24 +188,22 @@ fn translate_border_color(value: sampler::BorderColor) -> metal::MTLSamplerBorde
 /// Implementation of `Sampler` for Metal.
 #[derive(Debug, Clone)]
 pub struct Sampler {
-    metal_sampler: metal::MTLSamplerState,
+    metal_sampler: OCPtr<metal::MTLSamplerState>,
 }
 
-zangfx_impl_handle! { Sampler, handles::Sampler }
+zangfx_impl_handle! { Sampler, base::SamplerRef }
 
 unsafe impl Send for Sampler {}
 unsafe impl Sync for Sampler {}
 
 impl Sampler {
     pub unsafe fn from_raw(metal_sampler: metal::MTLSamplerState) -> Self {
-        Self { metal_sampler }
+        Self {
+            metal_sampler: OCPtr::new(metal_sampler).expect("nil sampler"),
+        }
     }
 
     pub fn metal_sampler(&self) -> metal::MTLSamplerState {
-        self.metal_sampler
-    }
-
-    pub(super) unsafe fn destroy(&self) {
-        self.metal_sampler.release();
+        *self.metal_sampler
     }
 }

@@ -1,10 +1,16 @@
+cargo-features = ["edition"]
+
 [package]
 name = "zangfx_utils"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
 
 [dependencies]
 zangfx_common = { path = "../common" }
 zangfx_base = { path = "../base" }
 ngsenumflags = { path = "../../../support/ngsenumflags" }
+volatile_view = { path = "../../../support/volatile_view" }
 itertools = "0.7.7"
+num-traits = "0.2.4"
+pod = "0.5.0"

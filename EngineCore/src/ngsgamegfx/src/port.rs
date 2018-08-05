@@ -4,10 +4,13 @@
 // This source code is a part of Nightingales.
 //
 //! Provides a NgsPF port type for embedding a NgsGameGFX viewport.
-use ngspf::core::{Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor};
+use ngspf::core::{
+    Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor,
+};
 use ngspf::viewport;
 use std::sync::Arc;
-use zangfx::{base as gfx, utils as gfxut, prelude::*};
+#[allow(unused_imports)]
+use zangfx::{base as gfx, prelude::*, utils as gfxut};
 
 use config::Config;
 
@@ -33,7 +36,6 @@ impl viewport::Port for PortRef {
         Box::new(Port {
             props: self.0.clone(),
             gfx_objects: objects.clone(),
-            cmd_pool: objects.main_queue.queue.new_cmd_pool().unwrap(),
             cb_state_tracker: None,
         })
     }
@@ -57,7 +59,6 @@ impl PortProps {
 struct Port {
     props: Arc<PortProps>,
     gfx_objects: viewport::GfxObjects,
-    cmd_pool: Box<gfx::CmdPool>,
     cb_state_tracker: Option<gfxut::CbStateTracker>,
 }
 
@@ -84,25 +85,12 @@ impl viewport::PortInstance for Port {
         if let Some(x) = self.cb_state_tracker.take() {
             x.wait();
         }
-        let mut cmd_buffer = self.cmd_pool.begin_cmd_buffer()?;
+        let mut cmd_buffer = self.gfx_objects.main_queue.queue.new_cmd_buffer()?;
 
+        cmd_buffer.invalidate_image(&[&context.image]);
         {
             let enc = cmd_buffer.encode_copy();
-            let barrier = self.gfx_objects
-                .device
-                .build_barrier()
-                .image(
-                    flags![gfx::AccessType::{}],
-                    flags![gfx::AccessType::{ColorWrite}],
-                    &context.image,
-                    gfx::ImageLayout::Undefined,
-                    gfx::ImageLayout::ShaderRead,
-                    &Default::default(),
-                )
-                .build()?;
-            enc.barrier(&barrier);
-
-            enc.update_fence(&context.fence, flags![gfx::Stage::{}]);
+            enc.update_fence(&context.fence, flags![gfx::AccessType::{}]);
         }
 
         self.cb_state_tracker = Some(gfxut::CbStateTracker::new(&mut *cmd_buffer));

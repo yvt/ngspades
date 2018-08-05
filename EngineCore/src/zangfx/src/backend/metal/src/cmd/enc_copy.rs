@@ -3,33 +3,37 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::ops::Range;
-use metal::{self, MTLBlitCommandEncoder};
 use cocoa::foundation::NSRange;
+use std::ops::Range;
+use zangfx_metal_rs::{self as metal, MTLBlitCommandEncoder};
 
-use base::{self, DeviceSize};
-use common::*;
+use zangfx_base::{self as base, DeviceSize};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_common::*;
 
-use utils::OCPtr;
-use cmd::enc::{CmdBufferFenceSet, DebugCommands};
-use cmd::fence::Fence;
-use buffer::Buffer;
-use image::Image;
+use crate::buffer::Buffer;
+use crate::cmd::enc::{CmdBufferFenceSet, DebugCommands};
+use crate::cmd::fence::Fence;
+use crate::image::Image;
+use crate::utils::OCPtr;
 
 #[derive(Debug)]
-pub struct CopyEncoder {
+crate struct CopyEncoder {
     metal_encoder: OCPtr<MTLBlitCommandEncoder>,
     fence_set: CmdBufferFenceSet,
 }
 
 zangfx_impl_object! { CopyEncoder:
-base::CmdEncoder, base::CopyCmdEncoder, ::Debug }
+dyn base::CmdEncoder, dyn base::CopyCmdEncoder, dyn crate::Debug }
 
 unsafe impl Send for CopyEncoder {}
 unsafe impl Sync for CopyEncoder {}
 
 impl CopyEncoder {
-    pub unsafe fn new(metal_encoder: MTLBlitCommandEncoder, fence_set: CmdBufferFenceSet) -> Self {
+    crate unsafe fn new(
+        metal_encoder: MTLBlitCommandEncoder,
+        fence_set: CmdBufferFenceSet,
+    ) -> Self {
         Self {
             metal_encoder: OCPtr::new(metal_encoder).unwrap(),
             fence_set,
@@ -55,39 +59,43 @@ impl base::CmdEncoder for CopyEncoder {
         self.metal_encoder.debug_marker(label);
     }
 
-    fn use_resource(&mut self, _usage: base::ResourceUsage, _objs: &[base::ResourceRef]) {
-        // No-op: no arguemnt table for copy encoder
-    }
-
-    fn use_heap(&mut self, _heaps: &[&base::Heap]) {
-        // No-op: no arguemnt table for copy encoder
-    }
-
-    fn wait_fence(
+    fn use_resource_core(
         &mut self,
-        fence: &base::Fence,
-        _src_stage: base::StageFlags,
-        _barrier: &base::Barrier,
+        _usage: base::ResourceUsageFlags,
+        _objs: base::ResourceSet<'_>,
     ) {
+        // No-op: no arguemnt table for copy encoder
+    }
+
+    fn use_heap(&mut self, _heaps: &[&base::HeapRef]) {
+        // No-op: no arguemnt table for copy encoder
+    }
+
+    fn wait_fence(&mut self, fence: &base::FenceRef, _dst_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.wait_for_fence(our_fence.metal_fence());
         self.fence_set.wait_fence(our_fence);
     }
 
-    fn update_fence(&mut self, fence: &base::Fence, _src_stage: base::StageFlags) {
+    fn update_fence(&mut self, fence: &base::FenceRef, _src_access: base::AccessTypeFlags) {
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
         self.metal_encoder.update_fence(our_fence.metal_fence());
         self.fence_set.signal_fence(our_fence);
     }
 
-    fn barrier(&mut self, _barrier: &base::Barrier) {
+    fn barrier_core(
+        &mut self,
+        _obj: base::ResourceSet<'_>,
+        _src_access: base::AccessTypeFlags,
+        _dst_access: base::AccessTypeFlags,
+    ) {
         // No-op: Metal's blit command encoders implicitly barrier between
         // each dispatch.
     }
 }
 
 impl base::CopyCmdEncoder for CopyEncoder {
-    fn fill_buffer(&mut self, buffer: &base::Buffer, range: Range<DeviceSize>, value: u8) {
+    fn fill_buffer(&mut self, buffer: &base::BufferRef, range: Range<DeviceSize>, value: u8) {
         if range.start >= range.end {
             return;
         }
@@ -102,9 +110,9 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
     fn copy_buffer(
         &mut self,
-        src: &base::Buffer,
+        src: &base::BufferRef,
         src_offset: DeviceSize,
-        dst: &base::Buffer,
+        dst: &base::BufferRef,
         dst_offset: DeviceSize,
         size: DeviceSize,
     ) {
@@ -125,10 +133,9 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
     fn copy_buffer_to_image(
         &mut self,
-        src: &base::Buffer,
+        src: &base::BufferRef,
         src_range: &base::BufferImageRange,
-        dst: &base::Image,
-        _dst_layout: base::ImageLayout,
+        dst: &base::ImageRef,
         dst_aspect: base::ImageAspect,
         dst_range: &base::ImageLayerRange,
         dst_origin: &[u32],
@@ -148,7 +155,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
             self.metal_encoder.copy_from_buffer_to_image(
                 metal_buffer,
                 src_range.offset + buffer_offset
-                    + src_range.plane_stride * pixel_size as u64
+                    + src_range.plane_stride
+                        * pixel_size as u64
                         * (i - dst_range.layers.start) as u64,
                 src_range.row_stride * pixel_size as u64,
                 src_range.plane_stride * pixel_size as u64,
@@ -176,12 +184,11 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
     fn copy_image_to_buffer(
         &mut self,
-        src: &base::Image,
-        _src_layout: base::ImageLayout,
+        src: &base::ImageRef,
         src_aspect: base::ImageAspect,
         src_range: &base::ImageLayerRange,
         src_origin: &[u32],
-        dst: &base::Buffer,
+        dst: &base::BufferRef,
         dst_range: &base::BufferImageRange,
         size: &[u32],
     ) {
@@ -212,7 +219,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
                 },
                 metal_buffer,
                 dst_range.offset + buffer_offset
-                    + dst_range.plane_stride * pixel_size as u64
+                    + dst_range.plane_stride
+                        * pixel_size as u64
                         * (i - src_range.layers.start) as u64,
                 dst_range.row_stride * pixel_size as u64,
                 dst_range.plane_stride * pixel_size as u64,
@@ -227,12 +235,10 @@ impl base::CopyCmdEncoder for CopyEncoder {
 
     fn copy_image(
         &mut self,
-        src: &base::Image,
-        _src_layout: base::ImageLayout,
+        src: &base::ImageRef,
         src_range: &base::ImageLayerRange,
         src_origin: &[u32],
-        dst: &base::Image,
-        _dst_layout: base::ImageLayout,
+        dst: &base::ImageRef,
         dst_range: &base::ImageLayerRange,
         dst_origin: &[u32],
         size: &[u32],

@@ -3,97 +3,131 @@
 //
 // This source code is a part of Nightingales.
 //
-//! (Light-weight) handle types.
+//! Handle types.
 //!
 //! Handles represent references to objects such as images and shader modules.
-//! Handles are boxed using opaque handle types like [`Image`]. They support
-//! the following operations:
+//! Handle types are distinguished by the suffix `Ref` and they behave like
+//! `Arc`s from the application developer's perspective.
+//! They support the following operations:
 //!
 //!  - `Drop`. Note that dropping a handle does not necessarily destroy the
 //!    underlying object. See also the section "Allocation Strategy".
 //!  - `Clone`. Only the reference — not the object itself is cloned.
 //!
-//! [`Image`]: struct.Image.html
+//! There are two kinds of handles:
 //!
-//! Boxing is done using [`SmallBox`]`<_, [usize; 3]>`. Therefore, the contained
-//! data must be sufficiently small to fit `[usize; 3]`.
+//!  - *Boxed handles* are `Arc` values each of which represents a reference to
+//!    a single heap-allocated object implementing a particular trait.
 //!
-//! [`SmallBox`]: SmallBox
+//!    Trait types which boxed handles are based on provide an interface to
+//!    query their concrete types and additional traits implemented by them.
+//!    This functionality is provided by the `query_interface` crate.
+//!
+//!    Note: Boxed handles are previously referred to as just *objects*.
+//!
+//!  - *Fat handles* store object to the handles themselves. The implementor
+//!    must implement `Clone` on the stored objects to emulate the cloning
+//!    semantics of `Arc`.
+//!
+//!    Fat handles encapsulate implementation-dependent objects using
+//!    [`SmallBox`]`<_, [usize; 3]>`. Therefore, the contained data must be
+//!    sufficiently small to fit `[usize; 3]`.
+//!
+//!    `HandleImpl` is a trait implemented by all fat handle implementations and
+//!    has `AsRef<dyn Any>` in its trait bounds. You can use this to downcast a
+//!    handle to a known concrete type.
+//!
+//! [`SmallBox`]: ../../zangfx_common/struct.SmallBox.html
 //!
 //! # Allocation Strategy
 //!
 //! To reduce the run-time cost of tracking the lifetime of objects, ZanGFX
 //! requires the application to manually maintain the lifetime of certain
-//! object types. Specifically, the following object types are released when
-//! and only when the application makes an explicit request to do so: **images**,
-//! **buffers**, **samplers**, **argument tables**, and **image views**, with
-//! the exception of argument tables, which are also released when their
-//! originating argument pool is released or resetted.
+//! object types. Specifically, the following object type is released when
+//! and only when the application makes an explicit request to do so:
+//! **argument tables**. Argument tables are also released when their
+//! containing argument pool is released or resetted.
 //!
 //! # Examples
 //!
 //! This example uses the [`zangfx_impl_handle`] macro to define a handle
 //! implementation type.
 //!
-//! [`zangfx_impl_handle`]: macro.zangfx_impl_handle.html
-//!
 //!     # #[macro_use] extern crate zangfx_base;
 //!     # fn main() {
 //!     use std::any::Any;
-//!     use zangfx_base::handles::{HandleImpl, Image};
+//!     use zangfx_base::{zangfx_impl_handle, CloneHandle, FenceRef};
 //!
 //!     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-//!     struct MyImage;
+//!     struct MyFence;
 //!
-//!     zangfx_impl_handle!(MyImage, Image);
+//!     zangfx_impl_handle! { MyFence, FenceRef }
 //!
-//!     let image = Image::new(MyImage);
-//!     assert!(image.is::<MyImage>());
+//!     let fence = FenceRef::new(MyFence);
+//!     assert!(fence.is::<MyFence>());
 //!     # }
 //!
 use std::any::Any;
-use std::{fmt, marker, ops};
+use std::fmt;
 
-use common::SmallBox;
-use DeviceSize;
-
-/// Base trait for all handle implementation traits.
+/// Implements the clone behavior of fat handles.
+///
+/// In most cases, this trait is automatically implemented using the
+/// [`zangfx_impl_handle`](zangfx_impl_handle) macro.
 ///
 /// See [the module-level documentation](index.html) for the usage.
-pub trait HandleImpl<C>
-    : AsRef<Any> + AsMut<Any> + fmt::Debug + Send + Sync + Any {
+pub trait CloneHandle<C>: AsRef<dyn Any> + AsMut<dyn Any> + fmt::Debug + Send + Sync + Any {
     fn clone_handle(&self) -> C;
 }
 
+/// Defines a handle type.
 macro_rules! define_handle {
     ($(#[$smeta:meta])* $name:ident) => {
+        define_handle! { $(#[$smeta])* $name : $crate::handles::CloneHandle<$name> }
+    };
+    ($(#[$smeta:meta])* $name:ident : $trait:path) => {
         $(#[$smeta])*
         #[derive(Debug)]
         pub struct $name {
-            inner: SmallBox<HandleImpl<$name>, [usize; 3]>,
+            inner: $crate::common::SmallBox<dyn $trait, [usize; 3]>,
         }
 
         impl $name {
-            pub fn new<T: marker::Unsize<HandleImpl<$name>>>(x: T) -> Self {
+            pub fn new<T>(x: T) -> Self
+            where
+                T: ::std::marker::Unsize<dyn $trait>,
+            {
                 Self {
-                    inner: unsafe { SmallBox::new(x) },
+                    inner: unsafe { $crate::common::SmallBox::new(x) },
                 }
             }
 
-            pub fn is<T: HandleImpl<$name>>(&self) -> bool {
-                Any::is::<T>((*self.inner).as_ref())
+            pub fn is<T>(&self) -> bool
+            where
+                T: $trait,
+            {
+                ::std::any::Any::is::<T>((*self.inner).as_ref())
             }
 
-            pub fn downcast_ref<T: HandleImpl<$name>>(&self) -> Option<&T> {
-                Any::downcast_ref((*self.inner).as_ref())
+            pub fn downcast_ref<T>(&self) -> Option<&T>
+            where
+                T: $trait,
+            {
+                ::std::any::Any::downcast_ref((*self.inner).as_ref())
             }
 
-            pub fn downcast_mut<T: HandleImpl<$name>>(&mut self) -> Option<&mut T> {
-                Any::downcast_mut((*self.inner).as_mut())
+            pub fn downcast_mut<T>(&mut self) -> Option<&mut T>
+            where
+                T: $trait,
+            {
+                ::std::any::Any::downcast_mut((*self.inner).as_mut())
             }
         }
 
-        impl<T: marker::Unsize<HandleImpl<$name>>> From<T> for $name {
+        impl<T> From<T> for $name
+        where
+            T: ::std::marker::Unsize<dyn $trait>,
+        {
             fn from(x: T) -> Self {
                 Self::new(x)
             }
@@ -105,282 +139,45 @@ macro_rules! define_handle {
             }
         }
 
-        impl ops::Deref for $name {
-            type Target = HandleImpl<$name>;
+        impl ::std::ops::Deref for $name {
+            type Target = dyn $trait;
 
             fn deref(&self) -> &Self::Target {
                 &*self.inner
             }
         }
 
-        impl ops::DerefMut for $name {
+        impl ::std::ops::DerefMut for $name {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut *self.inner
             }
         }
-    }
-}
-
-define_handle! {
-    /// Image handle.
-    ///
-    /// Images are first created using `ImageBuilder`. After an image is created
-    /// it is in the **Prototype** state. Before it can be used as an attachment
-    /// or a descriptor, it must first be transitioned to the **Allocated**
-    /// state by allocating the physical space of the image via a method
-    /// provided by `Heap`.
-    ///
-    /// Once an image is transitioned to the **Allocated** state, it will never
-    /// go back to the original state. Destroying the heap where the image is
-    /// located causes the image to transition to the **Invalid** state. The
-    /// only valid operation to an image in the **Invalid** state is to destroy
-    /// the image.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Image
-}
-
-define_handle! {
-    /// Buffer handle.
-    ///
-    /// Buffers are first created using `BufferBuilder`. After a buffer is created
-    /// it is in the **Prototype** state. Before it can be used as an attachment
-    /// or a descriptor, it must first be transitioned to the **Allocated**
-    /// state by allocating the physical space of the buffer via a method
-    /// provided by `Heap`.
-    ///
-    /// Once a buffer is transitioned to the **Allocated** state, it will never
-    /// go back to the original state. Destroying the heap where the buffer is
-    /// located causes the buffer to transition to the **Invalid** state. The
-    /// only valid operation to a buffer in the **Invalid** state is to destroy
-    /// the buffer.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Buffer
-}
-
-define_handle! {
-    /// Represents a single heap allocation.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    HeapAlloc
-}
-
-define_handle! {
-    /// Image view object.
-    ///
-    /// Shaders always access images via image views.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ImageView
-}
-
-define_handle! {
-    /// Sampler handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Sampler
-}
-
-define_handle! {
-    /// Fence handle.
-    ///
-    /// Fences are used for intra-queue synchronization.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Fence
-}
-
-define_handle! {
-    /// Semaphore handle.
-    ///
-    /// Fences are used for inter-queue/API synchronization. Not supported by
-    /// every backend.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Semaphore
-}
-
-define_handle! {
-    /// Barrier handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Barrier
-}
-
-define_handle! {
-    /// Shader library handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    Library
-}
-
-define_handle! {
-    /// Argument set signature handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ArgTableSig
-}
-
-define_handle! {
-    /// Argument set handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ArgTable
-}
-
-define_handle! {
-    /// Root signature handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RootSig
-}
-
-define_handle! {
-    /// Render pass handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RenderPass
-}
-
-define_handle! {
-    /// Render target table handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RenderTargetTable
-}
-
-define_handle! {
-    /// Render pipeline handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    RenderPipeline
-}
-
-define_handle! {
-    /// Compute pipeline handle.
-    ///
-    /// See [the module-level documentation](index.html) for the generic usage
-    /// of handles.
-    ComputePipeline
-}
-
-/// A reference to a resource handle.
-///
-/// # Examples
-///
-///     # use zangfx_base::handles::{Image, Buffer, ResourceRef};
-///     fn test(image: Image, buffer: Buffer) {
-///         let _ref1: ResourceRef = (&image).into();
-///         let _ref2: ResourceRef = (&buffer).into();
-///     }
-///
-#[derive(Debug, Clone, Copy)]
-pub enum ResourceRef<'a> {
-    Image(&'a Image),
-    Buffer(&'a Buffer),
-}
-
-impl<'a> From<&'a Image> for ResourceRef<'a> {
-    fn from(x: &'a Image) -> Self {
-        ResourceRef::Image(x)
-    }
-}
-
-impl<'a> From<&'a Buffer> for ResourceRef<'a> {
-    fn from(x: &'a Buffer) -> Self {
-        ResourceRef::Buffer(x)
-    }
-}
-
-/// A reference to a homogeneous slice of handles that can be passed to a shader
-/// function as an argument.
-///
-/// # Examples
-///
-///     # use zangfx_base::handles::{ImageView, ArgSlice};
-///     fn test(image1: ImageView, image2: ImageView) {
-///         let _: ArgSlice = [&image1, &image2][..].into();
-///     }
-///
-#[derive(Debug, Clone, Copy)]
-pub enum ArgSlice<'a> {
-    /// Image views.
-    ImageView(&'a [&'a ImageView]),
-    /// Buffers and their subranges.
-    ///
-    /// - For a uniform buffer, the starting offset of each range must be
-    ///   aligned to `DeviceLimits::uniform_buffer_alignment` bytes.
-    /// - For a storage buffer, the starting offset of each range must be
-    ///   aligned to `DeviceLimits::storage_buffer_alignment` bytes.
-    ///
-    Buffer(&'a [(ops::Range<DeviceSize>, &'a Buffer)]),
-    /// Samplers.
-    Sampler(&'a [&'a Sampler]),
-}
-
-impl<'a> ArgSlice<'a> {
-    pub fn len(&self) -> usize {
-        match self {
-            &ArgSlice::ImageView(x) => x.len(),
-            &ArgSlice::Buffer(x) => x.len(),
-            &ArgSlice::Sampler(x) => x.len(),
-        }
-    }
-}
-
-impl<'a> From<&'a [&'a ImageView]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a ImageView]) -> Self {
-        ArgSlice::ImageView(x)
-    }
-}
-
-impl<'a> From<&'a [(ops::Range<DeviceSize>, &'a Buffer)]> for ArgSlice<'a> {
-    fn from(x: &'a [(ops::Range<DeviceSize>, &'a Buffer)]) -> Self {
-        ArgSlice::Buffer(x)
-    }
-}
-
-impl<'a> From<&'a [&'a Sampler]> for ArgSlice<'a> {
-    fn from(x: &'a [&'a Sampler]) -> Self {
-        ArgSlice::Sampler(x)
-    }
+    };
 }
 
 /// Generates a boiler-plate code for defining a handle implementation type.
 ///
 /// For a given type, this macro generates the implementation for the following
-/// traits: `HandleImpl`, `AsRef<Any>`, and `AsMut<Any>`.
+/// traits: `CloneHandle`, `AsRef<Any>`, and `AsMut<Any>`.
 ///
 /// See [the module-level documentation](index.html) for the usage.
 #[macro_export]
 macro_rules! zangfx_impl_handle {
     ($type:ty, $handletype:ty) => {
-        impl $crate::handles::HandleImpl<$handletype> for $type {
+        impl $crate::handles::CloneHandle<$handletype> for $type {
             fn clone_handle(&self) -> $handletype {
                 <$handletype>::new(Clone::clone(self))
             }
         }
         impl AsRef<::std::any::Any> for $type {
-            fn as_ref(&self) -> &::std::any::Any { self }
+            fn as_ref(&self) -> &::std::any::Any {
+                self
+            }
         }
         impl AsMut<::std::any::Any> for $type {
-            fn as_mut(&mut self) -> &mut ::std::any::Any { self }
+            fn as_mut(&mut self) -> &mut ::std::any::Any {
+                self
+            }
         }
-    }
+    };
 }

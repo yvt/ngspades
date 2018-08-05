@@ -19,20 +19,35 @@ pub struct TempResPool {
 
 #[derive(Debug, Default)]
 pub struct TempResTable {
-    allocs: Vec<MultiHeapSetAlloc>,
-    images: Vec<gfx::Image>,
-    image_views: Vec<gfx::ImageView>,
-    buffers: Vec<gfx::Buffer>,
+    allocs: Vec<(Resource, MultiHeapSetAlloc)>,
+}
+
+#[derive(Debug, Clone)]
+enum Resource {
+    Image(gfx::ImageRef),
+    Buffer(gfx::BufferRef),
+}
+
+impl Resource {
+    fn clone_from(x: gfx::ResourceRef<'_>) -> Self {
+        match x {
+            gfx::ResourceRef::Image(x) => Resource::Image(x.clone()),
+            gfx::ResourceRef::Buffer(x) => Resource::Buffer(x.clone()),
+        }
+    }
+
+    fn as_ref(&self) -> gfx::ResourceRef<'_> {
+        match self {
+            Resource::Image(ref x) => gfx::ResourceRef::Image(x),
+            Resource::Buffer(ref x) => gfx::ResourceRef::Buffer(x),
+        }
+    }
 }
 
 impl TempResPool {
-    pub fn new(device: Arc<gfx::Device>) -> Result<Self> {
+    pub fn new(device: gfx::DeviceRef) -> Result<Self> {
         let heap = MultiHeapSet::new(&device);
         Ok(Self { device, heap })
-    }
-
-    pub fn heap_mut(&mut self) -> &mut MultiHeapSet {
-        &mut self.heap
     }
 
     /// Construct a `TempResTable` associated with this `TempResPool`.
@@ -42,17 +57,8 @@ impl TempResPool {
 
     /// Release temporary resources.
     pub fn release(&mut self, table: &mut TempResTable) -> Result<()> {
-        for alloc in table.allocs.drain(..) {
-            self.heap.unbind(&alloc)?;
-        }
-        for image in table.images.drain(..) {
-            self.device.destroy_image(&image)?;
-        }
-        for image_view in table.image_views.drain(..) {
-            self.device.destroy_image_view(&image_view)?;
-        }
-        for buffer in table.buffers.drain(..) {
-            self.device.destroy_buffer(&buffer)?;
+        for (resource, alloc) in table.allocs.drain(..) {
+            self.heap.unbind(&alloc, resource.as_ref())?;
         }
         Ok(())
     }
@@ -63,28 +69,10 @@ impl TempResPool {
         memory_type: gfx::MemoryType,
         resource: T,
     ) -> Result<MultiHeapSetAlloc> {
+        let resource = resource.into();
         table.allocs.reserve(1);
         let alloc = self.heap.bind_dynamic(memory_type, resource)?;
-        table.allocs.push(alloc.clone());
+        table.allocs.push((Resource::clone_from(resource), alloc));
         Ok(alloc)
-    }
-
-    pub fn as_ptr(&self, alloc: &MultiHeapSetAlloc) -> Result<*mut u8> {
-        self.heap.as_ptr(&alloc)
-    }
-
-    pub fn add_buffer(&mut self, table: &mut TempResTable, buffer: gfx::Buffer) {
-        table.buffers.push(buffer);
-        table.buffers.reserve(1);
-    }
-
-    pub fn add_image(&mut self, table: &mut TempResTable, image: gfx::Image) {
-        table.images.push(image);
-        table.images.reserve(1);
-    }
-
-    pub fn add_image_view(&mut self, table: &mut TempResTable, image_view: gfx::ImageView) {
-        table.image_views.push(image_view);
-        table.image_views.reserve(1);
     }
 }

@@ -4,22 +4,26 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for shader library objects, and other relevant types.
-use Object;
-use ngsenumflags::BitFlags;
+use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 
-use common::Result;
-use handles::Library;
+use crate::{Object, Result};
+
+define_handle! {
+    /// Shader library handle.
+    ///
+    /// See [the module-level documentation of `handles`](../handles/index.html)
+    /// for the generic usage of handles.
+    LibraryRef
+}
+
+/// The builder object for shader libraries.
+pub type LibraryBuilderRef = Box<dyn LibraryBuilder>;
 
 /// Trait for building shader libraries.
 ///
-/// # Valid Usage
-///
-///  - No instance of `LibraryBuilder` may outlive the originating `Device`.
-///
 /// # Examples
 ///
-///     # use zangfx_base::device::Device;
-///     # use zangfx_base::shader::LibraryBuilder;
+///     # use zangfx_base::*;
 ///     # fn test(device: &Device) {
 ///     let image = device.build_library()
 ///         .spirv_code(&[])
@@ -33,15 +37,15 @@ pub trait LibraryBuilder: Object {
     ///
     /// See Vulkan 1.0 Specification Appendix A: "Vulkan Environment for SPIR-V"
     /// for the requirements.
-    fn spirv_code(&mut self, v: &[u32]) -> &mut LibraryBuilder;
+    fn spirv_code(&mut self, v: &[u32]) -> &mut dyn LibraryBuilder;
 
-    /// Build an `Library`.
+    /// Build an `LibraryRef`.
     ///
     /// # Valid Usage
     ///
     /// All mandatory properties must have their values set before this method
     /// is called.
-    fn build(&mut self) -> Result<Library>;
+    fn build(&mut self) -> Result<LibraryRef>;
 }
 
 #[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]

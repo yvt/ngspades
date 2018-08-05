@@ -3,42 +3,32 @@
 //
 // This source code is a part of Nightingales.
 //
-use gfx;
-use common::BinaryInteger;
-use super::{utils, TestDriver};
+use super::TestDriver;
+use ngsenumflags::flags;
+use zangfx_base as gfx;
+use zangfx_common::BinaryInteger;
 
-fn try_all_memory_types(device: &gfx::Device, builder: &mut gfx::ImageBuilder) {
+fn try_all_memory_types(device: &gfx::DeviceRef, builder: &mut dyn gfx::ImageBuilder) {
     println!("  - Creating an image");
-    let mut image = utils::UniqueImage::new(device, builder.build().unwrap());
+    let mut image = builder.build().unwrap();
 
     println!("  - Querying the memory requirement for the image");
-    let req = device.get_memory_req((&*image).into()).unwrap();
+    let req = image.get_memory_req().unwrap();
     println!("  - Memory requirement = {:?}", req);
 
     for memory_type in req.memory_types.one_digits() {
         println!("  - Trying the memory type '{}'", memory_type);
-        println!("    - Creating a heap");
 
-        let heap = {
-            let mut builder = device.build_dedicated_heap();
-            builder.memory_type(memory_type);
-            builder.prebind((&*image).into());
-            builder.build().unwrap()
-        };
+        let heap = device.global_heap(memory_type);
 
         println!("    - Allocating a storage for the image");
-        heap.bind((&*image).into())
-            .expect("'bind' failed")
-            .expect("allocation failed");
-
-        println!("    - Creating an image view");
-        {
-            let image_view = device.build_image_view().image(&*image).build().unwrap();
-            utils::UniqueImageView::new(device, image_view);
-        }
+        assert!(
+            heap.bind((&image).into()).expect("'bind' failed"),
+            "allocation failed"
+        );
 
         println!("  - Recreating a image");
-        image = utils::UniqueImage::new(device, builder.build().unwrap());
+        image = builder.build().unwrap();
     }
 }
 

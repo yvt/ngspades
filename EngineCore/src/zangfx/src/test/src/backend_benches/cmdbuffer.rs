@@ -3,9 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use test::Bencher;
 use super::{utils, BenchDriver};
-use gfx::prelude::*;
+use include_data::include_data;
+use test::Bencher;
+use zangfx_base::prelude::*;
 
 static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
@@ -23,9 +24,7 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
             .build()
             .unwrap();
 
-        let mut pool = queue.new_cmd_pool().unwrap();
-
-        let mut cb_ring: Vec<Box<FnMut()>> = (0..5).map(|_| Box::new(|| {}) as _).collect();
+        let mut cb_ring: Vec<Box<dyn FnMut()>> = (0..5).map(|_| Box::new(|| {}) as _).collect();
 
         b.iter(|| {
             device.autorelease_pool_scope_core(&mut |arp| {
@@ -38,7 +37,7 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
 
                     let mut awaiters: Vec<_> = (0..num_cbs)
                         .map(|_| {
-                            let mut buffer = pool.begin_cmd_buffer().unwrap();
+                            let mut buffer = queue.new_cmd_buffer().unwrap();
                             {
                                 let e = buffer.encode_compute();
                                 e.bind_pipeline(&pipeline);
@@ -71,12 +70,4 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
 
 pub fn cb_throughput_100<T: BenchDriver>(driver: T, b: &mut Bencher) {
     cb_throughput(driver, b, 10);
-}
-
-pub fn cb_throughput_200<T: BenchDriver>(driver: T, b: &mut Bencher) {
-    cb_throughput(driver, b, 20);
-}
-
-pub fn cb_throughput_400<T: BenchDriver>(driver: T, b: &mut Bencher) {
-    cb_throughput(driver, b, 40);
 }

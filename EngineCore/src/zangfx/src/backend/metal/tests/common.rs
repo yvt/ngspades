@@ -8,13 +8,16 @@ extern crate zangfx_metal as backend;
 #[macro_use]
 extern crate zangfx_test;
 
+use std::sync::Arc;
+
 use base::prelude::*;
 
 struct TestDriver;
 
 impl zangfx_test::backend_tests::TestDriver for TestDriver {
-    fn for_each_device(&self, runner: &mut FnMut(&base::device::Device)) {
+    fn for_each_device(&self, runner: &mut FnMut(&base::DeviceRef)) {
         let device = unsafe { backend::device::Device::new_system_default().unwrap() };
+        let device: base::DeviceRef = Arc::new(device);
         device.autorelease_pool_scope(|_| {
             runner(&device);
         });

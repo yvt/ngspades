@@ -18,18 +18,18 @@
 //!    have to signal `VkEvent`s in a render pass.
 //!  - Fences still determine the execution ordering of command buffers.
 //!
-use ash::vk;
 use ash::version::*;
-use tokenlock::{TokenLock, TokenRef};
+use ash::vk;
 use refeq::RefEqArc;
 
-use base;
-use common::Result;
-use device::DeviceRef;
-use limits::DeviceTrait;
+use zangfx_base as base;
+use zangfx_base::{zangfx_impl_handle, Result};
 
-use utils::translate_generic_error_unwrap;
-use cmd::queue::Item;
+use crate::cmd::queue::Item;
+use crate::device::DeviceRef;
+use crate::limits::DeviceTrait;
+use crate::resstate;
+use crate::utils::translate_generic_error_unwrap;
 
 // TODO: recycle fences after use
 
@@ -39,40 +39,55 @@ pub struct Fence {
     data: RefEqArc<FenceData>,
 }
 
-zangfx_impl_handle! { Fence, base::Fence }
+zangfx_impl_handle! { Fence, base::FenceRef }
 
 #[derive(Debug)]
 struct FenceData {
     device: DeviceRef,
     vk_event: vk::Event,
-    schedule: TokenLock<FenceScheduleData>,
+    tracked_state: resstate::TrackedState<FenceScheduleData>,
 }
 
 #[derive(Debug)]
-pub(super) struct FenceScheduleData {
-    pub signaled: bool,
-    pub waiting: Option<Box<Item>>,
+crate struct FenceScheduleData {
+    /*
+     * Command buffer scheduling - These fields are used by the scheduler to
+     * determine the order in which command buffers are executed
+     */
+    /// Indicates whether this fence is signaled.
+    crate signaled: bool,
+
+    /// Command queue items waiting for this fence to be signaled.
+    crate waiting: Option<Box<Item>>,
+
+    /*
+     * Command buffer patching - This field is used after the ommand buffer
+     * execution order is determined.
+     */
+    /// If this fence has been signaled, this field indicates the source access
+    /// type flags.
+    crate src_access: Option<base::AccessTypeFlags>,
 }
 
 impl Fence {
-    pub(crate) unsafe fn new(device: DeviceRef, token_ref: TokenRef) -> Result<Self> {
+    crate unsafe fn new(device: DeviceRef, queue_id: resstate::QueueId) -> Result<Self> {
         let info = vk::EventCreateInfo {
             s_type: vk::StructureType::EventCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::EventCreateFlags::empty(),
         };
 
-        let vk_device: &::AshDevice = device.vk_device();
         let mut vk_event = vk::Event::null();
 
         // Skip all event operations on MoltenVK -- Events are not supported.
         // It'll (probably) work without them thanks to Metal's automatic memory
         // barriers anyway.
         if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
+            let vk_device: &crate::AshDevice = device.vk_device();
             match vk_device.fp_v1_0().create_event(
                 vk_device.handle(),
                 &info,
-                ::null(),
+                crate::null(),
                 &mut vk_event,
             ) {
                 vk::Result::Success => {}
@@ -84,11 +99,12 @@ impl Fence {
             data: RefEqArc::new(FenceData {
                 device,
                 vk_event,
-                schedule: TokenLock::new(
-                    token_ref,
+                tracked_state: resstate::TrackedState::new(
+                    queue_id,
                     FenceScheduleData {
                         signaled: false,
                         waiting: None,
+                        src_access: None,
                     },
                 ),
             }),
@@ -98,9 +114,13 @@ impl Fence {
     pub fn vk_event(&self) -> vk::Event {
         self.data.vk_event
     }
+}
 
-    pub(super) fn schedule_data(&self) -> &TokenLock<FenceScheduleData> {
-        &self.data.schedule
+impl resstate::Resource for Fence {
+    type State = FenceScheduleData;
+
+    fn tracked_state(&self) -> &resstate::TrackedState<Self::State> {
+        &self.data.tracked_state
     }
 }
 
@@ -108,11 +128,11 @@ impl Drop for FenceData {
     fn drop(&mut self) {
         let ref device = self.device;
         if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
-            let vk_device: &::AshDevice = self.device.vk_device();
+            let vk_device: &crate::AshDevice = self.device.vk_device();
             unsafe {
                 vk_device
                     .fp_v1_0()
-                    .destroy_event(vk_device.handle(), self.vk_event, ::null());
+                    .destroy_event(vk_device.handle(), self.vk_event, crate::null());
             }
         }
     }

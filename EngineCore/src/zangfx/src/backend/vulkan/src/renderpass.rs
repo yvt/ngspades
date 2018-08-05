@@ -4,18 +4,21 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `RenderPass` for Vulkan.
-use ash::vk;
 use ash::version::*;
+use ash::vk;
 use refeq::RefEqArc;
 
-use base;
-use common::{Error, ErrorKind, IntoWithPad, Result};
-use device::DeviceRef;
-use formats::translate_image_format;
-use image::Image;
+use crate::device::DeviceRef;
+use crate::formats::translate_image_format;
+use crate::image::{Image, IMAGE_LAYOUT_COLOR_ATTACHMENT, IMAGE_LAYOUT_DS_ATTACHMENT};
+use zangfx_base as base;
+use zangfx_base::Result;
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_common::IntoWithPad;
 
-use utils::{translate_access_type_flags, translate_generic_error_unwrap, translate_image_layout,
-            translate_pipeline_stage_flags};
+use crate::utils::{
+    translate_access_type_flags, translate_generic_error_unwrap, translate_pipeline_stage_flags,
+};
 
 /// Implementation of `RenderPassBuilder` for Vulkan.
 #[derive(Debug)]
@@ -33,10 +36,10 @@ pub struct RenderPassBuilder {
     depth_stencil_attachment: Option<vk::AttachmentReference>,
 }
 
-zangfx_impl_object! { RenderPassBuilder: base::RenderPassBuilder, ::Debug }
+zangfx_impl_object! { RenderPassBuilder: dyn base::RenderPassBuilder, dyn (crate::Debug) }
 
 impl RenderPassBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
             targets: Vec::new(),
@@ -49,7 +52,7 @@ impl RenderPassBuilder {
 }
 
 impl base::RenderPassBuilder for RenderPassBuilder {
-    fn target(&mut self, index: base::RenderPassTargetIndex) -> &mut base::RenderPassTarget {
+    fn target(&mut self, index: base::RenderPassTargetIndex) -> &mut dyn base::RenderPassTarget {
         if self.targets.len() <= index {
             self.targets.resize(index + 1, None);
         }
@@ -57,24 +60,13 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         self.targets[index].as_mut().unwrap()
     }
 
-    fn end(&mut self) -> &mut base::RenderPassBuilder {
-        self.subpass = vk::VK_SUBPASS_EXTERNAL;
-        self
-    }
-
     fn subpass_dep(
         &mut self,
-        from: Option<base::SubpassIndex>,
+        from: base::SubpassIndex,
         src_access: base::AccessTypeFlags,
         dst_access: base::AccessTypeFlags,
-    ) -> &mut base::RenderPassBuilder {
-        let from = if let Some(from) = from {
-            from as u32
-        } else {
-            vk::VK_SUBPASS_EXTERNAL
-        };
-
-        assert_ne!(from, self.subpass);
+    ) -> &mut dyn base::RenderPassBuilder {
+        let from = from as u32;
 
         let src_access_mask = translate_access_type_flags(src_access);
         let dst_access_mask = translate_access_type_flags(dst_access);
@@ -98,19 +90,16 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         self
     }
 
-    fn subpass_color_targets(
-        &mut self,
-        targets: &[Option<(base::RenderPassTargetIndex, base::ImageLayout)>],
-    ) -> &mut base::RenderPassBuilder {
+    fn subpass_color_targets(&mut self, targets: &[Option<base::RenderPassTargetIndex>]) {
         assert_eq!(self.subpass, 0);
 
         self.color_attachments.clear();
         self.color_attachments
             .extend(targets.iter().map(|maybe_target| {
-                if let &Some((i, layout)) = maybe_target {
+                if let &Some(i) = maybe_target {
                     vk::AttachmentReference {
                         attachment: i as u32,
-                        layout: translate_image_layout(layout, false),
+                        layout: IMAGE_LAYOUT_COLOR_ATTACHMENT,
                     }
                 } else {
                     vk::AttachmentReference {
@@ -119,25 +108,18 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                     }
                 }
             }));
-
-        self
     }
 
-    fn subpass_ds_target(
-        &mut self,
-        target: Option<(base::RenderPassTargetIndex, base::ImageLayout)>,
-    ) -> &mut base::RenderPassBuilder {
+    fn subpass_ds_target(&mut self, target: Option<base::RenderPassTargetIndex>) {
         assert_eq!(self.subpass, 0);
 
-        self.depth_stencil_attachment = target.map(|(i, layout)| vk::AttachmentReference {
+        self.depth_stencil_attachment = target.map(|i| vk::AttachmentReference {
             attachment: i as u32,
-            layout: translate_image_layout(layout, true),
+            layout: IMAGE_LAYOUT_DS_ATTACHMENT,
         });
-
-        self
     }
 
-    fn build(&mut self) -> Result<base::RenderPass> {
+    fn build(&mut self) -> Result<base::RenderPassRef> {
         let vk_device = self.device.vk_device();
 
         let vk_subpass = vk::SubpassDescription {
@@ -148,7 +130,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             color_attachment_count: self.color_attachments.len() as u32,
             p_color_attachments: self.color_attachments.as_ptr(),
             p_resolve_attachments: ::null(),
-            p_depth_stencil_attachment: self.depth_stencil_attachment
+            p_depth_stencil_attachment: self
+                .depth_stencil_attachment
                 .as_ref()
                 .map(|x| x as *const _)
                 .unwrap_or(::null()),
@@ -156,14 +139,19 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             p_preserve_attachments: ::null(),
         };
 
-        let vk_attachments: Vec<_> = self.targets
+        let vk_attachments: Vec<_> = self
+            .targets
             .iter()
             .map(|target| {
                 target
                     .as_ref()
                     .expect("render target bindings must be tightly arranged")
                     .vk_desc()
-            })
+            }).collect();
+
+        let attachment_layouts: Vec<_> = vk_attachments
+            .iter()
+            .map(|vk_a| [vk_a.initial_layout, vk_a.final_layout])
             .collect();
 
         let vk_info = vk::RenderPassCreateInfo {
@@ -184,10 +172,14 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         let vk_render_pass = unsafe { vk_device.create_render_pass(&vk_info, None) }
             .map_err(translate_generic_error_unwrap)?;
 
-        Ok(
-            unsafe { RenderPass::from_raw(self.device, vk_render_pass, num_color_attachments) }
-                .into(),
-        )
+        Ok(unsafe {
+            RenderPass::from_raw(
+                self.device.clone(),
+                vk_render_pass,
+                num_color_attachments,
+                attachment_layouts,
+            )
+        }.into())
     }
 }
 
@@ -195,11 +187,9 @@ impl base::RenderPassBuilder for RenderPassBuilder {
 struct RenderPassTargetBuilder {
     vk_desc: vk::AttachmentDescription,
     format: base::ImageFormat,
-    initial_layout: base::ImageLayout,
-    final_layout: base::ImageLayout,
 }
 
-zangfx_impl_object! { RenderPassTargetBuilder: base::RenderPassTarget, ::Debug }
+zangfx_impl_object! { RenderPassTargetBuilder: dyn base::RenderPassTarget, dyn (crate::Debug) }
 
 impl RenderPassTargetBuilder {
     fn new() -> Self {
@@ -217,8 +207,6 @@ impl RenderPassTargetBuilder {
             },
             // No default value is defined for `format`
             format: base::ImageFormat::RFloat32,
-            initial_layout: base::ImageLayout::Undefined,
-            final_layout: base::ImageLayout::ShaderRead,
         }
     }
 
@@ -227,48 +215,46 @@ impl RenderPassTargetBuilder {
 
         let format = self.format;
         let is_depth_stencil = format.has_depth() || format.has_stencil();
-        vk_desc.initial_layout = translate_image_layout(self.initial_layout, is_depth_stencil);
-        vk_desc.final_layout = translate_image_layout(self.final_layout, is_depth_stencil);
+
+        let render_layout = if is_depth_stencil {
+            IMAGE_LAYOUT_DS_ATTACHMENT
+        } else {
+            IMAGE_LAYOUT_COLOR_ATTACHMENT
+        };
+
+        vk_desc.initial_layout = if vk_desc.load_op == vk::AttachmentLoadOp::Load {
+            render_layout
+        } else {
+            vk::ImageLayout::Undefined
+        };
+        vk_desc.final_layout = render_layout;
 
         vk_desc
     }
 }
 
 impl base::RenderPassTarget for RenderPassTargetBuilder {
-    fn set_format(&mut self, v: base::ImageFormat) -> &mut base::RenderPassTarget {
+    fn set_format(&mut self, v: base::ImageFormat) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.format = translate_image_format(v).expect("unsupported format");
         self
     }
 
-    fn set_load_op(&mut self, v: base::LoadOp) -> &mut base::RenderPassTarget {
+    fn set_load_op(&mut self, v: base::LoadOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.load_op = translate_load_op(v);
         self
     }
-    fn set_store_op(&mut self, v: base::StoreOp) -> &mut base::RenderPassTarget {
+    fn set_store_op(&mut self, v: base::StoreOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.store_op = translate_store_op(v);
         self
     }
 
-    fn set_stencil_load_op(&mut self, v: base::LoadOp) -> &mut base::RenderPassTarget {
+    fn set_stencil_load_op(&mut self, v: base::LoadOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.stencil_load_op = translate_load_op(v);
         self
     }
 
-    fn set_stencil_store_op(&mut self, v: base::StoreOp) -> &mut base::RenderPassTarget {
+    fn set_stencil_store_op(&mut self, v: base::StoreOp) -> &mut dyn base::RenderPassTarget {
         self.vk_desc.stencil_store_op = translate_store_op(v);
-        self
-    }
-
-    fn set_initial_layout(&mut self, v: base::ImageLayout) -> &mut base::RenderPassTarget {
-        // The actual layout cannot be decided without knowing whether the image
-        // has the depth/stencil format.
-        self.initial_layout = v;
-        self
-    }
-    fn set_final_layout(&mut self, v: base::ImageLayout) -> &mut base::RenderPassTarget {
-        // The actual layout cannot be decided without knowing whether the image
-        // has the depth/stencil format.
-        self.final_layout = v;
         self
     }
 }
@@ -294,13 +280,14 @@ pub struct RenderPass {
     data: RefEqArc<RenderPassData>,
 }
 
-zangfx_impl_handle! { RenderPass, base::RenderPass }
+zangfx_impl_handle! { RenderPass, base::RenderPassRef }
 
 #[derive(Debug)]
 struct RenderPassData {
     device: DeviceRef,
     vk_render_pass: vk::RenderPass,
     num_color_attachments: usize,
+    attachment_layouts: Vec<[vk::ImageLayout; 2]>,
 }
 
 impl RenderPass {
@@ -308,12 +295,14 @@ impl RenderPass {
         device: DeviceRef,
         vk_render_pass: vk::RenderPass,
         num_color_attachments: usize,
+        attachment_layouts: Vec<[vk::ImageLayout; 2]>,
     ) -> Self {
         Self {
             data: RefEqArc::new(RenderPassData {
                 device,
                 vk_render_pass,
                 num_color_attachments,
+                attachment_layouts,
             }),
         }
     }
@@ -322,8 +311,12 @@ impl RenderPass {
         self.data.vk_render_pass
     }
 
-    pub(crate) fn num_color_attachments(&self, _subpass: usize) -> usize {
+    crate fn num_color_attachments(&self, _subpass: usize) -> usize {
         self.data.num_color_attachments
+    }
+
+    crate fn attachment_layouts(&self) -> &[[vk::ImageLayout; 2]] {
+        &self.data.attachment_layouts
     }
 }
 
@@ -332,47 +325,6 @@ impl Drop for RenderPassData {
         let vk_device = self.device.vk_device();
         unsafe {
             vk_device.destroy_render_pass(self.vk_render_pass, None);
-        }
-    }
-}
-
-/// Image views that are destroyed automatically.
-#[derive(Debug)]
-struct UniqueImageViews {
-    device: DeviceRef,
-    image_views: Vec<vk::ImageView>,
-}
-
-impl UniqueImageViews {
-    unsafe fn with_capacity(device: DeviceRef, capacity: usize) -> Self {
-        Self {
-            device,
-            image_views: Vec::with_capacity(capacity),
-        }
-    }
-}
-
-impl ::Deref for UniqueImageViews {
-    type Target = Vec<vk::ImageView>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.image_views
-    }
-}
-
-impl ::DerefMut for UniqueImageViews {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.image_views
-    }
-}
-
-impl Drop for UniqueImageViews {
-    fn drop(&mut self) {
-        let vk_device = self.device.vk_device();
-        for image_view in self.image_views.drain(..) {
-            unsafe {
-                vk_device.destroy_image_view(image_view, None);
-            }
         }
     }
 }
@@ -388,7 +340,7 @@ pub struct RenderTargetTableBuilder {
     targets: Vec<Option<Target>>,
 }
 
-zangfx_impl_object! { RenderTargetTableBuilder: base::RenderTargetTableBuilder, ::Debug }
+zangfx_impl_object! { RenderTargetTableBuilder: dyn base::RenderTargetTableBuilder, dyn (crate::Debug) }
 
 /// Implementation of `RenderTarget` for Vulkan.
 #[derive(Debug, Clone)]
@@ -399,10 +351,10 @@ struct Target {
     clear_value: ClearValue,
 }
 
-zangfx_impl_object! { Target: base::RenderTarget, ::Debug }
+zangfx_impl_object! { Target: dyn base::RenderTarget, dyn (crate::Debug) }
 
 impl RenderTargetTableBuilder {
-    pub(super) unsafe fn new(device: DeviceRef) -> Self {
+    crate fn new(device: DeviceRef) -> Self {
         Self {
             device,
 
@@ -415,18 +367,18 @@ impl RenderTargetTableBuilder {
 }
 
 impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
-    fn render_pass(&mut self, v: &base::RenderPass) -> &mut base::RenderTargetTableBuilder {
+    fn render_pass(&mut self, v: &base::RenderPassRef) -> &mut dyn base::RenderTargetTableBuilder {
         let our_rp: &RenderPass = v.downcast_ref().expect("bad render pass type");
         self.render_pass = Some(our_rp.clone());
         self
     }
 
-    fn extents(&mut self, v: &[u32]) -> &mut base::RenderTargetTableBuilder {
+    fn extents(&mut self, v: &[u32]) -> &mut dyn base::RenderTargetTableBuilder {
         self.extents = Some(v.into_with_pad(1));
         self
     }
 
-    fn num_layers(&mut self, v: u32) -> &mut base::RenderTargetTableBuilder {
+    fn num_layers(&mut self, v: u32) -> &mut dyn base::RenderTargetTableBuilder {
         self.num_layers = v;
         self
     }
@@ -434,8 +386,8 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
     fn target(
         &mut self,
         index: base::RenderPassTargetIndex,
-        view: &base::Image,
-    ) -> &mut base::RenderTarget {
+        view: &base::ImageRef,
+    ) -> &mut dyn base::RenderTarget {
         use std::mem::uninitialized;
         if self.targets.len() <= index {
             self.targets.resize(index + 1, None);
@@ -452,51 +404,31 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         self.targets[index].as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<base::RenderTargetTable> {
-        let render_pass: RenderPass = self.render_pass
-            .clone()
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "render_pass"))?;
-        let extents = self.extents
-            .ok_or_else(|| Error::with_detail(ErrorKind::InvalidUsage, "extents"))?;
+    fn build(&mut self) -> Result<base::RenderTargetTableRef> {
+        let render_pass: RenderPass = self.render_pass.clone().expect("render_pass");
+        let extents = self.extents.expect("extents");
 
         let vk_device = self.device.vk_device();
 
-        let mut image_views =
-            unsafe { UniqueImageViews::with_capacity(self.device, self.targets.len()) };
-        for target in self.targets.iter() {
-            let target = target.as_ref().unwrap();
+        let images: Vec<_> = self
+            .targets
+            .iter()
+            .map(|target| {
+                let target = target.as_ref().expect("target");
 
-            let flags = vk::ImageViewCreateFlags::empty();
-            // flags: "reserved for future use"
+                let image = (&target.image as &dyn base::Image)
+                    .build_image_view()
+                    .subrange(&base::ImageSubRange {
+                        layers: Some(target.layer..target.layer + self.num_layers),
+                        mip_levels: Some(target.mip_level..target.mip_level + 1),
+                    }).image_type(base::ImageType::TwoDArray)
+                    .build()?;
 
-            let image: &Image = &target.image;
+                let our_image: &Image = image.downcast_ref().unwrap();
+                Ok(our_image.clone())
+            }).collect::<Result<_>>()?;
 
-            let vk_image_view_info = vk::ImageViewCreateInfo {
-                s_type: vk::StructureType::ImageViewCreateInfo,
-                p_next: ::null(),
-                flags,
-                image: image.vk_image(),
-                view_type: vk::ImageViewType::Type2dArray,
-                format: image.meta().format(),
-                components: vk::ComponentMapping {
-                    r: vk::ComponentSwizzle::Identity,
-                    g: vk::ComponentSwizzle::Identity,
-                    b: vk::ComponentSwizzle::Identity,
-                    a: vk::ComponentSwizzle::Identity,
-                },
-                subresource_range: vk::ImageSubresourceRange {
-                    aspect_mask: image.meta().image_aspects(),
-                    base_mip_level: target.mip_level,
-                    base_array_layer: target.layer,
-                    level_count: 1,
-                    layer_count: self.num_layers,
-                },
-            };
-
-            let vk_image_view = unsafe { vk_device.create_image_view(&vk_image_view_info, None) }
-                .map_err(translate_generic_error_unwrap)?;
-            image_views.push(vk_image_view);
-        }
+        let image_views: Vec<_> = images.iter().map(|image| image.vk_image_view()).collect();
 
         let render_area = vk::Rect2D {
             offset: vk::Offset2D { x: 0, y: 0 },
@@ -506,7 +438,8 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
             },
         };
 
-        let clear_values = self.targets
+        let clear_values = self
+            .targets
             .iter()
             .map(|target| target.as_ref().unwrap().clear_value.clone())
             .collect();
@@ -528,10 +461,10 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 
         Ok(unsafe {
             RenderTargetTable::from_raw(
-                self.device,
+                self.device.clone(),
                 vk_framebuffer,
                 render_pass,
-                image_views,
+                images,
                 render_area,
                 clear_values,
             )
@@ -540,38 +473,38 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 }
 
 impl base::RenderTarget for Target {
-    fn mip_level(&mut self, v: u32) -> &mut base::RenderTarget {
+    fn mip_level(&mut self, v: u32) -> &mut dyn base::RenderTarget {
         self.mip_level = v;
         self
     }
 
-    fn layer(&mut self, v: u32) -> &mut base::RenderTarget {
+    fn layer(&mut self, v: u32) -> &mut dyn base::RenderTarget {
         self.layer = v;
         self
     }
 
-    fn clear_float(&mut self, v: &[f32]) -> &mut base::RenderTarget {
+    fn clear_float(&mut self, v: &[f32]) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.color.float32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
-    fn clear_uint(&mut self, v: &[u32]) -> &mut base::RenderTarget {
+    fn clear_uint(&mut self, v: &[u32]) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.color.uint32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
-    fn clear_sint(&mut self, v: &[i32]) -> &mut base::RenderTarget {
+    fn clear_sint(&mut self, v: &[i32]) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.color.int32.copy_from_slice(&v[0..4]);
         }
         self
     }
 
-    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut base::RenderTarget {
+    fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut dyn base::RenderTarget {
         unsafe {
             self.clear_value.0.depth.depth = depth;
             self.clear_value.0.depth.stencil = stencil;
@@ -586,7 +519,7 @@ pub struct RenderTargetTable {
     data: RefEqArc<RenderTargetTableData>,
 }
 
-zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTable }
+zangfx_impl_handle! { RenderTargetTable, base::RenderTargetTableRef }
 
 #[derive(Debug)]
 struct RenderTargetTableData {
@@ -594,7 +527,7 @@ struct RenderTargetTableData {
     vk_framebuffer: vk::Framebuffer,
     render_pass: RenderPass,
     /// Contains the attachments of the framebuffer.
-    image_views: UniqueImageViews,
+    images: Vec<Image>,
     render_area: vk::Rect2D,
     clear_values: Vec<ClearValue>,
 }
@@ -604,7 +537,7 @@ impl RenderTargetTable {
         device: DeviceRef,
         vk_framebuffer: vk::Framebuffer,
         render_pass: RenderPass,
-        image_views: UniqueImageViews,
+        images: Vec<Image>,
         render_area: vk::Rect2D,
         clear_values: Vec<ClearValue>,
     ) -> Self {
@@ -613,7 +546,7 @@ impl RenderTargetTable {
                 device,
                 vk_framebuffer,
                 render_pass,
-                image_views,
+                images,
                 render_area,
                 clear_values,
             }),
@@ -624,15 +557,15 @@ impl RenderTargetTable {
         self.data.vk_framebuffer
     }
 
-    pub(crate) fn render_pass(&self) -> &RenderPass {
+    crate fn render_pass(&self) -> &RenderPass {
         &self.data.render_pass
     }
 
-    pub(crate) fn render_area(&self) -> &vk::Rect2D {
+    crate fn render_area(&self) -> &vk::Rect2D {
         &self.data.render_area
     }
 
-    pub(crate) fn render_pass_begin_info(&self) -> vk::RenderPassBeginInfo {
+    crate fn render_pass_begin_info(&self) -> vk::RenderPassBeginInfo {
         vk::RenderPassBeginInfo {
             s_type: vk::StructureType::RenderPassBeginInfo,
             p_next: ::null(),
@@ -642,6 +575,10 @@ impl RenderTargetTable {
             clear_value_count: self.data.clear_values.len() as u32,
             p_clear_values: self.data.clear_values.as_ptr() as *const _,
         }
+    }
+
+    crate fn images(&self) -> &[Image] {
+        &self.data.images
     }
 }
 
@@ -659,8 +596,9 @@ impl Drop for RenderTargetTableData {
 #[repr(C)]
 struct ClearValue(vk::ClearValue);
 
-impl ::Debug for ClearValue {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+use std::fmt;
+impl fmt::Debug for ClearValue {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[derive(Debug)]
         struct Values {
             float32: [f32; 4],
@@ -676,7 +614,6 @@ impl ::Debug for ClearValue {
                     int32: self.0.color.int32,
                     depth_stencil: self.0.depth,
                 }
-            })
-            .finish()
+            }).finish()
     }
 }

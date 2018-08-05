@@ -4,30 +4,29 @@
 // This source code is a part of Nightingales.
 //
 //! Implementation of `ArgTableSig` for Metal.
-use metal;
-use cocoa::foundation::NSArray;
+use arrayvec::ArrayVec;
 use cocoa::base::nil;
+use cocoa::foundation::NSArray;
 use parking_lot::Mutex;
 use std::sync::Arc;
-use arrayvec::ArrayVec;
+use zangfx_metal_rs as metal;
 
-use base::{self, arg, device, handles, shader, ArgArrayIndex, ArgIndex};
-use common::Result;
+use zangfx_base::Result;
+use zangfx_base::{self as base, arg, device, shader, ArgArrayIndex, ArgIndex};
+use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
 
-use arg::ArgSize;
-use utils::{nil_error, OCPtr};
-use spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl};
+use crate::arg::ArgSize;
+use crate::utils::{nil_error, OCPtr};
+use zangfx_spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl};
 
 /// Implementation of `ArgTableSigBuilder` for Metal.
 #[derive(Debug)]
 pub struct ArgTableSigBuilder {
-    /// A reference to a `MTLDevice`. We are not required to maintain a strong
-    /// reference. (See the base interface's documentation)
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     args: Vec<Option<ArgSigBuilder>>,
 }
 
-zangfx_impl_object! { ArgTableSigBuilder: arg::ArgTableSigBuilder, ::Debug }
+zangfx_impl_object! { ArgTableSigBuilder: dyn arg::ArgTableSigBuilder, dyn crate::Debug }
 
 unsafe impl Send for ArgTableSigBuilder {}
 unsafe impl Sync for ArgTableSigBuilder {}
@@ -39,15 +38,15 @@ struct ArgSigBuilder {
     image_aspect: base::ImageAspect,
 }
 
-zangfx_impl_object! { ArgSigBuilder: arg::ArgSig, ::Debug }
+zangfx_impl_object! { ArgSigBuilder: dyn arg::ArgSig, dyn crate::Debug }
 
 impl ArgTableSigBuilder {
     /// Construct an `ArgTableSigBuilder`.
     ///
-    /// Ir's up to the caller to maintain the lifetime of `metal_device`.
+    /// It's up to the caller to make sure `metal_device` is valid.
     pub unsafe fn new(metal_device: metal::MTLDevice) -> Self {
         Self {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             args: Vec::new(),
         }
     }
@@ -56,7 +55,7 @@ impl ArgTableSigBuilder {
     /// argument buffer. Not optimized because the intention is that
     /// `ArgLayoutInfo` is computed only once for each `Device` created.
     pub(super) fn encoded_size(&mut self) -> Result<ArgSize> {
-        use base::arg::ArgTableSigBuilder;
+        use zangfx_base::arg::ArgTableSigBuilder;
         let gfx_sig = self.build()?;
         let sig: &ArgTableSig = gfx_sig.downcast_ref().unwrap();
         let size = sig.encoded_size();
@@ -66,7 +65,7 @@ impl ArgTableSigBuilder {
 }
 
 impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
-    fn arg(&mut self, index: ArgIndex, ty: arg::ArgType) -> &mut arg::ArgSig {
+    fn arg(&mut self, index: ArgIndex, ty: arg::ArgType) -> &mut dyn arg::ArgSig {
         if self.args.len() <= index {
             self.args.resize(index + 1, None);
         }
@@ -76,7 +75,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
         self.args[index].as_mut().unwrap()
     }
 
-    fn build(&mut self) -> Result<handles::ArgTableSig> {
+    fn build(&mut self) -> Result<arg::ArgTableSigRef> {
         let mut metal_args = Vec::with_capacity(self.args.len());
         let mut arg_sigs = Vec::with_capacity(self.args.len());
         let mut current_index = 0usize;
@@ -97,7 +96,7 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
                 metal_desc.set_index(current_index as _);
                 metal_desc.set_array_length(arg_sig_builder.len as _);
 
-                use base::arg::ArgType::*;
+                use zangfx_base::arg::ArgType::*;
                 match arg_sig_builder.ty {
                     StorageImage | SampledImage => {
                         metal_desc.set_data_type(metal::MTLDataType::Texture);
@@ -130,8 +129,8 @@ impl arg::ArgTableSigBuilder for ArgTableSigBuilder {
             OCPtr::new(transmute(ns_array)).ok_or_else(|| nil_error("NSArray arrayWithObjects"))?
         };
 
-        unsafe { ArgTableSig::new(self.metal_device, metal_args_array, arg_sigs) }
-            .map(handles::ArgTableSig::new)
+        unsafe { ArgTableSig::new(*self.metal_device, metal_args_array, arg_sigs) }
+            .map(arg::ArgTableSigRef::new)
     }
 }
 
@@ -146,16 +145,16 @@ impl ArgSigBuilder {
 }
 
 impl arg::ArgSig for ArgSigBuilder {
-    fn set_len(&mut self, x: ArgArrayIndex) -> &mut arg::ArgSig {
+    fn set_len(&mut self, x: ArgArrayIndex) -> &mut dyn arg::ArgSig {
         self.len = x as _;
         self
     }
 
-    fn set_stages(&mut self, _: shader::ShaderStageFlags) -> &mut arg::ArgSig {
+    fn set_stages(&mut self, _: shader::ShaderStageFlags) -> &mut dyn arg::ArgSig {
         self
     }
 
-    fn set_image_aspect(&mut self, v: base::ImageAspect) -> &mut arg::ArgSig {
+    fn set_image_aspect(&mut self, v: base::ImageAspect) -> &mut dyn arg::ArgSig {
         self.image_aspect = v;
         self
     }
@@ -170,11 +169,11 @@ pub struct ArgTableSig {
 unsafe impl Send for ArgTableSig {}
 unsafe impl Sync for ArgTableSig {}
 
-zangfx_impl_handle! { ArgTableSig, handles::ArgTableSig }
+zangfx_impl_handle! { ArgTableSig, arg::ArgTableSigRef }
 
 #[derive(Debug)]
 struct ArgTableSigData {
-    metal_device: metal::MTLDevice,
+    metal_device: OCPtr<metal::MTLDevice>,
     args: Vec<Option<ArgSig>>,
     metal_args_array: OCPtr<metal::NSArray<metal::MTLArgumentDescriptor>>,
 
@@ -215,7 +214,7 @@ impl ArgTableSig {
         let metal_arg_encoder = new_metal_arg_encoder(metal_device, *metal_args_array)?;
 
         let data = ArgTableSigData {
-            metal_device,
+            metal_device: OCPtr::new(metal_device).expect("nil device"),
             args,
             metal_args_array,
             size: metal_arg_encoder.encoded_length() as ArgSize,
@@ -239,7 +238,7 @@ impl ArgTableSig {
             Ok(cb(&encoder))
         } else {
             let metal_arg_encoder = unsafe {
-                new_metal_arg_encoder(self.data.metal_device, *self.data.metal_args_array)?
+                new_metal_arg_encoder(*self.data.metal_device, *self.data.metal_args_array)?
             };
             Ok(cb(&metal_arg_encoder))
         }
@@ -255,16 +254,19 @@ impl ArgTableSig {
 
     pub(crate) fn update_arg_tables(
         &self,
-        updates: &[(&handles::ArgTable, &[device::ArgUpdateSet])],
+        updates: &[(
+            (&arg::ArgPoolRef, &arg::ArgTableRef),
+            &[device::ArgUpdateSet<'_>],
+        )],
     ) -> Result<()> {
-        use base::handles::ArgSlice::*;
-        use arg::table::ArgTable;
-        use buffer::Buffer;
-        use image::ImageView;
-        use sampler::Sampler;
+        use crate::arg::table::ArgTable;
+        use crate::buffer::Buffer;
+        use crate::image::Image;
+        use crate::sampler::Sampler;
+        use zangfx_base::ArgSlice::*;
 
         self.lock_encoder(|encoder| {
-            for &(table, update_sets) in updates.iter() {
+            for &((_pool, table), update_sets) in updates.iter() {
                 let table: &ArgTable = table.downcast_ref().expect("bad argument table type");
                 encoder.set_argument_buffer(table.metal_buffer(), table.offset() as _);
 
@@ -278,10 +280,11 @@ impl ArgTableSig {
                     // into chunks and process each chunk on a fixed size
                     // stack-allocated array (`ArrayVec`).
                     match resources {
-                        ImageView(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
+                        Image(objs) => for objs in objs.chunks(64) {
+                            let metal_objs: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|obj| {
-                                    let my_obj: &ImageView =
+                                    let my_obj: &Image =
                                         obj.downcast_ref().expect("bad image view type");
                                     my_obj.metal_texture()
                                 })
@@ -293,7 +296,8 @@ impl ArgTableSig {
                         },
 
                         Buffer(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|&(_, obj)| {
                                     let my_obj: &Buffer =
                                         obj.downcast_ref().expect("bad buffer type");
@@ -303,7 +307,8 @@ impl ArgTableSig {
                                 })
                                 .collect();
 
-                            let offsets: ArrayVec<[_; 64]> = objs.iter()
+                            let offsets: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|&(ref range, obj)| {
                                     let my_obj: &Buffer =
                                         obj.downcast_ref().expect("bad buffer type");
@@ -322,7 +327,8 @@ impl ArgTableSig {
                         },
 
                         Sampler(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs.iter()
+                            let metal_objs: ArrayVec<[_; 64]> = objs
+                                .iter()
                                 .map(|obj| {
                                     let my_obj: &Sampler =
                                         obj.downcast_ref().expect("bad sampler type");

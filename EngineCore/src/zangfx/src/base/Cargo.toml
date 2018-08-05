@@ -1,7 +1,10 @@
+cargo-features = ["edition"]
+
 [package]
 name = "zangfx_base"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
 
 [dependencies]
 zangfx_common = { path = "../common" }
@@ -9,5 +12,5 @@ ngsenumflags = { path = "../../../support/ngsenumflags" }
 ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_derive" }
 itervalues = { path = "../../../support/itervalues" }
 itervalues_derive = { path = "../../../support/itervalues/itervalues_derive" }
-lazy_static = "1.0.1"
+lazy_static = "1.0.2"
 query_interface = "0.3.4"

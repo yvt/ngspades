@@ -16,7 +16,10 @@ use super::atomic_refcell::AtomicRefCell;
 use super::be::cmd::semaphore::Semaphore as BeSemaphore;
 use super::smartptr::{AutoPtr, UniqueFence};
 use super::utils::{translate_generic_error_unwrap, vk_device_from_gfx};
-use zangfx::{base as gfx, common::Result as GfxResult, prelude::*};
+use zangfx::{
+    base::{self as gfx, Result as GfxResult},
+    prelude::*,
+};
 
 pub type SurfaceId = super::SurfaceRef;
 
@@ -134,6 +137,12 @@ impl Drop for SwapchainManager {
                 vk_device.destroy_fence(swapchain.vk_fence, None);
             }
         }
+
+        for vk_fence in self.retired_fences.drain(..) {
+            unsafe {
+                vk_device.destroy_fence(vk_fence, None);
+            }
+        }
     }
 }
 
@@ -167,8 +176,7 @@ impl SwapchainManager {
                         // `self.update` called.
                         let _ = events_loop_proxy.wakeup();
                     }
-                })
-                .unwrap()
+                }).unwrap()
         };
 
         Self {
