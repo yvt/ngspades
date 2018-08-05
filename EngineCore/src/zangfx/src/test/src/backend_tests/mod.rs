@@ -54,48 +54,48 @@ pub trait TestDriver {
 #[macro_export]
 macro_rules! zangfx_generate_backend_tests {
     ($driver:expr) => {
-        zangfx_test_single! { create_device, $driver }
+        $crate::zangfx_test_single! { create_device, $driver }
 
-        zangfx_test_single! { arg_table_sig_create_image, $driver }
-        zangfx_test_single! { arg_table_sig_create_buffer, $driver }
-        zangfx_test_single! { arg_table_sig_create_sampler, $driver }
-        zangfx_test_single! { arg_table_image, $driver }
-        zangfx_test_single! { arg_table_buffer, $driver }
-        zangfx_test_single! { arg_table_sampler, $driver }
-        zangfx_test_single! { arg_table_mixed_read, $driver }
+        $crate::zangfx_test_single! { arg_table_sig_create_image, $driver }
+        $crate::zangfx_test_single! { arg_table_sig_create_buffer, $driver }
+        $crate::zangfx_test_single! { arg_table_sig_create_sampler, $driver }
+        $crate::zangfx_test_single! { arg_table_image, $driver }
+        $crate::zangfx_test_single! { arg_table_buffer, $driver }
+        $crate::zangfx_test_single! { arg_table_sampler, $driver }
+        $crate::zangfx_test_single! { arg_table_mixed_read, $driver }
 
-        zangfx_test_single! { cmdqueue_create, $driver }
-        zangfx_test_single! { #[should_panic] cmdqueue_create_fail_missing_queue_family, $driver }
-        zangfx_test_single! { cmdqueue_create_buffer, $driver }
-        zangfx_test_single! { cmdqueue_create_encoder, $driver }
-        zangfx_test_single! { cmdqueue_buffer_noop_completes, $driver }
-        zangfx_test_single! { cmdqueue_buffer_noop_completes_dropped_soon, $driver }
-        zangfx_test_single! { cmdqueue_buffer_noop_multiple_completes, $driver }
-        zangfx_test_single! { cmdqueue_buffer_fence_update_wait_completes, $driver }
+        $crate::zangfx_test_single! { cmdqueue_create, $driver }
+        $crate::zangfx_test_single! { #[should_panic] cmdqueue_create_fail_missing_queue_family, $driver }
+        $crate::zangfx_test_single! { cmdqueue_create_buffer, $driver }
+        $crate::zangfx_test_single! { cmdqueue_create_encoder, $driver }
+        $crate::zangfx_test_single! { cmdqueue_buffer_noop_completes, $driver }
+        $crate::zangfx_test_single! { cmdqueue_buffer_noop_completes_dropped_soon, $driver }
+        $crate::zangfx_test_single! { cmdqueue_buffer_noop_multiple_completes, $driver }
+        $crate::zangfx_test_single! { cmdqueue_buffer_fence_update_wait_completes, $driver }
 
-        zangfx_test_single! { heap_dynamic_create, $driver }
-        zangfx_test_single! { #[should_panic] heap_dynamic_create_fail_zero_size, $driver }
-        zangfx_test_single! { #[should_panic] heap_dynamic_create_fail_missing_memory_type, $driver }
-        zangfx_test_single! { heap_dynamic_alloc_buffer, $driver }
-        zangfx_test_single! { heap_dynamic_alloc_image, $driver }
-        zangfx_test_single! { #[should_panic] heap_dedicated_create_fail_zero_size, $driver }
-        zangfx_test_single! { #[should_panic] heap_dedicated_create_fail_missing_memory_type, $driver }
-        zangfx_test_single! { heap_dedicated_alloc_buffer, $driver }
-        zangfx_test_single! { heap_dedicated_alloc_image, $driver }
+        $crate::zangfx_test_single! { heap_dynamic_create, $driver }
+        $crate::zangfx_test_single! { #[should_panic] heap_dynamic_create_fail_zero_size, $driver }
+        $crate::zangfx_test_single! { #[should_panic] heap_dynamic_create_fail_missing_memory_type, $driver }
+        $crate::zangfx_test_single! { heap_dynamic_alloc_buffer, $driver }
+        $crate::zangfx_test_single! { heap_dynamic_alloc_image, $driver }
+        $crate::zangfx_test_single! { #[should_panic] heap_dedicated_create_fail_zero_size, $driver }
+        $crate::zangfx_test_single! { #[should_panic] heap_dedicated_create_fail_missing_memory_type, $driver }
+        $crate::zangfx_test_single! { heap_dedicated_alloc_buffer, $driver }
+        $crate::zangfx_test_single! { heap_dedicated_alloc_image, $driver }
 
-        zangfx_test_single! { image_all_formats, $driver }
-        zangfx_test_single! { image_all_types, $driver }
+        $crate::zangfx_test_single! { image_all_formats, $driver }
+        $crate::zangfx_test_single! { image_all_types, $driver }
 
-        zangfx_test_single! { sampler_create, $driver }
+        $crate::zangfx_test_single! { sampler_create, $driver }
 
-        zangfx_test_single! { copy_fill_buffer, $driver }
-        zangfx_test_single! { copy_copy_buffer, $driver }
+        $crate::zangfx_test_single! { copy_fill_buffer, $driver }
+        $crate::zangfx_test_single! { copy_copy_buffer, $driver }
 
-        zangfx_test_single! { compute_null, $driver }
-        zangfx_test_single! { compute_conv1_direct, $driver }
-        zangfx_test_single! { compute_conv1_indirect, $driver }
+        $crate::zangfx_test_single! { compute_null, $driver }
+        $crate::zangfx_test_single! { compute_conv1_direct, $driver }
+        $crate::zangfx_test_single! { compute_conv1_indirect, $driver }
 
-        zangfx_test_single! { render_null, $driver }
+        $crate::zangfx_test_single! { render_null, $driver }
     }
 }
 

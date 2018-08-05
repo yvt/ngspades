@@ -3,19 +3,21 @@
 //
 // This source code is a part of Nightingales.
 //
-#[macro_use]
-extern crate ash;
-extern crate zangfx_base as base;
-#[macro_use]
-extern crate zangfx_test;
-extern crate zangfx_vulkan as backend;
+#![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
 
-use std::sync::Arc;
+use zangfx_base as base;
+use zangfx_vulkan as backend;
+
+use zangfx_test::zangfx_generate_backend_tests;
+
 use ash::extensions::DebugReport;
 use ash::version::*;
+use ash::vk_make_version;
 use std::ffi::{CStr, CString};
 use std::ops::Deref;
 use std::ptr::{null, null_mut};
+use std::sync::Arc;
 
 struct TestDriver;
 
@@ -96,7 +98,7 @@ impl Drop for DebugReportScope {
 }
 
 impl zangfx_test::backend_tests::TestDriver for TestDriver {
-    fn for_each_device(&self, runner: &mut FnMut(&base::DeviceRef)) {
+    fn for_each_device(&self, runner: &mut dyn FnMut(&base::DeviceRef)) {
         unsafe {
             let entry = match ash::Entry::<V1_0>::new() {
                 Ok(entry) => entry,
@@ -163,8 +165,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                         pp_enabled_extension_names: extensions.as_ptr() as *const _,
                     },
                     None,
-                )
-                .map(UniqueInstance)
+                ).map(UniqueInstance)
                 .expect("Failed to create a Vulkan instance.");
 
             let _debug_report = if has_debug_report {
@@ -212,8 +213,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                         queue_family_index: i as u32,
                         queue_count: min(2, prop.count) as u32,
                         p_queue_priorities: [0.5f32, 0.5f32].as_ptr(),
-                    })
-                    .collect::<Vec<_>>();
+                    }).collect::<Vec<_>>();
 
                 let mut config = backend::limits::DeviceConfig::new();
 
@@ -239,8 +239,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                             p_enabled_features: &enabled_features,
                         },
                         None,
-                    )
-                    .map(UniqueDevice)
+                    ).map(UniqueDevice)
                     .expect("Failed to create a Vulkan device.");
 
                 let gfx_device =

@@ -3,22 +3,21 @@
 //
 // This source code is a part of Nightingales.
 //
+#![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
 #![feature(test)]
-extern crate zangfx_base as base;
-extern crate zangfx_metal as backend;
-#[macro_use]
-extern crate zangfx_test;
 
 use std::sync::Arc;
 
-use base::prelude::*;
+use zangfx_base::prelude::*;
+use zangfx_test::zangfx_generate_backend_benches;
 
 struct BenchDriver;
 
 impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
-    fn choose_device(&self, runner: &mut FnMut(&base::DeviceRef)) {
-        let device = unsafe { backend::device::Device::new_system_default().unwrap() };
-        let device: base::DeviceRef = Arc::new(device);
+    fn choose_device(&self, runner: &mut FnMut(&zangfx_base::DeviceRef)) {
+        let device = unsafe { zangfx_metal::device::Device::new_system_default().unwrap() };
+        let device: zangfx_base::DeviceRef = Arc::new(device);
         device.autorelease_pool_scope(|_| {
             runner(&device);
         });

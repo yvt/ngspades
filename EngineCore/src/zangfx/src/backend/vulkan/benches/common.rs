@@ -3,19 +3,21 @@
 //
 // This source code is a part of Nightingales.
 //
+#![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
 #![feature(test)]
-#[macro_use]
-extern crate ash;
-extern crate zangfx_base as base;
-#[macro_use]
-extern crate zangfx_test;
-extern crate zangfx_vulkan as backend;
 
-use std::sync::Arc;
+use zangfx_base as base;
+use zangfx_vulkan as backend;
+
+use zangfx_test::zangfx_generate_backend_benches;
+
 use ash::version::*;
+use ash::vk_make_version;
 use std::ffi::CStr;
 use std::ops::Deref;
 use std::ptr::null;
+use std::sync::Arc;
 
 struct BenchDriver;
 
@@ -54,7 +56,7 @@ impl Deref for UniqueDevice {
 }
 
 impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
-    fn choose_device(&self, runner: &mut FnMut(&base::device::DeviceRef)) {
+    fn choose_device(&self, runner: &mut dyn FnMut(&base::device::DeviceRef)) {
         unsafe {
             let entry = match ash::Entry::<V1_0>::new() {
                 Ok(entry) => entry,
@@ -87,8 +89,7 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                         pp_enabled_extension_names: extensions.as_ptr() as *const _,
                     },
                     None,
-                )
-                .map(UniqueInstance)
+                ).map(UniqueInstance)
                 .expect("Failed to create a Vulkan instance.");
 
             let phys_devices = instance.enumerate_physical_devices().unwrap();
@@ -123,8 +124,7 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                         queue_family_index: i as u32,
                         queue_count: min(2, prop.count) as u32,
                         p_queue_priorities: [0.5f32, 0.5f32].as_ptr(),
-                    })
-                    .collect::<Vec<_>>();
+                    }).collect::<Vec<_>>();
 
                 let mut config = backend::limits::DeviceConfig::new();
 
@@ -150,8 +150,7 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                             p_enabled_features: &enabled_features,
                         },
                         None,
-                    )
-                    .map(UniqueDevice)
+                    ).map(UniqueDevice)
                     .expect("Failed to create a Vulkan device.");
 
                 let gfx_device =
@@ -162,7 +161,7 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
 
                 runner(&gfx_device_ref);
 
-                backend::device::Device::teardown_ref(&mut {gfx_device_ref});
+                backend::device::Device::teardown_ref(&mut { gfx_device_ref });
 
                 break;
             }

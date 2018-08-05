@@ -51,9 +51,9 @@ pub trait BenchDriver {
 #[macro_export]
 macro_rules! zangfx_generate_backend_benches {
     ($driver:expr) => {
-        zangfx_bench_single! { cb_throughput_100, $driver }
+        $crate::zangfx_bench_single! { cb_throughput_100, $driver }
 
-        zangfx_bench_single! { cmds_dispatch_10000_throughput, $driver }
+        $crate::zangfx_bench_single! { cmds_dispatch_10000_throughput, $driver }
     }
 }
 
