@@ -342,6 +342,8 @@ impl<P: Painter> Drop for PhysicalDevice<P> {
         let wm_device = unsafe { read(&*self.wm_device) };
         drop(wm_device.main_queue);
         drop(wm_device.copy_queue);
+
+        be::device::Device::teardown_ref(&mut wm_device.device);
         drop(wm_device.device);
 
         // Alleviate some instabilities with error handling by inserting a device-global

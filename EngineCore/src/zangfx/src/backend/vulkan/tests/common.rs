@@ -251,7 +251,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
 
                 runner(&gfx_device_ref);
 
-                // FIXME: Ensure the device is idle after each test run
+                backend::device::Device::teardown_ref(&mut { gfx_device_ref });
             }
         }
     }

@@ -162,6 +162,8 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
 
                 runner(&gfx_device_ref);
 
+                backend::device::Device::teardown_ref(&mut {gfx_device_ref});
+
                 break;
             }
         }

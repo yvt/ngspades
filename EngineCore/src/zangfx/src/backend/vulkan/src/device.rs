@@ -71,7 +71,7 @@ impl Drop for DeviceInfo {
 /// Implementation of `Device` for Vulkan.
 #[derive(Debug)]
 pub struct Device {
-    device_ref: DeviceRef,
+    device_ref: Option<DeviceRef>,
     queue_pool: Arc<cmd::queue::QueuePool>,
     global_heaps: Vec<base::HeapRef>,
 }
@@ -112,18 +112,17 @@ impl Device {
                 let global_heap =
                     heap::GlobalHeap::new(device_ref.clone(), heap_strategy.unwrap(), i as _);
                 Arc::new(global_heap) as base::HeapRef
-            })
-            .collect();
+            }).collect();
 
         Ok(Self {
-            device_ref,
+            device_ref: Some(device_ref),
             queue_pool: Arc::new(queue_pool),
             global_heaps,
         })
     }
 
     pub fn vk_device(&self) -> &AshDevice {
-        &self.device_ref.vk_device()
+        &self.device_ref().vk_device()
     }
 
     /// Set the default queue to be used during object creation.
@@ -131,12 +130,48 @@ impl Device {
     /// See [the crate documentation](../index.html) for more details about
     /// inter-queue operations.
     pub fn set_default_queue(&self, queue: &cmd::queue::CmdQueue) {
-        self.device_ref
+        self.device_ref()
             .set_default_resstate_queue(queue.resstate_queue_id());
     }
 
+    /// Invalidate this device object. It will be ensured that all child objects
+    /// of `vk_device()` are destroyed.
+    ///
+    /// Any operations (except for `drop`) on this device object are invalid
+    /// after this method is called.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the aforementioned guarantee cannot be made,
+    /// for example, because there are remaining references to some child
+    /// objects somewhere in the application.
+    pub fn teardown(&mut self) {
+        self.global_heaps.clear();
+        if let Some(device_ref) = self.device_ref.take() {
+            if let Err(x) = Arc::try_unwrap(device_ref) {
+                self.device_ref = Some(x);
+                panic!("there are some remaining references to child objects");
+            }
+        }
+    }
+
+    /// Invalidate the device object pointed by a `zangfx_base::DeviceRef`
+    /// (device handle).
+    ///
+    /// # Panics
+    ///
+    /// See [`teardown`]. Additionally, it will also panic if there are other
+    /// `DeviceRef` pointing the same device object.
+    pub fn teardown_ref(this: &mut base::DeviceRef) {
+        let mut_ref = Arc::get_mut(this).expect("there are some remaining references to DeviceRef");
+        let my_device: &mut Self = mut_ref.query_mut().expect("bad device type");
+        my_device.teardown();
+    }
+
     crate fn device_ref(&self) -> &DeviceRef {
-        &self.device_ref
+        self.device_ref
+            .as_ref()
+            .expect("this device object is no longer valid")
     }
 }
 
@@ -152,7 +187,7 @@ impl fmt::Debug for DeviceInfo {
 
 impl base::Device for Device {
     fn caps(&self) -> &dyn base::DeviceCaps {
-        self.device_ref.caps()
+        self.device_ref().caps()
     }
 
     fn global_heap(&self, memory_type: base::MemoryType) -> &base::HeapRef {
