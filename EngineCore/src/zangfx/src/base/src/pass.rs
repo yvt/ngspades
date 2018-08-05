@@ -204,6 +204,7 @@ pub trait RenderTargetTableBuilder: Object {
     ///
     /// - All mandatory properties must have their values set before this
     ///   method is called.
+    /// - All `ImageRef`s specified via `target` must belong to a single queue.
     ///
     fn build(&mut self) -> Result<RenderTargetTableRef>;
 }

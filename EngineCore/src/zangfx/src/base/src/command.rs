@@ -96,11 +96,20 @@ pub trait CmdBuffer: Object {
     /// Mark this command buffer as ready for submission.
     fn commit(&mut self) -> Result<()>;
 
+    /// Begin encoding a render pass.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All images in `render_target_table` must be associated with the queue
+    ///   to which this command buffer belongs.
+    ///
     fn encode_render(
         &mut self,
         render_target_table: &pass::RenderTargetTableRef,
     ) -> &mut dyn RenderCmdEncoder;
+    /// Begin encoding a compute pass.
     fn encode_compute(&mut self) -> &mut dyn ComputeCmdEncoder;
+    /// Begin encoding a copy pass.
     fn encode_copy(&mut self) -> &mut dyn CopyCmdEncoder;
 
     /// Register a completion handler. Must not be called after calling `commit`.
@@ -130,6 +139,12 @@ pub trait CmdBuffer: Object {
     /// implicit)
     ///
     /// The default implementation is no-op.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All buffers in `buffers` must be associated with the queue to which
+    ///   this command buffer belongs.
+    ///
     fn host_barrier(
         &mut self,
         src_access: AccessTypeFlags,
@@ -148,6 +163,12 @@ pub trait CmdBuffer: Object {
     ///
     /// The default implementation panics. Implementations that support more
     /// than one queue families must override this method.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All resources in `tranfer` must be associated with the queue to which
+    ///   this command buffer belongs.
+    ///
     fn queue_ownership_acquire(
         &mut self,
         src_queue_family: QueueFamily,
@@ -168,6 +189,12 @@ pub trait CmdBuffer: Object {
     ///
     /// The default implementation panics. Implementations that support more
     /// than one queue families must override this method.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All resources in `tranfer` must be associated with the queue to which
+    ///   this command buffer belongs.
+    ///
     fn queue_ownership_release(
         &mut self,
         dst_queue_family: QueueFamily,
@@ -231,6 +258,14 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     fn set_scissors(&mut self, start_viewport: ViewportIndex, value: &[Rect2D<u32>]);
 
     /// Bind zero or more `ArgTableRef`s.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All argument pools in `tables` must be associated with the queue to
+    ///   which this command buffer belongs.
+    /// - All argument table in `tables` must originate from their respective
+    ///   argument pools.
+    ///
     fn bind_arg_table(
         &mut self,
         index: ArgTableIndex,
@@ -238,6 +273,12 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     );
 
     /// Bind zero or more vertex buffers.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All buffers in `buffers` must be associated with the queue to which
+    ///   this command buffer belongs.
+    ///
     fn bind_vertex_buffers(
         &mut self,
         index: VertexBufferIndex,
@@ -245,6 +286,11 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     );
 
     /// Bind an index buffer.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `buffer` must be associated with the queue to which this command
+    ///   buffer belongs.
     fn bind_index_buffer(
         &mut self,
         buffer: &resources::BufferRef,
@@ -289,6 +335,8 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     /// # Valid Usage
     ///
     /// - `offset` must be aligned to 4 bytes.
+    /// - `buffer` must be associated with the queue to which this command
+    ///   buffer belongs.
     ///
     /// [`DrawIndirectArgs`]: DrawIndirectArgs
     fn draw_indirect(&mut self, buffer: &resources::BufferRef, offset: DeviceSize);
@@ -301,6 +349,8 @@ pub trait RenderCmdEncoder: Object + CmdEncoder {
     /// # Valid Usage
     ///
     /// - `offset` must be aligned to 4 bytes.
+    /// - `buffer` must be associated with the queue to which this command
+    ///   buffer belongs.
     ///
     /// [`DrawIndexedIndirectArgs`]: DrawIndexedIndirectArgs
     fn draw_indexed_indirect(&mut self, buffer: &resources::BufferRef, offset: DeviceSize);
@@ -339,6 +389,14 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     fn bind_pipeline(&mut self, pipeline: &pipeline::ComputePipelineRef);
 
     /// Bind zero or more `ArgTableRef`s.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All argument pools in `tables` must be associated with the queue to
+    ///   which this command buffer belongs.
+    /// - All argument table in `tables` must originate from their respective
+    ///   argument pools.
+    ///
     fn bind_arg_table(
         &mut self,
         index: ArgTableIndex,
@@ -349,6 +407,13 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     ///
     /// `workgroup_count` is an array with up to 3 elements. When less than
     /// 3 elements are given, the missing ones are filled with `1`s.
+    ///
+    /// # Valid Usage
+    ///
+    ///  - `workgroup_count` must not exceed the hardware limit indicated by
+    ///    [`DeviceLimits::max_compute_workgroup_count`].
+    ///
+    /// [`DeviceLimits::max_compute_workgroup_count`]: crate::limits::DeviceLimits::max_compute_workgroup_count
     fn dispatch(&mut self, workgroup_count: &[u32]);
 
     /// Provoke work in a compute pipeline. Parameters are read by the device
@@ -359,8 +424,10 @@ pub trait ComputeCmdEncoder: Object + CmdEncoder {
     /// # Valid Usage
     ///
     /// - `offset` must be aligned to 4 bytes.
+    /// - `buffer` must be associated with the queue to which this command
+    ///   buffer belongs.
     ///
-    /// [`DispatchIndirectArgs`]: DispatchIndirectArgs
+    /// [`DispatchIndirectArgs`]: crate::command::DispatchIndirectArgs
     fn dispatch_indirect(&mut self, buffer: &resources::BufferRef, offset: DeviceSize);
 }
 
@@ -371,12 +438,24 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     /// Fill a buffer with a constant byte value.
     ///
     /// Both of `range.start` and `range.end` must be a multiple of 4.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `buffer` must be associated with the queue to which this command
+    ///   buffer belongs.
+    ///
     fn fill_buffer(&mut self, buffer: &resources::BufferRef, range: Range<DeviceSize>, value: u8);
 
     /// Copy data from a buffer to another buffer.
     ///
     /// All of `source_offset`, `destination_offset`, and `size` must be a
     /// multiple of 4.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `buffer` must be associated with the queue to which this command
+    ///   buffer belongs.
+    ///
     fn copy_buffer(
         &mut self,
         src: &resources::BufferRef,
@@ -398,6 +477,12 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     ///
     /// If `size` has fewer elements than the dimensionality of the
     /// destination image, the rest is assumed to be all `1`.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `src` and `dst` must be associated with the queue to which this
+    ///   command buffer belongs.
+    ///
     fn copy_buffer_to_image(
         &mut self,
         src: &resources::BufferRef,
@@ -421,6 +506,12 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     ///
     /// If `size` has fewer elements than the dimensionality of the
     /// source image, the rest is assumed to be all `1`.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `src` and `dst` must be associated with the queue to which this
+    ///   command buffer belongs.
+    ///
     fn copy_image_to_buffer(
         &mut self,
         src: &resources::ImageRef,
@@ -449,6 +540,12 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     ///
     /// If `size` has fewer elements than the dimensionality of the
     /// source and/or destination image, the rest is assumed to be all `1`.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `src` and `dst` must be associated with the queue to which this
+    ///   command buffer belongs.
+    ///
     fn copy_image(
         &mut self,
         src: &resources::ImageRef,
@@ -514,8 +611,13 @@ pub trait CmdEncoder: Object {
     /// This method is practically no-op on `CopyCmdEncoder` since it does not
     /// use any argument tables, although it may incur a run-time overhead.
     ///
-    /// If `self` is a render command encoder, `objs` must not overlap with its
-    /// render targets.
+    /// # Valid Usage
+    ///
+    /// - All resources in `objs` must be associated with the queue to which
+    ///   this command buffer belongs.
+    /// - If `self` is a render command encoder, `objs` must not overlap with
+    ///   its render targets.
+    ///
     fn use_resource_core(&mut self, usage: ResourceUsageFlags, objs: resources::ResourceSet<'_>);
 
     /// Declare that the resources in the specified heaps are referenced by the
@@ -528,20 +630,26 @@ pub trait CmdEncoder: Object {
     /// This method is no-op on `CopyCmdEncoder` since it does not use any
     /// argument tables.
     ///
-    /// This method only can be used on dedicated heaps (returned by
-    /// [`DedicatedHeapBuilder`]) that have `use_heap` enabled on them (by
-    /// calling [`DedicatedHeapBuilder::enable_use_heap`]).
+    /// This method only can be used on dedicated heaps.
     ///
     /// This method ignores images having [`Render`] or [`Storage`] image usage
     /// flags. Call [`use_resource`] instead to use such images.
     ///
     /// [`Device::global_heap`]: crate::Device::global_heap
-    /// [`DynamicHeapBuilder`]: crate::DynamicHeapBuilder
-    /// [`Render`]: crate::ImageUsage::Render
-    /// [`Storage`]: crate::ImageUsage::Storage
-    /// [`use_resource`]: CmdEncoderExt::use_resource
-    /// [`DedicatedHeapBuilder`]: crate::DedicatedHeapBuilder
-    /// [`DedicatedHeapBuilder::enable_use_heap`]: crate::DedicatedHeapBuilder::enable_use_heap
+    /// [`DynamicHeapBuilder`]: crate::heap::DynamicHeapBuilder
+    /// [`Render`]: crate::resources::ImageUsage::Render
+    /// [`Storage`]: crate::resources::ImageUsage::Storage
+    /// [`use_resource`]: crate::command::CmdEncoderExt::use_resource
+    ///
+    /// # Valid Usage
+    ///
+    ///  - Every heap in `heaps` must be a dedicated heap (created via
+    ///    [`crate::heap::DedicatedHeapBuilder`]) that have `use_heap` enabled
+    ///    on them (by calling
+    ///    [`crate::heap::DedicatedHeapBuilder::enable_use_heap`]).
+    ///  - All heaps in `heaps` must be associated with the queue to which
+    ///    this command buffer belongs.
+    ///
     fn use_heap(&mut self, heaps: &[&heap::HeapRef]);
 
     /// Wait on the specified fence and establish an inter-encoder execution
@@ -551,12 +659,27 @@ pub trait CmdEncoder: Object {
     /// automatically reorders command buffer submissions to satisfy this
     /// constraint. If fence operations are inserted in a way there exists no
     /// such ordering, a dead-lock might occur.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `fence` must be associated with the queue to which this command buffer
+    ///   belongs.
+    ///
     fn wait_fence(&mut self, fence: &sync::FenceRef, dst_access: AccessTypeFlags);
 
     /// Update the specified fence.
     ///
     /// A fence can be updated only once. You must create a new one after done
     /// using the old one.
+    ///
+    /// # Valid Usage
+    ///
+    /// - `fence` must be associated with the queue to which this command buffer
+    ///   belongs.
+    /// - If this command buffer is to be commited in the future at some point
+    ///   in the future, the submission of this command buffer must not cause
+    ///   `fence` to be updated more than once.
+    ///
     fn update_fence(&mut self, fence: &sync::FenceRef, src_access: AccessTypeFlags);
 
     /// Insert a barrier and establish an execution dependency within the
@@ -567,6 +690,14 @@ pub trait CmdEncoder: Object {
     /// When this is called inside a render subpass, a self-dependency with
     /// matching access type flags and stage flags must have been defined on the
     /// subpass.
+    ///
+    /// [`CmdEncoderExt::barrier`]: crate::command::CmdEncoderExt::barrier
+    ///
+    /// # Valid Usage
+    ///
+    /// - All resources in `obj` must be associated with the queue to which
+    ///   this command buffer belongs.
+    ///
     fn barrier_core(
         &mut self,
         obj: resources::ResourceSet<'_>,
@@ -617,6 +748,10 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///         &resources![&image, &buffer][..],
     ///     );
     ///     # }
+    ///
+    /// # Valid Usage
+    ///
+    /// See [`CmdEncoder::use_resource_core`].
     fn use_resource<T: Into<resources::ResourceSet<'a>>>(
         &mut self,
         usage: ResourceUsageFlags,
@@ -646,6 +781,10 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///     // Heterogeneous list
     ///     encoder.use_resource_read(&resources![&image, &buffer][..]);
     ///     # }
+    ///
+    /// # Valid Usage
+    ///
+    /// See [`CmdEncoder::use_resource_core`].
     fn use_resource_read<T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
         self.use_resource(flags![ResourceUsage::{Read | Sample}], objs)
     }
@@ -659,6 +798,10 @@ pub trait CmdEncoderExt: CmdEncoder {
     /// # Examples
     ///
     /// See [`CmdEncoderExt::use_resource_read`].
+    ///
+    /// # Valid Usage
+    ///
+    /// See [`CmdEncoder::use_resource_core`].
     fn use_resource_read_write<T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
         self.use_resource(flags![ResourceUsage::{Read | Write | Sample}], objs)
     }
@@ -667,6 +810,10 @@ pub trait CmdEncoderExt: CmdEncoder {
     /// current encoder or subpass.
     ///
     /// This is an ergonomic wrapper for [`CmdEncoder::barrier_core`].
+    ///
+    /// # Valid Usage
+    ///
+    /// See [`CmdEncoder::barrier_core`].
     fn barrier<T: Into<resources::ResourceSet<'a>>>(
         &mut self,
         obj: T,
