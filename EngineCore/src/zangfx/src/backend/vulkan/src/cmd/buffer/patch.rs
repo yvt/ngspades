@@ -242,6 +242,13 @@ impl CmdBufferData {
                 sched_data.src_access = Some(src_access);
             }
 
+            for &(image_i, unit_i) in pass.discard_images.iter() {
+                let image = ref_table.images.get_by_index(image_i).resource;
+                let sched_data = image.tracked_state().latest_mut(resstate_queue);
+
+                sched_data.units[unit_i].layout = Some(vk::ImageLayout::Undefined);
+            }
+
             vk_prev_cmd_buffer = Some(pass.vk_cmd_buffer);
         }
 

@@ -350,6 +350,7 @@ impl CmdBufferData {
             signal_fences: Vec::new(),
             wait_fences: Vec::new(),
             image_barriers: Vec::new(),
+            discard_images: Vec::new(),
         });
         self.state = EncodingState::NotRender;
 
@@ -444,6 +445,25 @@ impl CmdBufferData {
         _transfer: &base::QueueOwnershipTransfer<'_>,
     ) {
         unimplemented!()
+    }
+
+    crate fn invalidate_image(&mut self, images: &[&base::ImageRef]) {
+        if self.state == EncodingState::None {
+            self.begin_pass();
+        }
+
+        let current_pass = self.passes.last_mut().unwrap();
+
+        for image in images.iter() {
+            let image: &Image = image.downcast_ref().expect("bad image type");
+            let addresser = ImageStateAddresser::from_image(image);
+            let (image_index, _) = self.ref_table.insert_image(image);
+
+            // For each state-tracking unit...
+            for i in addresser.indices_for_image(image) {
+                current_pass.discard_images.push((image_index, i));
+            }
+        }
     }
 
     /// Encode `vkCmdSetEvent` to do the fence updating operation.

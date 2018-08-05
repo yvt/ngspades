@@ -140,6 +140,8 @@ crate struct Pass {
     crate signal_fences: Vec<(usize, base::AccessTypeFlags)>,
 
     crate image_barriers: Vec<PassImageBarrier>,
+
+    crate discard_images: Vec<(usize, usize)>,
 }
 
 /// Represents a layout transition of an image before/after a pass.
@@ -373,6 +375,14 @@ impl base::CmdBuffer for CmdBuffer {
             .expect("command buffer is already commited");
         let our_semaphore = semaphore.downcast_ref().expect("bad semaphore type");
         uncommited.signal_semaphore(our_semaphore, src_stage);
+    }
+
+    fn invalidate_image(&mut self, images: &[&base::ImageRef]) {
+        let uncommited = self
+            .uncommited
+            .as_mut()
+            .expect("command buffer is already commited");
+        uncommited.invalidate_image(images);
     }
 
     fn host_barrier(

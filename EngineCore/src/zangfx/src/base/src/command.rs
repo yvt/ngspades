@@ -153,6 +153,26 @@ pub trait CmdBuffer: Object {
         let _ = (src_access, buffers);
     }
 
+    /// Invalidate the contents of a given images.
+    ///
+    /// This method is used in the following scenarios:
+    ///
+    ///  - The old contents of images are no longer required in following passes.
+    ///  - The memory representation of images might be in an invalid state due
+    ///    to aliasing.
+    ///
+    /// The `DontCare` load action of a render pass target has the same effect
+    /// as `invalidate_image`.
+    ///
+    /// # Valid Usage
+    ///
+    /// - All images in `images` must be associated with the queue to which
+    ///   this command buffer belongs.
+    ///
+    fn invalidate_image(&mut self, images: &[&resources::ImageRef]) {
+        let _ = images;
+    }
+
     /// Acquire resources from another queue with a different queue family.
     ///
     /// This operation is a part of a queue family ownership transfer operation.
