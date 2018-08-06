@@ -16,7 +16,7 @@ use core::{prelude::*, NodeRef, PresenterFrame};
 
 use canvas::{ImageFormat, ImageRef};
 use imagemanager::{ImageManager, ImageRefTable};
-use layer::Layer;
+use layer::{ImageWrapMode, Layer};
 use port::{GfxObjects, Port, PortManager};
 use portrender::PortRenderFrame;
 use temprespool::{TempResPool, TempResTable};
@@ -42,8 +42,7 @@ pub struct Compositor {
 
     white_image: gfx::ImageRef,
 
-    sampler_repeat: gfx::SamplerRef,
-    sampler_clamp: gfx::SamplerRef,
+    samplers: [gfx::SamplerRef; 2],
 
     buffer_memory_type: gfx::MemoryType,
     backing_store_memory_type: gfx::MemoryType,
@@ -62,7 +61,7 @@ struct CompositorShaders {
 
 static BOX_VERTICES: &[[u16; 2]] = &[[0, 0], [1, 0], [0, 1], [1, 1]];
 
-mod composite {
+pub mod composite {
     use cgmath::{Matrix4, Vector4};
     use include_data;
     use ngsenumflags::BitFlags;
@@ -153,7 +152,6 @@ impl Compositor {
         let main_queue = gfx_objects.main_queue.queue.clone();
 
         let temp_res_pool = TempResPool::new(device.clone())?;
-        let mut image_manager = ImageManager::new(&device, &main_queue)?;
 
         let composite_arg_table_sigs = [
             {
@@ -198,6 +196,16 @@ impl Compositor {
             composite_library_frag,
         };
 
+        let mut image_manager;
+
+        let samplers = [
+            device.build_sampler().build()?,
+            device
+                .build_sampler()
+                .address_mode(&[gfx::AddressMode::ClampToEdge])
+                .build()?,
+        ];
+
         // Create some resources required by the compositor
         use self::gfxut::uploader::{StageBuffer, StageImage, UploaderUtils};
         let white_image = device
@@ -211,12 +219,24 @@ impl Compositor {
                     white_image.get_memory_req()?.memory_types,
                     flags![gfx::MemoryTypeCaps::{DeviceLocal}],
                     flags![gfx::MemoryTypeCaps::{}],
-                )
-                .unwrap();
+                ).unwrap();
 
-            if !device.global_heap(memory_type).bind((&white_image).into())? {
+            if !device
+                .global_heap(memory_type)
+                .bind((&white_image).into())?
+            {
                 return Err(gfx::ErrorKind::OutOfDeviceMemory.into());
             }
+
+            // It might look weird but due to its requirements `ImageManager`
+            // has to be created here
+            image_manager = ImageManager::new(
+                &device,
+                &main_queue,
+                shaders.composite_arg_table_sigs[1].clone(),
+                samplers.clone(),
+                white_image.clone(),
+            )?;
 
             let uploader = image_manager.uploader_mut();
             uploader.stage_images(
@@ -224,7 +244,8 @@ impl Compositor {
                     &white_image,
                     &[0xffffffffu32],
                     &[1, 1],
-                )].iter()
+                )]
+                    .iter()
                     .cloned(),
             )?;
         }
@@ -241,8 +262,7 @@ impl Compositor {
                     box_vertices.get_memory_req()?.memory_types,
                     flags![gfx::MemoryTypeCaps::{DeviceLocal}],
                     flags![gfx::MemoryTypeCaps::{}],
-                )
-                .unwrap();
+                ).unwrap();
 
             if !device
                 .global_heap(memory_type)
@@ -258,13 +278,6 @@ impl Compositor {
                     .cloned(),
             )?;
         }
-
-        let sampler_repeat = device.build_sampler().build()?;
-
-        let sampler_clamp = device
-            .build_sampler()
-            .address_mode(&[gfx::AddressMode::ClampToEdge])
-            .build()?;
 
         // Make sure all resources are staged
         main_queue.flush();
@@ -292,8 +305,7 @@ impl Compositor {
 
             white_image,
 
-            sampler_repeat,
-            sampler_clamp,
+            samplers,
 
             buffer_memory_type: device
                 .try_choose_memory_type_shared(flags![gfx::BufferUsage::{Storage}])?
@@ -313,6 +325,13 @@ impl Compositor {
         self.temp_res_pool.release(&mut frame.temp_res_table)?;
         self.image_manager.release(&mut frame.image_ref_table)?;
         Ok(())
+    }
+}
+
+fn wrap_mode_to_index(m: ImageWrapMode) -> usize {
+    match m {
+        ImageWrapMode::Repeat => 0,
+        ImageWrapMode::Clamp => 1,
     }
 }
 
@@ -374,6 +393,7 @@ impl CompositorWindow {
         enum ImageContents {
             Image(gfx::ImageRef),
             ManagedImage(ImageRef),
+            WhiteImage,
             Port(RefEqArc<Port>),
         }
 
@@ -388,7 +408,7 @@ impl CompositorWindow {
             frame: &'a PresenterFrame,
 
             sprites: Vec<composite::Sprite>,
-            contents: Vec<[(ImageContents, gfx::SamplerRef); 2]>,
+            contents: Vec<[(ImageContents, usize); 2]>,
             cmds: Vec<Vec<Cmd>>,
             rts: Vec<RenderTarget>,
 
@@ -427,7 +447,6 @@ impl CompositorWindow {
             opacity: f32,
             backdrop: Option<BackDropInfo>,
         ) -> Result<()> {
-            use super::ImageWrapMode::*;
             use super::LayerContents::*;
 
             let contents = layer.contents.read_presenter(c.frame).unwrap();
@@ -439,12 +458,9 @@ impl CompositorWindow {
                 &Image {
                     ref image,
                     ref source,
-                    ref wrap_mode,
+                    wrap_mode,
                 } => {
-                    let sampler = match *wrap_mode {
-                        Repeat => c.compositor.sampler_repeat.clone(),
-                        Clamp => c.compositor.sampler_clamp.clone(),
-                    };
+                    let sampler = wrap_mode_to_index(wrap_mode);
                     let image_data = image.image_data();
                     let image_data = image_data.get_presenter_ref(c.frame).unwrap();
 
@@ -476,8 +492,8 @@ impl CompositorWindow {
                 }
                 &Solid(rgba) => Some((
                     (
-                        c.compositor.white_image.clone().into(),
-                        c.compositor.sampler_clamp.clone(),
+                        ImageContents::WhiteImage,
+                        wrap_mode_to_index(ImageWrapMode::Clamp),
                     ),
                     Matrix4::identity(),
                     composite::SpriteFlags::empty(),
@@ -486,7 +502,7 @@ impl CompositorWindow {
                 &Port(ref port) => Some((
                     (
                         ImageContents::Port(port.clone()),
-                        c.compositor.sampler_clamp.clone(),
+                        wrap_mode_to_index(ImageWrapMode::Clamp),
                     ),
                     Matrix4::identity(),
                     composite::SpriteFlags::empty(),
@@ -495,7 +511,10 @@ impl CompositorWindow {
                 &BackDrop => {
                     let backdrop = backdrop.expect("BackDrop used without FlattenContents");
                     Some((
-                        (backdrop.image.into(), c.compositor.sampler_clamp.clone()),
+                        (
+                            backdrop.image.into(),
+                            wrap_mode_to_index(ImageWrapMode::Clamp),
+                        ),
                         backdrop.uv_matrix,
                         composite::SpriteFlags::empty(),
                         Vector4::new(1.0, 1.0, 1.0, opacity),
@@ -509,8 +528,8 @@ impl CompositorWindow {
                 c.contents.push([
                     image_contents,
                     (
-                        c.compositor.white_image.clone().into(),
-                        c.compositor.sampler_clamp.clone(),
+                        ImageContents::WhiteImage,
+                        wrap_mode_to_index(ImageWrapMode::Clamp),
                     ),
                 ]);
                 c.sprites.push(composite::Sprite {
@@ -713,11 +732,11 @@ impl CompositorWindow {
 
                     c.cmds[mask_cmd_group_i].push(Cmd::EndPass);
 
-                    (mask_image.into(), c.compositor.sampler_clamp.clone())
+                    (mask_image.into(), wrap_mode_to_index(ImageWrapMode::Clamp))
                 } else {
                     (
-                        c.compositor.white_image.clone().into(),
-                        c.compositor.sampler_clamp.clone(),
+                        ImageContents::WhiteImage,
+                        wrap_mode_to_index(ImageWrapMode::Clamp),
                     )
                 };
 
@@ -726,7 +745,7 @@ impl CompositorWindow {
                 let instance_i = c.sprites.len();
                 let contents_i = c.contents.len();
                 c.contents.push([
-                    (image.into(), c.compositor.sampler_clamp.clone()),
+                    (image.into(), wrap_mode_to_index(ImageWrapMode::Clamp)),
                     mask_contents,
                 ]);
                 c.sprites.push(composite::Sprite {
@@ -834,8 +853,7 @@ impl CompositorWindow {
                 },
                 framebuffer: Default::default(),
                 rt,
-            })
-            .collect();
+            }).collect();
 
         // Prepare to upload `Sprite`
         let sprites_size = size_of_val(c.sprites.as_slice()) as gfx::DeviceSize;
@@ -868,119 +886,6 @@ impl CompositorWindow {
             .get_fence_for_session(image_session_id)
             .cloned();
 
-        // Resolve all image view references
-        let contents_images: Vec<[gfx::ImageRef; 2]> = c
-            .contents
-            .iter()
-            .map(|contents| {
-                [
-                    match contents[0].0 {
-                        ImageContents::Image(ref image) => image.clone(),
-                        ImageContents::ManagedImage(ref image_ref) => {
-                            let resident_image = compositor.image_manager.get(&image_ref).unwrap();
-                            resident_image.image().clone()
-                        }
-                        ImageContents::Port(ref port) => {
-                            let port_output = port_frame.get_output(port).unwrap();
-                            port_output.image.clone()
-                        }
-                    },
-                    match contents[1].0 {
-                        ImageContents::Image(ref image) => image.clone(),
-                        _ => unreachable!(),
-                    },
-                ]
-            })
-            .collect();
-
-        // Make argument tables
-        let arg_pool;
-        let at_global;
-        let at_contents;
-        {
-            let ref shaders = compositor.shaders;
-            arg_pool = compositor
-                .device
-                .build_arg_pool()
-                .reserve_table_sig(
-                    c.contents.len(),
-                    &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
-                )
-                .reserve_table_sig(
-                    1,
-                    &shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL],
-                )
-                .build()?;
-
-            at_global = arg_pool
-                .new_table(&shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL])?
-                .unwrap();
-
-            compositor.device.update_arg_table(
-                &shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL],
-                &arg_pool,
-                &at_global,
-                &[(
-                    composite::ARG_G_SPRITE_PARAMS,
-                    0,
-                    [(0..sprites_size, &sprites_buf)][..].into(),
-                )],
-            )?;
-
-            at_contents = arg_pool
-                .new_tables(
-                    c.contents.len(),
-                    &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
-                )?
-                .unwrap();
-
-            let mut at_contents_images = Vec::with_capacity(c.contents.len() * 2);
-            let mut at_contents_samplers = Vec::with_capacity(c.contents.len() * 2);
-
-            for (contents, images) in c.contents.iter().zip(contents_images.iter()) {
-                for (&(_, ref sampler), image) in contents[0..2].iter().zip(images.iter()) {
-                    at_contents_images.push(image);
-                    at_contents_samplers.push(sampler);
-                }
-            }
-
-            let mut at_contents_update_sets = Vec::with_capacity(c.contents.len() * 4);
-
-            for i in 0..c.contents.len() {
-                at_contents_update_sets.push((
-                    composite::ARG_C_IMAGE,
-                    0,
-                    (&at_contents_images[i * 2..][..1]).into(),
-                ));
-                at_contents_update_sets.push((
-                    composite::ARG_C_MASK,
-                    0,
-                    (&at_contents_images[i * 2 + 1..][..1]).into(),
-                ));
-                at_contents_update_sets.push((
-                    composite::ARG_C_IMAGE_SAMPLER,
-                    0,
-                    (&at_contents_samplers[i * 2..][..1]).into(),
-                ));
-                at_contents_update_sets.push((
-                    composite::ARG_C_MASK_SAMPLER,
-                    0,
-                    (&at_contents_samplers[i * 2 + 1..][..1]).into(),
-                ));
-            }
-
-            let at_contents_updates: Vec<_> = at_contents_update_sets
-                .chunks(4)
-                .zip(at_contents.iter())
-                .map(|(update_sets, arg_table)| ((&arg_pool, arg_table), update_sets))
-                .collect();
-
-            compositor.device.update_arg_tables(
-                &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
-                &at_contents_updates[..],
-            )?;
-        }
-
         // Retire old frames
         while self.frames.len() > 0 {
             if !self.frames[0].cb_state_tracker.is_completed() {
@@ -994,101 +899,277 @@ impl CompositorWindow {
             compositor.retire_frame(self.frames.pop_front().unwrap())?;
         }
 
-        // Create an execution barrier
-
-        // Encode the command buffer
-        let mut cb = compositor.main_queue.new_cmd_buffer()?;
-        let cb_state_tracker = gfxut::CbStateTracker::new(&mut *cb);
+        let arg_pool;
+        let cb_state_tracker;
+        // `resolved_contents` includes references to local variables, which is
+        // why we need braces here (if only we had NLL..)
         {
-            let mut it = c.cmds.iter().rev().flat_map(|cmds| cmds.iter());
-            while let Some(cmd) = it.next() {
-                let enc;
-                if let &Cmd::BeginPass { pass_i, rt_i } = cmd {
-                    {
-                        let ref mut rt_data = rt_data[rt_i];
-                        let ref mut fb = rt_data.framebuffer[pass_i];
-                        if fb.is_none() {
-                            let mut builder = compositor.device.build_render_target_table();
-                            builder
-                                .render_pass(&compositor.statesets[0].render_passes[pass_i])
-                                .extents(&rt_data.rt.extents[..]);
-                            builder.target(0, &rt_data.rt.image).clear_float(&[0f32; 4]);
-                            *fb = Some(builder.build()?);
+            #[derive(Debug)]
+            struct ResolvedImageInfo<'a> {
+                images: [&'a gfx::ImageRef; 2],
+                ty: ContentsType,
+            }
+            #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+            enum ContentsType {
+                Solid,
+                Image,
+                Generic,
+            }
+            // Resolve all image references.
+            // For each element of `contents`, figure out if we have to create a
+            // new argument table or we can just use one created by `ImageManager`.
+            let white_image = compositor.white_image.clone(); // We need a mutable
+                                                              // borrow of `compositor` later
+            let resolved_contents: Vec<ResolvedImageInfo> = c
+                .contents
+                .iter()
+                .map(|contents| {
+                    let images = [
+                        match contents[0].0 {
+                            ImageContents::Image(ref image) => image,
+                            ImageContents::WhiteImage => &white_image,
+                            ImageContents::ManagedImage(ref image_ref) => {
+                                let resident_image = compositor.image_manager.get(&image_ref).unwrap();
+                                resident_image.image()
+                            }
+                            ImageContents::Port(ref port) => {
+                                let port_output = port_frame.get_output(port).unwrap();
+                                &port_output.image
+                            }
+                        },
+                        match contents[1].0 {
+                            ImageContents::Image(ref image) => image,
+                            ImageContents::WhiteImage => &white_image,
+                            _ => unreachable!(),
+                        },
+                    ];
+
+                    let ty = match contents {
+                        // Fast path - `ImageManager` automatically creates argument tables of this form
+                        [(ImageContents::WhiteImage, _), (ImageContents::WhiteImage, _)] =>   ContentsType::Solid,
+                        [(ImageContents::ManagedImage(_), _), (ImageContents::WhiteImage, _)] =>   ContentsType::Image,
+                        // Slow path
+                        _ => ContentsType::Generic,
+                    };
+
+                    ResolvedImageInfo { images, ty }
+                }).collect();
+
+            // The number of elements in `at_contents` whose `ArgTable`s we have to
+            // be built here
+            let num_generic_contents = resolved_contents
+                .iter()
+                .filter(|x| x.ty == ContentsType::Generic)
+                .count();
+
+            // Make argument tables
+            let at_global;
+            let at_generic_contents;
+            let mut at_contents;
+            {
+                let ref shaders = compositor.shaders;
+                arg_pool = compositor
+                    .device
+                    .build_arg_pool()
+                    .reserve_table_sig(
+                        num_generic_contents,
+                        &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
+                    ).reserve_table_sig(
+                        1,
+                        &shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL],
+                    ).build()?;
+
+                at_global = arg_pool
+                    .new_table(&shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL])?
+                    .unwrap();
+
+                compositor.device.update_arg_table(
+                    &shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL],
+                    &arg_pool,
+                    &at_global,
+                    &[(
+                        composite::ARG_G_SPRITE_PARAMS,
+                        0,
+                        [(0..sprites_size, &sprites_buf)][..].into(),
+                    )],
+                )?;
+
+                at_generic_contents = arg_pool
+                    .new_tables(
+                        num_generic_contents,
+                        &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
+                    )?.unwrap();
+
+                let mut at_contents_images = Vec::with_capacity(num_generic_contents * 2);
+                let mut at_contents_samplers = Vec::with_capacity(num_generic_contents * 2);
+
+                for (contents, resolved) in c.contents.iter().zip(resolved_contents.iter()) {
+                    if resolved.ty == ContentsType::Generic {
+                        for (&(_, sampler), &image) in
+                            contents[0..2].iter().zip(resolved.images.iter())
+                        {
+                            at_contents_images.push(image);
+                            at_contents_samplers.push(&compositor.samplers[sampler]);
                         }
                     }
-
-                    let fb = rt_data[rt_i].framebuffer[pass_i].as_ref().unwrap();
-                    enc = cb.encode_render(fb);
-
-                    if let Some(ref fence) = fence.take() {
-                        enc.wait_fence(fence, flags![gfx::AccessType::{FragmentRead}]);
-                    }
-
-                    enc.bind_pipeline(&compositor.statesets[0].composite_pipeline);
-                    enc.bind_vertex_buffers(0, &[(&compositor.box_vertices, 0)]);
-                    enc.set_viewports(0, &[rt_data[rt_i].viewport]);
-                    enc.bind_arg_table(composite::ARG_TABLE_GLOBAL, &[(&arg_pool, &at_global)]);
-
-                    enc.use_resource_read(&sprites_buf);
-                } else {
-                    unreachable!();
                 }
 
-                // TODO: insert fences *between* render passes
+                let mut at_contents_update_sets = Vec::with_capacity(num_generic_contents * 4);
 
-                loop {
-                    match it.next().unwrap() {
-                        &Cmd::BeginPass { .. } => unreachable!(),
-                        &Cmd::EndPass => {
-                            break;
-                        }
-                        &Cmd::EndPassForPresentation => {
-                            break;
-                        }
-                        &Cmd::Sprite {
-                            instance_i,
-                            contents_i,
-                            count,
-                        } => {
-                            // If the image source is a `Port`, then insert a fence and image layout transition
-                            match c.contents[contents_i][0].0 {
-                                ImageContents::Port(ref port) => {
-                                    let port_output = port_frame.get_output(port).unwrap();
+                for i in 0..num_generic_contents {
+                    at_contents_update_sets.push((
+                        composite::ARG_C_IMAGE,
+                        0,
+                        (&at_contents_images[i * 2..][..1]).into(),
+                    ));
+                    at_contents_update_sets.push((
+                        composite::ARG_C_MASK,
+                        0,
+                        (&at_contents_images[i * 2 + 1..][..1]).into(),
+                    ));
+                    at_contents_update_sets.push((
+                        composite::ARG_C_IMAGE_SAMPLER,
+                        0,
+                        (&at_contents_samplers[i * 2..][..1]).into(),
+                    ));
+                    at_contents_update_sets.push((
+                        composite::ARG_C_MASK_SAMPLER,
+                        0,
+                        (&at_contents_samplers[i * 2 + 1..][..1]).into(),
+                    ));
+                }
 
-                                    enc.wait_fence(
-                                        &port_output.fence,
-                                        flags![gfx::AccessType::{FragmentRead}],
-                                    );
-                                }
-                                _ => {}
+                let at_contents_updates: Vec<_> = at_contents_update_sets
+                    .chunks(4)
+                    .zip(at_generic_contents.iter())
+                    .map(|(update_sets, arg_table)| ((&arg_pool, arg_table), update_sets))
+                    .collect();
+
+                compositor.device.update_arg_tables(
+                    &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
+                    &at_contents_updates[..],
+                )?;
+
+                // Merge the lists of argument tables into one
+                at_contents = Vec::with_capacity(c.contents.len());
+
+                let mut next_generic_index = 0;
+
+                for (contents, resolved) in c.contents.iter().zip(resolved_contents.iter()) {
+                    match resolved.ty {
+                        ContentsType::Generic => {
+                            at_contents.push((&arg_pool, &at_generic_contents[next_generic_index]));
+                            next_generic_index += 1;
+                        }
+                        ContentsType::Solid => {
+                            at_contents.push(compositor.image_manager.white_image_arg_pool_table());
+                        }
+                        ContentsType::Image => {
+                            if let [(ImageContents::ManagedImage(image_ref), sampler), (ImageContents::WhiteImage, _)] =
+                                contents
+                            {
+                                let resident_image =
+                                    compositor.image_manager.get(image_ref).unwrap();
+                                at_contents.push(resident_image.arg_pool_table(*sampler));
+                            } else {
+                                unimplemented!();
                             }
-                            enc.use_resource_read(
-                                &[
-                                    &contents_images[contents_i][0],
-                                    &contents_images[contents_i][1],
-                                ][..],
-                            );
-                            enc.bind_arg_table(
-                                composite::ARG_TABLE_CONTENTS,
-                                &[(&arg_pool, &at_contents[contents_i])],
-                            );
-                            let instance_i = instance_i as u32;
-                            let count = count as u32;
-                            enc.draw(0..4, instance_i..instance_i + count);
                         }
                     }
                 }
             }
+
+            // Create an execution barrier
+
+            // Encode the command buffer
+            let mut cb = compositor.main_queue.new_cmd_buffer()?;
+            cb_state_tracker = gfxut::CbStateTracker::new(&mut *cb);
+            {
+                let mut it = c.cmds.iter().rev().flat_map(|cmds| cmds.iter());
+                while let Some(cmd) = it.next() {
+                    let enc;
+                    if let &Cmd::BeginPass { pass_i, rt_i } = cmd {
+                        {
+                            let ref mut rt_data = rt_data[rt_i];
+                            let ref mut fb = rt_data.framebuffer[pass_i];
+                            if fb.is_none() {
+                                let mut builder = compositor.device.build_render_target_table();
+                                builder
+                                    .render_pass(&compositor.statesets[0].render_passes[pass_i])
+                                    .extents(&rt_data.rt.extents[..]);
+                                builder.target(0, &rt_data.rt.image).clear_float(&[0f32; 4]);
+                                *fb = Some(builder.build()?);
+                            }
+                        }
+
+                        let fb = rt_data[rt_i].framebuffer[pass_i].as_ref().unwrap();
+                        enc = cb.encode_render(fb);
+
+                        if let Some(ref fence) = fence.take() {
+                            enc.wait_fence(fence, flags![gfx::AccessType::{FragmentRead}]);
+                        }
+
+                        enc.bind_pipeline(&compositor.statesets[0].composite_pipeline);
+                        enc.bind_vertex_buffers(0, &[(&compositor.box_vertices, 0)]);
+                        enc.set_viewports(0, &[rt_data[rt_i].viewport]);
+                        enc.bind_arg_table(composite::ARG_TABLE_GLOBAL, &[(&arg_pool, &at_global)]);
+
+                        enc.use_resource_read(&sprites_buf);
+                    } else {
+                        unreachable!();
+                    }
+
+                    // TODO: insert fences *between* render passes
+
+                    loop {
+                        match it.next().unwrap() {
+                            &Cmd::BeginPass { .. } => unreachable!(),
+                            &Cmd::EndPass => {
+                                break;
+                            }
+                            &Cmd::EndPassForPresentation => {
+                                break;
+                            }
+                            &Cmd::Sprite {
+                                instance_i,
+                                contents_i,
+                                count,
+                            } => {
+                                // If the image source is a `Port`, then insert a fence and image layout transition
+                                match c.contents[contents_i][0].0 {
+                                    ImageContents::Port(ref port) => {
+                                        let port_output = port_frame.get_output(port).unwrap();
+
+                                        enc.wait_fence(
+                                            &port_output.fence,
+                                            flags![gfx::AccessType::{FragmentRead}],
+                                        );
+                                    }
+                                    _ => {}
+                                }
+                                enc.use_resource_read(&resolved_contents[contents_i].images[..]);
+                                enc.bind_arg_table(
+                                    composite::ARG_TABLE_CONTENTS,
+                                    &[at_contents[contents_i]],
+                                );
+                                let instance_i = instance_i as u32;
+                                let count = count as u32;
+                                enc.draw(0..4, instance_i..instance_i + count);
+                            }
+                        }
+                    }
+                }
+            }
+
+            drawable.encode_prepare_present(
+                &mut cb,
+                compositor.gfx_objects.main_queue.queue_family,
+                flags![gfx::Stage::{RenderOutput}],
+                flags![gfx::AccessType::{ColorWrite}],
+            );
+
+            cb.commit()?;
         }
-
-        drawable.encode_prepare_present(
-            &mut cb,
-            compositor.gfx_objects.main_queue.queue_family,
-            flags![gfx::Stage::{RenderOutput}],
-            flags![gfx::AccessType::{ColorWrite}],
-        );
-
-        cb.commit()?;
 
         // Make sure ports' CBs are commited too
         drop(port_frame);
@@ -1126,14 +1207,12 @@ impl Stateset {
                         gfx::LoadOp::Clear
                     } else {
                         gfx::LoadOp::Load
-                    })
-                    .set_store_op(gfx::StoreOp::Store);
+                    }).set_store_op(gfx::StoreOp::Store);
 
                 builder.subpass_color_targets(&[Some(0)]);
 
                 builder.build()
-            })
-            .collect::<Result<_>>()?;
+            }).collect::<Result<_>>()?;
 
         let composite_pipeline = {
             let mut builder = device.build_render_pipeline();

@@ -16,7 +16,7 @@ use canvas::{ImageData, ImageRef};
 use core::prelude::*;
 use core::PresenterFrame;
 
-use gfxutils::{HeapSet, HeapSetAlloc};
+use gfxutils::{ArgPoolSet, ArgPoolTable, HeapSet, HeapSetAlloc};
 
 /// Manages residency of `ImageRef` on a ZanGFX device.
 ///
@@ -41,6 +41,11 @@ use gfxutils::{HeapSet, HeapSetAlloc};
 ///  - The application would track the execution state of command buffers and
 ///    eventualy call `release` to release images in `ImageRefTable`.
 ///
+/// ## Argument table generation
+///
+/// `ImageManager` automatically creates argument tables for each image for
+/// common usage.
+///
 /// ## Queue Mappings
 ///
 ///  - The main queue is used for layer contents because they are going
@@ -56,6 +61,11 @@ pub struct ImageManager {
     image_heap: HeapSet,
     images: Pool<Image>,
     image_map: HashMap<ImageRef, PoolPtr>,
+
+    arg_pool_set: ArgPoolSet,
+    samplers: [gfx::SamplerRef; 2],
+    white_image: gfx::ImageRef,
+    white_image_arg_pool_table: ArgPoolTable,
 
     unused_image_list: Vec<PoolPtr>,
     new_images_list: Vec<PoolPtr>,
@@ -84,6 +94,7 @@ struct Image {
 #[derive(Debug)]
 struct ResidentImageData {
     image: gfx::ImageRef,
+    arg_pool_table: [ArgPoolTable; 2],
     alloc: HeapSetAlloc,
     session_id: uploader::SessionId,
 }
@@ -94,14 +105,15 @@ fn bytes_of_image(image_ref: &ImageRef, frame: &PresenterFrame) -> usize {
         .get_presenter_ref(frame)
         .unwrap()
         .pixels_u32()
-        .len() * 4
+        .len()
+        * 4
 }
 
-fn uncommit_image(
-    heap_set: &mut HeapSet,
-    resident_image: &ResidentImageData,
-) -> Result<()> {
+fn uncommit_image(heap_set: &mut HeapSet, resident_image: &ResidentImageData) -> Result<()> {
     heap_set.unbind(&resident_image.alloc, (&resident_image.image).into())?;
+    for e in &resident_image.arg_pool_table {
+        e.0.destroy_tables(&[&e.1])?;
+    }
     Ok(())
 }
 
@@ -117,7 +129,17 @@ impl Drop for ImageManager {
 }
 
 impl ImageManager {
-    pub fn new(device: &gfx::DeviceRef, main_queue: &gfx::CmdQueueRef) -> Result<Self> {
+    /// Consturct an `ImageManager`.
+    ///
+    /// `table_sig` is an argument table signature for `ARG_TABLE_CONTENTS`.
+    /// `samplers` and `white_image` are used to prefill argument tables.
+    pub fn new(
+        device: &gfx::DeviceRef,
+        main_queue: &gfx::CmdQueueRef,
+        table_sig: gfx::ArgTableSigRef,
+        samplers: [gfx::SamplerRef; 2],
+        white_image: gfx::ImageRef,
+    ) -> Result<Self> {
         let uploader = uploader::Uploader::new(uploader::UploaderParams {
             device: device.clone(),
             queue: main_queue.clone(),
@@ -129,6 +151,22 @@ impl ImageManager {
             .try_choose_memory_type_private(gfx::ImageFormat::SrgbRgba8)?
             .unwrap();
 
+        let mut arg_pool_set = ArgPoolSet::new(device.clone(), table_sig)?;
+
+        use super::compositor::composite;
+        let white_image_arg_pool_table = arg_pool_set.new_table()?;
+        device.update_arg_table(
+            arg_pool_set.table_sig(),
+            &white_image_arg_pool_table.0,
+            &white_image_arg_pool_table.1,
+            &[
+                (composite::ARG_C_IMAGE, 0, [&white_image][..].into()),
+                (composite::ARG_C_IMAGE_SAMPLER, 0, [&samplers[0]][..].into()),
+                (composite::ARG_C_MASK, 0, [&white_image][..].into()),
+                (composite::ARG_C_MASK_SAMPLER, 0, [&samplers[0]][..].into()),
+            ],
+        )?;
+
         Ok(Self {
             image_heap: HeapSet::new(device, image_memory_type),
             device: device.clone(),
@@ -136,9 +174,19 @@ impl ImageManager {
             images: Pool::new(),
             image_map: HashMap::new(),
 
+            arg_pool_set,
+            samplers,
+            white_image,
+            white_image_arg_pool_table,
+
             unused_image_list: Vec::new(),
             new_images_list: Vec::new(),
         })
+    }
+
+    pub fn white_image_arg_pool_table(&self) -> (&gfx::ArgPoolRef, &gfx::ArgTableRef) {
+        let ArgPoolTable(pool, table) = &self.white_image_arg_pool_table;
+        (pool, table)
     }
 
     pub fn uploader_mut(&mut self) -> &mut uploader::Uploader {
@@ -167,7 +215,7 @@ impl ImageManager {
             let mut image = self.images.deallocate(image_ptr).unwrap();
             self.image_map.remove(&image.image_ref);
             if let Some(resident) = image.resident.take() {
-                uncommit_image( &mut self.image_heap, &resident)?;
+                uncommit_image(&mut self.image_heap, &resident)?;
             }
         }
 
@@ -230,8 +278,7 @@ impl ImageManager {
                     .build()?;
 
                 Ok(gfx_image)
-            })
-            .collect();
+            }).collect();
         let gfx_images = gfx_images?;
 
         // Allocate a heap to hold all those images
@@ -249,9 +296,38 @@ impl ImageManager {
         {
             let ref mut image: Image = images[image_ptr];
 
+            let arg_pool_table = [
+                self.arg_pool_set.new_table()?,
+                self.arg_pool_set.new_table()?,
+            ];
+            use super::compositor::composite;
+
+            for i in 0..2 {
+                self.device.update_arg_table(
+                    &self.arg_pool_set.table_sig(),
+                    &arg_pool_table[i].0,
+                    &arg_pool_table[i].1,
+                    &[
+                        (composite::ARG_C_IMAGE, 0, [&gfx_image][..].into()),
+                        (
+                            composite::ARG_C_IMAGE_SAMPLER,
+                            0,
+                            [&self.samplers[i]][..].into(),
+                        ),
+                        (composite::ARG_C_MASK, 0, [&self.white_image][..].into()),
+                        (
+                            composite::ARG_C_MASK_SAMPLER,
+                            0,
+                            [&self.samplers[i]][..].into(),
+                        ),
+                    ],
+                )?;
+            }
+
             image.resident = Some(ResidentImageData {
                 image: gfx_image,
                 alloc,
+                arg_pool_table,
                 session_id: 0, // set later
             });
         }
@@ -319,10 +395,7 @@ impl ImageManager {
             .uploader
             .upload(self.new_images_list.iter().map(&|&image_ptr| {
                 let ref image: Image = images[image_ptr];
-                UploadRequest {
-                    frame,
-                    image,
-                }
+                UploadRequest { frame, image }
             }))?;
 
         for image_ptr in self.new_images_list.drain(..) {
@@ -365,6 +438,14 @@ impl ImageManager {
 impl<'a> ResidentImage<'a> {
     pub fn image(&self) -> &'a gfx::ImageRef {
         &self.data.image
+    }
+
+    pub fn arg_pool_table(
+        &self,
+        sampler_type: usize,
+    ) -> (&'a gfx::ArgPoolRef, &'a gfx::ArgTableRef) {
+        let ArgPoolTable(pool, table) = &self.data.arg_pool_table[sampler_type];
+        (pool, table)
     }
 
     #[allow(dead_code)]

@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 // (excerpted from `ngsgfx/examples/common/utils.rs`)
-use std::sync::Arc;
+use std::collections::VecDeque;
 
 use self::gfx::Result;
 use iterpool::{intrusive_list, Pool, PoolPtr};
@@ -175,7 +175,7 @@ impl HeapSet {
 /// Maintains multiple `HeapSet`s to support multiple memory types.
 #[derive(Debug)]
 pub struct MultiHeapSet {
-    device: Arc<gfx::Device>,
+    device: gfx::DeviceRef,
     heap_sets: Vec<HeapSet>,
 }
 
@@ -186,9 +186,9 @@ pub struct MultiHeapSetAlloc {
 }
 
 impl MultiHeapSet {
-    pub fn new(device: &Arc<gfx::Device>) -> Self {
+    pub fn new(device: &gfx::DeviceRef) -> Self {
         Self {
-            device: Arc::clone(device),
+            device: device.clone(),
             heap_sets: Vec::new(),
         }
     }
@@ -210,5 +210,66 @@ impl MultiHeapSet {
         self.heap_sets[memory_type as usize]
             .bind_dynamic(resource)
             .map(|alloc| MultiHeapSetAlloc { alloc, memory_type })
+    }
+}
+
+#[derive(Debug)]
+pub struct ArgPoolSet {
+    device: gfx::DeviceRef,
+    arg_pools: VecDeque<gfx::ArgPoolRef>,
+    table_sig: gfx::ArgTableSigRef,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArgPoolTable(pub gfx::ArgPoolRef, pub gfx::ArgTableRef);
+
+impl ArgPoolSet {
+    pub fn new(device: gfx::DeviceRef, table_sig: gfx::ArgTableSigRef) -> Result<Self> {
+        let mut this = Self {
+            device,
+            arg_pools: VecDeque::new(),
+            table_sig,
+        };
+
+        // Create the first `ArgPoolRef`
+        let arg_pool = this.new_arg_pool()?;
+        this.arg_pools.push_back(arg_pool);
+
+        Ok(this)
+    }
+
+    pub fn table_sig(&self) -> &gfx::ArgTableSigRef {
+        &self.table_sig
+    }
+
+    fn new_arg_pool(&self) -> Result<gfx::ArgPoolRef> {
+        self.device
+            .build_arg_pool()
+            .reserve_table_sig(1024, &self.table_sig)
+            .build()
+    }
+
+    pub fn new_table(&mut self) -> Result<ArgPoolTable> {
+        let num_pools = self.arg_pools.len();
+        for _ in 0..num_pools {
+            {
+                let arg_pool = self.arg_pools.front().unwrap();
+                if let Some(x) = arg_pool.new_tables(1, &self.table_sig)? {
+                    return Ok(ArgPoolTable(arg_pool.clone(), { x }.pop().unwrap()));
+                }
+            }
+            let arg_pool = self.arg_pools.pop_front().unwrap();
+            self.arg_pools.push_back(arg_pool);
+        }
+
+        let arg_pool = self.new_arg_pool()?;
+        self.arg_pools.push_front(arg_pool);
+
+        let arg_pool = self.arg_pools.front().unwrap();
+        if let Some(x) = arg_pool.new_tables(1, &self.table_sig)? {
+            return Ok(ArgPoolTable(arg_pool.clone(), { x }.pop().unwrap()));
+        } else {
+            unreachable!()
+        }
     }
 }
