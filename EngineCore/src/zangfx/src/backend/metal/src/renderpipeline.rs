@@ -195,25 +195,27 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             }
         }
 
-        let shader_va_infos = self.vertex_attrs.iter().enumerate().filter_map(
-            |(i, vertex_attr)| {
-                vertex_attr.as_ref().map(|vertex_attr| {
-                    let vertex_buffer = self
-                        .vertex_buffers
-                        .get(vertex_attr.buffer)
-                        .unwrap_or(&None)
-                        .as_ref()
-                        .expect("vertex buffer binding is missing");
-                    ShaderVertexAttrInfo {
-                        binding: i,
-                        msl_buffer_index: vertex_attr.buffer + vb_start_index as usize,
-                        offset: vertex_attr.offset as u32,
-                        stride: vertex_buffer.stride as u32,
-                        input_rate: vertex_buffer.step_fn,
-                    }
-                })
-            },
-        );
+        let shader_va_infos =
+            self.vertex_attrs
+                .iter()
+                .enumerate()
+                .filter_map(|(i, vertex_attr)| {
+                    vertex_attr.as_ref().map(|vertex_attr| {
+                        let vertex_buffer = self
+                            .vertex_buffers
+                            .get(vertex_attr.buffer)
+                            .unwrap_or(&None)
+                            .as_ref()
+                            .expect("vertex buffer binding is missing");
+                        ShaderVertexAttrInfo {
+                            binding: i,
+                            msl_buffer_index: vertex_attr.buffer + vb_start_index as usize,
+                            offset: vertex_attr.offset as u32,
+                            stride: vertex_buffer.stride as u32,
+                            input_rate: vertex_buffer.step_fn,
+                        }
+                    })
+                });
 
         let vertex_fn = vertex_shader.0.new_metal_function(
             &vertex_shader.1,
@@ -438,9 +440,9 @@ impl Rasterizer {
             ops: &MetalStencilOps,
             masks: &base::StencilMasks,
         ) -> Result<OCPtr<metal::MTLStencilDescriptor>> {
-            let metal_desc = unsafe {
-                OCPtr::from_raw(metal::MTLStencilDescriptor::alloc().init())
-            }.ok_or_else(|| nil_error("MTLStencilDescriptor alloc"))?;
+            let metal_desc =
+                unsafe { OCPtr::from_raw(metal::MTLStencilDescriptor::alloc().init()) }
+                    .ok_or_else(|| nil_error("MTLStencilDescriptor alloc"))?;
 
             metal_desc.set_stencil_compare_function(ops.compare);
             metal_desc.set_stencil_failure_operation(ops.stencil_failure);
@@ -1037,17 +1039,18 @@ impl RenderStateManager {
         index: base::ArgTableIndex,
         tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
     ) {
-        for (i, (_pool, table)) in tables.iter().enumerate() {
+        for (i, (pool, table)) in tables.iter().enumerate() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
+            let metal_buffer = our_table.metal_buffer(pool);
             self.metal_encoder.set_vertex_buffer(
                 (i + index) as u64,
                 our_table.offset() as u64,
-                our_table.metal_buffer(),
+                metal_buffer,
             );
             self.metal_encoder.set_fragment_buffer(
                 (i + index) as u64,
                 our_table.offset() as u64,
-                our_table.metal_buffer(),
+                metal_buffer,
             );
         }
     }

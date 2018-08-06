@@ -6,6 +6,8 @@
 //! This crate is a part of [ZanGFX](../zangfx/index.html) and provides the base
 //! interface for backend implementations.
 #![feature(unsize)]
+#![feature(raw)]
+#![feature(get_type_id)]
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 

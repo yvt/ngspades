@@ -30,8 +30,8 @@
 //!    semantics of `Arc`.
 //!
 //!    Fat handles encapsulate implementation-dependent objects using
-//!    [`SmallBox`]`<_, [usize; 3]>`. Therefore, the contained data must be
-//!    sufficiently small to fit `[usize; 3]`.
+//!    [`SmallBox`]`<_, [usize; 2]>`. Therefore, the contained data must be
+//!    sufficiently small to fit `[usize; 2]`.
 //!
 //!    `HandleImpl` is a trait implemented by all fat handle implementations and
 //!    has `AsRef<dyn Any>` in its trait bounds. You can use this to downcast a
@@ -89,15 +89,17 @@ macro_rules! define_handle {
         $(#[$smeta])*
         #[derive(Debug)]
         pub struct $name {
-            inner: $crate::common::SmallBox<dyn $trait, [usize; 3]>,
+            type_id: std::any::TypeId,
+            inner: $crate::common::SmallBox<dyn $trait, [usize; 2]>,
         }
 
         impl $name {
             pub fn new<T>(x: T) -> Self
             where
-                T: ::std::marker::Unsize<dyn $trait>,
+                T: ::std::marker::Unsize<dyn $trait> + 'static,
             {
                 Self {
+                    type_id: std::any::TypeId::of::<T>(),
                     inner: unsafe { $crate::common::SmallBox::new(x) },
                 }
             }
@@ -106,27 +108,39 @@ macro_rules! define_handle {
             where
                 T: $trait,
             {
-                ::std::any::Any::is::<T>((*self.inner).as_ref())
+                std::any::TypeId::of::<T>() == self.type_id
             }
 
             pub fn downcast_ref<T>(&self) -> Option<&T>
             where
                 T: $trait,
             {
-                ::std::any::Any::downcast_ref((*self.inner).as_ref())
+                if self.is::<T>() {
+                    unsafe {
+                        Some(&*(&*self.inner as *const _ as *const T))
+                    }
+                } else {
+                    None
+                }
             }
 
             pub fn downcast_mut<T>(&mut self) -> Option<&mut T>
             where
                 T: $trait,
             {
-                ::std::any::Any::downcast_mut((*self.inner).as_mut())
+                if self.is::<T>() {
+                    unsafe {
+                        Some(&mut *(&mut *self.inner as *mut _ as *mut T))
+                    }
+                } else {
+                    None
+                }
             }
         }
 
         impl<T> From<T> for $name
         where
-            T: ::std::marker::Unsize<dyn $trait>,
+            T: ::std::marker::Unsize<dyn $trait> + 'static,
         {
             fn from(x: T) -> Self {
                 Self::new(x)

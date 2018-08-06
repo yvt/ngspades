@@ -179,6 +179,10 @@ impl arg::ArgPoolBuilder for ArgPoolBuilder {
     }
 }
 
+trait MetalArgPool {
+    fn metal_buffer(&self) -> metal::MTLBuffer;
+}
+
 /// Generic implementation of `ArgPool` for Metal.
 /// (Because `zangfx_impl_object` does not support generics)
 #[derive(Debug)]
@@ -231,14 +235,9 @@ impl<T: Allocator> BaseArgPool<T> {
         let tables = alloc_infos
             .into_iter()
             .map(|(offset, allocation)| {
-                let our_table = ArgTable {
-                    metal_buffer: *self.metal_buffer,
-                    offset,
-                    allocation,
-                };
+                let our_table = ArgTable { offset, allocation };
                 arg::ArgTableRef::new(our_table)
-            })
-            .collect();
+            }).collect();
         Ok(Some(tables))
     }
 
@@ -258,12 +257,19 @@ impl<T: Allocator> BaseArgPool<T> {
     }
 }
 
+impl<T: Allocator> MetalArgPool for BaseArgPool<T> {
+    fn metal_buffer(&self) -> metal::MTLBuffer {
+        *self.metal_buffer
+    }
+}
+
 /// Implementation of `ArgPool` for Metal. Employs the stack-based dynamic
 /// allocator and does not support deallocation (except for resetting).
 #[derive(Debug)]
 pub struct StackArgPool(BaseArgPool<StackAllocator>);
 
-zangfx_impl_object! { StackArgPool: dyn arg::ArgPool, dyn crate::Debug }
+zangfx_impl_object! { StackArgPool:
+dyn MetalArgPool, dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for StackArgPool {
     fn new_tables(
@@ -283,11 +289,18 @@ impl arg::ArgPool for StackArgPool {
     }
 }
 
+impl MetalArgPool for StackArgPool {
+    fn metal_buffer(&self) -> metal::MTLBuffer {
+        self.0.metal_buffer()
+    }
+}
+
 /// Implementation of `ArgPool` for Metal. Employs the full dynamic allocator.
 #[derive(Debug)]
 pub struct DynamicArgPool(BaseArgPool<TlsfAllocator>);
 
-zangfx_impl_object! { DynamicArgPool: dyn arg::ArgPool, dyn crate::Debug }
+zangfx_impl_object! { DynamicArgPool:
+dyn MetalArgPool, dyn arg::ArgPool, dyn crate::Debug }
 
 impl arg::ArgPool for DynamicArgPool {
     fn new_tables(
@@ -304,6 +317,12 @@ impl arg::ArgPool for DynamicArgPool {
 
     fn reset(&self) -> Result<()> {
         self.0.reset()
+    }
+}
+
+impl MetalArgPool for DynamicArgPool {
+    fn metal_buffer(&self) -> metal::MTLBuffer {
+        self.0.metal_buffer()
     }
 }
 
@@ -334,7 +353,6 @@ impl arg::ArgPool for ZeroSizedArgPool {
 /// Implementation of `ArgTable` for Metal.
 #[derive(Debug)]
 pub struct ArgTable {
-    metal_buffer: metal::MTLBuffer,
     offset: ArgSize,
     allocation: Allocation,
 }
@@ -348,7 +366,6 @@ impl Clone for ArgTable {
     fn clone(&self) -> ArgTable {
         use std::mem::transmute_copy;
         ArgTable {
-            metal_buffer: self.metal_buffer,
             offset: self.offset,
             // `Allocation` is not `Clone`, but this is safe as long as the
             // application follows the valid usage of `ArgPool`. (Specifically,
@@ -359,16 +376,16 @@ impl Clone for ArgTable {
 }
 
 impl ArgTable {
-    pub unsafe fn from_raw(metal_buffer: metal::MTLBuffer, offset: ArgSize) -> Self {
+    pub unsafe fn from_raw(offset: ArgSize) -> Self {
         Self {
-            metal_buffer,
             offset,
             allocation: None,
         }
     }
 
-    pub fn metal_buffer(&self) -> metal::MTLBuffer {
-        self.metal_buffer
+    pub fn metal_buffer(&self, pool: &base::ArgPoolRef) -> metal::MTLBuffer {
+        let metal_arg_pool: &dyn MetalArgPool = pool.query_ref().expect("bad pool type");
+        metal_arg_pool.metal_buffer()
     }
 
     pub fn offset(&self) -> ArgSize {

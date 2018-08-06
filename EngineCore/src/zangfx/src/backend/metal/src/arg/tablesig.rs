@@ -263,12 +263,32 @@ impl ArgTableSig {
         use crate::buffer::Buffer;
         use crate::image::Image;
         use crate::sampler::Sampler;
+        use std::raw::TraitObject;
         use zangfx_base::ArgSlice::*;
 
+        let mut metal_textures: ArrayVec<[_; 64]> = ArrayVec::new();
+        let mut metal_buffers: ArrayVec<[_; 64]> = ArrayVec::new();
+        let mut offsets: ArrayVec<[_; 64]> = ArrayVec::new();
+        let mut metal_samplers: ArrayVec<[_; 64]> = ArrayVec::new();
+
         self.lock_encoder(|encoder| {
-            for &((_pool, table), update_sets) in updates.iter() {
+            let mut last_pool = std::ptr::null();
+            let mut metal_buffer = metal::MTLBuffer::nil();
+
+            for &((pool, table), update_sets) in updates.iter() {
                 let table: &ArgTable = table.downcast_ref().expect("bad argument table type");
-                encoder.set_argument_buffer(table.metal_buffer(), table.offset() as _);
+
+                // We'd like to reduce the number of `ArgTable::metal_buffer`
+                // because it leads to at least two indirect calls, inhibiting
+                // compiler optimization
+                let pool_to: TraitObject = unsafe { std::mem::transmute(&**pool) };
+                let pool_ptr: *const () = pool_to.data;
+                if pool_ptr != last_pool {
+                    last_pool = pool_ptr;
+                    metal_buffer = table.metal_buffer(pool);
+                }
+
+                encoder.set_argument_buffer(metal_buffer, table.offset() as _);
 
                 for &(arg_index, start, resources) in update_sets.iter() {
                     // The current Metal argument index.
@@ -281,62 +301,51 @@ impl ArgTableSig {
                     // stack-allocated array (`ArrayVec`).
                     match resources {
                         Image(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs
-                                .iter()
-                                .map(|obj| {
-                                    let my_obj: &Image =
-                                        obj.downcast_ref().expect("bad image view type");
-                                    my_obj.metal_texture()
-                                })
-                                .collect();
+                            metal_textures.extend(objs.iter().map(|obj| {
+                                let my_obj: &Image =
+                                    obj.downcast_ref().expect("bad image view type");
+                                my_obj.metal_texture()
+                            }));
 
-                            encoder.set_textures(metal_objs.as_slice(), index as _);
+                            encoder.set_textures(metal_textures.as_slice(), index as _);
+                            metal_textures.clear();
 
                             index += objs.len();
                         },
 
                         Buffer(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs
-                                .iter()
-                                .map(|&(_, obj)| {
-                                    let my_obj: &Buffer =
-                                        obj.downcast_ref().expect("bad buffer type");
-                                    let (metal_buffer, _) =
-                                        my_obj.metal_buffer_and_offset().unwrap();
-                                    metal_buffer
-                                })
-                                .collect();
+                            metal_buffers.extend(objs.iter().map(|&(_, obj)| {
+                                let my_obj: &Buffer = obj.downcast_ref().expect("bad buffer type");
+                                let (metal_buffer, _) = my_obj.metal_buffer_and_offset().unwrap();
+                                metal_buffer
+                            }));
 
-                            let offsets: ArrayVec<[_; 64]> = objs
-                                .iter()
-                                .map(|&(ref range, obj)| {
-                                    let my_obj: &Buffer =
-                                        obj.downcast_ref().expect("bad buffer type");
-                                    let (_, offset) = my_obj.metal_buffer_and_offset().unwrap();
-                                    range.start + offset
-                                })
-                                .collect();
+                            offsets.extend(objs.iter().map(|&(ref range, obj)| {
+                                let my_obj: &Buffer = obj.downcast_ref().expect("bad buffer type");
+                                let (_, offset) = my_obj.metal_buffer_and_offset().unwrap();
+                                range.start + offset
+                            }));
 
                             encoder.set_buffers(
-                                metal_objs.as_slice(),
+                                metal_buffers.as_slice(),
                                 offsets.as_slice(),
                                 index as _,
                             );
+                            metal_buffers.clear();
+                            offsets.clear();
 
                             index += objs.len();
                         },
 
                         Sampler(objs) => for objs in objs.chunks(64) {
-                            let metal_objs: ArrayVec<[_; 64]> = objs
-                                .iter()
-                                .map(|obj| {
-                                    let my_obj: &Sampler =
-                                        obj.downcast_ref().expect("bad sampler type");
-                                    my_obj.metal_sampler()
-                                })
-                                .collect();
+                            metal_samplers.extend(objs.iter().map(|obj| {
+                                let my_obj: &Sampler =
+                                    obj.downcast_ref().expect("bad sampler type");
+                                my_obj.metal_sampler()
+                            }));
 
-                            encoder.set_sampler_states(metal_objs.as_slice(), index as _);
+                            encoder.set_sampler_states(metal_samplers.as_slice(), index as _);
+                            metal_samplers.clear();
 
                             index += objs.len();
                         },

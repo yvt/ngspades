@@ -107,12 +107,12 @@ impl command::ComputeCmdEncoder for ComputeEncoder {
         index: ArgTableIndex,
         tables: &[(&base::ArgPoolRef, &base::ArgTableRef)],
     ) {
-        for (i, (_pool, table)) in tables.iter().enumerate() {
+        for (i, (pool, table)) in tables.iter().enumerate() {
             let our_table: &ArgTable = table.downcast_ref().expect("bad argument table type");
             self.metal_encoder.set_buffer(
                 (i + index) as u64,
                 our_table.offset() as u64,
-                our_table.metal_buffer(),
+                our_table.metal_buffer(pool),
             );
         }
     }
