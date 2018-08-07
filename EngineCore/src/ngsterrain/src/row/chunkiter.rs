@@ -4,7 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use std::borrow::Borrow;
-use {utils, ColoredVoxels, RowSolidVoxels, Row};
+use {utils, ColoredVoxels, RowSolidVoxels};
+use super::Row;
 
 /// An iterator over the chunks in a `Row`.
 ///

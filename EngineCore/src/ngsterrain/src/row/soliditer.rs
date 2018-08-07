@@ -5,7 +5,8 @@
 //
 use std::borrow::Borrow;
 use std::ops::Range;
-use {utils, Row};
+use utils;
+use super::Row;
 
 /// An iterator over the chunks' Z value ranges in a `Row`.
 ///
