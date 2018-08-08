@@ -246,6 +246,7 @@ impl ArgPoolSet {
         self.device
             .build_arg_pool()
             .reserve_table_sig(1024, &self.table_sig)
+            .enable_destroy_tables()
             .build()
     }
 
