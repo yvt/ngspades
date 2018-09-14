@@ -43,12 +43,12 @@ fn new_shader_stage_description(
     (
         vk::PipelineShaderStageCreateInfo {
             s_type: vk::StructureType::PipelineShaderStageCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineShaderStageCreateFlags::empty(), // reserved for future use
             stage,
             module: library.vk_shader_module(),
             p_name: name.as_ptr(),
-            p_specialization_info: ::null(),
+            p_specialization_info: crate::null(),
         },
         name,
     )
@@ -120,7 +120,7 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
 
         let info = vk::ComputePipelineCreateInfo {
             s_type: vk::StructureType::ComputePipelineCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineCreateFlags::empty(),
             stage: stage.0,
             layout: root_sig.vk_pipeline_layout(),
@@ -344,7 +344,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         let vertex_input_state = vk::PipelineVertexInputStateCreateInfo {
             s_type: vk::StructureType::PipelineVertexInputStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineVertexInputStateCreateFlags::empty(),
             vertex_binding_description_count: vertex_buffers.len() as u32,
             p_vertex_binding_descriptions: vertex_buffers.as_ptr(),
@@ -354,7 +354,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo {
             s_type: vk::StructureType::PipelineInputAssemblyStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineInputAssemblyStateCreateFlags::empty(),
             topology: self.topology,
             primitive_restart_enable: vk::VK_TRUE,
@@ -362,17 +362,17 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         let viewport_state = vk::PipelineViewportStateCreateInfo {
             s_type: vk::StructureType::PipelineViewportStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineViewportStateCreateFlags::empty(),
             viewport_count: 1,
-            p_viewports: ::null(),
+            p_viewports: crate::null(),
             scissor_count: 1,
-            p_scissors: ::null(),
+            p_scissors: crate::null(),
         };
 
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo {
             s_type: vk::StructureType::PipelineRasterizationStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineRasterizationStateCreateFlags::empty(),
             depth_clamp_enable: vk::VK_FALSE,
             rasterizer_discard_enable: vk::VK_TRUE,
@@ -388,25 +388,25 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         let mut vk_info = vk::GraphicsPipelineCreateInfo {
             s_type: vk::StructureType::GraphicsPipelineCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineCreateFlags::empty(),
             stage_count: stages.len() as u32,
             p_stages: stages.as_ptr(),
             p_vertex_input_state: &vertex_input_state,
             p_input_assembly_state: &input_assembly_state,
-            p_tessellation_state: ::null(),
+            p_tessellation_state: crate::null(),
             // May be overwritten by `LlRasterizer::populate` later
             p_viewport_state: &viewport_state,
             // May be overwritten by `LlRasterizer::populate` later
             p_rasterization_state: &rasterization_state,
             // Set by `LlRasterizer::populate` later
-            p_multisample_state: ::null(),
+            p_multisample_state: crate::null(),
             // Set by `LlRasterizer::populate` later
-            p_depth_stencil_state: ::null(),
+            p_depth_stencil_state: crate::null(),
             // Set by `LlRasterizer::populate` later
-            p_color_blend_state: ::null(),
+            p_color_blend_state: crate::null(),
             // Set from `dyn_states` later
-            p_dynamic_state: ::null(),
+            p_dynamic_state: crate::null(),
             layout: root_sig.vk_pipeline_layout(),
             render_pass: render_pass.vk_render_pass(),
             subpass: subpass as u32,
@@ -430,7 +430,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         let dynamic_state = vk::PipelineDynamicStateCreateInfo {
             s_type: vk::StructureType::PipelineDynamicStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineDynamicStateCreateFlags::empty(),
             dynamic_state_count: dyn_states.len() as u32,
             p_dynamic_states: dyn_states.as_ptr(),
@@ -506,12 +506,12 @@ impl<'a> LlRasterizer<'a> {
 
         let mut viewport_state = vk::PipelineViewportStateCreateInfo {
             s_type: vk::StructureType::PipelineViewportStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineViewportStateCreateFlags::empty(),
             viewport_count: builder.num_viewports as u32,
-            p_viewports: ::null(),
+            p_viewports: crate::null(),
             scissor_count: builder.num_viewports as u32,
-            p_scissors: ::null(),
+            p_scissors: crate::null(),
         };
 
         // Make entire the scissor rect array dynamic if at least one of them
@@ -543,7 +543,7 @@ impl<'a> LlRasterizer<'a> {
 
         let mut rasterization_state = vk::PipelineRasterizationStateCreateInfo {
             s_type: vk::StructureType::PipelineRasterizationStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineRasterizationStateCreateFlags::empty(),
             depth_clamp_enable: translate_bool(builder.depth_clamp_enable),
             rasterizer_discard_enable: vk::VK_FALSE,
@@ -565,12 +565,12 @@ impl<'a> LlRasterizer<'a> {
 
         let multisample_state = vk::PipelineMultisampleStateCreateInfo {
             s_type: vk::StructureType::PipelineMultisampleStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineMultisampleStateCreateFlags::empty(),
             rasterization_samples: builder.rasterization_samples,
             sample_shading_enable: vk::VK_FALSE,
             min_sample_shading: 0.0,
-            p_sample_mask: ::null(),
+            p_sample_mask: crate::null(),
             alpha_to_coverage_enable: translate_bool(builder.alpha_to_coverage_enable),
             alpha_to_one_enable: vk::VK_FALSE,
         };
@@ -583,7 +583,7 @@ impl<'a> LlRasterizer<'a> {
 
         let mut depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo {
             s_type: vk::StructureType::PipelineDepthStencilStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineDepthStencilStateCreateFlags::empty(),
             depth_test_enable: translate_bool(builder.depth_test_enable),
             depth_write_enable: translate_bool(builder.depth_write_enable),
@@ -612,7 +612,7 @@ impl<'a> LlRasterizer<'a> {
 
         let color_blend_state = vk::PipelineColorBlendStateCreateInfo {
             s_type: vk::StructureType::PipelineColorBlendStateCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineColorBlendStateCreateFlags::empty(),
             logic_op_enable: vk::VK_FALSE,
             logic_op: vk::LogicOp::Clear,

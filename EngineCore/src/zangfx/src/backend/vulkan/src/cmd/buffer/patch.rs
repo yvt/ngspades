@@ -47,9 +47,9 @@ unsafe fn ensure_cmd_buffer(
             vk_cmd_buffer,
             &vk::CommandBufferBeginInfo {
                 s_type: vk::StructureType::CommandBufferBeginInfo,
-                p_next: ::null(),
+                p_next: crate::null(),
                 flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                p_inheritance_info: ::null(),
+                p_inheritance_info: crate::null(),
             },
         )?;
     }
@@ -178,7 +178,7 @@ impl CmdBufferData {
                 let barrier_src_access = event_src_access;
                 let barrier = vk::MemoryBarrier {
                     s_type: vk::StructureType::MemoryBarrier,
-                    p_next: ::null(),
+                    p_next: crate::null(),
                     src_access_mask: translate_access_type_flags(
                         // Read-to-write hazards need only pipeline barrier to deal with
                         barrier_src_access
@@ -210,7 +210,7 @@ impl CmdBufferData {
                         },
                         &barrier,
                         0,
-                        ::null(),
+                        crate::null(),
                         vk_image_barriers.len() as u32,
                         vk_image_barriers.as_ptr(),
                     );

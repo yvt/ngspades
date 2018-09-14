@@ -337,9 +337,9 @@ impl CmdBufferData {
                 vk_cmd_buffer,
                 &vk::CommandBufferBeginInfo {
                     s_type: vk::StructureType::CommandBufferBeginInfo,
-                    p_next: ::null(),
+                    p_next: crate::null(),
                     flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                    p_inheritance_info: ::null(),
+                    p_inheritance_info: crate::null(),
                 },
             )
         }.unwrap();
@@ -404,7 +404,7 @@ impl CmdBufferData {
 
                     vk::BufferMemoryBarrier {
                         s_type: vk::StructureType::BufferMemoryBarrier,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         src_access_mask,
                         dst_access_mask: vk::ACCESS_HOST_READ_BIT,
                         src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
@@ -664,7 +664,7 @@ impl base::CmdEncoder for CmdBufferData {
                 vk::DependencyFlags::empty(),
                 &[vk::MemoryBarrier {
                     s_type: vk::StructureType::MemoryBarrier,
-                    p_next: ::null(),
+                    p_next: crate::null(),
                     src_access_mask: translate_access_type_flags(src_access),
                     dst_access_mask: translate_access_type_flags(dst_access),
                 }],

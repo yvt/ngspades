@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 //! # ZanGFX Common: Utilities
-#![feature(rust_2018_preview)]
 #![feature(raw)]
 #![feature(unsize)]
 pub extern crate cgmath;

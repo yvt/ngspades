@@ -48,7 +48,7 @@ impl base::LibraryBuilder for LibraryBuilder {
 
         let info = vk::ShaderModuleCreateInfo {
             s_type: vk::StructureType::ShaderModuleCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::ShaderModuleCreateFlags::empty(), // reserved for future use
             code_size: spirv_code.len() * 4,
             p_code: spirv_code.as_ptr(),

@@ -8,7 +8,6 @@
 #![feature(unsize)]
 #![feature(raw)]
 #![feature(get_type_id)]
-#![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 
 pub use zangfx_common as common;

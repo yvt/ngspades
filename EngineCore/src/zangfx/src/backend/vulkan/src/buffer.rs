@@ -84,13 +84,13 @@ impl base::BufferBuilder for BufferBuilder {
 
         let info = vk::BufferCreateInfo {
             s_type: vk::StructureType::BufferCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::BufferCreateFlags::empty(),
             size: size,
             usage,
             sharing_mode: vk::SharingMode::Exclusive,
             queue_family_index_count: 0, // ignored for `SharingMode::Exclusive`
-            p_queue_family_indices: ::null(),
+            p_queue_family_indices: crate::null(),
         };
 
         let device = self.device.clone();

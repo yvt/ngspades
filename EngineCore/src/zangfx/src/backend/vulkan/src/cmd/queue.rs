@@ -440,7 +440,7 @@ impl SchedulerData {
                 if cur_num_cmd_buffers > 0 {
                     let vk_submit_info = vk::SubmitInfo {
                         s_type: vk::StructureType::SubmitInfo,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         wait_semaphore_count: cur_num_wait_sems as u32,
                         p_wait_semaphores: p_wait_sems,
                         p_wait_dst_stage_mask: p_wait_sem_stages,

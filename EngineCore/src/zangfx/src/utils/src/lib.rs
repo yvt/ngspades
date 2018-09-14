@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 //! [ZanGFX](../zangfx/index.html) utility library.
-#![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 #![feature(never_type)]
 

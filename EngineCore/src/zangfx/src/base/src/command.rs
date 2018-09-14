@@ -772,7 +772,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     /// # Valid Usage
     ///
     /// See [`CmdEncoder::use_resource_core`].
-    fn use_resource<T: Into<resources::ResourceSet<'a>>>(
+    fn use_resource<'a, T: Into<resources::ResourceSet<'a>>>(
         &mut self,
         usage: ResourceUsageFlags,
         objs: T,
@@ -805,7 +805,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     /// # Valid Usage
     ///
     /// See [`CmdEncoder::use_resource_core`].
-    fn use_resource_read<T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
+    fn use_resource_read<'a, T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
         self.use_resource(flags![ResourceUsage::{Read | Sample}], objs)
     }
 
@@ -822,7 +822,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     /// # Valid Usage
     ///
     /// See [`CmdEncoder::use_resource_core`].
-    fn use_resource_read_write<T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
+    fn use_resource_read_write<'a, T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
         self.use_resource(flags![ResourceUsage::{Read | Write | Sample}], objs)
     }
 
@@ -834,7 +834,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     /// # Valid Usage
     ///
     /// See [`CmdEncoder::barrier_core`].
-    fn barrier<T: Into<resources::ResourceSet<'a>>>(
+    fn barrier<'a, T: Into<resources::ResourceSet<'a>>>(
         &mut self,
         obj: T,
         src_access: AccessTypeFlags,

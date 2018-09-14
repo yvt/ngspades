@@ -238,7 +238,7 @@ impl VulkanMemory {
             device.vk_device().allocate_memory(
                 &vk::MemoryAllocateInfo {
                     s_type: vk::StructureType::MemoryAllocateInfo,
-                    p_next: ::null(),
+                    p_next: crate::null(),
                     allocation_size: size,
                     memory_type_index: ty,
                 },
@@ -249,7 +249,7 @@ impl VulkanMemory {
         // Create `Heap` ASAP before any operations that possibly cause unwinding
         let mut vulkan_memory = VulkanMemory {
             device,
-            ptr: ::null_mut(),
+            ptr: crate::null_mut(),
             vk_mem,
         };
 
@@ -417,7 +417,7 @@ fn bind<T: AllocationInfo>(
         // Compute the virtual memory of the allocated object
         let memory_ptr = vulkan_memory.ptr;
         ptr = if memory_ptr.is_null() {
-            ::null_mut()
+            crate::null_mut()
         } else {
             memory_ptr.wrapping_offset(offset as isize)
         };

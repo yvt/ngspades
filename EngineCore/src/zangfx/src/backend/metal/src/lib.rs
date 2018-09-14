@@ -50,12 +50,9 @@
 //!   16-byte aligned types (e.g., `vec4` or structs containing one) as element
 //!   types for arrays defined in uniform buffers.
 //!
-#![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 #![feature(raw)]
-
-#[allow(rust_2018_idioms)]
-pub extern crate zangfx_metal_rs as metal;
+#![feature(crate_visibility_modifier)]
 
 #[doc(no_inline)]
 pub use zangfx_metal_rs as metal;

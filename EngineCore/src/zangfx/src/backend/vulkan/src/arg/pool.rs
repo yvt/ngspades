@@ -93,7 +93,7 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
 
         let info = vk::DescriptorPoolCreateInfo {
             s_type: vk::StructureType::DescriptorPoolCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags,
             max_sets: self.num_sets,
             pool_size_count: pool_sizes.len() as u32,
@@ -225,7 +225,7 @@ impl ArgPoolData {
             let chunk_size = min(remaining_count, 256);
             let info = vk::DescriptorSetAllocateInfo {
                 s_type: vk::StructureType::DescriptorSetAllocateInfo,
-                p_next: ::null(),
+                p_next: crate::null(),
                 descriptor_pool: vk_d_pool,
                 descriptor_set_count: chunk_size as u32,
                 p_set_layouts: set_layouts.as_ptr(),

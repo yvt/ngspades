@@ -597,7 +597,7 @@ macro_rules! resources {
 
 impl<'a> ResourceSet<'a> {
     /// Get an iterator that visits all resources in the `ResourceSet`.
-    pub fn iter(&'b self) -> impl Iterator<Item = ResourceRef<'_>> + 'b {
+    pub fn iter<'b>(&'b self) -> impl Iterator<Item = ResourceRef<'_>> + 'b {
         let mut images = &[][..];
         let mut buffers = &[][..];
         let mut hetero = &[][..];
@@ -617,7 +617,7 @@ impl<'a> ResourceSet<'a> {
     }
 
     /// Get an iterator that visits all images in the `ResourceSet`.
-    pub fn images(&'b self) -> impl Iterator<Item = &'a ImageRef> + 'b {
+    pub fn images<'b>(&'b self) -> impl Iterator<Item = &'a ImageRef> + 'b {
         let mut images = &[][..];
         let mut hetero = &[][..];
         match self {
@@ -633,7 +633,7 @@ impl<'a> ResourceSet<'a> {
     }
 
     /// Get an iterator that visits all buffers in the `ResourceSet`.
-    pub fn buffers(&'b self) -> impl Iterator<Item = &'a BufferRef> + 'b {
+    pub fn buffers<'b>(&'b self) -> impl Iterator<Item = &'a BufferRef> + 'b {
         let mut buffers = &[][..];
         let mut hetero = &[][..];
         match self {

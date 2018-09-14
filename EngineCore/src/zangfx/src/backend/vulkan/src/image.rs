@@ -158,7 +158,7 @@ impl base::ImageBuilder for ImageBuilder {
 
         let info = vk::ImageCreateInfo {
             s_type: vk::StructureType::ImageCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags,
             image_type,
             format,
@@ -174,7 +174,7 @@ impl base::ImageBuilder for ImageBuilder {
             usage,
             sharing_mode: vk::SharingMode::Exclusive,
             queue_family_index_count: 0, // ignored for `SharingMode::Exclusive`
-            p_queue_family_indices: ::null(),
+            p_queue_family_indices: crate::null(),
             initial_layout: vk::ImageLayout::Undefined,
         };
 
@@ -467,7 +467,7 @@ impl ImageView {
 
         let info = vk::ImageViewCreateInfo {
             s_type: vk::StructureType::ImageViewCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags,
             image: vulkan_image.vk_image,
             view_type,
@@ -507,7 +507,7 @@ impl ImageView {
 
         let info = vk::ImageViewCreateInfo {
             s_type: vk::StructureType::ImageViewCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags,
             image: self.vulkan_image.vk_image,
             view_type: self.view_type,

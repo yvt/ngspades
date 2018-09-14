@@ -47,7 +47,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
                     descriptor_type: translate_descriptor_type(ty),
                     descriptor_count: 1,
                     stage_flags: vk::SHADER_STAGE_ALL,
-                    p_immutable_samplers: ::null(),
+                    p_immutable_samplers: crate::null(),
                 },
             });
         }
@@ -70,7 +70,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
 
         let info = vk::DescriptorSetLayoutCreateInfo {
             s_type: vk::StructureType::DescriptorSetLayoutCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::DescriptorSetLayoutCreateFlags::empty(),
             binding_count: bindings.len() as u32,
             p_bindings: bindings.as_ptr(),
@@ -215,7 +215,7 @@ impl base::RootSigBuilder for RootSigBuilder {
     }
 
     fn build(&mut self) -> Result<base::RootSigRef> {
-        if self.tables.len() > ::MAX_NUM_ARG_TABLES {
+        if self.tables.len() > crate::MAX_NUM_ARG_TABLES {
             panic!("Exceeds the backend limit of the number of argument tables");
         }
 
@@ -233,12 +233,12 @@ impl base::RootSigBuilder for RootSigBuilder {
 
         let info = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PipelineLayoutCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::PipelineLayoutCreateFlags::empty(), // reserved for future use
             set_layout_count: set_layouts.len() as u32,
             p_set_layouts: set_layouts.as_ptr(),
             push_constant_range_count: 0,
-            p_push_constant_ranges: ::null(),
+            p_push_constant_ranges: crate::null(),
         };
 
         let vk_device = self.device.vk_device();

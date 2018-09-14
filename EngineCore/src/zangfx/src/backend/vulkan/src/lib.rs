@@ -58,8 +58,8 @@
 //!    around 4 billions.
 //!
 #![feature(unsize)]
-#![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
+#![feature(crate_visibility_modifier)]
 
 #[allow(rust_2018_idioms)]
 pub extern crate ash;

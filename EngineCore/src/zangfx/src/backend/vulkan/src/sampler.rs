@@ -123,7 +123,7 @@ impl base::SamplerBuilder for SamplerBuilder {
     fn build(&mut self) -> Result<base::SamplerRef> {
         let info = vk::SamplerCreateInfo {
             s_type: vk::StructureType::SamplerCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::SamplerCreateFlags::empty(), // reserved for future use
             mag_filter: translate_filter(self.mag_filter),
             min_filter: translate_filter(self.mag_filter),

@@ -322,7 +322,7 @@ impl base::Device for Device {
                     }
                     let mut write = vk::WriteDescriptorSet {
                         s_type: vk::StructureType::WriteDescriptorSet,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         dst_set: table.vk_descriptor_set(),
                         dst_binding: arg_i as u32,
                         dst_array_element: (array_i + i) as u32,
@@ -330,7 +330,7 @@ impl base::Device for Device {
                         descriptor_type,
                         p_image_info: vec_end_ptr(&write_images),
                         p_buffer_info: vec_end_ptr(&write_buffers),
-                        p_texel_buffer_view: ::null(),
+                        p_texel_buffer_view: crate::null(),
                     };
                     let mut descriptor_count = 0;
                     match objs {

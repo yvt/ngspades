@@ -56,17 +56,17 @@ unsafe impl<T> PtrSized for Weak<T> {
     }
 }
 
-unsafe impl<T> PtrSized for ::barc::BArc<T> {
+unsafe impl<T> PtrSized for crate::barc::BArc<T> {
     type Value = T;
 
     fn into_raw(this: Self) -> *const Self::Value {
-        ::barc::BArc::into_raw(this)
+        crate::barc::BArc::into_raw(this)
     }
     unsafe fn from_raw(ptr: *const Self::Value) -> Self {
-        ::barc::BArc::from_raw(ptr)
+        crate::barc::BArc::from_raw(ptr)
     }
 }
-unsafe impl<T> RcLike for ::barc::BArc<T> {}
+unsafe impl<T> RcLike for crate::barc::BArc<T> {}
 
 /// An atomic `Option<Arc<T>>` storage that can be safely shared between threads.
 pub struct AtomicArc<T: PtrSized> {
@@ -234,7 +234,7 @@ impl<T> AsRawPtr<T> for Arc<T> {
     }
 }
 
-impl<T> AsRawPtr<T> for ::barc::BArc<T> {
+impl<T> AsRawPtr<T> for crate::barc::BArc<T> {
     fn as_raw_ptr(&self) -> *const T {
         &**self as *const _
     }

@@ -126,17 +126,17 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             flags: vk::SubpassDescriptionFlags::empty(),
             pipeline_bind_point: vk::PipelineBindPoint::Graphics,
             input_attachment_count: 0,
-            p_input_attachments: ::null(),
+            p_input_attachments: crate::null(),
             color_attachment_count: self.color_attachments.len() as u32,
             p_color_attachments: self.color_attachments.as_ptr(),
-            p_resolve_attachments: ::null(),
+            p_resolve_attachments: crate::null(),
             p_depth_stencil_attachment: self
                 .depth_stencil_attachment
                 .as_ref()
                 .map(|x| x as *const _)
-                .unwrap_or(::null()),
+                .unwrap_or(crate::null()),
             preserve_attachment_count: 0,
-            p_preserve_attachments: ::null(),
+            p_preserve_attachments: crate::null(),
         };
 
         let vk_attachments: Vec<_> = self
@@ -156,7 +156,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
 
         let vk_info = vk::RenderPassCreateInfo {
             s_type: vk::StructureType::RenderPassCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::RenderPassCreateFlags::empty(),
             attachment_count: vk_attachments.len() as u32,
             p_attachments: vk_attachments.as_ptr(),
@@ -446,7 +446,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
 
         let vk_info = vk::FramebufferCreateInfo {
             s_type: vk::StructureType::FramebufferCreateInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::FramebufferCreateFlags::empty(),
             render_pass: render_pass.vk_render_pass(),
             attachment_count: self.targets.len() as u32,
@@ -568,7 +568,7 @@ impl RenderTargetTable {
     crate fn render_pass_begin_info(&self) -> vk::RenderPassBeginInfo {
         vk::RenderPassBeginInfo {
             s_type: vk::StructureType::RenderPassBeginInfo,
-            p_next: ::null(),
+            p_next: crate::null(),
             render_pass: self.render_pass().vk_render_pass(),
             framebuffer: self.vk_framebuffer(),
             render_area: self.render_area().clone(),

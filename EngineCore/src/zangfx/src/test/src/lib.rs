@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 //! Test framework for ZanGFX implementations.
-#![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 #![feature(test)]
 

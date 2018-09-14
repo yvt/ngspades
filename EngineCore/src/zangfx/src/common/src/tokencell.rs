@@ -57,7 +57,7 @@ impl<T> TokenCell<T> {
     }
 
     /// Acquire the ownership and borrow the contents.
-    pub fn acquire(
+    pub fn acquire<'a>(
         &'a self,
         new_claim: &'a mut Token,
     ) -> Result<TokenCellRef<'a, T>, TokenCellBorrowError> {
@@ -76,7 +76,7 @@ impl<T> TokenCell<T> {
     }
 
     /// Borrow the contents.
-    pub fn borrow(
+    pub fn borrow<'a>(
         &'a self,
         claim: &'a mut Token,
     ) -> Result<TokenCellRef<'a, T>, TokenCellBorrowError> {
