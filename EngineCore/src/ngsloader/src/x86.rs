@@ -3,8 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate raw_cpuid;
-use self::raw_cpuid::CpuId;
+use raw_cpuid::CpuId;
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86 as vendor;
@@ -12,8 +11,8 @@ use std::arch::x86 as vendor;
 use std::arch::x86_64 as vendor;
 
 use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
-use ngscom::{hresults, BString, BStringRef, ComPtr, HResult};
-use ProcessorInfoCommon;
+use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, com_impl};
+use crate::ProcessorInfoCommon;
 
 com_impl! {
     class ProcessorInfo {

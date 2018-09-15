@@ -17,25 +17,18 @@
 #![feature(alloc_system)]
 extern crate alloc_system;
 
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate ngscom;
-extern crate ngsbase;
-
 use ngsbase::INgsProcessorInfo;
 use ngscom::{hresults, BStringRef, ComPtr, HResult};
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod x86;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use x86::ProcessorInfo;
+use self::x86::ProcessorInfo;
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 mod generic;
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-use generic::ProcessorInfo;
+use self::generic::ProcessorInfo;
 
 #[derive(Debug)]
 struct ProcessorInfoCommon {

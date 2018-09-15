@@ -5,8 +5,8 @@
 //
 #![allow(dead_code)] // For `ProcessorInfo::data`
 use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
-use ngscom::{hresults, BString, BStringRef, ComPtr, HResult};
-use ProcessorInfoCommon;
+use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, com_impl};
+use crate::ProcessorInfoCommon;
 
 com_impl! {
     class ProcessorInfo {
