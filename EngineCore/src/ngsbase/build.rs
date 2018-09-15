@@ -34,8 +34,7 @@ fn main() {
             "--",
             "-o",
             dest_path.to_str().unwrap(),
-        ])
-        .status()
+        ]).status()
         .unwrap();
 
     if !st.success() {
