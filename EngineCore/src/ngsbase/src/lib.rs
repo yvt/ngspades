@@ -7,17 +7,5 @@
 //
 // This source code is a part of Nightingales.
 //
-
-#[macro_use]
-extern crate ngscom;
-extern crate cgmath;
-extern crate cggeom;
-extern crate ngsenumflags;
-extern crate num_traits;
-#[macro_use]
-extern crate ngsenumflags_derive;
-extern crate rgb;
-
 mod interop;
-
-pub use interop::*;
+pub use self::interop::*;

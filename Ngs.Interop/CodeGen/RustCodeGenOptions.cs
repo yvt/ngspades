@@ -25,11 +25,11 @@ namespace Ngs.Interop.CodeGen {
             [typeof(bool)] = "bool", // not sure :)
         };
 
-        public string NgscomCratePath { get; set; } = "::ngscom";
+        public string NgscomCratePath { get; set; } = "ngscom";
 
         public string EnumFlagsDeriveName { get; set; } = "NgsEnumFlags";
 
-        public string EnumFlagsCratePath { get; set; } = "::ngsenumflags";
+        public string EnumFlagsCratePath { get; set; } = "ngsenumflags";
 
         public IRustdocEntrySource RustdocEntrySource { get; set; }
     }
