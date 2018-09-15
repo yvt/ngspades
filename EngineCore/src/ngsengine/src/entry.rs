@@ -10,7 +10,7 @@ use ngsbase::{
     INgsEngine, INgsEngineTrait, INgsPFBitmap, INgsPFFontFactory, INgsPFWorkspace,
     INgsPFWorkspaceListener, PixelFormat, PixelFormatItem,
 };
-use ngscom::{hresults, to_hresult, ComPtr, HResult, UnownedComPtr, com_impl};
+use ngscom::{com_impl, hresults, to_hresult, ComPtr, HResult, UnownedComPtr};
 
 use ngspf::canvas::{ImageData, ImageFormat};
 use ngspf_com;
@@ -31,7 +31,8 @@ impl Engine {
     fn new() -> ComPtr<INgsEngine> {
         (&Self::alloc(EngineData {
             font_factory: (&ngspf_com::text::ComFontFactory::new()).into(),
-        })).into()
+        }))
+            .into()
     }
 }
 
