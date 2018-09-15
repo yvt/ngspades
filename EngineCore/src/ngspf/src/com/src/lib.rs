@@ -7,8 +7,6 @@
 extern crate atomic_refcell;
 extern crate cgmath;
 extern crate rgb;
-#[macro_use]
-extern crate lazy_static;
 extern crate arclock;
 extern crate owning_ref;
 extern crate send_cell;

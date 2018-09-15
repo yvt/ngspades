@@ -8,7 +8,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 enet = { path = "../enet" }
-lazy_static = { version = "0.2" }
 ngsbase = { path = "../ngsbase" }
 ngscom = { path = "../ngscom" }
 ngspf = { path = "../ngspf" }

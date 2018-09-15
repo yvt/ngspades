@@ -9,7 +9,6 @@ ngspf_core = { path = "../core" }
 ngspf_viewport = { path = "../viewport" }
 ngspf_canvas = { path = "../canvas" }
 ngscom = { path = "../../../ngscom" }
-lazy_static = "1.0.1"
 atomic_refcell = "0.1.0"
 cgmath = "0.16.1"
 cggeom = { path = "../../../support/cggeom" }

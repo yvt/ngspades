@@ -55,6 +55,10 @@
 #![deny(missing_debug_implementations)]
 // #![deny(missing_docs)]
 
+/// This re-export is accessed by clients via `com_vtable!`.
+#[doc(hidden)]
+pub use lazy_static::lazy_static;
+
 mod bstring;
 #[macro_use]
 mod implmacros;

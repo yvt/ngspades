@@ -3,23 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-
-/*
- * The lazy_static crate is required to use this macro
- * (unless #[macro_reexport] goes into a stable state):
- *
- *    #[macro_use] extern crate ngscom;
- *    #[macro_use] extern crate lazy_static;
- *    com_impl!(TESTCLASS_VTABLE, ITestIterface, TestClass);
- *
- * FIXME: Is this still the case with Rust 2018?
- */
-
 #[macro_export]
 #[doc(hidden)]
 macro_rules! com_vtable {
     ($vtable:ident, $vtable_type:ty, $interface_type:ty, $cls_type:ty, $offs:expr) => {
-        lazy_static::lazy_static! {
+        $crate::lazy_static! {
             static ref $vtable: $vtable_type = {
                 struct Offset;
                 impl $crate::StaticOffset for Offset {
@@ -33,6 +21,7 @@ macro_rules! com_vtable {
     };
 }
 
+/// Macro for defining a COM class.
 #[macro_export]
 macro_rules! com_impl {
     (
