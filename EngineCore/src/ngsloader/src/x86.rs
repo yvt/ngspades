@@ -10,9 +10,9 @@ use std::arch::x86 as vendor;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64 as vendor;
 
-use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
-use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, com_impl};
 use crate::ProcessorInfoCommon;
+use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
+use ngscom::{com_impl, hresults, BString, BStringRef, ComPtr, HResult};
 
 com_impl! {
     class ProcessorInfo {
@@ -61,10 +61,11 @@ impl ProcessorInfo {
         let sse3 = feature_info.map(|x| x.has_sse3()).unwrap_or(false);
         let ssse3 = feature_info.map(|x| x.has_ssse3()).unwrap_or(false);
         let avx = feature_info.map(|x| x.has_avx()).unwrap_or(false)
-            && feature_info.map(|x| x.has_oxsave()).unwrap_or(false) && {
-            // Must check if the operating system supports the extended state saving
-            unsafe { (x86_get_xcr(0) & 0b110) == 0b110 }
-        };
+            && feature_info.map(|x| x.has_oxsave()).unwrap_or(false)
+            && {
+                // Must check if the operating system supports the extended state saving
+                unsafe { (x86_get_xcr(0) & 0b110) == 0b110 }
+            };
 
         let avx2 = avx && extended_feature_info.map(|x| x.has_avx2()).unwrap_or(false);
         let fma3 = avx && feature_info.map(|x| x.has_fma()).unwrap_or(false);
@@ -80,7 +81,8 @@ impl ProcessorInfo {
             avx,
             avx2,
             fma3,
-        })).into()
+        }))
+            .into()
     }
 }
 

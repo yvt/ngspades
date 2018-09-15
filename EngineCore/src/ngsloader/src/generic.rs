@@ -4,9 +4,9 @@
 // This source code is a part of Nightingales.
 //
 #![allow(dead_code)] // For `ProcessorInfo::data`
-use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
-use ngscom::{hresults, BString, BStringRef, ComPtr, HResult, com_impl};
 use crate::ProcessorInfoCommon;
+use ngsbase::{INgsProcessorInfo, INgsProcessorInfoTrait};
+use ngscom::{com_impl, hresults, BString, BStringRef, ComPtr, HResult};
 
 com_impl! {
     class ProcessorInfo {
@@ -24,7 +24,8 @@ impl ProcessorInfo {
     pub fn new() -> ComPtr<INgsProcessorInfo> {
         (&Self::alloc(ProcessorInfoData {
             common: ProcessorInfoCommon::new(),
-        })).into()
+        }))
+            .into()
     }
 }
 
