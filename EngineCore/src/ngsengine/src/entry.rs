@@ -10,7 +10,7 @@ use ngsbase::{
     INgsEngine, INgsEngineTrait, INgsPFBitmap, INgsPFFontFactory, INgsPFWorkspace,
     INgsPFWorkspaceListener, PixelFormat, PixelFormatItem,
 };
-use ngscom::{hresults, to_hresult, ComPtr, HResult, UnownedComPtr};
+use ngscom::{hresults, to_hresult, ComPtr, HResult, UnownedComPtr, com_impl};
 
 use ngspf::canvas::{ImageData, ImageFormat};
 use ngspf_com;
