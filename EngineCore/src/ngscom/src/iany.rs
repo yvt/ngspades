@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::any::Any;
-use {IUnknown, IUnknownTrait};
+use crate::{IUnknown, IUnknownTrait};
 
 com_iid!(IID_IANY =
     [0xcae77653, 0x6042, 0x48b8, [0x82, 0xdc, 0x92, 0x6d, 0xec, 0x0e, 0x34, 0x49]]);
@@ -15,7 +15,7 @@ com_interface! {
         iid: IID_IANY,
         vtable: IAnyVTable,
 
-        fn get_any() -> *const (Any + Send + Sync);
+        fn get_any() -> *const (dyn Any + Send + Sync);
     }
 }
 
@@ -32,7 +32,7 @@ impl IAny {
 }
 
 impl<T: Any + Send + Sync + IUnknownTrait> IAnyTrait for T {
-    fn get_any(&self) -> *const (Any + Send + Sync) {
-        self as &(Any + Send + Sync)
+    fn get_any(&self) -> *const (dyn Any + Send + Sync) {
+        self as &(dyn Any + Send + Sync)
     }
 }

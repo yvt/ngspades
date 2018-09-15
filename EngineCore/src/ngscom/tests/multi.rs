@@ -4,14 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Tests a class implementing multiple interfaces
-
-#[macro_use]
-extern crate ngscom;
-
-#[macro_use]
-extern crate lazy_static;
-
-use ngscom::{IUnknown, IUnknownTrait, ComPtr};
+use ngscom::{IUnknown, IUnknownTrait, ComPtr, com_interface, com_iid, com_impl};
 use std::sync::Mutex;
 
 com_iid!(IID_ITESTINTERFACE1 =

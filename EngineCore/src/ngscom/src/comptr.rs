@@ -19,7 +19,7 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr;
 
-use {IID, IUnknown};
+use crate::{IID, IUnknown};
 
 /// Wrapper type for COM interface pointers.
 ///
@@ -35,7 +35,6 @@ use {IID, IUnknown};
 /// do not outlive the `ComPtr` object.
 ///
 /// ```
-/// extern crate ngscom;
 /// use ngscom::*;
 ///
 /// fn create_iunknown_object(p: *mut *mut IUnknown) { }

@@ -4,14 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Tests an interface with a single-level inheritance hierarchy
-
-#[macro_use]
-extern crate ngscom;
-
-#[macro_use]
-extern crate lazy_static;
-
-use ngscom::{IUnknown, IUnknownTrait, ComPtr, HResult, hresults, IAny};
+use ngscom::{IUnknown, IUnknownTrait, ComPtr, HResult, hresults, IAny,
+    com_interface, com_iid, com_impl};
 use std::sync::Mutex;
 
 com_iid!(IID_ITESTINTERFACE =

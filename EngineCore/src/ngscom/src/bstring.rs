@@ -3,10 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate libc;
-
 use std::ops::{Deref, DerefMut};
 use std::{str, mem, i32, fmt, slice, ptr};
+use libc;
 
 #[doc(hidden)]
 #[derive(Debug)]
@@ -89,13 +88,13 @@ impl BString {
 }
 
 impl fmt::Display for BString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
 impl fmt::Debug for BString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "BString {{ header: {:?}, data: {:?} }}",
@@ -159,7 +158,7 @@ impl Drop for BStringRef {
 }
 
 impl fmt::Display for BStringRef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_null() {
             write!(f, "null")
         } else {
@@ -169,7 +168,7 @@ impl fmt::Display for BStringRef {
 }
 
 impl fmt::Debug for BStringRef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_null() {
             write!(f, "BStringRef {{ null }}")
         } else {

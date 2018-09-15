@@ -50,6 +50,7 @@
 //     option. All files in the project carrying such notice may not be copied,
 //     modified, or distributed except according to those terms.
 //
+#![warn(rust_2018_idioms)]
 
 // #![deny(dead_code)]
 #![deny(missing_debug_implementations)]
@@ -59,7 +60,7 @@ mod bstring;
 #[macro_use]
 mod implmacros;
 
-pub use bstring::{BString, BStringVtable, BStringRef};
+pub use crate::bstring::{BString, BStringVtable, BStringRef};
 
 /*
 # com-rs 0.1.4
@@ -84,10 +85,10 @@ This crate is composed of three main components:
 
 use std::fmt;
 
-pub use comptr::{AsComPtr, ComInterface, ComPtr};
-pub use unownedcomptr::UnownedComPtr;
-pub use iunknown::{IUnknown, IUnknownTrait};
-pub use iany::{IAny, IAnyTrait, IAnyVTable};
+pub use crate::comptr::{AsComPtr, ComInterface, ComPtr};
+pub use crate::unownedcomptr::UnownedComPtr;
+pub use crate::iunknown::{IUnknown, IUnknownTrait};
+pub use crate::iany::{IAny, IAnyTrait, IAnyVTable};
 
 /// An interface identifier.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -118,7 +119,7 @@ impl StaticOffset for StaticZeroOffset {
 
 /// Prints IID in Windows registry format {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}.
 impl fmt::Display for IID {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{{{:08X}-{:04X}-{:04X}-{:02X}{:02X}-\
@@ -148,7 +149,7 @@ fn iid_display() {
 
 #[macro_use]
 mod hresult;
-pub use hresult::*;
+pub use crate::hresult::*;
 #[macro_use]
 mod ifacemacros;
 mod comptr;
@@ -156,7 +157,7 @@ mod iunknown;
 mod unownedcomptr;
 mod iany;
 mod utils;
-pub use utils::*;
+pub use crate::utils::*;
 
 // Utility functions for macros
 #[doc(hidden)]

@@ -3,14 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-
-#[macro_use]
-extern crate ngscom;
-
-#[macro_use]
-extern crate lazy_static;
-
-use ngscom::{IUnknown, IUnknownTrait, ComPtr, UnownedComPtr, HResult, hresults};
+use ngscom::{IUnknown, IUnknownTrait, ComPtr, UnownedComPtr, HResult, hresults,
+    com_interface, com_iid, com_impl};
 use std::sync::{Mutex, Arc};
 
 com_iid!(IID_ITESTINTERFACE =
@@ -22,7 +16,7 @@ com_interface! {
         vtable: ITestInterfaceVTable,
 
         fn get_hoge_attr(retval: &mut ComPtr<ITestInterface>) -> HResult;
-        fn set_hoge_attr(value: UnownedComPtr<ITestInterface>) -> HResult;
+        fn set_hoge_attr(value: UnownedComPtr<'_, ITestInterface>) -> HResult;
     }
 }
 
@@ -46,7 +40,7 @@ impl ITestInterfaceTrait for TestClass {
         *retval = field.clone();
         hresults::E_OK
     }
-    fn set_hoge_attr(&self, value: UnownedComPtr<ITestInterface>) -> HResult {
+    fn set_hoge_attr(&self, value: UnownedComPtr<'_, ITestInterface>) -> HResult {
         let mut field = self.data.test_field.lock().unwrap();
         *field = value.clone();
         hresults::E_OK

@@ -11,13 +11,15 @@
  *    #[macro_use] extern crate ngscom;
  *    #[macro_use] extern crate lazy_static;
  *    com_impl!(TESTCLASS_VTABLE, ITestIterface, TestClass);
+ *
+ * FIXME: Is this still the case with Rust 2018?
  */
 
 #[macro_export]
 #[doc(hidden)]
 macro_rules! com_vtable {
     ($vtable:ident, $vtable_type:ty, $interface_type:ty, $cls_type:ty, $offs:expr) => {
-        lazy_static! {
+        lazy_static::lazy_static! {
             static ref $vtable: $vtable_type = {
                 struct Offset;
                 impl $crate::StaticOffset for Offset {
@@ -57,7 +59,7 @@ macro_rules! com_impl {
                     _com_class_header: unsafe { $crate::detail::ComClassHeader::new() },
                     $(
                         $interface_ident: <$interface_type>::from_vtable({
-                            com_vtable!(
+                            $crate::com_vtable!(
                                 VTABLE, <$interface_type as $crate::ComInterface>::Vtable, $interface_type, $cls_type,
                                 {
                                     // offset from `$interface_ident` to `Self`

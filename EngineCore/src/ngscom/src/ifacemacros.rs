@@ -19,9 +19,7 @@
 ///
 /// # Usage
 /// ```
-/// #[macro_use]
-/// extern crate ngscom;
-/// use ngscom::{IUnknown, IUnknownTrait};
+/// use ngscom::{IUnknown, IUnknownTrait, com_iid, com_interface};
 ///
 /// com_iid!(IID_IFOO =
 ///     [0x12345678, 0x90AB, 0xCDEF, [0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF]]);
@@ -52,9 +50,7 @@
 /// to the type definitions. e.g:
 ///
 /// ```
-/// # #[macro_use]
-/// # extern crate ngscom;
-/// # use ngscom::{IUnknown, IUnknownTrait};
+/// # use ngscom::{IUnknown, IUnknownTrait, com_iid, com_interface};
 /// # com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
 /// # com_interface! {
 /// #    interface (IFoo, IFooTrait): (IUnknown, IUnknownTrait) {
@@ -177,7 +173,7 @@ macro_rules! com_interface {
             #[doc(hidden)]
             type Vtable = $vtable;
             #[doc(hidden)]
-            type Trait = $trait_ident;
+            type Trait = dyn $trait_ident;
             #[allow(unused_unsafe)]
             fn iid() -> $crate::IID { unsafe { $iid } }
         }
@@ -194,7 +190,7 @@ macro_rules! com_interface {
             )*
         }
     ) => (
-        com_interface! {
+        $crate::com_interface! {
             $(#[$iface_attr])*
             interface ($iface, $trait_ident): ($base_iface, $base_trait) {
                 iid: $iid,
@@ -211,8 +207,7 @@ macro_rules! com_interface {
 ///
 /// # Usage
 /// ```
-/// # #[macro_use]
-/// # extern crate ngscom;
+/// use ngscom::com_iid;
 /// com_iid!(IID_IFOO = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
 /// # fn main() {}
 /// ```
@@ -222,8 +217,7 @@ macro_rules! com_interface {
 /// keyword before the identifier.
 ///
 /// ```
-/// # #[macro_use]
-/// # extern crate ngscom;
+/// # use ngscom::com_iid;
 /// com_iid!(pub IID_IBAR = [0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]]);
 /// # fn main() {}
 /// ```

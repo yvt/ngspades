@@ -119,12 +119,12 @@ pub trait IUnknownTrait: Sync + Send {
 
 unsafe impl AsComPtr<IUnknown> for IUnknown {}
 
-unsafe impl ::ComInterface for IUnknown {
+unsafe impl crate::ComInterface for IUnknown {
     #[doc(hidden)]
     type Vtable = IUnknownVtbl;
     #[doc(hidden)]
-    type Trait = IUnknownTrait;
-    fn iid() -> ::IID {
+    type Trait = dyn IUnknownTrait;
+    fn iid() -> crate::IID {
         IID_IUNKNOWN
     }
 }

@@ -111,9 +111,7 @@ pub mod hresults {
 ///
 /// # Usage
 /// ```
-/// #[macro_use]
-/// extern crate ngscom;
-/// use ngscom::{HResult, hresults};
+/// use ngscom::{HResult, hresults, com_try};
 ///
 /// fn my_little_function() -> HResult {
 ///     hresults::E_OK

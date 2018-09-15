@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use hresults::E_OK;
-use HResult;
+use crate::hresults::E_OK;
+use crate::HResult;
 
 /// Call a given closure and convert its return value of type
 /// `Result<(), HResult>` to `HResult`.
