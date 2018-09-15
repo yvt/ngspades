@@ -5,8 +5,8 @@
 //
 //! Helper functions for macros
 
-use std::mem;
 use super::StaticOffset;
+use std::mem;
 
 #[doc(hidden)]
 pub fn new_obj_raw<T>(x: T) -> *mut T {
@@ -44,7 +44,7 @@ impl ComClassHeader {
 }
 
 #[doc(hidden)]
-pub use std::sync::atomic::{AtomicIsize, Ordering, fence};
+pub use std::sync::atomic::{fence, AtomicIsize, Ordering};
 
 /// Enforces `Send` and `Sync` on class data.
 #[doc(hidden)]

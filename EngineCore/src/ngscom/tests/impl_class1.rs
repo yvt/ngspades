@@ -4,12 +4,19 @@
 // This source code is a part of Nightingales.
 //
 //! Tests an interface with a single-level inheritance hierarchy
-use ngscom::{IUnknown, IUnknownTrait, ComPtr, HResult, hresults, IAny,
-    com_interface, com_iid, com_impl};
+use ngscom::{
+    com_iid, com_impl, com_interface, hresults, ComPtr, HResult, IAny, IUnknown, IUnknownTrait,
+};
 use std::sync::Mutex;
 
-com_iid!(IID_ITESTINTERFACE =
-    [0x35edff15, 0x0b38, 0x47d8, [0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d]]);
+com_iid!(
+    IID_ITESTINTERFACE = [
+        0x35edff15,
+        0x0b38,
+        0x47d8,
+        [0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d]
+    ]
+);
 
 com_interface! {
     interface (ITestInterface, ITestInterfaceTrait): (IUnknown, IUnknownTrait) {
@@ -50,7 +57,7 @@ impl ITestInterfaceTrait for TestClass {
 
 impl TestClass {
     fn new(num: i32) -> ComPtr<ITestInterface> {
-        ComPtr::from(&Self::alloc(TestClassData{
+        ComPtr::from(&Self::alloc(TestClassData {
             test_field: Mutex::new(num),
         }))
     }

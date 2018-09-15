@@ -5,11 +5,11 @@
 //
 
 use std::marker::PhantomData;
-use std::ops::Deref;
 use std::mem::ManuallyDrop;
+use std::ops::Deref;
 
+use super::comptr::{AsComPtr, ComInterface};
 use super::ComPtr;
-use super::comptr::{ComInterface, AsComPtr};
 
 /// Implicitly owned immutable COM pointer.
 #[derive(Debug)]

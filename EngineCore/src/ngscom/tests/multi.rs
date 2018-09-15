@@ -4,11 +4,17 @@
 // This source code is a part of Nightingales.
 //
 //! Tests a class implementing multiple interfaces
-use ngscom::{IUnknown, IUnknownTrait, ComPtr, com_interface, com_iid, com_impl};
+use ngscom::{com_iid, com_impl, com_interface, ComPtr, IUnknown, IUnknownTrait};
 use std::sync::Mutex;
 
-com_iid!(IID_ITESTINTERFACE1 =
-    [0x35edff15, 0x0b38, 0x47d8, [0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d]]);
+com_iid!(
+    IID_ITESTINTERFACE1 = [
+        0x35edff15,
+        0x0b38,
+        0x47d8,
+        [0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d]
+    ]
+);
 
 com_interface! {
     interface (ITestInterface1, ITestInterface1Trait): (IUnknown, IUnknownTrait) {
@@ -20,8 +26,14 @@ com_interface! {
     }
 }
 
-com_iid!(IID_ITESTINTERFACE2 =
-    [0xee62c096, 0xc18e, 0x467d, [0x85, 0x79, 0xde, 0x07, 0x62, 0xaf, 0xfa, 0xe6]]);
+com_iid!(
+    IID_ITESTINTERFACE2 = [
+        0xee62c096,
+        0xc18e,
+        0x467d,
+        [0x85, 0x79, 0xde, 0x07, 0x62, 0xaf, 0xfa, 0xe6]
+    ]
+);
 
 com_interface! {
     interface (ITestInterface2, ITestInterface2Trait): (IUnknown, IUnknownTrait) {
@@ -72,7 +84,7 @@ impl ITestInterface2Trait for TestClass {
 
 impl TestClass {
     fn new(num: i32) -> ComPtr<ITestInterface1> {
-        ComPtr::from(&Self::alloc(TestClassData{
+        ComPtr::from(&Self::alloc(TestClassData {
             test_field1: Mutex::new(num),
             test_field2: Mutex::new(num),
         }))

@@ -3,9 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::ops::{Deref, DerefMut};
-use std::{str, mem, i32, fmt, slice, ptr};
 use libc;
+use std::ops::{Deref, DerefMut};
+use std::{fmt, i32, mem, ptr, slice, str};
 
 #[doc(hidden)]
 #[derive(Debug)]
@@ -33,7 +33,9 @@ unsafe extern "C" fn free_bstring(this: *mut BString) {
     libc::free(mem::transmute(this));
 }
 
-static BSTR_VTABLE: BStringVtable = BStringVtable { destruct: free_bstring };
+static BSTR_VTABLE: BStringVtable = BStringVtable {
+    destruct: free_bstring,
+};
 
 impl BString {
     /// Creates a new instance of `BString` without initializing the contents.

@@ -51,7 +51,6 @@
 //     modified, or distributed except according to those terms.
 //
 #![warn(rust_2018_idioms)]
-
 // #![deny(dead_code)]
 #![deny(missing_debug_implementations)]
 // #![deny(missing_docs)]
@@ -60,7 +59,7 @@ mod bstring;
 #[macro_use]
 mod implmacros;
 
-pub use crate::bstring::{BString, BStringVtable, BStringRef};
+pub use crate::bstring::{BString, BStringRef, BStringVtable};
 
 /*
 # com-rs 0.1.4
@@ -82,13 +81,12 @@ This crate is composed of three main components:
 // * Tests for IUnknown/ComPtr, hard to test with no way of acquiring
 //   IUnknown objects directly.
 
-
 use std::fmt;
 
 pub use crate::comptr::{AsComPtr, ComInterface, ComPtr};
-pub use crate::unownedcomptr::UnownedComPtr;
-pub use crate::iunknown::{IUnknown, IUnknownTrait};
 pub use crate::iany::{IAny, IAnyTrait, IAnyVTable};
+pub use crate::iunknown::{IUnknown, IUnknownTrait};
+pub use crate::unownedcomptr::UnownedComPtr;
 
 /// An interface identifier.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -123,7 +121,7 @@ impl fmt::Display for IID {
         write!(
             f,
             "{{{:08X}-{:04X}-{:04X}-{:02X}{:02X}-\
-                   {:02X}{:02X}{:02X}{:02X}{:02X}{:02X}}}",
+             {:02X}{:02X}{:02X}{:02X}{:02X}{:02X}}}",
             self.data1,
             self.data2,
             self.data3,
@@ -153,9 +151,9 @@ pub use crate::hresult::*;
 #[macro_use]
 mod ifacemacros;
 mod comptr;
+mod iany;
 mod iunknown;
 mod unownedcomptr;
-mod iany;
 mod utils;
 pub use crate::utils::*;
 

@@ -3,12 +3,20 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngscom::{IUnknown, IUnknownTrait, ComPtr, UnownedComPtr, HResult, hresults,
-    com_interface, com_iid, com_impl};
-use std::sync::{Mutex, Arc};
+use ngscom::{
+    com_iid, com_impl, com_interface, hresults, ComPtr, HResult, IUnknown, IUnknownTrait,
+    UnownedComPtr,
+};
+use std::sync::{Arc, Mutex};
 
-com_iid!(IID_ITESTINTERFACE =
-    [0x35edff15, 0x0b38, 0x47d8, [0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d]]);
+com_iid!(
+    IID_ITESTINTERFACE = [
+        0x35edff15,
+        0x0b38,
+        0x47d8,
+        [0x9b, 0x7c, 0xe0, 0x0f, 0xa2, 0xac, 0xdf, 0x9d]
+    ]
+);
 
 com_interface! {
     interface (ITestInterface, ITestInterfaceTrait): (IUnknown, IUnknownTrait) {
@@ -86,7 +94,8 @@ fn access_field() {
         inst.get_hoge_attr(&mut ret).unwrap();
         assert_eq!(ret.is_null(), true);
 
-        inst.set_hoge_attr(UnownedComPtr::from_comptr(&inst)).unwrap();
+        inst.set_hoge_attr(UnownedComPtr::from_comptr(&inst))
+            .unwrap();
 
         inst.get_hoge_attr(&mut ret).unwrap();
         assert_eq!(ret.is_null(), false);
@@ -110,7 +119,8 @@ fn leak() {
         inst.get_hoge_attr(&mut ret).unwrap();
         assert_eq!(ret.is_null(), true);
 
-        inst.set_hoge_attr(UnownedComPtr::from_comptr(&inst)).unwrap();
+        inst.set_hoge_attr(UnownedComPtr::from_comptr(&inst))
+            .unwrap();
 
         inst.get_hoge_attr(&mut ret).unwrap();
         assert_eq!(ret.is_null(), false);

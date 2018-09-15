@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 
-use std::result::Result;
 use std::convert::Into;
+use std::result::Result;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[must_use]
@@ -95,7 +95,6 @@ impl Into<HResult> for ComError {
     }
 }
 
-
 pub mod hresults {
     use super::HResult;
 
@@ -126,10 +125,12 @@ pub mod hresults {
 /// ```
 #[macro_export]
 macro_rules! com_try {
-    ($x:expr) => (
+    ($x:expr) => {
         match $x.into_result() {
             Ok(code) => code,
-            Err(err) => { return err.into_hresult(); }
+            Err(err) => {
+                return err.into_hresult();
+            }
         }
-    )
+    };
 }

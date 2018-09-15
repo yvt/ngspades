@@ -19,7 +19,7 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr;
 
-use crate::{IID, IUnknown};
+use crate::{IUnknown, IID};
 
 /// Wrapper type for COM interface pointers.
 ///
@@ -118,7 +118,9 @@ impl<T: ComInterface> ComPtr<T> {
 
     /// Constructs a new `ComPtr<T>` and initializes it with a null pointer.
     pub fn null() -> ComPtr<T> {
-        ComPtr { ptr: ptr::null_mut() }
+        ComPtr {
+            ptr: ptr::null_mut(),
+        }
     }
 
     /// Returns the raw pointer as type `U`. Depends on the `AsComPtr` trait.
@@ -185,10 +187,7 @@ where
         if !other.is_null() {
             unsafe {
                 // result doesn't matter
-                mem::drop((*other.as_ptr()).query_interface(
-                    &U::iid(),
-                    new.as_mut_ptr(),
-                ));
+                mem::drop((*other.as_ptr()).query_interface(&U::iid(), new.as_mut_ptr()));
             }
         }
         new

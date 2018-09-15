@@ -3,11 +3,17 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::any::Any;
 use crate::{IUnknown, IUnknownTrait};
+use std::any::Any;
 
-com_iid!(IID_IANY =
-    [0xcae77653, 0x6042, 0x48b8, [0x82, 0xdc, 0x92, 0x6d, 0xec, 0x0e, 0x34, 0x49]]);
+com_iid!(
+    IID_IANY = [
+        0xcae77653,
+        0x6042,
+        0x48b8,
+        [0x82, 0xdc, 0x92, 0x6d, 0xec, 0x0e, 0x34, 0x49]
+    ]
+);
 
 com_interface! {
     /// Provides an interface to `std::any::Any`.
@@ -27,7 +33,7 @@ impl IAny {
 
     /// Return a reference to the inner value if it is of type `T`, or `None` otherwise.
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Any::downcast_ref(unsafe { &* self.get_any() })
+        Any::downcast_ref(unsafe { &*self.get_any() })
     }
 }
 
