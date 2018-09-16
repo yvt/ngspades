@@ -4,15 +4,17 @@
 // This source code is a part of Nightingales.
 //
 //! Provides a NgsPF port type for embedding a NgsGameGFX viewport.
+use std::sync::Arc;
+
 use ngspf::core::{
     Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor,
 };
 use ngspf::viewport;
-use std::sync::Arc;
+use ngsenumflags::flags;
 #[allow(unused_imports)]
 use zangfx::{base as gfx, prelude::*, utils as gfxut};
 
-use config::Config;
+use crate::config::Config;
 
 /// `Port` used to display the viewport of NgsGameGFX.
 #[derive(Debug, Clone)]
@@ -32,7 +34,7 @@ impl PortRef {
 }
 
 impl viewport::Port for PortRef {
-    fn mount(&self, objects: &viewport::GfxObjects) -> Box<viewport::PortInstance> {
+    fn mount(&self, objects: &viewport::GfxObjects) -> Box<dyn viewport::PortInstance> {
         Box::new(Port {
             props: self.0.clone(),
             gfx_objects: objects.clone(),
