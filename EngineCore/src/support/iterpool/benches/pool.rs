@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+#![feature(test)]
 extern crate test;
 extern crate iterpool;
 use test::Bencher;
