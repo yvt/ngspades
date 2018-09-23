@@ -17,7 +17,7 @@ xalloc = { path = "../../../../support/xalloc-rs", features = ["nightly"] }
 arrayvec = "0.4.1"
 ash = "0.24.3"
 snowflake = "1.3.0"
-lazy_static = "1.0.2"
+lazy_static = "1.1"
 smallvec = { version = "0.6.3", features = ["union"] }
 itertools = "0.7.8"
 

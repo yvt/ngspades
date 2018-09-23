@@ -10,4 +10,4 @@ edition = "2018"
 
 [dependencies]
 libc = { version = "0.2.21" }
-lazy_static = { version = "1.0.1" }
+lazy_static = "1.1"

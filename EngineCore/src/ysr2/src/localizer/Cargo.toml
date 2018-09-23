@@ -7,5 +7,5 @@ authors = ["yvt <i@yvt.jp>"]
 ysr2_kemar_data = { path = "kemar_data" }
 ysr2_common = { path = "../common" }
 yfft = { path = "../../../yfft" }
-lazy_static = { version = "0.2" }
+lazy_static = "1.1"
 cgmath = "0.16.1"
