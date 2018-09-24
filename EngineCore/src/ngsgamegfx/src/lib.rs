@@ -5,5 +5,6 @@
 //
 //! NgsGameGFX — Nightingales Game GFX
 pub mod config;
+mod di;
 mod passman;
 pub mod port;

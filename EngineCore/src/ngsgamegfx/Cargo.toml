@@ -9,6 +9,7 @@ query_interface = "0.3.4"
 zangfx = { path = "../zangfx" }
 ngspf = { path = "../ngspf" }
 ngsenumflags = { path = "../support/ngsenumflags" }
+injector = { path = "../support/injector" }
 
 [dev-dependencies]
 cgmath = "0.16.1"
