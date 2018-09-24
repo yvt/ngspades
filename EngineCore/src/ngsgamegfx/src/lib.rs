@@ -4,6 +4,6 @@
 // This source code is a part of Nightingales.
 //
 //! NgsGameGFX — Nightingales Game GFX
+pub mod config;
 mod passman;
 pub mod port;
-pub mod config;
