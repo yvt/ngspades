@@ -23,7 +23,6 @@
 //! test msg_send_1000 ... bench:     125,287 ns/iter (+/- 172,079)
 //! ```
 //!
-#![feature(use_extern_macros)]
 #![feature(intrinsics)]
 
 extern crate objc;
