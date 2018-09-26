@@ -3,16 +3,15 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{utils, BenchDriver};
+use super::{utils, BenchDriver, Bencher};
 use include_data::include_data;
-use test::Bencher;
 use zangfx_base::prelude::*;
 
 static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
 
 /// Issues a command buffer containing 10000 compute dispatches.
-pub fn cmds_dispatch_10000_throughput<T: BenchDriver>(driver: T, b: &mut Bencher) {
+pub fn cmds_dispatch_10000_throughput<T: BenchDriver>(driver: T, b: &mut impl Bencher) {
     driver.choose_compute_queue(&mut |device, qf| {
         let queue = device.build_cmd_queue().queue_family(qf).build().unwrap();
         let library = device.new_library(SPIRV_NULL.as_u32_slice()).unwrap();

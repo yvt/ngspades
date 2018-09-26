@@ -6,6 +6,10 @@
 #![warn(rust_2018_idioms)]
 #![feature(test)]
 
+// Despite the compiler warning, we still need this for benchmarking
+#![allow(rust_2018_idioms)]
+extern crate test;
+
 use zangfx_base as base;
 use zangfx_vulkan as backend;
 

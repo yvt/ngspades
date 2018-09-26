@@ -47,6 +47,19 @@ pub trait BenchDriver {
     }
 }
 
+/// A wrapper around `test::Bencher`.
+///
+/// Our crate do not have a direct access to the `test` crate even with
+/// `#![feature(test)]` enabled. Therefore, callers of our benchmark functions
+/// must wrap a supplied `test::Bencher` with a newtype and implement this
+/// `Bencher` trait on the newtype.
+/// (Backend implementor usually do not have to do this because the
+/// [`zangfx_generate_backend_benches`] macro automatically handle that.)
+/// This seems to have started at some point during the Rust 2018 transition.
+pub trait Bencher {
+    fn iter<T>(&mut self, f: impl FnMut() -> T);
+}
+
 /// Generates benchmark cases given a bench driver.
 #[macro_export]
 macro_rules! zangfx_generate_backend_benches {
@@ -63,8 +76,14 @@ macro_rules! zangfx_bench_single {
     ($(#[$m:meta])* $name:ident, $driver:expr) => {
         $(#[$m])*
         #[bench]
-        fn $name(b: &mut $crate::test::Bencher) {
-            $crate::backend_benches::$name($driver, b);
+        fn $name(b: &mut test::Bencher) {
+            struct Bencher<'a>(&'a mut test::Bencher);
+            impl<'a> $crate::backend_benches::Bencher for Bencher<'a> {
+                fn iter<T>(&mut self, f: impl FnMut() -> T) {
+                    self.0.iter(f)
+                }
+            }
+            $crate::backend_benches::$name($driver, &mut Bencher(b));
         }
     }
 }

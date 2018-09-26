@@ -3,15 +3,14 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{utils, BenchDriver};
+use super::{utils, BenchDriver, Bencher};
 use include_data::include_data;
-use test::Bencher;
 use zangfx_base::prelude::*;
 
 static SPIRV_NULL: ::include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/compute_null.comp.spv"));
 
-fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
+fn cb_throughput<T: BenchDriver>(driver: T, b: &mut impl Bencher, num_cbs: usize) {
     driver.choose_compute_queue(&mut |device, qf| {
         let queue = device.build_cmd_queue().queue_family(qf).build().unwrap();
         let library = device.new_library(SPIRV_NULL.as_u32_slice()).unwrap();
@@ -67,6 +66,6 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut Bencher, num_cbs: usize) {
     });
 }
 
-pub fn cb_throughput_100<T: BenchDriver>(driver: T, b: &mut Bencher) {
+pub fn cb_throughput_100<T: BenchDriver>(driver: T, b: &mut impl Bencher) {
     cb_throughput(driver, b, 10);
 }
