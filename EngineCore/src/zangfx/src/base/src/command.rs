@@ -94,6 +94,20 @@ pub type CmdBufferRef = Box<dyn CmdBuffer>;
 /// it finishes recording commands and commiting it.
 pub trait CmdBuffer: Object {
     /// Mark this command buffer as ready for submission.
+    ///
+    /// This method essentially (but no in terms of the Rust language semantics
+    /// because doing it through `Box<dyn _>` is currently impossible, although
+    /// there is [a PR] to make doing such things possible) consumes the command
+    /// buffer object, so you won't be able to call any `CmdBuffer` methods
+    /// after calling this.
+    ///
+    /// [a PR]: https://github.com/rust-lang/rust/pull/54183
+    ///
+    /// # Valid Usage
+    ///
+    /// - On a command buffer object, no methods of `CmdBuffer` may be called
+    ///   after this method is called.
+    ///
     fn commit(&mut self) -> Result<()>;
 
     /// Begin encoding a render pass.
@@ -112,7 +126,9 @@ pub trait CmdBuffer: Object {
     /// Begin encoding a copy pass.
     fn encode_copy(&mut self) -> &mut dyn CopyCmdEncoder;
 
-    /// Register a completion handler. Must not be called after calling `commit`.
+    /// Register a completion handler.
+    ///
+    /// Note that this method may not be called after `commit` is called.
     fn on_complete(&mut self, cb: Box<dyn FnMut(Result<()>) + Sync + Send>);
 
     /// Wait on a given semaphore before the execution of the command buffer.
