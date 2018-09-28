@@ -8,6 +8,7 @@
 #![feature(never_type)]
 
 mod buffer;
+pub mod futuresapi;
 pub mod cbstatetracker;
 mod device;
 pub mod uploader;
@@ -16,10 +17,12 @@ mod uploaderutils;
 pub use crate::buffer::*;
 #[doc(no_inline)]
 pub use crate::cbstatetracker::*;
+#[doc(no_inline)]
+pub use crate::futuresapi::*;
 pub use crate::device::*;
 
 /// ZanGFX Utils prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{DeviceUtils, BufferUtils};
+    pub use crate::{DeviceUtils, BufferUtils, CmdBufferFutureExt};
 }

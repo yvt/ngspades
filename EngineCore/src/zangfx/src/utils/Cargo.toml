@@ -12,3 +12,4 @@ volatile_view = { path = "../../../support/volatile_view" }
 itertools = "0.7.7"
 num-traits = "0.2.4"
 pod = "0.5.0"
+futures-preview = "0.2.2"
