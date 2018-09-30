@@ -7,6 +7,7 @@
 #![warn(rust_2018_idioms)]
 #![feature(never_type)]
 
+pub mod asyncheap;
 mod buffer;
 pub mod futuresapi;
 pub mod cbstatetracker;
