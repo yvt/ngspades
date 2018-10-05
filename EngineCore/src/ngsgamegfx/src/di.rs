@@ -39,7 +39,7 @@ impl DeviceContainer for Container {
     }
 }
 
-pub fn new_device_container(device: gfx::DeviceRef, cmd_queue_set: CmdQueueSet) -> Container {
+pub(crate) fn new_device_container(device: gfx::DeviceRef, cmd_queue_set: CmdQueueSet) -> Container {
     let mut container = Container::new();
 
     // TODO: register default factories

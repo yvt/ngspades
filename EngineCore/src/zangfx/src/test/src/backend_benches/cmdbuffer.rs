@@ -30,8 +30,8 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut impl Bencher, num_cbs: usize
                 for i in 0..10 {
                     let cb_idx = i % cb_ring.len();
                     {
-                        let await = &mut cb_ring[cb_idx];
-                        await();
+                        let wait_completion = &mut cb_ring[cb_idx];
+                        wait_completion();
                     }
 
                     let mut awaiters: Vec<_> = (0..num_cbs)
@@ -60,8 +60,8 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut impl Bencher, num_cbs: usize
             });
         });
 
-        for mut await in cb_ring.drain(..) {
-            await();
+        for mut wait_completion in cb_ring.drain(..) {
+            wait_completion();
         }
     });
 }

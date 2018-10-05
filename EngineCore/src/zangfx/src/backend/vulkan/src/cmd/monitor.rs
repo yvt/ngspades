@@ -158,12 +158,12 @@ impl<T> Drop for Monitor<T> {
 
 /// This type is used to set up a fence to be waited by `Monitor` and then
 /// to have its associated callback called when the fence is signaled.
-pub(super) struct MonitorFence<'a, T: 'a> {
+pub(super) struct MonitorFence<'a, T> {
     monitor: Option<&'a Monitor<T>>,
     fence: vk::Fence,
 }
 
-impl<'a, T: 'a> MonitorFence<'a, T> {
+impl<'a, T> MonitorFence<'a, T> {
     crate fn vk_fence(&self) -> vk::Fence {
         self.fence
     }
@@ -183,7 +183,7 @@ impl<'a, T: 'a> MonitorFence<'a, T> {
     }
 }
 
-impl<'a, T: 'a> Drop for MonitorFence<'a, T> {
+impl<'a, T> Drop for MonitorFence<'a, T> {
     fn drop(&mut self) {
         if let Some(monitor) = self.monitor.take() {
             monitor.fence_sender.send(self.fence).unwrap();
