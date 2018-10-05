@@ -181,14 +181,14 @@ impl<State> TrackedState<State> {
 }
 
 #[derive(Debug)]
-crate struct RefTableEntry<'a, Res: 'a, Op: 'a> {
+crate struct RefTableEntry<'a, Res, Op> {
     crate index: usize,
     crate resource: &'a Res,
     crate op: &'a Op,
 }
 
 #[derive(Debug)]
-crate struct RefTableEntryMut<'a, Res: 'a, Op: 'a> {
+crate struct RefTableEntryMut<'a, Res, Op> {
     crate index: usize,
     crate resource: &'a Res,
     crate op: &'a mut Op,
