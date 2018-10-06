@@ -12,6 +12,7 @@ mod buffer;
 pub mod futuresapi;
 pub mod cbstatetracker;
 mod device;
+pub mod streamer;
 pub mod uploader;
 mod uploaderutils;
 
