@@ -102,6 +102,9 @@ use crate::{
     futuresapi::{CmdBufferFutureExt, CmdBufferResult},
 };
 
+mod utils;
+pub use self::utils::*;
+
 /// Parameters for `Streamer`.
 #[derive(Debug, Clone)]
 pub struct StreamerParams {
