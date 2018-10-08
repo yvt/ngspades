@@ -34,14 +34,14 @@
 //! batch.
 //! This step is repeated until (1) the total amount of portions allocated for
 //! the current batch reaches the maximum batch size specified via
-//! [`StreamerParams::batch_size`] or (2) there are no more requests to process.
+//! [`StreamerBuilder::batch_size`] or (2) there are no more requests to process.
 //! At this point, the batch is said to be *sealed*.
 //!
 //! [`Streamer`]: crate::streamer::Streamer
 //! [`StreamerRequest`]: crate::streamer::StreamerRequest
 //! [`size`]: crate::streamer::StreamerRequest::size
 //! [`populate`]: crate::streamer::StreamerRequest::populate
-//! [`StreamerParams::batch_size`]: crate::streamer::StreamerParams::batch_size
+//! [`StreamerBuilder::batch_size`]: crate::streamer::StreamerBuilder::batch_size
 //!
 //! After a batch is sealed, a command buffer is constructed for that batch.
 //! Device commands are encoded using [`copy`] and [`outside_encoder`] for every
@@ -106,9 +106,9 @@ use crate::{
 mod utils;
 pub use self::utils::*;
 
-/// Parameters for `Streamer`.
+/// Supplies parameters for [`Streamer`].
 #[derive(Debug, Clone)]
-pub struct StreamerParams {
+pub struct StreamerBuilder {
     pub device: base::DeviceRef,
 
     pub queue: base::CmdQueueRef,
@@ -132,6 +132,63 @@ pub struct StreamerParams {
     ///   `AsyncHeap`.
     ///
     pub should_wait_completion: bool,
+}
+
+impl StreamerBuilder {
+    /// Consturct a `StreamerBuilder` with supplied objects and default values
+    /// for the other fields.
+    pub fn default(device: base::DeviceRef, queue: base::CmdQueueRef) -> Self {
+        Self {
+            device,
+            queue,
+            batch_size: 1024 * 1024,
+            should_wait_completion: true,
+        }
+    }
+
+    /// Return `self` with a new value for the `batch_size` field.
+    pub fn with_batch_size(self, batch_size: usize) -> Self {
+        Self { batch_size, ..self }
+    }
+
+    /// Return `self` with a new value for the `should_wait_completion` field.
+    pub fn with_should_wait_completion(self, should_wait_completion: bool) -> Self {
+        Self {
+            should_wait_completion,
+            ..self
+        }
+    }
+
+    /// Build a [`Streamer`], consuming `self` and a given `AsyncHeap`.
+    pub fn build_with_heap<T: StreamerRequest, H: Borrow<AsyncHeap>>(
+        self,
+        heap: H,
+    ) -> Streamer<T, H> {
+        Streamer::new(self, heap)
+    }
+
+    /// Build a [`Streamer`], consuming `self`. A new `AsyncHeap` with a
+    /// specified size, suitable for the `CopyRead` usage is automatically
+    /// constructed during the process.
+    pub fn build_with_heap_size<T: StreamerRequest>(
+        self,
+        heap_size: DeviceSize,
+    ) -> Result<Streamer<T, AsyncHeap>> {
+        use crate::prelude::*;
+
+        let heap = self
+            .device
+            .build_dynamic_heap()
+            .memory_type(
+                self.device
+                    .try_choose_memory_type_shared(flags![base::BufferUsage::{CopyRead}])?
+                    .unwrap(),
+            )
+            .size(heap_size)
+            .build()?;
+
+        Ok(self.build_with_heap(AsyncHeap::new(heap)))
+    }
 }
 
 /// A request to be processed by [`Streamer`].
@@ -249,7 +306,7 @@ pub struct Streamer<T, H> {
 }
 
 impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Streamer<T, H> {
-    pub fn new(params: StreamerParams, heap: H) -> Self {
+    pub fn new(params: StreamerBuilder, heap: H) -> Self {
         Self {
             device: params.device,
             queue: params.queue,
