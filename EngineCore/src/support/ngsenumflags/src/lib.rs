@@ -288,6 +288,17 @@ where
     }
 }
 
+impl<T, B> std::iter::FromIterator<B> for BitFlags<T>
+where
+    T: EnumFlagSize,
+    B: Into<BitFlags<T>>,
+    T::Size: BitOr<T::Size, Output = T::Size> + Into<BitFlags<T>>,
+{
+    fn from_iter<I: IntoIterator<Item = B>>(iter: I) -> Self {
+        iter.into_iter().fold(Self::empty(), |x, y| x | y.into())
+    }
+}
+
 /// Convenient macro for constructing a `BitFlags`.
 ///
 /// # Examples
