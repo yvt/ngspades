@@ -21,7 +21,7 @@
 //! - *Phases* are used to define explicit ordering among device commands from
 //!   multiple requests inside a single batch.
 //!
-//! # Basic operations
+//! # Basics of the operation
 //!
 //! [`Streamer`] is a `Sink` accepting a stream of user-supplied
 //! `impl `[`StreamerRequest`]s each representing a *request*.
@@ -88,6 +88,7 @@
 //! Implementors of `StreamerRequest` can only return the errors relevant to the
 //! operation of `Streamer`, and should handle other kinds of errors through
 //! other means.
+//!
 use futures::{task, try_ready, Async, Future, Sink};
 use ngsenumflags::flags;
 use std::{borrow::Borrow, collections::VecDeque, ops::Range};
@@ -127,7 +128,8 @@ pub struct StreamerParams {
     ///   such as *semaphores* (for inter-queue synchronization) and *fences*
     ///   (for intra-queue synchronization).
     /// - `Streamer` won't release staging buffers after flushing, which
-    ///   impades using multiple `Streamer`s sharing a single `AsyncHeap`.
+    ///   impades the usage of multiple `Streamer`s sharing a single
+    ///   `AsyncHeap`.
     ///
     pub should_wait_completion: bool,
 }
@@ -234,8 +236,8 @@ pub struct Streamer<T, H> {
 
     /// A batch that is currently being constructed or has already been
     /// constructed (in which case it's said to be *sealed*). It may be left in
-    /// the sealed state (`next_batch_bind` is `Some(_)`) if we can't move it
-    /// to the next stage for `heap` being full.
+    /// the sealed state (`next_batch_bind` is `Some(_)`) if we can't bind
+    /// the staging buffer to `heap` because `heap` is full.
     next_batch: Vec<(T, Range<DeviceSize>)>,
     next_batch_size: DeviceSize,
     next_batch_bind: Option<(Bind, base::BufferRef)>,
@@ -389,11 +391,28 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Sink for Streamer<T, H> {
     type SinkError = base::Error;
 
     fn poll_ready(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
-        try_ready!(self.batch_ring.poll_flush(self.heap.borrow(), false, cx));
+        assert_eq!(
+            self.batch_ring.poll_flush(self.heap.borrow(), false, cx)?,
+            Async::Ready(())
+        );
 
         if self.try_dispatch_request() {
             return Ok(Async::Ready(()));
         }
+
+        // When `poll_dispatch_batch` returns `Async::Pending`, it indicates
+        // that there is no room in the staging buffer heap to start a new
+        // batch.
+        //
+        // In this case, `poll_dispatch_batch` is responsible for maintaining a
+        // `Waker` object so the current task can be waken up later when a room
+        // becomes available. However, it won't happen if it's *us* which are
+        // also making the heap full.
+        //
+        // This is why we call `self.batch_ring.poll_flush` first. It internally
+        // calls `poll` on `CmdBufferResult`s, ensuring the current task is
+        // woken up upon command buffer completion to release the associated
+        // staging buffer.
         try_ready!(self.poll_dispatch_batch(cx));
         assert!(self.try_dispatch_request());
         Ok(Async::Ready(()))
@@ -406,7 +425,10 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Sink for Streamer<T, H> {
     }
 
     fn poll_flush(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
-        try_ready!(self.batch_ring.poll_flush(self.heap.borrow(), false, cx));
+        assert_eq!(
+            self.batch_ring.poll_flush(self.heap.borrow(), false, cx)?,
+            Async::Ready(())
+        );
 
         if !self.try_dispatch_request() {
             try_ready!(self.poll_dispatch_batch(cx));
@@ -418,6 +440,7 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Sink for Streamer<T, H> {
             .poll_flush(self.heap.borrow(), self.should_wait_completion, cx)
     }
 
+    /// Call `poll_flush`.
     fn poll_close(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
         self.poll_flush(cx)
     }
@@ -428,7 +451,6 @@ struct BatchRing<T> {
     /// A FIFO queue of unfinished batches.
     queue: VecDeque<Batch<T>>,
 }
-
 
 #[derive(Debug)]
 struct Batch<T> {
