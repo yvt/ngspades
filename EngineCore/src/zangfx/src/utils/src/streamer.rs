@@ -441,6 +441,22 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Streamer<T, H> {
 
         Ok(Async::Ready(()))
     }
+
+    fn poll_flush_inner(&mut self, cx: &mut task::Context<'_>, should_wait_completion: bool) -> Result<Async<()>> {
+        assert_eq!(
+            self.batch_ring.poll_flush(self.heap.borrow(), false, cx)?,
+            Async::Ready(())
+        );
+
+        if !self.try_dispatch_request() {
+            try_ready!(self.poll_dispatch_batch(cx));
+        }
+        assert!(self.try_dispatch_request());
+        try_ready!(self.poll_dispatch_batch(cx));
+
+        self.batch_ring
+            .poll_flush(self.heap.borrow(), should_wait_completion, cx)
+    }
 }
 
 impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Sink for Streamer<T, H> {
@@ -481,25 +497,17 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Sink for Streamer<T, H> {
         Ok(())
     }
 
+    /// Flush any remaining requests. The behavior of flushing is dependent on
+    /// the value of [`StreamerBuilder::should_wait_completion`].
     fn poll_flush(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
-        assert_eq!(
-            self.batch_ring.poll_flush(self.heap.borrow(), false, cx)?,
-            Async::Ready(())
-        );
-
-        if !self.try_dispatch_request() {
-            try_ready!(self.poll_dispatch_batch(cx));
-        }
-        assert!(self.try_dispatch_request());
-        try_ready!(self.poll_dispatch_batch(cx));
-
-        self.batch_ring
-            .poll_flush(self.heap.borrow(), self.should_wait_completion, cx)
+        self.poll_flush_inner(cx, self.should_wait_completion)
     }
 
-    /// Call `poll_flush`.
+    /// Flush any remaining requests and wait for the completion of all
+    /// associated command buffers (no matter what value
+    /// `should_wait_completion` is set to).
     fn poll_close(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
-        self.poll_flush(cx)
+        self.poll_flush_inner(cx, true)
     }
 }
 
