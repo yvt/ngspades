@@ -34,11 +34,11 @@ impl<'a> StreamerRequest for StageBuffer<'a> {
 
 impl<'a> StreamerRequest for StageImage<'a> {
     fn size(&self) -> usize {
-        self.src_data.len()
+        UploadRequest::size(self)
     }
 
     fn populate(&mut self, staging_buffer: &mut [u8]) {
-        staging_buffer.copy_from_slice(self.src_data);
+        UploadRequest::populate(self, staging_buffer)
     }
 
     fn copy(
@@ -48,21 +48,7 @@ impl<'a> StreamerRequest for StageImage<'a> {
         staging_buffer_range: Range<base::DeviceSize>,
         _phase: u32,
     ) -> Result<()> {
-        encoder.copy_buffer_to_image(
-            staging_buffer,
-            &base::BufferImageRange {
-                offset: staging_buffer_range.start,
-                row_stride: self.src_row_stride,
-                plane_stride: self.src_plane_stride,
-            },
-            self.dst_image,
-            self.dst_aspect,
-            &self.dst_range,
-            &self.dst_origin,
-            &self.size,
-        );
-
-        Ok(())
+        UploadRequest::copy(self, encoder, staging_buffer, staging_buffer_range)
     }
 }
 

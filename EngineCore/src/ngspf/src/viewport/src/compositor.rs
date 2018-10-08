@@ -207,7 +207,7 @@ impl Compositor {
         ];
 
         // Create some resources required by the compositor
-        use self::gfxut::uploader::{StageBuffer, StageImage, UploaderUtils};
+        use self::gfxut::uploader::{StageBuffer, StageImage};
         let white_image = device
             .build_image()
             .extents(&[1, 1])
@@ -239,7 +239,7 @@ impl Compositor {
             )?;
 
             let uploader = image_manager.uploader_mut();
-            uploader.stage_images(
+            uploader.upload(
                 [StageImage::new_default(
                     &white_image,
                     &[0xffffffffu32],

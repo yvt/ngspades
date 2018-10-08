@@ -60,10 +60,7 @@ impl<'a> uploader::UploadRequest for StageBuffer<'a> {
     }
 }
 
-/// An image staging request. Use [`UploaderUtils::stage_images`] to submit
-/// requests of this type to an `Uploader`.
-///
-/// [`UploaderUtils::stage_images`]: UploaderUtils::stage_images
+/// An image staging request. Implements `UploadRequest`.
 #[derive(Debug, Clone)]
 pub struct StageImage<'a> {
     pub src_data: &'a [u8],
@@ -96,57 +93,35 @@ impl<'a> StageImage<'a> {
     }
 }
 
-/// Utilities for `Uploader`.
-pub trait UploaderUtils {
-    /// Initiate image staging operations.
-    fn stage_images<'a, I>(&mut self, requests: I) -> Result<uploader::SessionId>
-    where
-        I: Iterator<Item = StageImage<'a>> + Clone;
-}
+impl<'a> uploader::UploadRequest for StageImage<'a> {
+    fn size(&self) -> usize {
+        self.src_data.len()
+    }
 
-impl UploaderUtils for uploader::Uploader {
-    fn stage_images<'a, I>(&mut self, requests: I) -> Result<uploader::SessionId>
-    where
-        I: Iterator<Item = StageImage<'a>> + Clone,
-    {
-        impl<'a> uploader::UploadRequest for (StageImage<'a>, &'static dyn base::Device) {
-            fn size(&self) -> usize {
-                self.0.src_data.len()
-            }
+    fn populate(&self, staging_buffer: &mut [u8]) {
+        staging_buffer.copy_from_slice(self.src_data);
+    }
 
-            fn populate(&self, staging_buffer: &mut [u8]) {
-                staging_buffer.copy_from_slice(self.0.src_data);
-            }
+    fn copy(
+        &self,
+        encoder: &mut dyn base::CopyCmdEncoder,
+        staging_buffer: &base::BufferRef,
+        staging_buffer_range: Range<base::DeviceSize>,
+    ) -> Result<()> {
+        encoder.copy_buffer_to_image(
+            staging_buffer,
+            &base::BufferImageRange {
+                offset: staging_buffer_range.start,
+                row_stride: self.src_row_stride,
+                plane_stride: self.src_plane_stride,
+            },
+            self.dst_image,
+            self.dst_aspect,
+            &self.dst_range,
+            &self.dst_origin,
+            &self.size,
+        );
 
-            fn copy(
-                &self,
-                encoder: &mut dyn base::CopyCmdEncoder,
-                staging_buffer: &base::BufferRef,
-                staging_buffer_range: Range<base::DeviceSize>,
-            ) -> Result<()> {
-                encoder.copy_buffer_to_image(
-                    staging_buffer,
-                    &base::BufferImageRange {
-                        offset: staging_buffer_range.start,
-                        row_stride: self.0.src_row_stride,
-                        plane_stride: self.0.src_plane_stride,
-                    },
-                    self.0.dst_image,
-                    self.0.dst_aspect,
-                    &self.0.dst_range,
-                    &self.0.dst_origin,
-                    &self.0.size,
-                );
-
-                Ok(())
-            }
-        }
-
-        // Untie the lifetime in order to maintain a mutable reference to `self`.
-        // The equivalent safe code would be `Arc::clone(self.device())`, but
-        // I wanted to save some expensive atomic operations.
-        let device = unsafe { &*(&**self.device() as *const _) };
-
-        self.upload(requests.map(&|r| (r, device)))
+        Ok(())
     }
 }
