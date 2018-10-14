@@ -15,7 +15,7 @@ pub use crate::uploader::{StageBuffer, StageImage};
 /// A request involving [`CopyCmdEncoder`].
 ///
 /// [`CopyCmdEncoder`]: zangfx_base::CopyCmdEncoder
-pub trait CopyRequest: StreamerRequest {
+pub trait CopyRequest: Request {
     /// Encode copy commands.
     fn copy(
         &mut self,
@@ -46,7 +46,7 @@ impl<T: CopyRequest> CmdGenerator<T> for CopyCmdGenerator {
     }
 }
 
-impl<'a> StreamerRequest for StageBuffer<'a> {
+impl<'a> Request for StageBuffer<'a> {
     fn size(&self) -> usize {
         UploadRequest::size(self)
     }
@@ -67,7 +67,7 @@ impl<'a> CopyRequest for StageBuffer<'a> {
     }
 }
 
-impl<'a> StreamerRequest for StageImage<'a> {
+impl<'a> Request for StageImage<'a> {
     fn size(&self) -> usize {
         UploadRequest::size(self)
     }
@@ -89,7 +89,7 @@ impl<'a> CopyRequest for StageImage<'a> {
 }
 
 /// A tagged union of [`StageBuffer`] and [`StageImage`], implementing
-/// [`StreamerRequest`].
+/// [`Request`].
 #[derive(Debug, Clone)]
 pub enum Stage<'a> {
     Buffer(StageBuffer<'a>),
@@ -108,18 +108,18 @@ impl<'a> From<StageImage<'a>> for Stage<'a> {
     }
 }
 
-impl<'a> StreamerRequest for Stage<'a> {
+impl<'a> Request for Stage<'a> {
     fn size(&self) -> usize {
         match self {
-            Stage::Buffer(inner) => StreamerRequest::size(inner),
-            Stage::Image(inner) => StreamerRequest::size(inner),
+            Stage::Buffer(inner) => Request::size(inner),
+            Stage::Image(inner) => Request::size(inner),
         }
     }
 
     fn populate(&mut self, staging_buffer: &mut [u8]) {
         match self {
-            Stage::Buffer(inner) => StreamerRequest::populate(inner, staging_buffer),
-            Stage::Image(inner) => StreamerRequest::populate(inner, staging_buffer),
+            Stage::Buffer(inner) => Request::populate(inner, staging_buffer),
+            Stage::Image(inner) => Request::populate(inner, staging_buffer),
         }
     }
 }

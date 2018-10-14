@@ -133,7 +133,7 @@ impl AsyncUploader {
                 .name("AsyncUploader".into())
                 .spawn(move || {
                     if let Err(err) = (|| {
-                        let streamer = streamer::StreamerBuilder::default(device, queue)
+                        let streamer = streamer::Builder::default(device, queue)
                             .with_batch_size(1024 * 1024 * 10)
                             .build_with_heap_size(1024 * 1024 * 100)?;
 
@@ -295,7 +295,7 @@ pub trait Request: std::fmt::Debug {
 #[derive(Debug)]
 struct StreamerRequest(Box<dyn Request + 'static>, Option<oneshot::Sender<()>>);
 
-impl streamer::StreamerRequest for StreamerRequest {
+impl streamer::Request for StreamerRequest {
     fn size(&self) -> usize {
         self.0.size()
     }

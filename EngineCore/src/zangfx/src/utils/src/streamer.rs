@@ -23,7 +23,7 @@
 //! # Basics of the operation
 //!
 //! [`Streamer`] is a `Sink` accepting a stream of user-supplied
-//! `impl `[`StreamerRequest`]s each representing a *request*.
+//! `impl `[`Request`]s each representing a *request*.
 //!
 //! The streaming operation is performed in a unit called a *batch* each
 //! composed of one or more requests.
@@ -33,17 +33,17 @@
 //! batch.
 //! This step is repeated until (1) the total amount of portions allocated for
 //! the current batch reaches the maximum batch size specified via
-//! [`StreamerBuilder::batch_size`] or (2) there are no more requests to process.
+//! [`Builder::batch_size`] or (2) there are no more requests to process.
 //! At this point, the batch is said to be *sealed*.
 //!
 //! [`Streamer`]: crate::streamer::Streamer
-//! [`StreamerRequest`]: crate::streamer::StreamerRequest
-//! [`size`]: crate::streamer::StreamerRequest::size
-//! [`populate`]: crate::streamer::StreamerRequest::populate
-//! [`StreamerBuilder::batch_size`]: crate::streamer::StreamerBuilder::batch_size
+//! [`Request`]: crate::streamer::Request
+//! [`size`]: crate::streamer::Request::size
+//! [`populate`]: crate::streamer::Request::populate
+//! [`Builder::batch_size`]: crate::streamer::Builder::batch_size
 //!
 //! After a batch is sealed, a command buffer is constructed for that batch.
-//! A [`CmdGenerator`] supplied as a part of `StreamerBuilder` is responsible
+//! A [`CmdGenerator`] supplied as a part of `Builder` is responsible
 //! for the coordination of command buffer generation. It receives a staging
 //! buffer, requests, and their corresponding buffer ranges, but it's up to
 //! `CmdGenerator` how commands are generated from them. For instance,
@@ -62,12 +62,12 @@
 //! transfer). Finally, the allocated portions of the staging buffer are
 //! released.
 //!
-//! [`exfiltrate`]: crate::streamer::StreamerRequest::exfiltrate
+//! [`exfiltrate`]: crate::streamer::Request::exfiltrate
 //!
 //! # Error handling
 //!
 //! `Streamer` only handles fatal error conditions such as device loss.
-//! Implementors of `StreamerRequest` can only return the errors relevant to the
+//! Implementors of `Request` can only return the errors relevant to the
 //! operation of `Streamer`, and should handle other kinds of errors through
 //! other means.
 //!
@@ -89,7 +89,7 @@ pub use self::utils::*;
 
 /// Supplies parameters for [`Streamer`].
 #[derive(Debug, Clone)]
-pub struct StreamerBuilder<G> {
+pub struct Builder<G> {
     pub device: base::DeviceRef,
 
     pub queue: base::CmdQueueRef,
@@ -106,7 +106,7 @@ pub struct StreamerBuilder<G> {
     /// has been submitted. `Streamer` might not check the command buffer
     /// completion at all, which have some ramifications:
     ///
-    /// - You won't be able to use `StreamerRequest::exfiltrate`.
+    /// - You won't be able to use `Request::exfiltrate`.
     /// - Necessitates uses of graphics API-level synchronization primitives
     ///   such as *semaphores* (for inter-queue synchronization) and *fences*
     ///   (for intra-queue synchronization).
@@ -117,14 +117,14 @@ pub struct StreamerBuilder<G> {
     pub should_wait_completion: bool,
 }
 
-impl StreamerBuilder<CopyCmdGenerator> {
-    /// Consturct a `StreamerBuilder` with supplied objects and default values
+impl Builder<CopyCmdGenerator> {
+    /// Consturct a `Builder` with supplied objects and default values
     /// for the other fields.
     ///
     /// This method uses `CopyCmdGenerator` as the default command generator.
     /// Use [`with_cmd_generator`] to provide a custom one.
     ///
-    /// [`with_cmd_generator`]: StreamerBuilder::with_cmd_generator
+    /// [`with_cmd_generator`]: Builder::with_cmd_generator
     pub fn default(device: base::DeviceRef, queue: base::CmdQueueRef) -> Self {
         Self {
             device,
@@ -136,10 +136,10 @@ impl StreamerBuilder<CopyCmdGenerator> {
     }
 }
 
-impl<G> StreamerBuilder<G> {
+impl<G> Builder<G> {
     /// Return `self` with a new value for the `cmd_generator` field.
-    pub fn with_cmd_generator<NG>(self, cmd_generator: NG) -> StreamerBuilder<NG> {
-        StreamerBuilder {
+    pub fn with_cmd_generator<NG>(self, cmd_generator: NG) -> Builder<NG> {
+        Builder {
             device: self.device,
             queue: self.queue,
             cmd_generator,
@@ -162,10 +162,7 @@ impl<G> StreamerBuilder<G> {
     }
 
     /// Build a [`Streamer`], consuming `self` and a given `AsyncHeap`.
-    pub fn build_with_heap<T: StreamerRequest, H: Borrow<AsyncHeap>>(
-        self,
-        heap: H,
-    ) -> Streamer<T, H, G>
+    pub fn build_with_heap<T: Request, H: Borrow<AsyncHeap>>(self, heap: H) -> Streamer<T, H, G>
     where
         G: CmdGenerator<T>,
     {
@@ -175,7 +172,7 @@ impl<G> StreamerBuilder<G> {
     /// Build a [`Streamer`], consuming `self`. A new `AsyncHeap` with a
     /// specified size, suitable for the `CopyRead` usage is automatically
     /// constructed during the process.
-    pub fn build_with_heap_size<T: StreamerRequest>(
+    pub fn build_with_heap_size<T: Request>(
         self,
         heap_size: DeviceSize,
     ) -> Result<Streamer<T, AsyncHeap, G>>
@@ -211,7 +208,7 @@ pub trait CmdGenerator<T> {
 }
 
 /// A request to be processed by [`Streamer`].
-pub trait StreamerRequest {
+pub trait Request {
     /// The number of bytes required in the staging buffer.
     fn size(&self) -> usize;
 
@@ -243,7 +240,7 @@ pub trait StreamerRequest {
 //
 /// # Type parameters
 ///
-///  - `T: `[`StreamerRequest`] - A type representing requests.
+///  - `T: `[`Request`] - A type representing requests.
 ///  - `H: Borrow<`[`AsyncHeap`]`>` - `AsyncHeap` or something that can be used
 ///    to borrow a reference to `AsyncHeap`. A value of this type is supplied at
 ///    construction time. Staging buffers are allocated from that.
@@ -277,8 +274,8 @@ pub struct Streamer<T, H, G> {
     cmd_generator: G,
 }
 
-impl<T: StreamerRequest, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H, G> {
-    pub fn new(params: StreamerBuilder<G>, heap: H) -> Self {
+impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H, G> {
+    pub fn new(params: Builder<G>, heap: H) -> Self {
         Self {
             device: params.device,
             queue: params.queue,
@@ -405,7 +402,7 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H
     }
 }
 
-impl<T: StreamerRequest, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Sink for Streamer<T, H, G> {
+impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Sink for Streamer<T, H, G> {
     type SinkItem = T;
     type SinkError = base::Error;
 
@@ -444,7 +441,7 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Sink for Stre
     }
 
     /// Flush any remaining requests. The behavior of flushing is dependent on
-    /// the value of [`StreamerBuilder::should_wait_completion`].
+    /// the value of [`Builder::should_wait_completion`].
     fn poll_flush(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
         self.poll_flush_inner(cx, self.should_wait_completion)
     }
@@ -474,7 +471,7 @@ struct Batch<T> {
     buffer: base::BufferRef,
 }
 
-impl<T: StreamerRequest> BatchRing<T> {
+impl<T: Request> BatchRing<T> {
     fn new() -> Self {
         Self {
             queue: VecDeque::new(),
