@@ -18,8 +18,7 @@
 //!   as well as the amount of staging buffer required during that operation.
 //! - A *batch* is made of one or more requests and is associated with a single
 //!   command buffer and a single consecutive region inside a staging buffer.
-//! - *Phases* are used to define explicit ordering among device commands from
-//!   multiple requests inside a single batch.
+//! - A *command generator* converts requests into device commands.
 //!
 //! # Basics of the operation
 //!
@@ -44,12 +43,19 @@
 //! [`StreamerBuilder::batch_size`]: crate::streamer::StreamerBuilder::batch_size
 //!
 //! After a batch is sealed, a command buffer is constructed for that batch.
-//! Device commands are encoded using [`copy`] and [`outside_encoder`] for every
-//! request in the batch in question. After that, the command buffer is queued
-//! for execution. `CmdQueue` is automatically flushed.
+//! A [`CmdGenerator`] supplied as a part of `StreamerBuilder` is responsible
+//! for the coordination of command buffer generation. It receives a staging
+//! buffer, requests, and their corresponding buffer ranges, but it's up to
+//! `CmdGenerator` how commands are generated from them. For instance,
+//! [`CopyCmdGenerator`] (which is the default choice) creates a single copy
+//! command encoder, allowing requests implementing [`CopyRequest`] to encode
+//! arbitrary copy commands.
+//! After that, the command buffer is queued for execution. `CmdQueue` is
+//! automatically flushed.
 //!
-//! [`copy`]: crate::streamer::StreamerRequest::copy
-//! [`outside_encoder`]: crate::streamer::StreamerRequest::outside_encoder
+//! [`CmdGenerator`]: crate::streamer::CmdGenerator
+//! [`CopyCmdGenerator`]: crate::streamer::CopyCmdGenerator
+//! [`CopyRequest`]: crate::streamer::CopyRequest
 //!
 //! Upon command buffer completion, [`exfiltrate`] is called to give requests a
 //! chance to extract the data stored in the staging buffer (for device-to-host
@@ -57,30 +63,6 @@
 //! released.
 //!
 //! [`exfiltrate`]: crate::streamer::StreamerRequest::exfiltrate
-//!
-//! # Phases
-//!
-//! *Phases* can be used to define explicit ordering among device commands
-//! generated from different requests in a single batch. Each phase is
-//! identified by a `u32` in range `0..32`.
-//!
-//! Each phase can execute one of the following encoder types: `copy` and
-//! `outside_encoder`. It's an error for more than one encoder type to occupy
-//! a single phase. For example, since `copy` occupies the 16th phase by
-//! default, you might want to avoid choosing the same phase for
-//! `outside_encoder` (unless you are sure that `copy` doesn't run during the
-//! 16th phase).
-//!
-//! Consecutive phases with an identical encoder type are *not* merged into
-//! a single command encoder.
-//!
-//! Here's an example of a phase arrangement:
-//!
-//!  - Encode copy commands in the `16`th phase (the default for `copy`).
-//!  - Encode *release queue family ownership operations* (which only can be
-//!    encoded outside an encoder) in the `24`th phase.
-//!    To do this, write `fn outside_encoder_phase_set() -> u32 { 1 << 24 }`
-//!    and implement `outside_encoder` on your request type.
 //!
 //! # Error handling
 //!
@@ -95,7 +77,6 @@ use std::{borrow::Borrow, collections::VecDeque, ops::Range};
 use volatile_view::Volatile;
 
 use zangfx_base::{self as base, DeviceSize, Result};
-use zangfx_common::BinaryInteger;
 
 use crate::{
     asyncheap::{AsyncHeap, Bind},
@@ -108,10 +89,12 @@ pub use self::utils::*;
 
 /// Supplies parameters for [`Streamer`].
 #[derive(Debug, Clone)]
-pub struct StreamerBuilder {
+pub struct StreamerBuilder<G> {
     pub device: base::DeviceRef,
 
     pub queue: base::CmdQueueRef,
+
+    pub cmd_generator: G,
 
     /// The maximum number of bytes transferred per batch.
     pub batch_size: usize,
@@ -134,15 +117,34 @@ pub struct StreamerBuilder {
     pub should_wait_completion: bool,
 }
 
-impl StreamerBuilder {
+impl StreamerBuilder<CopyCmdGenerator> {
     /// Consturct a `StreamerBuilder` with supplied objects and default values
     /// for the other fields.
+    ///
+    /// This method uses `CopyCmdGenerator` as the default command generator.
+    /// Use [`with_cmd_generator`] to provide a custom one.
+    ///
+    /// [`with_cmd_generator`]: StreamerBuilder::with_cmd_generator
     pub fn default(device: base::DeviceRef, queue: base::CmdQueueRef) -> Self {
         Self {
             device,
             queue,
+            cmd_generator: CopyCmdGenerator,
             batch_size: 1024 * 1024,
             should_wait_completion: true,
+        }
+    }
+}
+
+impl<G> StreamerBuilder<G> {
+    /// Return `self` with a new value for the `cmd_generator` field.
+    pub fn with_cmd_generator<NG>(self, cmd_generator: NG) -> StreamerBuilder<NG> {
+        StreamerBuilder {
+            device: self.device,
+            queue: self.queue,
+            cmd_generator,
+            batch_size: self.batch_size,
+            should_wait_completion: self.should_wait_completion,
         }
     }
 
@@ -163,7 +165,10 @@ impl StreamerBuilder {
     pub fn build_with_heap<T: StreamerRequest, H: Borrow<AsyncHeap>>(
         self,
         heap: H,
-    ) -> Streamer<T, H> {
+    ) -> Streamer<T, H, G>
+    where
+        G: CmdGenerator<T>,
+    {
         Streamer::new(self, heap)
     }
 
@@ -173,7 +178,10 @@ impl StreamerBuilder {
     pub fn build_with_heap_size<T: StreamerRequest>(
         self,
         heap_size: DeviceSize,
-    ) -> Result<Streamer<T, AsyncHeap>> {
+    ) -> Result<Streamer<T, AsyncHeap, G>>
+    where
+        G: CmdGenerator<T>,
+    {
         use crate::prelude::*;
 
         let heap = self
@@ -191,6 +199,17 @@ impl StreamerBuilder {
     }
 }
 
+/// Generates device commands for a batch of request type `T`.
+pub trait CmdGenerator<T> {
+    /// Generate device commands for a batch and encode them into `cmd_buffer`.
+    fn encode(
+        &mut self,
+        cmd_buffer: &mut base::CmdBufferRef,
+        staging_buffer: &base::BufferRef,
+        requests: &mut [(T, Range<DeviceSize>)],
+    ) -> Result<()>;
+}
+
 /// A request to be processed by [`Streamer`].
 pub trait StreamerRequest {
     /// The number of bytes required in the staging buffer.
@@ -202,54 +221,6 @@ pub trait StreamerRequest {
     /// Get the usage flags required for the staging buffer.
     fn staging_buffer_usage(&self) -> base::BufferUsageFlags {
         flags![base::BufferUsage::{CopyRead}]
-    }
-
-    /// Return a bit array where each bit represents whether `copy` should be
-    /// called during the phase corresponding to the bit position.
-    ///
-    /// The default implementation returns `1 << 16`, which indicates that
-    /// `copy` has to be called during the 16th phase.
-    ///
-    /// # Examples
-    ///
-    ///  - The default value `1 << 16` causes `copy` to called during the 16th
-    ///    phase.
-    ///  - `(1 << 16) | (1 << 4)` causes `copy` to be called twice with `phase`
-    ///    set to `4` and `16` respectively.
-    ///
-    fn copy_phase_set(&self) -> u32 {
-        1 << 16
-    }
-
-    /// Encode copy commands.
-    fn copy(
-        &mut self,
-        _encoder: &mut dyn base::CopyCmdEncoder,
-        _staging_buffer: &base::BufferRef,
-        _staging_buffer_range: Range<DeviceSize>,
-        _phase: u32,
-    ) -> Result<()> {
-        Ok(())
-    }
-
-    /// Return a bit array where each bit represents whether `outside_encoder`
-    /// should be called during the phase corresponding to the bit position.
-    ///
-    /// The default implementation returns `0`, which indicates that
-    /// `outside_encoder` should not be called.
-    fn outside_encoder_phase_set(&self) -> u32 {
-        0
-    }
-
-    /// Encode commands outside a command encoder.
-    fn outside_encoder(
-        &mut self,
-        _cmd_buffer: &mut base::CmdBufferRef,
-        _staging_buffer: &base::BufferRef,
-        _staging_buffer_range: Range<DeviceSize>,
-        _phase: u32,
-    ) -> Result<()> {
-        unreachable!()
     }
 
     /// Retrieve the data stored in the staging buffer after the device operation.
@@ -280,7 +251,7 @@ pub trait StreamerRequest {
 /// [`AsyncHeap`]: crate::asyncheap::AsyncHeap
 ///
 #[derive(Debug)]
-pub struct Streamer<T, H> {
+pub struct Streamer<T, H, G> {
     device: base::DeviceRef,
     queue: base::CmdQueueRef,
     should_wait_completion: bool,
@@ -303,10 +274,11 @@ pub struct Streamer<T, H> {
     batch_ring: BatchRing<T>,
 
     heap: H,
+    cmd_generator: G,
 }
 
-impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Streamer<T, H> {
-    pub fn new(params: StreamerBuilder, heap: H) -> Self {
+impl<T: StreamerRequest, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H, G> {
+    pub fn new(params: StreamerBuilder<G>, heap: H) -> Self {
         Self {
             device: params.device,
             queue: params.queue,
@@ -318,6 +290,7 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Streamer<T, H> {
             next_batch_bind: None,
             batch_ring: BatchRing::new(),
             heap,
+            cmd_generator: params.cmd_generator,
         }
     }
 
@@ -393,39 +366,8 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Streamer<T, H> {
         // Consturct a command buffer and then submit it away
         let mut cmd_buffer = self.queue.new_cmd_buffer()?;
 
-        let copy_phase_set = requests
-            .iter()
-            .map(|req| req.0.copy_phase_set())
-            .fold(0, |x, y| x | y);
-        let outside_encoder_phase_set = requests
-            .iter()
-            .map(|req| req.0.outside_encoder_phase_set())
-            .fold(0, |x, y| x | y);
-
-        assert!(
-            copy_phase_set & outside_encoder_phase_set == 0,
-            "No phase slot can have more than one encoder type"
-        );
-
-        let phase_set = copy_phase_set | outside_encoder_phase_set;
-
-        for phase in phase_set.one_digits() {
-            if copy_phase_set.get_bit(phase) {
-                let encoder = cmd_buffer.encode_copy();
-                for (request, range) in &mut requests {
-                    if request.copy_phase_set().get_bit(phase) {
-                        request.copy(encoder, &buffer, range.clone(), phase)?;
-                    }
-                }
-            }
-            if outside_encoder_phase_set.get_bit(phase) {
-                for (request, range) in &mut requests {
-                    if request.outside_encoder_phase_set().get_bit(phase) {
-                        request.outside_encoder(&mut cmd_buffer, &buffer, range.clone(), phase)?;
-                    }
-                }
-            }
-        }
+        self.cmd_generator
+            .encode(&mut cmd_buffer, &buffer, &mut requests)?;
 
         // Submit the command buffer
         let cb_result = cmd_buffer.result();
@@ -442,7 +384,11 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Streamer<T, H> {
         Ok(Async::Ready(()))
     }
 
-    fn poll_flush_inner(&mut self, cx: &mut task::Context<'_>, should_wait_completion: bool) -> Result<Async<()>> {
+    fn poll_flush_inner(
+        &mut self,
+        cx: &mut task::Context<'_>,
+        should_wait_completion: bool,
+    ) -> Result<Async<()>> {
         assert_eq!(
             self.batch_ring.poll_flush(self.heap.borrow(), false, cx)?,
             Async::Ready(())
@@ -459,7 +405,7 @@ impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Streamer<T, H> {
     }
 }
 
-impl<T: StreamerRequest, H: Borrow<AsyncHeap>> Sink for Streamer<T, H> {
+impl<T: StreamerRequest, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Sink for Streamer<T, H, G> {
     type SinkItem = T;
     type SinkError = base::Error;
 

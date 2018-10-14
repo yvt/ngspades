@@ -304,19 +304,20 @@ impl streamer::StreamerRequest for StreamerRequest {
         self.0.populate(staging_buffer);
     }
 
+    fn exfiltrate(&mut self, _staging_buffer: &[volatile_view::Volatile<u8>]) {
+        if let Some(x) = self.1.take() {
+            let _ = x.send(()); // Ignore send failure
+        }
+    }
+}
+
+impl streamer::CopyRequest for StreamerRequest {
     fn copy(
         &mut self,
         encoder: &mut dyn gfx::CopyCmdEncoder,
         staging_buffer: &gfx::BufferRef,
         staging_buffer_range: Range<gfx::DeviceSize>,
-        _phase: u32,
     ) -> gfx::Result<()> {
         self.0.copy(encoder, staging_buffer, staging_buffer_range)
-    }
-
-    fn exfiltrate(&mut self, _staging_buffer: &[volatile_view::Volatile<u8>]) {
-        if let Some(x) = self.1.take() {
-            let _ = x.send(()); // Ignore send failure
-        }
     }
 }
