@@ -39,10 +39,17 @@ impl DeviceContainer for Container {
     }
 }
 
-pub(crate) fn new_device_container(device: gfx::DeviceRef, cmd_queue_set: CmdQueueSet) -> Container {
+pub(crate) fn new_device_container(
+    device: gfx::DeviceRef,
+    cmd_queue_set: CmdQueueSet,
+) -> Container {
     let mut container = Container::new();
 
-    // TODO: register default factories
+    container.register_singleton(device);
+    container.register_singleton(cmd_queue_set);
+
+    use crate::asyncuploader::di::DeviceContainerExt;
+    container.register_async_uploader_default();
 
     container
 }
