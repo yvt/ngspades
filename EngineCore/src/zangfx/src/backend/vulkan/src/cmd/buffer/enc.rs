@@ -433,7 +433,7 @@ impl CmdBufferData {
         &mut self,
         _src_queue_family: base::QueueFamily,
         _dst_access: base::AccessTypeFlags,
-        _transfer: &base::QueueOwnershipTransfer<'_>,
+        _transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
         unimplemented!()
     }
@@ -442,7 +442,7 @@ impl CmdBufferData {
         &mut self,
         _dst_queue_family: base::QueueFamily,
         _src_access: base::AccessTypeFlags,
-        _transfer: &base::QueueOwnershipTransfer<'_>,
+        _transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
         unimplemented!()
     }

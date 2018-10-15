@@ -209,7 +209,7 @@ pub trait CmdBuffer: Object {
         &mut self,
         src_queue_family: QueueFamily,
         dst_access: AccessTypeFlags,
-        transfer: &QueueOwnershipTransfer<'_>,
+        transfer: &[QueueOwnershipTransfer<'_>],
     ) {
         let _ = (src_queue_family, dst_access, transfer);
         panic!("Queue families are not supported by this backend.");
@@ -235,7 +235,7 @@ pub trait CmdBuffer: Object {
         &mut self,
         dst_queue_family: QueueFamily,
         src_access: AccessTypeFlags,
-        transfer: &QueueOwnershipTransfer<'_>,
+        transfer: &[QueueOwnershipTransfer<'_>],
     ) {
         let _ = (dst_queue_family, src_access, transfer);
         panic!("Queue families are not supported by this backend.");
@@ -919,6 +919,6 @@ pub enum QueueOwnershipTransfer<'a> {
         image: &'a ImageRef,
         src_layout: ImageLayout,
         dst_layout: ImageLayout,
-        range: &'a ImageSubRange,
+        range: ImageSubRange,
     },
 }

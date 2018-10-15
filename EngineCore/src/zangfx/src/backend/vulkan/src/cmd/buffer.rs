@@ -401,7 +401,7 @@ impl base::CmdBuffer for CmdBuffer {
         &mut self,
         src_queue_family: base::QueueFamily,
         dst_access: base::AccessTypeFlags,
-        transfer: &base::QueueOwnershipTransfer<'_>,
+        transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
         let uncommited = self
             .uncommited
@@ -414,7 +414,7 @@ impl base::CmdBuffer for CmdBuffer {
         &mut self,
         dst_queue_family: base::QueueFamily,
         src_access: base::AccessTypeFlags,
-        transfer: &base::QueueOwnershipTransfer<'_>,
+        transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
         let uncommited = self
             .uncommited
