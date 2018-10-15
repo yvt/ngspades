@@ -5,6 +5,10 @@
 //
 //! Uploads immutable data to the device memory.
 //!
+//! **Uploader is largely superseded by a new utility library named [*streamer*].**
+//!
+//! [*streamer*]: crate::streamer
+//!
 //! Uploading is done in a unit named *session*, which consists of one or
 //! more resources. Each session is associated with a staging buffer in a
 //! host-visible heap.
