@@ -2392,6 +2392,7 @@ dependencies = [
 name = "zangfx_utils"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-preview 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsenumflags 0.1.2",

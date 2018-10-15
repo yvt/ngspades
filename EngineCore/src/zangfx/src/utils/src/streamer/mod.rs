@@ -121,15 +121,15 @@ impl Builder<CopyCmdGenerator> {
     /// Consturct a `Builder` with supplied objects and default values
     /// for the other fields.
     ///
-    /// This method uses `CopyCmdGenerator` as the default command generator.
-    /// Use [`with_cmd_generator`] to provide a custom one.
+    /// This method uses `CopyCmdGenerator::new()` as the default command
+    /// generator. Use [`with_cmd_generator`] to provide a custom one.
     ///
     /// [`with_cmd_generator`]: Builder::with_cmd_generator
     pub fn default(device: base::DeviceRef, queue: base::CmdQueueRef) -> Self {
         Self {
             device,
             queue,
-            cmd_generator: CopyCmdGenerator,
+            cmd_generator: CopyCmdGenerator::new(),
             batch_size: 1024 * 1024,
             should_wait_completion: true,
         }
