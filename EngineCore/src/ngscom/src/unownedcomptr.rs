@@ -13,7 +13,7 @@ use super::ComPtr;
 
 /// Implicitly owned immutable COM pointer.
 #[derive(Debug)]
-pub struct UnownedComPtr<'a, T: ComInterface + 'a> {
+pub struct UnownedComPtr<'a, T: ComInterface> {
     comptr: ManuallyDrop<ComPtr<T>>,
     phantom: PhantomData<&'a T>,
 }

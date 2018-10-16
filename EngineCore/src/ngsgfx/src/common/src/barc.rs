@@ -65,7 +65,7 @@ impl<T> BArc<T> {
 
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         match Arc::try_unwrap(this.0) {
-            Ok(cell) => Ok(unsafe { cell.into_inner() }),
+            Ok(cell) => Ok(cell.into_inner()),
             Err(arc) => Err(BArc(arc)),
         }
     }
