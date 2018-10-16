@@ -34,6 +34,7 @@ pub mod di {
 
                 let queue;
                 let queue_ownership_transfer;
+                let proxy_queue;
 
                 // Is a copy queue available?
                 if let Some((copy_queue, copy_queue_family)) = container.get_copy_queue() {
@@ -44,13 +45,18 @@ pub mod di {
                     } else {
                         queue_ownership_transfer = Some([*copy_queue_family, main_queue_family]);
                     }
+
+                    proxy_queue = Some(copy_queue.clone());
                 } else {
                     // Nope :(
                     queue = main_queue.clone();
                     queue_ownership_transfer = None;
+
+                    proxy_queue = None;
                 }
 
-                AsyncUploader::new(device, queue, queue_ownership_transfer).map(Arc::new)
+                AsyncUploader::new(device, queue, queue_ownership_transfer, proxy_queue)
+                    .map(Arc::new)
             });
         }
     }
@@ -81,21 +87,27 @@ use zangfx::{base as gfx, utils::streamer};
 /// The processing of requests takes place entirely in a dedicated background
 /// thread.
 ///
+/// `AsyncUploader` encompasses the common use cases by assuming that
+/// the clients consume staged resources in the main queue. Queue family
+/// onwership release operations are automatically executed if necessary.
+///
 /// Requests generate GPU commands which are submitted to the copy queue
 /// (`DeviceContainer::get_copy_queue()`) if possible. This means that if
 /// `get_copy_queue()` is `None`:
 ///
-///  - Copy commands must operate on proxy objects created via `make_proxy`
-///    for the copy queue.
-///  - Queue family ownership transfer operations must be manually inserted if
+///  - Copy commands must operate on *proxy objects* created via `make_proxy`
+///    for the copy queue. `AsyncUploader` provides utility methods named
+///    `make_image_proxy_if_needed` and `make_buffer_proxy_if_needed` which
+///    do this only when needed.
+///  - *Queue family ownership acquire operations* must be manually inserted if
 ///    the copy queue belongs to a different queue family from one where the
-///    staged resourecs are consumed.
+///    staged resourecs are consumed. FIXME: Make this easier somehow?
 ///
-/// TODO: Support the cases where `get_copy_queue()` is not `None`
 pub struct AsyncUploader {
     shared: Arc<Shared>,
     sender: mpsc::UnboundedSender<ChannelPayload>,
     queue_ownership_transfer: Option<[gfx::QueueFamily; 2]>,
+    proxy_queue: Option<gfx::CmdQueueRef>,
     join_handle: Option<thread::JoinHandle<()>>,
 }
 
@@ -120,6 +132,7 @@ impl AsyncUploader {
         device: gfx::DeviceRef,
         queue: gfx::CmdQueueRef,
         queue_ownership_transfer: Option<[gfx::QueueFamily; 2]>,
+        proxy_queue: Option<gfx::CmdQueueRef>,
     ) -> gfx::Result<Self> {
         let (sender, receiver) = mpsc::unbounded();
 
@@ -169,20 +182,43 @@ impl AsyncUploader {
             shared,
             sender,
             queue_ownership_transfer,
+            proxy_queue,
             join_handle: Some(join_handle),
         })
     }
 
-    /// Indicates a queue family ownership transfer operation required between
+    /// Describe queue family ownership transfer operations required between
     /// the upload and use of resources.
     ///
-    /// If the returned value is `Some([a, b])`, the clients must insert a
-    /// ownership transfer operation from the queue family `a` to `b`. Each
-    /// indicates the copy and main queue family, respectively.
+    /// If the returned value is `Some(x)`, the clients must insert ownership
+    /// acquire operations with the source queue family `x` before the resources
+    /// can be used in the main queue.
     ///
     /// They don't have to if the returned value is `None`.
-    pub fn queue_ownership_transfer_families(&self) -> Option<[gfx::QueueFamily; 2]> {
-        self.queue_ownership_transfer
+    pub fn queue_ownership_transfer_src_family(&self) -> Option<gfx::QueueFamily> {
+        self.queue_ownership_transfer.map(|x| x[0])
+    }
+
+    /// Call `make_proxy` on a given image handle if the uploader uses a
+    /// dedicated queue that is different from the main queue. Otherwise, it
+    /// just clones a given handle.
+    pub fn make_image_proxy_if_needed(&self, x: &gfx::ImageRef) -> gfx::ImageRef {
+        if let Some(queue) = &self.proxy_queue {
+            x.make_proxy(queue)
+        } else {
+            x.clone()
+        }
+    }
+
+    /// Call `make_proxy` on a given buffer handle if the uploader uses a
+    /// dedicated queue that is different from the main queue. Otherwise, it
+    /// just clones a given handle.
+    pub fn make_buffer_proxy_if_needed(&self, x: &gfx::BufferRef) -> gfx::BufferRef {
+        if let Some(queue) = &self.proxy_queue {
+            x.make_proxy(queue)
+        } else {
+            x.clone()
+        }
     }
 
     /// Initiate upload requests.
