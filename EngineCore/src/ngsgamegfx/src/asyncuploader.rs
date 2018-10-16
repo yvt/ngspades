@@ -77,8 +77,9 @@ use zangfx::{base as gfx, utils::streamer};
 ///
 /// `AsyncUploader` accepts requests via the `upload` method, which takes a
 /// function that is executed, returning a stream of actual requests
-/// (`impl Stream<Item = impl Request, Error = Never>`). The processing of
-/// requests takes place entirely in a dedicated background thread.
+/// (`impl Stream<Item = impl CopyRequest + Debug, Error = Never>`).
+/// The processing of requests takes place entirely in a dedicated background
+/// thread.
 ///
 /// Requests generate GPU commands which are submitted to the copy queue
 /// (`DeviceContainer::get_copy_queue()`) if possible. This means that if
@@ -270,25 +271,8 @@ impl Shared {
 /// An upload request consumed by `AsyncUploader`.
 ///
 /// Note the lack of `Send` and `Sync` in its trait bounds.
-pub trait Request: std::fmt::Debug {
-    /// The number of bytes required in the staging buffer.
-    fn size(&self) -> usize;
-
-    /// Fill the staging buffer with the contents.
-    fn populate(&mut self, _staging_buffer: &mut [u8]) {}
-
-    /// Encode copy commands.
-    fn copy(
-        &mut self,
-        _encoder: &mut dyn gfx::CopyCmdEncoder,
-        _staging_buffer: &gfx::BufferRef,
-        _staging_buffer_range: Range<gfx::DeviceSize>,
-    ) -> gfx::Result<()> {
-        Ok(())
-    }
-
-    // TODO: Provide an interface for queue family ownership transfer
-}
+pub trait Request: streamer::CopyRequest + fmt::Debug {}
+impl<T: ?Sized + streamer::CopyRequest + fmt::Debug> Request for T {}
 
 /// Type-erasing container of `Request` that implements
 /// `zangfx::utils::streamer::StreamerRequest`.
@@ -304,7 +288,9 @@ impl streamer::Request for StreamerRequest {
         self.0.populate(staging_buffer);
     }
 
-    fn exfiltrate(&mut self, _staging_buffer: &[volatile_view::Volatile<u8>]) {
+    fn exfiltrate(&mut self, staging_buffer: &[volatile_view::Volatile<u8>]) {
+        self.0.exfiltrate(staging_buffer);
+
         if let Some(x) = self.1.take() {
             let _ = x.send(()); // Ignore send failure
         }
@@ -319,5 +305,13 @@ impl streamer::CopyRequest for StreamerRequest {
         staging_buffer_range: Range<gfx::DeviceSize>,
     ) -> gfx::Result<()> {
         self.0.copy(encoder, staging_buffer, staging_buffer_range)
+    }
+
+    fn queue_ownership_acquire(&self) -> Option<gfx::QueueOwnershipTransfer<'_>> {
+        self.0.queue_ownership_acquire()
+    }
+
+    fn queue_ownership_release(&self) -> Option<gfx::QueueOwnershipTransfer<'_>> {
+        self.0.queue_ownership_release()
     }
 }
