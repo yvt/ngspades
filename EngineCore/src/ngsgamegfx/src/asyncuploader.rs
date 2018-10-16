@@ -134,7 +134,15 @@ impl AsyncUploader {
                 .name("AsyncUploader".into())
                 .spawn(move || {
                     if let Err(err) = (|| {
+                        let mut cmd_generator = streamer::CopyCmdGenerator::new();
+
+                        if let Some([_, dst_queue_family]) = queue_ownership_transfer {
+                            // Perform ownership release operations after staging
+                            cmd_generator.dst_queue_family = Some(dst_queue_family);
+                        }
+
                         let streamer = streamer::Builder::default(device, queue)
+                            .with_cmd_generator(cmd_generator)
                             .with_batch_size(1024 * 1024 * 10)
                             .build_with_heap_size(1024 * 1024 * 100)?;
 
