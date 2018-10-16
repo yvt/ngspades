@@ -8,7 +8,7 @@ extern crate ngspf;
 extern crate test;
 
 use self::test::Bencher;
-use ngspf::context::{Context, PropertyProducerWrite};
+use ngspf::core::{Context, PropertyProducerWrite};
 use ngspf::viewport::LayerBuilder;
 
 fn run_single(b: &mut Bencher, num_nodes: usize) {
