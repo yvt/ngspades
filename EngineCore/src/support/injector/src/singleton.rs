@@ -7,10 +7,7 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use crate::{Container, Key};
 
-struct SingletonKey<T>(PhantomData<T>);
-
-unsafe impl<T> Send for SingletonKey<T> {}
-unsafe impl<T> Sync for SingletonKey<T> {}
+struct SingletonKey<T>(PhantomData<fn(T)>);
 
 impl<T> std::fmt::Debug for SingletonKey<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
