@@ -68,7 +68,7 @@ pub trait CopyRequest: Request {
 ///     [`CopyRequest::copy`].
 ///
 ///  3. Queue family ownership release operations described by
-///     [`CopyRequest::queue_ownership_acquire`]. This part is omitted if
+///     [`CopyRequest::queue_ownership_release`]. This part is omitted if
 ///     `dst_queue_family` is `None`.
 ///
 #[derive(Debug, Default, Clone, Copy)]
