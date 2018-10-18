@@ -8,11 +8,13 @@ use std::raw::TraitObject;
 
 /// Stores unsized data without extra heap allocation.
 ///
-/// **`T` must specify a trait object type like `SomeTrait`**. Using other types
-/// results in an undefined behavior. This restriction cannot be enforced by
-/// trait bounds applied to `SmallBox::new` and therefore it is a developer's
-/// responsibility to ensure this restriction is fulfilled. To prevent forming
-/// an invalid instance of `SmallBox`, `SmallBox::new` is marked as `unsafe`.
+/// **`T` must specify a trait object type like `dyn SomeTrait`**. Using other
+/// types results in an undefined behavior.
+/// This restriction cannot be enforced by trait bounds applied to
+/// `SmallBox::new` and therefore it is a developer's responsibility to ensure
+/// this restriction is fulfilled.
+/// To prevent forming an invalid instance of `SmallBox`, `SmallBox::new` is
+/// marked as `unsafe`.
 ///
 /// The size of data that can be stored in a single `SmallBox` is limited to
 /// `size_of::<S>()`. Furthermore, the alignment requirement of the
@@ -24,7 +26,7 @@ use std::raw::TraitObject;
 ///     use std::fmt;
 ///     use zangfx_common::SmallBox;
 ///     let value = "hoge";
-///     let boxed = unsafe { SmallBox::<fmt::Debug, [usize; 2]>::new(value) };
+///     let boxed = unsafe { SmallBox::<dyn fmt::Debug, [usize; 2]>::new(value) };
 ///     assert_eq!(format!("{:?}", boxed), format!("{:?}", value));
 
 pub struct SmallBox<T: ?Sized, S: Copy> {
@@ -146,14 +148,14 @@ mod test {
     #[test]
     fn new() {
         unsafe {
-            SmallBox::<fmt::Debug, [usize; 2]>::new("hoge");
+            SmallBox::<dyn fmt::Debug, [usize; 2]>::new("hoge");
         }
     }
 
     #[test]
     fn debug() {
         let base_val = "hoge";
-        let boxed = unsafe { SmallBox::<fmt::Debug, [usize; 2]>::new(base_val) };
+        let boxed = unsafe { SmallBox::<dyn fmt::Debug, [usize; 2]>::new(base_val) };
         assert_eq!(format!("{:?}", boxed), format!("{:?}", base_val));
     }
 
@@ -163,7 +165,8 @@ mod test {
         let base_val = Rc::new(());
         assert_eq!(Rc::strong_count(&base_val), 1);
         {
-            let _boxed = unsafe { SmallBox::<fmt::Debug, [usize; 2]>::new(Rc::clone(&base_val)) };
+            let _boxed =
+                unsafe { SmallBox::<dyn fmt::Debug, [usize; 2]>::new(Rc::clone(&base_val)) };
             assert_eq!(Rc::strong_count(&base_val), 2);
         }
         assert_eq!(Rc::strong_count(&base_val), 1);
