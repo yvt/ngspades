@@ -9,12 +9,10 @@ use std::raw::TraitObject;
 /// Stores unsized data without extra heap allocation.
 ///
 /// **`T` must specify a trait object type like `dyn SomeTrait`**. Using other
-/// types results in an undefined behavior.
+/// types results in a panic.
 /// This restriction cannot be enforced by trait bounds applied to
 /// `SmallBox::new` and therefore it is a developer's responsibility to ensure
 /// this restriction is fulfilled.
-/// To prevent forming an invalid instance of `SmallBox`, `SmallBox::new` is
-/// marked as `unsafe`.
 ///
 /// The size of data that can be stored in a single `SmallBox` is limited to
 /// `size_of::<S>()`. Furthermore, the alignment requirement of the
@@ -23,12 +21,23 @@ use std::raw::TraitObject;
 ///
 /// # Examples
 ///
-///     use std::fmt;
-///     use zangfx_common::SmallBox;
-///     let value = "hoge";
-///     let boxed = unsafe { SmallBox::<dyn fmt::Debug, [usize; 2]>::new(value) };
-///     assert_eq!(format!("{:?}", boxed), format!("{:?}", value));
-
+/// ```
+/// use std::fmt;
+/// use zangfx_common::SmallBox;
+/// let value = "hoge";
+/// let boxed = SmallBox::<dyn fmt::Debug, [usize; 2]>::new(value);
+/// assert_eq!(format!("{:?}", boxed), format!("{:?}", value));
+/// ```
+///
+/// `T` must be a trait object. Otherwise `new` will fail at runtime:
+///
+/// ```should_panic
+/// # use zangfx_common::SmallBox;
+/// // `[usize]` is `!Sized` but not a trait object, so
+/// // the following code will cause a panic
+/// SmallBox::<[usize], [usize; 2]>::new([1, 2]);
+/// ```
+///
 pub struct SmallBox<T: ?Sized, S: Copy> {
     vtable: *mut (),
     storage: Storage<S>,
@@ -48,7 +57,7 @@ impl<T: ?Sized, S: Copy> SmallBox<T, S> {
     ///
     /// Panics if the value does not fit `SmallBox`. (There is no known way to
     /// check this in compile-time)
-    pub unsafe fn new<C>(x: C) -> Self
+    pub fn new<C>(x: C) -> Self
     where
         C: marker::Unsize<T>,
     {
@@ -65,21 +74,30 @@ impl<T: ?Sized, S: Copy> SmallBox<T, S> {
             mem::align_of::<Storage<S>>(),
         );
 
+        use metatype::{MetaType, Type};
+        assert_eq!(
+            <T as Type>::METATYPE,
+            MetaType::TraitObject,
+            "T is not a trait object"
+        );
+
         // Retrieve vtable
-        let vtable = {
+        let vtable = unsafe {
             let tobj: &T = &x;
             let tobj_raw: TraitObject = mem::transmute_copy(&tobj);
             tobj_raw.vtable
         };
 
         // Move the contents
-        let mut storage: Storage<S> = mem::uninitialized();
-        ptr::write(&mut storage as *mut Storage<S> as *mut C, x);
+        unsafe {
+            let mut storage: Storage<S> = mem::uninitialized();
+            ptr::write(&mut storage as *mut Storage<S> as *mut C, x);
 
-        Self {
-            vtable,
-            storage,
-            _phantom: marker::PhantomData,
+            Self {
+                vtable,
+                storage,
+                _phantom: marker::PhantomData,
+            }
         }
     }
 
@@ -147,15 +165,13 @@ mod test {
 
     #[test]
     fn new() {
-        unsafe {
-            SmallBox::<dyn fmt::Debug, [usize; 2]>::new("hoge");
-        }
+        SmallBox::<dyn fmt::Debug, [usize; 2]>::new("hoge");
     }
 
     #[test]
     fn debug() {
         let base_val = "hoge";
-        let boxed = unsafe { SmallBox::<dyn fmt::Debug, [usize; 2]>::new(base_val) };
+        let boxed = SmallBox::<dyn fmt::Debug, [usize; 2]>::new(base_val);
         assert_eq!(format!("{:?}", boxed), format!("{:?}", base_val));
     }
 
@@ -165,8 +181,7 @@ mod test {
         let base_val = Rc::new(());
         assert_eq!(Rc::strong_count(&base_val), 1);
         {
-            let _boxed =
-                unsafe { SmallBox::<dyn fmt::Debug, [usize; 2]>::new(Rc::clone(&base_val)) };
+            let _boxed = SmallBox::<dyn fmt::Debug, [usize; 2]>::new(Rc::clone(&base_val));
             assert_eq!(Rc::strong_count(&base_val), 2);
         }
         assert_eq!(Rc::strong_count(&base_val), 1);

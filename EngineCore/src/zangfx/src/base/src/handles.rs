@@ -100,7 +100,7 @@ macro_rules! define_handle {
             {
                 Self {
                     type_id: std::any::TypeId::of::<T>(),
-                    inner: unsafe { $crate::common::SmallBox::new(x) },
+                    inner: $crate::common::SmallBox::new(x),
                 }
             }
 
