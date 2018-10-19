@@ -53,7 +53,7 @@ union Storage<S: Copy> {
 }
 
 impl<T: ?Sized, S: Copy> SmallBox<T, S> {
-    /// Construct a `SmallBox` containing the given `S` (sized type) value.
+    /// Construct a `SmallBox` containing the given `C` (sized type) value.
     ///
     /// Panics if the value does not fit `SmallBox`. (There is no known way to
     /// check this in compile-time)
