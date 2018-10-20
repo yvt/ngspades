@@ -11,6 +11,10 @@ pub extern crate num_integer;
 pub extern crate num_traits;
 extern crate tokenlock;
 
+// Used by `impl_stable_vtable!`
+#[doc(hidden)]
+pub use metatype;
+
 mod atom2;
 mod barc;
 mod freeze;

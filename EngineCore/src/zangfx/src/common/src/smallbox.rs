@@ -39,7 +39,7 @@ use std::raw::TraitObject;
 /// ```
 ///
 pub struct SmallBox<T: ?Sized, S: Copy> {
-    vtable: *mut (),
+    vtable: ptr::NonNull<()>,
     storage: Storage<S>,
     _phantom: marker::PhantomData<T>,
 }
@@ -88,6 +88,8 @@ impl<T: ?Sized, S: Copy> SmallBox<T, S> {
             tobj_raw.vtable
         };
 
+        let vtable = ptr::NonNull::new(vtable).unwrap();
+
         // Move the contents
         unsafe {
             let mut storage: Storage<S> = mem::uninitialized();
@@ -101,9 +103,95 @@ impl<T: ?Sized, S: Copy> SmallBox<T, S> {
         }
     }
 
+    /// Construct a `SmallBox` containing the given `C` (sized type) value.
+    ///
+    /// The returned box supports [`SmallBox::downcast_ref`] and other related
+    /// operations.
+    ///
+    /// Panics if the value does not fit `SmallBox`. (There is no known way to
+    /// check this in compile-time)
+    pub fn new_downcastable<C>(x: C) -> Self
+    where
+        C: StableVtable<T>,
+    {
+        assert!(
+            mem::size_of::<C>() <= mem::size_of::<Storage<S>>(),
+            "C is too large to store in SmallBox. ({} > {})",
+            mem::size_of::<C>(),
+            mem::size_of::<Storage<S>>(),
+        );
+        assert!(
+            mem::align_of::<C>() <= mem::align_of::<Storage<S>>(),
+            "The alignment requirement of C is too strict ({} > {}).",
+            mem::align_of::<C>(),
+            mem::align_of::<Storage<S>>(),
+        );
+
+        // Move the contents
+        unsafe {
+            let mut storage: Storage<S> = mem::uninitialized();
+            ptr::write(&mut storage as *mut Storage<S> as *mut C, x);
+
+            Self {
+                vtable: C::stable_vtable(),
+                storage,
+                _phantom: marker::PhantomData,
+            }
+        }
+    }
+
+    /// Return `true` if the boxed type is the same as `C`. False negative can
+    /// occur if the box was not constructed by [`SmallBox::new_downcastable`].
+    pub fn is<C>(&self) -> bool
+    where
+        C: StableVtable<T>,
+    {
+        self.vtable.as_ptr() == C::stable_vtable_or_null()
+    }
+
+    /// Get a reference of the boxed value if it's of type `C`.
+    ///
+    /// Not to mention that the concrete type of the box must match `C`, the
+    /// following conditions must be met in addition to guarantee a successful
+    /// downcast:
+    ///
+    ///  - `C` must implement [`StableVtable`].
+    ///  - `self` was constructed using [`SmallBox::new_downcastable`].
+    ///
+    pub fn downcast_ref<C>(&self) -> Option<&C>
+    where
+        C: StableVtable<T>,
+    {
+        if self.is::<C>() {
+            unsafe { Some(&*(&self.storage as *const Storage<S> as *const C)) }
+        } else {
+            None
+        }
+    }
+
+    /// Get a mutable reference of the boxed value if it's of type `C`.
+    ///
+    /// Not to mention that the concrete type of the box must match `C`, the
+    /// following conditions must be met in addition to guarantee a successful
+    /// downcast:
+    ///
+    ///  - `C` must implement [`StableVtable`].
+    ///  - `self` was constructed using [`SmallBox::new_downcastable`].
+    ///
+    pub fn downcast_mut<C>(&mut self) -> Option<&mut C>
+    where
+        C: StableVtable<T>,
+    {
+        if self.is::<C>() {
+            unsafe { Some(&mut *(&mut self.storage as *mut Storage<S> as *mut C)) }
+        } else {
+            None
+        }
+    }
+
     fn trait_object(&self) -> TraitObject {
         TraitObject {
-            vtable: self.vtable,
+            vtable: self.vtable.as_ptr(),
             data: &self.storage as *const Storage<S> as *const () as *mut (),
         }
     }
@@ -159,6 +247,118 @@ impl<T: ?Sized + fmt::Debug, S: Copy> fmt::Debug for SmallBox<T, S> {
     }
 }
 
+/// Provides a stable vtable pointer for a specific trait object type `T`
+/// (`dyn SomeTrait`).
+///
+/// Use the macro [`impl_stable_vtable`] to implement this trait on a
+/// non-generic.
+pub unsafe trait StableVtable<T: ?Sized>: marker::Unsize<T> + 'static {
+    /// Get a stable vtable pointer for a specific trait object type `T`
+    /// (`dyn SomeTrait`).
+    ///
+    /// The returned value must be derived from
+    /// [`std::raw::TraitObject::vtable`].
+    /// There must be an unique injective mapping from `T` to the returned
+    /// value. This means:
+    ///
+    ///  - The returned value must be stable.
+    ///  - No two distinct types may return an identical value.
+    ///
+    fn stable_vtable() -> std::ptr::NonNull<()>
+    where
+        Self: Sized;
+
+    /// Do the same as `stable_vtable` except that it may return a null pointer
+    /// if `stable_vtable` hasn't yet been called throughout the lifetime of
+    /// the program.
+    ///
+    /// This method is used to optimize downcast operations.
+    fn stable_vtable_or_null() -> *mut ()
+    where
+        Self: Sized,
+    {
+        Self::stable_vtable().as_ptr()
+    }
+}
+
+/// Implements `StableVtable` on a non-generic type.
+///
+/// # Examples
+///
+///     use std::fmt::Debug;
+///
+///     #[derive(Debug)] struct Hoge;
+///     zangfx_common::impl_stable_vtable! {
+///         impl StableVtable<dyn Debug> for Hoge
+///     }
+///
+#[macro_export]
+macro_rules! impl_stable_vtable {
+    (impl StableVtable<$traitobj:ty> for $type:ty) => {
+        impl $type {
+            /// Return a reference to the storage where the canonical return
+            /// value of `stable_vtable` for a specific type is stored.
+            ///
+            /// We can't just return `TraitObject::vtable` of an imaginary
+            /// reference to `$type` because we observed that it might change
+            /// across compilation units.
+            #[inline]
+            #[doc(hidden)]
+            fn __vtable_cell() -> &'static std::sync::atomic::AtomicUsize {
+                use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+                static VTABLE_CELL: AtomicUsize = ATOMIC_USIZE_INIT;
+                &VTABLE_CELL
+            }
+
+            #[inline(never)]
+            #[doc(hidden)]
+            fn __stable_vtable_slow() -> std::ptr::NonNull<()> {
+                use std::mem::transmute;
+                use std::sync::atomic::Ordering;
+                use $crate::metatype::{TraitObject, Type};
+
+                let vtable_cell = Self::__vtable_cell();
+
+                // This method was called for the first time.
+                // Compute the vtable pointer.
+                let dummy_concrete = unsafe { &*(1 as *const $type) };
+                let dummy_to = dummy_concrete as &$traitobj;
+
+                let meta: TraitObject = unsafe { transmute(Type::meta(dummy_to)) };
+
+                let mut vtable = meta.vtable as *const _ as usize;
+
+                assert_ne!(vtable, 0);
+
+                // Make sure there exists exactly one return value of
+                // `stable_vtable` for this specific type
+                match vtable_cell.compare_and_swap(0, vtable, Ordering::Relaxed) {
+                    0 => {}
+                    x => {
+                        vtable = x;
+                    }
+                }
+
+                unsafe { std::ptr::NonNull::new_unchecked(vtable as *mut ()) }
+            }
+        }
+
+        unsafe impl $crate::StableVtable<$traitobj> for $type {
+            #[inline]
+            fn stable_vtable_or_null() -> *mut () {
+                use std::sync::atomic::Ordering;
+                Self::__vtable_cell().load(Ordering::Relaxed) as *mut ()
+            }
+
+            #[inline]
+            fn stable_vtable() -> std::ptr::NonNull<()> {
+                std::ptr::NonNull::new(Self::stable_vtable_or_null())
+                    .unwrap_or_else(|| Self::__stable_vtable_slow())
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -185,5 +385,25 @@ mod test {
             assert_eq!(Rc::strong_count(&base_val), 2);
         }
         assert_eq!(Rc::strong_count(&base_val), 1);
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    struct Foo;
+
+    impl_stable_vtable! {
+        impl StableVtable<dyn fmt::Debug> for Foo
+    }
+
+    #[test]
+    fn downcastable_debug() {
+        let base_val = Foo;
+        let boxed = SmallBox::<dyn fmt::Debug, [usize; 2]>::new_downcastable(base_val.clone());
+        assert_eq!(format!("{:?}", boxed), format!("{:?}", base_val));
+    }
+
+    #[test]
+    fn downcastable_downcast() {
+        let boxed = SmallBox::<dyn fmt::Debug, [usize; 2]>::new_downcastable(Foo);
+        assert_eq!(boxed.downcast_ref::<Foo>(), Some(&Foo));
     }
 }

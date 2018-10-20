@@ -89,58 +89,44 @@ macro_rules! define_handle {
         $(#[$smeta])*
         #[derive(Debug)]
         pub struct $name {
-            type_id: std::any::TypeId,
             inner: $crate::common::SmallBox<dyn $trait, [usize; 2]>,
         }
 
         impl $name {
             pub fn new<T>(x: T) -> Self
             where
-                T: ::std::marker::Unsize<dyn $trait> + 'static,
+                T: $crate::common::StableVtable<dyn $trait> + 'static,
             {
                 Self {
-                    type_id: std::any::TypeId::of::<T>(),
-                    inner: $crate::common::SmallBox::new(x),
+                    inner: $crate::common::SmallBox::new_downcastable(x),
                 }
             }
 
             pub fn is<T>(&self) -> bool
             where
-                T: $trait,
+                T: $crate::common::StableVtable<dyn $trait>,
             {
-                std::any::TypeId::of::<T>() == self.type_id
+                self.inner.is::<T>()
             }
 
             pub fn downcast_ref<T>(&self) -> Option<&T>
             where
-                T: $trait,
+                T: $crate::common::StableVtable<dyn $trait>,
             {
-                if self.is::<T>() {
-                    unsafe {
-                        Some(&*(&*self.inner as *const _ as *const T))
-                    }
-                } else {
-                    None
-                }
+                self.inner.downcast_ref()
             }
 
             pub fn downcast_mut<T>(&mut self) -> Option<&mut T>
             where
-                T: $trait,
+                T: $crate::common::StableVtable<dyn $trait>,
             {
-                if self.is::<T>() {
-                    unsafe {
-                        Some(&mut *(&mut *self.inner as *mut _ as *mut T))
-                    }
-                } else {
-                    None
-                }
+                self.inner.downcast_mut()
             }
         }
 
         impl<T> From<T> for $name
         where
-            T: ::std::marker::Unsize<dyn $trait> + 'static,
+            T: $crate::common::StableVtable<dyn $trait> + 'static,
         {
             fn from(x: T) -> Self {
                 Self::new(x)
@@ -178,6 +164,10 @@ macro_rules! define_handle {
 #[macro_export]
 macro_rules! zangfx_impl_handle {
     ($type:ty, $handletype:ty) => {
+        $crate::common::impl_stable_vtable! {
+            impl StableVtable< <$handletype as std::ops::Deref>::Target> for $type
+        }
+
         impl $crate::handles::CloneHandle<$handletype> for $type {
             fn clone_handle(&self) -> $handletype {
                 <$handletype>::new(Clone::clone(self))
