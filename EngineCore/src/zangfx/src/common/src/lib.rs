@@ -6,10 +6,9 @@
 //! # ZanGFX Common: Utilities
 #![feature(raw)]
 #![feature(unsize)]
-pub extern crate cgmath;
-pub extern crate num_integer;
-pub extern crate num_traits;
-extern crate tokenlock;
+pub use cgmath;
+pub use num_integer;
+pub use num_traits;
 
 // Used by `impl_stable_vtable!`
 #[doc(hidden)]
