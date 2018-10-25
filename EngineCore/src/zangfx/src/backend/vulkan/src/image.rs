@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use zangfx_base as base;
 use zangfx_base::Result;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_common::{FreezableCell, FreezableCellRef};
 
 use crate::device::DeviceRef;

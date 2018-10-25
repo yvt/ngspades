@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use zangfx_base::Result;
 use zangfx_base::{arg, ArgTableIndex};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 
 use super::tablesig::ArgTableSig;
 use zangfx_spirv_cross::{ExecutionModel, SpirV2Msl};

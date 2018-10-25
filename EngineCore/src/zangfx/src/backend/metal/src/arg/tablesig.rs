@@ -13,7 +13,7 @@ use zangfx_metal_rs as metal;
 
 use zangfx_base::Result;
 use zangfx_base::{self as base, arg, device, shader, ArgArrayIndex, ArgIndex};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 
 use crate::arg::ArgSize;
 use crate::utils::{nil_error, OCPtr};

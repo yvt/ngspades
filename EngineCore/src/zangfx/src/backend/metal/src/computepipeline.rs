@@ -9,7 +9,7 @@ use zangfx_metal_rs as metal;
 use crate::arg::rootsig::RootSig;
 use crate::shader::Library;
 use zangfx_base::{self as base, pipeline, shader};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::{Error, ErrorKind, Result};
 
 use crate::utils::{nil_error, OCPtr};

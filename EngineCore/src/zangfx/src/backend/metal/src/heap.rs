@@ -12,8 +12,7 @@ use xalloc::{SysTlsf, SysTlsfRegion};
 use zangfx_metal_rs as metal;
 
 use zangfx_base::Result;
-use zangfx_base::{self as base, heap, DeviceSize, MemoryType};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, heap, zangfx_impl_object, DeviceSize, MemoryType};
 
 use crate::buffer::Buffer;
 use crate::image::Image;

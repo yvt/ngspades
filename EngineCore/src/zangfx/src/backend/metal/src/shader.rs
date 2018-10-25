@@ -13,7 +13,7 @@ use zangfx_metal_rs as metal;
 use zangfx_spirv_cross::{ExecutionModel, SpirV2Msl, VertexAttribute, VertexInputRate};
 
 use zangfx_base::{self as base, shader};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::{Error, ErrorKind, Result};
 
 use crate::arg::rootsig::RootSig;

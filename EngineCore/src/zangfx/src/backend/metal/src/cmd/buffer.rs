@@ -12,8 +12,7 @@ use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandBufferStatus, MTLCommandQueue}
 
 use crate::renderpass::RenderTargetTable;
 use crate::utils::{nil_error, OCPtr};
-use zangfx_base::{self as base, command};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, command, zangfx_impl_object};
 use zangfx_base::{Error, ErrorKind, Result};
 
 use super::enc::CmdBufferFenceSet;

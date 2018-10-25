@@ -16,7 +16,7 @@ use crate::{
     arg, buffer, cmd, heap, image, limits, pipeline, renderpass, resstate, sampler, shader,
 };
 use zangfx_base::Result;
-use zangfx_base::{self as base, interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, zangfx_impl_object};
 
 crate struct DeviceInfo {
     vk_device: AshDevice,

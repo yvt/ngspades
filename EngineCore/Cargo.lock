@@ -1440,6 +1440,11 @@ dependencies = [
 [[package]]
 name = "query_interface"
 version = "0.3.5"
+source = "git+https://github.com/yvt/query_interface.git?rev=da91498339411afd6acd749353295dc57b9229b2#da91498339411afd6acd749353295dc57b9229b2"
+
+[[package]]
+name = "query_interface"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -2366,7 +2371,7 @@ dependencies = [
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsenumflags 0.1.2",
  "ngsenumflags_derive 0.2.2",
- "query_interface 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "query_interface 0.3.5 (git+https://github.com/yvt/query_interface.git?rev=da91498339411afd6acd749353295dc57b9229b2)",
  "zangfx_common 0.1.0",
 ]
 
@@ -2608,6 +2613,7 @@ dependencies = [
 "checksum primal-sieve 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)" = "da2d6ed369bb4b0273aeeb43f07c105c0117717cbae827b20719438eb2eb798c"
 "checksum proc-macro2 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cd07deb3c6d1d9ff827999c7f9b04cdfd66b1b17ae508e14fe47b620f2282ae0"
 "checksum proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)" = "3d7b7eaaa90b4a90a932a9ea6666c95a389e424eff347f0f793979289429feee"
+"checksum query_interface 0.3.5 (git+https://github.com/yvt/query_interface.git?rev=da91498339411afd6acd749353295dc57b9229b2)" = "<none>"
 "checksum query_interface 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "78c0f0046284eebb86b68f93f9677d499034f88e15ca01021ceea32c4d3c3693"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum quote 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1eca14c727ad12702eb4b6bfb5a232287dcf8385cb8ca83a3eeaf6519c44c408"

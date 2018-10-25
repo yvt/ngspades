@@ -6,8 +6,7 @@
 use ngsenumflags::flags;
 use std::u32;
 
-use zangfx_base::{self as base, limits};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, limits, zangfx_impl_object};
 use zangfx_metal_rs as metal;
 
 use crate::MEMORY_REGION_GLOBAL;

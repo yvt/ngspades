@@ -11,7 +11,7 @@ use std::sync::Arc;
 use cocoa::foundation::NSRange;
 use ngsenumflags::flags;
 use zangfx_base::{self as base, Result};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_metal_rs as metal;
 
 use crate::formats::{translate_image_format, translate_metal_pixel_format};

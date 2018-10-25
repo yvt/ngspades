@@ -13,7 +13,7 @@ use crate::formats::translate_image_format;
 use crate::image::{Image, IMAGE_LAYOUT_COLOR_ATTACHMENT, IMAGE_LAYOUT_DS_ATTACHMENT};
 use zangfx_base as base;
 use zangfx_base::Result;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_common::IntoWithPad;
 
 use crate::utils::{

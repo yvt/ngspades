@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use zangfx_base::Result;
 use zangfx_base::{self as base, resources, DeviceSize};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_metal_rs as metal;
 
 use crate::heap::BufferHeapAlloc;

@@ -3,8 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use zangfx_base::{self as base, command, heap, ArgTableIndex, DeviceSize};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, command, heap, zangfx_impl_object, ArgTableIndex, DeviceSize};
 use zangfx_metal_rs::{MTLComputeCommandEncoder, MTLSize};
 
 use crate::arg::table::ArgTable;

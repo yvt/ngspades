@@ -10,12 +10,6 @@ use query_interface::mopo;
 
 /// Base interface of all ZanGFX objects.
 ///
-/// This macro is implemented using the `mopo!` macro provided by the
-/// `query_interface` crate. However, it does not fully support the Rust 2018
-/// style macro imports. For this reason, you must make sure relevant macros
-/// from `query_interface` are imported into the current context. To make it
-/// easier, this crate reexports all necessary macros.
-///
 /// # Examples
 ///
 /// The following example shows how to define a new interface based on this
@@ -35,13 +29,11 @@ mopo!(dyn Object);
 
 /// Generates a boiler-plate code for defining a ZanGFX object type.
 ///
-/// For a given type, this macro generates the implementation for `AsObject`.
+/// For a given type, this macro generates the implementation for `AsObject`
+/// and [`Object`].
 ///
 /// This macro is implemented using the `interfaces!` macro provided by the
-/// `query_interface` crate. However, it does not fully support the Rust 2018
-/// style macro imports. For this reason, you must make sure relevant macros
-/// from `query_interface` are imported into the current context. To make it
-/// easier, this crate reexports all necessary macros.
+/// `query_interface` crate.
 ///
 /// # Examples
 ///
@@ -51,7 +43,7 @@ mopo!(dyn Object);
 ///     # use zangfx_base::{Object, mopo};
 ///     # trait SomeInterface: Object {}
 ///     # mopo!(SomeInterface);
-///     use zangfx_base::{zangfx_impl_object, interfaces, vtable_for};
+///     use zangfx_base::zangfx_impl_object;
 ///     use std::fmt::Debug;
 ///     use std::any::Any;
 ///
@@ -76,7 +68,7 @@ macro_rules! zangfx_impl_object {
 
         // For a mysterious reason, `interfaces ! { $type : ... }` does not work
         // since `query_interface` 0.3.4
-        interfaces! { @imp () $type: dyn $crate::Object $(, $iface)* }
+        $crate::interfaces! { @imp () $type: dyn $crate::Object $(, $iface)* }
     }
 }
 

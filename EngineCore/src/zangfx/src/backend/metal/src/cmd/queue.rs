@@ -12,8 +12,7 @@ use tokenlock::{Token, TokenRef};
 use zangfx_metal_rs::{MTLCommandBuffer, MTLCommandQueue, MTLDevice};
 
 use crate::utils::{nil_error, OCPtr};
-use zangfx_base::{self as base, command, QueueFamily, Result};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, command, zangfx_impl_object, QueueFamily, Result};
 
 use super::buffer::CmdBuffer;
 use super::enc::CmdBufferFenceSet;

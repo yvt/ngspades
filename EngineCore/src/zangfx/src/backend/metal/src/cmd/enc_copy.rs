@@ -7,8 +7,7 @@ use cocoa::foundation::NSRange;
 use std::ops::Range;
 use zangfx_metal_rs::{self as metal, MTLBlitCommandEncoder};
 
-use zangfx_base::{self as base, DeviceSize};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, zangfx_impl_object, DeviceSize};
 use zangfx_common::*;
 
 use crate::buffer::Buffer;

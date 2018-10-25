@@ -16,8 +16,7 @@ use tokenlock::Token;
 use xalloc::{SysTlsf, SysTlsfRegion};
 
 use zangfx_base as base;
-use zangfx_base::Result;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_object, Result};
 use zangfx_common::{TokenCell, TokenCellRef};
 
 use crate::device::DeviceRef;

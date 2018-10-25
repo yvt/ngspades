@@ -14,7 +14,7 @@ use crate::renderpass::RenderPass;
 use crate::shader::{Library, ShaderVertexAttrInfo};
 use zangfx_base as base;
 use zangfx_base::StaticOrDynamic::*;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::{Error, ErrorKind, Result};
 use zangfx_common::BinaryInteger;
 use zangfx_metal_rs as metal;

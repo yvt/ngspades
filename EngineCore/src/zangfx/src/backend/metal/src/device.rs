@@ -6,8 +6,7 @@
 //! Implementation of `Device` for Metal.
 use std::sync::Arc;
 
-use zangfx_base::{self as base, device, Result};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, device, zangfx_impl_object, Result};
 use zangfx_metal_rs as metal;
 
 use crate::limits::DeviceCaps;

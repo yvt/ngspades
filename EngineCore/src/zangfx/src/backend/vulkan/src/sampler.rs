@@ -13,7 +13,7 @@ use crate::device::DeviceRef;
 use crate::AshDevice;
 use zangfx_base as base;
 use zangfx_base::Result;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 
 use crate::utils::{translate_compare_op, translate_generic_error_unwrap};
 

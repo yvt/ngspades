@@ -12,7 +12,7 @@ use std::ops::Range;
 
 use zangfx_base as base;
 use zangfx_base::StaticOrDynamic::*;
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object};
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::{Error, Rect2D, Result};
 
 use crate::arg::layout::RootSig;

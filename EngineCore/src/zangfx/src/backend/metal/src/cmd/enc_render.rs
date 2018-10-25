@@ -4,8 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::ops::Range;
-use zangfx_base::{self as base, command, heap};
-use zangfx_base::{interfaces, vtable_for, zangfx_impl_object};
+use zangfx_base::{self as base, command, heap, zangfx_impl_object};
 use zangfx_common::Rect2D;
 use zangfx_metal_rs::MTLRenderCommandEncoder;
 
