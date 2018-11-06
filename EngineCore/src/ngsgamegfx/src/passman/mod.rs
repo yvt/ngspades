@@ -3,6 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-//! Render pass manager.
+//! The render pass manager.
+#[macro_use]
 mod info;
+mod scheduler;
 pub use self::info::*;
+pub use self::scheduler::*;
