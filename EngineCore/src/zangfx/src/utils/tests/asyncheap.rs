@@ -13,9 +13,7 @@ use std::{
     time::Duration,
 };
 
-use zangfx_base::{
-    self as base, interfaces, vtable_for, zangfx_impl_handle, zangfx_impl_object, Result,
-};
+use zangfx_base::{self as base, zangfx_impl_handle, zangfx_impl_object, Result};
 use zangfx_utils::asyncheap;
 
 #[derive(Debug)]
@@ -125,7 +123,8 @@ fn blocking() {
         .spawn(move || {
             state2.store(1, Ordering::Relaxed);
             block_on(bind3).unwrap();
-        }).unwrap();
+        })
+        .unwrap();
 
     while state.load(Ordering::Relaxed) == 0 {
         thread::yield_now();
