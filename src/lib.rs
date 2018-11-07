@@ -47,15 +47,20 @@
 //!
 //! [stabilization]: https://blog.rust-lang.org/2018/03/29/Rust-1.25.html
 //!
-pub extern crate num_traits;
-pub extern crate num_integer;
+// Clippy does not understand that generic numeric types are not always
+// as capable as built-in ones and raise false warnings
+#![allow(clippy::op_ref)]
+
+pub extern crate num;
 extern crate unreachable;
 
 pub mod arena;
 pub mod bitmap;
 mod bitmaputils;
-pub mod tlsf;
 pub mod int;
+pub mod tlsf;
 
-pub use self::tlsf::{Tlsf, SafeTlsf, SysTlsf, TlsfBlock, TlsfRegion, SysTlsfRegion, SafeTlsfRegion};
 pub use self::bitmap::{BitmapAlloc, BitmapAllocRegion};
+pub use self::tlsf::{
+    SafeTlsf, SafeTlsfRegion, SysTlsf, SysTlsfRegion, Tlsf, TlsfBlock, TlsfRegion,
+};

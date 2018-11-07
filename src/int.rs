@@ -7,13 +7,13 @@
 // according to those terms.
 //
 //! Traits for integral types.
-use num_integer::Integer;
-use std::{ops, fmt};
+use num::Integer;
 use std::mem::size_of;
+use std::{fmt, ops};
 
 /// Integral types with efficient binary operations.
-pub trait BinaryInteger
-    : Integer
+pub trait BinaryInteger:
+    Integer
     + Clone
     + Sized
     + ops::AddAssign
@@ -30,7 +30,8 @@ pub trait BinaryInteger
     + ops::Shr<u32, Output = Self>
     + ops::Not<Output = Self>
     + RefSaturatingAdd<Output = Self>
-    + fmt::Debug {
+    + fmt::Debug
+{
     type OneDigits: Iterator<Item = u32>;
 
     fn max_digits() -> u32;
@@ -91,7 +92,7 @@ pub trait BinaryUInteger: BinaryInteger {
 pub struct OneDigits<T>(T);
 
 macro_rules! impl_binary_integer {
-    ($type:ty) => (
+    ($type:ty) => {
         impl BinaryInteger for $type {
             type OneDigits = OneDigits<Self>;
 
@@ -134,6 +135,7 @@ macro_rules! impl_binary_integer {
                 }
             }
             #[inline]
+            #[allow(clippy::cast_lossless)]
             fn extract_u32(&self, range: ops::Range<u32>) -> u32 {
                 let start = range.start;
                 ((self & Self::ones_truncated(range)) >> start) as u32
@@ -168,8 +170,7 @@ macro_rules! impl_binary_integer {
                     }
                 } else {
                     let mask = Self::ones(0..fp);
-                    self.checked_add(mask)
-                        .map(|x| x & !mask)
+                    self.checked_add(mask).map(|x| x & !mask)
                 }
             }
             #[inline]
@@ -218,18 +219,18 @@ macro_rules! impl_binary_integer {
                 }
             }
         }
-    )
+    };
 }
 
 macro_rules! impl_binary_uinteger {
-    ($type:ty) => (
+    ($type:ty) => {
         impl BinaryUInteger for $type {
             #[inline]
             fn is_power_of_two(&self) -> bool {
                 Self::is_power_of_two(*self)
             }
         }
-    )
+    };
 }
 
 impl_binary_integer!(i8);
