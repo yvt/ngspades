@@ -4,17 +4,21 @@
 // This source code is a part of Nightingales.
 //
 //! Provides a NgsPF port type for embedding a NgsGameGFX viewport.
+use injector::Container;
 use std::sync::Arc;
 
+use ngsenumflags::flags;
 use ngspf::core::{
     Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor,
 };
 use ngspf::viewport;
-use ngsenumflags::flags;
 #[allow(unused_imports)]
 use zangfx::{base as gfx, prelude::*, utils as gfxut};
 
-use crate::config::Config;
+use crate::{
+    config::Config,
+    di::{new_device_container, CmdQueueSet},
+};
 
 /// `Port` used to display the viewport of NgsGameGFX.
 #[derive(Debug, Clone)]
@@ -35,10 +39,24 @@ impl PortRef {
 
 impl viewport::Port for PortRef {
     fn mount(&self, objects: &viewport::GfxObjects) -> Box<dyn viewport::PortInstance> {
+        fn convert_gfx_queue(x: viewport::GfxQueue) -> (gfx::CmdQueueRef, gfx::QueueFamily) {
+            (x.queue, x.queue_family)
+        }
+
+        // TODO: Share device DI container between port instances
+        let device_container = new_device_container(
+            objects.device.clone(),
+            CmdQueueSet {
+                main_queue: convert_gfx_queue(objects.main_queue.clone()),
+                copy_queue: objects.copy_queue.clone().map(convert_gfx_queue),
+            },
+        );
+
         Box::new(Port {
             props: self.0.clone(),
             gfx_objects: objects.clone(),
             cb_state_tracker: None,
+            device_container,
         })
     }
 }
@@ -61,6 +79,7 @@ impl PortProps {
 struct Port {
     props: Arc<PortProps>,
     gfx_objects: viewport::GfxObjects,
+    device_container: Container,
     cb_state_tracker: Option<gfxut::CbStateTracker>,
 }
 
