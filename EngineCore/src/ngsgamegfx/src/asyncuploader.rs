@@ -62,7 +62,6 @@ pub mod di {
     }
 }
 
-use boxfnonce::SendBoxFnOnce;
 use futures::{
     channel::{mpsc, oneshot},
     executor,
@@ -111,7 +110,7 @@ pub struct AsyncUploader {
     join_handle: Option<thread::JoinHandle<()>>,
 }
 
-type ChannelPayload = SendBoxFnOnce<'static, (), StreamerRequestStream>;
+type ChannelPayload = Box<dyn FnOnce() -> StreamerRequestStream + Send + 'static>;
 
 type StreamerRequestStream = Box<dyn Stream<Item = StreamerRequest, Error = Never>>;
 
@@ -160,7 +159,7 @@ impl AsyncUploader {
                             .build_with_heap_size(1024 * 1024 * 100)?;
 
                         let request_stream = receiver
-                            .map(|x: ChannelPayload| x.call())
+                            .map(|x: ChannelPayload| x())
                             .flatten()
                             .map_err(|_: Never| -> gfx::Error { unreachable!() });
 
@@ -268,7 +267,7 @@ impl AsyncUploader {
 
         // Submission fails if the uploader thread is already down. In that
         // case, we'll know it via `receiver` returning `Err(Canceled)`.
-        let _ = self.sender.unbounded_send(payload.into());
+        let _ = self.sender.unbounded_send(Box::new(payload));
 
         let shared = Arc::clone(shared);
         receiver.map_err(move |_| {
