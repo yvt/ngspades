@@ -12,13 +12,13 @@ pub mod di {
     use super::*;
     use crate::di::DeviceContainer;
 
-    pub trait DeviceContainerExt {
+    pub trait AsyncUploaderDeviceContainerExt {
         fn get_async_uploader(&self) -> Option<&gfx::Result<Arc<AsyncUploader>>>;
         fn get_async_uploader_or_build(&mut self) -> &gfx::Result<Arc<AsyncUploader>>;
         fn register_async_uploader_default(&mut self);
     }
 
-    impl DeviceContainerExt for Container {
+    impl AsyncUploaderDeviceContainerExt for Container {
         fn get_async_uploader(&self) -> Option<&gfx::Result<Arc<AsyncUploader>>> {
             self.get_singleton()
         }

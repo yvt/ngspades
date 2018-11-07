@@ -44,13 +44,17 @@ impl viewport::Port for PortRef {
         }
 
         // TODO: Share device DI container between port instances
-        let device_container = new_device_container(
+        let mut device_container = new_device_container(
             objects.device.clone(),
             CmdQueueSet {
                 main_queue: convert_gfx_queue(objects.main_queue.clone()),
                 copy_queue: objects.copy_queue.clone().map(convert_gfx_queue),
             },
         );
+
+        // Test the static data loader
+        use crate::staticdata::di::StaticDataDeviceContainerExt;
+        device_container.get_quad_vertices_or_build();
 
         Box::new(Port {
             props: self.0.clone(),

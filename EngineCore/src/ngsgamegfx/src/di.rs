@@ -48,8 +48,11 @@ pub(crate) fn new_device_container(
     container.register_singleton(device);
     container.register_singleton(cmd_queue_set);
 
-    use crate::asyncuploader::di::DeviceContainerExt;
+    use crate::asyncuploader::di::AsyncUploaderDeviceContainerExt;
     container.register_async_uploader_default();
+
+    use crate::staticdata::di::StaticDataDeviceContainerExt;
+    container.register_static_data_default();
 
     container
 }

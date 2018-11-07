@@ -11,6 +11,7 @@ pub mod config;
 mod di;
 mod passman;
 pub mod port;
+mod staticdata;
 mod utils;
 
 pub use crate::utils::progress::Progress;
