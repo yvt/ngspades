@@ -5,3 +5,4 @@
 //
 pub mod futures;
 pub mod iterator_mut;
+pub mod progress;
