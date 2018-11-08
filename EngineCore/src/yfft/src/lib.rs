@@ -42,6 +42,7 @@ use num_complex::Complex;
 
 #[macro_use]
 mod simdutils;
+mod aligned;
 mod env;
 mod kernel;
 mod setup;

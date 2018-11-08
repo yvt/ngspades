@@ -12,6 +12,7 @@ use std::f32;
 use std::mem;
 use std::ptr::{read_unaligned, write_unaligned};
 
+use aligned::AlignedVec;
 use simdutils::{f32x4_bitxor, sse3_f32x4_complex_mul_riri};
 use Num;
 
@@ -39,7 +40,7 @@ where
 #[derive(Debug)]
 struct Sse3F32RealFFTPrePostProcessKernel {
     len: usize,
-    table: [Vec<f32>; 2],
+    table: [AlignedVec<f32>; 2],
     inverse: bool,
 }
 

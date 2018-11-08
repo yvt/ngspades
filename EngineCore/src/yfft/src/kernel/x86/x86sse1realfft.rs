@@ -12,6 +12,7 @@ use std::f32;
 use std::mem;
 use std::ptr::{read_unaligned, write_unaligned};
 
+use aligned::AlignedVec;
 use simdutils::{f32x4_bitxor, f32x4_complex_mul_rrii};
 use {mul_pos_i, Complex, Num};
 
@@ -34,10 +35,10 @@ where
     })
 }
 
-pub(super) fn new_real_fft_coef_table(len: usize, inverse: bool) -> [Vec<f32>; 2] {
+pub(super) fn new_real_fft_coef_table(len: usize, inverse: bool) -> [AlignedVec<f32>; 2] {
     assert!(len % 2 == 0);
-    let mut table_a = Vec::with_capacity(len);
-    let mut table_b = Vec::with_capacity(len);
+    let mut table_a = AlignedVec::with_capacity(len);
+    let mut table_b = AlignedVec::with_capacity(len);
     for i in 0..(len / 2) {
         let c = Complex::new(0f32, (i as f32) * -f32::consts::PI / (len / 2) as f32).exp();
 
@@ -61,7 +62,7 @@ pub(super) fn new_real_fft_coef_table(len: usize, inverse: bool) -> [Vec<f32>; 2
 #[derive(Debug)]
 struct SseRealFFTPrePostProcessKernel {
     len: usize,
-    table: [Vec<f32>; 2],
+    table: [AlignedVec<f32>; 2],
     inverse: bool,
 }
 
