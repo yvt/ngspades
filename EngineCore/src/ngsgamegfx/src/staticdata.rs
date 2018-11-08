@@ -85,43 +85,26 @@ use zangfx::{
     utils::streamer::StageBuffer,
 };
 
-use crate::asyncuploader::{AsyncUploader, UploadError};
-
-pub trait StaticBufferSource:
-    std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug
-{
-    fn usage(&self) -> gfx::BufferUsageFlags {
-        flags![gfx::BufferUsage::{CopyWrite | Uniform}]
-    }
-
-    fn bytes(&self) -> &[u8];
-}
+use crate::asyncuploader::{AsyncUploader, Request, UploadError};
 
 #[derive(Debug)]
-pub struct StaticBuffer {
-    buffer_cell: Mutex<Option<gfx::BufferRef>>,
-    complete_cell: FreezableCell<Option<gfx::Result<gfx::BufferRef>>>,
+pub struct StaticData<T> {
+    object_cell: Mutex<Option<T>>,
+    complete_cell: FreezableCell<Option<gfx::Result<T>>>,
     join_handle_cell: Mutex<Option<executor::JoinHandle<(), Never>>>,
 }
 
-#[derive(Debug)]
-struct BufferSourceToBytes<T>(T);
-
-impl<T: StaticBufferSource> std::borrow::Borrow<[u8]> for BufferSourceToBytes<T> {
-    fn borrow(&self) -> &[u8] {
-        self.0.bytes()
-    }
-}
-
-impl StaticBuffer {
-    fn new<T: StaticBufferSource>(
-        device: gfx::DeviceRef,
-        queue: gfx::CmdQueueRef,
+impl<T: Send + Sync + 'static> StaticData<T> {
+    fn with_initiator<S, R>(
         uploader: &Arc<AsyncUploader>,
-        source: T,
-    ) -> Arc<Self> {
+        initiator: impl FnOnce() -> gfx::Result<(T, S)> + Send + Sync + 'static,
+    ) -> Arc<Self>
+    where
+        S: Stream<Item = R, Error = Never> + 'static,
+        R: Request + 'static,
+    {
         let this = Arc::new(Self {
-            buffer_cell: Mutex::new(None),
+            object_cell: Mutex::new(None),
             complete_cell: FreezableCell::new_unfrozen(None),
             join_handle_cell: Mutex::new(None),
         });
@@ -129,51 +112,23 @@ impl StaticBuffer {
         // A `FnOnce() -> impl Stream` that produces zero or one requests.
         let source = {
             let this = Arc::clone(&this);
-            let uploader = Arc::clone(uploader);
 
             move || {
-                match (|| {
-                    // Create and allocate a buffer
-                    let buffer = device
-                        .build_buffer()
-                        .queue(&queue)
-                        .size(source.bytes().len() as _)
-                        .usage(source.usage())
-                        .build()?;
-
-                    let memory_type = device
-                        .try_choose_memory_type(
-                            &buffer,
-                            flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                            flags![gfx::MemoryTypeCaps::{}],
-                        )?
-                        .unwrap();
-
-                    if !device.global_heap(memory_type).bind((&buffer).into())? {
-                        // Memory allocation failure of a static resource is fatal
-                        return Err(gfx::ErrorKind::OutOfDeviceMemory.into());
-                    }
-
-                    Ok(buffer)
-                })() {
-                    Ok(buffer) => {
-                        // A buffer was created and is ready. Produce a stream
+                match initiator() {
+                    Ok((object, requests)) => {
+                        // A resource was created and is ready. Produce a stream
                         // containing an upload request for this buffer.
-                        let buffer_proxy = uploader.make_buffer_proxy_if_needed(&buffer);
+                        *this.object_cell.lock().unwrap() = Some(object);
 
-                        *this.buffer_cell.lock().unwrap() = Some(buffer);
-
-                        let request =
-                            StageBuffer::new(buffer_proxy, 0, BufferSourceToBytes(source));
-                        let future_request = future::ok(request);
-                        Either::Left(stream::once(future_request))
+                        Either::Left(requests)
                     }
-                    Err(e) => {
+                    Err(err) => {
                         // An error occured while creating and allocating a
-                        // buffer. Report the error and return an empty stream.
+                        // resource object. Report the error and return an empty
+                        // stream.
                         let mut complete_cell_lock =
                             this.complete_cell.unfrozen_borrow_mut().unwrap();
-                        *complete_cell_lock = Some(Err(e));
+                        *complete_cell_lock = Some(Err(err));
                         FreezableCellRef::freeze(complete_cell_lock);
 
                         Either::Right(stream::empty())
@@ -194,7 +149,7 @@ impl StaticBuffer {
 
                 match result {
                     Ok(()) => {
-                        let buffer = this.buffer_cell.lock().unwrap().take().unwrap();
+                        let buffer = this.object_cell.lock().unwrap().take().unwrap();
                         *complete_cell_lock = Some(Ok(buffer));
                     }
                     Err(UploadError::Device(err)) => {
@@ -222,13 +177,13 @@ impl StaticBuffer {
 
     fn with_error(error: gfx::Error) -> Arc<Self> {
         Arc::new(Self {
-            buffer_cell: Mutex::new(None),
+            object_cell: Mutex::new(None),
             complete_cell: FreezableCell::new_frozen(Some(Err(error))),
             join_handle_cell: Mutex::new(None),
         })
     }
 
-    pub fn buffer(&self) -> Option<&gfx::Result<gfx::BufferRef>> {
+    fn resource(&self) -> Option<&gfx::Result<T>> {
         match self.complete_cell.frozen_borrow() {
             Ok(&Some(ref result)) => Some(result),
             _ => None,
@@ -236,11 +191,81 @@ impl StaticBuffer {
     }
 }
 
-impl Drop for StaticBuffer {
+impl<T> Drop for StaticData<T> {
     fn drop(&mut self) {
         if let Some(join_handle) = self.join_handle_cell.lock().unwrap().take() {
             executor::block_on(join_handle).unwrap();
         }
+    }
+}
+
+pub type StaticBuffer = StaticData<gfx::BufferRef>;
+
+pub trait StaticBufferSource:
+    std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug
+{
+    fn usage(&self) -> gfx::BufferUsageFlags {
+        flags![gfx::BufferUsage::{CopyWrite | Uniform}]
+    }
+
+    fn bytes(&self) -> &[u8];
+}
+
+#[derive(Debug)]
+struct BufferSourceToBytes<T>(T);
+
+impl<T: StaticBufferSource> std::borrow::Borrow<[u8]> for BufferSourceToBytes<T> {
+    fn borrow(&self) -> &[u8] {
+        self.0.bytes()
+    }
+}
+
+impl StaticBuffer {
+    fn new(
+        device: gfx::DeviceRef,
+        queue: gfx::CmdQueueRef,
+        uploader: &Arc<AsyncUploader>,
+        source: impl StaticBufferSource,
+    ) -> Arc<Self> {
+        let uploader_2 = Arc::clone(uploader);
+
+        let initiator = move || {
+            // Create and allocate a buffer
+            let buffer = device
+                .build_buffer()
+                .queue(&queue)
+                .size(source.bytes().len() as _)
+                .usage(source.usage())
+                .build()?;
+
+            let memory_type = device
+                .try_choose_memory_type(
+                    &buffer,
+                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
+                    flags![gfx::MemoryTypeCaps::{}],
+                )?
+                .unwrap();
+
+            if !device.global_heap(memory_type).bind((&buffer).into())? {
+                // Memory allocation failure of a static resource is fatal
+                return Err(gfx::ErrorKind::OutOfDeviceMemory.into());
+            }
+
+            // Produce an upload request for this buffer.
+            let buffer_proxy = uploader_2.make_buffer_proxy_if_needed(&buffer);
+            let request = StageBuffer::new(buffer_proxy, 0, BufferSourceToBytes(source));
+
+            let future_request = future::ok(request);
+            let stream_request = stream::once(future_request);
+
+            Ok((buffer, stream_request))
+        };
+
+        Self::with_initiator(uploader, initiator)
+    }
+
+    pub fn buffer(&self) -> Option<&gfx::Result<gfx::BufferRef>> {
+        self.resource()
     }
 }
 
