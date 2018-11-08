@@ -30,12 +30,37 @@ pub mod di {
         ) -> &Arc<StaticImage>;
         fn register_static_image_default<T: StaticImageSource>(&mut self);
 
+        /// Return a reference to `StaticBuffer` of a buffer containing
+        /// `[[u16; 2]; 4]` that represents the vertices of the rectangle
+        /// `x, y ∈ [0, 1]`, sorted in the triangle strip order.
         fn get_quad_vertices_or_build(&mut self) -> &Arc<StaticBuffer> {
             self.get_static_buffer_or_build(&QuadVertices)
         }
 
+        /// Return a reference to `StaticBuffer` of a buffer containing
+        /// `[[u16; 2]; 3]` that represents the vertices of a large triangle
+        /// covering the rectangle `x, y ∈ [0, 1]`.
+        fn get_huge_triangle_vertices_or_build(&mut self) -> &Arc<StaticBuffer> {
+            self.get_static_buffer_or_build(&HugeTriangleVertices)
+        }
+
+        /// Return a reference to `StaticImage` of a 2D RGBA image containing
+        /// a single white pixel.
+        fn get_white_image_or_build(&mut self) -> &Arc<StaticImage> {
+            self.get_static_image_or_build(&WhiteImage)
+        }
+
+        /// Return a reference to `StaticImage` of a 256x256 2D RGBA image
+        /// containing random data.
+        fn get_noise_image_or_build(&mut self) -> &Arc<StaticImage> {
+            self.get_static_image_or_build(&NoiseImage)
+        }
+
         fn register_static_data_default(&mut self) {
             self.register_static_buffer_default::<QuadVertices>();
+            self.register_static_buffer_default::<HugeTriangleVertices>();
+            self.register_static_image_default::<WhiteImage>();
+            self.register_static_image_default::<NoiseImage>();
         }
     }
 
@@ -422,5 +447,63 @@ impl StaticBufferSource for QuadVertices {
     fn bytes(&self) -> &[u8] {
         static VERTICES: &[[u16; 2]; 4] = &[[0, 0], [1, 0], [0, 1], [1, 1]];
         pod::Pod::as_bytes(VERTICES)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+struct HugeTriangleVertices;
+
+impl StaticBufferSource for HugeTriangleVertices {
+    fn usage(&self) -> gfx::BufferUsageFlags {
+        flags![gfx::BufferUsage::{CopyWrite | Vertex}]
+    }
+
+    fn bytes(&self) -> &[u8] {
+        static VERTICES: &[[u16; 2]; 3] = &[[0, 0], [2, 0], [0, 2]];
+        pod::Pod::as_bytes(VERTICES)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+struct WhiteImage;
+
+unsafe impl StaticImageSource for WhiteImage {
+    fn extents(&self) -> ImageExtents {
+        ImageExtents::Normal([1, 1].iter().cloned().collect())
+    }
+
+    fn format(&self) -> gfx::ImageFormat {
+        <u8>::as_rgba_norm()
+    }
+
+    fn bytes(&self) -> &[u8] {
+        &[0xff; 4]
+    }
+}
+
+use lazy_static::lazy_static;
+use rand::{thread_rng, Rng};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+struct NoiseImage;
+
+unsafe impl StaticImageSource for NoiseImage {
+    fn extents(&self) -> ImageExtents {
+        ImageExtents::Normal([256, 256].iter().cloned().collect())
+    }
+
+    fn format(&self) -> gfx::ImageFormat {
+        <u8>::as_rgba_norm()
+    }
+
+    fn bytes(&self) -> &[u8] {
+        lazy_static! {
+            static ref BYTES: Vec<u8> = {
+                let mut bytes = vec![0; 256 * 256 * 4];
+                thread_rng().fill(&mut bytes[..]);
+                bytes
+            };
+        }
+        BYTES.as_slice()
     }
 }

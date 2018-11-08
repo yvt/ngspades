@@ -55,6 +55,7 @@ impl viewport::Port for PortRef {
         // Test the static data loader
         use crate::staticdata::di::StaticDataDeviceContainerExt;
         device_container.get_quad_vertices_or_build();
+        device_container.get_noise_image_or_build();
 
         Box::new(Port {
             props: self.0.clone(),
