@@ -16,8 +16,9 @@ fn test() {
         input_data_format: DataFormat::Complex,
         output_data_format: DataFormat::Complex,
         len: 1024,
-        inverse: false
-    }).unwrap();
+        inverse: false,
+    })
+    .unwrap();
     let setup_rc = Rc::new(setup);
     Env::new(setup_rc);
 }

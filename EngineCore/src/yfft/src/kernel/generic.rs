@@ -15,28 +15,29 @@
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor};
 
 use num_complex::Complex;
-use num_traits::{Zero, One};
 use num_iter::range_step;
+use num_traits::{One, Zero};
 
-use super::super::{Num, complex_from_slice};
-
+use super::super::{complex_from_slice, Num};
 
 pub fn new_generic_kernel<T: 'static>(cparams: &KernelCreationParams) -> Box<Kernel<T>>
 where
     T: Num,
 {
-
     let full_circle = if cparams.inverse { 2 } else { -2 };
     let twiddle_delta = Complex::new(
         Zero::zero(),
-        T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
-            T::from(full_circle).unwrap() * T::PI() /
-            T::from(cparams.size).unwrap(),
-    ).exp();
+        T::from(cparams.size / cparams.radix / cparams.unit).unwrap()
+            * T::from(full_circle).unwrap()
+            * T::PI()
+            / T::from(cparams.size).unwrap(),
+    )
+    .exp();
     let coef_delta = Complex::new(
         Zero::zero(),
         T::from(full_circle).unwrap() * T::PI() / T::from(cparams.radix).unwrap(),
-    ).exp();
+    )
+    .exp();
 
     match cparams.kernel_type {
         KernelType::Dit => Box::new(GenericDitKernel {

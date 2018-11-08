@@ -3,9 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{Kernel, KernelType, KernelCreationParams, KernelParams};
-use std::{fmt, ptr};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType};
 use std::any::Any;
+use std::{fmt, ptr};
 
 pub trait StaticParams: fmt::Debug + 'static + Sync + Send {
     fn inverse(&self) -> bool;
@@ -77,7 +77,6 @@ pub fn branch_on_static_params<F, T>(cparams: &KernelCreationParams, f: F) -> T
 where
     F: StaticParamsConsumer<T>,
 {
-
     match (cparams.kernel_type, cparams.inverse) {
         (KernelType::Dit, false) => f.consume(cparams, StaticParamsDitForward {}),
         (KernelType::Dif, false) => f.consume(cparams, StaticParamsDifForward {}),

@@ -13,10 +13,12 @@
 //! all optimizations and instruction sets including ones that this kernel doesn't support enabled) on a Skylake
 //! machine.
 
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
-                   AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::super::simdutils::{f32x4_bitxor, f32x4_complex_mul_rrii};
+use super::utils::{
+    branch_on_static_params, if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper,
+    StaticParams, StaticParamsConsumer,
+};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAccessor};
 
 use num_complex::Complex;
 use num_iter::range_step;
@@ -42,7 +44,6 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     where
         T: StaticParams,
     {
-
         match cparams.unit {
             unit if unit % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
                 SseRadix2Kernel3::new(cparams, sparams),
@@ -50,9 +51,9 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
             unit if unit % 2 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
                 SseRadix2Kernel2::new(cparams, sparams),
             ))),
-            1 => Some(Box::new(AlignReqKernelWrapper::new(
-                SseRadix2Kernel1 { cparams: *cparams },
-            ))),
+            1 => Some(Box::new(AlignReqKernelWrapper::new(SseRadix2Kernel1 {
+                cparams: *cparams,
+            }))),
             _ => None,
         }
     }
@@ -113,14 +114,16 @@ impl<T: StaticParams> SseRadix2Kernel2<T> {
             .map(|i| {
                 let c1 = Complex::new(
                     0f32,
-                    full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 let c2 = Complex::new(
                     0f32,
-                    full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 // rrii format
                 f32x4::new(c1.re, c2.re, c1.im, c2.im)
             })
@@ -220,24 +223,28 @@ impl<T: StaticParams> SseRadix2Kernel3<T> {
                 let k = i / 4 * 4;
                 let c1 = Complex::new(
                     0f32,
-                    full_circle * (k) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (k) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 let c2 = Complex::new(
                     0f32,
-                    full_circle * (k + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (k + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 let c3 = Complex::new(
                     0f32,
-                    full_circle * (k + 2) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (k + 2) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 let c4 = Complex::new(
                     0f32,
-                    full_circle * (k + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (k + 3) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 // rrrr-iiii format
                 // TODO: more efficient creation
                 if i % 4 != 0 {

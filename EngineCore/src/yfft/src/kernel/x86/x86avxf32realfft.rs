@@ -3,17 +3,17 @@
 //
 // This source code is a part of Nightingales.
 //
+use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper};
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 
-use simd::x86::avx::{f32x8, u32x8};
 use num_iter::range_step;
-use std::ptr::{read_unaligned, write_unaligned};
-use std::mem;
+use simd::x86::avx::{f32x8, u32x8};
 use std::f32;
+use std::mem;
+use std::ptr::{read_unaligned, write_unaligned};
 
+use simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri};
 use Num;
-use simdutils::{avx_f32x8_complex_mul_riri, avx_f32x8_bitxor};
 
 use super::x86sse1realfft::new_real_fft_coef_table;
 
@@ -25,12 +25,14 @@ pub fn new_x86_avx_f32_real_fft_pre_post_process_kernel<T>(
 where
     T: Num,
 {
-    if_compatible(|| if len % 16 == 0 && len > 16 {
-        Some(Box::new(AlignReqKernelWrapper::new(
-            AvxF32RealFFTPrePostProcessKernel::new(len, inverse),
-        )) as Box<Kernel<f32>>)
-    } else {
-        None
+    if_compatible(|| {
+        if len % 16 == 0 && len > 16 {
+            Some(Box::new(AlignReqKernelWrapper::new(
+                AvxF32RealFFTPrePostProcessKernel::new(len, inverse),
+            )) as Box<Kernel<f32>>)
+        } else {
+            None
+        }
     })
 }
 
@@ -69,14 +71,7 @@ impl AlignReqKernel<f32> for AvxF32RealFFTPrePostProcessKernel {
 
         let conj_mask: f32x8 = unsafe {
             mem::transmute(u32x8::new(
-                0,
-                0x80000000,
-                0,
-                0x80000000,
-                0,
-                0x80000000,
-                0,
-                0x80000000,
+                0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000,
             ))
         };
 

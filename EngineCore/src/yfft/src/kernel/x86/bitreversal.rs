@@ -3,9 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::Num;
+use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper};
+use super::{Kernel, KernelParams, SliceAccessor};
 
 use simd::x86::sse2::u64x2;
 
@@ -16,9 +16,11 @@ where
     T: Num,
 {
     if_compatible(|| {
-        Some(Box::new(AlignReqKernelWrapper::new(
-            SseDWordBitReversalKernel { indices: indices.clone() },
-        )) as Box<Kernel<f32>>)
+        Some(
+            Box::new(AlignReqKernelWrapper::new(SseDWordBitReversalKernel {
+                indices: indices.clone(),
+            })) as Box<Kernel<f32>>,
+        )
     })
 }
 

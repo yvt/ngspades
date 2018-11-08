@@ -4,14 +4,14 @@
 // This source code is a part of Nightingales.
 //
 
-pub use simd::{Simd, f32x4, i32x4, u32x4};
+#[cfg(target_feature = "avx")]
+pub use simd::x86::avx::{f32x8, i32x8, u32x8, u64x4, AvxF32x8};
 #[cfg(target_feature = "sse2")]
 pub use simd::x86::sse2::{f64x2, u64x2};
 #[cfg(target_feature = "sse3")]
 #[allow(unused_imports)]
 use simd::x86::sse3::Sse3F32x4;
-#[cfg(target_feature = "avx")]
-pub use simd::x86::avx::{i32x8, f32x8, u32x8, AvxF32x8, u64x4};
+pub use simd::{f32x4, i32x4, u32x4, Simd};
 use std::mem;
 
 #[cfg(test)]
@@ -21,39 +21,59 @@ use num_complex::Complex;
 #[allow(unused_macros)]
 macro_rules! u64x2_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
-        unsafe { $crate::simdutils::simd_shuffle2::<$crate::simdutils::u64x2, $crate::simdutils::u64x2>($x, $y, $idx) }
-    }
+        unsafe {
+            $crate::simdutils::simd_shuffle2::<$crate::simdutils::u64x2, $crate::simdutils::u64x2>(
+                $x, $y, $idx,
+            )
+        }
+    };
 }
 
 /// Shuffles `f64x2` elements.
 #[allow(unused_macros)]
 macro_rules! f64x2_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
-        unsafe { $crate::simdutils::simd_shuffle2::<$crate::simdutils::f64x2, $crate::simdutils::f64x2>($x, $y, $idx) }
-    }
+        unsafe {
+            $crate::simdutils::simd_shuffle2::<$crate::simdutils::f64x2, $crate::simdutils::f64x2>(
+                $x, $y, $idx,
+            )
+        }
+    };
 }
 
 /// Shuffles `f32x4` elements.
 macro_rules! f32x4_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
-        unsafe { $crate::simdutils::simd_shuffle4::<$crate::simdutils::f32x4, $crate::simdutils::f32x4>($x, $y, $idx) }
-    }
+        unsafe {
+            $crate::simdutils::simd_shuffle4::<$crate::simdutils::f32x4, $crate::simdutils::f32x4>(
+                $x, $y, $idx,
+            )
+        }
+    };
 }
 
 /// Shuffles `f32x8` elements.
 #[allow(unused_macros)]
 macro_rules! f32x8_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
-        unsafe { $crate::simdutils::simd_shuffle8::<$crate::simdutils::f32x8, $crate::simdutils::f32x8>($x, $y, $idx) }
-    }
+        unsafe {
+            $crate::simdutils::simd_shuffle8::<$crate::simdutils::f32x8, $crate::simdutils::f32x8>(
+                $x, $y, $idx,
+            )
+        }
+    };
 }
 
 /// Shuffles `u64x4` elements.
 #[allow(unused_macros)]
 macro_rules! u64x4_shuffle {
     ($x:expr, $y:expr, $idx:expr) => {
-        unsafe { $crate::simdutils::simd_shuffle4::<$crate::simdutils::u64x4, $crate::simdutils::u64x4>($x, $y, $idx) }
-    }
+        unsafe {
+            $crate::simdutils::simd_shuffle4::<$crate::simdutils::u64x4, $crate::simdutils::u64x4>(
+                $x, $y, $idx,
+            )
+        }
+    };
 }
 
 #[allow(dead_code)]
@@ -158,9 +178,7 @@ pub fn sse3_fma_f32x4_fmaddsub(x: f32x4, y: f32x4, z: f32x4) -> f32x4 {
 #[cfg(all(target_feature = "sse3", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn sse3_fma_f32x4_fmaddsub(x: f32x4, y: f32x4, z: f32x4) -> f32x4 {
-    unsafe {
-        x86_mm_fmaddsub_ps(x, y, z)
-    }
+    unsafe { x86_mm_fmaddsub_ps(x, y, z) }
 }
 
 #[cfg(target_feature = "sse3")]
@@ -205,9 +223,7 @@ pub fn avx_fma_f32x8_fmadd(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
 #[cfg(all(target_feature = "avx", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn avx_fma_f32x8_fmadd(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
-    unsafe {
-        x86_mm256_fmadd_ps(x, y, z)
-    }
+    unsafe { x86_mm256_fmadd_ps(x, y, z) }
 }
 
 #[cfg(all(target_feature = "avx", not(target_feature = "fma")))]
@@ -219,9 +235,7 @@ pub fn avx_fma_f32x8_fmsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
 #[cfg(all(target_feature = "avx", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn avx_fma_f32x8_fmsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
-    unsafe {
-        x86_mm256_fmsub_ps(x, y, z)
-    }
+    unsafe { x86_mm256_fmsub_ps(x, y, z) }
 }
 
 #[cfg(all(target_feature = "avx", not(target_feature = "fma")))]
@@ -233,9 +247,7 @@ pub fn avx_fma_f32x8_fmaddsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
 #[cfg(all(target_feature = "avx", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn avx_fma_f32x8_fmaddsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
-    unsafe {
-        x86_mm256_fmaddsub_ps(x, y, z)
-    }
+    unsafe { x86_mm256_fmaddsub_ps(x, y, z) }
 }
 
 #[cfg(target_feature = "avx")]

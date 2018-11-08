@@ -13,17 +13,21 @@
 //!
 //! For small transforms ties with a commercial-level FFT library, but tends to be much slower for large transforms.
 
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
-                   AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
-use simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri, avx_fma_f32x8_fmadd, avx_fma_f32x8_fmsub};
+use super::utils::{
+    branch_on_static_params, if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper,
+    StaticParams, StaticParamsConsumer,
+};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAccessor};
+use simdutils::{
+    avx_f32x8_bitxor, avx_f32x8_complex_mul_riri, avx_fma_f32x8_fmadd, avx_fma_f32x8_fmsub,
+};
 
 use num_complex::Complex;
 use num_iter::range_step;
 
 use simd::x86::avx::{f32x8, u32x8};
 
-use std::{mem, f32};
+use std::{f32, mem};
 
 pub fn new_x86_avx_f32_radix4_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
 where
@@ -42,18 +46,17 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     where
         T: StaticParams,
     {
-
         match cparams.unit {
             // heuristics
-            unit if unit % 8 == 0 && cparams.size <= 2048 => Some(Box::new(AlignReqKernelWrapper::new(
-                AvxRadix4Kernel4::new(cparams, sparams),
-            ))),
+            unit if unit % 8 == 0 && cparams.size <= 2048 => Some(Box::new(
+                AlignReqKernelWrapper::new(AvxRadix4Kernel4::new(cparams, sparams)),
+            )),
             unit if unit % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
                 AvxRadix4Kernel3::new(cparams, sparams),
             ))),
-            2 => Some(Box::new(AlignReqKernelWrapper::new(
-                AvxRadix4Kernel2::new(cparams, sparams),
-            ))),
+            2 => Some(Box::new(AlignReqKernelWrapper::new(AvxRadix4Kernel2::new(
+                cparams, sparams,
+            )))),
             _ => None,
         }
     }
@@ -77,15 +80,18 @@ impl<T: StaticParams> AvxRadix4Kernel2<T> {
         let c1 = Complex::new(
             0f32,
             full_circle * 2 as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
-        ).exp();
+        )
+        .exp();
         let c2 = Complex::new(
             0f32,
             full_circle * 1 as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
-        ).exp();
+        )
+        .exp();
         let c3 = Complex::new(
             0f32,
             full_circle * 3 as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
-        ).exp();
+        )
+        .exp();
         // riri format
         let twiddles = f32x8::new(1f32, 0f32, c1.re, c1.im, c2.re, c2.im, c3.re, c3.im);
 
@@ -201,34 +207,30 @@ impl<T: StaticParams> AvxRadix4Kernel3<T> {
         for i in range_step(0, cparams.unit, 4) {
             let c1 = Complex::new(
                 0f32,
-                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
+            )
+            .exp();
             let c2 = Complex::new(
                 0f32,
-                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c3 = Complex::new(
                 0f32,
-                full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c4 = Complex::new(
                 0f32,
-                full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             // riri format
             twiddles.push(f32x8::new(
-                c1.re,
-                c1.im,
-                c2.re,
-                c2.im,
-                c3.re,
-                c3.im,
-                c4.re,
-                c4.im,
+                c1.re, c1.im, c2.re, c2.im, c3.re, c3.im, c4.re, c4.im,
             ));
 
             let c12 = c1 * c1;
@@ -236,14 +238,7 @@ impl<T: StaticParams> AvxRadix4Kernel3<T> {
             let c32 = c3 * c3;
             let c42 = c4 * c4;
             twiddles.push(f32x8::new(
-                c12.re,
-                c12.im,
-                c22.re,
-                c22.im,
-                c32.re,
-                c32.im,
-                c42.re,
-                c42.im,
+                c12.re, c12.im, c22.re, c22.im, c32.re, c32.im, c42.re, c42.im,
             ));
 
             let c13 = c12 * c1;
@@ -251,14 +246,7 @@ impl<T: StaticParams> AvxRadix4Kernel3<T> {
             let c33 = c32 * c3;
             let c43 = c42 * c4;
             twiddles.push(f32x8::new(
-                c13.re,
-                c13.im,
-                c23.re,
-                c23.im,
-                c33.re,
-                c33.im,
-                c43.re,
-                c43.im,
+                c13.re, c13.im, c23.re, c23.im, c33.re, c33.im, c43.re, c43.im,
             ));
         }
 
@@ -280,14 +268,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel3<T> {
 
         let neg_mask2: f32x8 = unsafe {
             mem::transmute(u32x8::new(
-                0x80000000,
-                0,
-                0x80000000,
-                0,
-                0x80000000,
-                0,
-                0x80000000,
-                0,
+                0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0,
             ))
         };
 
@@ -397,65 +378,58 @@ impl<T: StaticParams> AvxRadix4Kernel4<T> {
         for i in range_step(0, cparams.unit, 8) {
             let c1 = Complex::new(
                 0f32,
-                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
+            )
+            .exp();
             let c2 = Complex::new(
                 0f32,
-                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c3 = Complex::new(
                 0f32,
-                full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c4 = Complex::new(
                 0f32,
-                full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c5 = Complex::new(
                 0f32,
-                full_circle * (i + 4) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 4) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c6 = Complex::new(
                 0f32,
-                full_circle * (i + 5) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 5) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c7 = Complex::new(
                 0f32,
-                full_circle * (i + 6) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 6) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c8 = Complex::new(
                 0f32,
-                full_circle * (i + 7) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 7) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             // rrrrrrrr-iiiiiiiii format
             // 12563478
             twiddles.push(f32x8::new(
-                c1.re,
-                c2.re,
-                c5.re,
-                c6.re,
-                c3.re,
-                c4.re,
-                c7.re,
-                c8.re,
+                c1.re, c2.re, c5.re, c6.re, c3.re, c4.re, c7.re, c8.re,
             ));
             twiddles.push(f32x8::new(
-                c1.im,
-                c2.im,
-                c5.im,
-                c6.im,
-                c3.im,
-                c4.im,
-                c7.im,
-                c8.im,
+                c1.im, c2.im, c5.im, c6.im, c3.im, c4.im, c7.im, c8.im,
             ));
 
             let c12 = c1 * c1;
@@ -467,24 +441,10 @@ impl<T: StaticParams> AvxRadix4Kernel4<T> {
             let c72 = c7 * c7;
             let c82 = c8 * c8;
             twiddles.push(f32x8::new(
-                c12.re,
-                c22.re,
-                c52.re,
-                c62.re,
-                c32.re,
-                c42.re,
-                c72.re,
-                c82.re,
+                c12.re, c22.re, c52.re, c62.re, c32.re, c42.re, c72.re, c82.re,
             ));
             twiddles.push(f32x8::new(
-                c12.im,
-                c22.im,
-                c52.im,
-                c62.im,
-                c32.im,
-                c42.im,
-                c72.im,
-                c82.im,
+                c12.im, c22.im, c52.im, c62.im, c32.im, c42.im, c72.im, c82.im,
             ));
 
             let c13 = c12 * c1;
@@ -496,24 +456,10 @@ impl<T: StaticParams> AvxRadix4Kernel4<T> {
             let c73 = c72 * c7;
             let c83 = c82 * c8;
             twiddles.push(f32x8::new(
-                c13.re,
-                c23.re,
-                c53.re,
-                c63.re,
-                c33.re,
-                c43.re,
-                c73.re,
-                c83.re,
+                c13.re, c23.re, c53.re, c63.re, c33.re, c43.re, c73.re, c83.re,
             ));
             twiddles.push(f32x8::new(
-                c13.im,
-                c23.im,
-                c53.im,
-                c63.im,
-                c33.im,
-                c43.im,
-                c73.im,
-                c83.im,
+                c13.im, c23.im, c53.im, c63.im, c33.im, c43.im, c73.im, c83.im,
             ));
         }
 

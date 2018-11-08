@@ -13,14 +13,14 @@
 //! According to a benchmark result, this kernel runs about 10x slower than a commercial-level FFT library on a Skylake
 //! machine.
 
+use super::utils::{branch_on_static_params, StaticParams, StaticParamsConsumer};
 use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params};
 
 use num_complex::Complex;
-use num_traits::{Zero, One};
 use num_iter::range_step;
+use num_traits::{One, Zero};
 
-use super::super::{Num, mul_pos_i};
+use super::super::{mul_pos_i, Num};
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -29,8 +29,12 @@ pub fn new_specialized_generic_kernel<T>(cparams: &KernelCreationParams) -> Opti
 where
     T: Num,
 {
-
-    branch_on_static_params(cparams, Factory::<T> { phantom: PhantomData })
+    branch_on_static_params(
+        cparams,
+        Factory::<T> {
+            phantom: PhantomData,
+        },
+    )
 }
 
 struct Factory<T> {
@@ -46,32 +50,37 @@ impl<T: Num> StaticParamsConsumer<Option<Box<Kernel<T>>>> for Factory<T> {
         TSParams: StaticParams,
         T: Num,
     {
-
         let full_circle = if cparams.inverse { 2 } else { -2 };
         let twiddle_delta = Complex::new(
             Zero::zero(),
-            T::from(cparams.size / cparams.radix / cparams.unit).unwrap() *
-                T::from(full_circle).unwrap() * T::PI() /
-                T::from(cparams.size).unwrap(),
-        ).exp();
+            T::from(cparams.size / cparams.radix / cparams.unit).unwrap()
+                * T::from(full_circle).unwrap()
+                * T::PI()
+                / T::from(cparams.size).unwrap(),
+        )
+        .exp();
 
         match cparams.radix {
-            2 => Some(Box::new(
-                SpecializedGenericDitKernel::<T, SmallFFT2<T>, TSParams> {
-                    cparams: *cparams,
-                    twiddle_delta: twiddle_delta,
-                    small_fft: PhantomData,
-                    sparams: sparams,
-                },
-            )),
-            4 => Some(Box::new(
-                SpecializedGenericDitKernel::<T, SmallFFT4<T>, TSParams> {
-                    cparams: *cparams,
-                    twiddle_delta: twiddle_delta,
-                    small_fft: PhantomData,
-                    sparams: sparams,
-                },
-            )),
+            2 => Some(Box::new(SpecializedGenericDitKernel::<
+                T,
+                SmallFFT2<T>,
+                TSParams,
+            > {
+                cparams: *cparams,
+                twiddle_delta: twiddle_delta,
+                small_fft: PhantomData,
+                sparams: sparams,
+            })),
+            4 => Some(Box::new(SpecializedGenericDitKernel::<
+                T,
+                SmallFFT4<T>,
+                TSParams,
+            > {
+                cparams: *cparams,
+                twiddle_delta: twiddle_delta,
+                small_fft: PhantomData,
+                sparams: sparams,
+            })),
             _ => None,
         }
     }
@@ -202,14 +211,15 @@ struct SpecializedGenericDitKernel<T, TSmallFFT, TSParams> {
 }
 
 impl<T, TSmallFFT, TSParams> Kernel<T> for SpecializedGenericDitKernel<T, TSmallFFT, TSParams>
-    where T : Num,
-          TSmallFFT : SmallFFT<T>,
-          TSParams : StaticParams {
-
+where
+    T: Num,
+    TSmallFFT: SmallFFT<T>,
+    TSParams: StaticParams,
+{
     fn transform(&self, params: &mut KernelParams<T>) {
         let cparams = &self.cparams;
         let sparams = &self.sparams;
-        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0 .. cparams.size * 2]) };
+        let mut data = unsafe { SliceAccessor::new(&mut params.coefs[0..cparams.size * 2]) };
 
         let twiddle_delta = self.twiddle_delta;
         let mut small_fft = TSmallFFT::default();
@@ -222,7 +232,7 @@ impl<T, TSmallFFT, TSParams> Kernel<T> for SpecializedGenericDitKernel<T, TSmall
 
         for x in range_step(0, cparams.size, cparams.unit * radix) {
             let mut twiddle_1: Complex<T> = Complex::one();
-            for y in 0 .. cparams.unit {
+            for y in 0..cparams.unit {
                 small_fft.load(&data, (x + y) * 2, cparams.unit * 2);
 
                 if pre_twiddle {
