@@ -19,7 +19,6 @@
 //! MIT Media Lab Machine Listening Group
 //! May 18, 1994
 //! ```
-#![feature(attr_literals)]
 use std::fmt;
 
 /// A set of response data at a specific elevation.
