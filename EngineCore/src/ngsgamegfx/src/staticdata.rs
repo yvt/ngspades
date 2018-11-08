@@ -23,6 +23,13 @@ pub mod di {
         ) -> &Arc<StaticBuffer>;
         fn register_static_buffer_default<T: StaticBufferSource>(&mut self);
 
+        fn get_static_image<T: StaticImageSource>(&self, source: &T) -> Option<&Arc<StaticImage>>;
+        fn get_static_image_or_build<T: StaticImageSource>(
+            &mut self,
+            source: &T,
+        ) -> &Arc<StaticImage>;
+        fn register_static_image_default<T: StaticImageSource>(&mut self);
+
         fn get_quad_vertices_or_build(&mut self) -> &Arc<StaticBuffer> {
             self.get_static_buffer_or_build(&QuadVertices)
         }
@@ -37,6 +44,13 @@ pub mod di {
 
     impl<T: StaticBufferSource> injector::Key for StaticBufferKey<T> {
         type Value = Arc<StaticBuffer>;
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+    struct StaticImageKey<T>(T);
+
+    impl<T: StaticImageSource> injector::Key for StaticImageKey<T> {
+        type Value = Arc<StaticImage>;
     }
 
     impl StaticDataDeviceContainerExt for Container {
@@ -71,9 +85,39 @@ pub mod di {
                 StaticBuffer::new(device, main_queue, uploader, key.0.clone())
             });
         }
+
+        fn get_static_image<T: StaticImageSource>(&self, source: &T) -> Option<&Arc<StaticImage>> {
+            self.get(&StaticImageKey(source.clone()))
+        }
+
+        fn get_static_image_or_build<T: StaticImageSource>(
+            &mut self,
+            source: &T,
+        ) -> &Arc<StaticImage> {
+            self.get_or_build(&StaticImageKey(source.clone())).unwrap()
+        }
+
+        fn register_static_image_default<T: StaticImageSource>(&mut self) {
+            self.register_factory(|key: &StaticImageKey<T>, container| {
+                let device = container.get_device().clone();
+
+                let (main_queue, _) = container.get_main_queue().clone();
+
+                use crate::asyncuploader::di::AsyncUploaderDeviceContainerExt;
+                let uploader = match container.get_async_uploader_or_build() {
+                    Ok(uploader) => uploader,
+                    Err(err) => {
+                        return StaticImage::with_error(err.kind().into());
+                    }
+                };
+
+                StaticImage::new(device, main_queue, uploader, key.0.clone())
+            });
+        }
     }
 }
 
+use arrayvec::ArrayVec;
 use futures::{executor, future, future::Either, prelude::*, stream};
 use ngsenumflags::flags;
 use std::sync::{Arc, Mutex};
@@ -82,7 +126,7 @@ use zangfx::{
     // FIXME: `zangfx::common` is not meant to be used by an external client
     common::{FreezableCell, FreezableCellRef},
     prelude::*,
-    utils::streamer::StageBuffer,
+    utils::streamer::{StageBuffer, StageImage},
 };
 
 use crate::asyncuploader::{AsyncUploader, Request, UploadError};
@@ -265,6 +309,104 @@ impl StaticBuffer {
     }
 
     pub fn buffer(&self) -> Option<&gfx::Result<gfx::BufferRef>> {
+        self.resource()
+    }
+}
+
+pub type StaticImage = StaticData<gfx::ImageRef>;
+
+pub unsafe trait StaticImageSource:
+    std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug
+{
+    fn usage(&self) -> gfx::ImageUsageFlags {
+        flags![gfx::ImageUsage::{CopyWrite | Sampled}]
+    }
+
+    fn extents(&self) -> ImageExtents;
+
+    fn format(&self) -> gfx::ImageFormat;
+
+    /// The image data. Must be large enough to contain entire the image.
+    /// (This is why this trait is marked as `unsafe`.)
+    fn bytes(&self) -> &[u8];
+}
+
+#[derive(Debug, Clone)]
+pub enum ImageExtents {
+    Normal(ArrayVec<[u32; 3]>),
+    Cube(u32),
+}
+
+trait ImageBuilderExt: gfx::ImageBuilder {
+    fn image_extents(&mut self, v: &ImageExtents) -> &mut dyn gfx::ImageBuilder {
+        match v {
+            ImageExtents::Normal(x) => self.extents(&x),
+            ImageExtents::Cube(x) => self.extents_cube(*x),
+        }
+    }
+}
+
+impl ImageBuilderExt for dyn gfx::ImageBuilder {}
+
+#[derive(Debug)]
+struct ImageSourceToBytes<T>(T);
+
+impl<T: StaticImageSource> std::borrow::Borrow<[u8]> for ImageSourceToBytes<T> {
+    fn borrow(&self) -> &[u8] {
+        self.0.bytes()
+    }
+}
+
+impl StaticImage {
+    fn new(
+        device: gfx::DeviceRef,
+        queue: gfx::CmdQueueRef,
+        uploader: &Arc<AsyncUploader>,
+        source: impl StaticImageSource,
+    ) -> Arc<Self> {
+        let uploader_2 = Arc::clone(uploader);
+
+        let initiator = move || {
+            // Create and allocate a image
+            let image = device
+                .build_image()
+                .queue(&queue)
+                .image_extents(&source.extents())
+                .usage(source.usage())
+                .format(source.format())
+                .build()?;
+
+            let memory_type = device
+                .try_choose_memory_type(
+                    &image,
+                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
+                    flags![gfx::MemoryTypeCaps::{}],
+                )?
+                .unwrap();
+
+            if !device.global_heap(memory_type).bind((&image).into())? {
+                // Memory allocation failure of a static resource is fatal
+                return Err(gfx::ErrorKind::OutOfDeviceMemory.into());
+            }
+
+            // Produce an upload request for this image.
+            let size = match source.extents() {
+                ImageExtents::Normal(x) => x.clone(),
+                ImageExtents::Cube(_) => unimplemented!(),
+            };
+            let image_proxy = uploader_2.make_image_proxy_if_needed(&image);
+            let request = StageImage::new_default(image_proxy, ImageSourceToBytes(source), &size);
+
+            let future_request = future::ok(request);
+            let stream_request = stream::once(future_request);
+
+            Ok((image, stream_request))
+        };
+
+        Self::with_initiator(uploader, initiator)
+    }
+
+    pub fn image(&self) -> Option<&gfx::Result<gfx::ImageRef>> {
         self.resource()
     }
 }

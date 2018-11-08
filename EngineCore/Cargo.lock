@@ -809,6 +809,7 @@ dependencies = [
 name = "ngsgamegfx"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-preview 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "injector 0.1.0",
