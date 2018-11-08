@@ -6,3 +6,7 @@
 mod entry;
 
 pub use self::entry::ngsengine_create;
+
+// Register jemalloc as the global allocator
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;

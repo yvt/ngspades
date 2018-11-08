@@ -12,10 +12,6 @@
 //!
 //! [`ngsengine`]: ../ngsengine/index.html
 //!
-// Use the system allocator - we don't want two instances of jemalloc running
-// simultaneously! Besides, we don't care about the allocator's performance here.
-#![feature(alloc_system)]
-extern crate alloc_system;
 
 use ngsbase::INgsProcessorInfo;
 use ngscom::{hresults, BStringRef, ComPtr, HResult};

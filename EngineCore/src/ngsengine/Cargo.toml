@@ -14,3 +14,7 @@ ngscom = { path = "../ngscom" }
 ngspf = { path = "../ngspf" }
 ngspf_com = { path = "../ngspf/src/com" }
 cgmath = "0.16.1"
+
+[dependencies.jemallocator]
+version = "0.1.9"
+features = ["unprefixed_malloc_on_supported_platforms"]
