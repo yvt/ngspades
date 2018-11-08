@@ -13,10 +13,12 @@
 //! all optimizations and instruction sets including ones that this kernel doesn't support enabled) on a Skylake
 //! machine.
 
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
-                   AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::super::simdutils::{f32x4_bitxor, f32x4_complex_mul_rrii};
+use super::utils::{
+    branch_on_static_params, if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper,
+    StaticParams, StaticParamsConsumer,
+};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAccessor};
 
 use num_complex::Complex;
 use num_iter::range_step;
@@ -42,7 +44,6 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     where
         T: StaticParams,
     {
-
         match cparams.unit {
             unit if unit % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
                 SseRadix4Kernel3::new(cparams, sparams),
@@ -50,9 +51,9 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
             unit if unit % 2 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
                 SseRadix4Kernel2::new(cparams, sparams),
             ))),
-            1 => Some(Box::new(AlignReqKernelWrapper::new(
-                SseRadix4Kernel1::new(cparams, sparams),
-            ))),
+            1 => Some(Box::new(AlignReqKernelWrapper::new(SseRadix4Kernel1::new(
+                cparams, sparams,
+            )))),
             _ => None,
         }
     }
@@ -137,14 +138,15 @@ impl<T: StaticParams> SseRadix4Kernel2<T> {
         for i in range_step(0, cparams.unit, 2) {
             let c1 = Complex::new(
                 0f32,
-                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
+            )
+            .exp();
             let c2 = Complex::new(
                 0f32,
-                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             // rr-ii format
             twiddles.push(f32x4::new(c1.re, c2.re, c1.im, c2.im));
 
@@ -294,24 +296,27 @@ impl<T: StaticParams> SseRadix4Kernel3<T> {
         for i in range_step(0, cparams.unit, 4) {
             let c1 = Complex::new(
                 0f32,
-                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
+            )
+            .exp();
             let c2 = Complex::new(
                 0f32,
-                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c3 = Complex::new(
                 0f32,
-                full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             let c4 = Complex::new(
                 0f32,
-                full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             // rrrr-iiii format
             twiddles.push(f32x4::new(c1.re, c2.re, c3.re, c4.re));
             twiddles.push(f32x4::new(c1.im, c2.im, c3.im, c4.im));

@@ -4,13 +4,15 @@
 // This source code is a part of Nightingales.
 //
 
-use std::result::Result;
+use super::kernel::{
+    new_bit_reversal_kernel, new_half_complex_to_complex_kernel,
+    new_real_fft_pre_post_process_kernel, new_real_to_complex_kernel, Kernel, KernelCreationParams,
+    KernelType,
+};
+use super::Num;
 use std::error;
 use std::fmt;
-use super::Num;
-use super::kernel::{Kernel, KernelType, KernelCreationParams, new_bit_reversal_kernel,
-                    new_real_fft_pre_post_process_kernel, new_real_to_complex_kernel,
-                    new_half_complex_to_complex_kernel};
+use std::result::Result;
 
 /// Specifies the data order in which the data is supplied to or returned from the kernel.
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
@@ -167,8 +169,8 @@ where
             return Err(PlanError::InvalidInput);
         }
 
-        let constain_radix2 = options.input_data_order == DataOrder::BitReversed ||
-            options.output_data_order == DataOrder::BitReversed;
+        let constain_radix2 = options.input_data_order == DataOrder::BitReversed
+            || options.output_data_order == DataOrder::BitReversed;
 
         let is_even_sized = options.len % 2 == 0;
 
@@ -212,12 +214,9 @@ where
             // note: `HalfComplex` is not defined for odd sizes
             (DataFormat::Real, DataFormat::HalfComplex, false, true) => (false, false, false, true),
             (DataFormat::HalfComplex, DataFormat::Real, true, true) => (false, false, false, true),
-            (DataFormat::HalfComplex, DataFormat::Complex, true, true) => (
-                false,
-                false,
-                true,
-                true,
-            ),
+            (DataFormat::HalfComplex, DataFormat::Complex, true, true) => {
+                (false, false, true, true)
+            }
             _ => return Err(PlanError::InvalidInput),
         };
 

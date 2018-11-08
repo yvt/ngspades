@@ -35,19 +35,19 @@ extern crate num_iter;
 extern crate num_traits;
 extern crate simd;
 
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign};
 use std::fmt::Debug;
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
 use num_complex::Complex;
 
 #[macro_use]
 mod simdutils;
-mod setup;
-mod kernel;
 mod env;
+mod kernel;
+mod setup;
 
-pub trait Num
-    : Clone
+pub trait Num:
+    Clone
     + Debug
     + AddAssign
     + SubAssign
@@ -59,10 +59,10 @@ pub trait Num
     + num_traits::Zero
     + 'static
     + Sync
-    + Send {
+    + Send
+{
 }
-impl<T> Num for T
-where
+impl<T> Num for T where
     T: Clone
         + Debug
         + AddAssign
@@ -75,7 +75,7 @@ where
         + num_traits::Zero
         + 'static
         + Sync
-        + Send,
+        + Send
 {
 }
 
@@ -89,8 +89,8 @@ fn mul_pos_i<T: Num>(x: Complex<T>) -> Complex<T> {
     Complex::new(-x.im, x.re)
 }
 
-pub use setup::{DataOrder, DataFormat, Options, Setup, PlanError};
 pub use env::Env;
+pub use setup::{DataFormat, DataOrder, Options, PlanError, Setup};
 
 #[cfg(test)]
 mod benchmark;

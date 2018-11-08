@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 mod accessor;
-mod convert;
 mod bitreversal;
+mod convert;
 mod generic;
 mod generic2;
 mod realfft;
@@ -31,8 +31,8 @@ mod x86 {
     }
 }
 
-use std::fmt::Debug;
 use super::Num;
+use std::fmt::Debug;
 
 use self::accessor::SliceAccessor;
 

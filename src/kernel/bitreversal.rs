@@ -16,7 +16,6 @@ pub fn new_bit_reversal_kernel<T>(radixes: &[usize]) -> Box<Kernel<T>>
 where
     T: Num,
 {
-
     let len = radixes.iter().product();
     let mut indices = vec![0; len];
 
@@ -45,9 +44,8 @@ where
         }
     }
 
-    unsafe {
-        super::x86::new_x86_bit_reversal_kernel(&indices)
-    }.unwrap_or_else(|| BitReversalKernel::new(indices))
+    unsafe { super::x86::new_x86_bit_reversal_kernel(&indices) }
+        .unwrap_or_else(|| BitReversalKernel::new(indices))
 }
 
 #[derive(Debug)]

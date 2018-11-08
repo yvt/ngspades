@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 extern crate yfft;
-use yfft::{Env, Setup, DataOrder, DataFormat, Options};
 use std::time;
+use yfft::{DataFormat, DataOrder, Env, Options, Setup};
 
 fn duration_to_secs(d: time::Duration) -> f64 {
     d.as_secs() as f64 + d.subsec_nanos() as f64 * 1.0e-9
@@ -82,10 +82,13 @@ fn run_single_benchmark(size: usize) {
         output_data_format: DataFormat::Complex,
         len: size,
         inverse: false,
-    }).unwrap();
+    })
+    .unwrap();
     let mut senv = Env::new(&setup);
     let mut buf = vec![0f32; size * 2];
-    let (iter_time, sd) = benchmark(move || { senv.transform(buf.as_mut_slice()); });
+    let (iter_time, sd) = benchmark(move || {
+        senv.transform(buf.as_mut_slice());
+    });
     let size_f = size as f64;
     let num_fops = size_f * size_f.log2() * 5.0;
     let mflops = num_fops / iter_time * 1.0e-6;

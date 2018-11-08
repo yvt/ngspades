@@ -13,17 +13,19 @@
 //!
 //! For small transforms ties with a commercial-level FFT library, but tends to be much slower for large transforms.
 
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
-                   AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::super::simdutils::{avx_f32x8_bitxor, avx_f32x8_complex_mul_riri};
+use super::utils::{
+    branch_on_static_params, if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper,
+    StaticParams, StaticParamsConsumer,
+};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAccessor};
 
 use num_complex::Complex;
 use num_iter::range_step;
 
 use simd::x86::avx::{f32x8, u32x8};
 
-use std::{mem, f32};
+use std::{f32, mem};
 
 pub fn new_x86_avx_f32_radix2_kernel<T>(cparams: &KernelCreationParams) -> Option<Box<Kernel<T>>>
 where
@@ -42,14 +44,15 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     where
         T: StaticParams,
     {
-
         match cparams.unit {
             unit if unit % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
                 AvxRadix2Kernel2::new(cparams, sparams),
             ))),
-            1 if cparams.size % 4 == 0 => Some(Box::new(AlignReqKernelWrapper::new(
-                AvxRadix2Kernel1 { cparams: *cparams },
-            ))),
+            1 if cparams.size % 4 == 0 => {
+                Some(Box::new(AlignReqKernelWrapper::new(AvxRadix2Kernel1 {
+                    cparams: *cparams,
+                })))
+            }
             _ => None,
         }
     }
@@ -72,14 +75,7 @@ impl AlignReqKernel<f32> for AvxRadix2Kernel1 {
 
         let neg_mask: f32x8 = unsafe {
             mem::transmute(u32x8::new(
-                0,
-                0,
-                0x80000000,
-                0x80000000,
-                0,
-                0,
-                0x80000000,
-                0x80000000,
+                0, 0, 0x80000000, 0x80000000, 0, 0, 0x80000000, 0x80000000,
             ))
         };
 
@@ -121,24 +117,28 @@ impl<T: StaticParams> AvxRadix2Kernel2<T> {
             .map(|i| {
                 let c1 = Complex::new(
                     0f32,
-                    full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 let c2 = Complex::new(
                     0f32,
-                    full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 let c3 = Complex::new(
                     0f32,
-                    full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (i + 2) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 let c4 = Complex::new(
                     0f32,
-                    full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32 *
-                        f32::consts::PI,
-                ).exp();
+                    full_circle * (i + 3) as f32 / (cparams.radix * cparams.unit) as f32
+                        * f32::consts::PI,
+                )
+                .exp();
                 // riririri format
                 f32x8::new(c1.re, c1.im, c2.re, c2.im, c3.re, c3.im, c4.re, c4.im)
             })

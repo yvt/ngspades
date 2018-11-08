@@ -3,10 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::borrow::Borrow;
-use super::{Setup, Num};
-use num_traits::Zero;
 use super::kernel::KernelParams;
+use super::{Num, Setup};
+use num_traits::Zero;
+use std::borrow::Borrow;
 
 /// Encapsulates the working area required for a transformation.
 #[derive(Debug, Clone)]

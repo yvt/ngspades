@@ -5,7 +5,7 @@
 //
 use super::{Kernel, KernelParams, SliceAccessor};
 
-use {mul_pos_i, Num, Complex};
+use {mul_pos_i, Complex, Num};
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
 pub fn new_real_fft_pre_post_process_kernel<T>(len: usize, inverse: bool) -> Box<Kernel<T>>
@@ -33,7 +33,8 @@ where
         let c = Complex::new(
             T::zero(),
             T::from(i).unwrap() * -T::PI() / T::from(len / 2).unwrap(),
-        ).exp();
+        )
+        .exp();
 
         let a = (Complex::new(T::one(), T::zero()) - mul_pos_i(c)) * half;
         let b = (Complex::new(T::one(), T::zero()) + mul_pos_i(c)) * half;

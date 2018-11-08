@@ -3,17 +3,17 @@
 //
 // This source code is a part of Nightingales.
 //
+use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper};
 use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 
-use simd::{f32x4, u32x4};
 use num_iter::range_step;
-use std::ptr::{read_unaligned, write_unaligned};
-use std::mem;
+use simd::{f32x4, u32x4};
 use std::f32;
+use std::mem;
+use std::ptr::{read_unaligned, write_unaligned};
 
-use {mul_pos_i, Num, Complex};
-use simdutils::{f32x4_complex_mul_rrii, f32x4_bitxor};
+use simdutils::{f32x4_bitxor, f32x4_complex_mul_rrii};
+use {mul_pos_i, Complex, Num};
 
 /// Creates a real FFT post-processing or backward real FFT pre-processing kernel.
 pub fn new_x86_sse_real_fft_pre_post_process_kernel<T>(
@@ -23,12 +23,14 @@ pub fn new_x86_sse_real_fft_pre_post_process_kernel<T>(
 where
     T: Num,
 {
-    if_compatible(|| if len % 8 == 0 && len > 8 {
-        Some(Box::new(AlignReqKernelWrapper::new(
-            SseRealFFTPrePostProcessKernel::new(len, inverse),
-        )) as Box<Kernel<f32>>)
-    } else {
-        None
+    if_compatible(|| {
+        if len % 8 == 0 && len > 8 {
+            Some(Box::new(AlignReqKernelWrapper::new(
+                SseRealFFTPrePostProcessKernel::new(len, inverse),
+            )) as Box<Kernel<f32>>)
+        } else {
+            None
+        }
     })
 }
 
@@ -121,10 +123,10 @@ impl AlignReqKernel<f32> for SseRealFFTPrePostProcessKernel {
             let t1c = f32x4_shuffle!(t1c, t1c, [1, 0, 7, 6]);
             let t2c = f32x4_shuffle!(t2c, t2c, [1, 0, 7, 6]);
 
-            let g1 = f32x4_complex_mul_rrii(t1, a1, neg_mask) +
-                f32x4_complex_mul_rrii(t2c, b1, neg_mask);
-            let g2 = f32x4_complex_mul_rrii(t2, a2, neg_mask) +
-                f32x4_complex_mul_rrii(t1c, b2, neg_mask);
+            let g1 = f32x4_complex_mul_rrii(t1, a1, neg_mask)
+                + f32x4_complex_mul_rrii(t2c, b1, neg_mask);
+            let g2 = f32x4_complex_mul_rrii(t2, a2, neg_mask)
+                + f32x4_complex_mul_rrii(t1c, b2, neg_mask);
 
             // rrii to riri
             let y1 = f32x4_shuffle!(g1, g1, [0, 2, 5, 7]);

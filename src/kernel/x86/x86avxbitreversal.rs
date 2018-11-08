@@ -3,16 +3,16 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::{Kernel, KernelParams, SliceAccessor};
-use super::utils::{if_compatible, AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::Num;
+use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper};
+use super::{Kernel, KernelParams, SliceAccessor};
 
-use simd::x86::sse2::u64x2;
-use simd::x86::avx::u64x4;
 use simd::u32x4;
+use simd::x86::avx::u64x4;
+use simd::x86::sse2::u64x2;
 
-use std::{mem, ptr};
 use simdutils;
+use std::{mem, ptr};
 
 pub unsafe fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
 where
@@ -24,9 +24,11 @@ where
     }
 
     if_compatible(|| {
-        Some(Box::new(AlignReqKernelWrapper::new(
-            AvxDWordBitReversalKernel { indices: indices.clone() },
-        )) as Box<Kernel<f32>>)
+        Some(
+            Box::new(AlignReqKernelWrapper::new(AvxDWordBitReversalKernel {
+                indices: indices.clone(),
+            })) as Box<Kernel<f32>>,
+        )
     })
 }
 
@@ -91,7 +93,9 @@ impl<T: Num> AlignReqKernel<T> for AvxDWordBitReversalKernel {
     }
 }
 
-pub unsafe fn new_x86_avx_radix2_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
+pub unsafe fn new_x86_avx_radix2_bit_reversal_kernel<T>(
+    indices: &Vec<usize>,
+) -> Option<Box<Kernel<T>>>
 where
     T: Num,
 {
@@ -110,7 +114,7 @@ where
     let (f1, f2, f3) = (
         indices[1] - indices[0],
         indices[2] - indices[0],
-        indices[3] - indices[0]
+        indices[3] - indices[0],
     );
     for i in 0..indices.len() / 8 {
         let (b0, b1, b2, b3) = (
@@ -195,7 +199,9 @@ impl<T: Num> AlignReqKernel<T> for AvxDWordRadix2BitReversalKernel {
     }
 }
 
-pub unsafe fn new_x86_avx_radix4_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
+pub unsafe fn new_x86_avx_radix4_bit_reversal_kernel<T>(
+    indices: &Vec<usize>,
+) -> Option<Box<Kernel<T>>>
 where
     T: Num,
 {
@@ -214,7 +220,7 @@ where
     let (f1, f2, f3) = (
         indices[1] - indices[0],
         indices[2] - indices[0],
-        indices[3] - indices[0]
+        indices[3] - indices[0],
     );
     for i in 0..indices.len() / 16 {
         let (b0, b1, b2, b3) = (

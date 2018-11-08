@@ -17,10 +17,12 @@
 //!
 //! For small transforms ties with a commercial-level FFT library, but tends to be much slower for large transforms.
 
-use super::{Kernel, KernelCreationParams, KernelParams, KernelType, SliceAccessor, Num};
-use super::utils::{StaticParams, StaticParamsConsumer, branch_on_static_params, if_compatible,
-                   AlignReqKernelWrapper, AlignReqKernel, AlignInfo};
 use super::super::super::simdutils::{f32x4_bitxor, sse3_f32x4_complex_mul_riri};
+use super::utils::{
+    branch_on_static_params, if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper,
+    StaticParams, StaticParamsConsumer,
+};
+use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAccessor};
 
 use num_complex::Complex;
 use num_iter::range_step;
@@ -46,15 +48,12 @@ impl StaticParamsConsumer<Option<Box<Kernel<f32>>>> for Factory {
     where
         T: StaticParams,
     {
-
         match cparams.unit {
             unit if unit % 4 == 0 => None,
             // some heuristics here... (we really need some sophiscated planning using run-time measurement, not heuristics)
-            unit if unit % 2 == 0 && cparams.size <= 8192 => {
-                Some(Box::new(AlignReqKernelWrapper::new(
-                    Sse3Radix4Kernel2::new(cparams, sparams),
-                )))
-            }
+            unit if unit % 2 == 0 && cparams.size <= 8192 => Some(Box::new(
+                AlignReqKernelWrapper::new(Sse3Radix4Kernel2::new(cparams, sparams)),
+            )),
             _ => None,
         }
     }
@@ -79,14 +78,15 @@ impl<T: StaticParams> Sse3Radix4Kernel2<T> {
         for i in range_step(0, cparams.unit, 2) {
             let c1 = Complex::new(
                 0f32,
-                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i) as f32 / (cparams.radix * cparams.unit) as f32 * f32::consts::PI,
+            )
+            .exp();
             let c2 = Complex::new(
                 0f32,
-                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32 *
-                    f32::consts::PI,
-            ).exp();
+                full_circle * (i + 1) as f32 / (cparams.radix * cparams.unit) as f32
+                    * f32::consts::PI,
+            )
+            .exp();
             // riri format
             twiddles.push(f32x4::new(c1.re, c1.im, c2.re, c2.im));
 

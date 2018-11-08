@@ -22,10 +22,13 @@ fn run_single_benchmark(size: usize, b: &mut Bencher) {
         output_data_format: DataFormat::Complex,
         len: size,
         inverse: false,
-    }).unwrap();
+    })
+    .unwrap();
     let mut senv = Env::new(&setup);
     let mut buf = vec![0f32; size * 2];
-    b.iter(move || { senv.transform(buf.as_mut_slice()); })
+    b.iter(move || {
+        senv.transform(buf.as_mut_slice());
+    })
 }
 
 #[bench]
@@ -97,10 +100,13 @@ fn run_single_real_benchmark(size: usize, b: &mut Bencher) {
         output_data_format: DataFormat::HalfComplex,
         len: size,
         inverse: false,
-    }).unwrap();
+    })
+    .unwrap();
     let mut senv = Env::new(&setup);
     let mut buf = vec![0f32; size];
-    b.iter(move || { senv.transform(buf.as_mut_slice()); })
+    b.iter(move || {
+        senv.transform(buf.as_mut_slice());
+    })
 }
 
 #[bench]
@@ -171,10 +177,13 @@ fn run_dif_benchmark(size: usize, b: &mut Bencher) {
         output_data_format: DataFormat::Complex,
         len: size,
         inverse: false,
-    }).unwrap();
+    })
+    .unwrap();
     let mut senv = Env::new(&setup);
     let mut buf = vec![0f32; size * 2];
-    b.iter(move || { senv.transform(buf.as_mut_slice()); })
+    b.iter(move || {
+        senv.transform(buf.as_mut_slice());
+    })
 }
 
 #[bench]
@@ -206,10 +215,13 @@ fn run_dit_benchmark(size: usize, b: &mut Bencher) {
         output_data_format: DataFormat::Complex,
         len: size,
         inverse: false,
-    }).unwrap();
+    })
+    .unwrap();
     let mut senv = Env::new(&setup);
     let mut buf = vec![0f32; size * 2];
-    b.iter(move || { senv.transform(buf.as_mut_slice()); })
+    b.iter(move || {
+        senv.transform(buf.as_mut_slice());
+    })
 }
 
 #[bench]
