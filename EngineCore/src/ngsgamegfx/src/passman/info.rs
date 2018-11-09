@@ -120,11 +120,11 @@ pub trait TransientResource:
 }
 
 impl dyn TransientResource {
-    fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         (*self).as_ref().downcast_ref()
     }
 
-    fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         (*self).as_mut().downcast_mut()
     }
 }
