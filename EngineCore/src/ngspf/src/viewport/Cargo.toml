@@ -17,7 +17,7 @@ zangfx = { path = "../../../zangfx" }
 ngspf_core = { path = "../core" }
 ngspf_canvas = { path = "../canvas" }
 xdispatch = { path = "../../../xdispatch" }
-atomic_refcell = "0.1.0"
+atomic_refcell = "0.1.3"
 
 [target.'cfg(target_os="macos")'.dependencies]
 cocoa = "0.15"

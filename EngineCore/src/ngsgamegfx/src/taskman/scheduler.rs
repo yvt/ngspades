@@ -198,9 +198,7 @@ impl Graph {
     pub fn borrow_cell_mut(&mut self, cell_id: CellId) -> &mut dyn Cell {
         let inner: &mut GraphInner = Arc::get_mut(&mut self.inner).unwrap();
 
-        // FIXME: Use `get_mut` when it's added to `AtomicRefCell`
-        //        (https://github.com/bholley/atomic_refcell/pull/2)
-        unsafe { &mut *inner.cells[cell_id.0].as_ptr() }
+        inner.cells[cell_id.0].get_mut()
     }
 
     /// Run a task graph. Block the current thread until all tasks complete
