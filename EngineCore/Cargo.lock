@@ -839,6 +839,7 @@ dependencies = [
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsenumflags 0.1.2",
  "ngspf 0.1.0",
+ "owning_ref 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "pod 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "query_interface 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1305,6 +1306,14 @@ dependencies = [
 [[package]]
 name = "owning_ref"
 version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "owning_ref"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2654,6 +2663,7 @@ dependencies = [
 "checksum opaque_typedef 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "64337e59cd1c5e11e445f0a0a2a2bf8e5a8c23c3e40e0c9e3f2114d54c6d27f3"
 "checksum opaque_typedef_macros 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "db7d597387bf530cb028ff3e5ff57f66cc4aa4e240e4e72f9810b6576414f977"
 "checksum owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cdf84f41639e037b484f93433aa3897863b561ed65c6e59c7073d7c561710f37"
+"checksum owning_ref 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "49a4b8ea2179e6a2e27411d3bca09ca6dd630821cf6894c6c7c8467a8ee7ef13"
 "checksum packed 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "41218181af10bee963afd8645b68e050b2feb64635c3639a263c42dba8295334"
 "checksum packed_simd 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "25d36de864f7218ec5633572a800109bbe5a1cc8d9d95a967f3daf93ea7e6ddc"
 "checksum parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "149d8f5b97f3c1133e3cfcd8886449959e856b557ff281e292b733d7c69e005e"

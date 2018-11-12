@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use atomic_refcell::AtomicRefCell;
+use owning_ref::{OwningRef, OwningRefMut};
 use parking_lot::Mutex;
 use std::{
     any::Any,
@@ -16,6 +17,8 @@ use std::{
 };
 
 use super::{Cell, CellId, Task, TaskInfo};
+
+use crate::utils::owning_ref::AssertStableAddress;
 
 #[cfg(test)]
 #[path = "./scheduler_test.rs"]
@@ -328,8 +331,9 @@ impl Context<'_> {
     pub fn borrow_cell_mut<'a>(
         &'a self,
         cell_id: CellId,
-    ) -> impl std::ops::Deref<Target = Box<dyn Cell>> + std::ops::DerefMut + 'a {
-        self.cells[cell_id.0].borrow_mut()
+    ) -> impl std::ops::Deref<Target = dyn Cell> + std::ops::DerefMut + 'a {
+        let cell_ref = self.cells[cell_id.0].borrow_mut();
+        OwningRefMut::new(AssertStableAddress(cell_ref)).map_mut(|x| &mut **x)
     }
 
     /// Borrow a cell.
@@ -341,7 +345,8 @@ impl Context<'_> {
     pub fn borrow_cell<'a>(
         &'a self,
         cell_id: CellId,
-    ) -> impl std::ops::Deref<Target = Box<dyn Cell>> + 'a {
-        self.cells[cell_id.0].borrow()
+    ) -> impl std::ops::Deref<Target = dyn Cell> + 'a {
+        let cell_ref = self.cells[cell_id.0].borrow();
+        OwningRef::new(AssertStableAddress(cell_ref)).map(|x| &**x)
     }
 }
