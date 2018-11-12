@@ -16,7 +16,7 @@ use std::{
     thread,
 };
 
-use super::{Cell, CellId, Task, TaskInfo};
+use super::{Cell, CellId, CellRef, Task, TaskInfo};
 
 use crate::utils::owning_ref::AssertStableAddress;
 
@@ -70,11 +70,11 @@ impl GraphBuilder {
     ///
     /// Returns the `CellId` representing the newly defined
     /// resource. The returned `CellId` only pertains to `self`.
-    pub fn define_cell(&mut self, initializer: impl Cell) -> CellId {
+    pub fn define_cell<T: Cell>(&mut self, initializer: T) -> CellRef<T> {
         let next_index = self.cells.len();
         self.cells
             .push((Box::new(initializer) as Box<dyn Cell>).into());
-        CellId(next_index)
+        CellRef::new(CellId(next_index))
     }
 
     pub fn define_task(&mut self, task: TaskInfo) {
@@ -322,13 +322,53 @@ impl Graph {
 }
 
 impl Context<'_> {
-    /// Mutably borrow a cell.
+    /// Mutably borrow a cell using a strongly-typed cell identifier.
     ///
     /// The calling task must have a producing use of the cell defined when
     /// registered to the task graph.
     /// Otherwise, calling this method might interfere with the operation of
     /// the task runner.
-    pub fn borrow_cell_mut<'a>(
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the concrete type of `cell_ref` does not match
+    /// that of the cell specified by `cell_ref`.
+    pub fn borrow_cell_mut<'a, T: Any>(
+        &'a self,
+        cell_ref: CellRef<T>,
+    ) -> impl std::ops::Deref<Target = T> + std::ops::DerefMut + 'a {
+        let cell_ref = self.cells[cell_ref.id().0].borrow_mut();
+        OwningRefMut::new(AssertStableAddress(cell_ref))
+            .map_mut(|x| x.downcast_mut::<T>().expect("type mismatch"))
+    }
+
+    /// Borrow a cell using a strongly-typed cell identifier.
+    ///
+    /// The calling task must have a use of the cell defined when
+    /// registered to the task graph.
+    /// Otherwise, calling this method might interfere with the operation of
+    /// the task runner.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the concrete type of `cell_ref` does not match
+    /// that of the cell specified by `cell_ref`.
+    pub fn borrow_cell<'a, T: Any>(
+        &'a self,
+        cell_ref: CellRef<T>,
+    ) -> impl std::ops::Deref<Target = T> + 'a {
+        let cell_ref = self.cells[cell_ref.id().0].borrow();
+        OwningRef::new(AssertStableAddress(cell_ref))
+            .map(|x| x.downcast_ref::<T>().expect("type mismatch"))
+    }
+
+    /// Mutably borrow a cell using an untyped cell identifier.
+    ///
+    /// The calling task must have a producing use of the cell defined when
+    /// registered to the task graph.
+    /// Otherwise, calling this method might interfere with the operation of
+    /// the task runner.
+    pub fn borrow_dyn_cell_mut<'a>(
         &'a self,
         cell_id: CellId,
     ) -> impl std::ops::Deref<Target = dyn Cell> + std::ops::DerefMut + 'a {
@@ -336,13 +376,13 @@ impl Context<'_> {
         OwningRefMut::new(AssertStableAddress(cell_ref)).map_mut(|x| &mut **x)
     }
 
-    /// Borrow a cell.
+    /// Borrow a cell using an untyped cell identifier.
     ///
     /// The calling task must have a use of the cell defined when
     /// registered to the task graph.
     /// Otherwise, calling this method might interfere with the operation of
     /// the task runner.
-    pub fn borrow_cell<'a>(
+    pub fn borrow_dyn_cell<'a>(
         &'a self,
         cell_id: CellId,
     ) -> impl std::ops::Deref<Target = dyn Cell> + 'a {

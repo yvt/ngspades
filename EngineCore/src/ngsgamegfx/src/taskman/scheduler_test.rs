@@ -10,8 +10,8 @@ struct MyCell(usize);
 
 #[derive(Debug)]
 struct MyTask {
-    producing: Vec<taskman::CellId>,
-    consuming: Vec<taskman::CellId>,
+    producing: Vec<taskman::CellRef<MyCell>>,
+    consuming: Vec<taskman::CellRef<MyCell>>,
 }
 
 impl taskman::Task for MyTask {
@@ -20,14 +20,14 @@ impl taskman::Task for MyTask {
             "producing: [{:?}]",
             self.producing
                 .iter()
-                .map(|&i| *context.borrow_cell_mut(i).downcast_ref::<MyCell>().unwrap())
+                .map(|&i| *context.borrow_cell_mut(i))
                 .collect::<Vec<_>>()
         );
         println!(
             "consuming: [{:?}]",
             self.consuming
                 .iter()
-                .map(|&i| *context.borrow_cell(i).downcast_ref::<MyCell>().unwrap())
+                .map(|&i| *context.borrow_cell(i))
                 .collect::<Vec<_>>()
         );
     }

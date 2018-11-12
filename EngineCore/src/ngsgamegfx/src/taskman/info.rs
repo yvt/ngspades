@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::any::Any;
+use std::{any::Any, marker::PhantomData};
 
 use super::Context;
 
@@ -43,6 +43,46 @@ impl CellId {
     }
 }
 
+/// A strongly typed version of `CellId`.
+///
+/// This is a simple wrapper around `CellId` that adds concrete type
+/// information.
+///
+/// The reason that this is defined as a type alias is to circumvent the
+/// restrictions of `derive` macros that trait bounds are not generated properly
+/// for tricky cases of generic types.
+pub type CellRef<T> = CellRefInner<fn(T) -> T>;
+
+/// The internal implementation of `CellRef`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CellRefInner<T> {
+    id: CellId,
+    _phantom: PhantomData<T>,
+}
+
+impl<T> CellRef<T> {
+    pub fn new(id: CellId) -> Self {
+        Self {
+            id,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Get a raw (untyped) cell identifier.
+    pub fn id(&self) -> CellId {
+        self.id
+    }
+}
+
+impl<T> std::ops::Deref for CellRef<T> {
+    type Target = CellId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.id
+    }
+}
+
+/// Points a `Cell` in a particular instance of task graph.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct CellId(pub(super) usize);
 
