@@ -4,16 +4,13 @@
 // This source code is a part of Nightingales.
 //
 use atomic_refcell::AtomicRefCell;
+use cryo::{with_cryo, CryoRef};
 use owning_ref::{OwningRef, OwningRefMut};
 use parking_lot::Mutex;
 use std::{
     any::Any,
     panic,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
-    },
-    thread,
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 use super::{Cell, CellId, CellRef, Task, TaskInfo};
@@ -128,33 +125,29 @@ impl GraphBuilder {
             task.max_num_blocking_tasks = task.num_blocking_tasks.load(Ordering::Relaxed);
         }
 
-        let inner = GraphInner {
+        Graph {
             tasks,
             cells: cells
                 .into_iter()
                 .map(|cell| AtomicRefCell::new(cell.initializer))
                 .collect(),
             poisoned: AtomicBool::new(false),
-        };
-
-        Graph {
-            inner: Arc::new(inner),
+            error: Mutex::new(None),
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Graph {
-    inner: Arc<GraphInner>,
-}
-
-#[derive(Debug)]
-struct GraphInner {
     tasks: Vec<GraphTask>,
     cells: Vec<AtomicRefCell<Box<dyn Cell>>>,
 
     /// A flag indicating if a panic has ever occured while running this graph.
     poisoned: AtomicBool,
+
+    /// The cell to store the error information if a panic has occured during
+    /// the current run.
+    error: Mutex<Option<Box<dyn Any + Send + 'static>>>,
 }
 
 #[derive(Debug)]
@@ -174,16 +167,6 @@ struct GraphTask {
     num_blocking_tasks: AtomicUsize,
 }
 
-#[derive(Debug)]
-struct GraphRun {
-    num_pending_tasks: AtomicUsize,
-    initiating_thread: thread::Thread,
-
-    /// The cell to store the error information if a panic has occured during
-    /// the current run.
-    error: Mutex<Option<Box<dyn Any + Send + 'static>>>,
-}
-
 pub trait Executor {
     fn spawn(&self, f: impl FnOnce(&Self) + Send + 'static);
 }
@@ -199,9 +182,7 @@ impl Graph {
     ///  - Might panic if `Graph` is in the "poisoned" state.
     ///
     pub fn borrow_cell_mut(&mut self, cell_id: CellId) -> &mut dyn Cell {
-        let inner: &mut GraphInner = Arc::get_mut(&mut self.inner).unwrap();
-
-        inner.cells[cell_id.0].get_mut()
+        self.cells[cell_id.0].get_mut()
     }
 
     /// Run a task graph. Block the current thread until all tasks complete
@@ -213,109 +194,75 @@ impl Graph {
     /// # Panics
     ///
     ///  - If any of tasks panics, it will be reported back to the initiating
-    ///    thread. In this case, `run` does not wait for the completion of
-    ///    outstanding tasks. Furthermore, `Graph` will be transitioned into
-    ///    the "poisoned" state.
+    ///    thread. `Graph` will be transitioned into the "poisoned" state.
     ///  - Panics if `Graph` is in the "poisoned" state.
     ///
     pub fn run(&mut self, executor: &impl Executor) {
-        if self.inner.poisoned.load(Ordering::Relaxed) {
+        if self.poisoned.load(Ordering::Relaxed) {
             panic!("poisoned");
         }
 
         // Prepare the graph run
-        let run: Arc<GraphRun>;
-        {
-            let inner: &mut GraphInner = Arc::get_mut(&mut self.inner).unwrap();
-
-            for task in inner.tasks.iter() {
-                task.num_blocking_tasks
-                    .store(task.max_num_blocking_tasks, Ordering::Relaxed);
-            }
-
-            run = Arc::new(GraphRun {
-                num_pending_tasks: AtomicUsize::new(inner.tasks.len()),
-                initiating_thread: thread::current(),
-                error: Mutex::new(None),
-            });
+        for task in self.tasks.iter() {
+            task.num_blocking_tasks
+                .store(task.max_num_blocking_tasks, Ordering::Relaxed);
         }
 
-        // Spawn initial tasks
-        for (i, task) in self.inner.tasks.iter().enumerate() {
-            if task.max_num_blocking_tasks > 0 {
-                break;
+        // Use `cryo` to capture local variables in
+        // a `'static` closure (the one passed to `Executor` in `spawn_task`).
+        with_cryo(self, |cryo_this| {
+            let this_ref = cryo_this.borrow();
+
+            // Spawn initial tasks
+            for (i, task) in self.tasks.iter().enumerate() {
+                if task.max_num_blocking_tasks > 0 {
+                    break;
+                }
+                Self::spawn_task(executor, &this_ref, i);
             }
-            Self::spawn_task(executor, &self.inner, &run, i);
+        });
+
+        // `with_cryo` will not return until all uses of `CryoRef` are done.
+
+        if self.poisoned.load(Ordering::Relaxed) {
+            // One of the tasks has panicked. Propagate the panic.
+            panic::resume_unwind(self.error.get_mut().take().unwrap());
         }
-
-        loop {
-            thread::park();
-
-            // Figure out why the current thread was unparked.
-            if self.inner.poisoned.load(Ordering::Relaxed) {
-                // One of the tasks has panicked. Propagate the panic.
-                panic::resume_unwind(run.error.lock().take().unwrap());
-            }
-
-            if run.num_pending_tasks.load(Ordering::Relaxed) == 0 {
-                // No more executable tasks
-                break;
-            }
-        }
-
-        assert!(Arc::get_mut(&mut self.inner).is_some());
     }
 
-    fn spawn_task(
-        executor: &impl Executor,
-        inner: &Arc<GraphInner>,
-        run: &Arc<GraphRun>,
-        task_id: usize,
-    ) {
-        let inner = panic::AssertUnwindSafe(Arc::clone(inner));
-        let run = Arc::clone(run);
+    fn spawn_task(executor: &impl Executor, this: &CryoRef<Self>, task_id: usize) {
+        let mut this = panic::AssertUnwindSafe(CryoRef::clone(this));
 
         executor.spawn(move |executor| {
             // Fail-fast
-            if inner.poisoned.load(Ordering::Relaxed) {
+            if this.poisoned.load(Ordering::Relaxed) {
                 return;
             }
 
             let result = panic::catch_unwind(|| {
                 let graph_context = GraphContext {
-                    cells: &inner.cells[..],
+                    cells: &this.cells[..],
                 };
-                inner.tasks[task_id].task.execute(&graph_context);
+                this.tasks[task_id].task.execute(&graph_context);
             });
 
             if let Err(err) = result {
                 // The task has panicked - report back the error
-                if !inner.poisoned.swap(true, Ordering::Relaxed) {
-                    *run.error.lock() = Some(err);
-                    run.initiating_thread.unpark();
+                if !this.poisoned.swap(true, Ordering::Relaxed) {
+                    *this.error.lock() = Some(err);
                 }
                 return;
             }
 
             // Unblock dependent tasks
-            for &i in inner.tasks[task_id].unblocks_tasks.iter() {
-                if inner.tasks[i]
+            for &i in this.tasks[task_id].unblocks_tasks.iter() {
+                if this.tasks[i]
                     .num_blocking_tasks
                     .fetch_sub(1, Ordering::Relaxed)
                     == 1
                 {
-                    Self::spawn_task(executor, &inner, &run, i);
+                    Self::spawn_task(executor, &this, i);
                 }
-            }
-
-            // Drop `inner` before touching `num_pending_tasks` so that
-            // the initating thread has an unique reference to the `GraphInner`
-            // after being unparked.
-            drop(inner);
-
-            // Is the run complete?
-            if run.num_pending_tasks.fetch_sub(1, Ordering::Relaxed) == 1 {
-                run.initiating_thread.unpark();
             }
         });
     }
