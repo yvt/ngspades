@@ -5,7 +5,7 @@
 //
 use std::{any::Any, marker::PhantomData};
 
-use super::Context;
+use super::GraphContext;
 
 /// Represents a task.
 #[derive(Debug)]
@@ -114,5 +114,5 @@ impl dyn Cell {
 
 pub trait Task: std::fmt::Debug + Send + Sync {
     /// Execute the task.
-    fn execute(&self, context: &Context);
+    fn execute(&self, graph_context: &GraphContext);
 }

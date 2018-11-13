@@ -189,7 +189,7 @@ pub trait Executor {
 }
 
 #[derive(Debug)]
-pub struct Context<'a> {
+pub struct GraphContext<'a> {
     cells: &'a [AtomicRefCell<Box<dyn Cell>>],
 }
 
@@ -282,10 +282,10 @@ impl Graph {
             }
 
             let result = panic::catch_unwind(|| {
-                let context = Context {
+                let graph_context = GraphContext {
                     cells: &inner.cells[..],
                 };
-                inner.tasks[task_id].task.execute(&context);
+                inner.tasks[task_id].task.execute(&graph_context);
             });
 
             if let Err(err) = result {
@@ -321,7 +321,7 @@ impl Graph {
     }
 }
 
-impl Context<'_> {
+impl GraphContext<'_> {
     /// Mutably borrow a cell using a strongly-typed cell identifier.
     ///
     /// The calling task must have a producing use of the cell defined when

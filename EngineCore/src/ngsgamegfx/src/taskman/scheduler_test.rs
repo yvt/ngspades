@@ -15,7 +15,7 @@ struct MyTask {
 }
 
 impl taskman::Task for MyTask {
-    fn execute(&self, context: &taskman::Context) {
+    fn execute(&self, context: &taskman::GraphContext) {
         println!(
             "producing: [{:?}]",
             self.producing
