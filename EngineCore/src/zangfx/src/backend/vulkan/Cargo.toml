@@ -9,7 +9,7 @@ zangfx_common = { path = "../../common" }
 zangfx_base = { path = "../../base" }
 ngsenumflags = { path = "../../../../support/ngsenumflags" }
 ngsenumflags_derive = { path = "../../../../support/ngsenumflags/ngsenumflags_derive" }
-parking_lot = "0.5.5"
+parking_lot = "0.6"
 tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }
 refeq = { path = "../../../../support/refeq" }

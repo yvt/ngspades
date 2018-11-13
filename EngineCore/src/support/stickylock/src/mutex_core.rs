@@ -5,6 +5,7 @@
 //
 
 use parking_lot::Mutex;
+use std::mem::forget;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug)]
@@ -34,7 +35,7 @@ impl StickyMutexCore {
     pub fn lock(&self) {
         let current_thread_id = current_thread_id();
         if self.owner.load(Ordering::Relaxed) != current_thread_id {
-            self.mutex.raw_lock();
+            forget(self.mutex.lock());
 
             debug_assert_eq!(self.stick_count.load(Ordering::Relaxed), 0);
             self.owner.store(current_thread_id, Ordering::Relaxed);
@@ -45,9 +46,11 @@ impl StickyMutexCore {
     pub fn try_lock(&self) -> bool {
         let current_thread_id = current_thread_id();
         if self.owner.load(Ordering::Relaxed) != current_thread_id {
-            if !self.mutex.raw_try_lock() {
+            let lock = self.mutex.try_lock();
+            if lock.is_none() {
                 return false;
             }
+            forget(lock);
 
             debug_assert_eq!(self.stick_count.load(Ordering::Relaxed), 0);
             self.owner.store(current_thread_id, Ordering::Relaxed);
@@ -66,7 +69,7 @@ impl StickyMutexCore {
 
         if stick_count == 0 {
             self.owner.store(NOBODY, Ordering::Relaxed);
-            self.mutex.raw_unlock();
+            self.mutex.force_unlock();
         }
     }
 
@@ -81,7 +84,7 @@ impl StickyMutexCore {
 
             self.stick_count.store(new_stick_count, Ordering::Relaxed);
         } else {
-            self.mutex.raw_lock();
+            forget(self.mutex.lock());
 
             debug_assert_eq!(self.stick_count.load(Ordering::Relaxed), 0);
             self.stick_count.store(1, Ordering::Relaxed);
@@ -108,7 +111,7 @@ impl StickyMutexCore {
 
             if new_stick_count == 0 && !has_normal_lock() {
                 self.owner.store(NOBODY, Ordering::Relaxed);
-                self.mutex.raw_unlock();
+                self.mutex.force_unlock();
             }
             Ok(())
         } else {

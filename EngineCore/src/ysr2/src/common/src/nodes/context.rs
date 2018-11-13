@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::collections::{HashSet, BinaryHeap};
-use parking_lot::{RwLock, RwLockReadGuard};
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use arrayvec::ArrayVec;
 use nodes::{Node, IntoNodeBox};
 use utils::{Pool, PoolPtr};
@@ -716,7 +716,7 @@ impl<'a> NodeInput<'a> {
 
 
             // Downgrade to the read lock
-            self.buffer = Some(buffer.downgrade());
+            self.buffer = Some(RwLockWriteGuard::downgrade(buffer));
         }
         self.buffer.as_ref().unwrap().data.as_slice()
     }
