@@ -12,12 +12,13 @@ use super::scheduler::PassInstantiationContext;
 pub type TransientResourceRef = Arc<dyn TransientResource>;
 
 /// Represents a pass.
-pub struct PassInfo {
+pub struct PassInfo<C: ?Sized> {
     pub transient_resource_uses: Vec<TransientResourceUse>,
-    pub factory: Box<dyn FnOnce(&PassInstantiationContext) -> gfx::Result<Box<dyn Pass>> + 'static>,
+    pub factory:
+        Box<dyn FnOnce(&PassInstantiationContext) -> gfx::Result<Box<dyn Pass<C>>> + 'static>,
 }
 
-impl fmt::Debug for PassInfo {
+impl<C: ?Sized> fmt::Debug for PassInfo<C> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("PassInfo")
             .field("transient_resource_uses", &self.transient_resource_uses)
@@ -74,7 +75,7 @@ impl TransientResourceId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct TransientResourceId(pub(super) usize);
 
-pub trait Pass: std::fmt::Debug + Send + Sync {
+pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
     // TODO: Add context data?
 
     /// Return the number of fences updated by the commands encoded by
@@ -107,6 +108,7 @@ pub trait Pass: std::fmt::Debug + Send + Sync {
         cmd_buffer: &mut gfx::CmdBufferRef,
         wait_fences: &[&gfx::FenceRef],
         update_fences: &[&gfx::FenceRef],
+        context: &C,
     ) -> gfx::Result<()>;
 }
 

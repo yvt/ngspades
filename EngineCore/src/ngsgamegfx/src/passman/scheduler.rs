@@ -23,14 +23,14 @@ mod scheduler_test;
 /// Stores the description of a pass graph and serves as a builder object of
 /// [`Schedule`].
 #[derive(Debug)]
-pub struct ScheduleBuilder {
+pub struct ScheduleBuilder<C: ?Sized> {
     resources: Vec<BuilderResource>,
-    passes: Vec<BuilderPass>,
+    passes: Vec<BuilderPass<C>>,
 }
 
 #[derive(Debug)]
-struct BuilderPass {
-    info: Option<PassInfo>,
+struct BuilderPass<C: ?Sized> {
+    info: Option<PassInfo<C>>,
 
     // The rest of the fields are used as a temporary storage for
     // `ScheduleBuilder::schedule`
@@ -51,15 +51,15 @@ struct BuilderPass {
     output: bool,
 }
 
-impl BuilderPass {
+impl<C: ?Sized> BuilderPass<C> {
     /// Unwrap `self.info`.
-    fn info(&self) -> &PassInfo {
+    fn info(&self) -> &PassInfo<C> {
         self.info.as_ref().unwrap()
     }
 }
 
-impl From<PassInfo> for BuilderPass {
-    fn from(x: PassInfo) -> Self {
+impl<C: ?Sized> From<PassInfo<C>> for BuilderPass<C> {
+    fn from(x: PassInfo<C>) -> Self {
         Self {
             info: Some(x),
             scheduled: false,
@@ -106,7 +106,7 @@ impl From<Box<dyn TransientResource>> for BuilderResource {
     }
 }
 
-impl ScheduleBuilder {
+impl<C: ?Sized> ScheduleBuilder<C> {
     pub fn new() -> Self {
         Self {
             resources: Vec::new(),
@@ -142,7 +142,7 @@ impl ScheduleBuilder {
         std::mem::replace(resource_cell, new_resource)
     }
 
-    pub fn define_pass(&mut self, pass: PassInfo) {
+    pub fn define_pass(&mut self, pass: PassInfo<C>) {
         self.passes.push(pass.into());
     }
 
@@ -153,7 +153,7 @@ impl ScheduleBuilder {
     /// Will panic if there exists no ordering of passes that agrees with
     /// their resource dependencies.
     ///
-    pub fn schedule(mut self, output_resources: &[TransientResourceId]) -> Schedule {
+    pub fn schedule(mut self, output_resources: &[TransientResourceId]) -> Schedule<C> {
         use std::mem::replace;
 
         // Nonce token
@@ -360,7 +360,7 @@ impl ScheduleBuilder {
 
         // Calculate the smallest valid lifetime for each resource.
         for (i, &pass_i) in pass_order.iter().enumerate() {
-            let ref mut pass: BuilderPass = self.passes[pass_i];
+            let ref mut pass: BuilderPass<C> = self.passes[pass_i];
 
             for res_use in &pass.info().transient_resource_uses {
                 let ref mut res: BuilderResource = self.resources[res_use.resource.0];
@@ -393,7 +393,7 @@ impl ScheduleBuilder {
                     // at the producer
                     let k = res.lifetime.start;
 
-                    let ref pass: BuilderPass = self.passes[pass_order[k]];
+                    let ref pass: BuilderPass<C> = self.passes[pass_order[k]];
 
                     if pass.token.get() == token {
                         // It's already in `previous_passes`
@@ -418,11 +418,11 @@ impl ScheduleBuilder {
             // that satisfies `i ⩿ k`. (`⩿` is a union of `==` and `⋖`)
             token += 1;
 
-            let ref i_pass: BuilderPass = self.passes[pass_i];
+            let ref i_pass: BuilderPass<C> = self.passes[pass_i];
             i_pass.token.set(token);
 
             for k in i..pass_order.len() {
-                let ref k_pass: BuilderPass = self.passes[pass_order[k]];
+                let ref k_pass: BuilderPass<C> = self.passes[pass_order[k]];
                 if k_pass.token.get() != token {
                     // not `i ⩿ k`
                     continue;
@@ -431,7 +431,7 @@ impl ScheduleBuilder {
                 for &m in k_pass.next_passes.borrow().iter() {
                     debug_assert!(m > k);
 
-                    let ref m_pass: BuilderPass = self.passes[pass_order[m]];
+                    let ref m_pass: BuilderPass<C> = self.passes[pass_order[m]];
                     m_pass.token.set(token);
                 }
             }
@@ -452,7 +452,7 @@ impl ScheduleBuilder {
             let mut new_i_lifetime_end_min = i_lifetime_end_min;
 
             for k in i_lifetime_end_min..pass_order.len() {
-                let ref k_pass: BuilderPass = self.passes[pass_order[k]];
+                let ref k_pass: BuilderPass<C> = self.passes[pass_order[k]];
                 if k_pass.token.get() == token {
                     // `i ⩿ k`
                     continue;
@@ -479,7 +479,7 @@ impl ScheduleBuilder {
         let mut proto_passes: Vec<_> = pass_order
             .iter()
             .map(|&i| {
-                let ref mut pass: BuilderPass = self.passes[i];
+                let ref mut pass: BuilderPass<C> = self.passes[i];
                 SchedulePass {
                     info: pass.info.take().unwrap(),
                     wait_on_passes: replace(&mut pass.previous_passes, Vec::new()),
@@ -511,14 +511,14 @@ impl ScheduleBuilder {
 
 /// A compiled execution plan of a pass graph.
 #[derive(Debug)]
-pub struct Schedule {
-    passes: Vec<SchedulePass>,
+pub struct Schedule<C: ?Sized> {
+    passes: Vec<SchedulePass<C>>,
     resources: Vec<Box<dyn TransientResource>>,
 }
 
 #[derive(Debug)]
-struct SchedulePass {
-    info: PassInfo,
+struct SchedulePass<C: ?Sized> {
+    info: PassInfo<C>,
     wait_on_passes: Vec<usize>,
     bind_resources: Vec<usize>,
     unbind_resources: Vec<usize>,
@@ -530,14 +530,14 @@ pub struct PassInstantiationContext<'a> {
     resources: &'a [TransientResourceRef],
 }
 
-impl Schedule {
+impl<C: ?Sized> Schedule<C> {
     /// Construct a `ScheduleRunner` by allocating device resources required for
     /// the execution of the plan.
     pub fn instantiate(
         self,
         device: &gfx::DeviceRef,
         queue: &gfx::CmdQueueRef,
-    ) -> gfx::Result<ScheduleRunner> {
+    ) -> gfx::Result<ScheduleRunner<C>> {
         let mut heap_builders = vec![None; 32];
 
         // Bind resources
@@ -607,9 +607,9 @@ impl<'a> PassInstantiationContext<'a> {
 /// Contains and maintains objects and references to device objects required to
 /// encode device commands for executing a plan.
 #[derive(Debug)]
-pub struct ScheduleRunner {
+pub struct ScheduleRunner<C: ?Sized> {
     queue: gfx::CmdQueueRef,
-    passes: Vec<RunnerPass>,
+    passes: Vec<RunnerPass<C>>,
 
     /// `Vec` used to store fences associated with passes. The contents are
     /// only relevant to a single run but the storage persists between runs.
@@ -617,8 +617,8 @@ pub struct ScheduleRunner {
 }
 
 #[derive(Debug)]
-struct RunnerPass {
-    pass: AtomicRefCell<Box<dyn Pass>>,
+struct RunnerPass<C: ?Sized> {
+    pass: AtomicRefCell<Box<dyn Pass<C>>>,
     wait_on_passes: Vec<usize>,
 
     /// Indicates whether this is an output pass. The completion of all output
@@ -633,7 +633,7 @@ struct RunnerPass {
     update_fence_range: Range<usize>,
 }
 
-impl RunnerPass {
+impl<C: ?Sized> RunnerPass<C> {
     fn num_update_fences(&self) -> usize {
         self.update_fence_range.len()
     }
@@ -641,11 +641,11 @@ impl RunnerPass {
 
 #[must_use = "`Run` doesn't encode any commands until `encode` is called"]
 #[derive(Debug)]
-pub struct Run<'a> {
-    schedule: &'a mut ScheduleRunner,
+pub struct Run<'a, C: ?Sized> {
+    schedule: &'a mut ScheduleRunner<C>,
 }
 
-impl ScheduleRunner {
+impl<C: ?Sized> ScheduleRunner<C> {
     pub fn num_output_fences(&self) -> usize {
         self.passes
             .iter()
@@ -656,7 +656,7 @@ impl ScheduleRunner {
 
     /// Construct a `Run` used to encode commands to evaluate a pass graph
     /// for a single time.
-    pub fn run(&mut self) -> gfx::Result<Run<'_>> {
+    pub fn run(&mut self) -> gfx::Result<Run<'_, C>> {
         // Allocate fence ranges and create fences.
         let mut i = 0;
         for pass in self.passes.iter_mut() {
@@ -675,7 +675,7 @@ impl ScheduleRunner {
     }
 }
 
-impl Run<'_> {
+impl<C: ?Sized> Run<'_, C> {
     pub fn num_output_fences(&self) -> usize {
         self.schedule.num_output_fences()
     }
@@ -707,6 +707,7 @@ impl Run<'_> {
         self,
         cmd_buffer: &mut gfx::CmdBufferRef,
         input_fences: &[&gfx::FenceRef],
+        context: &C,
     ) -> gfx::Result<()> {
         let schedule = self.schedule;
 
@@ -750,7 +751,7 @@ impl Run<'_> {
 
             pass.pass
                 .borrow_mut()
-                .encode(cmd_buffer, wait_fences, update_fences)?;
+                .encode(cmd_buffer, wait_fences, update_fences, context)?;
         }
 
         Ok(())

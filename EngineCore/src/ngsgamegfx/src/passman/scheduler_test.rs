@@ -18,7 +18,7 @@ impl passman::TransientResource for MyResource {
 
 #[test]
 fn test() {
-    let mut builder = passman::ScheduleBuilder::new();
+    let mut builder = passman::ScheduleBuilder::<()>::new();
 
     let res0 = builder.define_resource(MyResource(1));
     let res1 = builder.define_resource(MyResource(2));
@@ -65,7 +65,7 @@ fn test() {
 #[test]
 #[should_panic]
 fn panic_on_cyclic_dependency() {
-    let mut builder = passman::ScheduleBuilder::new();
+    let mut builder = passman::ScheduleBuilder::<()>::new();
 
     let res0 = builder.define_resource(MyResource(1));
     let res1 = builder.define_resource(MyResource(2));

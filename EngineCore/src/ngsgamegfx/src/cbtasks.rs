@@ -29,8 +29,11 @@ use crate::{
 /// commands). The clients access it via the `schedule_builder` method to
 /// register GPU pass objects.
 ///
-/// TODO: During the command buffer generation, the pass objects can access
-/// cells registered via the `add_encoding_dependency` method.
+/// During the command buffer generation, the pass objects can access
+/// cells through `PassContext` (which is a type alias of
+/// `taskman::GraphContext`). The clients must use the `add_encoding_dependency`
+/// method to register such cells for consumption by the command buffer encoding
+/// task.
 ///
 /// Finally, those two tasks are registered to a supplied `GraphBuilder` when
 /// the `add_to_graph` method is called. This also allocates device memory
@@ -39,10 +42,16 @@ use crate::{
 /// TODO: Coordinate with other subsystems that require memory allocation.
 #[derive(Debug)]
 pub struct CmdBufferTaskBuilder {
-    schedule_builder: ScheduleBuilder,
+    schedule_builder: ScheduleBuilder<PassContext>,
     encode_cell_uses: Vec<CellUse>,
     submit_cell_uses: Vec<CellUse>,
 }
+
+/// The type of context data passed to `Pass`es (GPU pass objects).
+///
+/// This represents a reference to a `GraphContext`. Pass implementations can
+/// use this to access cell contents during command buffer encoding.
+pub type PassContext = GraphContext;
 
 #[derive(Debug, Clone, Copy)]
 pub struct CmdBufferTaskCellSet {
@@ -64,7 +73,7 @@ impl CmdBufferTaskBuilder {
     }
 
     /// Get a `ScheduleBuilder` used to consturct a GPU task graph.
-    pub fn schedule_builder(&mut self) -> &mut ScheduleBuilder {
+    pub fn schedule_builder(&mut self) -> &mut ScheduleBuilder<PassContext> {
         &mut self.schedule_builder
     }
 
@@ -147,7 +156,7 @@ pub struct CbEncodeTask {
     prev_fence_cell: CellRef<Option<gfx::FenceRef>>,
     fence_cell: CellRef<Option<gfx::FenceRef>>,
     queue: gfx::CmdQueueRef,
-    schedule_runner: CellRef<ScheduleRunner>,
+    schedule_runner: CellRef<ScheduleRunner<PassContext>>,
 }
 
 #[derive(Debug)]
@@ -186,7 +195,9 @@ impl Task for CbEncodeTask {
         // Encode commands
         let input_fence = prev_fence_cell.take();
         let input_fences: ArrayVec<[_; 1]> = input_fence.iter().collect();
-        run.encode(&mut cmd_buffer, &input_fences).unwrap();
+
+        run.encode(&mut cmd_buffer, &input_fences, graph_context)
+            .unwrap();
 
         // Store the fence
         *prev_fence_cell = Some(output_fence);

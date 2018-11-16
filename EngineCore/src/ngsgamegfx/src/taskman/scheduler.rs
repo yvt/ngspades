@@ -12,6 +12,7 @@ use std::{
     panic,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
+use opaque_typedef_macros::OpaqueTypedefUnsized;
 
 use super::{Cell, CellId, CellRef, Task, TaskInfo};
 
@@ -171,10 +172,13 @@ pub trait Executor {
     fn spawn(&self, f: impl FnOnce(&Self) + Send + 'static);
 }
 
-#[derive(Debug)]
-pub struct GraphContext<'a> {
-    cells: &'a [AtomicRefCell<Box<dyn Cell>>],
-}
+// We use `OpaqueTypedefUnsized` to make `GraphContext` `'static` so it can be
+// passed as context data of `passman::Pass`.
+#[derive(Debug, OpaqueTypedefUnsized)]
+#[repr(transparent)]
+#[opaque_typedef(allow_mut_ref)]
+#[opaque_typedef(derive(AsMutDeref, AsMutSelf, AsRefDeref, AsRefSelf, IntoInner, FromInner))]
+pub struct GraphContext([AtomicRefCell<Box<dyn Cell>>]);
 
 impl Graph {
     /// # Panics
@@ -240,10 +244,8 @@ impl Graph {
             }
 
             let result = panic::catch_unwind(|| {
-                let graph_context = GraphContext {
-                    cells: &this.cells[..],
-                };
-                this.tasks[task_id].task.execute(&graph_context);
+                let graph_context = <&GraphContext>::from(&this.cells[..]);
+                this.tasks[task_id].task.execute(graph_context);
             });
 
             if let Err(err) = result {
@@ -268,7 +270,7 @@ impl Graph {
     }
 }
 
-impl GraphContext<'_> {
+impl GraphContext {
     /// Mutably borrow a cell using a strongly-typed cell identifier.
     ///
     /// The calling task must have a producing use of the cell defined when
@@ -284,7 +286,7 @@ impl GraphContext<'_> {
         &'a self,
         cell_ref: CellRef<T>,
     ) -> impl std::ops::Deref<Target = T> + std::ops::DerefMut + 'a {
-        let cell_ref = self.cells[cell_ref.id().0].borrow_mut();
+        let cell_ref = self.0[cell_ref.id().0].borrow_mut();
         OwningRefMut::new(AssertStableAddress(cell_ref))
             .map_mut(|x| x.downcast_mut::<T>().expect("type mismatch"))
     }
@@ -304,7 +306,7 @@ impl GraphContext<'_> {
         &'a self,
         cell_ref: CellRef<T>,
     ) -> impl std::ops::Deref<Target = T> + 'a {
-        let cell_ref = self.cells[cell_ref.id().0].borrow();
+        let cell_ref = self.0[cell_ref.id().0].borrow();
         OwningRef::new(AssertStableAddress(cell_ref))
             .map(|x| x.downcast_ref::<T>().expect("type mismatch"))
     }
@@ -319,7 +321,7 @@ impl GraphContext<'_> {
         &'a self,
         cell_id: CellId,
     ) -> impl std::ops::Deref<Target = dyn Cell> + std::ops::DerefMut + 'a {
-        let cell_ref = self.cells[cell_id.0].borrow_mut();
+        let cell_ref = self.0[cell_id.0].borrow_mut();
         OwningRefMut::new(AssertStableAddress(cell_ref)).map_mut(|x| &mut **x)
     }
 
@@ -333,7 +335,7 @@ impl GraphContext<'_> {
         &'a self,
         cell_id: CellId,
     ) -> impl std::ops::Deref<Target = dyn Cell> + 'a {
-        let cell_ref = self.cells[cell_id.0].borrow();
+        let cell_ref = self.0[cell_id.0].borrow();
         OwningRef::new(AssertStableAddress(cell_ref)).map(|x| &**x)
     }
 }
