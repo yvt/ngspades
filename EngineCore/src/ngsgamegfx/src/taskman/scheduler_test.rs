@@ -14,8 +14,8 @@ struct MyTask {
     consuming: Vec<taskman::CellRef<MyCell>>,
 }
 
-impl taskman::Task for MyTask {
-    fn execute(&self, context: &taskman::GraphContext) {
+impl taskman::Task<()> for MyTask {
+    fn execute(&self, context: &taskman::GraphContext) -> Result<(), ()> {
         println!(
             "producing: [{:?}]",
             self.producing
@@ -30,6 +30,7 @@ impl taskman::Task for MyTask {
                 .map(|&i| *context.borrow_cell(i))
                 .collect::<Vec<_>>()
         );
+        Ok(())
     }
 }
 
@@ -74,5 +75,5 @@ fn test() {
 
     let executor = xdispatch::Queue::global(xdispatch::QueuePriority::Default);
 
-    graph.run(&executor);
+    graph.run(&executor).unwrap();
 }

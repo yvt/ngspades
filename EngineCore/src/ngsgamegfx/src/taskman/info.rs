@@ -11,9 +11,9 @@ use crate::utils::any::AsAnySendSync;
 
 /// Represents a task.
 #[derive(Debug)]
-pub struct TaskInfo {
+pub struct TaskInfo<E> {
     pub cell_uses: Vec<CellUse>,
-    pub task: Box<dyn Task>,
+    pub task: Box<dyn Task<E>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -104,7 +104,7 @@ impl dyn Cell {
     }
 }
 
-pub trait Task: std::fmt::Debug + Send + Sync {
+pub trait Task<E>: std::fmt::Debug + Send + Sync {
     /// Execute the task.
-    fn execute(&self, graph_context: &GraphContext);
+    fn execute(&self, graph_context: &GraphContext) -> Result<(), E>;
 }

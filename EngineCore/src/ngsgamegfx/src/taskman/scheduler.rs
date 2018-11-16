@@ -5,6 +5,7 @@
 //
 use atomic_refcell::AtomicRefCell;
 use cryo::{with_cryo, CryoRef};
+use opaque_typedef_macros::OpaqueTypedefUnsized;
 use owning_ref::{OwningRef, OwningRefMut};
 use parking_lot::Mutex;
 use std::{
@@ -12,7 +13,6 @@ use std::{
     panic,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
-use opaque_typedef_macros::OpaqueTypedefUnsized;
 
 use super::{Cell, CellId, CellRef, Task, TaskInfo};
 
@@ -25,18 +25,18 @@ mod scheduler_test;
 /// Stores the description of a task graph and serves as a builder object of
 /// [`Graph`].
 #[derive(Debug)]
-pub struct GraphBuilder {
+pub struct GraphBuilder<E> {
     cells: Vec<BuilderCell>,
-    tasks: Vec<BuilderTask>,
+    tasks: Vec<BuilderTask<E>>,
 }
 
 #[derive(Debug)]
-struct BuilderTask {
-    info: TaskInfo,
+struct BuilderTask<E> {
+    info: TaskInfo<E>,
 }
 
-impl From<TaskInfo> for BuilderTask {
-    fn from(x: TaskInfo) -> Self {
+impl<E> From<TaskInfo<E>> for BuilderTask<E> {
+    fn from(x: TaskInfo<E>) -> Self {
         Self { info: x }
     }
 }
@@ -56,7 +56,7 @@ impl From<Box<dyn Cell>> for BuilderCell {
     }
 }
 
-impl GraphBuilder {
+impl<E> GraphBuilder<E> {
     pub fn new() -> Self {
         Self {
             cells: Vec::new(),
@@ -75,12 +75,12 @@ impl GraphBuilder {
         CellRef::new(CellId(next_index))
     }
 
-    pub fn define_task(&mut self, task: TaskInfo) {
+    pub fn define_task(&mut self, task: TaskInfo<E>) {
         self.tasks.push(task.into());
     }
 
     /// Construct a `Graph`, consuming `self`.
-    pub fn build(mut self) -> Graph {
+    pub fn build(mut self) -> Graph<E> {
         for (i, task) in self.tasks.iter().enumerate() {
             for cell_use in &task.info.cell_uses {
                 if !cell_use.produce {
@@ -133,27 +133,32 @@ impl GraphBuilder {
                 .map(|cell| AtomicRefCell::new(cell.initializer))
                 .collect(),
             poisoned: AtomicBool::new(false),
+            panic: Mutex::new(None),
             error: Mutex::new(None),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Graph {
-    tasks: Vec<GraphTask>,
+pub struct Graph<E> {
+    tasks: Vec<GraphTask<E>>,
     cells: Vec<AtomicRefCell<Box<dyn Cell>>>,
 
     /// A flag indicating if a panic has ever occured while running this graph.
     poisoned: AtomicBool,
 
-    /// The cell to store the error information if a panic has occured during
+    /// The cell to store the panic information if a panic has occured during
     /// the current run.
-    error: Mutex<Option<Box<dyn Any + Send + 'static>>>,
+    panic: Mutex<Option<Box<dyn Any + Send + 'static>>>,
+
+    /// The cell to store the error information if an error has occured during
+    /// the current run.
+    error: Mutex<Option<E>>,
 }
 
 #[derive(Debug)]
-struct GraphTask {
-    task: Box<dyn Task>,
+struct GraphTask<E> {
+    task: Box<dyn Task<E>>,
 
     /// The number of tasks in the graph that must be completed before this task
     /// can start.
@@ -180,7 +185,7 @@ pub trait Executor {
 #[opaque_typedef(derive(AsMutDeref, AsMutSelf, AsRefDeref, AsRefSelf, IntoInner, FromInner))]
 pub struct GraphContext([AtomicRefCell<Box<dyn Cell>>]);
 
-impl Graph {
+impl<E: Send + 'static> Graph<E> {
     /// # Panics
     ///
     ///  - Might panic if `Graph` is in the "poisoned" state.
@@ -195,13 +200,18 @@ impl Graph {
     /// This method blocks forever if there is a cyclic dependency in the
     /// task graph.
     ///
+    /// Returns `Err(e)` if any of tasks return `Err(e)`. When this happens,
+    /// `Graph` will be transitioned into the "poisoned" state.
+    /// If more than one tasks err, only one of the error values will be
+    /// returned and the rest is discarded.
+    ///
     /// # Panics
     ///
-    ///  - If any of tasks panics, it will be reported back to the initiating
+    ///  - If any of tasks panic, it will be reported back to the initiating
     ///    thread. `Graph` will be transitioned into the "poisoned" state.
     ///  - Panics if `Graph` is in the "poisoned" state.
     ///
-    pub fn run(&mut self, executor: &impl Executor) {
+    pub fn run(&mut self, executor: &impl Executor) -> Result<(), E> {
         if self.poisoned.load(Ordering::Relaxed) {
             panic!("poisoned");
         }
@@ -229,9 +239,17 @@ impl Graph {
         // `with_cryo` will not return until all uses of `CryoRef` are done.
 
         if self.poisoned.load(Ordering::Relaxed) {
-            // One of the tasks has panicked. Propagate the panic.
-            panic::resume_unwind(self.error.get_mut().take().unwrap());
+            // Panics take precedence over errors
+            if let Some(x) = self.panic.get_mut().take() {
+                // One of the tasks has panicked. Propagate the panic.
+                panic::resume_unwind(x);
+            } else {
+                // One of the tasks has raised an error. Propagate the error.
+                return Err(self.error.get_mut().take().unwrap());
+            }
         }
+
+        Ok(())
     }
 
     fn spawn_task(executor: &impl Executor, this: &CryoRef<Self>, task_id: usize) {
@@ -245,15 +263,23 @@ impl Graph {
 
             let result = panic::catch_unwind(|| {
                 let graph_context = <&GraphContext>::from(&this.cells[..]);
-                this.tasks[task_id].task.execute(graph_context);
+                this.tasks[task_id].task.execute(graph_context)
             });
 
-            if let Err(err) = result {
-                // The task has panicked - report back the error
-                if !this.poisoned.swap(true, Ordering::Relaxed) {
-                    *this.error.lock() = Some(err);
+            match result {
+                Err(panic) => {
+                    // The task has panicked - report back the error
+                    *this.panic.lock() = Some(panic);
+                    this.poisoned.store(true, Ordering::Relaxed);
+                    return;
                 }
-                return;
+                Ok(Err(error)) => {
+                    if !this.poisoned.swap(true, Ordering::Relaxed) {
+                        *this.error.lock() = Some(error);
+                    }
+                    return;
+                }
+                Ok(Ok(())) => {}
             }
 
             // Unblock dependent tasks

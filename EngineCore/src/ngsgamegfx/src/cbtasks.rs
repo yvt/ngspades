@@ -95,7 +95,7 @@ impl CmdBufferTaskBuilder {
         mut self,
         device: &gfx::DeviceRef,
         queue: &gfx::CmdQueueRef,
-        graph_builder: &mut GraphBuilder,
+        graph_builder: &mut GraphBuilder<gfx::Error>,
         output_resources: &[TransientResourceId],
     ) -> gfx::Result<CmdBufferTaskCellSet> {
         // TODO: Export generated a command buffer for the client to wait on it.
@@ -165,17 +165,16 @@ struct CbSubmitTask {
     cmd_buffer_result: CellRef<Option<CmdBufferResult>>,
 }
 
-impl Task for CbEncodeTask {
-    fn execute(&self, graph_context: &GraphContext) {
-        // TODO: Do not `unwrap`
-        let mut cmd_buffer = self.queue.new_cmd_buffer().unwrap();
+impl Task<gfx::Error> for CbEncodeTask {
+    fn execute(&self, graph_context: &GraphContext) -> gfx::Result<()> {
+        let mut cmd_buffer = self.queue.new_cmd_buffer()?;
 
         let mut schedule_runner = graph_context.borrow_cell_mut(self.schedule_runner);
         let mut prev_fence_cell = graph_context.borrow_cell_mut(self.prev_fence_cell);
         let mut fence_cell = graph_context.borrow_cell_mut(self.fence_cell);
 
         // Prepare the run
-        let mut run = schedule_runner.run().unwrap();
+        let mut run = schedule_runner.run()?;
 
         // Override the output fence
         let output_fence;
@@ -196,16 +195,17 @@ impl Task for CbEncodeTask {
         let input_fence = prev_fence_cell.take();
         let input_fences: ArrayVec<[_; 1]> = input_fence.iter().collect();
 
-        run.encode(&mut cmd_buffer, &input_fences, graph_context)
-            .unwrap();
+        run.encode(&mut cmd_buffer, &input_fences, graph_context)?;
 
         // Store the fence
         *prev_fence_cell = Some(output_fence);
+
+        Ok(())
     }
 }
 
-impl Task for CbSubmitTask {
-    fn execute(&self, graph_context: &GraphContext) {
+impl Task<gfx::Error> for CbSubmitTask {
+    fn execute(&self, graph_context: &GraphContext) -> gfx::Result<()> {
         let mut cmd_buffer: gfx::CmdBufferRef = graph_context
             .borrow_cell_mut(self.cmd_buffer_cell)
             .take()
@@ -214,6 +214,8 @@ impl Task for CbSubmitTask {
         // Create a `Future` representing the result of command buffer execution
         *graph_context.borrow_cell_mut(self.cmd_buffer_result) = Some(cmd_buffer.result());
 
-        cmd_buffer.commit().unwrap();
+        cmd_buffer.commit()?;
+
+        Ok(())
     }
 }
