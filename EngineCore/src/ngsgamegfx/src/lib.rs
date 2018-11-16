@@ -7,6 +7,7 @@
 #![feature(unsized_locals)] // For calling boxed `FnOnce`
 
 mod asyncuploader;
+mod cbtasks;
 pub mod config;
 mod di;
 mod passman;

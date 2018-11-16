@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use atomic_refcell::AtomicRefCell;
 use std::{
     any::Any,
     cell::{Cell, RefCell},
@@ -581,7 +582,7 @@ impl Schedule {
             .into_iter()
             .map(|pass| {
                 Ok(RunnerPass {
-                    pass: RefCell::new((pass.info.factory)(&context)?),
+                    pass: AtomicRefCell::new((pass.info.factory)(&context)?),
                     wait_on_passes: pass.wait_on_passes,
                     output: pass.output,
                     update_fence_range: 0..0,
@@ -617,7 +618,7 @@ pub struct ScheduleRunner {
 
 #[derive(Debug)]
 struct RunnerPass {
-    pass: RefCell<Box<dyn Pass>>,
+    pass: AtomicRefCell<Box<dyn Pass>>,
     wait_on_passes: Vec<usize>,
 
     /// Indicates whether this is an output pass. The completion of all output
