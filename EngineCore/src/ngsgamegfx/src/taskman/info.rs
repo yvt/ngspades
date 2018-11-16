@@ -7,6 +7,8 @@ use std::{any::Any, marker::PhantomData};
 
 use super::GraphContext;
 
+use crate::utils::any::AsAnySendSync;
+
 /// Represents a task.
 #[derive(Debug)]
 pub struct TaskInfo {
@@ -88,19 +90,9 @@ pub struct CellId(pub(super) usize);
 
 /// The contents of a cell. This is automatically implemented on all compatible
 /// types.
-pub trait Cell: std::any::Any + Send + Sync + std::fmt::Debug {
-    fn as_any(&self) -> &(dyn std::any::Any + Send + Sync);
-    fn as_any_mut(&mut self) -> &mut (dyn std::any::Any + Send + Sync);
-}
+pub trait Cell: AsAnySendSync + std::fmt::Debug {}
 
-impl<T: std::any::Any + Send + Sync + std::fmt::Debug> Cell for T {
-    fn as_any(&self) -> &(dyn std::any::Any + Send + Sync) {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut (dyn std::any::Any + Send + Sync) {
-        self
-    }
-}
+impl<T: AsAnySendSync + std::fmt::Debug> Cell for T {}
 
 impl dyn Cell {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {

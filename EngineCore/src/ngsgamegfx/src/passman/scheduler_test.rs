@@ -8,8 +8,6 @@ use crate::passman;
 #[derive(Debug)]
 struct MyResource(usize);
 
-impl_as_any! { impl for MyResource }
-
 impl passman::TransientResource for MyResource {
     fn resource_bind(&self) -> Option<passman::ResourceBind<'_>> {
         None

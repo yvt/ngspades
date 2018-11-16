@@ -8,6 +8,7 @@ use std::{any::Any, fmt, sync::Arc};
 use zangfx::base as gfx;
 
 use super::scheduler::PassInstantiationContext;
+use crate::utils::any::AsAnySendSync;
 
 pub type TransientResourceRef = Arc<dyn TransientResource>;
 
@@ -113,9 +114,7 @@ pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
 }
 
 /// Represents a single transient resource.
-pub trait TransientResource:
-    std::fmt::Debug + Send + Sync + AsRef<dyn Any + Send + Sync> + AsMut<dyn Any + Send + Sync> + Any
-{
+pub trait TransientResource: AsAnySendSync + std::fmt::Debug {
     /// Retrieve a `ResourceBind` to be bound to a heap when a graph is
     /// instantiated.
     fn resource_bind(&self) -> Option<ResourceBind<'_>>;
@@ -123,27 +122,12 @@ pub trait TransientResource:
 
 impl dyn TransientResource {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        (*self).as_ref().downcast_ref()
+        (*self).as_any().downcast_ref()
     }
 
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        (*self).as_mut().downcast_mut()
+        (*self).as_any_mut().downcast_mut()
     }
-}
-
-macro_rules! impl_as_any {
-    (impl for $t:ty) => {
-        impl AsRef<dyn std::any::Any + Send + Sync> for $t {
-            fn as_ref(&self) -> &(dyn std::any::Any + Send + Sync) {
-                self
-            }
-        }
-        impl AsMut<dyn std::any::Any + Send + Sync> for $t {
-            fn as_mut(&mut self) -> &mut (dyn std::any::Any + Send + Sync) {
-                self
-            }
-        }
-    };
 }
 
 /// A pair of a resource and a memory type the resource should be bound to.
@@ -165,8 +149,6 @@ impl ImageTransientResource {
         Self { image, memory_type }
     }
 }
-
-impl_as_any! { impl for ImageTransientResource }
 
 impl TransientResource for ImageTransientResource {
     fn resource_bind(&self) -> Option<ResourceBind<'_>> {
@@ -196,8 +178,6 @@ impl BufferTransientResource {
         }
     }
 }
-
-impl_as_any! { impl for BufferTransientResource }
 
 impl TransientResource for BufferTransientResource {
     fn resource_bind(&self) -> Option<ResourceBind<'_>> {

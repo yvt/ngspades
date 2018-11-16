@@ -13,7 +13,6 @@ use std::{
 use zangfx::base as gfx;
 
 use super::{Pass, PassInfo, TransientResource, TransientResourceId, TransientResourceRef};
-
 use crate::utils::iterator_mut::{IteratorMut, IteratorToIteratorMutExt};
 
 #[cfg(test)]
@@ -136,7 +135,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
         new_resource: T,
     ) -> T {
         let ref mut resource_box = self.resources[id.0].object;
-        let resource_any: &mut (dyn Any + Send + Sync) = (**resource_box).as_mut();
+        let resource_any: &mut (dyn Any + Send + Sync) = (**resource_box).as_any_mut();
         let resource_cell: &mut T = resource_any.downcast_mut().expect("type mismatch");
 
         std::mem::replace(resource_cell, new_resource)
