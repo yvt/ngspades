@@ -4,14 +4,14 @@
 // This source code is a part of Nightingales.
 //
 #![allow(unused_imports)]
+use crate::{intrin, simd16};
+use crate::{ScalarMode, SimdMode};
 use packed_simd::{self as simd, Cast};
 #[cfg(target_arch = "x86")]
 use std::arch::x86 as vendor;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64 as vendor;
 use std::mem::transmute;
-use crate::{intrin, simd16};
-use crate::{ScalarMode, SimdMode};
 
 /// Kernels that apply a function on an interleaved array of `[u8; 4]`s.
 pub trait MapU8x4InplaceKernel {

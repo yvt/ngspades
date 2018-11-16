@@ -5,6 +5,7 @@
 //
 #[allow(unused_imports)]
 use crate::intrin;
+use crate::{IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
 #[allow(unused_imports)]
 use packed_simd::{self as simd, Cast};
 #[cfg(target_arch = "x86")]
@@ -13,7 +14,6 @@ use std::arch::x86 as vendor;
 use std::arch::x86_64 as vendor;
 #[allow(unused_imports)]
 use std::mem::transmute;
-use crate::{IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Simd16Mode;
