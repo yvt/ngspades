@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use {Packed, SimdMode};
+use crate::{Packed, SimdMode};
 
 /// Extensions methods for slices.
 pub trait SliceExt<M: SimdMode> {

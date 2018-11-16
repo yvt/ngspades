@@ -17,7 +17,7 @@ mod intrin;
 
 #[macro_use]
 mod packed;
-pub use packed::*;
+pub use crate::packed::*;
 
 pub mod kernel;
 pub mod simd16;
@@ -25,7 +25,7 @@ pub mod utils;
 
 pub mod prelude {
     #[doc(no_inline)]
-    pub use {
+    pub use crate::{
         kernel::*, utils::*, IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode,
     };
 }

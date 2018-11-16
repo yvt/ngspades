@@ -10,8 +10,8 @@ use std::arch::x86 as vendor;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64 as vendor;
 use std::mem::transmute;
-use {intrin, simd16};
-use {ScalarMode, SimdMode};
+use crate::{intrin, simd16};
+use crate::{ScalarMode, SimdMode};
 
 /// Kernels that apply a function on an interleaved array of `[u8; 4]`s.
 pub trait MapU8x4InplaceKernel {
@@ -310,7 +310,7 @@ impl<T: MapU8x4InplaceKernel + ?Sized> MapU8x4InplaceKernelExt for T {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prelude::*;
+    use crate::prelude::*;
 
     struct Xorshift32(u32);
 
