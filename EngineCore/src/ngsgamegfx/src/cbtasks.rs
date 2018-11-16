@@ -98,9 +98,6 @@ impl CmdBufferTaskBuilder {
         graph_builder: &mut GraphBuilder<gfx::Error>,
         output_resources: &[TransientResourceId],
     ) -> gfx::Result<CmdBufferTaskCellSet> {
-        // TODO: Export generated a command buffer for the client to wait on it.
-        //       Possible routes: (1) context (2) cell.
-
         // Finalize the GPU task graph
         let schedule = self.schedule_builder.schedule(output_resources);
         let schedule_runner = schedule.instantiate(device, queue)?;
