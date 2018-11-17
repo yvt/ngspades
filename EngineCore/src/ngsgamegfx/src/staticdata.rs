@@ -143,9 +143,13 @@ pub mod di {
 }
 
 use arrayvec::ArrayVec;
-use futures::{executor, future, future::Either, prelude::*, stream};
+use either::Either;
+use futures::{executor, future, prelude::*, stream};
 use ngsenumflags::flags;
-use std::sync::{Arc, Mutex};
+use std::{
+    pin::Unpin,
+    sync::{Arc, Mutex},
+};
 use zangfx::{
     base as gfx,
     // FIXME: `zangfx::common` is not meant to be used by an external client
@@ -160,7 +164,7 @@ use crate::asyncuploader::{AsyncUploader, Request, UploadError};
 pub struct StaticData<T> {
     object_cell: Mutex<Option<T>>,
     complete_cell: FreezableCell<Option<gfx::Result<T>>>,
-    join_handle_cell: Mutex<Option<executor::JoinHandle<(), Never>>>,
+    join_handle_cell: Mutex<Option<future::RemoteHandle<()>>>,
 }
 
 impl<T: Send + Sync + 'static> StaticData<T> {
@@ -169,8 +173,8 @@ impl<T: Send + Sync + 'static> StaticData<T> {
         initiator: impl FnOnce() -> gfx::Result<(T, S)> + Send + Sync + 'static,
     ) -> Arc<Self>
     where
-        S: Stream<Item = R, Error = Never> + 'static,
-        R: Request + 'static,
+        S: Stream<Item = R> + Unpin + 'static,
+        R: Request + Unpin + 'static,
     {
         let this = Arc::new(Self {
             object_cell: Mutex::new(None),
@@ -231,14 +235,21 @@ impl<T: Send + Sync + 'static> StaticData<T> {
 
                 FreezableCellRef::freeze(complete_cell_lock);
 
-                future::ok::<(), Never>(())
+                future::ready(())
             })
         };
 
         // TODO: queue family ownership acquire operation
 
         // Initiate the upload
-        let join_handle = executor::block_on(executor::spawn_with_handle(future)).unwrap();
+        // TODO: Use a global thread pool
+        use std::sync::Mutex;
+        use futures::task::SpawnExt;
+        lazy_static! {
+            static ref POOL: Mutex<executor::ThreadPool> =
+                Mutex::new(executor::ThreadPool::new().unwrap());
+        }
+        let join_handle = POOL.lock().unwrap().spawn_with_handle(future).unwrap();
         *this.join_handle_cell.lock().unwrap() = Some(join_handle);
 
         this
@@ -263,7 +274,7 @@ impl<T: Send + Sync + 'static> StaticData<T> {
 impl<T> Drop for StaticData<T> {
     fn drop(&mut self) {
         if let Some(join_handle) = self.join_handle_cell.lock().unwrap().take() {
-            executor::block_on(join_handle).unwrap();
+            executor::block_on(join_handle);
         }
     }
 }
@@ -271,7 +282,7 @@ impl<T> Drop for StaticData<T> {
 pub type StaticBuffer = StaticData<gfx::BufferRef>;
 
 pub trait StaticBufferSource:
-    std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug
+    std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug + Unpin
 {
     fn usage(&self) -> gfx::BufferUsageFlags {
         flags![gfx::BufferUsage::{CopyWrite | Uniform}]
@@ -324,7 +335,7 @@ impl StaticBuffer {
             let buffer_proxy = uploader_2.make_buffer_proxy_if_needed(&buffer);
             let request = StageBuffer::new(buffer_proxy, 0, BufferSourceToBytes(source));
 
-            let future_request = future::ok(request);
+            let future_request = future::ready(request);
             let stream_request = stream::once(future_request);
 
             Ok((buffer, stream_request))
@@ -341,7 +352,7 @@ impl StaticBuffer {
 pub type StaticImage = StaticData<gfx::ImageRef>;
 
 pub unsafe trait StaticImageSource:
-    std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug
+    std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug + Unpin
 {
     fn usage(&self) -> gfx::ImageUsageFlags {
         flags![gfx::ImageUsage::{CopyWrite | Sampled}]
@@ -422,7 +433,7 @@ impl StaticImage {
             let image_proxy = uploader_2.make_image_proxy_if_needed(&image);
             let request = StageImage::new_default(image_proxy, ImageSourceToBytes(source), &size);
 
-            let future_request = future::ok(request);
+            let future_request = future::ready(request);
             let stream_request = stream::once(future_request);
 
             Ok((image, stream_request))

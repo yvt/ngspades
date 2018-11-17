@@ -71,9 +71,14 @@
 //! operation of `Streamer`, and should handle other kinds of errors through
 //! other means.
 //!
-use futures::{task, try_ready, Async, Future, Sink};
+use futures::{prelude::*, task, try_ready, Future, Poll, Sink};
 use ngsenumflags::flags;
-use std::{borrow::Borrow, collections::VecDeque, ops::Range};
+use std::{
+    borrow::Borrow,
+    collections::VecDeque,
+    ops::Range,
+    pin::{Pin, Unpin},
+};
 use volatile_view::Volatile;
 
 use zangfx_base::{self as base, DeviceSize, Result};
@@ -162,9 +167,11 @@ impl<G> Builder<G> {
     }
 
     /// Build a [`Streamer`], consuming `self` and a given `AsyncHeap`.
-    pub fn build_with_heap<T: Request, H: Borrow<AsyncHeap>>(self, heap: H) -> Streamer<T, H, G>
+    pub fn build_with_heap<T, H>(self, heap: H) -> Streamer<T, H, G>
     where
-        G: CmdGenerator<T>,
+        T: Unpin + Request,
+        H: Unpin + Borrow<AsyncHeap>,
+        G: Unpin + CmdGenerator<T>,
     {
         Streamer::new(self, heap)
     }
@@ -172,12 +179,10 @@ impl<G> Builder<G> {
     /// Build a [`Streamer`], consuming `self`. A new `AsyncHeap` with a
     /// specified size, suitable for the `CopyRead` usage is automatically
     /// constructed during the process.
-    pub fn build_with_heap_size<T: Request>(
-        self,
-        heap_size: DeviceSize,
-    ) -> Result<Streamer<T, AsyncHeap, G>>
+    pub fn build_with_heap_size<T>(self, heap_size: DeviceSize) -> Result<Streamer<T, AsyncHeap, G>>
     where
-        G: CmdGenerator<T>,
+        T: Unpin + Request,
+        G: Unpin + CmdGenerator<T>,
     {
         use crate::prelude::*;
 
@@ -274,7 +279,12 @@ pub struct Streamer<T, H, G> {
     cmd_generator: G,
 }
 
-impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H, G> {
+impl<T, H, G> Streamer<T, H, G>
+where
+    T: Unpin + Request,
+    H: Unpin + Borrow<AsyncHeap>,
+    G: Unpin + CmdGenerator<T>,
+{
     pub fn new(params: Builder<G>, heap: H) -> Self {
         Self {
             device: params.device,
@@ -317,9 +327,9 @@ impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H, G> {
     }
 
     /// Submit `next_batch.*` and make it empty.
-    fn poll_dispatch_batch(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
+    fn poll_dispatch_batch(&mut self, cx: &task::LocalWaker) -> Poll<Result<()>> {
         if self.next_batch.is_empty() {
-            return Ok(Async::Ready(()));
+            return Ok(()).into();
         }
 
         // Seal the batch
@@ -338,7 +348,7 @@ impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H, G> {
         // Wait until the staging buffer is ready
         {
             let ref mut bind = self.next_batch_bind.as_mut().unwrap().0;
-            try_ready!(bind.poll(cx));
+            try_ready!(bind.poll_unpin(cx));
         }
 
         // Now we know that `next_batch` is ready to submit, so...
@@ -378,42 +388,49 @@ impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Streamer<T, H, G> {
             buffer,
         });
 
-        Ok(Async::Ready(()))
+        Ok(()).into()
     }
 
     fn poll_flush_inner(
-        &mut self,
-        cx: &mut task::Context<'_>,
+        mut self: Pin<&mut Self>,
+        cx: &task::LocalWaker,
         should_wait_completion: bool,
-    ) -> Result<Async<()>> {
+    ) -> Poll<Result<()>> {
+        let this = &mut *self;
         assert_eq!(
-            self.batch_ring.poll_flush(self.heap.borrow(), false, cx)?,
-            Async::Ready(())
+            this.batch_ring.poll_flush(this.heap.borrow(), false, cx)?,
+            Poll::Ready(())
         );
 
-        if !self.try_dispatch_request() {
-            try_ready!(self.poll_dispatch_batch(cx));
+        if !this.try_dispatch_request() {
+            try_ready!(this.poll_dispatch_batch(cx));
         }
-        assert!(self.try_dispatch_request());
-        try_ready!(self.poll_dispatch_batch(cx));
+        assert!(this.try_dispatch_request());
+        try_ready!(this.poll_dispatch_batch(cx));
 
-        self.batch_ring
-            .poll_flush(self.heap.borrow(), should_wait_completion, cx)
+        this.batch_ring
+            .poll_flush(this.heap.borrow(), should_wait_completion, cx)
     }
 }
 
-impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Sink for Streamer<T, H, G> {
+impl<T, H, G> Sink for Streamer<T, H, G>
+where
+    T: Unpin + Request,
+    H: Unpin + Borrow<AsyncHeap>,
+    G: Unpin + CmdGenerator<T>,
+{
     type SinkItem = T;
     type SinkError = base::Error;
 
-    fn poll_ready(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Result<()>> {
+        let this = &mut *self;
         assert_eq!(
-            self.batch_ring.poll_flush(self.heap.borrow(), false, cx)?,
-            Async::Ready(())
+            this.batch_ring.poll_flush(this.heap.borrow(), false, cx)?,
+            Poll::Ready(())
         );
 
-        if self.try_dispatch_request() {
-            return Ok(Async::Ready(()));
+        if this.try_dispatch_request() {
+            return Ok(()).into();
         }
 
         // When `poll_dispatch_batch` returns `Async::Pending`, it indicates
@@ -429,12 +446,12 @@ impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Sink for Streamer<T, 
         // calls `poll` on `CmdBufferResult`s, ensuring the current task is
         // woken up upon command buffer completion to release the associated
         // staging buffer.
-        try_ready!(self.poll_dispatch_batch(cx));
-        assert!(self.try_dispatch_request());
-        Ok(Async::Ready(()))
+        try_ready!(this.poll_dispatch_batch(cx));
+        assert!(this.try_dispatch_request());
+        Ok(()).into()
     }
 
-    fn start_send(&mut self, item: Self::SinkItem) -> Result<()> {
+    fn start_send(mut self: Pin<&mut Self>, item: Self::SinkItem) -> Result<()> {
         assert!(self.next_request.is_none());
         self.next_request = Some(item);
         Ok(())
@@ -442,14 +459,15 @@ impl<T: Request, H: Borrow<AsyncHeap>, G: CmdGenerator<T>> Sink for Streamer<T, 
 
     /// Flush any remaining requests. The behavior of flushing is dependent on
     /// the value of [`Builder::should_wait_completion`].
-    fn poll_flush(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
-        self.poll_flush_inner(cx, self.should_wait_completion)
+    fn poll_flush(self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Result<()>> {
+        let should_wait_completion = self.should_wait_completion;
+        self.poll_flush_inner(cx, should_wait_completion)
     }
 
     /// Flush any remaining requests and wait for the completion of all
     /// associated command buffers (no matter what value
     /// `should_wait_completion` is set to).
-    fn poll_close(&mut self, cx: &mut task::Context<'_>) -> Result<Async<()>> {
+    fn poll_close(self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Result<()>> {
         self.poll_flush_inner(cx, true)
     }
 }
@@ -487,22 +505,23 @@ impl<T: Request> BatchRing<T> {
         &mut self,
         heap: &AsyncHeap,
         should_wait_completion: bool,
-        cx: &mut task::Context<'_>,
-    ) -> Result<Async<()>> {
+        cx: &task::LocalWaker,
+    ) -> Poll<Result<()>> {
         while self.queue.len() > 0 {
             {
                 let front: &mut Batch<_> = self.queue.front_mut().unwrap();
 
-                match front.cb_result.poll(cx).expect("CB cancelled unexpectedly") {
+                match Pin::new(&mut front.cb_result).poll(cx) {
+                    Poll::Ready(Err(_)) => panic!("CB cancelled unexpectedly"),
                     // CB submission failure is fatal
-                    Async::Ready(result) => result?,
+                    Poll::Ready(Ok(result)) => result?,
                     // This CB being in progress means all of the rest of CBs
                     // aren't completed yet
-                    Async::Pending => {
+                    Poll::Pending => {
                         if should_wait_completion {
-                            return Ok(Async::Pending);
+                            return Poll::Pending;
                         } else {
-                            return Ok(Async::Ready(()));
+                            return Ok(()).into();
                         }
                     }
                 }
@@ -517,6 +536,6 @@ impl<T: Request> BatchRing<T> {
             }
             self.queue.pop_front().unwrap();
         }
-        Ok(Async::Ready(()))
+        Ok(()).into()
     }
 }

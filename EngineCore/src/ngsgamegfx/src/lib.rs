@@ -5,6 +5,9 @@
 //
 //! NgsGameGFX — Nightingales Game GFX
 #![feature(unsized_locals)] // For calling boxed `FnOnce`
+#![feature(futures_api)]
+#![feature(pin)]
+#![feature(arbitrary_self_types)]
 
 mod asyncuploader;
 mod cbtasks;

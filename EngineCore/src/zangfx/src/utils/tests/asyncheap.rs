@@ -137,8 +137,7 @@ fn blocking() {
     assert_eq!(state.load(Ordering::Relaxed), 1);
 
     // ... But releasing one of the buffers should unblock it
-    let make_aliasable1 =
-        future::lazy(|_| future::result(async_heap.make_aliasable((&buffer1).into())));
+    let make_aliasable1 = future::lazy(|_| async_heap.make_aliasable((&buffer1).into()));
 
     block_on(make_aliasable1).unwrap();
 

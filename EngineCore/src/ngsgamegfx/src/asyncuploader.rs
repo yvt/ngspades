@@ -71,6 +71,7 @@ use futures::{
 use std::{
     fmt,
     ops::Range,
+    pin::Unpin,
     sync::{Arc, Mutex},
     thread,
 };
@@ -112,7 +113,7 @@ pub struct AsyncUploader {
 
 type ChannelPayload = Box<dyn FnOnce() -> StreamerRequestStream + Send + 'static>;
 
-type StreamerRequestStream = Box<dyn Stream<Item = StreamerRequest, Error = Never>>;
+type StreamerRequestStream = Box<dyn Stream<Item = StreamerRequest> + Unpin>;
 
 #[derive(Debug)]
 pub enum UploadError {
@@ -153,21 +154,18 @@ impl AsyncUploader {
                             cmd_generator.dst_queue_family = Some(dst_queue_family);
                         }
 
-                        let streamer = streamer::Builder::default(device, queue)
+                        let mut streamer = streamer::Builder::default(device, queue)
                             .with_cmd_generator(cmd_generator)
                             .with_batch_size(1024 * 1024 * 10)
                             .build_with_heap_size(1024 * 1024 * 100)?;
 
-                        let request_stream = receiver
-                            .map(|x: ChannelPayload| x())
-                            .flatten()
-                            .map_err(|_: Never| -> gfx::Error { unreachable!() });
+                        let mut request_stream = receiver.map(|x: ChannelPayload| x()).flatten();
 
-                        let result = streamer.send_all(request_stream);
+                        let result = streamer.send_all(&mut request_stream);
 
                         let mut pool = executor::LocalPool::new();
 
-                        pool.run_until(result, &mut pool.executor())
+                        pool.run_until(result)
                     })() {
                         // Something went wrong in the uploader thread.
                         // Store the error reason before hanging up the receiver.
@@ -231,10 +229,10 @@ impl AsyncUploader {
     pub fn upload<T, R>(
         &self,
         request_source: impl 'static + Send + Sync + FnOnce() -> T,
-    ) -> impl Future<Item = (), Error = UploadError> + Send + Sync + 'static
+    ) -> impl Future<Output = Result<(), UploadError>> + Send + Sync + 'static
     where
-        T: Stream<Item = R, Error = Never> + 'static,
-        R: Request + 'static,
+        T: Stream<Item = R> + Unpin + 'static,
+        R: Request + Unpin + 'static,
     {
         // Use this channel to notify the completion
         let (sender, receiver) = oneshot::channel();

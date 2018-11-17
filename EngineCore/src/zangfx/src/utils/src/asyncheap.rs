@@ -7,11 +7,11 @@
 //! if there isn't a sufficient space.
 //!
 //! [`AsyncHeap`]: asyncheap::AsyncHeap
-use futures::{task, Async, Future};
+use futures::{task, Future, Poll};
 use parking_lot::Mutex;
-use std::{collections::VecDeque, sync::Arc};
+use std::{collections::VecDeque, pin::Pin, sync::Arc};
 
-use zangfx_base::{self as base, Error, HeapRef, ResourceRef, Result};
+use zangfx_base::{self as base, HeapRef, ResourceRef, Result};
 
 /// A `Future`-compatible wrapper of `Heap` that blocks if there isn't a
 /// sufficient space.
@@ -136,13 +136,9 @@ impl AsyncHeap {
 }
 
 impl Future for Bind {
-    type Item = ();
-    type Error = Error;
+    type Output = Result<()>;
 
-    fn poll(
-        &mut self,
-        cx: &mut task::Context<'_>,
-    ) -> std::result::Result<Async<Self::Item>, Self::Error> {
+    fn poll(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Self::Output> {
         use std::mem::replace;
 
         match replace(&mut self.0, BindState::Done) {
@@ -157,12 +153,12 @@ impl Future for Bind {
                     // Errors returned by a `Heap` is usually fatal, so return
                     // `Err(_)` immediately if we get that from the inner `bind`
                     if inner.heap.bind(resource.as_ref())? {
-                        return Ok(Async::Ready(()));
+                        return Ok(()).into();
                     }
                 }
 
                 let item = Arc::new(Item {
-                    waker: Mutex::new(cx.waker().clone()),
+                    waker: Mutex::new(cx.as_waker().clone()),
                     resource,
                     result: Mutex::new(None),
                 });
@@ -171,17 +167,17 @@ impl Future for Bind {
                 drop(inner);
 
                 self.0 = BindState::Pending(item);
-                Ok(Async::Pending)
+                Poll::Pending
             }
             BindState::Pending(item) => {
                 if let Some(result) = item.result.lock().take() {
-                    Ok(Async::Ready(result?))
+                    Ok(result?).into()
                 } else {
                     let mut waker = item.waker.lock();
-                    if !waker.will_wake(cx.waker()) {
-                        *waker = cx.waker().clone();
+                    if !waker.will_wake_local(cx) {
+                        *waker = cx.as_waker().clone();
                     }
-                    Ok(Async::Pending)
+                    Poll::Pending
                 }
             }
         }

@@ -69,6 +69,7 @@
 //!
 use std::any::Any;
 use std::fmt;
+use std::pin::Unpin;
 
 /// Implements the clone behavior of fat handles.
 ///
@@ -76,7 +77,9 @@ use std::fmt;
 /// [`zangfx_impl_handle`](zangfx_impl_handle) macro.
 ///
 /// See [the module-level documentation](index.html) for the usage.
-pub trait CloneHandle<C>: AsRef<dyn Any> + AsMut<dyn Any> + fmt::Debug + Send + Sync + Any {
+pub trait CloneHandle<C>:
+    AsRef<dyn Any> + AsMut<dyn Any> + fmt::Debug + Send + Sync + Any + Unpin
+{
     fn clone_handle(&self) -> C;
 }
 

@@ -3,8 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-use futures::{prelude::*, stream::Peekable, task, try_ready, Future, IntoFuture, Stream};
-use std::mem::replace;
+use futures::{prelude::*, ready, stream::Peekable, task, Poll, Stream};
+use pin_utils::{unsafe_pinned, unsafe_unpinned};
+use std::pin::Pin;
 
 pub trait PrivateStreamExt: Stream {
     /// A stateful version of `StreamExt::map`.
@@ -15,8 +16,7 @@ pub trait PrivateStreamExt: Stream {
     {
         MapWithState {
             stream: self,
-            f,
-            state: init,
+            f_state: (f, init),
         }
     }
 
@@ -34,6 +34,7 @@ pub trait PrivateStreamExt: Stream {
         }
     }
 
+    /*
     /// Similar to `futures::StreamExt::chain`, but accepts a function that
     /// produces the next stream instead.
     fn chain_with<T, F>(self, func: T) -> ChainWith<Self, T, F::Future, F::Item>
@@ -47,6 +48,7 @@ pub trait PrivateStreamExt: Stream {
             state: ChainWithState::First(self, func),
         }
     }
+    */
 }
 
 impl<T: ?Sized + Stream> PrivateStreamExt for T {}
@@ -55,8 +57,12 @@ impl<T: ?Sized + Stream> PrivateStreamExt for T {}
 #[must_use = "streams do nothing unless polled"]
 pub struct MapWithState<S, F, T> {
     stream: S,
-    f: F,
-    state: T,
+    f_state: (F, T),
+}
+
+impl<S, F, T> MapWithState<S, F, T> {
+    unsafe_pinned!(stream: S);
+    unsafe_unpinned!(f_state: (F, T));
 }
 
 impl<S, F, U, T> Stream for MapWithState<S, F, T>
@@ -65,11 +71,11 @@ where
     F: FnMut(S::Item, &mut T) -> U,
 {
     type Item = U;
-    type Error = S::Error;
 
-    fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<U>, S::Error> {
-        let option = try_ready!(self.stream.poll_next(cx));
-        Ok(Async::Ready(option.map(|x| (self.f)(x, &mut self.state))))
+    fn poll_next(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Option<U>> {
+        let option = ready!(self.stream().poll_next(cx));
+        let (f, state) = self.f_state();
+        Poll::Ready(option.map(|x| f(x, state)))
     }
 }
 
@@ -80,25 +86,30 @@ pub struct WithTerminator<T: Stream> {
     next: Option<T::Item>,
 }
 
+impl<T: Stream> WithTerminator<T> {
+    unsafe_pinned!(inner: Peekable<T>);
+    unsafe_unpinned!(next: Option<T::Item>);
+}
+
 impl<T: Stream> Stream for WithTerminator<T> {
     type Item = (T::Item, bool);
-    type Error = T::Error;
 
-    fn poll_next(&mut self, cx: &mut task::Context) -> Poll<Option<Self::Item>, Self::Error> {
-        if self.next.is_none() {
-            if let Some(x) = try_ready!(self.inner.poll_next(cx)) {
-                self.next = Some(x);
+    fn poll_next(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Option<Self::Item>> {
+        if self.next().is_none() {
+            if let Some(x) = ready!(self.inner().poll_next(cx)) {
+                *self.next() = Some(x);
             } else {
-                return Ok(Async::Ready(None));
+                return Poll::Ready(None);
             }
         }
 
-        let is_last = try_ready!(self.inner.peek(cx)).is_none();
+        let is_last = ready!(self.inner().peek(cx)).is_none();
 
-        Ok(Async::Ready(Some((self.next.take().unwrap(), is_last))))
+        Poll::Ready(Some((self.next().take().unwrap(), is_last)))
     }
 }
 
+/*
 #[derive(Debug)]
 #[allow(dead_code)]
 #[must_use = "streams do nothing unless polled"]
@@ -154,3 +165,4 @@ where
         }
     }
 }
+*/

@@ -6,6 +6,9 @@
 //! [ZanGFX](../zangfx/index.html) utility library.
 #![warn(rust_2018_idioms)]
 #![feature(never_type)]
+#![feature(futures_api)]
+#![feature(pin)]
+#![feature(arbitrary_self_types)]
 
 pub mod asyncheap;
 mod buffer;
