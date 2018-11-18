@@ -340,6 +340,7 @@ where
             let buffer = (self.device.build_buffer())
                 .size(self.next_batch_size)
                 .usage(usage)
+                .queue(&self.queue)
                 .build()?;
             let bind = self.heap.borrow().bind((&buffer).into());
             self.next_batch_bind = Some((bind, buffer));
