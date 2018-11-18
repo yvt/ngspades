@@ -71,7 +71,7 @@ use futures::{
 use std::{
     fmt,
     ops::Range,
-    pin::Unpin,
+    pin::{Pin, Unpin},
     sync::{Arc, Mutex},
     thread,
 };
@@ -113,7 +113,7 @@ pub struct AsyncUploader {
 
 type ChannelPayload = Box<dyn FnOnce() -> StreamerRequestStream + Send + 'static>;
 
-type StreamerRequestStream = Box<dyn Stream<Item = StreamerRequest> + Unpin>;
+type StreamerRequestStream = Pin<Box<dyn Stream<Item = StreamerRequest>>>;
 
 #[derive(Debug)]
 pub enum UploadError {
@@ -231,7 +231,7 @@ impl AsyncUploader {
         request_source: impl 'static + Send + Sync + FnOnce() -> T,
     ) -> impl Future<Output = Result<(), UploadError>> + Send + Sync + 'static
     where
-        T: Stream<Item = R> + Unpin + 'static,
+        T: Stream<Item = R> + 'static,
         R: Request + Unpin + 'static,
     {
         // Use this channel to notify the completion
@@ -260,7 +260,7 @@ impl AsyncUploader {
                 },
             );
 
-            Box::new(stream) as StreamerRequestStream
+            Box::pinned(stream) as StreamerRequestStream
         };
 
         // Submission fails if the uploader thread is already down. In that
