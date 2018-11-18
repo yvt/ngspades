@@ -54,6 +54,8 @@ crate struct CmdBufferData {
     scheduler: Arc<Scheduler>,
     vk_cmd_pool: vk::CommandPool,
 
+    crate queue_family: base::QueueFamily,
+
     crate passes: Vec<Pass>,
 
     /// The optional command buffer which is executed before passes. This may be
@@ -140,7 +142,7 @@ crate struct Pass {
 
     crate image_barriers: Vec<PassImageBarrier>,
 
-    crate discard_images: Vec<(usize, usize)>,
+    crate image_layout_overrides: Vec<(usize, usize, vk::ImageLayout)>,
 }
 
 /// Represents a layout transition of an image before/after a pass.
@@ -226,6 +228,7 @@ impl CmdBufferData {
             device: device.clone(),
             scheduler,
             vk_cmd_pool,
+            queue_family: queue_family_index,
             passes: Vec::new(),
             vk_prelude_cmd_buffer: None,
             fence_set: FenceSet::new(),

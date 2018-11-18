@@ -396,6 +396,10 @@ impl Image {
         self.image_view.resolve_layer_range(value)
     }
 
+    crate fn resolve_subrange(&self, value: &base::ImageSubRange) -> ImageSubRange {
+        self.image_view.resolve_subrange(value)
+    }
+
     crate fn image_view(&self) -> &Arc<ImageView> {
         &self.image_view
     }
@@ -648,6 +652,21 @@ impl heap::Bindable for Image {
     }
 }
 
+impl ImageSubRange {
+    pub fn to_vk_subresource_range(
+        &self,
+        aspect_mask: vk::ImageAspectFlags,
+    ) -> vk::ImageSubresourceRange {
+        vk::ImageSubresourceRange {
+            aspect_mask,
+            base_mip_level: self.mip_levels.start,
+            base_array_layer: self.layers.start,
+            level_count: self.mip_levels.end - self.mip_levels.start,
+            layer_count: self.layers.end - self.layers.start,
+        }
+    }
+}
+
 impl Into<base::ImageSubRange> for ImageSubRange {
     fn into(self) -> base::ImageSubRange {
         base::ImageSubRange {
@@ -880,6 +899,24 @@ impl ImageStateAddresser {
             })
     }
 
+    /// Compute a set of state vector elements that *intersect* with a given
+    /// subresource range, and return a new subresource range representing
+    /// the computed set of state vector elements.
+    crate fn round_up_subrange(&self, range: &ImageSubRange) -> ImageSubRange {
+        ImageSubRange {
+            mip_levels: if self.track_per_mip {
+                range.mip_levels.clone()
+            } else {
+                0..self.num_tracked_mip_levels as u32
+            },
+            layers: if self.track_per_layer {
+                range.layers.clone()
+            } else {
+                0..self.num_tracked_layers as u32
+            },
+        }
+    }
+
     /// Return an iterator representing a subresource range of the image (view).
     crate fn indices_for_image(&self, image: &Image) -> impl Iterator<Item = usize> {
         self.indices_for_subrange(&image.image_view.range)
@@ -895,6 +932,14 @@ impl ImageStateAddresser {
             mip_levels: abs_range.mip_level..abs_range.mip_level + 1,
             layers: abs_range.layers,
         })
+    }
+
+    crate fn indices_for_image_and_subrange(
+        &self,
+        image: &Image,
+        range: &base::ImageSubRange,
+    ) -> impl Iterator<Item = usize> {
+        self.indices_for_subrange(&image.resolve_subrange(range))
     }
 
     crate fn layer_range_intersects(

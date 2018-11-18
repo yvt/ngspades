@@ -350,7 +350,7 @@ impl CmdBufferData {
             signal_fences: Vec::new(),
             wait_fences: Vec::new(),
             image_barriers: Vec::new(),
-            discard_images: Vec::new(),
+            image_layout_overrides: Vec::new(),
         });
         self.state = EncodingState::NotRender;
 
@@ -429,22 +429,171 @@ impl CmdBufferData {
         }
     }
 
+    fn queue_ownership(
+        &mut self,
+        src_queue_family_index: base::QueueFamily,
+        dst_queue_family_index: base::QueueFamily,
+        src_access_mask: vk::AccessFlags,
+        dst_access_mask: vk::AccessFlags,
+        src_stages: vk::PipelineStageFlags,
+        dst_stages: vk::PipelineStageFlags,
+        release: bool,
+        transfers: &[base::QueueOwnershipTransfer<'_>],
+    ) {
+        use zangfx_base::QueueOwnershipTransfer;
+
+        if self.state == EncodingState::None {
+            self.begin_pass();
+        }
+
+        let vk_cmd_buffer = self.vk_cmd_buffer();
+        let vk_device = self.device.vk_device();
+        let current_pass = self.passes.last_mut().unwrap();
+
+        let mut buffer_barriers = ArrayVec::<[_; 64]>::new();
+        let mut image_barriers = ArrayVec::<[_; 64]>::new();
+
+        for txs in transfers.chunks(64) {
+            buffer_barriers.clear();
+            image_barriers.clear();
+
+            for tx in txs.iter() {
+                match tx {
+                    QueueOwnershipTransfer::Buffer { buffer, range } => {
+                        let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+
+                        let range = range.as_ref();
+
+                        buffer_barriers.push(vk::BufferMemoryBarrier {
+                            s_type: vk::StructureType::BufferMemoryBarrier,
+                            p_next: crate::null(),
+                            src_access_mask,
+                            dst_access_mask,
+                            src_queue_family_index,
+                            dst_queue_family_index,
+                            buffer: my_buffer.vk_buffer(),
+                            offset: range.map(|r| r.start).unwrap_or(0),
+                            size: range.map(|r| r.end - r.start).unwrap_or(vk::VK_WHOLE_SIZE),
+                        });
+                    }
+                    QueueOwnershipTransfer::Image {
+                        image,
+                        src_layout,
+                        dst_layout,
+                        range,
+                    } => {
+                        let image: &Image = image.downcast_ref().expect("bad image type");
+
+                        let addresser = ImageStateAddresser::from_image(image);
+                        let range = addresser.round_up_subrange(&image.resolve_subrange(range));
+
+                        image_barriers.push(vk::ImageMemoryBarrier {
+                            s_type: vk::StructureType::ImageMemoryBarrier,
+                            p_next: crate::null(),
+                            src_access_mask,
+                            dst_access_mask,
+                            src_queue_family_index,
+                            dst_queue_family_index,
+                            old_layout: image.translate_layout(*src_layout),
+                            new_layout: image.translate_layout(*dst_layout),
+                            image: image.vk_image(),
+                            subresource_range: range.to_vk_subresource_range(image.aspects()),
+                        });
+                    }
+                }
+            }
+
+            unsafe {
+                vk_device.cmd_pipeline_barrier(
+                    vk_cmd_buffer,
+                    src_stages,
+                    dst_stages,
+                    vk::DependencyFlags::empty(),
+                    &[],
+                    buffer_barriers.as_slice(),
+                    image_barriers.as_slice(),
+                );
+            }
+        }
+
+        for tx in transfers.iter() {
+            match tx {
+                QueueOwnershipTransfer::Image {
+                    image,
+                    range,
+                    dst_layout,
+                    ..
+                } => {
+                    let image: &Image = image.downcast_ref().expect("bad image type");
+                    let addresser = ImageStateAddresser::from_image(image);
+                    let (image_index, _) = self.ref_table.insert_image(image);
+
+                    // For each state-tracking unit...
+                    let layout = if release {
+                        vk::ImageLayout::Undefined
+                    } else {
+                        image.translate_layout(*dst_layout)
+                    };
+                    for i in addresser.indices_for_image_and_subrange(image, range) {
+                        current_pass
+                            .image_layout_overrides
+                            .push((image_index, i, layout));
+                    }
+                }
+                QueueOwnershipTransfer::Buffer { buffer, .. } => {
+                    let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
+                    self.ref_table.insert_buffer(buffer);
+                }
+            }
+        }
+    }
+
     crate fn queue_ownership_acquire(
         &mut self,
-        _src_queue_family: base::QueueFamily,
-        _dst_access: base::AccessTypeFlags,
-        _transfer: &[base::QueueOwnershipTransfer<'_>],
+        src_queue_family: base::QueueFamily,
+        dst_access: base::AccessTypeFlags,
+        transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
-        unimplemented!()
+        let dst_stage = base::AccessType::union_supported_stages(dst_access);
+
+        self.queue_ownership(
+            src_queue_family,
+            self.queue_family,
+            vk::AccessFlags::empty(),
+            translate_access_type_flags(dst_access),
+            vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            if dst_stage.is_empty() {
+                vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+            } else {
+                translate_pipeline_stage_flags(dst_stage)
+            },
+            false,
+            transfer,
+        );
     }
 
     crate fn queue_ownership_release(
         &mut self,
-        _dst_queue_family: base::QueueFamily,
-        _src_access: base::AccessTypeFlags,
-        _transfer: &[base::QueueOwnershipTransfer<'_>],
+        dst_queue_family: base::QueueFamily,
+        src_access: base::AccessTypeFlags,
+        transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
-        unimplemented!()
+        let src_stage = base::AccessType::union_supported_stages(src_access);
+
+        self.queue_ownership(
+            self.queue_family,
+            dst_queue_family,
+            translate_access_type_flags(src_access),
+            vk::AccessFlags::empty(),
+            if src_stage.is_empty() {
+                vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+            } else {
+                translate_pipeline_stage_flags(src_stage)
+            },
+            vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            false,
+            transfer,
+        );
     }
 
     crate fn invalidate_image(&mut self, images: &[&base::ImageRef]) {
@@ -461,7 +610,11 @@ impl CmdBufferData {
 
             // For each state-tracking unit...
             for i in addresser.indices_for_image(image) {
-                current_pass.discard_images.push((image_index, i));
+                current_pass.image_layout_overrides.push((
+                    image_index,
+                    i,
+                    vk::ImageLayout::Undefined,
+                ));
             }
         }
     }
