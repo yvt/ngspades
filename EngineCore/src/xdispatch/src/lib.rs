@@ -53,7 +53,6 @@ let nums = queue.map(nums, |x| x.to_string());
 assert!(nums[0] == "2");
 ```
 */
-#![cfg_attr(windows, feature(used))]
 #![warn(missing_docs)]
 
 use std::cell::UnsafeCell;
