@@ -15,6 +15,6 @@ ngspf = { path = "../ngspf" }
 ngspf_com = { path = "../ngspf/src/com" }
 cgmath = "0.16.1"
 
-[target.'cfg(any(not(target_os = "windows"), target_env = "gnu"))'.dependencies.jemallocator]
+[target.'cfg(not(target_env = "msvc"))'.dependencies.jemallocator]
 version = "0.1.9"
 features = ["unprefixed_malloc_on_supported_platforms"]
