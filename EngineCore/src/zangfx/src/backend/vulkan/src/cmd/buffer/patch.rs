@@ -104,6 +104,7 @@ impl CmdBufferData {
         // Iterate through passes in the execution order...
         for pass in self.passes.iter() {
             let mut event_src_access = base::AccessTypeFlags::empty();
+            let mut event_src_stages = vk::PipelineStageFlags::empty();
             let mut barrier_dst_access = base::AccessTypeFlags::empty();
 
             vk_events.clear();
@@ -112,9 +113,17 @@ impl CmdBufferData {
                 vk_events.push(fence.vk_event());
 
                 let sched_data = fence.tracked_state().latest_mut(resstate_queue);
-                event_src_access |= sched_data
+                let src_access = sched_data
                     .src_access
                     .expect("attempted to wait on an unsignalled fence");
+                event_src_access |= src_access;
+
+                let src_stages = base::AccessType::union_supported_stages(src_access);
+                event_src_stages |= if src_stages.is_empty() {
+                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                } else {
+                    translate_pipeline_stage_flags(src_stages)
+                };
 
                 barrier_dst_access |= dst_access;
             }
@@ -168,7 +177,7 @@ impl CmdBufferData {
             // Events are not supported by MoltenVK and will cause
             // a `FeatureNotPresent` error
             if vk_events.len() > 0 && !traits.intersects(DeviceTrait::MoltenVK) {
-                let src_stage = base::AccessType::union_supported_stages(event_src_access);
+                let src_stage = event_src_stages;
                 let dst_stage = base::AccessType::union_supported_stages(barrier_dst_access);
 
                 // This might be too conservative especially if there are image
@@ -193,11 +202,7 @@ impl CmdBufferData {
                         vk_prev_cmd_buffer!(),
                         vk_events.len() as u32,
                         vk_events.as_ptr(),
-                        if src_stage.is_empty() {
-                            vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
-                        } else {
-                            translate_pipeline_stage_flags(src_stage)
-                        },
+                        src_stage,
                         if dst_stage.is_empty() {
                             vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
                         } else {
