@@ -169,7 +169,11 @@ pub trait CmdBuffer: Object {
         let _ = (src_access, buffers);
     }
 
-    /// Invalidate the contents of a given images.
+    /// Invalidate the contents of a given images, causing reinitialization of
+    /// the contents in a subsequent use of the image.
+    ///
+    /// This operation affects every [state-tracking unit] intersecting with
+    /// `images`.
     ///
     /// This method is used in the following scenarios:
     ///
@@ -185,11 +189,15 @@ pub trait CmdBuffer: Object {
     /// - All images in `images` must be associated with the queue to which
     ///   this command buffer belongs.
     ///
+    /// [state-tracking unit]: crate::Image
     fn invalidate_image(&mut self, images: &[&resources::ImageRef]) {
         let _ = images;
     }
 
     /// Acquire resources from another queue with a different queue family.
+    ///
+    /// For images, this operation affects every [state-tracking unit]
+    /// intersecting with given `&ImageRef`s.
     ///
     /// This operation is a part of a queue family ownership transfer operation.
     /// See Vulkan 1.0 "6.7.4. Queue Family Ownership Transfer" for details.
@@ -205,6 +213,7 @@ pub trait CmdBuffer: Object {
     /// - All resources in `tranfer` must be associated with the queue to which
     ///   this command buffer belongs.
     ///
+    /// [state-tracking unit]: crate::Image
     fn queue_ownership_acquire(
         &mut self,
         src_queue_family: QueueFamily,
@@ -217,6 +226,9 @@ pub trait CmdBuffer: Object {
 
     /// Release resources from another queue with a different queue family.
     ///
+    /// For images, this operation affects every [state-tracking unit]
+    /// intersecting with given `&ImageRef`s.
+    ///
     /// This operation is a part of a queue family ownership transfer operation.
     /// See Vulkan 1.0 "6.7.4. Queue Family Ownership Transfer" for details.
     /// The sending end and receiving end must call `queue_ownership_acquire` and
@@ -231,6 +243,7 @@ pub trait CmdBuffer: Object {
     /// - All resources in `tranfer` must be associated with the queue to which
     ///   this command buffer belongs.
     ///
+    /// [state-tracking unit]: crate::Image
     fn queue_ownership_release(
         &mut self,
         dst_queue_family: QueueFamily,

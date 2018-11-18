@@ -34,6 +34,38 @@ define_handle! {
 }
 
 /// Trait for image handles.
+///
+/// # State-tracking units
+///
+/// Images are stored in implementation-dependent layout in memory. Some
+/// implementations support more than one layouts, each of which is optimized
+/// for a particular set of operations. The backend and/or the device driver
+/// track image layouts and perform layout conversion on-the-fly to optimize
+/// the runtime performance. (ZanGFX reifies this concept via an enumerate type
+/// [`ImageLayout`], which is only used in specific circumstances.)
+///
+/// A part of an image can have a different layout than others. However,
+/// deciding at which granularity the tracking of imgae layouts should be done
+/// is a difficult problem. Finer tracking takes more memory and leads to an
+/// increased runtime overhead, while coarser tracking might lead to redundant
+/// image layout transitions.
+///
+/// ZanGFX provides the applications with a mean to control the image layout
+/// tracking granularity. The unit of tracking, a part of an image treated as
+/// one as far as image layout tracking is concerned, is called a
+/// **state-tracking unit**. By default, entire an image is considered a single
+/// state-tracking unit. [`ImageUsage`] includes flags to increase the
+/// granularity.
+///
+/// In most operations, state-tracking units are transparent to the
+/// applications. **The exceptions** are [`invalidate_image`],
+/// [`queue_ownership_acquire`], and [`queue_ownership_release`] commands, which
+/// override the internally tracked states for various purposes.
+///
+/// [`invalidate_image`]: crate::CmdBuffer::invalidate_image
+/// [`queue_ownership_acquire`]: crate::CmdBuffer::queue_ownership_acquire
+/// [`queue_ownership_release`]: crate::CmdBuffer::queue_ownership_release
+///
 pub trait Image: CloneHandle<ImageRef> {
     /// Create a proxy object to use this image from a specified queue.
     ///
@@ -307,11 +339,15 @@ pub enum ImageUsage {
     /// the generic image layout in memory for fewer image layout transitions.
     Mutable = 0b100000000,
 
-    /// This flag serves as a hint that the backend should track the state of
-    /// each mipmap level individually.
+    /// Controls the size of [state-tracking units]. This flag instructs the
+    /// backend to track the state of each mipmap level individually.
+    ///
+    /// [state-tracking units]: Image
     TrackStatePerMipmapLevel = 0b1000000000,
-    /// This flag serves as a hint that the backend should track the state of
-    /// each array layer individually.
+    /// Controls the size of [state-tracking units]. This flag instructs the
+    /// backend to track the state of each array layer individually.
+    ///
+    /// [state-tracking units]: Image
     TrackStatePerArrayLayer = 0b10000000000,
 }
 
