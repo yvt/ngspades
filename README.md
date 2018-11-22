@@ -164,6 +164,16 @@ Use `BuildMacOSAppBundle.ps1` to create a macOS application bundle:
     # (Note: By default, this script assumes that `BuildEngineCore.ps1` has been already run)
     $ ../Utils/BuildMacOSAppBundle.ps1 -o ../Derived
 
+## Third-party softwares
+
+This source tree includes the following third-party softwares:
+
+ - (Git subtree) <https://github.com/yvt/xalloc-rs> at `EngineCore/src/support/xalloc-rs`
+ - (Git subtree) <https://github.com/yvt/tokenlock> at `EngineCore/src/support/tokenlock`
+ - (Git subtree) <https://github.com/yvt/xdispatch> at `EngineCore/src/xdispatch`
+ - (Fork) <https://github.com/MaikKlein/enumflags> at `EngineCore/src/support/ngsenumflags`
+ - (Fork) <https://github.com/ruabmbua/enet-sys> at `EngineCore/src/enet-ll`
+
 ## License
 
 Copyright 2018 yvt, all rights reserved.
