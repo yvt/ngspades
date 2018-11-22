@@ -23,9 +23,6 @@ fn main() {
         return;
     }
 
-    // TODO: check if this works on Windows
-    // TODO: check if this works on Linux
-
     let mut build = cc::Build::new();
     if target_parts[2] == "windows" {
         build
