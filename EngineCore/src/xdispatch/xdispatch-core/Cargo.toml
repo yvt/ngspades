@@ -1,0 +1,18 @@
+[package]
+name = "xdispatch-core"
+version = "0.1.0"
+authors = [
+    "yvt <i@yvt.jp>",
+    "MLBA (XDispatch)",
+    "Marius Zwicker (XDispatch) <xdispatch@mlba-team.de>",
+    "Mark Heily (XDispatch, libkqueue, libpthread_workqueue) <mark@heily.com>",
+    "Niels Provos (portions of code taken from FreeBSD) <provos@citi.umich.edu>",
+    "Jonathan Lemon (portions of code taken from FreeBSD) <jlemon@FreeBSD.org>",
+    "Stacey Son (libpthread_workqueue) <sson@freebsd.org>",
+    "Apple Inc (libdispatch, libpthread_workqueue)",
+    "Lockless Inc (winpthreads.h)",
+]
+license = "Apache-2.0"
+
+[build-dependencies]
+cc = "1.0.3"
