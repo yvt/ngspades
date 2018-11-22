@@ -1,5 +1,7 @@
 # XDispatch for Rust
 
+[![Travis-CI Status](https://travis-ci.org/yvt/rust-xdispatch.svg?branch=master)](https://travis-ci.org/yvt/rust-xdispatch)
+
 This repository provides a set of crates for using [XDispatch] from a Rust program.
 
 [XDispatch]: http://opensource.mlba-team.de/xdispatch/docs/current/index.html

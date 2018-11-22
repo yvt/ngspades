@@ -17,8 +17,7 @@
 //! # Differences from the original XDispatch
 //!
 //!  - Does not make use of CMake.
-//!  - TODO: Some parts of the platform abstraction were replaced with
-//!    platform-indepependent code written in Rust.
+//!  - Some parts of the platform abstraction were rewritten using Rust.
 //!
 //! # License
 //!
@@ -69,7 +68,8 @@ pub fn init() {
 }
 
 #[cfg(target_os = "windows")]
-mod windows;
+#[doc(hidden)]
+pub mod windows;
 
 #[cfg_attr(
     any(target_os = "macos", target_os = "ios"),

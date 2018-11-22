@@ -17,6 +17,6 @@ thread_local! {
 }
 
 #[no_mangle]
-fn libkqueue_iocp_buf() -> *mut event_buf {
-	IOCP_BUF.with(|r| r as *const _ as *mut _)
+pub extern "C" fn libkqueue_iocp_buf() -> *mut () {
+	IOCP_BUF.with(|r| r as *const _ as *mut event_buf as *mut ())
 }
