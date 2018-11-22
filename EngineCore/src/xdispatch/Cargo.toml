@@ -1,9 +1,0 @@
-[package]
-name = "xdispatch"
-version = "0.1.0"
-authors = ["yvt <i@yvt.jp>"]
-
-[dependencies]
-
-[build-dependencies]
-cc = "1.0.3"
