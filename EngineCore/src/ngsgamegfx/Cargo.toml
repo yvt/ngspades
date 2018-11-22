@@ -24,7 +24,7 @@ ngspf = { path = "../ngspf" }
 ngsenumflags = { path = "../support/ngsenumflags" }
 injector = { path = "../support/injector" }
 volatile_view = { path = "../support/volatile_view" }
-xdispatch = { path = "../xdispatch" }
+xdispatch = { path = "../xdispatch/xdispatch" }
 
 [dev-dependencies]
 cgmath = "0.16.1"
