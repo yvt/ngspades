@@ -170,7 +170,7 @@ This source tree includes the following third-party softwares:
 
  - (Git subtree) <https://github.com/yvt/xalloc-rs> at `EngineCore/src/support/xalloc-rs`
  - (Git subtree) <https://github.com/yvt/tokenlock> at `EngineCore/src/support/tokenlock`
- - (Git subtree) <https://github.com/yvt/xdispatch> at `EngineCore/src/xdispatch`
+ - (Git subtree) <https://github.com/yvt/rust-xdispatch> at `EngineCore/src/xdispatch`
  - (Fork) <https://github.com/MaikKlein/enumflags> at `EngineCore/src/support/ngsenumflags`
  - (Fork) <https://github.com/ruabmbua/enet-sys> at `EngineCore/src/enet-ll`
 
