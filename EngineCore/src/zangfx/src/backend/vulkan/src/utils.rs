@@ -22,9 +22,9 @@ use zangfx_base::{Error, ErrorKind};
 /// Unsupported values are returned unmodified.
 pub fn translate_generic_error(result: vk::Result) -> ::std::result::Result<Error, vk::Result> {
     match result {
-        vk::Result::ErrorOutOfDeviceMemory => Ok(Error::new(ErrorKind::OutOfDeviceMemory)),
-        vk::Result::ErrorDeviceLost => Ok(Error::new(ErrorKind::DeviceLost)),
-        vk::Result::ErrorOutOfHostMemory => panic!("out of memory"),
+        vk::Result::ERROR_OUT_OF_DEVICE_MEMORY => Ok(Error::new(ErrorKind::OutOfDeviceMemory)),
+        vk::Result::ERROR_DEVICE_LOST => Ok(Error::new(ErrorKind::DeviceLost)),
+        vk::Result::ERROR_OUT_OF_HOST_MEMORY => panic!("out of memory"),
         result => Err(result),
     }
 }
@@ -45,7 +45,7 @@ pub(crate) fn translate_map_memory_error(
     result: vk::Result,
 ) -> ::std::result::Result<Error, vk::Result> {
     match result {
-        vk::Result::ErrorMemoryMapFailed => panic!("out of virtual memory space"),
+        vk::Result::ERROR_MEMORY_MAP_FAILED => panic!("out of virtual memory space"),
         result => translate_generic_error(result),
     }
 }
@@ -64,22 +64,22 @@ crate fn translate_memory_req(req: &vk::MemoryRequirements) -> base::MemoryReq {
 
 crate fn translate_shader_stage(value: base::ShaderStage) -> vk::ShaderStageFlags {
     match value {
-        base::ShaderStage::Vertex => vk::SHADER_STAGE_VERTEX_BIT,
-        base::ShaderStage::Fragment => vk::SHADER_STAGE_FRAGMENT_BIT,
-        base::ShaderStage::Compute => vk::SHADER_STAGE_COMPUTE_BIT,
+        base::ShaderStage::Vertex => vk::ShaderStageFlags::VERTEX,
+        base::ShaderStage::Fragment => vk::ShaderStageFlags::FRAGMENT,
+        base::ShaderStage::Compute => vk::ShaderStageFlags::COMPUTE,
     }
 }
 
 crate fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::ShaderStageFlags {
     let mut ret = vk::ShaderStageFlags::empty();
     if value.contains(base::ShaderStage::Vertex) {
-        ret |= vk::SHADER_STAGE_VERTEX_BIT;
+        ret |= vk::ShaderStageFlags::VERTEX;
     }
     if value.contains(base::ShaderStage::Fragment) {
-        ret |= vk::SHADER_STAGE_FRAGMENT_BIT;
+        ret |= vk::ShaderStageFlags::FRAGMENT;
     }
     if value.contains(base::ShaderStage::Compute) {
-        ret |= vk::SHADER_STAGE_COMPUTE_BIT;
+        ret |= vk::ShaderStageFlags::COMPUTE;
     }
     ret
 }
@@ -87,43 +87,43 @@ crate fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::Shad
 crate fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::AccessFlags {
     let mut ret = vk::AccessFlags::empty();
     if value.contains(base::AccessType::IndirectDrawRead) {
-        ret |= vk::ACCESS_INDIRECT_COMMAND_READ_BIT;
+        ret |= vk::AccessFlags::INDIRECT_COMMAND_READ;
     }
     if value.contains(base::AccessType::IndexRead) {
-        ret |= vk::ACCESS_INDEX_READ_BIT;
+        ret |= vk::AccessFlags::INDEX_READ;
     }
     if value.contains(base::AccessType::VertexAttrRead) {
-        ret |= vk::ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+        ret |= vk::AccessFlags::VERTEX_ATTRIBUTE_READ;
     }
     if value.intersects(
         flags![base::AccessType::{VertexUniformRead | FragmentUniformRead | ComputeUniformRead}],
     ) {
-        ret |= vk::ACCESS_UNIFORM_READ_BIT;
+        ret |= vk::AccessFlags::UNIFORM_READ;
     }
     if value.intersects(flags![base::AccessType::{VertexRead | FragmentRead | ComputeRead}]) {
-        ret |= vk::ACCESS_SHADER_READ_BIT;
+        ret |= vk::AccessFlags::SHADER_READ;
     }
     if value.intersects(flags![base::AccessType::{VertexWrite | FragmentWrite | ComputeWrite}]) {
-        ret |= vk::ACCESS_SHADER_READ_BIT;
-        ret |= vk::ACCESS_SHADER_WRITE_BIT;
+        ret |= vk::AccessFlags::SHADER_READ;
+        ret |= vk::AccessFlags::SHADER_WRITE;
     }
     if value.contains(base::AccessType::ColorRead) {
-        ret |= vk::ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        ret |= vk::AccessFlags::COLOR_ATTACHMENT_READ;
     }
     if value.contains(base::AccessType::ColorWrite) {
-        ret |= vk::ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        ret |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
     }
     if value.contains(base::AccessType::DsRead) {
-        ret |= vk::ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        ret |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ;
     }
     if value.contains(base::AccessType::DsWrite) {
-        ret |= vk::ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        ret |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE;
     }
     if value.contains(base::AccessType::CopyRead) {
-        ret |= vk::ACCESS_TRANSFER_READ_BIT;
+        ret |= vk::AccessFlags::TRANSFER_READ;
     }
     if value.contains(base::AccessType::CopyWrite) {
-        ret |= vk::ACCESS_TRANSFER_WRITE_BIT;
+        ret |= vk::AccessFlags::TRANSFER_WRITE;
     }
     ret
 }
@@ -131,31 +131,31 @@ crate fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::Access
 crate fn translate_pipeline_stage_flags(value: base::StageFlags) -> vk::PipelineStageFlags {
     let mut ret = vk::PipelineStageFlags::empty();
     if value.contains(base::Stage::IndirectDraw) {
-        ret |= vk::PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+        ret |= vk::PipelineStageFlags::DRAW_INDIRECT;
     }
     if value.contains(base::Stage::VertexInput) {
-        ret |= vk::PIPELINE_STAGE_VERTEX_INPUT_BIT;
+        ret |= vk::PipelineStageFlags::VERTEX_INPUT;
     }
     if value.contains(base::Stage::Vertex) {
-        ret |= vk::PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        ret |= vk::PipelineStageFlags::VERTEX_SHADER;
     }
     if value.contains(base::Stage::Fragment) {
-        ret |= vk::PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        ret |= vk::PipelineStageFlags::FRAGMENT_SHADER;
     }
     if value.contains(base::Stage::EarlyFragTests) {
-        ret |= vk::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        ret |= vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS;
     }
     if value.contains(base::Stage::LateFragTests) {
-        ret |= vk::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        ret |= vk::PipelineStageFlags::LATE_FRAGMENT_TESTS;
     }
     if value.contains(base::Stage::RenderOutput) {
-        ret |= vk::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ret |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
     }
     if value.contains(base::Stage::Compute) {
-        ret |= vk::PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        ret |= vk::PipelineStageFlags::COMPUTE_SHADER;
     }
     if value.contains(base::Stage::Copy) {
-        ret |= vk::PIPELINE_STAGE_TRANSFER_BIT;
+        ret |= vk::PipelineStageFlags::TRANSFER;
     }
     ret
 }
@@ -172,10 +172,10 @@ crate fn translate_image_subresource_range(
         base_array_layer: layers.map(|x| x.start).unwrap_or(0),
         level_count: mip_levels
             .map(|x| x.end - x.start)
-            .unwrap_or(vk::VK_REMAINING_MIP_LEVELS),
+            .unwrap_or(vk::REMAINING_MIP_LEVELS),
         layer_count: layers
             .map(|x| x.end - x.start)
-            .unwrap_or(vk::VK_REMAINING_ARRAY_LAYERS),
+            .unwrap_or(vk::REMAINING_ARRAY_LAYERS),
     }
 }
 
@@ -194,22 +194,22 @@ crate fn translate_image_subresource_layers(
 
 crate fn translate_image_aspect(value: base::ImageAspect) -> vk::ImageAspectFlags {
     match value {
-        base::ImageAspect::Color => vk::IMAGE_ASPECT_COLOR_BIT,
-        base::ImageAspect::Depth => vk::IMAGE_ASPECT_DEPTH_BIT,
-        base::ImageAspect::Stencil => vk::IMAGE_ASPECT_STENCIL_BIT,
+        base::ImageAspect::Color => vk::ImageAspectFlags::COLOR,
+        base::ImageAspect::Depth => vk::ImageAspectFlags::DEPTH,
+        base::ImageAspect::Stencil => vk::ImageAspectFlags::STENCIL,
     }
 }
 
 crate fn translate_compare_op(value: base::CmpFn) -> vk::CompareOp {
     match value {
-        base::CmpFn::Never => vk::CompareOp::Never,
-        base::CmpFn::Less => vk::CompareOp::Less,
-        base::CmpFn::Equal => vk::CompareOp::Equal,
-        base::CmpFn::LessEqual => vk::CompareOp::LessOrEqual,
-        base::CmpFn::Greater => vk::CompareOp::Greater,
-        base::CmpFn::NotEqual => vk::CompareOp::NotEqual,
-        base::CmpFn::GreaterEqual => vk::CompareOp::GreaterOrEqual,
-        base::CmpFn::Always => vk::CompareOp::Always,
+        base::CmpFn::Never => vk::CompareOp::NEVER,
+        base::CmpFn::Less => vk::CompareOp::LESS,
+        base::CmpFn::Equal => vk::CompareOp::EQUAL,
+        base::CmpFn::LessEqual => vk::CompareOp::LESS_OR_EQUAL,
+        base::CmpFn::Greater => vk::CompareOp::GREATER,
+        base::CmpFn::NotEqual => vk::CompareOp::NOT_EQUAL,
+        base::CmpFn::GreaterEqual => vk::CompareOp::GREATER_OR_EQUAL,
+        base::CmpFn::Always => vk::CompareOp::ALWAYS,
     }
 }
 
@@ -239,30 +239,30 @@ crate fn clip_rect2d_u31(value: vk::Rect2D) -> vk::Rect2D {
 
 crate fn translate_bool(value: bool) -> vk::Bool32 {
     if value {
-        vk::VK_TRUE
+        vk::TRUE
     } else {
-        vk::VK_FALSE
+        vk::FALSE
     }
 }
 
 crate fn translate_sample_count(value: u32) -> vk::SampleCountFlags {
-    vk::SampleCountFlags::from_flags(value).expect("invalid sample count")
+    vk::SampleCountFlags::from_raw(value)
 }
 
 crate fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::ColorComponentFlags {
     let mut mask = vk::ColorComponentFlags::empty();
 
     if value.contains(base::ColorChannel::Red) {
-        mask |= vk::COLOR_COMPONENT_R_BIT;
+        mask |= vk::ColorComponentFlags::R;
     }
     if value.contains(base::ColorChannel::Green) {
-        mask |= vk::COLOR_COMPONENT_G_BIT;
+        mask |= vk::ColorComponentFlags::G;
     }
     if value.contains(base::ColorChannel::Blue) {
-        mask |= vk::COLOR_COMPONENT_B_BIT;
+        mask |= vk::ColorComponentFlags::B;
     }
     if value.contains(base::ColorChannel::Alpha) {
-        mask |= vk::COLOR_COMPONENT_A_BIT;
+        mask |= vk::ColorComponentFlags::A;
     }
 
     mask

@@ -42,7 +42,7 @@ fn new_shader_stage_description(
 
     (
         vk::PipelineShaderStageCreateInfo {
-            s_type: vk::StructureType::PipelineShaderStageCreateInfo,
+            s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineShaderStageCreateFlags::empty(), // reserved for future use
             stage,
@@ -119,7 +119,7 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
         );
 
         let info = vk::ComputePipelineCreateInfo {
-            s_type: vk::StructureType::ComputePipelineCreateInfo,
+            s_type: vk::StructureType::COMPUTE_PIPELINE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineCreateFlags::empty(),
             stage: stage.0,
@@ -217,7 +217,7 @@ impl RenderPipelineBuilder {
             vertex_buffers: Vec::new(),
             vertex_attrs: Vec::new(),
             // No default value is defined for `topology`
-            topology: vk::PrimitiveTopology::PointList,
+            topology: vk::PrimitiveTopology::POINT_LIST,
             rasterizer: None,
         }
     }
@@ -292,11 +292,11 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
     fn topology(&mut self, v: base::PrimitiveTopology) -> &mut dyn base::RenderPipelineBuilder {
         self.topology = match v {
-            base::PrimitiveTopology::Points => vk::PrimitiveTopology::PointList,
-            base::PrimitiveTopology::Lines => vk::PrimitiveTopology::LineList,
-            base::PrimitiveTopology::LineStrip => vk::PrimitiveTopology::LineStrip,
-            base::PrimitiveTopology::Triangles => vk::PrimitiveTopology::TriangleList,
-            base::PrimitiveTopology::TriangleStrip => vk::PrimitiveTopology::TriangleStrip,
+            base::PrimitiveTopology::Points => vk::PrimitiveTopology::POINT_LIST,
+            base::PrimitiveTopology::Lines => vk::PrimitiveTopology::LINE_LIST,
+            base::PrimitiveTopology::LineStrip => vk::PrimitiveTopology::LINE_STRIP,
+            base::PrimitiveTopology::Triangles => vk::PrimitiveTopology::TRIANGLE_LIST,
+            base::PrimitiveTopology::TriangleStrip => vk::PrimitiveTopology::TRIANGLE_STRIP,
         };
         self
     }
@@ -343,7 +343,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
             .collect();
 
         let vertex_input_state = vk::PipelineVertexInputStateCreateInfo {
-            s_type: vk::StructureType::PipelineVertexInputStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineVertexInputStateCreateFlags::empty(),
             vertex_binding_description_count: vertex_buffers.len() as u32,
@@ -353,15 +353,15 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         };
 
         let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo {
-            s_type: vk::StructureType::PipelineInputAssemblyStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineInputAssemblyStateCreateFlags::empty(),
             topology: self.topology,
-            primitive_restart_enable: vk::VK_TRUE,
+            primitive_restart_enable: vk::TRUE,
         };
 
         let viewport_state = vk::PipelineViewportStateCreateInfo {
-            s_type: vk::StructureType::PipelineViewportStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineViewportStateCreateFlags::empty(),
             viewport_count: 1,
@@ -371,15 +371,15 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         };
 
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo {
-            s_type: vk::StructureType::PipelineRasterizationStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineRasterizationStateCreateFlags::empty(),
-            depth_clamp_enable: vk::VK_FALSE,
-            rasterizer_discard_enable: vk::VK_TRUE,
-            polygon_mode: vk::PolygonMode::Fill,
-            cull_mode: vk::CULL_MODE_NONE,
-            front_face: vk::FrontFace::CounterClockwise,
-            depth_bias_enable: vk::VK_FALSE,
+            depth_clamp_enable: vk::FALSE,
+            rasterizer_discard_enable: vk::TRUE,
+            polygon_mode: vk::PolygonMode::FILL,
+            cull_mode: vk::CullModeFlags::NONE,
+            front_face: vk::FrontFace::COUNTER_CLOCKWISE,
+            depth_bias_enable: vk::FALSE,
             depth_bias_constant_factor: 0.0,
             depth_bias_clamp: 0.0,
             depth_bias_slope_factor: 0.0,
@@ -387,7 +387,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         };
 
         let mut vk_info = vk::GraphicsPipelineCreateInfo {
-            s_type: vk::StructureType::GraphicsPipelineCreateInfo,
+            s_type: vk::StructureType::GRAPHICS_PIPELINE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineCreateFlags::empty(),
             stage_count: stages.len() as u32,
@@ -429,7 +429,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         }
 
         let dynamic_state = vk::PipelineDynamicStateCreateInfo {
-            s_type: vk::StructureType::PipelineDynamicStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_DYNAMIC_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineDynamicStateCreateFlags::empty(),
             dynamic_state_count: dyn_states.len() as u32,
@@ -468,7 +468,7 @@ impl VertexBufferBindingBuilder {
             vk_binding: vk::VertexInputBindingDescription {
                 binding,
                 stride: stride as u32,
-                input_rate: vk::VertexInputRate::Vertex,
+                input_rate: vk::VertexInputRate::VERTEX,
             },
         }
     }
@@ -481,8 +481,8 @@ impl VertexBufferBindingBuilder {
 impl base::VertexBufferBinding for VertexBufferBindingBuilder {
     fn set_rate(&mut self, rate: base::VertexInputRate) -> &mut dyn base::VertexBufferBinding {
         self.vk_binding.input_rate = match rate {
-            base::VertexInputRate::Vertex => vk::VertexInputRate::Vertex,
-            base::VertexInputRate::Instance => vk::VertexInputRate::Instance,
+            base::VertexInputRate::Vertex => vk::VertexInputRate::VERTEX,
+            base::VertexInputRate::Instance => vk::VertexInputRate::INSTANCE,
         };
         self
     }
@@ -505,7 +505,7 @@ impl<'a> LlRasterizer<'a> {
         use std::iter::repeat;
 
         let mut viewport_state = vk::PipelineViewportStateCreateInfo {
-            s_type: vk::StructureType::PipelineViewportStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineViewportStateCreateFlags::empty(),
             viewport_count: builder.num_viewports as u32,
@@ -542,11 +542,11 @@ impl<'a> LlRasterizer<'a> {
         }
 
         let mut rasterization_state = vk::PipelineRasterizationStateCreateInfo {
-            s_type: vk::StructureType::PipelineRasterizationStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineRasterizationStateCreateFlags::empty(),
             depth_clamp_enable: translate_bool(builder.depth_clamp_enable),
-            rasterizer_discard_enable: vk::VK_FALSE,
+            rasterizer_discard_enable: vk::FALSE,
             polygon_mode: builder.polygon_mode,
             cull_mode: builder.cull_mode,
             front_face: builder.front_face,
@@ -564,25 +564,25 @@ impl<'a> LlRasterizer<'a> {
         }
 
         let multisample_state = vk::PipelineMultisampleStateCreateInfo {
-            s_type: vk::StructureType::PipelineMultisampleStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineMultisampleStateCreateFlags::empty(),
             rasterization_samples: builder.rasterization_samples,
-            sample_shading_enable: vk::VK_FALSE,
+            sample_shading_enable: vk::FALSE,
             min_sample_shading: 0.0,
             p_sample_mask: crate::null(),
             alpha_to_coverage_enable: translate_bool(builder.alpha_to_coverage_enable),
-            alpha_to_one_enable: vk::VK_FALSE,
+            alpha_to_one_enable: vk::FALSE,
         };
 
         let stencil_test_enable = builder.stencil_ops.iter().any(|ops| {
-            ops.fail_op != vk::StencilOp::Keep
-                || ops.pass_op != vk::StencilOp::Keep
-                || ops.depth_fail_op != vk::StencilOp::Keep
+            ops.fail_op != vk::StencilOp::KEEP
+                || ops.pass_op != vk::StencilOp::KEEP
+                || ops.depth_fail_op != vk::StencilOp::KEEP
         });
 
         let mut depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo {
-            s_type: vk::StructureType::PipelineDepthStencilStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineDepthStencilStateCreateFlags::empty(),
             depth_test_enable: translate_bool(builder.depth_test_enable),
@@ -611,11 +611,11 @@ impl<'a> LlRasterizer<'a> {
             .collect();
 
         let color_blend_state = vk::PipelineColorBlendStateCreateInfo {
-            s_type: vk::StructureType::PipelineColorBlendStateCreateInfo,
+            s_type: vk::StructureType::PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineColorBlendStateCreateFlags::empty(),
-            logic_op_enable: vk::VK_FALSE,
-            logic_op: vk::LogicOp::Clear,
+            logic_op_enable: vk::FALSE,
+            logic_op: vk::LogicOp::CLEAR,
             attachment_count: num_color_attachments as u32,
             p_attachments: color_attachments.as_ptr(),
             blend_constants: [0.0; 4],
@@ -639,24 +639,24 @@ impl<'a> LlRasterizer<'a> {
         dyn_states: &mut Vec<vk::DynamicState>,
     ) {
         vk_info.p_viewport_state = &self.viewport_state;
-        dyn_states.push(vk::DynamicState::Viewport);
+        dyn_states.push(vk::DynamicState::VIEWPORT);
         if self.static_scissors.is_none() {
-            dyn_states.push(vk::DynamicState::Scissor);
+            dyn_states.push(vk::DynamicState::SCISSOR);
         }
         // TODO: set partial scissor static state
 
         vk_info.p_rasterization_state = &self.rasterization_state;
         if let Some(Dynamic) = self.builder.depth_bias {
-            dyn_states.push(vk::DynamicState::DepthBias);
+            dyn_states.push(vk::DynamicState::DEPTH_BIAS);
         }
 
         vk_info.p_multisample_state = &self.multisample_state;
 
         vk_info.p_depth_stencil_state = &self.depth_stencil_state;
-        dyn_states.push(vk::DynamicState::StencilReference);
+        dyn_states.push(vk::DynamicState::STENCIL_REFERENCE);
 
         vk_info.p_color_blend_state = &self.color_blend_state;
-        dyn_states.push(vk::DynamicState::BlendConstants);
+        dyn_states.push(vk::DynamicState::BLEND_CONSTANTS);
     }
 
     fn partial_states(&self) -> RasterizerPartialStates {
@@ -718,22 +718,22 @@ impl RasterizerBuilder {
         Self {
             num_viewports: 1,
             scissors: Vec::new(),
-            cull_mode: vk::CULL_MODE_NONE,
-            front_face: vk::FrontFace::CounterClockwise,
+            cull_mode: vk::CullModeFlags::NONE,
+            front_face: vk::FrontFace::COUNTER_CLOCKWISE,
             depth_clamp_enable: false,
-            polygon_mode: vk::PolygonMode::Fill,
+            polygon_mode: vk::PolygonMode::FILL,
             alpha_to_coverage_enable: false,
-            rasterization_samples: vk::SAMPLE_COUNT_1_BIT,
+            rasterization_samples: vk::SampleCountFlags::TYPE_1,
             depth_bias: None,
             depth_write_enable: false,
             depth_test_enable: false,
-            depth_compare_op: vk::CompareOp::Always,
+            depth_compare_op: vk::CompareOp::ALWAYS,
             depth_bounds: None,
             stencil_ops: [vk::StencilOpState {
-                fail_op: vk::StencilOp::Keep,
-                pass_op: vk::StencilOp::Keep,
-                depth_fail_op: vk::StencilOp::Keep,
-                compare_op: vk::CompareOp::Always,
+                fail_op: vk::StencilOp::KEEP,
+                pass_op: vk::StencilOp::KEEP,
+                depth_fail_op: vk::StencilOp::KEEP,
+                compare_op: vk::CompareOp::ALWAYS,
                 compare_mask: 0u32,
                 write_mask: 0u32,
                 reference: 0u32,
@@ -769,17 +769,17 @@ impl base::Rasterizer for RasterizerBuilder {
 
     fn set_cull_mode(&mut self, v: base::CullMode) -> &mut dyn base::Rasterizer {
         self.cull_mode = match v {
-            base::CullMode::None => vk::CULL_MODE_NONE,
-            base::CullMode::Front => vk::CULL_MODE_FRONT_BIT,
-            base::CullMode::Back => vk::CULL_MODE_BACK_BIT,
+            base::CullMode::None => vk::CullModeFlags::NONE,
+            base::CullMode::Front => vk::CullModeFlags::FRONT,
+            base::CullMode::Back => vk::CullModeFlags::BACK,
         };
         self
     }
 
     fn set_front_face(&mut self, v: base::Winding) -> &mut dyn base::Rasterizer {
         self.front_face = match v {
-            base::Winding::Clockwise => vk::FrontFace::Clockwise,
-            base::Winding::CounterClockwise => vk::FrontFace::CounterClockwise,
+            base::Winding::Clockwise => vk::FrontFace::CLOCKWISE,
+            base::Winding::CounterClockwise => vk::FrontFace::COUNTER_CLOCKWISE,
         };
         self
     }
@@ -791,8 +791,8 @@ impl base::Rasterizer for RasterizerBuilder {
 
     fn set_triangle_fill_mode(&mut self, v: base::TriangleFillMode) -> &mut dyn base::Rasterizer {
         self.polygon_mode = match v {
-            base::TriangleFillMode::Fill => vk::PolygonMode::Fill,
-            base::TriangleFillMode::Line => vk::PolygonMode::Line,
+            base::TriangleFillMode::Fill => vk::PolygonMode::FILL,
+            base::TriangleFillMode::Line => vk::PolygonMode::LINE,
         };
         self
     }
@@ -879,17 +879,17 @@ impl RasterizerColorTargetBuilder {
     fn new() -> Self {
         Self {
             vk_state: vk::PipelineColorBlendAttachmentState {
-                blend_enable: vk::VK_FALSE,
-                src_color_blend_factor: vk::BlendFactor::One,
-                dst_color_blend_factor: vk::BlendFactor::Zero,
-                color_blend_op: vk::BlendOp::Add,
-                src_alpha_blend_factor: vk::BlendFactor::One,
-                dst_alpha_blend_factor: vk::BlendFactor::Zero,
-                alpha_blend_op: vk::BlendOp::Add,
-                color_write_mask: vk::COLOR_COMPONENT_R_BIT
-                    | vk::COLOR_COMPONENT_G_BIT
-                    | vk::COLOR_COMPONENT_B_BIT
-                    | vk::COLOR_COMPONENT_A_BIT,
+                blend_enable: vk::FALSE,
+                src_color_blend_factor: vk::BlendFactor::ONE,
+                dst_color_blend_factor: vk::BlendFactor::ZERO,
+                color_blend_op: vk::BlendOp::ADD,
+                src_alpha_blend_factor: vk::BlendFactor::ONE,
+                dst_alpha_blend_factor: vk::BlendFactor::ZERO,
+                alpha_blend_op: vk::BlendOp::ADD,
+                color_write_mask: vk::ColorComponentFlags::R
+                    | vk::ColorComponentFlags::G
+                    | vk::ColorComponentFlags::B
+                    | vk::ColorComponentFlags::A,
             },
         }
     }
@@ -948,48 +948,48 @@ impl base::RasterizerColorTarget for RasterizerColorTargetBuilder {
 
 fn translate_stencil_op(value: base::StencilOp) -> vk::StencilOp {
     match value {
-        base::StencilOp::Keep => vk::StencilOp::Keep,
-        base::StencilOp::Zero => vk::StencilOp::Zero,
-        base::StencilOp::Replace => vk::StencilOp::Replace,
-        base::StencilOp::IncrementAndClamp => vk::StencilOp::IncrementAndClamp,
-        base::StencilOp::DecrementAndClamp => vk::StencilOp::DecrementAndClamp,
-        base::StencilOp::Invert => vk::StencilOp::Invert,
-        base::StencilOp::IncrementAndWrap => vk::StencilOp::IncrementAndWrap,
-        base::StencilOp::DecrementAndWrap => vk::StencilOp::DecrementAndWrap,
+        base::StencilOp::Keep => vk::StencilOp::KEEP,
+        base::StencilOp::Zero => vk::StencilOp::ZERO,
+        base::StencilOp::Replace => vk::StencilOp::REPLACE,
+        base::StencilOp::IncrementAndClamp => vk::StencilOp::INCREMENT_AND_CLAMP,
+        base::StencilOp::DecrementAndClamp => vk::StencilOp::DECREMENT_AND_CLAMP,
+        base::StencilOp::Invert => vk::StencilOp::INVERT,
+        base::StencilOp::IncrementAndWrap => vk::StencilOp::INCREMENT_AND_WRAP,
+        base::StencilOp::DecrementAndWrap => vk::StencilOp::DECREMENT_AND_WRAP,
     }
 }
 
 fn translate_blend_factor(value: base::BlendFactor) -> vk::BlendFactor {
     match value {
-        base::BlendFactor::Zero => vk::BlendFactor::Zero,
-        base::BlendFactor::One => vk::BlendFactor::One,
-        base::BlendFactor::SrcColor => vk::BlendFactor::SrcColor,
-        base::BlendFactor::OneMinusSrcColor => vk::BlendFactor::OneMinusSrcColor,
-        base::BlendFactor::SrcAlpha => vk::BlendFactor::SrcAlpha,
-        base::BlendFactor::OneMinusSrcAlpha => vk::BlendFactor::OneMinusSrcAlpha,
-        base::BlendFactor::DstColor => vk::BlendFactor::DstColor,
-        base::BlendFactor::OneMinusDstColor => vk::BlendFactor::OneMinusDstColor,
-        base::BlendFactor::DstAlpha => vk::BlendFactor::DstAlpha,
-        base::BlendFactor::OneMinusDstAlpha => vk::BlendFactor::OneMinusDstAlpha,
-        base::BlendFactor::ConstantColor => vk::BlendFactor::ConstantColor,
-        base::BlendFactor::OneMinusConstantColor => vk::BlendFactor::OneMinusConstantColor,
-        base::BlendFactor::ConstantAlpha => vk::BlendFactor::ConstantAlpha,
-        base::BlendFactor::OneMinusConstantAlpha => vk::BlendFactor::OneMinusConstantAlpha,
-        base::BlendFactor::SrcAlphaSaturated => vk::BlendFactor::SrcAlphaSaturate,
-        base::BlendFactor::Src1Color => vk::BlendFactor::Src1Color,
-        base::BlendFactor::OneMinusSrc1Color => vk::BlendFactor::OneMinusSrc1Color,
-        base::BlendFactor::Src1Alpha => vk::BlendFactor::Src1Alpha,
-        base::BlendFactor::OneMinusSrc1Alpha => vk::BlendFactor::OneMinusSrc1Alpha,
+        base::BlendFactor::Zero => vk::BlendFactor::ZERO,
+        base::BlendFactor::One => vk::BlendFactor::ONE,
+        base::BlendFactor::SrcColor => vk::BlendFactor::SRC_COLOR,
+        base::BlendFactor::OneMinusSrcColor => vk::BlendFactor::ONE_MINUS_SRC_COLOR,
+        base::BlendFactor::SrcAlpha => vk::BlendFactor::SRC_ALPHA,
+        base::BlendFactor::OneMinusSrcAlpha => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+        base::BlendFactor::DstColor => vk::BlendFactor::DST_COLOR,
+        base::BlendFactor::OneMinusDstColor => vk::BlendFactor::ONE_MINUS_DST_COLOR,
+        base::BlendFactor::DstAlpha => vk::BlendFactor::DST_ALPHA,
+        base::BlendFactor::OneMinusDstAlpha => vk::BlendFactor::ONE_MINUS_DST_ALPHA,
+        base::BlendFactor::ConstantColor => vk::BlendFactor::CONSTANT_COLOR,
+        base::BlendFactor::OneMinusConstantColor => vk::BlendFactor::ONE_MINUS_CONSTANT_COLOR,
+        base::BlendFactor::ConstantAlpha => vk::BlendFactor::CONSTANT_ALPHA,
+        base::BlendFactor::OneMinusConstantAlpha => vk::BlendFactor::ONE_MINUS_CONSTANT_ALPHA,
+        base::BlendFactor::SrcAlphaSaturated => vk::BlendFactor::SRC_ALPHA_SATURATE,
+        base::BlendFactor::Src1Color => vk::BlendFactor::SRC1_COLOR,
+        base::BlendFactor::OneMinusSrc1Color => vk::BlendFactor::ONE_MINUS_SRC1_COLOR,
+        base::BlendFactor::Src1Alpha => vk::BlendFactor::SRC1_ALPHA,
+        base::BlendFactor::OneMinusSrc1Alpha => vk::BlendFactor::ONE_MINUS_SRC1_ALPHA,
     }
 }
 
 fn translate_blend_op(value: base::BlendOp) -> vk::BlendOp {
     match value {
-        base::BlendOp::Add => vk::BlendOp::Add,
-        base::BlendOp::Subtract => vk::BlendOp::Subtract,
-        base::BlendOp::ReverseSubtract => vk::BlendOp::ReverseSubtract,
-        base::BlendOp::Min => vk::BlendOp::Min,
-        base::BlendOp::Max => vk::BlendOp::Max,
+        base::BlendOp::Add => vk::BlendOp::ADD,
+        base::BlendOp::Subtract => vk::BlendOp::SUBTRACT,
+        base::BlendOp::ReverseSubtract => vk::BlendOp::REVERSE_SUBTRACT,
+        base::BlendOp::Min => vk::BlendOp::MIN,
+        base::BlendOp::Max => vk::BlendOp::MAX,
     }
 }
 

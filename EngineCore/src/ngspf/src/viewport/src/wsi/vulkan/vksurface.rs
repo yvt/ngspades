@@ -27,14 +27,13 @@ mod os {
         let hwnd = window.get_hwnd() as *mut _;
         let hinstance = unsafe { user32::GetWindow(hwnd, 0) as *const () };
         let win32_create_info = vk::Win32SurfaceCreateInfoKHR {
-            s_type: vk::StructureType::Win32SurfaceCreateInfoKhr,
+            s_type: vk::StructureType::WIN32_SURFACE_CREATE_INFO_KHR,
             p_next: ::null(),
             flags: Default::default(),
             hinstance: hinstance as *const _,
             hwnd: hwnd as *const _,
         };
-        let win32_surface_loader =
-            Win32Surface::new(entry, instance).expect("Unable to load win32 surface");
+        let win32_surface_loader = Win32Surface::new(entry, instance);
         unsafe { win32_surface_loader.create_win32_surface_khr(&win32_create_info, None) }
     }
 
@@ -64,14 +63,13 @@ mod os {
 
         if let (Some(wl_display), Some(wl_surface)) = (wl_display, wl_surface) {
             let wl_create_info = vk::WaylandSurfaceCreateInfoKHR {
-                s_type: vk::StructureType::WaylandSurfaceCreateInfoKhr,
+                s_type: vk::StructureType::WAYLAND_SURFACE_CREATE_INFO_KHR,
                 p_next: ::null(),
                 flags: Default::default(),
                 surface: wl_surface as *mut _,
                 display: wl_display as *mut _,
             };
-            let wl_surface_loader =
-                WaylandSurface::new(entry, instance).expect("Unable to load Wayland surface");
+            let wl_surface_loader = WaylandSurface::new(entry, instance);
             unsafe {
                 return wl_surface_loader.create_wayland_surface_khr(&wl_create_info, None);
             }
@@ -80,14 +78,13 @@ mod os {
         let x11_display = window.get_xlib_display().unwrap();
         let x11_window = window.get_xlib_window().unwrap();
         let x11_create_info = vk::XlibSurfaceCreateInfoKHR {
-            s_type: vk::StructureType::XlibSurfaceCreateInfoKhr,
+            s_type: vk::StructureType::XLIB_SURFACE_CREATE_INFO_KHR,
             p_next: ::null(),
             flags: Default::default(),
             window: x11_window as vk::Window,
             dpy: x11_display as *mut vk::Display,
         };
-        let xlib_surface_loader =
-            XlibSurface::new(entry, instance).expect("Unable to load xlib surface");
+        let xlib_surface_loader = XlibSurface::new(entry, instance);
         unsafe { xlib_surface_loader.create_xlib_surface_khr(&x11_create_info, None) }
     }
 
@@ -139,14 +136,13 @@ mod os {
         }
 
         let create_info = vk::MacOSSurfaceCreateInfoMVK {
-            s_type: vk::StructureType::MacOSSurfaceCreateInfoMvk,
+            s_type: vk::StructureType::MACOS_SURFACE_CREATE_INFO_M,
             p_next: ::null(),
             flags: Default::default(),
             p_view: unsafe { transmute(view) },
         };
-        let surface_loader = MacOSSurface::new(entry, instance)
-            .expect("Unable to load the macOS surface entry points.");
-        unsafe { surface_loader.create_macos_surface_mvk(&create_info, None) }
+        let surface_loader = MacOSSurface::new(entry, instance);
+        unsafe { surface_loader.create_mac_os_surface_mvk(&create_info, None) }
     }
 
     pub fn modify_instance_builder(builder: &mut InstanceBuilder) {

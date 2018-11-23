@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use super::ash::{self, extensions, version::*, vk};
+use super::ash::{self, extensions, vk};
 use ngsenumflags::BitFlags;
 use std::sync::Arc;
 use std::{fmt, ptr};
@@ -82,12 +82,12 @@ impl Drop for DebugReportConduit {
 unsafe extern "system" fn debug_callback(
     _: vk::DebugReportFlagsEXT,
     _: vk::DebugReportObjectTypeEXT,
-    _: vk::uint64_t,
-    _: vk::size_t,
-    _: vk::int32_t,
-    p_layer_prefix: *const vk::c_char,
-    p_message: *const vk::c_char,
-    p_user_data: *mut vk::c_void,
+    _: u64,
+    _: usize,
+    _: i32,
+    p_layer_prefix: *const std::os::raw::c_char,
+    p_message: *const std::os::raw::c_char,
+    p_user_data: *mut std::os::raw::c_void,
 ) -> u32 {
     use std::ffi::CStr;
 
@@ -100,33 +100,33 @@ unsafe extern "system" fn debug_callback(
         message: &format!("{}: {}", layer_prefix, message),
     });
 
-    vk::VK_TRUE
+    vk::TRUE
 }
 
 impl DebugReportConduit {
     pub fn new(
-        entry: &ash::Entry<V1_0>,
-        instance: &ash::Instance<V1_0>,
-    ) -> Result<Self, Vec<&'static str>> {
-        Ok(Self {
-            ext: extensions::DebugReport::new(entry, instance)?,
+        entry: &ash::Entry,
+        instance: &ash::Instance,
+    ) -> Self {
+        Self {
+            ext: extensions::DebugReport::new(entry, instance),
             callbacks: Vec::new(),
-        })
+        }
     }
 
     pub fn add_handler(&mut self, flags: DebugReportTypeFlags, handler: Arc<DebugReportHandler>) {
         for &(typ, vk_typ) in [
             (
                 DebugReportType::Information,
-                vk::DEBUG_REPORT_INFORMATION_BIT_EXT,
+                vk::DebugReportFlagsEXT::INFORMATION,
             ),
-            (DebugReportType::Warning, vk::DEBUG_REPORT_WARNING_BIT_EXT),
+            (DebugReportType::Warning, vk::DebugReportFlagsEXT::WARNING),
             (
                 DebugReportType::PerformanceWarning,
-                vk::DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
+                vk::DebugReportFlagsEXT::PERFORMANCE_WARNING,
             ),
-            (DebugReportType::Error, vk::DEBUG_REPORT_ERROR_BIT_EXT),
-            (DebugReportType::Debug, vk::DEBUG_REPORT_DEBUG_BIT_EXT),
+            (DebugReportType::Error, vk::DebugReportFlagsEXT::ERROR),
+            (DebugReportType::Debug, vk::DebugReportFlagsEXT::DEBUG),
         ].iter()
         {
             if flags.contains(typ) {
@@ -135,10 +135,10 @@ impl DebugReportConduit {
                 let handle = unsafe {
                     self.ext.create_debug_report_callback_ext(
                         &vk::DebugReportCallbackCreateInfoEXT {
-                            s_type: vk::StructureType::DebugReportCallbackCreateInfoExt,
+                            s_type: vk::StructureType::DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
                             p_next: ptr::null(),
                             flags: vk_typ,
-                            pfn_callback: debug_callback,
+                            pfn_callback: Some(debug_callback),
                             p_user_data: &mut *data as *mut DebugReportCallbackData as *mut _,
                         },
                         None,

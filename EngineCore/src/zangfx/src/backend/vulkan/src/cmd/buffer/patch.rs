@@ -34,10 +34,10 @@ unsafe fn ensure_cmd_buffer(
 
         let vk_cmd_buffer = vk_device
             .allocate_command_buffers(&vk::CommandBufferAllocateInfo {
-                s_type: vk::StructureType::CommandBufferAllocateInfo,
+                s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
                 p_next: crate::null(),
                 command_pool: vk_cmd_pool,
-                level: vk::CommandBufferLevel::Primary,
+                level: vk::CommandBufferLevel::PRIMARY,
                 command_buffer_count: 1,
             }).map(|cbs| cbs[0])?;
 
@@ -46,9 +46,9 @@ unsafe fn ensure_cmd_buffer(
         vk_device.begin_command_buffer(
             vk_cmd_buffer,
             &vk::CommandBufferBeginInfo {
-                s_type: vk::StructureType::CommandBufferBeginInfo,
+                s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
                 p_next: crate::null(),
-                flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
                 p_inheritance_info: crate::null(),
             },
         )?;
@@ -120,7 +120,7 @@ impl CmdBufferData {
 
                 let src_stages = base::AccessType::union_supported_stages(src_access);
                 event_src_stages |= if src_stages.is_empty() {
-                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                    vk::PipelineStageFlags::TOP_OF_PIPE
                 } else {
                     translate_pipeline_stage_flags(src_stages)
                 };
@@ -146,23 +146,23 @@ impl CmdBufferData {
                 let old_layout = sched_data.units[unit_i].layout;
 
                 if old_layout != Some(initial_layout)
-                    && initial_layout != vk::ImageLayout::Undefined
+                    && initial_layout != vk::ImageLayout::UNDEFINED
                 {
                     let addresser = ImageStateAddresser::from_image(image);
 
                     vk_image_barriers.push(vk::ImageMemoryBarrier {
-                        s_type: vk::StructureType::ImageMemoryBarrier,
+                        s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
                         p_next: crate::null(),
                         src_access_mask: translate_access_type_flags(event_src_access),
                         dst_access_mask: translate_access_type_flags(barrier_dst_access),
                         old_layout: if let Some(layout) = old_layout {
                             layout
                         } else {
-                            vk::ImageLayout::Undefined
+                            vk::ImageLayout::UNDEFINED
                         },
                         new_layout: initial_layout,
-                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
                         image: image.vk_image(),
                         subresource_range: translate_image_subresource_range(
                             &addresser.subrange_for_index(unit_i).into(),
@@ -186,7 +186,7 @@ impl CmdBufferData {
                 // here.
                 let barrier_src_access = event_src_access;
                 let barrier = vk::MemoryBarrier {
-                    s_type: vk::StructureType::MemoryBarrier,
+                    s_type: vk::StructureType::MEMORY_BARRIER,
                     p_next: crate::null(),
                     src_access_mask: translate_access_type_flags(
                         // Read-to-write hazards need only pipeline barrier to deal with
@@ -204,7 +204,7 @@ impl CmdBufferData {
                         vk_events.as_ptr(),
                         src_stage,
                         if dst_stage.is_empty() {
-                            vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                            vk::PipelineStageFlags::BOTTOM_OF_PIPE
                         } else {
                             translate_pipeline_stage_flags(dst_stage)
                         },
@@ -226,9 +226,9 @@ impl CmdBufferData {
                 unsafe {
                     vk_device.cmd_pipeline_barrier(
                         vk_prev_cmd_buffer!(),
-                        vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        vk::PipelineStageFlags::TOP_OF_PIPE,
                         if dst_stage.is_empty() {
-                            vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                            vk::PipelineStageFlags::BOTTOM_OF_PIPE
                         } else {
                             translate_pipeline_stage_flags(dst_stage)
                         },

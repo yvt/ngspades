@@ -236,7 +236,7 @@ impl VulkanMemory {
         let vk_mem = unsafe {
             device.vk_device().allocate_memory(
                 &vk::MemoryAllocateInfo {
-                    s_type: vk::StructureType::MemoryAllocateInfo,
+                    s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
                     p_next: crate::null(),
                     allocation_size: size,
                     memory_type_index: ty,

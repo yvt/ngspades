@@ -72,7 +72,7 @@ crate struct FenceScheduleData {
 impl Fence {
     crate unsafe fn new(device: DeviceRef, queue_id: resstate::QueueId) -> Result<Self> {
         let info = vk::EventCreateInfo {
-            s_type: vk::StructureType::EventCreateInfo,
+            s_type: vk::StructureType::EVENT_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::EventCreateFlags::empty(),
         };
@@ -90,7 +90,7 @@ impl Fence {
                 crate::null(),
                 &mut vk_event,
             ) {
-                vk::Result::Success => {}
+                e if e == vk::Result::SUCCESS => {}
                 e => return Err(translate_generic_error_unwrap(e)),
             }
         }

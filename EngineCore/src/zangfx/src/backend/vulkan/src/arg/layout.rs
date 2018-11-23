@@ -46,7 +46,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
                     binding: index as u32,
                     descriptor_type: translate_descriptor_type(ty),
                     descriptor_count: 1,
-                    stage_flags: vk::SHADER_STAGE_ALL,
+                    stage_flags: vk::ShaderStageFlags::ALL,
                     p_immutable_samplers: crate::null(),
                 },
             });
@@ -69,7 +69,7 @@ impl base::ArgTableSigBuilder for ArgTableSigBuilder {
             .collect();
 
         let info = vk::DescriptorSetLayoutCreateInfo {
-            s_type: vk::StructureType::DescriptorSetLayoutCreateInfo,
+            s_type: vk::StructureType::DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::DescriptorSetLayoutCreateFlags::empty(),
             binding_count: bindings.len() as u32,
@@ -232,7 +232,7 @@ impl base::RootSigBuilder for RootSigBuilder {
         let tables: Vec<_> = self.tables.iter().map(|x| x.clone().unwrap()).collect();
 
         let info = vk::PipelineLayoutCreateInfo {
-            s_type: vk::StructureType::PipelineLayoutCreateInfo,
+            s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::PipelineLayoutCreateFlags::empty(), // reserved for future use
             set_layout_count: set_layouts.len() as u32,

@@ -122,7 +122,7 @@ impl base::SamplerBuilder for SamplerBuilder {
 
     fn build(&mut self) -> Result<base::SamplerRef> {
         let info = vk::SamplerCreateInfo {
-            s_type: vk::StructureType::SamplerCreateInfo,
+            s_type: vk::StructureType::SAMPLER_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::SamplerCreateFlags::empty(), // reserved for future use
             mag_filter: translate_filter(self.mag_filter),
@@ -133,27 +133,27 @@ impl base::SamplerBuilder for SamplerBuilder {
             address_mode_w: translate_address_mode(self.address_mode[2]),
             mip_lod_bias: 0f32,
             anisotropy_enable: if self.max_anisotropy > 1 {
-                vk::VK_TRUE
+                vk::TRUE
             } else {
-                vk::VK_FALSE
+                vk::FALSE
             },
             max_anisotropy: self.max_anisotropy as f32,
             compare_enable: if self.cmp_fn.is_some() {
-                vk::VK_TRUE
+                vk::TRUE
             } else {
-                vk::VK_FALSE
+                vk::FALSE
             },
             compare_op: self
                 .cmp_fn
                 .map(translate_compare_op)
-                .unwrap_or(vk::CompareOp::Never),
+                .unwrap_or(vk::CompareOp::NEVER),
             min_lod: self.lod_clamp.start,
             max_lod: self.lod_clamp.end,
             border_color: translate_sampler_border_color(self.border_color),
             unnormalized_coordinates: if self.unnorm_coords {
-                vk::VK_TRUE
+                vk::TRUE
             } else {
-                vk::VK_FALSE
+                vk::FALSE
             },
         };
 
@@ -199,35 +199,35 @@ impl Sampler {
 
 fn translate_filter(value: base::Filter) -> vk::Filter {
     match value {
-        base::Filter::Nearest => vk::Filter::Nearest,
-        base::Filter::Linear => vk::Filter::Linear,
+        base::Filter::Nearest => vk::Filter::NEAREST,
+        base::Filter::Linear => vk::Filter::LINEAR,
     }
 }
 
 fn translate_mipmap_mode(value: base::MipmapMode) -> vk::SamplerMipmapMode {
     match value {
-        base::MipmapMode::Nearest => vk::SamplerMipmapMode::Nearest,
-        base::MipmapMode::Linear => vk::SamplerMipmapMode::Linear,
+        base::MipmapMode::Nearest => vk::SamplerMipmapMode::NEAREST,
+        base::MipmapMode::Linear => vk::SamplerMipmapMode::LINEAR,
     }
 }
 
 fn translate_sampler_border_color(value: base::BorderColor) -> vk::BorderColor {
     match value {
-        base::BorderColor::FloatTransparentBlack => vk::BorderColor::FloatTransparentBlack,
-        base::BorderColor::FloatOpaqueBlack => vk::BorderColor::FloatOpaqueBlack,
-        base::BorderColor::FloatOpaqueWhite => vk::BorderColor::FloatOpaqueWhite,
-        base::BorderColor::IntTransparentBlack => vk::BorderColor::IntTransparentBlack,
-        base::BorderColor::IntOpaqueBlack => vk::BorderColor::IntOpaqueBlack,
-        base::BorderColor::IntOpaqueWhite => vk::BorderColor::IntOpaqueWhite,
+        base::BorderColor::FloatTransparentBlack => vk::BorderColor::FLOAT_TRANSPARENT_BLACK,
+        base::BorderColor::FloatOpaqueBlack => vk::BorderColor::FLOAT_OPAQUE_BLACK,
+        base::BorderColor::FloatOpaqueWhite => vk::BorderColor::FLOAT_OPAQUE_WHITE,
+        base::BorderColor::IntTransparentBlack => vk::BorderColor::INT_TRANSPARENT_BLACK,
+        base::BorderColor::IntOpaqueBlack => vk::BorderColor::INT_OPAQUE_BLACK,
+        base::BorderColor::IntOpaqueWhite => vk::BorderColor::INT_OPAQUE_WHITE,
     }
 }
 
 fn translate_address_mode(value: base::AddressMode) -> vk::SamplerAddressMode {
     match value {
-        base::AddressMode::Repeat => vk::SamplerAddressMode::Repeat,
-        base::AddressMode::MirroredRepeat => vk::SamplerAddressMode::MirroredRepeat,
-        base::AddressMode::ClampToEdge => vk::SamplerAddressMode::ClampToEdge,
-        base::AddressMode::ClampToBorderColor => vk::SamplerAddressMode::ClampToBorder,
+        base::AddressMode::Repeat => vk::SamplerAddressMode::REPEAT,
+        base::AddressMode::MirroredRepeat => vk::SamplerAddressMode::MIRRORED_REPEAT,
+        base::AddressMode::ClampToEdge => vk::SamplerAddressMode::CLAMP_TO_EDGE,
+        base::AddressMode::ClampToBorderColor => vk::SamplerAddressMode::CLAMP_TO_BORDER,
         // TODO: requires VK_KHR_sampler_mirror_clamp_to_edge!
         base::AddressMode::MirroredClampToEdge => unimplemented!(),
     }

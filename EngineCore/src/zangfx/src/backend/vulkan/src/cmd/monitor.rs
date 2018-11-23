@@ -81,7 +81,7 @@ where
                             let ref vk_device = monitor.shared.device.vk_device();
                             vk_device.create_fence(
                                 &vk::FenceCreateInfo {
-                                    s_type: vk::StructureType::FenceCreateInfo,
+                                    s_type: vk::StructureType::FENCE_CREATE_INFO,
                                     p_next: crate::null(),
                                     flags: vk::FenceCreateFlags::empty(),
                                 },
@@ -108,7 +108,7 @@ where
             loop {
                 match unsafe { device.wait_for_fences(&[cmd.fence], false, timeout) } {
                     Ok(()) => break,
-                    Err(vk::Result::Timeout) => Ok(()),
+                    Err(vk::Result::TIMEOUT) => Ok(()),
                     Err(e) => Err(translate_generic_error_unwrap(e)),
                 }.expect("failed to wait for fences");
             }

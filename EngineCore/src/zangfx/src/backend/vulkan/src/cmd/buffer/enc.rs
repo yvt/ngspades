@@ -323,10 +323,10 @@ impl CmdBufferData {
         let vk_cmd_buffer = unsafe {
             vk_device
                 .allocate_command_buffers(&vk::CommandBufferAllocateInfo {
-                    s_type: vk::StructureType::CommandBufferAllocateInfo,
+                    s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
                     p_next: crate::null(),
                     command_pool: self.vk_cmd_pool,
-                    level: vk::CommandBufferLevel::Primary,
+                    level: vk::CommandBufferLevel::PRIMARY,
                     command_buffer_count: 1,
                 }).map(|cbs| cbs[0])
         }.unwrap();
@@ -336,9 +336,9 @@ impl CmdBufferData {
             vk_device.begin_command_buffer(
                 vk_cmd_buffer,
                 &vk::CommandBufferBeginInfo {
-                    s_type: vk::StructureType::CommandBufferBeginInfo,
+                    s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
                     p_next: crate::null(),
-                    flags: vk::COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                    flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
                     p_inheritance_info: crate::null(),
                 },
             )
@@ -403,12 +403,12 @@ impl CmdBufferData {
                     let my_buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
 
                     vk::BufferMemoryBarrier {
-                        s_type: vk::StructureType::BufferMemoryBarrier,
+                        s_type: vk::StructureType::BUFFER_MEMORY_BARRIER,
                         p_next: crate::null(),
                         src_access_mask,
-                        dst_access_mask: vk::ACCESS_HOST_READ_BIT,
-                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        dst_access_mask: vk::AccessFlags::HOST_READ,
+                        src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
                         buffer: my_buffer.vk_buffer(),
                         offset: range.start,
                         size: range.end - range.start,
@@ -419,7 +419,7 @@ impl CmdBufferData {
                 vk_device.cmd_pipeline_barrier(
                     self.vk_cmd_buffer(),
                     src_stages,
-                    vk::PIPELINE_STAGE_HOST_BIT,
+                    vk::PipelineStageFlags::HOST,
                     vk::DependencyFlags::empty(),
                     &[],
                     buf_barriers.as_slice(),
@@ -465,7 +465,7 @@ impl CmdBufferData {
                         let range = range.as_ref();
 
                         buffer_barriers.push(vk::BufferMemoryBarrier {
-                            s_type: vk::StructureType::BufferMemoryBarrier,
+                            s_type: vk::StructureType::BUFFER_MEMORY_BARRIER,
                             p_next: crate::null(),
                             src_access_mask,
                             dst_access_mask,
@@ -473,7 +473,7 @@ impl CmdBufferData {
                             dst_queue_family_index,
                             buffer: my_buffer.vk_buffer(),
                             offset: range.map(|r| r.start).unwrap_or(0),
-                            size: range.map(|r| r.end - r.start).unwrap_or(vk::VK_WHOLE_SIZE),
+                            size: range.map(|r| r.end - r.start).unwrap_or(vk::WHOLE_SIZE),
                         });
                     }
                     QueueOwnershipTransfer::Image {
@@ -488,7 +488,7 @@ impl CmdBufferData {
                         let range = addresser.round_up_subrange(&image.resolve_subrange(range));
 
                         image_barriers.push(vk::ImageMemoryBarrier {
-                            s_type: vk::StructureType::ImageMemoryBarrier,
+                            s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
                             p_next: crate::null(),
                             src_access_mask,
                             dst_access_mask,
@@ -530,7 +530,7 @@ impl CmdBufferData {
 
                     // For each state-tracking unit...
                     let layout = if release {
-                        vk::ImageLayout::Undefined
+                        vk::ImageLayout::UNDEFINED
                     } else {
                         image.translate_layout(*dst_layout)
                     };
@@ -561,9 +561,9 @@ impl CmdBufferData {
             self.queue_family,
             vk::AccessFlags::empty(),
             translate_access_type_flags(dst_access),
-            vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            vk::PipelineStageFlags::TOP_OF_PIPE,
             if dst_stage.is_empty() {
-                vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                vk::PipelineStageFlags::BOTTOM_OF_PIPE
             } else {
                 translate_pipeline_stage_flags(dst_stage)
             },
@@ -586,11 +586,11 @@ impl CmdBufferData {
             translate_access_type_flags(src_access),
             vk::AccessFlags::empty(),
             if src_stage.is_empty() {
-                vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                vk::PipelineStageFlags::TOP_OF_PIPE
             } else {
                 translate_pipeline_stage_flags(src_stage)
             },
-            vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            vk::PipelineStageFlags::BOTTOM_OF_PIPE,
             false,
             transfer,
         );
@@ -613,7 +613,7 @@ impl CmdBufferData {
                 current_pass.image_layout_overrides.push((
                     image_index,
                     i,
-                    vk::ImageLayout::Undefined,
+                    vk::ImageLayout::UNDEFINED,
                 ));
             }
         }
@@ -635,7 +635,7 @@ impl CmdBufferData {
                 self.vk_cmd_buffer(),
                 fence.vk_event(),
                 if src_stage.is_empty() {
-                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                    vk::PipelineStageFlags::TOP_OF_PIPE
                 } else {
                     translate_pipeline_stage_flags(src_stage)
                 },
@@ -670,7 +670,7 @@ impl CmdBufferData {
             if let Some(ref unit_op) = op.units[i] {
                 current_layout = unit_op.layout;
             } else {
-                current_layout = vk::ImageLayout::Undefined;
+                current_layout = vk::ImageLayout::UNDEFINED;
             }
 
             if current_layout != layout || current_layout != final_layout {
@@ -805,18 +805,18 @@ impl base::CmdEncoder for CmdBufferData {
             vk_device.cmd_pipeline_barrier(
                 self.vk_cmd_buffer(),
                 if src_stage.is_empty() {
-                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                    vk::PipelineStageFlags::TOP_OF_PIPE
                 } else {
                     translate_pipeline_stage_flags(src_stage)
                 },
                 if dst_stage.is_empty() {
-                    vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+                    vk::PipelineStageFlags::BOTTOM_OF_PIPE
                 } else {
                     translate_pipeline_stage_flags(dst_stage)
                 },
                 vk::DependencyFlags::empty(),
                 &[vk::MemoryBarrier {
-                    s_type: vk::StructureType::MemoryBarrier,
+                    s_type: vk::StructureType::MEMORY_BARRIER,
                     p_next: crate::null(),
                     src_access_mask: translate_access_type_flags(src_access),
                     dst_access_mask: translate_access_type_flags(dst_access),

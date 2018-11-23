@@ -29,7 +29,7 @@ impl CmdBufferData {
             vk_device.cmd_begin_render_pass(
                 self.vk_cmd_buffer(),
                 &rtt.render_pass_begin_info(),
-                vk::SubpassContents::Inline,
+                vk::SubpassContents::INLINE,
             );
         }
 
@@ -83,7 +83,7 @@ impl base::RenderCmdEncoder for CmdBufferData {
         unsafe {
             vk_device.cmd_bind_pipeline(
                 self.vk_cmd_buffer(),
-                vk::PipelineBindPoint::Graphics,
+                vk::PipelineBindPoint::GRAPHICS,
                 my_pipeline.vk_pipeline(),
             );
             my_pipeline.encode_partial_states(self.vk_cmd_buffer());
@@ -133,12 +133,12 @@ impl base::RenderCmdEncoder for CmdBufferData {
         unsafe {
             vk_device.fp_v1_0().cmd_set_stencil_reference(
                 self.vk_cmd_buffer(),
-                vk::STENCIL_FACE_FRONT_BIT,
+                vk::StencilFaceFlags::FRONT,
                 values[0],
             );
             vk_device.fp_v1_0().cmd_set_stencil_reference(
                 self.vk_cmd_buffer(),
-                vk::STENCIL_FACE_BACK_BIT,
+                vk::StencilFaceFlags::BACK,
                 values[1],
             );
         }
@@ -247,8 +247,8 @@ impl base::RenderCmdEncoder for CmdBufferData {
                 buffer.vk_buffer(),
                 offset,
                 match format {
-                    base::IndexFormat::U16 => vk::IndexType::Uint16,
-                    base::IndexFormat::U32 => vk::IndexType::Uint32,
+                    base::IndexFormat::U16 => vk::IndexType::UINT16,
+                    base::IndexFormat::U32 => vk::IndexType::UINT32,
                 },
             )
         }
@@ -260,7 +260,7 @@ impl base::RenderCmdEncoder for CmdBufferData {
         self.desc_set_binding_table.flush(
             &self.device,
             vk_cmd_buffer,
-            vk::PipelineBindPoint::Graphics,
+            vk::PipelineBindPoint::GRAPHICS,
         );
 
         let vk_device = self.device.vk_device();
@@ -286,7 +286,7 @@ impl base::RenderCmdEncoder for CmdBufferData {
         self.desc_set_binding_table.flush(
             &self.device,
             vk_cmd_buffer,
-            vk::PipelineBindPoint::Graphics,
+            vk::PipelineBindPoint::GRAPHICS,
         );
 
         let vk_device = self.device.vk_device();
@@ -308,7 +308,7 @@ impl base::RenderCmdEncoder for CmdBufferData {
         self.desc_set_binding_table.flush(
             &self.device,
             vk_cmd_buffer,
-            vk::PipelineBindPoint::Graphics,
+            vk::PipelineBindPoint::GRAPHICS,
         );
 
         let vk_device = self.device.vk_device();
@@ -327,7 +327,7 @@ impl base::RenderCmdEncoder for CmdBufferData {
         self.desc_set_binding_table.flush(
             &self.device,
             vk_cmd_buffer,
-            vk::PipelineBindPoint::Graphics,
+            vk::PipelineBindPoint::GRAPHICS,
         );
 
         let vk_device = self.device.vk_device();

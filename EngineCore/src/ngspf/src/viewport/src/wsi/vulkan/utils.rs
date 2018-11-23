@@ -13,7 +13,7 @@ use zangfx::base::{Device, Error};
 use super::smartptr::{UniqueDevice, UniqueInstance};
 use super::AppInfo;
 
-pub fn vk_device_from_gfx(device: &Device) -> &ash::Device<V1_0> {
+pub fn vk_device_from_gfx(device: &Device) -> &ash::Device {
     let be_device: &be::device::Device = device.query_ref().unwrap();
     be_device.vk_device()
 }
@@ -23,7 +23,7 @@ pub fn translate_generic_error_unwrap(result: vk::Result) -> Error {
 }
 
 pub struct InstanceBuilder<'a> {
-    entry: &'a ash::Entry<V1_0>,
+    entry: &'a ash::Entry,
     supported_layers: Vec<(String, u32)>,
     supported_extensions: Vec<(String, u32)>,
     enabled_layers: HashSet<String>,
@@ -31,7 +31,7 @@ pub struct InstanceBuilder<'a> {
 }
 
 impl<'a> InstanceBuilder<'a> {
-    pub fn new(entry: &'a ash::Entry<V1_0>) -> Result<Self, vk::Result> {
+    pub fn new(entry: &'a ash::Entry) -> Result<Self, vk::Result> {
         let layer_props = entry.enumerate_instance_layer_properties()?;
         let ext_props = entry.enumerate_instance_extension_properties()?;
 
@@ -107,7 +107,7 @@ impl<'a> InstanceBuilder<'a> {
         let application_name = CString::new(app_info.name).unwrap();
 
         let application_info = vk::ApplicationInfo {
-            s_type: vk::StructureType::ApplicationInfo,
+            s_type: vk::StructureType::APPLICATION_INFO,
             p_next: ::null(),
             p_application_name: application_name.as_ptr(),
             application_version: app_info.version,
@@ -120,7 +120,7 @@ impl<'a> InstanceBuilder<'a> {
             self.entry
                 .create_instance(
                     &vk::InstanceCreateInfo {
-                        s_type: vk::StructureType::InstanceCreateInfo,
+                        s_type: vk::StructureType::INSTANCE_CREATE_INFO,
                         p_next: ::null(),
                         flags: vk::InstanceCreateFlags::empty(),
                         p_application_info: &application_info,
@@ -137,17 +137,17 @@ impl<'a> InstanceBuilder<'a> {
 
 pub struct DeviceBuilder<'a> {
     phys_device: vk::PhysicalDevice,
-    instance: &'a ash::Instance<V1_0>,
+    instance: &'a ash::Instance,
     supported_extensions: Vec<(String, u32)>,
     enabled_extensions: HashSet<String>,
 }
 
 impl<'a> DeviceBuilder<'a> {
     pub fn new(
-        instance: &'a ash::Instance<V1_0>,
+        instance: &'a ash::Instance,
         phys_device: vk::PhysicalDevice,
     ) -> Result<Self, vk::Result> {
-        let ext_props = instance.enumerate_device_extension_properties(phys_device)?;
+        let ext_props = unsafe { instance.enumerate_device_extension_properties(phys_device)? };
 
         let supported_extensions: Vec<_> = ext_props
             .iter()
@@ -181,7 +181,7 @@ impl<'a> DeviceBuilder<'a> {
         &self,
         queue_create_infos: &[vk::DeviceQueueCreateInfo],
         enabled_features: &vk::PhysicalDeviceFeatures,
-    ) -> Result<UniqueDevice, ash::DeviceError> {
+    ) -> Result<UniqueDevice, ash::vk::Result> {
         let extensions: Vec<_> = self
             .enabled_extensions
             .iter()
@@ -195,7 +195,7 @@ impl<'a> DeviceBuilder<'a> {
                 .create_device(
                     self.phys_device,
                     &vk::DeviceCreateInfo {
-                        s_type: vk::StructureType::DeviceCreateInfo,
+                        s_type: vk::StructureType::DEVICE_CREATE_INFO,
                         p_next: ::null(),
                         flags: vk::DeviceCreateFlags::empty(),
                         queue_create_info_count: queue_create_infos.len() as u32,

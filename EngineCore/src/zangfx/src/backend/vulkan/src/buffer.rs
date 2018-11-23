@@ -61,35 +61,35 @@ impl base::BufferBuilder for BufferBuilder {
 
         let mut usage = vk::BufferUsageFlags::empty();
         if self.usage.contains(base::BufferUsage::Vertex) {
-            usage |= vk::BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            usage |= vk::BufferUsageFlags::VERTEX_BUFFER;
         }
         if self.usage.contains(base::BufferUsage::CopyRead) {
-            usage |= vk::BUFFER_USAGE_TRANSFER_SRC_BIT;
+            usage |= vk::BufferUsageFlags::TRANSFER_SRC;
         }
         if self.usage.contains(base::BufferUsage::CopyWrite) {
-            usage |= vk::BUFFER_USAGE_TRANSFER_DST_BIT;
+            usage |= vk::BufferUsageFlags::TRANSFER_DST;
         }
         if self.usage.contains(base::BufferUsage::Uniform) {
-            usage |= vk::BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+            usage |= vk::BufferUsageFlags::UNIFORM_BUFFER;
         }
         if self.usage.contains(base::BufferUsage::Storage) {
-            usage |= vk::BUFFER_USAGE_STORAGE_BUFFER_BIT;
+            usage |= vk::BufferUsageFlags::STORAGE_BUFFER;
         }
         if self.usage.contains(base::BufferUsage::Index) {
-            usage |= vk::BUFFER_USAGE_INDEX_BUFFER_BIT;
+            usage |= vk::BufferUsageFlags::INDEX_BUFFER;
         }
         if self.usage.contains(base::BufferUsage::IndirectDraw) {
-            usage |= vk::BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+            usage |= vk::BufferUsageFlags::INDIRECT_BUFFER;
         }
 
         let info = vk::BufferCreateInfo {
-            s_type: vk::StructureType::BufferCreateInfo,
+            s_type: vk::StructureType::BUFFER_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::BufferCreateFlags::empty(),
             size: size,
             usage,
-            sharing_mode: vk::SharingMode::Exclusive,
-            queue_family_index_count: 0, // ignored for `SharingMode::Exclusive`
+            sharing_mode: vk::SharingMode::EXCLUSIVE,
+            queue_family_index_count: 0, // ignored for `SharingMode::EXCLUSIVE`
             p_queue_family_indices: crate::null(),
         };
 
@@ -160,7 +160,7 @@ impl Buffer {
 impl VulkanBuffer {
     fn memory_req(&self) -> base::MemoryReq {
         let vk_device = self.device.vk_device();
-        translate_memory_req(&vk_device.get_buffer_memory_requirements(self.vk_buffer))
+        translate_memory_req(&unsafe { vk_device.get_buffer_memory_requirements(self.vk_buffer) })
     }
 }
 

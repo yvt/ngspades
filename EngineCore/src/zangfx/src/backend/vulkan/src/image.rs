@@ -106,15 +106,26 @@ impl base::ImageBuilder for ImageBuilder {
 
         let format = self.format.expect("format");
 
-        use ash::vk::ImageViewType::*;
-        let (image_view_type, dims) = match (extents, self.num_layers) {
-            (ImageExtents::OneD(x), None) => (Type1d, [x, 1, 1]),
-            (ImageExtents::OneD(x), Some(_)) => (Type1dArray, [x, 1, 1]),
-            (ImageExtents::TwoD(x, y), None) => (Type2d, [x, y, 1]),
-            (ImageExtents::TwoD(x, y), Some(_)) => (Type2dArray, [x, y, 1]),
-            (ImageExtents::ThreeD(x, y, z), None) => (Type3d, [x, y, z]),
-            (ImageExtents::Cube(x), None) => (Cube, [x, x, 1]),
-            (ImageExtents::Cube(x), Some(_)) => (CubeArray, [x, x, 1]),
+        use ash::vk::ImageType;
+        use ash::vk::ImageViewType;
+        let (image_view_type, image_type, dims) = match (extents, self.num_layers) {
+            (ImageExtents::OneD(x), None) => (ImageViewType::TYPE_1D, ImageType::TYPE_1D, [x, 1, 1]),
+            (ImageExtents::OneD(x), Some(_)) => {
+                (ImageViewType::TYPE_1D_ARRAY, ImageType::TYPE_1D, [x, 1, 1])
+            }
+            (ImageExtents::TwoD(x, y), None) => {
+                (ImageViewType::TYPE_2D, ImageType::TYPE_2D, [x, y, 1])
+            }
+            (ImageExtents::TwoD(x, y), Some(_)) => {
+                (ImageViewType::TYPE_2D_ARRAY, ImageType::TYPE_2D, [x, y, 1])
+            }
+            (ImageExtents::ThreeD(x, y, z), None) => {
+                (ImageViewType::TYPE_3D, ImageType::TYPE_3D, [x, y, z])
+            }
+            (ImageExtents::Cube(x), None) => (ImageViewType::CUBE, ImageType::TYPE_2D, [x, x, 1]),
+            (ImageExtents::Cube(x), Some(_)) => {
+                (ImageViewType::CUBE_ARRAY, ImageType::TYPE_2D, [x, x, 1])
+            }
             _ => {
                 panic!("unsupported image type");
             }
@@ -122,19 +133,13 @@ impl base::ImageBuilder for ImageBuilder {
 
         let mut flags = vk::ImageCreateFlags::empty();
         if self.usage.contains(base::ImageUsage::MutableFormat) {
-            flags |= vk::IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+            flags |= vk::ImageCreateFlags::MUTABLE_FORMAT;
         }
         if let ImageExtents::Cube(_) = extents {
             // note: NgsGFX does not allow creating cube image views from
             // other kinds of images
-            flags |= vk::IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+            flags |= vk::ImageCreateFlags::CUBE_COMPATIBLE;
         }
-
-        let image_type = match image_view_type {
-            Type1d | Type1dArray => vk::ImageType::Type1d,
-            Type2d | Type2dArray | Cube | CubeArray => vk::ImageType::Type2d,
-            Type3d => vk::ImageType::Type3d,
-        };
 
         let mut array_layers = self.num_layers.unwrap_or(1);
         if let ImageExtents::Cube(_) = extents {
@@ -145,19 +150,19 @@ impl base::ImageBuilder for ImageBuilder {
 
         let mut aspect = vk::ImageAspectFlags::empty();
         if format.has_color() {
-            aspect |= vk::IMAGE_ASPECT_COLOR_BIT;
+            aspect |= vk::ImageAspectFlags::COLOR;
         }
         if format.has_depth() {
-            aspect |= vk::IMAGE_ASPECT_DEPTH_BIT;
+            aspect |= vk::ImageAspectFlags::DEPTH;
         }
         if format.has_stencil() {
-            aspect |= vk::IMAGE_ASPECT_STENCIL_BIT;
+            aspect |= vk::ImageAspectFlags::STENCIL;
         }
 
         let format = translate_image_format(format).expect("unsupported image format");
 
         let info = vk::ImageCreateInfo {
-            s_type: vk::StructureType::ImageCreateInfo,
+            s_type: vk::StructureType::IMAGE_CREATE_INFO,
             p_next: crate::null(),
             flags,
             image_type,
@@ -169,13 +174,13 @@ impl base::ImageBuilder for ImageBuilder {
             },
             mip_levels: self.num_mip_levels,
             array_layers,
-            samples: vk::SAMPLE_COUNT_1_BIT,
-            tiling: vk::ImageTiling::Optimal,
+            samples: vk::SampleCountFlags::TYPE_1,
+            tiling: vk::ImageTiling::OPTIMAL,
             usage,
-            sharing_mode: vk::SharingMode::Exclusive,
+            sharing_mode: vk::SharingMode::EXCLUSIVE,
             queue_family_index_count: 0, // ignored for `SharingMode::Exclusive`
             p_queue_family_indices: crate::null(),
-            initial_layout: vk::ImageLayout::Undefined,
+            initial_layout: vk::ImageLayout::UNDEFINED,
         };
 
         let device = self.device.clone();
@@ -426,7 +431,7 @@ impl ImageState {
         let addresser = ImageStateAddresser::from_vulkan_image(&vulkan_image);
         let substate = ImageUnitState {
             layout: if owned {
-                Some(vk::ImageLayout::Undefined)
+                Some(vk::ImageLayout::UNDEFINED)
             } else {
                 None
             },
@@ -470,17 +475,17 @@ impl ImageView {
         // flags: "reserved for future use"
 
         let info = vk::ImageViewCreateInfo {
-            s_type: vk::StructureType::ImageViewCreateInfo,
+            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
             p_next: crate::null(),
             flags,
             image: vulkan_image.vk_image,
             view_type,
             format,
             components: vk::ComponentMapping {
-                r: vk::ComponentSwizzle::Identity,
-                g: vk::ComponentSwizzle::Identity,
-                b: vk::ComponentSwizzle::Identity,
-                a: vk::ComponentSwizzle::Identity,
+                r: vk::ComponentSwizzle::IDENTITY,
+                g: vk::ComponentSwizzle::IDENTITY,
+                b: vk::ComponentSwizzle::IDENTITY,
+                a: vk::ComponentSwizzle::IDENTITY,
             },
             subresource_range: translate_image_subresource_range(
                 &(subrange.clone()).into(),
@@ -510,17 +515,17 @@ impl ImageView {
         // flags: "reserved for future use"
 
         let info = vk::ImageViewCreateInfo {
-            s_type: vk::StructureType::ImageViewCreateInfo,
+            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
             p_next: crate::null(),
             flags,
             image: self.vulkan_image.vk_image,
             view_type: self.view_type,
             format: self.format,
             components: vk::ComponentMapping {
-                r: vk::ComponentSwizzle::Identity,
-                g: vk::ComponentSwizzle::Identity,
-                b: vk::ComponentSwizzle::Identity,
-                a: vk::ComponentSwizzle::Identity,
+                r: vk::ComponentSwizzle::IDENTITY,
+                g: vk::ComponentSwizzle::IDENTITY,
+                b: vk::ComponentSwizzle::IDENTITY,
+                a: vk::ComponentSwizzle::IDENTITY,
             },
             subresource_range: translate_image_subresource_range(
                 &(self.range.clone()).into(),
@@ -590,13 +595,13 @@ impl VulkanImage {
             self.usage,
             value,
             self.aspects
-                .intersects(vk::IMAGE_ASPECT_DEPTH_BIT | vk::IMAGE_ASPECT_STENCIL_BIT),
+                .intersects(vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL),
         )
     }
 
     fn memory_req(&self) -> base::MemoryReq {
         let vk_device = self.device.vk_device();
-        translate_memory_req(&vk_device.get_image_memory_requirements(self.vk_image))
+        translate_memory_req(&unsafe { vk_device.get_image_memory_requirements(self.vk_image) })
     }
 }
 
@@ -682,22 +687,22 @@ fn translate_image_usage(
 ) -> vk::ImageUsageFlags {
     let mut usage = vk::ImageUsageFlags::empty();
     if value.contains(base::ImageUsage::CopyRead) {
-        usage |= vk::IMAGE_USAGE_TRANSFER_SRC_BIT;
+        usage |= vk::ImageUsageFlags::TRANSFER_SRC;
     }
     if value.contains(base::ImageUsage::CopyWrite) {
-        usage |= vk::IMAGE_USAGE_TRANSFER_DST_BIT;
+        usage |= vk::ImageUsageFlags::TRANSFER_DST;
     }
     if value.contains(base::ImageUsage::Sampled) {
-        usage |= vk::IMAGE_USAGE_SAMPLED_BIT;
+        usage |= vk::ImageUsageFlags::SAMPLED;
     }
     if value.contains(base::ImageUsage::Storage) {
-        usage |= vk::IMAGE_USAGE_STORAGE_BIT;
+        usage |= vk::ImageUsageFlags::STORAGE;
     }
     if value.contains(base::ImageUsage::Render) {
         if format.has_depth() || format.has_stencil() {
-            usage |= vk::IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            usage |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
         } else {
-            usage |= vk::IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            usage |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
         }
     }
     usage
@@ -705,11 +710,11 @@ fn translate_image_usage(
 
 /// Color attachments always use this layout.
 crate const IMAGE_LAYOUT_COLOR_ATTACHMENT: vk::ImageLayout =
-    vk::ImageLayout::ColorAttachmentOptimal;
+    vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
 
 /// Depth/stencil attachments always use this layout.
 crate const IMAGE_LAYOUT_DS_ATTACHMENT: vk::ImageLayout =
-    vk::ImageLayout::DepthStencilAttachmentOptimal;
+    vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 crate fn translate_image_layout(
     usage: base::ImageUsageFlags,
@@ -729,16 +734,16 @@ crate fn translate_image_layout(
 
         // The `Mutable` flag forces the use of the generic image layout
         // whenever possible
-        (_, _, true, _) => vk::ImageLayout::General,
+        (_, _, true, _) => vk::ImageLayout::GENERAL,
 
         // Layouts for the fixed-function pipeline
-        (base::ImageLayout::CopyRead, _, false, _) => vk::ImageLayout::TransferSrcOptimal,
-        (base::ImageLayout::CopyWrite, _, false, _) => vk::ImageLayout::TransferDstOptimal,
+        (base::ImageLayout::CopyRead, _, false, _) => vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        (base::ImageLayout::CopyWrite, _, false, _) => vk::ImageLayout::TRANSFER_DST_OPTIMAL,
 
         // Can use the `SHADER_READ_ONLY` if the image is never used as a
         // storage image
-        (base::ImageLayout::Shader, _, false, false) => vk::ImageLayout::ShaderReadOnlyOptimal,
-        (base::ImageLayout::Shader, _, false, true) => vk::ImageLayout::General,
+        (base::ImageLayout::Shader, _, false, false) => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        (base::ImageLayout::Shader, _, false, true) => vk::ImageLayout::GENERAL,
     }
 }
 
@@ -786,12 +791,12 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         let view_type = self
             .image_type
             .map(|t| match t {
-                base::ImageType::OneD => vk::ImageViewType::Type1d,
-                base::ImageType::TwoD => vk::ImageViewType::Type2d,
-                base::ImageType::TwoDArray => vk::ImageViewType::Type2dArray,
-                base::ImageType::ThreeD => vk::ImageViewType::Type3d,
-                base::ImageType::Cube => vk::ImageViewType::Cube,
-                base::ImageType::CubeArray => vk::ImageViewType::CubeArray,
+                base::ImageType::OneD => vk::ImageViewType::TYPE_1D,
+                base::ImageType::TwoD => vk::ImageViewType::TYPE_2D,
+                base::ImageType::TwoDArray => vk::ImageViewType::TYPE_2D_ARRAY,
+                base::ImageType::ThreeD => vk::ImageViewType::TYPE_3D,
+                base::ImageType::Cube => vk::ImageViewType::CUBE,
+                base::ImageType::CubeArray => vk::ImageViewType::CUBE_ARRAY,
             }).unwrap_or(image.image_view.view_type);
 
         let format = self

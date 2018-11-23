@@ -53,7 +53,7 @@ struct SurfaceId(u32);
 pub struct WindowManager<P: Painter> {
     painter: P,
     events_loop_proxy: EventsLoopProxy,
-    entry: ash::Entry<V1_0>,
+    entry: ash::Entry,
     instance: ManuallyDrop<UniqueInstance>,
     surface_loader: ext::Surface,
     report_conduit: ManuallyDrop<Option<debugreport::DebugReportConduit>>,
@@ -135,8 +135,7 @@ impl<P: Painter> WindowManager<P> {
 
         // Set up the debug report handler
         let report_conduit = if enable_debug_report {
-            let mut report_conduit = debugreport::DebugReportConduit::new(&entry, &instance)
-                .expect("Failed to load the entry points of the debug report extension.");
+            let mut report_conduit = debugreport::DebugReportConduit::new(&entry, &instance);
 
             let flags = flags![debugreport::DebugReportType::
                 {Warning | PerformanceWarning | Error}];
@@ -148,12 +147,11 @@ impl<P: Painter> WindowManager<P> {
             None
         };
 
-        let surface_loader = ext::Surface::new(&entry, &*instance)
-            .expect("Failed to load the entry points of the surface extension.");
+        let surface_loader = ext::Surface::new(&entry, &*instance);
 
         // Enumerate physical devices
-        let vk_phys_devices = instance
-            .enumerate_physical_devices()
+        let vk_phys_devices =
+            unsafe { instance.enumerate_physical_devices() }
             .expect("Failed to enumerate available Vulkan physical devices.");
         let phys_device_info_list: Vec<_> = vk_phys_devices
             .iter()
@@ -348,13 +346,13 @@ impl<P: Painter> Drop for PhysicalDevice<P> {
 
         // Alleviate some instabilities with error handling by inserting a device-global
         // sync here. (Usually, the device is supposed to be idle here)
-        let _ = self.vk_device.device_wait_idle();
+        let _ = unsafe { self.vk_device.device_wait_idle() };
     }
 }
 
 impl<P: Painter> PhysicalDevice<P> {
     fn new(
-        instance: &ash::Instance<V1_0>,
+        instance: &ash::Instance,
         info: &Arc<PhysicalDeviceInfo>,
         presentation_queue_family: gfx::QueueFamily,
         painter: &mut P,
@@ -388,7 +386,7 @@ impl<P: Painter> PhysicalDevice<P> {
             .filter_map(|(queue_family, &count)| {
                 if count > 0 {
                     Some(ash::vk::DeviceQueueCreateInfo {
-                        s_type: ash::vk::StructureType::DeviceQueueCreateInfo,
+                        s_type: ash::vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
                         p_next: ::null(),
                         flags: ash::vk::DeviceQueueCreateFlags::empty(),
                         queue_family_index: queue_family as u32,
@@ -424,8 +422,7 @@ impl<P: Painter> PhysicalDevice<P> {
                 })?
         };
 
-        let swapchain_loader = ext::Swapchain::new(instance, &*vk_device)
-            .expect("Failed to load the entry points of the swapchain extension.");
+        let swapchain_loader = ext::Swapchain::new(instance, &*vk_device);
 
         let gfx_device: Box<gfx::Device> = Box::new(unsafe {
             be::device::Device::new(ash::Device::clone(&vk_device), info.info.clone(), config)?
@@ -498,11 +495,13 @@ impl<P: Painter> PhysicalDevice<P> {
         surface_loader: &ext::Surface,
         vk_surface: vk::SurfaceKHR,
     ) -> bool {
-        surface_loader.get_physical_device_surface_support_khr(
-            self.info.vk_phys_device,
-            self.presentation_queue_family,
-            vk_surface,
-        )
+        unsafe {
+            surface_loader.get_physical_device_surface_support_khr(
+                self.info.vk_phys_device,
+                self.presentation_queue_family,
+                vk_surface,
+            )
+        }
     }
 
     fn finalize(&mut self, painter: &mut P, surface_loader: &ext::Surface) {
@@ -767,7 +766,10 @@ impl<P: Painter> PhysicalDevice<P> {
                     );
 
                     match result {
-                        Ok(()) => {}
+                        Ok(false) => {}
+                        Ok(true) => {
+                            surface.last_error = Some(PresentError::Suboptimal);
+                        }
                         Err(SwapchainUpdateError::PresentError(e)) => {
                             surface.last_error = Some(e);
                         }
@@ -846,8 +848,8 @@ impl Swapchain {
         import_image: &be::image::ImportImage,
         queue: &BeCmdQueue,
     ) -> Result<Self, SurfaceError> {
-        let vk_images = swapchain_loader
-            .get_swapchain_images_khr(vk_swapchain)
+        let vk_images =
+            unsafe { swapchain_loader.get_swapchain_images_khr(vk_swapchain) }
             .map_err(SurfaceError::from)?;
 
         let images = vk_images
@@ -866,6 +868,11 @@ impl Swapchain {
         })
     }
 
+    /// Submit device commands that generate and present the new contents of
+    /// the swapchain.
+    ///
+    /// Returns `Ok(false)` if it was successful and `Ok(true)` if it was
+    /// successful but the swapchain is no longer "optimal".
     fn update<P: Painter>(
         &mut self,
         image_index: usize,
@@ -881,7 +888,7 @@ impl Swapchain {
         surface_ref: &SurfaceRef,
         surface_data: &mut P::SurfaceData,
         update_param: &P::UpdateParam,
-    ) -> Result<(), SwapchainUpdateError> {
+    ) -> Result<bool, SwapchainUpdateError> {
         struct Drawable<'a> {
             device: &'a WmDevice,
             swapchain_loader: &'a ext::Swapchain,
@@ -894,7 +901,7 @@ impl Swapchain {
             presentation_queue: &'a Arc<gfx::CmdQueue>,
             presentation_queue_family: gfx::QueueFamily,
             needs_ownership_transfer: Option<gfx::QueueFamily>,
-            queue_present_result: Option<Result<(), SwapchainUpdateError>>,
+            queue_present_result: Option<Result<bool, SwapchainUpdateError>>,
             cb_state_tracker: &'a mut Option<CbStateTracker>,
         }
 
@@ -931,21 +938,21 @@ impl Swapchain {
                     assert_eq!(stage, flags![gfx::Stage::{RenderOutput}]);
 
                     let mut barrier = vk::ImageMemoryBarrier {
-                        s_type: vk::StructureType::ImageMemoryBarrier,
+                        s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
                         p_next: ::null(),
-                        src_access_mask: vk::ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                        src_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
                         dst_access_mask: vk::AccessFlags::empty(),
                         old_layout: image.translate_layout(gfx::ImageLayout::Render),
-                        new_layout: vk::ImageLayout::PresentSrcKhr,
-                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        new_layout: vk::ImageLayout::PRESENT_SRC_KHR,
+                        src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
                         image: image.vk_image(),
                         subresource_range: vk::ImageSubresourceRange {
-                            aspect_mask: vk::IMAGE_ASPECT_COLOR_BIT,
+                            aspect_mask: vk::ImageAspectFlags::COLOR,
                             base_mip_level: 0,
                             base_array_layer: 0,
-                            level_count: vk::VK_REMAINING_MIP_LEVELS,
-                            layer_count: vk::VK_REMAINING_ARRAY_LAYERS,
+                            level_count: vk::REMAINING_MIP_LEVELS,
+                            layer_count: vk::REMAINING_ARRAY_LAYERS,
                         },
                     };
 
@@ -961,8 +968,8 @@ impl Swapchain {
                     unsafe {
                         be_device.vk_device().cmd_pipeline_barrier(
                             vk_cmd_buffer,
-                            vk::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+                            vk::PipelineStageFlags::BOTTOM_OF_PIPE,
                             vk::DependencyFlags::empty(),
                             &[],
                             &[],
@@ -990,21 +997,21 @@ impl Swapchain {
                         let image: &be::image::Image = self.image.downcast_ref().unwrap();
 
                         let mut barrier = vk::ImageMemoryBarrier {
-                            s_type: vk::StructureType::ImageMemoryBarrier,
+                            s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
                             p_next: ::null(),
                             src_access_mask: vk::AccessFlags::empty(),
                             dst_access_mask: vk::AccessFlags::empty(),
                             old_layout: image.translate_layout(gfx::ImageLayout::Render),
-                            new_layout: vk::ImageLayout::PresentSrcKhr,
+                            new_layout: vk::ImageLayout::PRESENT_SRC_KHR,
                             src_queue_family_index: src_queue_family,
                             dst_queue_family_index: self.presentation_queue_family,
                             image: image.vk_image(),
                             subresource_range: vk::ImageSubresourceRange {
-                                aspect_mask: vk::IMAGE_ASPECT_COLOR_BIT,
+                                aspect_mask: vk::ImageAspectFlags::COLOR,
                                 base_mip_level: 0,
                                 base_array_layer: 0,
-                                level_count: vk::VK_REMAINING_MIP_LEVELS,
-                                layer_count: vk::VK_REMAINING_ARRAY_LAYERS,
+                                level_count: vk::REMAINING_MIP_LEVELS,
+                                layer_count: vk::REMAINING_ARRAY_LAYERS,
                             },
                         };
 
@@ -1015,8 +1022,8 @@ impl Swapchain {
                         unsafe {
                             be_device.vk_device().cmd_pipeline_barrier(
                                 vk_cmd_buffer,
-                                vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                vk::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                vk::PipelineStageFlags::TOP_OF_PIPE,
+                                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
                                 vk::DependencyFlags::empty(),
                                 &[],
                                 &[],
@@ -1043,7 +1050,7 @@ impl Swapchain {
                 let vk_semaphore = self.be_semaphore.vk_semaphore();
 
                 let present_info = vk::PresentInfoKHR {
-                    s_type: vk::StructureType::PresentInfoKhr,
+                    s_type: vk::StructureType::PRESENT_INFO_KHR,
                     p_next: ::null(),
                     wait_semaphore_count: 1,
                     p_wait_semaphores: &vk_semaphore,
@@ -1106,9 +1113,10 @@ fn optimal_props(
     vk_phys_device: vk::PhysicalDevice,
     surface_loader: &ext::Surface,
 ) -> Result<VkSurfaceProps, SurfaceError> {
-    let surface_caps = surface_loader
-        .get_physical_device_surface_capabilities_khr(vk_phys_device, vk_surface)
-        .map_err(SurfaceError::from)?;
+    let surface_caps = unsafe {
+        surface_loader.get_physical_device_surface_capabilities_khr(vk_phys_device, vk_surface)
+    }
+    .map_err(SurfaceError::from)?;
 
     let window_extents = window.get_inner_size().unwrap(); // we're sure the window exists
     let pixel_ratio = window.get_hidpi_factor();
@@ -1131,15 +1139,15 @@ fn optimal_props(
 
     let composite_alpha_candidates = if options.transparent {
         &[
-            vk::COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-            vk::COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-            vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            vk::CompositeAlphaFlagsKHR::PRE_MULTIPLIED,
+            vk::CompositeAlphaFlagsKHR::INHERIT,
+            vk::CompositeAlphaFlagsKHR::OPAQUE,
         ]
     } else {
         &[
-            vk::COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            vk::COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-            vk::COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+            vk::CompositeAlphaFlagsKHR::OPAQUE,
+            vk::CompositeAlphaFlagsKHR::INHERIT,
+            vk::CompositeAlphaFlagsKHR::PRE_MULTIPLIED,
         ]
     };
     let composite_alpha = composite_alpha_candidates
@@ -1160,11 +1168,12 @@ fn optimal_props(
     }
 
     // Perform a full computation
-    let present_mode = vk::PresentModeKHR::Fifo;
+    let present_mode = vk::PresentModeKHR::FIFO;
 
-    let surface_formats = surface_loader
-        .get_physical_device_surface_formats_khr(vk_phys_device, vk_surface)
-        .map_err(SurfaceError::from)?;
+    let surface_formats = unsafe {
+        surface_loader.get_physical_device_surface_formats_khr(vk_phys_device, vk_surface)
+    }
+    .map_err(SurfaceError::from)?;
 
     // Choose the format we like
     let surface_format = choose_surface_format(
@@ -1172,15 +1181,15 @@ fn optimal_props(
         &[
             (
                 Some(gfx::ImageFormat::SrgbBgra8),
-                Some(vk::ColorSpaceKHR::SrgbNonlinear),
+                Some(vk::ColorSpaceKHR::SRGB_NONLINEAR),
             ),
             (
                 Some(gfx::ImageFormat::SrgbRgba8),
-                Some(vk::ColorSpaceKHR::SrgbNonlinear),
+                Some(vk::ColorSpaceKHR::SRGB_NONLINEAR),
             ),
             (
                 Some(<u8>::as_rgba_norm()),
-                Some(vk::ColorSpaceKHR::SrgbNonlinear),
+                Some(vk::ColorSpaceKHR::SRGB_NONLINEAR),
             ),
             (Some(gfx::ImageFormat::SrgbBgra8), None),
             (Some(gfx::ImageFormat::SrgbRgba8), None),
@@ -1250,11 +1259,11 @@ impl VkSurfaceProps {
         be::image::ImportImage {
             vk_image: vk::Image::null(),
             format: be::formats::translate_image_format(self.format).unwrap(),
-            view_type: vk::ImageViewType::Type2d,
+            view_type: vk::ImageViewType::TYPE_2D,
             num_mip_levels: 1,
             num_layers: 1,
             usage: flags![gfx::ImageUsage::{}],
-            aspects: vk::IMAGE_ASPECT_COLOR_BIT,
+            aspects: vk::ImageAspectFlags::COLOR,
             destroy_manually: true,
         }
     }
@@ -1270,7 +1279,7 @@ impl VkSurfaceProps {
             return None;
         }
         Some(vk::SwapchainCreateInfoKHR {
-            s_type: vk::StructureType::SwapchainCreateInfoKhr,
+            s_type: vk::StructureType::SWAPCHAIN_CREATE_INFO_KHR,
             p_next: ::null(),
             flags: vk::SwapchainCreateFlagsKHR::empty(),
             surface,
@@ -1282,14 +1291,14 @@ impl VkSurfaceProps {
                 height: self.extents[1],
             },
             image_array_layers: 1,
-            image_usage: vk::IMAGE_USAGE_SAMPLED_BIT | vk::IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            image_sharing_mode: vk::SharingMode::Exclusive,
+            image_usage: vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::COLOR_ATTACHMENT,
+            image_sharing_mode: vk::SharingMode::EXCLUSIVE,
             queue_family_index_count: 0,
             p_queue_family_indices: ::null(),
             pre_transform: self.pre_transform,
             composite_alpha: self.composite_alpha,
             present_mode: self.present_mode,
-            clipped: vk::VK_FALSE,
+            clipped: vk::FALSE,
             old_swapchain,
         })
     }
@@ -1304,13 +1313,10 @@ enum SwapchainUpdateError {
 impl From<vk::Result> for SwapchainUpdateError {
     fn from(x: vk::Result) -> Self {
         match x {
-            vk::Result::ErrorOutOfDateKhr => {
+            x if x == vk::Result::ERROR_OUT_OF_DATE_KHR => {
                 SwapchainUpdateError::PresentError(PresentError::OutOfDate)
             }
-            vk::Result::SuboptimalKhr => {
-                SwapchainUpdateError::PresentError(PresentError::Suboptimal)
-            }
-            vk::Result::ErrorSurfaceLostKhr => {
+            x if x == vk::Result::ERROR_SURFACE_LOST_KHR => {
                 SwapchainUpdateError::PresentError(PresentError::SurfaceLost)
             }
             x => SwapchainUpdateError::Other(utils::translate_generic_error_unwrap(x)),
@@ -1327,7 +1333,7 @@ enum SurfaceError {
 impl From<vk::Result> for SurfaceError {
     fn from(x: vk::Result) -> Self {
         // Certain drivers return `InitializationFailed` when a surface is lost
-        if x == vk::Result::ErrorSurfaceLostKhr || x == vk::Result::ErrorInitializationFailed {
+        if x == vk::Result::ERROR_SURFACE_LOST_KHR || x == vk::Result::ERROR_INITIALIZATION_FAILED {
             SurfaceError::SurfaceLost
         } else {
             SurfaceError::Other(utils::translate_generic_error_unwrap(x))
@@ -1354,10 +1360,10 @@ impl PhysicalDeviceInfo {
     /// Examine the properties of the given physical device. Returns `Self`
     /// if the device is compatible with NgsPF.
     fn new(
-        instance: &ash::Instance<V1_0>,
+        instance: &ash::Instance,
         vk_phys_device: vk::PhysicalDevice,
     ) -> GfxResult<Option<Self>> {
-        let available_features = instance.get_physical_device_features(vk_phys_device);
+        let available_features = unsafe { instance.get_physical_device_features(vk_phys_device) };
 
         let enabled_features = vk::PhysicalDeviceFeatures {
             robust_buffer_access: if cfg!(debug_assertions) {
@@ -1365,7 +1371,7 @@ impl PhysicalDeviceInfo {
                 // may incur significant performance penalties
                 available_features.robust_buffer_access
             } else {
-                vk::VK_FALSE
+                vk::FALSE
             },
             ..Default::default()
         };
@@ -1418,11 +1424,13 @@ impl PhysicalDeviceInfo {
         vk_surface: vk::SurfaceKHR,
     ) -> Option<gfx::QueueFamily> {
         for i in 0..self.info.queue_families.len() {
-            if surface_loader.get_physical_device_surface_support_khr(
-                self.vk_phys_device,
-                i as _,
-                vk_surface,
-            ) {
+            if unsafe {
+                surface_loader.get_physical_device_surface_support_khr(
+                    self.vk_phys_device,
+                    i as _,
+                    vk_surface,
+                )
+            } {
                 return Some(i as _);
             }
         }

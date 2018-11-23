@@ -103,8 +103,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                     }
                 } else {
                     vk::AttachmentReference {
-                        attachment: vk::VK_ATTACHMENT_UNUSED,
-                        layout: vk::ImageLayout::Undefined,
+                        attachment: vk::ATTACHMENT_UNUSED,
+                        layout: vk::ImageLayout::UNDEFINED,
                     }
                 }
             }));
@@ -124,7 +124,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
 
         let vk_subpass = vk::SubpassDescription {
             flags: vk::SubpassDescriptionFlags::empty(),
-            pipeline_bind_point: vk::PipelineBindPoint::Graphics,
+            pipeline_bind_point: vk::PipelineBindPoint::GRAPHICS,
             input_attachment_count: 0,
             p_input_attachments: crate::null(),
             color_attachment_count: self.color_attachments.len() as u32,
@@ -155,7 +155,7 @@ impl base::RenderPassBuilder for RenderPassBuilder {
             .collect();
 
         let vk_info = vk::RenderPassCreateInfo {
-            s_type: vk::StructureType::RenderPassCreateInfo,
+            s_type: vk::StructureType::RENDER_PASS_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::RenderPassCreateFlags::empty(),
             attachment_count: vk_attachments.len() as u32,
@@ -196,14 +196,14 @@ impl RenderPassTargetBuilder {
         Self {
             vk_desc: vk::AttachmentDescription {
                 flags: vk::AttachmentDescriptionFlags::empty(),
-                format: vk::Format::R32Sfloat,
-                samples: vk::SAMPLE_COUNT_1_BIT,
-                load_op: vk::AttachmentLoadOp::DontCare,
-                store_op: vk::AttachmentStoreOp::DontCare,
-                stencil_load_op: vk::AttachmentLoadOp::DontCare,
-                stencil_store_op: vk::AttachmentStoreOp::DontCare,
-                initial_layout: vk::ImageLayout::Undefined,
-                final_layout: vk::ImageLayout::ShaderReadOnlyOptimal,
+                format: vk::Format::R32_SFLOAT,
+                samples: vk::SampleCountFlags::TYPE_1,
+                load_op: vk::AttachmentLoadOp::DONT_CARE,
+                store_op: vk::AttachmentStoreOp::DONT_CARE,
+                stencil_load_op: vk::AttachmentLoadOp::DONT_CARE,
+                stencil_store_op: vk::AttachmentStoreOp::DONT_CARE,
+                initial_layout: vk::ImageLayout::UNDEFINED,
+                final_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
             },
             // No default value is defined for `format`
             format: base::ImageFormat::RFloat32,
@@ -222,10 +222,10 @@ impl RenderPassTargetBuilder {
             IMAGE_LAYOUT_COLOR_ATTACHMENT
         };
 
-        vk_desc.initial_layout = if vk_desc.load_op == vk::AttachmentLoadOp::Load {
+        vk_desc.initial_layout = if vk_desc.load_op == vk::AttachmentLoadOp::LOAD {
             render_layout
         } else {
-            vk::ImageLayout::Undefined
+            vk::ImageLayout::UNDEFINED
         };
         vk_desc.final_layout = render_layout;
 
@@ -261,16 +261,16 @@ impl base::RenderPassTarget for RenderPassTargetBuilder {
 
 fn translate_load_op(load_op: base::LoadOp) -> vk::AttachmentLoadOp {
     match load_op {
-        base::LoadOp::Load => vk::AttachmentLoadOp::Load,
-        base::LoadOp::DontCare => vk::AttachmentLoadOp::DontCare,
-        base::LoadOp::Clear => vk::AttachmentLoadOp::Clear,
+        base::LoadOp::Load => vk::AttachmentLoadOp::LOAD,
+        base::LoadOp::DontCare => vk::AttachmentLoadOp::DONT_CARE,
+        base::LoadOp::Clear => vk::AttachmentLoadOp::CLEAR,
     }
 }
 
 fn translate_store_op(store_op: base::StoreOp) -> vk::AttachmentStoreOp {
     match store_op {
-        base::StoreOp::Store => vk::AttachmentStoreOp::Store,
-        base::StoreOp::DontCare => vk::AttachmentStoreOp::DontCare,
+        base::StoreOp::Store => vk::AttachmentStoreOp::STORE,
+        base::StoreOp::DontCare => vk::AttachmentStoreOp::DONT_CARE,
     }
 }
 
@@ -445,7 +445,7 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
             .collect();
 
         let vk_info = vk::FramebufferCreateInfo {
-            s_type: vk::StructureType::FramebufferCreateInfo,
+            s_type: vk::StructureType::FRAMEBUFFER_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::FramebufferCreateFlags::empty(),
             render_pass: render_pass.vk_render_pass(),
@@ -506,8 +506,8 @@ impl base::RenderTarget for Target {
 
     fn clear_depth_stencil(&mut self, depth: f32, stencil: u32) -> &mut dyn base::RenderTarget {
         unsafe {
-            self.clear_value.0.depth.depth = depth;
-            self.clear_value.0.depth.stencil = stencil;
+            self.clear_value.0.depth_stencil.depth = depth;
+            self.clear_value.0.depth_stencil.stencil = stencil;
         }
         self
     }
@@ -567,7 +567,7 @@ impl RenderTargetTable {
 
     crate fn render_pass_begin_info(&self) -> vk::RenderPassBeginInfo {
         vk::RenderPassBeginInfo {
-            s_type: vk::StructureType::RenderPassBeginInfo,
+            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
             p_next: crate::null(),
             render_pass: self.render_pass().vk_render_pass(),
             framebuffer: self.vk_framebuffer(),
@@ -612,7 +612,7 @@ impl fmt::Debug for ClearValue {
                     float32: self.0.color.float32,
                     uint32: self.0.color.uint32,
                     int32: self.0.color.int32,
-                    depth_stencil: self.0.depth,
+                    depth_stencil: self.0.depth_stencil,
                 }
             }).finish()
     }

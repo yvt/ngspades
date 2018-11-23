@@ -81,7 +81,12 @@ mod utils;
 
 use std::fmt::Debug;
 use std::ptr::{null, null_mut};
-pub type AshDevice = ash::Device<ash::version::V1_0>;
+
+/// A type alias of `ash::Device`.
+///
+/// This used to be `ash::Device<ash::version::V1_0>` until the generic
+/// parameter was removed.
+pub type AshDevice = ash::Device;
 
 pub use crate::utils::translate_generic_error;
 

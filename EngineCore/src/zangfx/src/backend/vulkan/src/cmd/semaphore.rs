@@ -75,7 +75,7 @@ struct SemaphoreData {
 impl Semaphore {
     crate fn new(device: DeviceRef) -> Result<Self> {
         let info = vk::SemaphoreCreateInfo {
-            s_type: vk::StructureType::SemaphoreCreateInfo,
+            s_type: vk::StructureType::SEMAPHORE_CREATE_INFO,
             p_next: crate::null(),
             flags: vk::SemaphoreCreateFlags::empty(),
         };

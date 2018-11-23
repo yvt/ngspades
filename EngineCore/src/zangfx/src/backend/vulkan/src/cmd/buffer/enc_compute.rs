@@ -21,7 +21,7 @@ impl base::ComputeCmdEncoder for CmdBufferData {
         unsafe {
             vk_device.cmd_bind_pipeline(
                 self.vk_cmd_buffer(),
-                vk::PipelineBindPoint::Compute,
+                vk::PipelineBindPoint::COMPUTE,
                 my_pipeline.vk_pipeline(),
             );
         }
@@ -47,7 +47,7 @@ impl base::ComputeCmdEncoder for CmdBufferData {
         self.desc_set_binding_table.flush(
             &self.device,
             vk_cmd_buffer,
-            vk::PipelineBindPoint::Compute,
+            vk::PipelineBindPoint::COMPUTE,
         );
 
         let device = self.device.vk_device();
@@ -71,7 +71,7 @@ impl base::ComputeCmdEncoder for CmdBufferData {
         self.desc_set_binding_table.flush(
             &self.device,
             vk_cmd_buffer,
-            vk::PipelineBindPoint::Compute,
+            vk::PipelineBindPoint::COMPUTE,
         );
 
         let device = self.device.vk_device();

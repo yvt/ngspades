@@ -84,7 +84,7 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         let mut flags = vk::DescriptorPoolCreateFlags::empty();
 
         if self.enable_destroy_tables {
-            flags |= vk::DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+            flags |= vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
         }
 
         let pool_sizes = self.count.as_pool_sizes();
@@ -92,7 +92,7 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
         let queue_id = self.queue_id.get(&self.device);
 
         let info = vk::DescriptorPoolCreateInfo {
-            s_type: vk::StructureType::DescriptorPoolCreateInfo,
+            s_type: vk::StructureType::DESCRIPTOR_POOL_CREATE_INFO,
             p_next: crate::null(),
             flags,
             max_sets: self.num_sets,
@@ -224,7 +224,7 @@ impl ArgPoolData {
         while remaining_count > 0 {
             let chunk_size = min(remaining_count, 256);
             let info = vk::DescriptorSetAllocateInfo {
-                s_type: vk::StructureType::DescriptorSetAllocateInfo,
+                s_type: vk::StructureType::DESCRIPTOR_SET_ALLOCATE_INFO,
                 p_next: crate::null(),
                 descriptor_pool: vk_d_pool,
                 descriptor_set_count: chunk_size as u32,

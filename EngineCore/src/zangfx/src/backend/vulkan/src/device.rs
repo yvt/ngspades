@@ -321,7 +321,7 @@ impl base::Device for Device {
                         flush!();
                     }
                     let mut write = vk::WriteDescriptorSet {
-                        s_type: vk::StructureType::WriteDescriptorSet,
+                        s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
                         p_next: crate::null(),
                         dst_set: table.vk_descriptor_set(),
                         dst_binding: arg_i as u32,
@@ -373,7 +373,7 @@ impl base::Device for Device {
                                 write_images.push(vk::DescriptorImageInfo {
                                     sampler: sampler.vk_sampler(),
                                     image_view: vk::ImageView::null(),
-                                    image_layout: vk::ImageLayout::Undefined,
+                                    image_layout: vk::ImageLayout::UNDEFINED,
                                 });
                                 i += 1;
                                 descriptor_count += 1;

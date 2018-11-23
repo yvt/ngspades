@@ -215,9 +215,9 @@ impl CmdBufferData {
             let vk_device = device.vk_device();
             vk_device.create_command_pool(
                 &vk::CommandPoolCreateInfo {
-                    s_type: vk::StructureType::CommandPoolCreateInfo,
+                    s_type: vk::StructureType::COMMAND_POOL_CREATE_INFO,
                     p_next: crate::null(),
-                    flags: vk::COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                    flags: vk::CommandPoolCreateFlags::TRANSIENT,
                     queue_family_index,
                 },
                 None,

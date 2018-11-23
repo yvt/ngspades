@@ -251,7 +251,7 @@ impl SwapchainManager {
                     // next image only if the fence is signaled.
                     match unsafe { vk_device.get_fence_status(swapchain.vk_fence) } {
                         Ok(()) => {} // signaled
-                        Err(vk::Result::NotReady) => {
+                        Err(x) if x == vk::Result::NOT_READY => {
                             // unsignaled
                             continue;
                         }
@@ -273,7 +273,9 @@ impl SwapchainManager {
                         swapchain.vk_fence,
                     )
                 } {
-                    Ok(image_index) => {
+                    Ok((image_index, _is_suboptimal)) => {
+                        // FIXME: respond to a "suboptimal" flag?
+
                         swapchain.polling = false;
                         fence_set.push(swapchain.vk_fence);
 
@@ -290,26 +292,17 @@ impl SwapchainManager {
                         }
                     }
                     Err(e) => {
-                        // `Suboptimal` isn't actually an error, but `ash`'s
-                        // `acquire_next_image_khr` won't return the image index in
-                        // such a case
                         match e {
-                            vk::Result::NotReady | vk::Result::Timeout => {
+                            e if e == vk::Result::NOT_READY || e == vk::Result::TIMEOUT => {
                                 // Enter the polling mode
                             }
-                            vk::Result::SuboptimalKhr => {
-                                f(PresentInfo::Fail {
-                                    surface: surface_id,
-                                    error: PresentError::Suboptimal,
-                                })?;
-                            }
-                            vk::Result::ErrorOutOfDateKhr => {
+                            e if e == vk::Result::ERROR_OUT_OF_DATE_KHR => {
                                 f(PresentInfo::Fail {
                                     surface: surface_id,
                                     error: PresentError::OutOfDate,
                                 })?;
                             }
-                            vk::Result::ErrorSurfaceLostKhr => {
+                            e if e == vk::Result::ERROR_SURFACE_LOST_KHR => {
                                 f(PresentInfo::Fail {
                                     surface: surface_id,
                                     error: PresentError::SurfaceLost,
@@ -346,7 +339,7 @@ impl SwapchainManager {
         let vk_fence = unsafe {
             vk_device.create_fence(
                 &vk::FenceCreateInfo {
-                    s_type: vk::StructureType::FenceCreateInfo,
+                    s_type: vk::StructureType::FENCE_CREATE_INFO,
                     p_next: ::null(),
                     flags: vk::FenceCreateFlags::empty(),
                 },

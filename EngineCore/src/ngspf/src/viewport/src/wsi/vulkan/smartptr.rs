@@ -12,7 +12,7 @@ pub trait AutoPtr<T>: Deref<Target = T> + Sized {
     fn into_inner(self) -> T;
 }
 
-pub struct UniqueInstance(pub ash::Instance<V1_0>);
+pub struct UniqueInstance(pub ash::Instance);
 
 impl ::Debug for UniqueInstance {
     fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
@@ -31,13 +31,13 @@ impl Drop for UniqueInstance {
 }
 
 impl Deref for UniqueInstance {
-    type Target = ash::Instance<V1_0>;
+    type Target = ash::Instance;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-pub struct UniqueDevice(pub ash::Device<V1_0>);
+pub struct UniqueDevice(pub ash::Device);
 
 impl ::Debug for UniqueDevice {
     fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
@@ -56,7 +56,7 @@ impl Drop for UniqueDevice {
 }
 
 impl Deref for UniqueDevice {
-    type Target = ash::Device<V1_0>;
+    type Target = ash::Device;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -115,9 +115,9 @@ impl<T: Borrow<ext::Swapchain>> Deref for UniqueSwapchainKHR<T> {
 }
 
 #[derive(Debug)]
-pub struct UniqueFence<T: Borrow<ash::Device<V1_0>>>(pub T, pub vk::Fence);
+pub struct UniqueFence<T: Borrow<ash::Device>>(pub T, pub vk::Fence);
 
-impl<T: Borrow<ash::Device<V1_0>>> AutoPtr<vk::Fence> for UniqueFence<T> {
+impl<T: Borrow<ash::Device>> AutoPtr<vk::Fence> for UniqueFence<T> {
     fn into_inner(self) -> vk::Fence {
         let handle = self.1;
         forget(self); // Skip `drop`
@@ -125,7 +125,7 @@ impl<T: Borrow<ash::Device<V1_0>>> AutoPtr<vk::Fence> for UniqueFence<T> {
     }
 }
 
-impl<T: Borrow<ash::Device<V1_0>>> Drop for UniqueFence<T> {
+impl<T: Borrow<ash::Device>> Drop for UniqueFence<T> {
     fn drop(&mut self) {
         unsafe {
             self.0.borrow().destroy_fence(self.1, None);
@@ -133,7 +133,7 @@ impl<T: Borrow<ash::Device<V1_0>>> Drop for UniqueFence<T> {
     }
 }
 
-impl<T: Borrow<ash::Device<V1_0>>> Deref for UniqueFence<T> {
+impl<T: Borrow<ash::Device>> Deref for UniqueFence<T> {
     type Target = vk::Fence;
     fn deref(&self) -> &Self::Target {
         &self.1

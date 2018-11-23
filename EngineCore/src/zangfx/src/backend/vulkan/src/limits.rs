@@ -7,7 +7,7 @@
 //! backend.
 use ash;
 use ash::version::*;
-use ash::vk::{self, VK_FALSE};
+use ash::vk::{self, FALSE};
 use ngsenumflags::{flags, BitFlags};
 use ngsenumflags_derive::NgsEnumFlags;
 use std::collections::HashMap;
@@ -41,16 +41,18 @@ pub type DeviceTraitFlags = BitFlags<DeviceTrait>;
 
 impl DeviceInfo {
     pub fn from_physical_device(
-        instance: &ash::Instance<V1_0>,
+        instance: &ash::Instance,
         phys_device: vk::PhysicalDevice,
         enabled_features: &vk::PhysicalDeviceFeatures,
     ) -> Result<Self> {
         use std::cmp::min;
         let mut traits = flags![DeviceTrait::{}];
 
-        let exts = instance
-            .enumerate_device_extension_properties(phys_device)
-            .map_err(translate_generic_error_unwrap)?;
+        let exts = unsafe {
+            instance
+                .enumerate_device_extension_properties(phys_device)
+                .map_err(translate_generic_error_unwrap)?
+        };
 
         use std::ffi::CStr;
         let mvk_ext_name = CStr::from_bytes_with_nul(b"VK_MVK_moltenvk\0").unwrap();
@@ -61,17 +63,17 @@ impl DeviceInfo {
             traits |= DeviceTrait::MoltenVK;
         }
 
-        let dev_prop = instance.get_physical_device_properties(phys_device);
+        let dev_prop = unsafe { instance.get_physical_device_properties(phys_device) };
         let ref dev_limits = dev_prop.limits;
         let limits = base::DeviceLimits {
             supports_heap_aliasing: true,
-            supports_depth_bounds: enabled_features.depth_bounds != VK_FALSE,
-            supports_cube_array: enabled_features.image_cube_array != VK_FALSE,
-            supports_depth_clamp: enabled_features.depth_clamp != VK_FALSE,
-            supports_fill_mode_non_solid: enabled_features.fill_mode_non_solid != VK_FALSE,
-            max_image_extent_1d: dev_limits.max_image_dimension1d,
-            max_image_extent_2d: dev_limits.max_image_dimension2d,
-            max_image_extent_3d: dev_limits.max_image_dimension3d,
+            supports_depth_bounds: enabled_features.depth_bounds != FALSE,
+            supports_cube_array: enabled_features.image_cube_array != FALSE,
+            supports_depth_clamp: enabled_features.depth_clamp != FALSE,
+            supports_fill_mode_non_solid: enabled_features.fill_mode_non_solid != FALSE,
+            max_image_extent_1d: dev_limits.max_image_dimension1_d,
+            max_image_extent_2d: dev_limits.max_image_dimension2_d,
+            max_image_extent_3d: dev_limits.max_image_dimension3_d,
             max_image_num_array_layers: dev_limits.max_image_array_layers,
             max_render_target_extent: min(
                 dev_limits.max_framebuffer_width,
@@ -93,11 +95,11 @@ impl DeviceInfo {
             uniform_buffer_align: dev_limits.min_uniform_buffer_offset_alignment as _,
             storage_buffer_align: dev_limits.min_storage_buffer_offset_alignment as _,
             supports_semaphore: true,
-            supports_independent_blend: enabled_features.independent_blend != VK_FALSE,
+            supports_independent_blend: enabled_features.independent_blend != FALSE,
         };
 
-        let queue_families = instance
-            .get_physical_device_queue_family_properties(phys_device)
+        let queue_families =
+            unsafe { instance.get_physical_device_queue_family_properties(phys_device) }
             .iter()
             .map(|qf| base::QueueFamilyInfo {
                 caps: translate_queue_flags(qf.queue_flags),
@@ -105,7 +107,7 @@ impl DeviceInfo {
             })
             .collect();
 
-        let dev_mem = instance.get_physical_device_memory_properties(phys_device);
+        let dev_mem = unsafe { instance.get_physical_device_memory_properties(phys_device) };
         let memory_types = dev_mem.memory_types[0..dev_mem.memory_type_count as usize]
             .iter()
             .map(|mt| base::MemoryTypeInfo {
@@ -123,7 +125,8 @@ impl DeviceInfo {
 
         for &fmt in base::ImageFormat::values().iter() {
             if let Some(vk_fmt) = translate_image_format(fmt) {
-                let fp = instance.get_physical_device_format_properties(phys_device, vk_fmt);
+                let fp =
+                    unsafe { instance.get_physical_device_format_properties(phys_device, vk_fmt) };
                 image_features.insert(
                     fmt,
                     translate_image_format_caps_flags(fp.optimal_tiling_features),
@@ -134,7 +137,8 @@ impl DeviceInfo {
         }
         for &fmt in base::VertexFormat::values().iter() {
             if let Some(vk_fmt) = translate_vertex_format(fmt) {
-                let fp = instance.get_physical_device_format_properties(phys_device, vk_fmt);
+                let fp =
+                    unsafe { instance.get_physical_device_format_properties(phys_device, vk_fmt) };
                 vertex_features.insert(fmt, translate_vertex_format_caps_flags(fp.buffer_features));
             } else {
                 vertex_features.insert(fmt, flags![base::VertexFormatCaps::{}]);
@@ -155,15 +159,15 @@ impl DeviceInfo {
 
 fn translate_queue_flags(flags: vk::QueueFlags) -> base::QueueFamilyCapsFlags {
     let mut ret = flags![base::QueueFamilyCaps::{}];
-    if flags.intersects(vk::QUEUE_GRAPHICS_BIT) {
+    if flags.intersects(vk::QueueFlags::GRAPHICS) {
         ret |= base::QueueFamilyCaps::Render;
         ret |= base::QueueFamilyCaps::Copy;
     }
-    if flags.intersects(vk::QUEUE_COMPUTE_BIT) {
+    if flags.intersects(vk::QueueFlags::COMPUTE) {
         ret |= base::QueueFamilyCaps::Compute;
         ret |= base::QueueFamilyCaps::Copy;
     }
-    if flags.intersects(vk::QUEUE_TRANSFER_BIT) {
+    if flags.intersects(vk::QueueFlags::TRANSFER) {
         ret |= base::QueueFamilyCaps::Copy;
     }
     ret
@@ -171,16 +175,16 @@ fn translate_queue_flags(flags: vk::QueueFlags) -> base::QueueFamilyCapsFlags {
 
 fn translate_memory_type_flags(flags: vk::MemoryPropertyFlags) -> base::MemoryTypeCapsFlags {
     let mut ret = flags![base::MemoryTypeCaps::{}];
-    if flags.intersects(vk::MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+    if flags.intersects(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
         ret |= base::MemoryTypeCaps::DeviceLocal;
     }
-    if flags.intersects(vk::MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+    if flags.intersects(vk::MemoryPropertyFlags::HOST_VISIBLE) {
         ret |= base::MemoryTypeCaps::HostVisible;
     }
-    if flags.intersects(vk::MEMORY_PROPERTY_HOST_CACHED_BIT) {
+    if flags.intersects(vk::MemoryPropertyFlags::HOST_CACHED) {
         ret |= base::MemoryTypeCaps::HostCached;
     }
-    if flags.intersects(vk::MEMORY_PROPERTY_HOST_COHERENT_BIT) {
+    if flags.intersects(vk::MemoryPropertyFlags::HOST_COHERENT) {
         ret |= base::MemoryTypeCaps::HostCoherent;
     }
     ret
@@ -188,25 +192,25 @@ fn translate_memory_type_flags(flags: vk::MemoryPropertyFlags) -> base::MemoryTy
 
 fn translate_image_format_caps_flags(value: vk::FormatFeatureFlags) -> base::ImageFormatCapsFlags {
     let mut ret = flags![base::ImageFormatCaps::{}];
-    if value.intersects(vk::FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::SAMPLED_IMAGE) {
         ret |= base::ImageFormatCaps::Sampled;
     }
-    if value.intersects(vk::FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::STORAGE_IMAGE) {
         ret |= base::ImageFormatCaps::Storage;
     }
-    if value.intersects(vk::FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::STORAGE_IMAGE_ATOMIC) {
         ret |= base::ImageFormatCaps::StorageAtomic;
     }
-    if value.intersects(vk::FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::COLOR_ATTACHMENT) {
         ret |= base::ImageFormatCaps::Render;
     }
-    if value.intersects(vk::FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::COLOR_ATTACHMENT_BLEND) {
         ret |= base::ImageFormatCaps::RenderBlend;
     }
-    if value.intersects(vk::FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT) {
         ret |= base::ImageFormatCaps::Render;
     }
-    if value.intersects(vk::FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::SAMPLED_IMAGE_FILTER_LINEAR) {
         ret |= base::ImageFormatCaps::SampledFilterLinear;
     }
     // Without the extension `VK_KHR_maintenance1`, any other flags imply that
@@ -224,7 +228,7 @@ fn translate_vertex_format_caps_flags(
     value: vk::FormatFeatureFlags,
 ) -> base::VertexFormatCapsFlags {
     let mut ret = flags![base::VertexFormatCaps::{}];
-    if value.intersects(vk::FORMAT_FEATURE_VERTEX_BUFFER_BIT) {
+    if value.intersects(vk::FormatFeatureFlags::VERTEX_BUFFER) {
         ret |= base::VertexFormatCaps::Vertex;
     }
     ret

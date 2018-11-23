@@ -32,7 +32,7 @@ impl CmdBufferData {
         image: &Image,
         range: &base::ImageLayerRange,
     ) {
-        if image.translate_layout(base::ImageLayout::CopyRead) == vk::ImageLayout::General {
+        if image.translate_layout(base::ImageLayout::CopyRead) == vk::ImageLayout::GENERAL {
             // Per-command tracking is not necessary if the layouts for
             // `CopyRead` and `CopyWrite` are identical
             return self.use_image_for_pass(
@@ -70,15 +70,15 @@ impl CmdBufferData {
                     unit_op.layout = layout;
 
                     vk_image_barriers.push(vk::ImageMemoryBarrier {
-                        s_type: vk::StructureType::ImageMemoryBarrier,
+                        s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
                         p_next: crate::null(),
                         // Applications must insert `barrier` manually
                         src_access_mask: vk::AccessFlags::empty(),
                         dst_access_mask: access,
                         old_layout: unit_op.layout,
                         new_layout: layout,
-                        src_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
-                        dst_queue_family_index: vk::VK_QUEUE_FAMILY_IGNORED,
+                        src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+                        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
                         image: image.vk_image(),
                         subresource_range: translate_image_subresource_range(
                             &addresser.subrange_for_index(i).into(),
@@ -111,8 +111,8 @@ impl CmdBufferData {
             unsafe {
                 vk_device.cmd_pipeline_barrier(
                     vk_cmd_buffer,
-                    vk::PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                    vk::PIPELINE_STAGE_TRANSFER_BIT,
+                    vk::PipelineStageFlags::TOP_OF_PIPE,
+                    vk::PipelineStageFlags::TRANSFER,
                     vk::DependencyFlags::empty(),
                     &[],
                     &[],
@@ -196,7 +196,7 @@ impl base::CopyCmdEncoder for CmdBufferData {
         self.ref_table.insert_buffer(my_src);
         self.use_image_for_copy(
             my_dst.translate_layout(base::ImageLayout::CopyWrite),
-            vk::ACCESS_TRANSFER_WRITE_BIT,
+            vk::AccessFlags::TRANSFER_WRITE,
             my_dst,
             dst_range,
         );
@@ -251,7 +251,7 @@ impl base::CopyCmdEncoder for CmdBufferData {
         self.ref_table.insert_buffer(my_dst);
         self.use_image_for_copy(
             my_src.translate_layout(base::ImageLayout::CopyRead),
-            vk::ACCESS_TRANSFER_READ_BIT,
+            vk::AccessFlags::TRANSFER_READ,
             my_src,
             src_range,
         );
@@ -317,12 +317,12 @@ impl base::CopyCmdEncoder for CmdBufferData {
             // and destination is not empty.
             // In this case, the `Generic` layout, which can be used both for
             // reading and writing, must be used for entire the affected units.
-            src_layout = vk::ImageLayout::General;
-            dst_layout = vk::ImageLayout::General;
+            src_layout = vk::ImageLayout::GENERAL;
+            dst_layout = vk::ImageLayout::GENERAL;
         }
 
-        self.use_image_for_copy(src_layout, vk::ACCESS_TRANSFER_READ_BIT, my_src, src_range);
-        self.use_image_for_copy(dst_layout, vk::ACCESS_TRANSFER_WRITE_BIT, my_dst, dst_range);
+        self.use_image_for_copy(src_layout, vk::AccessFlags::TRANSFER_READ, my_src, src_range);
+        self.use_image_for_copy(dst_layout, vk::AccessFlags::TRANSFER_WRITE, my_dst, dst_range);
 
         let src_origin: [u32; 3] = src_origin.into_with_pad(0);
         let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);

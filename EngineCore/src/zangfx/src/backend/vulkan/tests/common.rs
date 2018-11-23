@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 struct TestDriver;
 
-struct UniqueInstance(ash::Instance<V1_0>);
+struct UniqueInstance(ash::Instance);
 
 impl Drop for UniqueInstance {
     fn drop(&mut self) {
@@ -31,13 +31,13 @@ impl Drop for UniqueInstance {
 }
 
 impl Deref for UniqueInstance {
-    type Target = ash::Instance<V1_0>;
+    type Target = ash::Instance;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-struct UniqueDevice(ash::Device<V1_0>);
+struct UniqueDevice(ash::Device);
 
 impl Drop for UniqueDevice {
     fn drop(&mut self) {
@@ -48,7 +48,7 @@ impl Drop for UniqueDevice {
 }
 
 impl Deref for UniqueDevice {
-    type Target = ash::Device<V1_0>;
+    type Target = ash::Device;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -57,28 +57,28 @@ impl Deref for UniqueDevice {
 struct DebugReportScope(DebugReport, ash::vk::DebugReportCallbackEXT);
 
 impl DebugReportScope {
-    fn new(e: &ash::Entry<V1_0>, i: &ash::Instance<V1_0>) -> Self {
-        let debug_report_loader = DebugReport::new(e, i).unwrap();
+    fn new(e: &ash::Entry, i: &ash::Instance) -> Self {
+        let debug_report_loader = DebugReport::new(e, i);
 
         unsafe extern "system" fn vulkan_debug_callback(
             _: ash::vk::DebugReportFlagsEXT,
             _: ash::vk::DebugReportObjectTypeEXT,
-            _: ash::vk::uint64_t,
-            _: ash::vk::size_t,
-            _: ash::vk::int32_t,
-            _: *const ash::vk::c_char,
-            p_message: *const ash::vk::c_char,
-            _: *mut ash::vk::c_void,
+            _: u64,
+            _: usize,
+            _: i32,
+            _: *const std::os::raw::c_char,
+            p_message: *const std::os::raw::c_char,
+            _: *mut std::os::raw::c_void,
         ) -> u32 {
             println!(" <debug report> {:?}", CStr::from_ptr(p_message));
             1
         }
 
         let debug_info = ash::vk::DebugReportCallbackCreateInfoEXT {
-            s_type: ash::vk::StructureType::DebugReportCallbackCreateInfoExt,
+            s_type: ash::vk::StructureType::DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
             p_next: null(),
-            flags: ash::vk::DEBUG_REPORT_ERROR_BIT_EXT | ash::vk::DEBUG_REPORT_WARNING_BIT_EXT,
-            pfn_callback: vulkan_debug_callback,
+            flags: ash::vk::DebugReportFlagsEXT::ERROR | ash::vk::DebugReportFlagsEXT::WARNING,
+            pfn_callback: Some(vulkan_debug_callback),
             p_user_data: null_mut(),
         };
 
@@ -99,7 +99,7 @@ impl Drop for DebugReportScope {
 impl zangfx_test::backend_tests::TestDriver for TestDriver {
     fn for_each_device(&self, runner: &mut dyn FnMut(&base::DeviceRef)) {
         unsafe {
-            let entry = match ash::Entry::<V1_0>::new() {
+            let entry = match ash::Entry::new() {
                 Ok(entry) => entry,
                 Err(err) => {
                     println!(
@@ -146,11 +146,11 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
             let instance: UniqueInstance = entry
                 .create_instance(
                     &ash::vk::InstanceCreateInfo {
-                        s_type: ash::vk::StructureType::InstanceCreateInfo,
+                        s_type: ash::vk::StructureType::INSTANCE_CREATE_INFO,
                         p_next: null(),
                         flags: ash::vk::InstanceCreateFlags::empty(),
                         p_application_info: &ash::vk::ApplicationInfo {
-                            s_type: ash::vk::StructureType::ApplicationInfo,
+                            s_type: ash::vk::StructureType::APPLICATION_INFO,
                             p_next: null(),
                             p_application_name: b"ZanGFX Test Suite\0".as_ptr() as *const _,
                             application_version: 1,
@@ -184,7 +184,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
 
                 let available_features = instance.get_physical_device_features(phys_device);
 
-                if available_features.robust_buffer_access == ash::vk::VK_FALSE {
+                if available_features.robust_buffer_access == ash::vk::FALSE {
                     println!("Warning: Feature 'robust_buffer_access' is unavailable");
                 }
 
@@ -206,7 +206,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                     .iter()
                     .enumerate()
                     .map(|(i, prop)| ash::vk::DeviceQueueCreateInfo {
-                        s_type: ash::vk::StructureType::DeviceQueueCreateInfo,
+                        s_type: ash::vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
                         p_next: null(),
                         flags: ash::vk::DeviceQueueCreateFlags::empty(),
                         queue_family_index: i as u32,
@@ -226,7 +226,7 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                     .create_device(
                         phys_device,
                         &ash::vk::DeviceCreateInfo {
-                            s_type: ash::vk::StructureType::DeviceCreateInfo,
+                            s_type: ash::vk::StructureType::DEVICE_CREATE_INFO,
                             p_next: null(),
                             flags: ash::vk::DeviceCreateFlags::empty(),
                             queue_create_info_count: queues.len() as u32,

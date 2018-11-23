@@ -14,14 +14,14 @@ pub mod layout;
 pub mod pool;
 
 fn translate_descriptor_type(ty: base::ArgType) -> vk::DescriptorType {
-    use ash::vk::DescriptorType::*;
+    use ash::vk::DescriptorType;
     use zangfx_base::ArgType;
     match ty {
-        ArgType::StorageImage => StorageImage,
-        ArgType::SampledImage => SampledImage,
-        ArgType::Sampler => Sampler,
-        ArgType::UniformBuffer => UniformBuffer,
-        ArgType::StorageBuffer => StorageBuffer,
+        ArgType::StorageImage => DescriptorType::STORAGE_IMAGE,
+        ArgType::SampledImage => DescriptorType::SAMPLED_IMAGE,
+        ArgType::Sampler => DescriptorType::SAMPLER,
+        ArgType::UniformBuffer => DescriptorType::UNIFORM_BUFFER,
+        ArgType::StorageBuffer => DescriptorType::STORAGE_BUFFER,
     }
 }
 
@@ -48,25 +48,25 @@ impl DescriptorCount {
     }
 
     crate fn as_pool_sizes(&self) -> ArrayVec<[vk::DescriptorPoolSize; 11]> {
-        use ash::vk::DescriptorType::*;
+        use ash::vk::DescriptorType;
         [
-            Sampler,
-            CombinedImageSampler,
-            SampledImage,
-            StorageImage,
-            UniformTexelBuffer,
-            StorageTexelBuffer,
-            UniformBuffer,
-            StorageBuffer,
-            UniformBufferDynamic,
-            StorageBufferDynamic,
-            InputAttachment,
+            DescriptorType::SAMPLER,
+            DescriptorType::COMBINED_IMAGE_SAMPLER,
+            DescriptorType::SAMPLED_IMAGE,
+            DescriptorType::STORAGE_IMAGE,
+            DescriptorType::UNIFORM_TEXEL_BUFFER,
+            DescriptorType::STORAGE_TEXEL_BUFFER,
+            DescriptorType::UNIFORM_BUFFER,
+            DescriptorType::STORAGE_BUFFER,
+            DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+            DescriptorType::STORAGE_BUFFER_DYNAMIC,
+            DescriptorType::INPUT_ATTACHMENT,
         ].iter()
-            .filter_map(|&typ| {
-                let count = self[typ];
+            .filter_map(|&ty| {
+                let count = self[ty];
                 if count > 0 {
                     Some(vk::DescriptorPoolSize {
-                        typ,
+                        ty,
                         descriptor_count: count,
                     })
                 } else {
@@ -81,13 +81,13 @@ impl Index<vk::DescriptorType> for DescriptorCount {
     type Output = u32;
 
     fn index(&self, index: vk::DescriptorType) -> &u32 {
-        &self.0[index as usize]
+        &self.0[index.as_raw() as usize]
     }
 }
 
 impl IndexMut<vk::DescriptorType> for DescriptorCount {
     fn index_mut(&mut self, index: vk::DescriptorType) -> &mut u32 {
-        &mut self.0[index as usize]
+        &mut self.0[index.as_raw() as usize]
     }
 }
 
