@@ -23,7 +23,7 @@ use ngspf::viewport::{
     WindowEvent, WindowFlagsBit, WindowRef, WorkspaceBuilder,
 };
 
-static IMAGE: &[u8] = include_bytes!("../../ngsgfx/examples/nyancat.raw");
+static IMAGE: &[u8] = include_bytes!("nyancat.raw");
 
 fn main() {
     let mut ws = WorkspaceBuilder::new()
