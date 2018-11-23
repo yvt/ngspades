@@ -17,7 +17,7 @@ owning_ref = "0.4.0"
 opaque_typedef = "0.0.4"
 opaque_typedef_macros = "0.0.4"
 pin-utils = "0.1.0-alpha.3"
-cryo = { version = "0.1.1", features = ["use_parking_lot"] }
+cryo = { version = "0.1.2", features = ["parking_lot"] }
 either = { version = "1.4" }
 zangfx = { path = "../zangfx" }
 ngspf = { path = "../ngspf" }
