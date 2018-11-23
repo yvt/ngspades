@@ -5,7 +5,7 @@
 //
 use cgmath::Vector3;
 use cgmath::prelude::*;
-use rand::{Rng, Rand};
+use rand::prelude::*;
 use std::f32::consts::FRAC_1_PI;
 
 /// Acoustic properties of an environment.
@@ -101,7 +101,7 @@ pub trait Raytracer<Q> {
     ) -> Option<(RaytraceHit<Q>, f32)> {
         let sph = pick_sphere_point(rng);
         let tangent = (sph - dir * sph.dot(dir) + dir * 1.0e-16).normalize();
-        let x = <f32>::rand(rng);
+        let x = rng.gen::<f32>();
         let l_dir = tangent * (1.0 - x * x).sqrt() + dir * x;
         self.trace(start, l_dir).map(|hit| (hit, FRAC_1_PI))
     }
@@ -111,8 +111,8 @@ fn pick_sphere_point<R: Rng>(rng: &mut R) -> Vector3<f32> {
     // Marsaglia, G. "Choosing a Point from the Surface of a Sphere." Ann. Math.
     // Stat. 43, 645-646, 1972.
     loop {
-        let x1 = <f32>::rand(rng) * 2.0 - 1.0;
-        let x2 = <f32>::rand(rng) * 2.0 - 1.0;
+        let x1 = rng.gen::<f32>() * 2.0 - 1.0;
+        let x2 = rng.gen::<f32>() * 2.0 - 1.0;
         let sq = x1 * x1 + x2 * x2;
         if sq < 1.0 {
             let t = 2.0 * (1.0 - sq).sqrt();

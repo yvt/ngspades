@@ -215,7 +215,7 @@ fn main() {
         matches
     } else if let Some(matches) = matches.subcommand_matches("simulate") {
         use ysr2::spatializer;
-        use ysr2::spatializer::{FdQuant, Raytracer, ngster, flattener, rand};
+        use ysr2::spatializer::{FdQuant, Raytracer, ngster, flattener, rand::prelude::*};
         use ysr2::spatializer::cgmath::{vec3, Vector3};
         use ysr2::spatializer::cgmath::prelude::*;
         use ysr2::spatializer::flattener::Flattener;
@@ -310,7 +310,7 @@ fn main() {
         let ch_mapper = StereoMcChannelMapper;
         let mut flt = flattener::McFlattener::new(bli_source, ch_mapper, num_samples);
 
-        let mut rng = rand::XorShiftRng::new_unseeded();
+        let mut rng = SmallRng::seed_from_u64(123456789);
 
         let algorithm = matches.value_of("algorithm").unwrap();
         let num_rays = u64::from_str(matches.value_of("num_rays").unwrap()).unwrap();

@@ -12,7 +12,7 @@ extern crate xdispatch;
 use std::fs::File;
 use std::io::BufReader;
 use std::time::Instant;
-use rand::Rng;
+use rand::prelude::*;
 use ngsterrain::cgmath;
 use self::cgmath::{Vector3, Vector2, vec3, vec2};
 use self::cgmath::prelude::*;
@@ -93,17 +93,22 @@ impl State {
 
 #[derive(Debug, Clone)]
 struct Sampler {
-    rng: rand::XorShiftRng,
+    rng: SmallRng,
 }
 
 impl Sampler {
     fn new() -> Self {
-        Self { rng: rand::XorShiftRng::new_unseeded() }
+        Self {
+            rng: SmallRng::seed_from_u64(1189998819991197253),
+        }
     }
 
     fn gaussian(&mut self) -> f32 {
-        (self.rng.next_f32() + self.rng.next_f32() + self.rng.next_f32() + self.rng.next_f32() -
-            2.0)
+        (self.rng.gen::<f32>()
+            + self.rng.gen::<f32>()
+            + self.rng.gen::<f32>()
+            + self.rng.gen::<f32>()
+            - 2.0)
     }
 
     fn reconstruction_filter(&mut self) -> Vector2<f32> {
@@ -112,8 +117,8 @@ impl Sampler {
 
     fn sample_diffuse(&mut self) -> Vector3<f32> {
         loop {
-            let x = self.rng.next_f32() * 2.0 - 1.0;
-            let y = self.rng.next_f32() * 2.0 - 1.0;
+            let x = self.rng.gen::<f32>() * 2.0 - 1.0;
+            let y = self.rng.gen::<f32>() * 2.0 - 1.0;
             let ln = x.mul_add(x, y * y);
             if ln < 1.0 {
                 let z = (1.0 - ln).sqrt();
@@ -317,9 +322,8 @@ impl Renderer {
                 let y = y as u32;
                 let mut sampler = self.sampler.clone();
 
-                use rand::SeedableRng;
-                let x = sampler.rng.next_u32();
-                sampler.rng.reseed([x ^ y, x ^ y ^ 1, x ^ y ^ 2, x ^ y ^ 4]);
+                let x = sampler.rng.gen::<u64>();
+                sampler.rng = SmallRng::seed_from_u64(x + y as u64);
 
                 for x in 0..width / UNDERSAMPLE {
                     let centered_pos = vec2(x * UNDERSAMPLE, y * UNDERSAMPLE).cast::<i32>().unwrap() -

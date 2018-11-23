@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use rand::{Rng, Rand};
+use rand::prelude::*;
 use cgmath::Vector3;
 use cgmath::prelude::*;
 use {Raytracer, World, BaseFdQuant, RaytraceHit};
@@ -84,7 +84,7 @@ where
             // Choose the next path
             let scatter_prob_qs = result.material.scatter.average();
             let scatter_prob = scatter_prob_qs.to_f32().unwrap();
-            let dice = <f32>::rand(rng);
+            let dice = rng.gen::<f32>();
 
             energy = -energy;
 

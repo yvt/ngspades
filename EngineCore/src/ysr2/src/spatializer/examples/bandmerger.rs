@@ -9,7 +9,7 @@ extern crate hound;
 
 use ysr2_spatializer::FdQuant;
 use ysr2_spatializer::bandmerger::{BandMerger, Lr4BandMerger};
-use ysr2_spatializer::rand::{self, Rand};
+use ysr2_spatializer::rand::prelude::*;
 
 use std::path::Path;
 
@@ -27,7 +27,7 @@ fn main() {
         )
         .get_matches();
 
-    let mut rng = rand::XorShiftRng::new_unseeded();
+    let mut rng = SmallRng::seed_from_u64(123456789);
     let input: Vec<_> = (0..1000000)
         .map(|i| if i < 100000 {
             FdQuant::new([1.0f32; 8])
@@ -37,7 +37,7 @@ fn main() {
             x
         } else {
             FdQuant::new([0.0f32; 8])
-        } * (<f32>::rand(&mut rng) - 0.5))
+        } * (rng.gen::<f32>() - 0.5))
         .collect();
     let mut output = vec![0.0; input.len()];
 
