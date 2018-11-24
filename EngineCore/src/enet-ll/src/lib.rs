@@ -54,9 +54,8 @@
 
 extern crate libc;
 
-extern crate ngsenumflags;
 #[macro_use]
-extern crate ngsenumflags_derive;
+extern crate bitflags;
 
 pub mod address;
 pub mod host;
