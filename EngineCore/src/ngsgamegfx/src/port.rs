@@ -7,7 +7,7 @@
 use injector::Container;
 use std::sync::Arc;
 
-use ngsenumflags::flags;
+use flags_macro::flags;
 use ngspf::core::{
     Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor,
 };
@@ -116,7 +116,7 @@ impl viewport::PortInstance for Port {
         cmd_buffer.invalidate_image(&[&context.image]);
         {
             let enc = cmd_buffer.encode_copy();
-            enc.update_fence(&context.fence, flags![gfx::AccessType::{}]);
+            enc.update_fence(&context.fence, flags![gfx::AccessTypeFlags::{}]);
         }
 
         self.cb_state_tracker = Some(gfxut::CbStateTracker::new(&mut *cmd_buffer));

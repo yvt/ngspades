@@ -21,7 +21,8 @@ cryo = { version = "0.1.2", features = ["parking_lot"] }
 either = { version = "1.4" }
 zangfx = { path = "../zangfx" }
 ngspf = { path = "../ngspf" }
-ngsenumflags = { path = "../support/ngsenumflags" }
+flags-macro = "0.1.2"
+
 injector = { path = "../support/injector" }
 volatile_view = { path = "../support/volatile_view" }
 xdispatch = { path = "../xdispatch/xdispatch" }
