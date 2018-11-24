@@ -24,7 +24,7 @@ use ngspf::{
     viewport::rgb::RGBA,
     viewport::{
         ImageWrapMode, LayerBuilder, LayerContents, LayerRef, RootRef, VirtualKeyCode,
-        WindowBuilder, WindowEvent, WindowFlagsBit, WindowRef, WorkspaceBuilder,
+        WindowBuilder, WindowEvent, WindowFlags, WindowRef, WorkspaceBuilder,
     },
 };
 
@@ -171,7 +171,7 @@ fn main() {
         );
 
         window = WindowBuilder::new()
-            .flags(WindowFlagsBit::Resizable)
+            .flags(WindowFlags::Resizable)
             .child(Some(group.into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop

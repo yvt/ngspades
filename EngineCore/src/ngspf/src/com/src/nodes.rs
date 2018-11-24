@@ -307,7 +307,7 @@ impl ngsbase::INgsPFLayerTrait for ComLayer {
     fn set_flags(&self, flags: ngsbase::LayerFlags) -> HResult {
         let mut value = viewport::LayerFlags::empty();
         if flags.contains(ngsbase::LayerFlagsItem::FlattenContents) {
-            value |= viewport::LayerFlagsBit::FlattenContents;
+            value |= viewport::LayerFlags::FlattenContents;
         }
 
         to_hresult(|| node_data_set_prop!(self.data, flags = value))
@@ -434,13 +434,13 @@ impl ngsbase::INgsPFWindowTrait for ComWindow {
         to_hresult(|| {
             let mut value = viewport::WindowFlags::empty();
             if flags.contains(ngsbase::WindowFlagsItem::Resizable) {
-                value |= viewport::WindowFlagsBit::Resizable;
+                value |= viewport::WindowFlags::Resizable;
             }
             if flags.contains(ngsbase::WindowFlagsItem::Borderless) {
-                value |= viewport::WindowFlagsBit::Borderless;
+                value |= viewport::WindowFlags::Borderless;
             }
             if flags.contains(ngsbase::WindowFlagsItem::Transparent) {
-                value |= viewport::WindowFlagsBit::Transparent;
+                value |= viewport::WindowFlags::Transparent;
             }
 
             node_data_set_prop_builder_only!(self.data, flags = value)
@@ -525,16 +525,16 @@ impl ngsbase::INgsPFWindowTrait for ComWindow {
                     &MouseMotion(None) => listener.mouse_leave(),
                     &KeyboardInput(vkc, pressed, modifiers) => {
                         let mut flags = ngsbase::KeyModifierFlags::empty();
-                        if modifiers.contains(viewport::KeyModifier::Shift) {
+                        if modifiers.contains(viewport::KeyModifierFlags::Shift) {
                             flags |= ngsbase::KeyModifierFlagsItem::Shift;
                         }
-                        if modifiers.contains(viewport::KeyModifier::Control) {
+                        if modifiers.contains(viewport::KeyModifierFlags::Control) {
                             flags |= ngsbase::KeyModifierFlagsItem::Control;
                         }
-                        if modifiers.contains(viewport::KeyModifier::Alt) {
+                        if modifiers.contains(viewport::KeyModifierFlags::Alt) {
                             flags |= ngsbase::KeyModifierFlagsItem::Alt;
                         }
-                        if modifiers.contains(viewport::KeyModifier::Meta) {
+                        if modifiers.contains(viewport::KeyModifierFlags::Meta) {
                             flags |= ngsbase::KeyModifierFlagsItem::Meta;
                         }
                         listener.keyboard_input(

@@ -21,9 +21,8 @@ extern crate winit;
 #[macro_use(flags)]
 extern crate flags_macro;
 
-extern crate ngsenumflags;
 #[macro_use]
-extern crate ngsenumflags_derive;
+extern crate bitflags;
 
 extern crate ngspf_canvas as canvas;
 extern crate ngspf_core as core;

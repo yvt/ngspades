@@ -64,7 +64,6 @@ static BOX_VERTICES: &[[u16; 2]] = &[[0, 0], [1, 0], [0, 1], [1, 1]];
 pub mod composite {
     use cgmath::{Matrix4, Vector4};
     use include_data;
-    use ngsenumflags::BitFlags;
     use zangfx::base::*;
 
     pub static SPIRV_FRAG: include_data::DataView =
@@ -87,13 +86,11 @@ pub mod composite {
     pub static ARG_C_MASK: ArgIndex = 2;
     pub static ARG_C_MASK_SAMPLER: ArgIndex = 3;
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
-    #[repr(u32)]
-    pub enum SpriteFlagsBit {
-        StraightAlpha = 1,
+    bitflags! {
+        pub struct SpriteFlags: u32 {
+            const StraightAlpha = 1;
+        }
     }
-
-    pub type SpriteFlags = BitFlags<SpriteFlagsBit>;
 
     #[derive(Debug, Clone, Copy)]
     #[repr(C)]
@@ -483,9 +480,9 @@ impl CompositorWindow {
                         (ImageContents::ManagedImage(image.clone()), sampler),
                         uv_matrix,
                         if premul {
-                            flags![composite::SpriteFlagsBit::{}]
+                            flags![composite::SpriteFlags::{}]
                         } else {
-                            flags![composite::SpriteFlagsBit::{StraightAlpha}]
+                            flags![composite::SpriteFlags::{StraightAlpha}]
                         },
                         Vector4::new(1.0, 1.0, 1.0, opacity),
                     ))
@@ -564,7 +561,7 @@ impl CompositorWindow {
             opacity: f32,
         ) -> Result<()> {
             use super::LayerContents::*;
-            use super::{LayerFlags, LayerFlagsBit};
+            use super::LayerFlags;
 
             let flags: LayerFlags = *layer.flags.read_presenter(c.frame).unwrap();
             let transform = *layer.transform.read_presenter(c.frame).unwrap();
@@ -573,7 +570,7 @@ impl CompositorWindow {
             let bounds: Box2<f32> = *layer.bounds.read_presenter(c.frame).unwrap();
             let opacity = opacity * *layer.opacity.read_presenter(c.frame).unwrap();
 
-            let flatten = flags.contains(LayerFlagsBit::FlattenContents);
+            let flatten = flags.contains(LayerFlags::FlattenContents);
             let use_backdrop = match contents {
                 &BackDrop => true,
                 _ => false,

@@ -10,29 +10,26 @@ use core::{
     PropertyAccessor, PropertyError, PropertyProducerWrite, RefPropertyAccessor,
     RoPropertyAccessor, UpdateId, WoProperty,
 };
-use ngsenumflags::BitFlags;
 use refeq::RefEqArc;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
-#[repr(u8)]
-pub enum WindowFlagsBit {
-    /// Specifies that the window can be resized by the user.
-    Resizable = 0b0001,
+bitflags! {
+    pub struct WindowFlags: u8 {
+        /// Specifies that the window can be resized by the user.
+        const Resizable = 0b0001;
 
-    /// Hides the window's decoration (title bar, border, etc.).
-    Borderless = 0b0010,
+        /// Hides the window's decoration (title bar, border, etc.).
+        const Borderless = 0b0010;
 
-    /// Makes the background of the window transparent.
-    Transparent = 0b0100,
+        /// Makes the background of the window transparent.
+        const Transparent = 0b0100;
+    }
 }
 
-pub type WindowFlags = BitFlags<WindowFlagsBit>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
-#[repr(u8)]
-pub(super) enum WindowActionBit {
-    ChangeSize = 0b1,
-    ChangeTitle = 0b10,
+bitflags! {
+    pub(super) struct WindowActionFlags: u8 {
+        const ChangeSize = 0b1;
+        const ChangeTitle = 0b10;
+    }
 }
 
 /// Factory type of `WindowRef`.
@@ -95,7 +92,7 @@ impl WindowBuilder {
 
     pub fn build(self, context: &Context) -> WindowRef {
         WindowRef(RefEqArc::new(Window {
-            action: WoProperty::new(context, BitFlags::empty()),
+            action: WoProperty::new(context, WindowActionFlags::empty()),
 
             flags: self.flags,
 
@@ -124,7 +121,7 @@ impl Default for WindowBuilder {
 }
 
 pub(super) struct Window {
-    pub action: WoProperty<BitFlags<WindowActionBit>>,
+    pub action: WoProperty<WindowActionFlags>,
 
     pub flags: WindowFlags,
 
@@ -178,7 +175,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.size.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionBit::ChangeSize;
+                            *a = *a | WindowActionFlags::ChangeSize;
                         }
                     },
                 );
@@ -209,7 +206,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.min_size.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionBit::ChangeSize;
+                            *a = *a | WindowActionFlags::ChangeSize;
                         }
                     },
                 );
@@ -240,7 +237,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.max_size.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionBit::ChangeSize;
+                            *a = *a | WindowActionFlags::ChangeSize;
                         }
                     },
                 );
@@ -278,7 +275,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.title.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionBit::ChangeTitle;
+                            *a = *a | WindowActionFlags::ChangeTitle;
                         }
                     },
                 );
@@ -370,13 +367,11 @@ pub enum MouseButton {
 
 pub use winit::VirtualKeyCode;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
-#[repr(u8)]
-pub enum KeyModifier {
-    Shift = 0b0001,
-    Control = 0b0010,
-    Alt = 0b0100,
-    Meta = 0b1000,
+bitflags! {
+    pub struct KeyModifierFlags: u8 {
+        const Shift = 0b0001;
+        const Control = 0b0010;
+        const Alt = 0b0100;
+        const Meta = 0b1000;
+    }
 }
-
-pub type KeyModifierFlags = BitFlags<KeyModifier>;

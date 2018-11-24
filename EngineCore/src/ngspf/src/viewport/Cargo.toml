@@ -10,8 +10,7 @@ rgb = "0.8.9"
 include_data = { path = "../../../support/include_data" }
 refeq = { path = "../../../support/refeq", features = ["nightly"] }
 iterpool = { path = "../../../support/iterpool" }
-ngsenumflags = { path = "../../../support/ngsenumflags" }
-ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_derive" }
+bitflags = "1.0.4"
 cggeom = { path = "../../../support/cggeom" }
 zangfx = { path = "../../../zangfx" }
 ngspf_core = { path = "../core" }

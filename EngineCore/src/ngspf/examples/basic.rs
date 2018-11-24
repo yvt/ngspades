@@ -20,7 +20,7 @@ use ngspf::prelude::*;
 use ngspf::viewport::rgb::RGBA;
 use ngspf::viewport::{
     ImageWrapMode, LayerBuilder, LayerContents, LayerRef, RootRef, VirtualKeyCode, WindowBuilder,
-    WindowEvent, WindowFlagsBit, WindowRef, WorkspaceBuilder,
+    WindowEvent, WindowFlags, WindowRef, WorkspaceBuilder,
 };
 
 static IMAGE: &[u8] = include_bytes!("nyancat.raw");
@@ -76,7 +76,7 @@ fn main() {
         let group = GroupRef::new(layers.into_iter().map(LayerRef::into_node_ref));
 
         window = WindowBuilder::new()
-            .flags(WindowFlagsBit::Resizable)
+            .flags(WindowFlags::Resizable)
             .child(Some(group.into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop

@@ -27,7 +27,7 @@ use ngspf::cggeom::Box2;
 use ngspf::prelude::*;
 use ngspf::viewport::{
     LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent,
-    WindowFlagsBit, WindowRef, WorkspaceBuilder,
+    WindowFlags, WindowRef, WorkspaceBuilder,
 };
 
 mod triangle {
@@ -296,7 +296,7 @@ fn main() {
             .build(&context);
 
         window = WindowBuilder::new()
-            .flags(WindowFlagsBit::Resizable)
+            .flags(WindowFlags::Resizable)
             .child(Some(image.into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop

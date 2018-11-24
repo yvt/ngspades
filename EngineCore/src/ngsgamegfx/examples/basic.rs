@@ -21,7 +21,7 @@ use ngspf::cggeom::Box2;
 use ngspf::prelude::*;
 use ngspf::viewport::{
     LayerBuilder, LayerContents, LayerRef, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent,
-    WindowFlagsBit, WindowRef, WorkspaceBuilder,
+    WindowFlags, WindowRef, WorkspaceBuilder,
 };
 
 fn main() {
@@ -46,7 +46,7 @@ fn main() {
             .build(&context);
 
         window = WindowBuilder::new()
-            .flags(WindowFlagsBit::Resizable)
+            .flags(WindowFlags::Resizable)
             .child(Some(image.clone().into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop
