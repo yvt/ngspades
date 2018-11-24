@@ -278,7 +278,8 @@ impl ImageManager {
                     .build()?;
 
                 Ok(gfx_image)
-            }).collect();
+            })
+            .collect();
         let gfx_images = gfx_images?;
 
         // Allocate a heap to hold all those images

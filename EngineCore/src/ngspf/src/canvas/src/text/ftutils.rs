@@ -215,7 +215,8 @@ impl Outline {
         let mut params = freetype::FT_Raster_Params {
             target: ::null(),
             source: ::null(),
-            flags: (freetype::FT_RASTER_FLAG_DIRECT | freetype::FT_RASTER_FLAG_AA
+            flags: (freetype::FT_RASTER_FLAG_DIRECT
+                | freetype::FT_RASTER_FLAG_AA
                 | if clip_box.is_some() {
                     freetype::FT_RASTER_FLAG_CLIP
                 } else {

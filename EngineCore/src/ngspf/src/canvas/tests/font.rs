@@ -163,6 +163,7 @@ fn layout_area_long_multi_line() {
             lipsum::lipsum(26).as_str(),
             "\n",
             lipsum::lipsum(64).as_str(),
-        ].concat(),
+        ]
+        .concat(),
     );
 }

@@ -225,7 +225,8 @@ impl NodeRef {
         self.for_each_node_r::<_, ()>(move |node| {
             cb(node);
             Ok(())
-        }).unwrap()
+        })
+        .unwrap()
     }
 
     /// Iterate through nodes of a specific concrete type reachable from a given
@@ -252,7 +253,8 @@ impl NodeRef {
         self.for_each_node_of_r::<_, _, ()>(move |node| {
             cb(node);
             Ok(())
-        }).unwrap()
+        })
+        .unwrap()
     }
 }
 
@@ -661,9 +663,8 @@ where
     }
 }
 
-impl<'a, T, C, F> RoPropertyAccessor<T> for KeyedPropertyAccessor<'a, C, F>
-where
-    F: for<'r> Fn(&'r C) -> &'r KeyedProperty<T>,
+impl<'a, T, C, F> RoPropertyAccessor<T> for KeyedPropertyAccessor<'a, C, F> where
+    F: for<'r> Fn(&'r C) -> &'r KeyedProperty<T>
 {
 }
 
@@ -730,11 +731,7 @@ where
     }
 }
 
-impl<T, S> RoPropertyAccessor<S> for RefPropertyAccessor<T>
-where
-    T: borrow::Borrow<S>,
-{
-}
+impl<T, S> RoPropertyAccessor<S> for RefPropertyAccessor<T> where T: borrow::Borrow<S> {}
 
 /// The NgsPF prelude.
 pub mod prelude {

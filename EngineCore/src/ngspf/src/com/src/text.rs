@@ -49,9 +49,9 @@ impl INgsPFFontFactoryTrait for ComFontFactory {
                 return Err(hresults::E_INVALIDARG);
             }
 
-            let font = text::Font::new(unsafe {
-                from_raw_parts(bytes as *const u8, length as usize)
-            }).map_err(|_| hresults::E_UNEXPECTED)?;
+            let font =
+                text::Font::new(unsafe { from_raw_parts(bytes as *const u8, length as usize) })
+                    .map_err(|_| hresults::E_UNEXPECTED)?;
 
             *retval = (&ComFont::new(font)).into();
 
@@ -230,7 +230,8 @@ impl INgsPFCharStyleTrait for ComCharStyle {
                 Some(text::FontStyle::Italic) => ngsbase::FontStyleItem::Italic,
                 Some(text::FontStyle::Oblique) => ngsbase::FontStyleItem::Oblique,
                 None => ngsbase::FontStyleItem::Inherited,
-            }.into();
+            }
+            .into();
         });
         hresults::E_OK
     }
@@ -394,7 +395,8 @@ impl INgsPFParagraphStyleTrait for ComParagraphStyle {
         *retval = (&ComCharStyle::with_proxy(move |cb| {
             let mut lock = data.lock().unwrap();
             cb(&mut lock.char_style);
-        })).into();
+        }))
+            .into();
         hresults::E_OK
     }
 
@@ -434,7 +436,8 @@ impl INgsPFParagraphStyleTrait for ComParagraphStyle {
                 text::TextAlign::End => ngsbase::TextAlignItem::End,
                 text::TextAlign::Justify => ngsbase::TextAlignItem::Justify,
                 text::TextAlign::JustifyAll => ngsbase::TextAlignItem::JustifyAll,
-            }.into();
+            }
+            .into();
         });
         hresults::E_OK
     }
@@ -462,7 +465,8 @@ impl INgsPFParagraphStyleTrait for ComParagraphStyle {
                 text::Direction::RightToLeft => ngsbase::TextDirectionItem::RightToLeft,
                 text::Direction::TopToBottom => ngsbase::TextDirectionItem::TopToBottom,
                 text::Direction::BottomToTop => ngsbase::TextDirectionItem::BottomToTop,
-            }.into();
+            }
+            .into();
         });
         hresults::E_OK
     }
@@ -487,7 +491,8 @@ impl INgsPFParagraphStyleTrait for ComParagraphStyle {
             *retval = match style.word_wrap_mode {
                 text::WordWrapMode::MinNumLines => ngsbase::WordWrapModeItem::MinNumLines,
                 text::WordWrapMode::MinRaggedness => ngsbase::WordWrapModeItem::MinRaggedness,
-            }.into();
+            }
+            .into();
         });
         hresults::E_OK
     }

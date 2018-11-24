@@ -79,7 +79,8 @@ impl ComWorkspace {
             context,
             com_context,
             root,
-        })).into())
+        }))
+            .into())
     }
 
     fn com_context(&self) -> &ComContext {

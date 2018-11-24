@@ -257,12 +257,14 @@ impl FontConfig {
                     if let Some(x) = shaping_props.script {
                         hb_buffer.set_script(x);
                     }
-                    hb_buffer.set_direction(match (is_vertical, shaping_props.bidi_level.is_rtl()) {
-                        (false, false) => harfbuzz::HB_DIRECTION_LTR,
-                        (false, true) => harfbuzz::HB_DIRECTION_RTL,
-                        (true, false) => harfbuzz::HB_DIRECTION_TTB,
-                        (true, true) => harfbuzz::HB_DIRECTION_BTT,
-                    });
+                    hb_buffer.set_direction(
+                        match (is_vertical, shaping_props.bidi_level.is_rtl()) {
+                            (false, false) => harfbuzz::HB_DIRECTION_LTR,
+                            (false, true) => harfbuzz::HB_DIRECTION_RTL,
+                            (true, false) => harfbuzz::HB_DIRECTION_TTB,
+                            (true, true) => harfbuzz::HB_DIRECTION_BTT,
+                        },
+                    );
                     for (i, c) in flattened[flattened_range.clone()].char_indices() {
                         // FIXME: Probably we should skip other control characters as well
                         if c == '\r' || c == '\n' {
@@ -690,7 +692,8 @@ impl FontConfig {
 
         // Layout each line
         let mut output_glyphs = Vec::new();
-        let output_lines: Vec<_> = lines.iter()
+        let output_lines: Vec<_> = lines
+            .iter()
             // Generate `flattened_range`, a byte range in `flattened`
             .with_range(flattened.len(), |x| x.start_flattened)
             .map(|(mut flattened_range, line)| {
@@ -726,7 +729,9 @@ impl FontConfig {
                     let is_rtl = levels[level_run.start].is_rtl();
 
                     if is_rtl {
-                        let mut i = match shaping_clusters.binary_search_by_key(&level_run.end, |x| x.start_flattened) {
+                        let mut i = match shaping_clusters
+                            .binary_search_by_key(&level_run.end, |x| x.start_flattened)
+                        {
                             Ok(i) => i,
                             Err(i) => i,
                         };
@@ -738,14 +743,16 @@ impl FontConfig {
                                     clip_shaping_cluster_glyphs(hb_buffer, level_run, is_rtl)
                                 } else {
                                     0..0
-                                }
+                                },
                             });
                             if shaping_clusters[i].start_flattened <= level_run.start {
                                 break;
                             }
                         }
                     } else {
-                        let mut i = match shaping_clusters.binary_search_by_key(&level_run.start, |x| x.start_flattened) {
+                        let mut i = match shaping_clusters
+                            .binary_search_by_key(&level_run.start, |x| x.start_flattened)
+                        {
                             Ok(i) => i,
                             Err(i) => i - 1,
                         };
@@ -759,7 +766,7 @@ impl FontConfig {
                                     clip_shaping_cluster_glyphs(hb_buffer, level_run, is_rtl)
                                 } else {
                                     0..0
-                                }
+                                },
                             });
                             i += 1;
                         }
@@ -769,22 +776,30 @@ impl FontConfig {
                 // Compute the position of the line
                 let mut offs = [0.0f64; 2];
 
-                let mut line_width: f64 =
-                    clusters.iter().map(|cluster| {
+                let mut line_width: f64 = clusters
+                    .iter()
+                    .map(|cluster| {
                         let ref shaping_cluster = shaping_clusters[cluster.shaping_cluster_id];
                         let ref hb_buffer = hb_buffers[cluster.shaping_cluster_id];
 
                         if cluster.glyph_range.len() > 0 {
                             let glyph_positions = hb_buffer.as_ref().unwrap().glyph_positions();
 
-                            let cluster_width = glyph_positions[cluster.glyph_range.clone()].iter().map(|x| if is_vertical {
-                                x.y_advance
-                            } else {
-                                x.x_advance
-                            }).sum::<i32>();
+                            let cluster_width = glyph_positions[cluster.glyph_range.clone()]
+                                .iter()
+                                .map(|x| {
+                                    if is_vertical {
+                                        x.y_advance
+                                    } else {
+                                        x.x_advance
+                                    }
+                                })
+                                .sum::<i32>();
 
                             // Multiply by the font size
-                            let font_size = if let ClusterContents::Text(ref props) = shaping_cluster.contents {
+                            let font_size = if let ClusterContents::Text(ref props) =
+                                shaping_cluster.contents
+                            {
                                 props.size
                             } else {
                                 unreachable!()
@@ -804,12 +819,13 @@ impl FontConfig {
                                 }
                             }
                         }
-                    }).sum();
+                    })
+                    .sum();
 
                 fn starts_with_space(s: &str) -> bool {
                     let bytes = s.as_bytes();
-                    bytes.len() >= 1 && bytes[0] == 0x20 ||
-                    bytes.len() >= 2 && bytes[0] == 0xc2 &&  bytes[1] == 0xa0
+                    bytes.len() >= 1 && bytes[0] == 0x20
+                        || bytes.len() >= 2 && bytes[0] == 0xc2 && bytes[1] == 0xa0
                 }
 
                 let is_glyph_info_expansible = |x: &harfbuzz::hb_glyph_info_t| {
@@ -819,25 +835,29 @@ impl FontConfig {
                 let expansion;
 
                 let try_justification = match (line.hard_break, para_style.text_align) {
-                    (_, TextAlign::JustifyAll) |
-                    (false, TextAlign::Justify) => boundary.is_some(),
+                    (_, TextAlign::JustifyAll) | (false, TextAlign::Justify) => boundary.is_some(),
                     _ => false,
                 };
                 if try_justification {
                     // Perform justification. First, find the number of the
                     // expansion points.
-                    let num_flex_points: usize = clusters.iter().map(|cluster| {
-                        let ref hb_buffer = hb_buffers[cluster.shaping_cluster_id];
+                    let num_flex_points: usize = clusters
+                        .iter()
+                        .map(|cluster| {
+                            let ref hb_buffer = hb_buffers[cluster.shaping_cluster_id];
 
-                        if cluster.glyph_range.len() > 0 {
-                            let glyph_infos = hb_buffer.as_ref().unwrap().glyph_infos();
+                            if cluster.glyph_range.len() > 0 {
+                                let glyph_infos = hb_buffer.as_ref().unwrap().glyph_infos();
 
-                            glyph_infos[cluster.glyph_range.clone()].iter()
-                                .filter(|x| is_glyph_info_expansible(*x)).count()
-                        } else {
-                            0
-                        }
-                    }).sum();
+                                glyph_infos[cluster.glyph_range.clone()]
+                                    .iter()
+                                    .filter(|x| is_glyph_info_expansible(*x))
+                                    .count()
+                            } else {
+                                0
+                            }
+                        })
+                        .sum();
 
                     if num_flex_points == 0 {
                         // Justifciation is impossible because there are no
@@ -854,25 +874,26 @@ impl FontConfig {
                 }
 
                 match (default_bidi_level.is_rtl(), para_style.text_align) {
-                    (false, TextAlign::Start) |
-                    (false, TextAlign::Justify) |
-                    (false, TextAlign::JustifyAll) |
-                    (true, TextAlign::End) => {
+                    (false, TextAlign::Start)
+                    | (false, TextAlign::Justify)
+                    | (false, TextAlign::JustifyAll)
+                    | (true, TextAlign::End) => {
                         // Left-aligned
                         offs[0] = line.x_coord_range.start;
                         offs[1] = line.y_coord;
                     }
-                    (false, TextAlign::End) |
-                    (true, TextAlign::Start) |
-                    (true, TextAlign::Justify) |
-                    (true, TextAlign::JustifyAll) => {
+                    (false, TextAlign::End)
+                    | (true, TextAlign::Start)
+                    | (true, TextAlign::Justify)
+                    | (true, TextAlign::JustifyAll) => {
                         // Right-aligned
                         offs[0] = line.x_coord_range.end - line_width;
                         offs[1] = line.y_coord;
                     }
                     (_, TextAlign::Center) => {
                         // Center-aligned
-                        offs[0] = line.x_coord_range.start + (line.x_coord_range.end - line_width) * 0.5;
+                        offs[0] =
+                            line.x_coord_range.start + (line.x_coord_range.end - line_width) * 0.5;
                         offs[1] = line.y_coord;
                     }
                 }
@@ -898,25 +919,29 @@ impl FontConfig {
                         let mut reel = Reel::new(text, shaping_cluster.start_text);
 
                         // Multiply by the font size
-                        let props = if let ClusterContents::Text(ref props) = shaping_cluster.contents {
-                            props
-                        } else {
-                            unreachable!()
-                        };
+                        let props =
+                            if let ClusterContents::Text(ref props) = shaping_cluster.contents {
+                                props
+                            } else {
+                                unreachable!()
+                            };
                         let face_id = props.face_id.unwrap();
                         let face = self.font_face(face_id);
                         let scale = props.size * (1.0 / FONT_SCALE);
 
-                        for (info, pos) in glyph_infos[range.clone()].iter()
-                            .zip(glyph_positions[range.clone()].iter()) {
-
+                        for (info, pos) in glyph_infos[range.clone()]
+                            .iter()
+                            .zip(glyph_positions[range.clone()].iter())
+                        {
                             // Find out the glyph's style. `cluster` = absolute byte offset in `flattened`
-                            let offset_flattened = (info.cluster as usize - shaping_cluster.start_flattened) as isize;
+                            let offset_flattened =
+                                (info.cluster as usize - shaping_cluster.start_flattened) as isize;
                             // A byte offset inside a text of `flattened` directly translates to that of `text`
                             let cursor = reel.get(offset_flattened);
                             let char_style = text.attribute_at(cursor);
 
-                            let char_style = para_style.char_style
+                            let char_style = para_style
+                                .char_style
                                 .as_char_style_ref()
                                 .override_with(&char_style.as_char_style_ref());
                             let color = char_style.color;
@@ -934,7 +959,9 @@ impl FontConfig {
                                 scale,
                                 face_id,
                                 glyph_id: info.codepoint,
-                                glyph_extents: hb_glyph_extents.as_ref().map(GlyphExtents::from_hb_glyph_extents),
+                                glyph_extents: hb_glyph_extents
+                                    .as_ref()
+                                    .map(GlyphExtents::from_hb_glyph_extents),
                                 color,
                             });
 
@@ -953,7 +980,7 @@ impl FontConfig {
                         }
                     } else {
                         match shaping_cluster.contents {
-                            ClusterContents::Text(_) => {},
+                            ClusterContents::Text(_) => {}
                             ClusterContents::Foreign(x, _) => {
                                 let extents = x.extents();
                                 // TODO: Export the position of foreign objects
@@ -967,7 +994,7 @@ impl FontConfig {
                     }
                 }
 
-                LineLayout{}
+                LineLayout {}
             })
             .collect();
 

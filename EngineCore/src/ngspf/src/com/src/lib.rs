@@ -4,11 +4,11 @@
 // This source code is a part of Nightingales.
 //
 //! NgsCOM bridges to [NgsPF](../ngspf/index.html).
+extern crate arclock;
 extern crate atomic_refcell;
 extern crate cgmath;
-extern crate rgb;
-extern crate arclock;
 extern crate owning_ref;
+extern crate rgb;
 extern crate send_cell;
 extern crate stickylock;
 extern crate tokenlock;

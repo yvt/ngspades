@@ -46,7 +46,8 @@ impl ComBitmap {
         let format = match image_data.format() {
             ImageFormat::SrgbRgba8 => ngsbase::PixelFormatItem::SrgbRgba8,
             ImageFormat::SrgbRgba8Premul => ngsbase::PixelFormatItem::SrgbRgba8Premul,
-        }.into();
+        }
+        .into();
         let size = image_data.size().cast::<i32>().unwrap();
 
         Self::alloc(BitmapData {

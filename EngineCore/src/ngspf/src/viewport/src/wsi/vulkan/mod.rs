@@ -150,8 +150,7 @@ impl<P: Painter> WindowManager<P> {
         let surface_loader = ext::Surface::new(&entry, &*instance);
 
         // Enumerate physical devices
-        let vk_phys_devices =
-            unsafe { instance.enumerate_physical_devices() }
+        let vk_phys_devices = unsafe { instance.enumerate_physical_devices() }
             .expect("Failed to enumerate available Vulkan physical devices.");
         let phys_device_info_list: Vec<_> = vk_phys_devices
             .iter()
@@ -161,7 +160,8 @@ impl<P: Painter> WindowManager<P> {
                     Ok(None) => None,
                     Err(x) => Some(Err(x)),
                 }
-            }).collect::<Result<_, _>>()
+            })
+            .collect::<Result<_, _>>()
             .expect("Failed to examine the properties of Vulkan physical devices.");
 
         Self {
@@ -219,7 +219,8 @@ impl<P: Painter> WindowManager<P> {
                 .filter_map(|info| {
                     info.queue_family_compatible_with_surface(&self.surface_loader, *vk_surface)
                         .map(|qf| (info, qf))
-                }).nth(0)
+                })
+                .nth(0)
                 .expect("Failed to find a compatible Vulkan physical device for a surface.");
 
             self.next_device_id = self.next_device_id.checked_add(1).unwrap();
@@ -234,7 +235,8 @@ impl<P: Painter> WindowManager<P> {
                 queue_family,
                 &mut self.painter,
                 self.events_loop_proxy.clone(),
-            ).expect("Failed to initialize a Vulkan device.");
+            )
+            .expect("Failed to initialize a Vulkan device.");
 
             self.phys_device_list.insert(device_id, phys_device);
         }
@@ -396,7 +398,8 @@ impl<P: Painter> PhysicalDevice<P> {
                 } else {
                     None
                 }
-            }).collect();
+            })
+            .collect();
 
         let vk_device = {
             let mut builder =
@@ -533,7 +536,8 @@ impl<P: Painter> PhysicalDevice<P> {
             None,
             self.info.vk_phys_device,
             surface_loader,
-        ).expect("Failed to compute the optimal surface properties.");
+        )
+        .expect("Failed to compute the optimal surface properties.");
 
         let vk_create_info = vk_props.to_create_info(*vk_surface, vk::SwapchainKHR::null());
 
@@ -555,7 +559,8 @@ impl<P: Painter> PhysicalDevice<P> {
             let vk_swapchain = unsafe {
                 self.swapchain_loader
                     .create_swapchain_khr(&vk_create_info, None)
-            }.unwrap();
+            }
+            .unwrap();
             let vk_swapchain = UniqueSwapchainKHR(&self.swapchain_loader, vk_swapchain);
 
             self.swapchain_manager
@@ -572,7 +577,8 @@ impl<P: Painter> PhysicalDevice<P> {
                     &self.swapchain_loader,
                     &import_image,
                     main_queue,
-                ).expect("Failed to acquire images from a swapchain."),
+                )
+                .expect("Failed to acquire images from a swapchain."),
             );
 
             vk_swapchain.into_inner(); // Release
@@ -702,7 +708,8 @@ impl<P: Painter> PhysicalDevice<P> {
                             &self.swapchain_loader,
                             &import_image,
                             main_queue,
-                        ).expect("Failed to acquire images from a swapchain."),
+                        )
+                        .expect("Failed to acquire images from a swapchain."),
                     );
                     surface.vk_props = new_props.clone();
                     vk_swapchain.into_inner(); // Release
@@ -785,7 +792,8 @@ impl<P: Painter> PhysicalDevice<P> {
                     surfaces.get_mut(&surface_ref).unwrap().last_error = Some(error);
                     Ok(())
                 }
-            }).expect("Failed to update some swapchains.");
+            })
+            .expect("Failed to update some swapchains.");
     }
 }
 
@@ -848,8 +856,7 @@ impl Swapchain {
         import_image: &be::image::ImportImage,
         queue: &BeCmdQueue,
     ) -> Result<Self, SurfaceError> {
-        let vk_images =
-            unsafe { swapchain_loader.get_swapchain_images_khr(vk_swapchain) }
+        let vk_images = unsafe { swapchain_loader.get_swapchain_images_khr(vk_swapchain) }
             .map_err(SurfaceError::from)?;
 
         let images = vk_images
@@ -858,8 +865,10 @@ impl Swapchain {
                 be::image::ImportImage {
                     vk_image,
                     ..import_image.clone()
-                }.build(queue)
-            }).collect::<GfxResult<_>>()?;
+                }
+                .build(queue)
+            })
+            .collect::<GfxResult<_>>()?;
 
         Ok(Self {
             vk_swapchain,
@@ -1232,7 +1241,8 @@ where
             // Return the first one that matches the search criteria
             gfx_supported_formats
                 .find(|x| x.0 == format.unwrap_or(x.0) && x.1 == color_space.unwrap_or(x.1))
-        }).nth(0)
+        })
+        .nth(0)
 }
 
 #[derive(Debug, Clone, PartialEq)]

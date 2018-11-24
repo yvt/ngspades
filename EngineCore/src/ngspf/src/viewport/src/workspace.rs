@@ -520,7 +520,8 @@ impl wsi::Painter for Painter {
             device: device.device.clone(),
             main_queue: device.main_queue.clone(),
             copy_queue: device.copy_queue.clone(),
-        }).unwrap();
+        })
+        .unwrap();
 
         PainterDeviceData {
             compositor: Rc::new(RefCell::new(compositor)),

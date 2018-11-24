@@ -104,10 +104,7 @@ unsafe extern "system" fn debug_callback(
 }
 
 impl DebugReportConduit {
-    pub fn new(
-        entry: &ash::Entry,
-        instance: &ash::Instance,
-    ) -> Self {
+    pub fn new(entry: &ash::Entry, instance: &ash::Instance) -> Self {
         Self {
             ext: extensions::DebugReport::new(entry, instance),
             callbacks: Vec::new(),
@@ -127,7 +124,8 @@ impl DebugReportConduit {
             ),
             (DebugReportType::Error, vk::DebugReportFlagsEXT::ERROR),
             (DebugReportType::Debug, vk::DebugReportFlagsEXT::DEBUG),
-        ].iter()
+        ]
+        .iter()
         {
             if flags.contains(typ) {
                 self.callbacks.reserve(1);
@@ -143,8 +141,9 @@ impl DebugReportConduit {
                         },
                         None,
                     )
-                }.map_err(translate_generic_error_unwrap)
-                    .unwrap();
+                }
+                .map_err(translate_generic_error_unwrap)
+                .unwrap();
                 self.callbacks.push(DebugReportCallback { handle, data });
             }
         }

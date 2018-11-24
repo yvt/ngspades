@@ -40,13 +40,15 @@ impl<'a> InstanceBuilder<'a> {
             .map(|e| {
                 let name = unsafe { CStr::from_ptr(e.layer_name.as_ptr()) };
                 (name.to_str().unwrap().to_owned(), e.spec_version)
-            }).collect();
+            })
+            .collect();
         let supported_extensions: Vec<_> = ext_props
             .iter()
             .map(|e| {
                 let name = unsafe { CStr::from_ptr(e.extension_name.as_ptr()) };
                 (name.to_str().unwrap().to_owned(), e.spec_version)
-            }).collect();
+            })
+            .collect();
 
         Ok(Self {
             entry,
@@ -130,7 +132,8 @@ impl<'a> InstanceBuilder<'a> {
                         pp_enabled_extension_names: extensions.as_ptr() as *const _,
                     },
                     None,
-                ).map(UniqueInstance)
+                )
+                .map(UniqueInstance)
         }
     }
 }
@@ -154,7 +157,8 @@ impl<'a> DeviceBuilder<'a> {
             .map(|e| {
                 let name = unsafe { CStr::from_ptr(e.extension_name.as_ptr()) };
                 (name.to_str().unwrap().to_owned(), e.spec_version)
-            }).collect();
+            })
+            .collect();
 
         Ok(Self {
             phys_device,
@@ -207,7 +211,8 @@ impl<'a> DeviceBuilder<'a> {
                         p_enabled_features: enabled_features,
                     },
                     None,
-                ).map(UniqueDevice)
+                )
+                .map(UniqueDevice)
         }
     }
 }

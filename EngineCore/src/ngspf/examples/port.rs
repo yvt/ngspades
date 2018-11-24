@@ -26,8 +26,8 @@ use ngspf::cggeom::prelude::*;
 use ngspf::cggeom::Box2;
 use ngspf::prelude::*;
 use ngspf::viewport::{
-    LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent,
-    WindowFlags, WindowRef, WorkspaceBuilder,
+    LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent, WindowFlags,
+    WindowRef, WorkspaceBuilder,
 };
 
 mod triangle {

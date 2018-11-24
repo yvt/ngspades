@@ -81,8 +81,9 @@ impl State {
                     dist.sample(&mut self.rng),
                     dist.sample(&mut self.rng),
                     dist.sample(&mut self.rng),
-                ).cast()
-                    .unwrap(),
+                )
+                .cast()
+                .unwrap(),
             );
         }
 

@@ -104,11 +104,7 @@ pub trait IterUtils: Iterator + Sized {
     }
 }
 
-impl<T> IterUtils for T
-where
-    T: Iterator,
-{
-}
+impl<T> IterUtils for T where T: Iterator {}
 
 #[cfg(test)]
 mod tests {

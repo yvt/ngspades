@@ -216,7 +216,8 @@ impl Compositor {
                     white_image.get_memory_req()?.memory_types,
                     gfx::MemoryTypeCapsFlags::DeviceLocal,
                     flags![gfx::MemoryTypeCapsFlags::{}],
-                ).unwrap();
+                )
+                .unwrap();
 
             if !device
                 .global_heap(memory_type)
@@ -242,8 +243,8 @@ impl Compositor {
                     &[0xffffffffu32],
                     &[1, 1],
                 )]
-                    .iter()
-                    .cloned(),
+                .iter()
+                .cloned(),
             )?;
         }
 
@@ -259,7 +260,8 @@ impl Compositor {
                     box_vertices.get_memory_req()?.memory_types,
                     gfx::MemoryTypeCapsFlags::DeviceLocal,
                     flags![gfx::MemoryTypeCapsFlags::{}],
-                ).unwrap();
+                )
+                .unwrap();
 
             if !device
                 .global_heap(memory_type)
@@ -850,7 +852,8 @@ impl CompositorWindow {
                 },
                 framebuffer: Default::default(),
                 rt,
-            }).collect();
+            })
+            .collect();
 
         // Prepare to upload `Sprite`
         let sprites_size = size_of_val(c.sprites.as_slice()) as gfx::DeviceSize;
@@ -926,7 +929,8 @@ impl CompositorWindow {
                             ImageContents::Image(ref image) => image,
                             ImageContents::WhiteImage => &white_image,
                             ImageContents::ManagedImage(ref image_ref) => {
-                                let resident_image = compositor.image_manager.get(&image_ref).unwrap();
+                                let resident_image =
+                                    compositor.image_manager.get(&image_ref).unwrap();
                                 resident_image.image()
                             }
                             ImageContents::Port(ref port) => {
@@ -943,14 +947,19 @@ impl CompositorWindow {
 
                     let ty = match contents {
                         // Fast path - `ImageManager` automatically creates argument tables of this form
-                        [(ImageContents::WhiteImage, _), (ImageContents::WhiteImage, _)] =>   ContentsType::Solid,
-                        [(ImageContents::ManagedImage(_), _), (ImageContents::WhiteImage, _)] =>   ContentsType::Image,
+                        [(ImageContents::WhiteImage, _), (ImageContents::WhiteImage, _)] => {
+                            ContentsType::Solid
+                        }
+                        [(ImageContents::ManagedImage(_), _), (ImageContents::WhiteImage, _)] => {
+                            ContentsType::Image
+                        }
                         // Slow path
                         _ => ContentsType::Generic,
                     };
 
                     ResolvedImageInfo { images, ty }
-                }).collect();
+                })
+                .collect();
 
             // The number of elements in `at_contents` whose `ArgTable`s we have to
             // be built here
@@ -971,10 +980,12 @@ impl CompositorWindow {
                     .reserve_table_sig(
                         num_generic_contents,
                         &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
-                    ).reserve_table_sig(
+                    )
+                    .reserve_table_sig(
                         1,
                         &shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL],
-                    ).build()?;
+                    )
+                    .build()?;
 
                 at_global = arg_pool
                     .new_table(&shaders.composite_arg_table_sigs[composite::ARG_TABLE_GLOBAL])?
@@ -995,7 +1006,8 @@ impl CompositorWindow {
                     .new_tables(
                         num_generic_contents,
                         &shaders.composite_arg_table_sigs[composite::ARG_TABLE_CONTENTS],
-                    )?.unwrap();
+                    )?
+                    .unwrap();
 
                 let mut at_contents_images = Vec::with_capacity(num_generic_contents * 2);
                 let mut at_contents_samplers = Vec::with_capacity(num_generic_contents * 2);
@@ -1204,12 +1216,14 @@ impl Stateset {
                         gfx::LoadOp::Clear
                     } else {
                         gfx::LoadOp::Load
-                    }).set_store_op(gfx::StoreOp::Store);
+                    })
+                    .set_store_op(gfx::StoreOp::Store);
 
                 builder.subpass_color_targets(&[Some(0)]);
 
                 builder.build()
-            }).collect::<Result<_>>()?;
+            })
+            .collect::<Result<_>>()?;
 
         let composite_pipeline = {
             let mut builder = device.build_render_pipeline();

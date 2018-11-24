@@ -44,7 +44,8 @@ fn main() {
             &mut table_src,
             "{}, ",
             (srgb_to_linear(i as f32 / 255.0) * 8190.0 + 0.5) as u16
-        ).unwrap();
+        )
+        .unwrap();
     }
     writeln!(&mut table_src, "];").unwrap();
 
@@ -57,7 +58,8 @@ fn main() {
             &mut table_src,
             "{}, ",
             (linear_to_srgb(i as f32 / 4095.0) * 255.0 + 0.5) as u8
-        ).unwrap();
+        )
+        .unwrap();
     }
     writeln!(&mut table_src, "];").unwrap();
 

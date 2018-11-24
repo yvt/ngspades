@@ -176,7 +176,8 @@ impl SwapchainManager {
                         // `self.update` called.
                         let _ = events_loop_proxy.wakeup();
                     }
-                }).unwrap()
+                })
+                .unwrap()
         };
 
         Self {
@@ -345,7 +346,8 @@ impl SwapchainManager {
                 },
                 None,
             )
-        }.map_err(translate_generic_error_unwrap)?;
+        }
+        .map_err(translate_generic_error_unwrap)?;
         let vk_fence = UniqueFence(vk_device, vk_fence);
 
         let gfx_semaphore = self.device.new_semaphore()?;
