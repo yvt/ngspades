@@ -13,7 +13,10 @@ pub trait BenchDriver {
     fn choose_compute_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.choose_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
-                if qf.caps.intersects(gfx::limits::QueueFamilyCapsFlags::Compute) {
+                if qf
+                    .caps
+                    .intersects(gfx::limits::QueueFamilyCapsFlags::Compute)
+                {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
                     break;
@@ -25,7 +28,10 @@ pub trait BenchDriver {
     fn choose_render_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.choose_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
-                if qf.caps.intersects(gfx::limits::QueueFamilyCapsFlags::Render) {
+                if qf
+                    .caps
+                    .intersects(gfx::limits::QueueFamilyCapsFlags::Render)
+                {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
                     break;
@@ -67,7 +73,7 @@ macro_rules! zangfx_generate_backend_benches {
         $crate::zangfx_bench_single! { cb_throughput_100, $driver }
 
         $crate::zangfx_bench_single! { cmds_dispatch_10000_throughput, $driver }
-    }
+    };
 }
 
 #[doc(hidden)]

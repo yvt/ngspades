@@ -7,13 +7,13 @@
 
 use cocoa::foundation::NSUInteger;
 use objc::runtime::Class;
-use objc_foundation::{NSString, INSString};
+use objc_foundation::{INSString, NSString};
 use std::mem::transmute_copy;
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
-use device::MTLDevice;
 use buffer::MTLBuffer;
+use device::MTLDevice;
 use texture::{MTLTexture, MTLTextureDescriptor};
 
 #[repr(u64)]
@@ -38,7 +38,7 @@ pub enum MTLCPUCacheMode {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum MTLStorageMode {
-    Shared  = 0,
+    Shared = 0,
     Managed = 1,
     Private = 2,
 }
@@ -68,7 +68,6 @@ bitflags! {
     }
 }
 
-
 pub enum MTLResourcePrototype {}
 pub type MTLResource = id<(MTLResourcePrototype, (NSObjectPrototype, ()))>;
 
@@ -88,33 +87,23 @@ impl<'a> MTLResource {
     }
 
     pub fn device(&self) -> MTLDevice {
-        unsafe {
-            msg_send![self.0, device]
-        }
+        unsafe { msg_send![self.0, device] }
     }
 
     pub fn cpu_cache_mode(&self) -> MTLCPUCacheMode {
-        unsafe {
-            msg_send![self.0, cpuCacheMode]
-        }
+        unsafe { msg_send![self.0, cpuCacheMode] }
     }
 
     pub fn storage_mode(&self) -> MTLStorageMode {
-        unsafe {
-            msg_send![self.0, storageMode]
-        }
+        unsafe { msg_send![self.0, storageMode] }
     }
 
     pub fn set_purgeable_state(&self, state: MTLPurgeableState) -> MTLPurgeableState {
-        unsafe {
-            msg_send![self.0, setPurgeableState:state]
-        }
+        unsafe { msg_send![self.0, setPurgeableState: state] }
     }
 
     pub fn make_aliasable(&self) {
-        unsafe {
-            msg_send![self.0, makeAliasable]
-        }
+        unsafe { msg_send![self.0, makeAliasable] }
     }
 }
 
@@ -129,57 +118,39 @@ pub type MTLHeapDescriptor = id<(MTLHeapDescriptorPrototype, (NSObjectPrototype,
 
 impl<'a> MTLHeapDescriptor {
     pub fn new() -> Self {
-        unsafe {
-            msg_send![Self::class(), new]
-        }
+        unsafe { msg_send![Self::class(), new] }
     }
 
     pub fn alloc() -> Self {
-        unsafe {
-            msg_send![Self::class(), alloc]
-        }
+        unsafe { msg_send![Self::class(), alloc] }
     }
 
     pub fn init(&self) -> Self {
-        unsafe {
-            msg_send![self, init]
-        }
+        unsafe { msg_send![self, init] }
     }
 
     pub fn cpu_cache_mode(&self) -> MTLCPUCacheMode {
-        unsafe {
-            msg_send![self.0, cpuCacheMode]
-        }
+        unsafe { msg_send![self.0, cpuCacheMode] }
     }
 
     pub fn set_cpu_cache_mode(&self, mode: MTLCPUCacheMode) {
-        unsafe {
-            msg_send![self.0, setCpuCacheMode:mode]
-        }
+        unsafe { msg_send![self.0, setCpuCacheMode: mode] }
     }
 
     pub fn storage_mode(&self) -> MTLStorageMode {
-        unsafe {
-            msg_send![self.0, storageMode]
-        }
+        unsafe { msg_send![self.0, storageMode] }
     }
 
     pub fn set_storage_mode(&self, mode: MTLStorageMode) {
-        unsafe {
-            msg_send![self.0, setStorageMode:mode]
-        }
+        unsafe { msg_send![self.0, setStorageMode: mode] }
     }
 
     pub fn size(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, size]
-        }
+        unsafe { msg_send![self.0, size] }
     }
 
     pub fn set_size(&self, mode: u64) {
-        unsafe {
-            msg_send![self.0, setSize:mode]
-        }
+        unsafe { msg_send![self.0, setSize: mode] }
     }
 }
 
@@ -208,45 +179,31 @@ impl<'a> MTLHeap {
     }
 
     pub fn cpu_cache_mode(&self) -> MTLCPUCacheMode {
-        unsafe {
-            msg_send![self.0, cpuCacheMode]
-        }
+        unsafe { msg_send![self.0, cpuCacheMode] }
     }
 
     pub fn storage_mode(&self) -> MTLStorageMode {
-        unsafe {
-            msg_send![self.0, storageMode]
-        }
+        unsafe { msg_send![self.0, storageMode] }
     }
 
     pub fn size(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, size]
-        }
+        unsafe { msg_send![self.0, size] }
     }
 
     pub fn used_size(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, usedSize]
-        }
+        unsafe { msg_send![self.0, usedSize] }
     }
 
     pub fn current_allocated_size(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, currentAllocatedSize]
-        }
+        unsafe { msg_send![self.0, currentAllocatedSize] }
     }
 
     pub fn max_available_size_with_alignment(&self, alignment: u64) -> u64 {
-        unsafe {
-            msg_send![self.0, maxAvailableSizeWithAlignment:alignment]
-        }
+        unsafe { msg_send![self.0, maxAvailableSizeWithAlignment: alignment] }
     }
 
     pub fn set_purgeable_state(&self, state: MTLPurgeableState) -> MTLPurgeableState {
-        unsafe {
-            msg_send![self.0, setPurgeableState:state]
-        }
+        unsafe { msg_send![self.0, setPurgeableState: state] }
     }
 
     pub fn new_buffer(&self, length: u64, options: MTLResourceOptions) -> MTLBuffer {
@@ -257,9 +214,7 @@ impl<'a> MTLHeap {
     }
 
     pub fn new_texture(&self, descriptor: MTLTextureDescriptor) -> MTLTexture {
-        unsafe {
-            msg_send![self.0, newTextureWithDescriptor:descriptor.0]
-        }
+        unsafe { msg_send![self.0, newTextureWithDescriptor:descriptor.0] }
     }
 }
 

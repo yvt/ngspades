@@ -1,20 +1,20 @@
-use cocoa::foundation::{NSUInteger, NSRange};
+use cocoa::foundation::{NSRange, NSUInteger};
 use objc::runtime::Class;
-use objc_foundation::{NSString, INSString};
+use objc_foundation::{INSString, NSString};
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
 use libc;
 use std::mem::transmute_copy;
 
-use resource::{MTLResource, MTLHeap};
-use texture::MTLTexture;
 use buffer::MTLBuffer;
-use pipeline::{MTLRenderPipelineState, MTLComputePipelineState};
-use sampler::MTLSamplerState;
 use depthstencil::MTLDepthStencilState;
-use types::{MTLSize, MTLOrigin};
 use device::MTLFence;
+use pipeline::{MTLComputePipelineState, MTLRenderPipelineState};
+use resource::{MTLHeap, MTLResource};
+use sampler::MTLSamplerState;
+use texture::MTLTexture;
+use types::{MTLOrigin, MTLSize};
 
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -29,8 +29,8 @@ pub enum MTLPrimitiveType {
 #[repr(u64)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum MTLIndexType {
-   UInt16 = 0,
-   UInt32 = 1,
+    UInt16 = 0,
+    UInt32 = 1,
 }
 
 #[repr(u64)]
@@ -100,7 +100,7 @@ pub struct MTLScissorRect {
     pub x: NSUInteger,
     pub y: NSUInteger,
     pub width: NSUInteger,
-    pub height: NSUInteger
+    pub height: NSUInteger,
 }
 
 #[repr(C)]
@@ -120,7 +120,7 @@ pub struct MTLDrawPrimitivesIndirectArguments {
     pub vertexCount: u32,
     pub instanceCount: u32,
     pub vertexStart: u32,
-    pub baseInstance: u32
+    pub baseInstance: u32,
 }
 
 #[repr(C)]
@@ -130,13 +130,11 @@ pub struct MTLDrawIndexedPrimitivesIndirectArguments {
     pub instanceCount: u32,
     pub indexStart: u32,
     pub baseVertex: i32,
-    pub baseInstance: u32
+    pub baseInstance: u32,
 }
 
 pub enum MTLCommandEncoderPrototype {}
-pub type MTLCommandEncoder = id<
-    (MTLCommandEncoderPrototype,
-        (NSObjectPrototype, ()))>;
+pub type MTLCommandEncoder = id<(MTLCommandEncoderPrototype, (NSObjectPrototype, ()))>;
 
 impl<'a> MTLCommandEncoder {
     pub fn label(&'a self) -> &'a str {
@@ -168,15 +166,11 @@ impl<'a> MTLCommandEncoder {
     }
 
     pub fn pop_debug_group(&self) {
-        unsafe {
-            msg_send![self.0, popDebugGroup]
-        }
+        unsafe { msg_send![self.0, popDebugGroup] }
     }
 
     pub fn end_encoding(&self) {
-        unsafe {
-            msg_send![self.0, endEncoding]
-        }
+        unsafe { msg_send![self.0, endEncoding] }
     }
 }
 
@@ -187,16 +181,14 @@ impl NSObjectProtocol for MTLCommandEncoder {
 }
 
 pub enum MTLParallelRenderCommandEncoderPrototype {}
-pub type MTLParallelRenderCommandEncoder = id<
-    (MTLParallelRenderCommandEncoderPrototype,
-        (MTLCommandEncoderPrototype,
-            (NSObjectPrototype, ())))>;
+pub type MTLParallelRenderCommandEncoder = id<(
+    MTLParallelRenderCommandEncoderPrototype,
+    (MTLCommandEncoderPrototype, (NSObjectPrototype, ())),
+)>;
 
 impl MTLParallelRenderCommandEncoder {
     pub fn render_command_encoder(&self) -> MTLRenderCommandEncoder {
-        unsafe {
-            msg_send![self.0, renderCommandEncoder]
-        }
+        unsafe { msg_send![self.0, renderCommandEncoder] }
     }
 }
 
@@ -207,24 +199,20 @@ impl NSObjectProtocol for MTLParallelRenderCommandEncoder {
 }
 
 pub enum MTLRenderCommandEncoderPrototype {}
-pub type MTLRenderCommandEncoder = id<
-    (MTLRenderCommandEncoderPrototype,
-        (MTLCommandEncoderPrototype,
-            (NSObjectPrototype, ())))>;
+pub type MTLRenderCommandEncoder = id<(
+    MTLRenderCommandEncoderPrototype,
+    (MTLCommandEncoderPrototype, (NSObjectPrototype, ())),
+)>;
 
 impl MTLRenderCommandEncoder {
     // Setting Graphics Rendering State
 
     pub fn set_render_pipeline_state(&self, pipeline_state: MTLRenderPipelineState) {
-        unsafe {
-            msg_send![self.0, setRenderPipelineState:pipeline_state.0]
-        }
+        unsafe { msg_send![self.0, setRenderPipelineState:pipeline_state.0] }
     }
 
     pub fn set_viewport(&self, viewport: MTLViewport) {
-        unsafe {
-            msg_send![self.0, setViewport:viewport]
-        }
+        unsafe { msg_send![self.0, setViewport: viewport] }
     }
 
     pub fn set_viewports(&self, viewports: &[MTLViewport]) {
@@ -235,21 +223,15 @@ impl MTLRenderCommandEncoder {
     }
 
     pub fn set_front_facing_winding(&self, winding: MTLWinding) {
-        unsafe {
-            msg_send![self.0, setFrontFacingWinding:winding]
-        }
+        unsafe { msg_send![self.0, setFrontFacingWinding: winding] }
     }
 
     pub fn set_cull_mode(&self, mode: MTLCullMode) {
-        unsafe {
-            msg_send![self.0, setCullMode:mode]
-        }
+        unsafe { msg_send![self.0, setCullMode: mode] }
     }
 
     pub fn set_depth_clip_mode(&self, mode: MTLDepthClipMode) {
-        unsafe {
-            msg_send![self.0, setDepthClipMode:mode]
-        }
+        unsafe { msg_send![self.0, setDepthClipMode: mode] }
     }
 
     pub fn set_depth_bias(&self, bias: f32, scale: f32, clamp: f32) {
@@ -261,15 +243,11 @@ impl MTLRenderCommandEncoder {
     }
 
     pub fn set_scissor_rect(&self, rect: MTLScissorRect) {
-        unsafe {
-            msg_send![self.0, setScissorRect:rect]
-        }
+        unsafe { msg_send![self.0, setScissorRect: rect] }
     }
 
     pub fn set_triangle_fill_mode(&self, mode: MTLTriangleFillMode) {
-        unsafe {
-            msg_send![self.0, setTriangleFillMode:mode]
-        }
+        unsafe { msg_send![self.0, setTriangleFillMode: mode] }
     }
 
     pub fn set_blend_color(&self, red: f32, green: f32, blue: f32, alpha: f32) {
@@ -282,15 +260,11 @@ impl MTLRenderCommandEncoder {
     }
 
     pub fn set_depth_stencil_state(&self, depth_stencil_state: MTLDepthStencilState) {
-        unsafe {
-            msg_send![self.0, setDepthStencilState:depth_stencil_state.0]
-        }
+        unsafe { msg_send![self.0, setDepthStencilState:depth_stencil_state.0] }
     }
 
     pub fn set_stencil_reference_value(&self, value: u32) {
-        unsafe {
-            msg_send![self.0, setStencilReferenceValue:value]
-        }
+        unsafe { msg_send![self.0, setStencilReferenceValue: value] }
     }
 
     pub fn set_stencil_front_back_reference_value(&self, front: u32, back: u32) {
@@ -355,7 +329,13 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn set_vertex_sampler_state_with_lod(&self, index: u64, lod_min_clamp: f32, lod_max_clamp: f32, sampler: MTLSamplerState) {
+    pub fn set_vertex_sampler_state_with_lod(
+        &self,
+        index: u64,
+        lod_min_clamp: f32,
+        lod_max_clamp: f32,
+        sampler: MTLSamplerState,
+    ) {
         unsafe {
             msg_send![self.0, setVertexSamplerState:sampler.0
                                         lodMinClamp:lod_min_clamp
@@ -412,7 +392,13 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn set_fragment_sampler_state_with_lod(&self, index: u64, lod_min_clamp: f32, lod_max_clamp: f32, sampler: MTLSamplerState) {
+    pub fn set_fragment_sampler_state_with_lod(
+        &self,
+        index: u64,
+        lod_min_clamp: f32,
+        lod_max_clamp: f32,
+        sampler: MTLSamplerState,
+    ) {
         unsafe {
             msg_send![self.0, setFragmentSamplerState:sampler.0
                                           lodMinClamp:lod_min_clamp
@@ -423,7 +409,12 @@ impl MTLRenderCommandEncoder {
 
     // Drawing Geometric Primitives
 
-    pub fn draw_primitives(&self, primitive_type: MTLPrimitiveType, vertex_start: u64, vertex_count: u64) {
+    pub fn draw_primitives(
+        &self,
+        primitive_type: MTLPrimitiveType,
+        vertex_start: u64,
+        vertex_count: u64,
+    ) {
         unsafe {
             msg_send![self.0, drawPrimitives:primitive_type
                                  vertexStart:vertex_start
@@ -431,7 +422,14 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn draw_primitives_instanced(&self, primitive_type: MTLPrimitiveType, vertex_start: u64, vertex_count: u64, instance_count: u64, base_instance: u64) {
+    pub fn draw_primitives_instanced(
+        &self,
+        primitive_type: MTLPrimitiveType,
+        vertex_start: u64,
+        vertex_count: u64,
+        instance_count: u64,
+        base_instance: u64,
+    ) {
         unsafe {
             msg_send![self.0, drawPrimitives:primitive_type
                                  vertexStart:vertex_start
@@ -441,7 +439,14 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn draw_indexed_primitives(&self, primitive_type: MTLPrimitiveType, index_count: u64, index_type: MTLIndexType, index_buffer: MTLBuffer, index_buffer_offset: u64) {
+    pub fn draw_indexed_primitives(
+        &self,
+        primitive_type: MTLPrimitiveType,
+        index_count: u64,
+        index_type: MTLIndexType,
+        index_buffer: MTLBuffer,
+        index_buffer_offset: u64,
+    ) {
         unsafe {
             msg_send![self.0, drawIndexedPrimitives:primitive_type
                                          indexCount:index_count
@@ -451,7 +456,17 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn draw_indexed_primitives_instanced(&self, primitive_type: MTLPrimitiveType, index_count: u64, index_type: MTLIndexType, index_buffer: MTLBuffer, index_buffer_offset: u64, instance_count: u64, base_vertex: i64, base_instance: u64) {
+    pub fn draw_indexed_primitives_instanced(
+        &self,
+        primitive_type: MTLPrimitiveType,
+        index_count: u64,
+        index_type: MTLIndexType,
+        index_buffer: MTLBuffer,
+        index_buffer_offset: u64,
+        instance_count: u64,
+        base_vertex: i64,
+        base_instance: u64,
+    ) {
         unsafe {
             msg_send![self.0, drawIndexedPrimitives:primitive_type
                                          indexCount:index_count
@@ -464,7 +479,12 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn draw_indirect(&self, primitive_type: MTLPrimitiveType, indirect_buffer: MTLBuffer, indirect_buffer_offset: u64) {
+    pub fn draw_indirect(
+        &self,
+        primitive_type: MTLPrimitiveType,
+        indirect_buffer: MTLBuffer,
+        indirect_buffer_offset: u64,
+    ) {
         unsafe {
             msg_send![self.0, drawPrimitives:primitive_type
                               indirectBuffer:indirect_buffer
@@ -472,7 +492,15 @@ impl MTLRenderCommandEncoder {
         }
     }
 
-    pub fn draw_indexed_indirect(&self, primitive_type: MTLPrimitiveType, index_type: MTLIndexType, index_buffer: MTLBuffer, index_buffer_offset: u64, indirect_buffer: MTLBuffer, indirect_buffer_offset: u64) {
+    pub fn draw_indexed_indirect(
+        &self,
+        primitive_type: MTLPrimitiveType,
+        index_type: MTLIndexType,
+        index_buffer: MTLBuffer,
+        index_buffer_offset: u64,
+        indirect_buffer: MTLBuffer,
+        indirect_buffer_offset: u64,
+    ) {
         unsafe {
             msg_send![self.0, drawIndexedPrimitives:primitive_type
                                           indexType:index_type
@@ -507,9 +535,7 @@ impl MTLRenderCommandEncoder {
 
     // Enabling Texture Barriers
     pub fn texture_barrier(&self) {
-        unsafe {
-            msg_send![self.0, textureBarrier]
-        }
+        unsafe { msg_send![self.0, textureBarrier] }
     }
 
     // Specifying Resources for an Argument Buffer
@@ -537,29 +563,22 @@ impl NSObjectProtocol for MTLRenderCommandEncoder {
 }
 
 pub enum MTLBlitCommandEncoderPrototype {}
-pub type MTLBlitCommandEncoder = id<
-    (MTLBlitCommandEncoderPrototype,
-        (MTLCommandEncoderPrototype,
-            (NSObjectPrototype, ())))>;
+pub type MTLBlitCommandEncoder = id<(
+    MTLBlitCommandEncoderPrototype,
+    (MTLCommandEncoderPrototype, (NSObjectPrototype, ())),
+)>;
 
 impl MTLBlitCommandEncoder {
-
     pub fn update_fence(&self, fence: MTLFence) {
-        unsafe {
-            msg_send![self.0, updateFence:fence.0]
-        }
+        unsafe { msg_send![self.0, updateFence:fence.0] }
     }
 
     pub fn wait_for_fence(&self, fence: MTLFence) {
-        unsafe {
-            msg_send![self.0, waitForFence:fence.0]
-        }
+        unsafe { msg_send![self.0, waitForFence:fence.0] }
     }
 
     pub fn synchronize_resource(&self, resource: MTLResource) {
-        unsafe {
-            msg_send![self.0, synchronizeResource:resource]
-        }
+        unsafe { msg_send![self.0, synchronizeResource: resource] }
     }
 
     pub fn fill_buffer(&self, buffer: MTLBuffer, range: NSRange, value: u8) {
@@ -570,7 +589,14 @@ impl MTLBlitCommandEncoder {
         }
     }
 
-    pub fn copy_from_buffer_to_buffer(&self, source_buffer: MTLBuffer, source_offset: u64, destination_buffer: MTLBuffer, destination_offset: u64, size: u64) {
+    pub fn copy_from_buffer_to_buffer(
+        &self,
+        source_buffer: MTLBuffer,
+        source_offset: u64,
+        destination_buffer: MTLBuffer,
+        destination_offset: u64,
+        size: u64,
+    ) {
         unsafe {
             msg_send![self.0, copyFromBuffer:source_buffer
                                 sourceOffset:source_offset
@@ -658,9 +684,7 @@ impl MTLBlitCommandEncoder {
                             destinationOrigin:destination_origin]
         }
     }
-
 }
-
 
 impl NSObjectProtocol for MTLBlitCommandEncoder {
     unsafe fn class() -> &'static Class {
@@ -669,29 +693,22 @@ impl NSObjectProtocol for MTLBlitCommandEncoder {
 }
 
 pub enum MTLComputeCommandEncoderPrototype {}
-pub type MTLComputeCommandEncoder = id<
-    (MTLComputeCommandEncoderPrototype,
-        (MTLCommandEncoderPrototype,
-            (NSObjectPrototype, ())))>;
+pub type MTLComputeCommandEncoder = id<(
+    MTLComputeCommandEncoderPrototype,
+    (MTLCommandEncoderPrototype, (NSObjectPrototype, ())),
+)>;
 
 impl MTLComputeCommandEncoder {
-
     pub fn update_fence(&self, fence: MTLFence) {
-        unsafe {
-            msg_send![self.0, updateFence:fence.0]
-        }
+        unsafe { msg_send![self.0, updateFence:fence.0] }
     }
 
     pub fn wait_for_fence(&self, fence: MTLFence) {
-        unsafe {
-            msg_send![self.0, waitForFence:fence.0]
-        }
+        unsafe { msg_send![self.0, waitForFence:fence.0] }
     }
 
     pub fn set_compute_pipeline_state(&self, pipeline_state: MTLComputePipelineState) {
-        unsafe {
-            msg_send![self.0, setComputePipelineState:pipeline_state.0]
-        }
+        unsafe { msg_send![self.0, setComputePipelineState:pipeline_state.0] }
     }
 
     pub fn set_bytes(&self, index: u64, length: u64, bytes: *const libc::c_void) {
@@ -740,7 +757,13 @@ impl MTLComputeCommandEncoder {
         }
     }
 
-    pub fn set_sampler_state_with_lod(&self, index: u64, lod_min_clamp: f32, lod_max_clamp: f32, sampler: MTLSamplerState) {
+    pub fn set_sampler_state_with_lod(
+        &self,
+        index: u64,
+        lod_min_clamp: f32,
+        lod_max_clamp: f32,
+        sampler: MTLSamplerState,
+    ) {
         unsafe {
             msg_send![self.0, setSamplerState:sampler.0
                                   lodMinClamp:lod_min_clamp
@@ -756,14 +779,23 @@ impl MTLComputeCommandEncoder {
         }
     }
 
-    pub fn dispatch_threadgroups(&self, threadgroups_per_grid: MTLSize, threads_per_threadgroup: MTLSize) {
+    pub fn dispatch_threadgroups(
+        &self,
+        threadgroups_per_grid: MTLSize,
+        threads_per_threadgroup: MTLSize,
+    ) {
         unsafe {
             msg_send![self.0, dispatchThreadgroups:threadgroups_per_grid
                              threadsPerThreadgroup:threads_per_threadgroup]
         }
     }
 
-    pub fn dispatch_threadgroups_with_indirect_buffer(&self, indirect_buffer: MTLBuffer, indirect_buffer_offset: u64, threads_per_threadgroup: MTLSize) {
+    pub fn dispatch_threadgroups_with_indirect_buffer(
+        &self,
+        indirect_buffer: MTLBuffer,
+        indirect_buffer_offset: u64,
+        threads_per_threadgroup: MTLSize,
+    ) {
         unsafe {
             msg_send![self.0, dispatchThreadgroupsWithIndirectBuffer:indirect_buffer.0
                                                 indirectBufferOffset:indirect_buffer_offset
@@ -789,10 +821,8 @@ impl MTLComputeCommandEncoder {
     }
 }
 
-
 impl NSObjectProtocol for MTLComputeCommandEncoder {
     unsafe fn class() -> &'static Class {
         Class::get("MTLComputeCommandEncoder").unwrap()
     }
 }
-

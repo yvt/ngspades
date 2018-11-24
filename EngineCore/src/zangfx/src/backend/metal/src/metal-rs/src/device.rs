@@ -5,32 +5,33 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use cocoa::foundation::{NSUInteger};
-use objc::runtime::{Object, Class, YES, NO};
-use objc_foundation::{NSString, INSString};
+use cocoa::foundation::NSUInteger;
+use objc::runtime::{Class, Object, NO, YES};
+use objc_foundation::{INSString, NSString};
 use NSArray;
 
-use super::{id, nil, NSObjectPrototype, NSObjectProtocol};
+use super::{id, nil, NSObjectProtocol, NSObjectPrototype};
 
-use resource::{MTLResourceOptions, MTLHeapDescriptor, MTLHeap};
-use commandqueue::MTLCommandQueue;
-use pipeline::{MTLRenderPipelineState, MTLRenderPipelineDescriptor,
-               MTLRenderPipelineReflection, MTLComputePipelineState,
-               MTLComputePipelineDescriptor};
-use library::{MTLLibrary, MTLCompileOptions};
-use types::{MTLSize, MTLSizeAndAlign};
-use buffer::MTLBuffer;
-use texture::{MTLTexture, MTLTextureDescriptor};
-use sampler::{MTLSamplerState, MTLSamplerDescriptor};
-use depthstencil::{MTLDepthStencilDescriptor, MTLDepthStencilState};
 use argumentbuffer::{MTLArgumentDescriptor, MTLArgumentEncoder};
+use buffer::MTLBuffer;
+use commandqueue::MTLCommandQueue;
+use depthstencil::{MTLDepthStencilDescriptor, MTLDepthStencilState};
+use library::{MTLCompileOptions, MTLLibrary};
+use pipeline::{
+    MTLComputePipelineDescriptor, MTLComputePipelineState, MTLRenderPipelineDescriptor,
+    MTLRenderPipelineReflection, MTLRenderPipelineState,
+};
+use resource::{MTLHeap, MTLHeapDescriptor, MTLResourceOptions};
+use sampler::{MTLSamplerDescriptor, MTLSamplerState};
+use texture::{MTLTexture, MTLTextureDescriptor};
+use types::{MTLSize, MTLSizeAndAlign};
 
 use libc;
 
-use std::marker::PhantomData;
 use std::ffi::CStr;
-use std::path::Path;
+use std::marker::PhantomData;
 use std::mem::transmute_copy;
+use std::path::Path;
 
 #[allow(non_camel_case_types)]
 #[repr(u64)]
@@ -65,14 +66,12 @@ pub enum MTLArgumentBuffersTier {
 }
 
 #[link(name = "Metal", kind = "framework")]
-extern {
+extern "C" {
     fn MTLCreateSystemDefaultDevice() -> *mut Object;
 }
 
 pub fn create_system_default_device() -> MTLDevice {
-    unsafe {
-        id(MTLCreateSystemDefaultDevice(), PhantomData)
-    }
+    unsafe { id(MTLCreateSystemDefaultDevice(), PhantomData) }
 }
 
 /*type MTLNewLibraryCompletionHandler = extern fn(library: id, error: id);
@@ -80,7 +79,6 @@ type MTLNewRenderPipelineStateCompletionHandler = extern fn(renderPipelineState:
 type MTLNewRenderPipelineStateWithReflectionCompletionHandler = extern fn(renderPipelineState: id, reflection: id, error: id);
 type MTLNewComputePipelineStateCompletionHandler = extern fn(computePipelineState: id, error: id);
 type MTLNewComputePipelineStateWithReflectionCompletionHandler = extern fn(computePipelineState: id, reflection: id, error: id);*/
-
 
 pub enum MTLDevicePrototype {}
 pub type MTLDevice = id<(MTLDevicePrototype, (NSObjectPrototype, ()))>;
@@ -108,15 +106,11 @@ impl<'a> MTLDevice {
     }
 
     pub fn max_threads_per_threadgroup(&self) -> MTLSize {
-        unsafe {
-            msg_send![self.0, maxThreadsPerThreadgroup]
-        }
+        unsafe { msg_send![self.0, maxThreadsPerThreadgroup] }
     }
 
     pub fn recommended_max_working_set_size(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, recommendedMaxWorkingSetSize]
-        }
+        unsafe { msg_send![self.0, recommendedMaxWorkingSetSize] }
     }
 
     pub fn is_low_power(&self) -> bool {
@@ -124,7 +118,7 @@ impl<'a> MTLDevice {
             match msg_send![self.0, isLowPower] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
@@ -134,27 +128,27 @@ impl<'a> MTLDevice {
             match msg_send![self.0, isHeadless] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
 
     pub fn supports_feature_set(&self, feature: MTLFeatureSet) -> bool {
         unsafe {
-            match msg_send![self.0, supportsFeatureSet:feature] {
+            match msg_send![self.0, supportsFeatureSet: feature] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
 
     pub fn supports_sample_count(&self, count: NSUInteger) -> bool {
         unsafe {
-            match msg_send![self.0, supportsTextureSampleCount:count] {
+            match msg_send![self.0, supportsTextureSampleCount: count] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
@@ -164,38 +158,34 @@ impl<'a> MTLDevice {
             match msg_send![self.0, isDepth24Stencil8PixelFormatSupported] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
 
     pub fn argument_buffers_support(&self) -> MTLArgumentBuffersTier {
-        unsafe {
-            msg_send![self.0, argumentBuffersSupport]
-        }
+        unsafe { msg_send![self.0, argumentBuffersSupport] }
     }
 
     pub fn new_command_queue(&self) -> MTLCommandQueue {
-        unsafe {
-            msg_send![self.0, newCommandQueue]
-        }
+        unsafe { msg_send![self.0, newCommandQueue] }
     }
 
     pub fn new_default_library(&self) -> MTLLibrary {
-        unsafe {
-            msg_send![self.0, newDefaultLibrary]
-        }
+        unsafe { msg_send![self.0, newDefaultLibrary] }
     }
 
     pub fn new_fence(&self) -> MTLFence {
-        unsafe {
-            msg_send![self.0, newFence]
-        }
+        unsafe { msg_send![self.0, newFence] }
     }
 
-    pub fn new_library_with_source(&self, src: &str, options: MTLCompileOptions) -> Result<MTLLibrary, String> {
-        use cocoa::foundation::NSString as cocoa_NSString;
+    pub fn new_library_with_source(
+        &self,
+        src: &str,
+        options: MTLCompileOptions,
+    ) -> Result<MTLLibrary, String> {
         use cocoa::base::nil as cocoa_nil;
+        use cocoa::foundation::NSString as cocoa_NSString;
 
         unsafe {
             let source = cocoa_NSString::alloc(cocoa_nil).init_str(src);
@@ -217,12 +207,12 @@ impl<'a> MTLDevice {
     }
 
     pub fn new_library_with_file<P: AsRef<Path>>(&self, file: P) -> Result<MTLLibrary, String> {
-        use cocoa::foundation::NSString as cocoa_NSString;
         use cocoa::base::nil as cocoa_nil;
+        use cocoa::foundation::NSString as cocoa_NSString;
 
         unsafe {
-            let filename = cocoa_NSString::alloc(cocoa_nil)
-                .init_str(file.as_ref().to_string_lossy().as_ref());
+            let filename =
+                cocoa_NSString::alloc(cocoa_nil).init_str(file.as_ref().to_string_lossy().as_ref());
             let mut err = nil;
 
             let library: MTLLibrary = msg_send![self.0, newLibraryWithFile:filename
@@ -239,9 +229,14 @@ impl<'a> MTLDevice {
         }
     }
 
-    pub fn new_render_pipeline_state_with_reflection(&self, descriptor: MTLRenderPipelineDescriptor, reflection: *mut MTLRenderPipelineReflection) -> Result<MTLRenderPipelineState, String> {
+    pub fn new_render_pipeline_state_with_reflection(
+        &self,
+        descriptor: MTLRenderPipelineDescriptor,
+        reflection: *mut MTLRenderPipelineReflection,
+    ) -> Result<MTLRenderPipelineState, String> {
         unsafe {
-            let reflection_options = MTLPipelineOptionArgumentInfo | MTLPipelineOptionBufferTypeInfo;
+            let reflection_options =
+                MTLPipelineOptionArgumentInfo | MTLPipelineOptionBufferTypeInfo;
             let mut err = nil;
 
             let pipeline_state: MTLRenderPipelineState = msg_send![self.0, newRenderPipelineStateWithDescriptor:descriptor.0
@@ -258,10 +253,12 @@ impl<'a> MTLDevice {
                 }
             }
         }
-
     }
 
-    pub fn new_render_pipeline_state(&self, descriptor: MTLRenderPipelineDescriptor) -> Result<MTLRenderPipelineState, String> {
+    pub fn new_render_pipeline_state(
+        &self,
+        descriptor: MTLRenderPipelineDescriptor,
+    ) -> Result<MTLRenderPipelineState, String> {
         unsafe {
             let mut err = nil;
             let pipeline_state: MTLRenderPipelineState = msg_send![self.0, newRenderPipelineStateWithDescriptor:descriptor.0
@@ -273,12 +270,15 @@ impl<'a> MTLDevice {
                     let compile_error: *const libc::c_char = msg_send![desc.0, UTF8String];
                     Err(CStr::from_ptr(compile_error).to_string_lossy().into_owned())
                 }
-                false => Ok(pipeline_state)
+                false => Ok(pipeline_state),
             }
         }
     }
 
-    pub fn new_compute_pipeline_state(&self, descriptor: MTLComputePipelineDescriptor) -> Result<MTLComputePipelineState, String> {
+    pub fn new_compute_pipeline_state(
+        &self,
+        descriptor: MTLComputePipelineDescriptor,
+    ) -> Result<MTLComputePipelineState, String> {
         unsafe {
             let mut err = nil;
             let pipeline_state: MTLComputePipelineState = msg_send![self.0, newComputePipelineStateWithDescriptor:descriptor.0
@@ -290,7 +290,7 @@ impl<'a> MTLDevice {
                     let compile_error: *const libc::c_char = msg_send![desc.0, UTF8String];
                     Err(CStr::from_ptr(compile_error).to_string_lossy().into_owned())
                 }
-                false => Ok(pipeline_state)
+                false => Ok(pipeline_state),
             }
         }
     }
@@ -302,7 +302,12 @@ impl<'a> MTLDevice {
         }
     }
 
-    pub fn new_buffer_with_data(&self, bytes: *const libc::c_void, length: NSUInteger, options: MTLResourceOptions) -> MTLBuffer {
+    pub fn new_buffer_with_data(
+        &self,
+        bytes: *const libc::c_void,
+        length: NSUInteger,
+        options: MTLResourceOptions,
+    ) -> MTLBuffer {
         unsafe {
             msg_send![self.0, newBufferWithBytes:bytes
                                           length:length
@@ -311,46 +316,47 @@ impl<'a> MTLDevice {
     }
 
     pub fn new_texture(&self, descriptor: MTLTextureDescriptor) -> MTLTexture {
-        unsafe {
-            msg_send![self.0, newTextureWithDescriptor:descriptor.0]
-        }
+        unsafe { msg_send![self.0, newTextureWithDescriptor:descriptor.0] }
     }
 
     pub fn new_sampler(&self, descriptor: MTLSamplerDescriptor) -> MTLSamplerState {
-        unsafe {
-            msg_send![self.0, newSamplerStateWithDescriptor:descriptor.0]
-        }
+        unsafe { msg_send![self.0, newSamplerStateWithDescriptor:descriptor.0] }
     }
 
     pub fn new_heap(&self, descriptor: MTLHeapDescriptor) -> MTLHeap {
-        unsafe {
-            msg_send![self.0, newHeapWithDescriptor:descriptor.0]
-        }
+        unsafe { msg_send![self.0, newHeapWithDescriptor:descriptor.0] }
     }
 
-    pub fn heap_buffer_size_and_align_with_length(&self, length: NSUInteger, options: MTLResourceOptions) -> MTLSizeAndAlign {
+    pub fn heap_buffer_size_and_align_with_length(
+        &self,
+        length: NSUInteger,
+        options: MTLResourceOptions,
+    ) -> MTLSizeAndAlign {
         unsafe {
             msg_send![self.0, heapBufferSizeAndAlignWithLength:length
                                                        options:options]
         }
     }
 
-    pub fn heap_texture_size_and_align_with_descriptor(&self, desc: MTLTextureDescriptor) -> MTLSizeAndAlign {
-        unsafe {
-            msg_send![self.0, heapTextureSizeAndAlignWithDescriptor:desc.0]
-        }
+    pub fn heap_texture_size_and_align_with_descriptor(
+        &self,
+        desc: MTLTextureDescriptor,
+    ) -> MTLSizeAndAlign {
+        unsafe { msg_send![self.0, heapTextureSizeAndAlignWithDescriptor:desc.0] }
     }
 
-    pub fn new_depth_stencil_state(&self, descriptor: MTLDepthStencilDescriptor) -> MTLDepthStencilState {
-        unsafe {
-            msg_send![self.0, newDepthStencilStateWithDescriptor:descriptor]
-        }
+    pub fn new_depth_stencil_state(
+        &self,
+        descriptor: MTLDepthStencilDescriptor,
+    ) -> MTLDepthStencilState {
+        unsafe { msg_send![self.0, newDepthStencilStateWithDescriptor: descriptor] }
     }
 
-    pub fn new_argument_encoder_with_arguments(&self, arguments: NSArray<MTLArgumentDescriptor>) -> MTLArgumentEncoder {
-        unsafe {
-            msg_send![self.0, newArgumentEncoderWithArguments:arguments.0]
-        }
+    pub fn new_argument_encoder_with_arguments(
+        &self,
+        arguments: NSArray<MTLArgumentDescriptor>,
+    ) -> MTLArgumentEncoder {
+        unsafe { msg_send![self.0, newArgumentEncoderWithArguments:arguments.0] }
     }
 }
 

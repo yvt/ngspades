@@ -6,9 +6,9 @@
 //! Reimplementation of the [atom] library with specialized and extended features.
 //!
 //! [atom]: https://crates.io/crates/atom
-use std::sync::{Arc, Weak};
-use std::sync::atomic::{AtomicPtr, Ordering};
 use std::marker::PhantomData;
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::{Arc, Weak};
 use std::{fmt, mem, ptr};
 
 /// Types whose value can be represented as a non-zero pointer-sized value.

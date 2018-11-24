@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use include_data::include_data;
 use flags_macro::flags;
+use include_data::include_data;
 use std::mem::size_of_val;
 use volatile_view::prelude::*;
 use zangfx_base as gfx;
@@ -102,9 +102,9 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             &output_buffer,
             &indirect_buffer,
         ]
-            .iter()
-            .map(|r| r.get_memory_req().unwrap().memory_types)
-            .fold(!0, |x, y| x & y);
+        .iter()
+        .map(|r| r.get_memory_req().unwrap().memory_types)
+        .fold(!0, |x, y| x & y);
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
@@ -197,7 +197,8 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
                         [(0..kernel_bytes, &kernel_buffer)][..].into(),
                     ),
                 ],
-            ).unwrap();
+            )
+            .unwrap();
 
         println!("- Creating a pipeline");
         let pipeline = device

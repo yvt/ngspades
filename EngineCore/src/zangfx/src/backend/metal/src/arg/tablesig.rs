@@ -300,55 +300,64 @@ impl ArgTableSig {
                     // into chunks and process each chunk on a fixed size
                     // stack-allocated array (`ArrayVec`).
                     match resources {
-                        Image(objs) => for objs in objs.chunks(64) {
-                            metal_textures.extend(objs.iter().map(|obj| {
-                                let my_obj: &Image =
-                                    obj.downcast_ref().expect("bad image view type");
-                                my_obj.metal_texture()
-                            }));
+                        Image(objs) => {
+                            for objs in objs.chunks(64) {
+                                metal_textures.extend(objs.iter().map(|obj| {
+                                    let my_obj: &Image =
+                                        obj.downcast_ref().expect("bad image view type");
+                                    my_obj.metal_texture()
+                                }));
 
-                            encoder.set_textures(metal_textures.as_slice(), index as _);
-                            metal_textures.clear();
+                                encoder.set_textures(metal_textures.as_slice(), index as _);
+                                metal_textures.clear();
 
-                            index += objs.len();
-                        },
+                                index += objs.len();
+                            }
+                        }
 
-                        Buffer(objs) => for objs in objs.chunks(64) {
-                            metal_buffers.extend(objs.iter().map(|&(_, obj)| {
-                                let my_obj: &Buffer = obj.downcast_ref().expect("bad buffer type");
-                                let (metal_buffer, _) = my_obj.metal_buffer_and_offset().unwrap();
-                                metal_buffer
-                            }));
+                        Buffer(objs) => {
+                            for objs in objs.chunks(64) {
+                                metal_buffers.extend(objs.iter().map(|&(_, obj)| {
+                                    let my_obj: &Buffer =
+                                        obj.downcast_ref().expect("bad buffer type");
+                                    let (metal_buffer, _) =
+                                        my_obj.metal_buffer_and_offset().unwrap();
+                                    metal_buffer
+                                }));
 
-                            offsets.extend(objs.iter().map(|&(ref range, obj)| {
-                                let my_obj: &Buffer = obj.downcast_ref().expect("bad buffer type");
-                                let (_, offset) = my_obj.metal_buffer_and_offset().unwrap();
-                                range.start + offset
-                            }));
+                                offsets.extend(objs.iter().map(|&(ref range, obj)| {
+                                    let my_obj: &Buffer =
+                                        obj.downcast_ref().expect("bad buffer type");
+                                    let (_, offset) = my_obj.metal_buffer_and_offset().unwrap();
+                                    range.start + offset
+                                }));
 
-                            encoder.set_buffers(
-                                metal_buffers.as_slice(),
-                                offsets.as_slice(),
-                                index as _,
-                            );
-                            metal_buffers.clear();
-                            offsets.clear();
+                                encoder.set_buffers(
+                                    metal_buffers.as_slice(),
+                                    offsets.as_slice(),
+                                    index as _,
+                                );
+                                metal_buffers.clear();
+                                offsets.clear();
 
-                            index += objs.len();
-                        },
+                                index += objs.len();
+                            }
+                        }
 
-                        Sampler(objs) => for objs in objs.chunks(64) {
-                            metal_samplers.extend(objs.iter().map(|obj| {
-                                let my_obj: &Sampler =
-                                    obj.downcast_ref().expect("bad sampler type");
-                                my_obj.metal_sampler()
-                            }));
+                        Sampler(objs) => {
+                            for objs in objs.chunks(64) {
+                                metal_samplers.extend(objs.iter().map(|obj| {
+                                    let my_obj: &Sampler =
+                                        obj.downcast_ref().expect("bad sampler type");
+                                    my_obj.metal_sampler()
+                                }));
 
-                            encoder.set_sampler_states(metal_samplers.as_slice(), index as _);
-                            metal_samplers.clear();
+                                encoder.set_sampler_states(metal_samplers.as_slice(), index as _);
+                                metal_samplers.clear();
 
-                            index += objs.len();
-                        },
+                                index += objs.len();
+                            }
+                        }
                     }
                     // Updating an `ArgUpdateSet` is done
                 }

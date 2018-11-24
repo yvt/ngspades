@@ -7,16 +7,14 @@
 
 use objc::runtime::Class;
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
 pub enum MTLDrawablePrototype {}
 pub type MTLDrawable = id<(MTLDrawablePrototype, (NSObjectPrototype, ()))>;
 
 impl MTLDrawable {
     pub fn present(&self) {
-        unsafe {
-            msg_send![self.0, present]
-        }
+        unsafe { msg_send![self.0, present] }
     }
 }
 
@@ -25,4 +23,3 @@ impl NSObjectProtocol for MTLDrawable {
         Class::get("MTLDrawable").unwrap()
     }
 }
-

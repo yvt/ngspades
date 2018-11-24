@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use include_data::include_data;
 use flags_macro::flags;
+use include_data::include_data;
 use volatile_view::prelude::*;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
@@ -249,7 +249,8 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
                     (7, 0, [&image_2ds][..].into()),
                     (9, 0, [&sampler][..].into()),
                 ],
-            ).unwrap();
+            )
+            .unwrap();
 
         println!("- Creating a pipeline");
         let pipeline = device
@@ -270,10 +271,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
             e.bind_arg_table(0, &[(&pool, &arg_table)]);
             e.dispatch(&[]);
         }
-        cmd_buffer.host_barrier(
-            gfx::AccessTypeFlags::ComputeWrite,
-            &[(range(0), &buffer)],
-        );
+        cmd_buffer.host_barrier(gfx::AccessTypeFlags::ComputeWrite, &[(range(0), &buffer)]);
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *cmd_buffer);

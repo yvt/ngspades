@@ -66,10 +66,7 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             e.fill_buffer(&buffer1, 800..1200, 0xaf);
             e.end_debug_group();
         }
-        buffer.host_barrier(
-            gfx::AccessTypeFlags::CopyWrite,
-            &[(0..65536, &buffer1)],
-        );
+        buffer.host_barrier(gfx::AccessTypeFlags::CopyWrite, &[(0..65536, &buffer1)]);
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
@@ -160,10 +157,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             e.copy_buffer(&buffer1, 4, &buffer2, 1200, data.len() as u64 / 2);
             e.end_debug_group();
         }
-        buffer.host_barrier(
-            gfx::AccessTypeFlags::CopyWrite,
-            &[(0..65536, &buffer2)],
-        );
+        buffer.host_barrier(gfx::AccessTypeFlags::CopyWrite, &[(0..65536, &buffer2)]);
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);

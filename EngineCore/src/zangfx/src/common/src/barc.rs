@@ -32,8 +32,8 @@
 //! ------------
 //!
 //! `BArc` stands for `Box` convertible `Arc`.
-use std::sync::{Arc, Weak};
 use std::cell::UnsafeCell;
+use std::sync::{Arc, Weak};
 use std::{hash, ops};
 
 /// `Arc` that can be converted into a type named `BArcBox` that works similar;y

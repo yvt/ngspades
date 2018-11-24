@@ -98,9 +98,9 @@ impl HeapBuilder {
             //  `MTLBuffer` and suballocate from it
             let options =
                 metal::MTLResourceStorageModeShared | metal::MTLResourceHazardTrackingModeUntracked;
-            let metal_buffer = unsafe {
-                OCPtr::from_raw(self.metal_device.new_buffer(self.size, options))
-            }.ok_or(nil_error("MTLDevice newBufferWithLength:options:"))?;
+            let metal_buffer =
+                unsafe { OCPtr::from_raw(self.metal_device.new_buffer(self.size, options)) }
+                    .ok_or(nil_error("MTLDevice newBufferWithLength:options:"))?;
             heap = Arc::new(BufferHeap::new(metal_buffer));
         }
 
@@ -313,7 +313,9 @@ where
 
     let options = metal::MTLResourceOptions::from_bits(
         (storage_mode as u64) << metal::MTLResourceStorageModeShift,
-    ).unwrap() | metal::MTLResourceHazardTrackingModeUntracked;
+    )
+    .unwrap()
+        | metal::MTLResourceHazardTrackingModeUntracked;
     let metal_buffer = unsafe { OCPtr::from_raw(allocator(size, options)) };
 
     if let Some(metal_buffer) = metal_buffer {

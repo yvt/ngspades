@@ -5,11 +5,11 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use objc::runtime::{Class, YES, NO};
-use objc_foundation::{NSString, INSString};
+use objc::runtime::{Class, NO, YES};
+use objc_foundation::{INSString, NSString};
 use std::mem::transmute_copy;
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
 #[repr(u64)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -42,87 +42,59 @@ pub type MTLStencilDescriptor = id<(MTLStencilDescriptorPrototype, (NSObjectProt
 
 impl MTLStencilDescriptor {
     pub fn alloc() -> Self {
-        unsafe {
-            msg_send![Self::class(), alloc]
-        }
+        unsafe { msg_send![Self::class(), alloc] }
     }
 
     pub fn init(&self) -> Self {
-        unsafe {
-            msg_send![self.0, init]
-        }
+        unsafe { msg_send![self.0, init] }
     }
 
     pub fn stencil_compare_function(&self) -> MTLCompareFunction {
-        unsafe {
-            msg_send![self.0, stencilCompareFunction]
-        }
+        unsafe { msg_send![self.0, stencilCompareFunction] }
     }
 
     pub fn set_stencil_compare_function(&self, func: MTLCompareFunction) {
-        unsafe {
-            msg_send![self.0, setStencilCompareFunction:func]
-        }
+        unsafe { msg_send![self.0, setStencilCompareFunction: func] }
     }
 
     pub fn stencil_failure_operation(&self) -> MTLStencilOperation {
-        unsafe {
-            msg_send![self.0, stencilFailureOperation]
-        }
+        unsafe { msg_send![self.0, stencilFailureOperation] }
     }
 
     pub fn set_stencil_failure_operation(&self, operation: MTLStencilOperation) {
-        unsafe {
-            msg_send![self.0, setStencilFailureOperation:operation]
-        }
+        unsafe { msg_send![self.0, setStencilFailureOperation: operation] }
     }
 
     pub fn depth_failure_operation(&self) -> MTLStencilOperation {
-        unsafe {
-            msg_send![self.0, depthFailureOperation]
-        }
+        unsafe { msg_send![self.0, depthFailureOperation] }
     }
 
     pub fn set_depth_failure_operation(&self, operation: MTLStencilOperation) {
-        unsafe {
-            msg_send![self.0, setDepthFailureOperation:operation]
-        }
+        unsafe { msg_send![self.0, setDepthFailureOperation: operation] }
     }
 
     pub fn depth_stencil_pass_operation(&self) -> MTLStencilOperation {
-        unsafe {
-            msg_send![self.0, depthStencilPassOperation]
-        }
+        unsafe { msg_send![self.0, depthStencilPassOperation] }
     }
 
     pub fn set_depth_stencil_pass_operation(&self, operation: MTLStencilOperation) {
-        unsafe {
-            msg_send![self.0, setDepthStencilPassOperation:operation]
-        }
+        unsafe { msg_send![self.0, setDepthStencilPassOperation: operation] }
     }
 
     pub fn read_mask(&self) -> u32 {
-        unsafe {
-            msg_send![self.0, readMask]
-        }
+        unsafe { msg_send![self.0, readMask] }
     }
 
     pub fn set_read_mask(&self, mask: u32) {
-        unsafe {
-            msg_send![self.0, setReadMask:mask]
-        }
+        unsafe { msg_send![self.0, setReadMask: mask] }
     }
 
     pub fn write_mask(&self) -> u32 {
-        unsafe {
-            msg_send![self.0, writeMask]
-        }
+        unsafe { msg_send![self.0, writeMask] }
     }
 
     pub fn set_write_mask(&self, mask: u32) {
-        unsafe {
-            msg_send![self.0, setWriteMask:mask]
-        }
+        unsafe { msg_send![self.0, setWriteMask: mask] }
     }
 }
 
@@ -133,31 +105,24 @@ impl NSObjectProtocol for MTLStencilDescriptor {
 }
 
 pub enum MTLDepthStencilDescriptorPrototype {}
-pub type MTLDepthStencilDescriptor = id<(MTLDepthStencilDescriptorPrototype, (NSObjectPrototype, ()))>;
+pub type MTLDepthStencilDescriptor =
+    id<(MTLDepthStencilDescriptorPrototype, (NSObjectPrototype, ()))>;
 
 impl MTLDepthStencilDescriptor {
     pub fn alloc() -> Self {
-        unsafe {
-            msg_send![Self::class(), alloc]
-        }
+        unsafe { msg_send![Self::class(), alloc] }
     }
 
     pub fn init(&self) -> Self {
-        unsafe {
-            msg_send![self.0, init]
-        }
+        unsafe { msg_send![self.0, init] }
     }
 
     pub fn depth_compare_function(&self) -> MTLCompareFunction {
-        unsafe {
-            msg_send![self.0, depthCompareFunction]
-        }
+        unsafe { msg_send![self.0, depthCompareFunction] }
     }
 
     pub fn set_depth_compare_function(&self, func: MTLCompareFunction) {
-        unsafe {
-            msg_send![self.0, setDepthCompareFunction:func]
-        }
+        unsafe { msg_send![self.0, setDepthCompareFunction: func] }
     }
 
     pub fn depth_write_enabled(&self) -> bool {
@@ -165,39 +130,29 @@ impl MTLDepthStencilDescriptor {
             match msg_send![self.0, isDepthWriteEnabled] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
 
     pub fn set_depth_write_enabled(&self, enabled: bool) {
-        unsafe {
-            msg_send![self.0, setDepthWriteEnabled:enabled]
-        }
+        unsafe { msg_send![self.0, setDepthWriteEnabled: enabled] }
     }
 
     pub fn front_face_stencil(&self) -> MTLStencilDescriptor {
-        unsafe {
-            msg_send![self.0, frontFaceStencil]
-        }
+        unsafe { msg_send![self.0, frontFaceStencil] }
     }
 
     pub fn set_front_face_stencil(&self, descriptor: MTLStencilDescriptor) {
-        unsafe {
-            msg_send![self.0, setFrontFaceStencil:descriptor]
-        }
+        unsafe { msg_send![self.0, setFrontFaceStencil: descriptor] }
     }
 
     pub fn back_face_stencil(&self) -> MTLStencilDescriptor {
-        unsafe {
-            msg_send![self.0, backFaceStencil]
-        }
+        unsafe { msg_send![self.0, backFaceStencil] }
     }
 
     pub fn set_back_face_stencil(&self, descriptor: MTLStencilDescriptor) {
-        unsafe {
-            msg_send![self.0, setBackFaceStencil:descriptor]
-        }
+        unsafe { msg_send![self.0, setBackFaceStencil: descriptor] }
     }
 
     pub fn set_label(&self, label: &str) {
@@ -231,4 +186,3 @@ impl MTLDepthStencilState {
         }
     }
 }
-

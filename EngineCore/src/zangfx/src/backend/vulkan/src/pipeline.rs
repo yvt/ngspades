@@ -139,7 +139,8 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
         Ok(
             unsafe {
                 ComputePipeline::from_raw(self.device.clone(), vk_pipeline, root_sig.clone())
-            }.into(),
+            }
+            .into(),
         )
     }
 }
@@ -452,7 +453,8 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
                 root_sig.clone(),
                 partial_states,
             )
-        }.into())
+        }
+        .into())
     }
 }
 
@@ -532,7 +534,7 @@ impl<'a> LlRasterizer<'a> {
                 let scissors: Vec<_> = builder
                     .scissors
                     .iter()
-                    .cloned()   // `Vec<StaticOrDynamic<vk::Rect2D>>`
+                    .cloned() // `Vec<StaticOrDynamic<vk::Rect2D>>`
                     .chain(repeat(default))
                     .take(builder.num_viewports)
                     .map(|s_or_d| s_or_d.static_value().unwrap())

@@ -302,47 +302,68 @@ pub trait TryValidMemoryTypes {
     type Error;
 
     /// Get a set of valid memory types.
-    fn try_valid_memory_types(&self, device: &(impl base::Device + ?Sized)) -> StdResult<u32, Self::Error>;
+    fn try_valid_memory_types(
+        &self,
+        device: &(impl base::Device + ?Sized),
+    ) -> StdResult<u32, Self::Error>;
 }
 
 impl TryValidMemoryTypes for u32 {
     type Error = !;
-    fn try_valid_memory_types(&self, _device: &(impl base::Device + ?Sized)) -> StdResult<u32, Self::Error> {
+    fn try_valid_memory_types(
+        &self,
+        _device: &(impl base::Device + ?Sized),
+    ) -> StdResult<u32, Self::Error> {
         Ok(*self)
     }
 }
 
 impl<'a> TryValidMemoryTypes for &'a base::ImageRef {
     type Error = Error;
-    fn try_valid_memory_types(&self, _device: &(impl base::Device + ?Sized)) -> StdResult<u32, Self::Error> {
+    fn try_valid_memory_types(
+        &self,
+        _device: &(impl base::Device + ?Sized),
+    ) -> StdResult<u32, Self::Error> {
         Ok(self.get_memory_req()?.memory_types)
     }
 }
 
 impl<'a> TryValidMemoryTypes for &'a base::BufferRef {
     type Error = Error;
-    fn try_valid_memory_types(&self, _device: &(impl base::Device + ?Sized)) -> StdResult<u32, Self::Error> {
+    fn try_valid_memory_types(
+        &self,
+        _device: &(impl base::Device + ?Sized),
+    ) -> StdResult<u32, Self::Error> {
         Ok(self.get_memory_req()?.memory_types)
     }
 }
 
 impl<'a> TryValidMemoryTypes for base::ResourceRef<'a> {
     type Error = Error;
-    fn try_valid_memory_types(&self, _device: &(impl base::Device + ?Sized)) -> StdResult<u32, Self::Error> {
+    fn try_valid_memory_types(
+        &self,
+        _device: &(impl base::Device + ?Sized),
+    ) -> StdResult<u32, Self::Error> {
         Ok(self.get_memory_req()?.memory_types)
     }
 }
 
 impl TryValidMemoryTypes for base::BufferUsageFlags {
     type Error = Error;
-    fn try_valid_memory_types(&self, device: &(impl base::Device + ?Sized)) -> StdResult<u32, Self::Error> {
+    fn try_valid_memory_types(
+        &self,
+        device: &(impl base::Device + ?Sized),
+    ) -> StdResult<u32, Self::Error> {
         device.memory_types_for_buffer(*self)
     }
 }
 
 impl TryValidMemoryTypes for base::ImageFormat {
     type Error = Error;
-    fn try_valid_memory_types(&self, device: &(impl base::Device + ?Sized)) -> StdResult<u32, Self::Error> {
+    fn try_valid_memory_types(
+        &self,
+        device: &(impl base::Device + ?Sized),
+    ) -> StdResult<u32, Self::Error> {
         device.memory_types_for_image(*self)
     }
 }

@@ -119,7 +119,7 @@ impl base::ImageBuilder for ImageBuilder {
         let metal_desc =
             unsafe { OCPtr::from_raw(metal::MTLTextureDescriptor::alloc().init()).unwrap() };
 
-        use zangfx_metal_rs::MTLTextureType::{Cube, CubeArray, D1, D1Array, D2, D2Array, D3};
+        use zangfx_metal_rs::MTLTextureType::{Cube, CubeArray, D1Array, D2Array, D1, D2, D3};
         let (ty, dims) = match (extents, self.num_layers) {
             (ImageExtents::OneD(x), None) => (D1, [x, 1, 1]),
             (ImageExtents::OneD(x), Some(_)) => (D1Array, [x, 1, 1]),
@@ -178,7 +178,8 @@ impl base::ImageBuilder for ImageBuilder {
             metal_desc,
             num_bytes_per_pixel,
             self.label.clone(),
-        ).into())
+        )
+        .into())
     }
 }
 
@@ -368,7 +369,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
             .map(|x| translate_image_format(x).expect("Unsupported image format"))
             .unwrap_or_else(|| metal_texture.pixel_format());
 
-        use zangfx_metal_rs::MTLTextureType::{Cube, CubeArray, D1, D2, D2Array, D3};
+        use zangfx_metal_rs::MTLTextureType::{Cube, CubeArray, D2Array, D1, D2, D3};
         let metal_ty = self
             .image_type
             .map(|ty| match ty {
@@ -419,6 +420,7 @@ impl base::ImageViewBuilder for ImageViewBuilder {
 
         Ok(Image {
             data: Arc::new(UnsafeCell::new(data)),
-        }.into())
+        }
+        .into())
     }
 }

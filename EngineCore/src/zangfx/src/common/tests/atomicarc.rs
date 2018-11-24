@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 extern crate zangfx_common;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use zangfx_common::{AtomicArc, BArc};
 
 #[test]
@@ -71,7 +71,6 @@ fn arc_compare_and_swap2() {
 }
 
 // -----------------
-
 
 #[test]
 fn barc_into_inner_some() {

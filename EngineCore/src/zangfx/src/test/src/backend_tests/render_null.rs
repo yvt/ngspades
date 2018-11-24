@@ -4,8 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use include_data::include_data;
 use flags_macro::flags;
+use include_data::include_data;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
 

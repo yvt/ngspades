@@ -153,7 +153,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
         for i in dst_range.layers.clone() {
             self.metal_encoder.copy_from_buffer_to_image(
                 metal_buffer,
-                src_range.offset + buffer_offset
+                src_range.offset
+                    + buffer_offset
                     + src_range.plane_stride
                         * pixel_size as u64
                         * (i - dst_range.layers.start) as u64,
@@ -217,7 +218,8 @@ impl base::CopyCmdEncoder for CopyEncoder {
                     depth: size[2] as u64,
                 },
                 metal_buffer,
-                dst_range.offset + buffer_offset
+                dst_range.offset
+                    + buffer_offset
                     + dst_range.plane_stride
                         * pixel_size as u64
                         * (i - src_range.layers.start) as u64,

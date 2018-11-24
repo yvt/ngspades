@@ -19,7 +19,10 @@ pub trait TestDriver {
     fn for_each_compute_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.for_each_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
-                if qf.caps.intersects(gfx::limits::QueueFamilyCapsFlags::Compute) {
+                if qf
+                    .caps
+                    .intersects(gfx::limits::QueueFamilyCapsFlags::Compute)
+                {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
                 }
@@ -30,7 +33,10 @@ pub trait TestDriver {
     fn for_each_render_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.for_each_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
-                if qf.caps.intersects(gfx::limits::QueueFamilyCapsFlags::Render) {
+                if qf
+                    .caps
+                    .intersects(gfx::limits::QueueFamilyCapsFlags::Render)
+                {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
                 }

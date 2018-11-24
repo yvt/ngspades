@@ -148,7 +148,8 @@ impl CmdQueue {
                 queue_family_index,
                 scheduler.clone(),
                 resstate_cb,
-            ).map(Box::new)
+            )
+            .map(Box::new)
         }))?;
 
         Ok(Self {

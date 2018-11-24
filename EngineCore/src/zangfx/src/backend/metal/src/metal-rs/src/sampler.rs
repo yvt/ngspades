@@ -6,11 +6,11 @@
 // copied, modified, or distributed except according to those terms.
 
 use objc::runtime::Class;
-use objc::runtime::{YES, NO};
-use objc_foundation::{NSString, INSString};
+use objc::runtime::{NO, YES};
+use objc_foundation::{INSString, NSString};
 use std::mem::transmute_copy;
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
 use depthstencil::MTLCompareFunction;
 
@@ -56,94 +56,64 @@ pub type MTLSamplerDescriptor = id<(MTLSamplerDescriptorPrototype, (NSObjectProt
 
 impl MTLSamplerDescriptor {
     pub fn new() -> Self {
-        unsafe {
-            msg_send![Self::class(), new]
-        }
+        unsafe { msg_send![Self::class(), new] }
     }
 
     pub fn alloc() -> Self {
-        unsafe {
-            msg_send![Self::class(), alloc]
-        }
+        unsafe { msg_send![Self::class(), alloc] }
     }
 
     pub fn init(&self) -> Self {
-        unsafe {
-            msg_send![self, init]
-        }
+        unsafe { msg_send![self, init] }
     }
 
     pub fn set_min_filter(&self, filter: MTLSamplerMinMagFilter) {
-        unsafe {
-            msg_send![self.0, setMinFilter:filter]
-        }
+        unsafe { msg_send![self.0, setMinFilter: filter] }
     }
 
     pub fn set_mag_filter(&self, filter: MTLSamplerMinMagFilter) {
-        unsafe {
-            msg_send![self.0, setMagFilter:filter]
-        }
+        unsafe { msg_send![self.0, setMagFilter: filter] }
     }
 
     pub fn set_mip_filter(&self, filter: MTLSamplerMipFilter) {
-        unsafe {
-            msg_send![self.0, setMipFilter:filter]
-        }
+        unsafe { msg_send![self.0, setMipFilter: filter] }
     }
 
     pub fn set_address_mode_s(&self, mode: MTLSamplerAddressMode) {
-        unsafe {
-            msg_send![self.0, setSAddressMode:mode]
-        }
+        unsafe { msg_send![self.0, setSAddressMode: mode] }
     }
 
     pub fn set_address_mode_t(&self, mode: MTLSamplerAddressMode) {
-        unsafe {
-            msg_send![self.0, setTAddressMode:mode]
-        }
+        unsafe { msg_send![self.0, setTAddressMode: mode] }
     }
 
     pub fn set_address_mode_r(&self, mode: MTLSamplerAddressMode) {
-        unsafe {
-            msg_send![self.0, setRAddressMode:mode]
-        }
+        unsafe { msg_send![self.0, setRAddressMode: mode] }
     }
 
     pub fn set_max_anisotropy(&self, anisotropy: u64) {
-        unsafe {
-            msg_send![self.0, setMaxAnisotropy:anisotropy]
-        }
+        unsafe { msg_send![self.0, setMaxAnisotropy: anisotropy] }
     }
 
     pub fn set_compare_function(&self, func: MTLCompareFunction) {
-        unsafe {
-            msg_send![self.0, setCompareFunction:func]
-        }
+        unsafe { msg_send![self.0, setCompareFunction: func] }
     }
 
     /// Available in macOS 10.12+.
     pub fn set_border_color(&self, border_color: MTLSamplerBorderColor) {
-        unsafe {
-            msg_send![self.0, setBorderColor:border_color]
-        }
+        unsafe { msg_send![self.0, setBorderColor: border_color] }
     }
 
     pub fn set_lod_bias(&self, bias: f32) {
-        unsafe {
-            msg_send![self.0, setLodBias:bias]
-        }
+        unsafe { msg_send![self.0, setLodBias: bias] }
     }
 
     pub fn set_lod_min_clamp(&self, clamp: f32) {
-        unsafe {
-            msg_send![self.0, setLodMinClamp:clamp]
-        }
+        unsafe { msg_send![self.0, setLodMinClamp: clamp] }
     }
 
     pub fn set_lod_max_clamp(&self, clamp: f32) {
-        unsafe {
-            msg_send![self.0, setLodMaxClamp:clamp]
-        }
+        unsafe { msg_send![self.0, setLodMaxClamp: clamp] }
     }
 
     pub fn set_normalized_coordinates(&self, normalized: bool) {
@@ -185,5 +155,4 @@ impl NSObjectProtocol for MTLSamplerState {
     }
 }
 
-impl MTLSamplerState {
-}
+impl MTLSamplerState {}

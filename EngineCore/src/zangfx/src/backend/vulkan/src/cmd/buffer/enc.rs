@@ -328,8 +328,10 @@ impl CmdBufferData {
                     command_pool: self.vk_cmd_pool,
                     level: vk::CommandBufferLevel::PRIMARY,
                     command_buffer_count: 1,
-                }).map(|cbs| cbs[0])
-        }.unwrap();
+                })
+                .map(|cbs| cbs[0])
+        }
+        .unwrap();
         // TODO: Handle command buffer allocation error
 
         unsafe {
@@ -342,7 +344,8 @@ impl CmdBufferData {
                     p_inheritance_info: crate::null(),
                 },
             )
-        }.unwrap();
+        }
+        .unwrap();
         // TODO: Handle command buffer beginning error
 
         self.passes.push(Pass {
@@ -412,7 +415,8 @@ impl CmdBufferData {
                         offset: range.start,
                         size: range.end - range.start,
                     }
-                }).collect();
+                })
+                .collect();
 
             unsafe {
                 vk_device.cmd_pipeline_barrier(

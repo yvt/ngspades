@@ -12,9 +12,9 @@
 
 pub mod asyncheap;
 mod buffer;
-pub mod futuresapi;
 pub mod cbstatetracker;
 mod device;
+pub mod futuresapi;
 pub mod streamer;
 pub mod uploader;
 mod uploaderutils;
@@ -22,12 +22,12 @@ mod uploaderutils;
 pub use crate::buffer::*;
 #[doc(no_inline)]
 pub use crate::cbstatetracker::*;
+pub use crate::device::*;
 #[doc(no_inline)]
 pub use crate::futuresapi::*;
-pub use crate::device::*;
 
 /// ZanGFX Utils prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{DeviceUtils, BufferUtils, CmdBufferFutureExt};
+    pub use crate::{BufferUtils, CmdBufferFutureExt, DeviceUtils};
 }

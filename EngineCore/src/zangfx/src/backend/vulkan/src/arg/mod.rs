@@ -61,19 +61,20 @@ impl DescriptorCount {
             DescriptorType::UNIFORM_BUFFER_DYNAMIC,
             DescriptorType::STORAGE_BUFFER_DYNAMIC,
             DescriptorType::INPUT_ATTACHMENT,
-        ].iter()
-            .filter_map(|&ty| {
-                let count = self[ty];
-                if count > 0 {
-                    Some(vk::DescriptorPoolSize {
-                        ty,
-                        descriptor_count: count,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
+        ]
+        .iter()
+        .filter_map(|&ty| {
+            let count = self[ty];
+            if count > 0 {
+                Some(vk::DescriptorPoolSize {
+                    ty,
+                    descriptor_count: count,
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
     }
 }
 

@@ -243,7 +243,8 @@ impl VulkanMemory {
                 },
                 None,
             )
-        }.map_err(translate_generic_error_unwrap)?;
+        }
+        .map_err(translate_generic_error_unwrap)?;
 
         // Create `Heap` ASAP before any operations that possibly cause unwinding
         let mut vulkan_memory = VulkanMemory {
@@ -264,8 +265,8 @@ impl VulkanMemory {
                     size,
                     vk::MemoryMapFlags::empty(),
                 )
-            }.map_err(translate_map_memory_error_unwrap)?
-                as *mut u8;
+            }
+            .map_err(translate_map_memory_error_unwrap)? as *mut u8;
         }
 
         Ok(vulkan_memory)

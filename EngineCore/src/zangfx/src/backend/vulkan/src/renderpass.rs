@@ -147,7 +147,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                     .as_ref()
                     .expect("render target bindings must be tightly arranged")
                     .vk_desc()
-            }).collect();
+            })
+            .collect();
 
         let attachment_layouts: Vec<_> = vk_attachments
             .iter()
@@ -179,7 +180,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
                 num_color_attachments,
                 attachment_layouts,
             )
-        }.into())
+        }
+        .into())
     }
 }
 
@@ -421,12 +423,14 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
                     .subrange(&base::ImageSubRange {
                         layers: Some(target.layer..target.layer + self.num_layers),
                         mip_levels: Some(target.mip_level..target.mip_level + 1),
-                    }).image_type(base::ImageType::TwoDArray)
+                    })
+                    .image_type(base::ImageType::TwoDArray)
                     .build()?;
 
                 let our_image: &Image = image.downcast_ref().unwrap();
                 Ok(our_image.clone())
-            }).collect::<Result<_>>()?;
+            })
+            .collect::<Result<_>>()?;
 
         let image_views: Vec<_> = images.iter().map(|image| image.vk_image_view()).collect();
 
@@ -468,7 +472,8 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
                 render_area,
                 clear_values,
             )
-        }.into())
+        }
+        .into())
     }
 }
 
@@ -614,6 +619,7 @@ impl fmt::Debug for ClearValue {
                     int32: self.0.color.int32,
                     depth_stencil: self.0.depth_stencil,
                 }
-            }).finish()
+            })
+            .finish()
     }
 }

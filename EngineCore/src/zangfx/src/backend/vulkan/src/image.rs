@@ -109,7 +109,9 @@ impl base::ImageBuilder for ImageBuilder {
         use ash::vk::ImageType;
         use ash::vk::ImageViewType;
         let (image_view_type, image_type, dims) = match (extents, self.num_layers) {
-            (ImageExtents::OneD(x), None) => (ImageViewType::TYPE_1D, ImageType::TYPE_1D, [x, 1, 1]),
+            (ImageExtents::OneD(x), None) => {
+                (ImageViewType::TYPE_1D, ImageType::TYPE_1D, [x, 1, 1])
+            }
             (ImageExtents::OneD(x), Some(_)) => {
                 (ImageViewType::TYPE_1D_ARRAY, ImageType::TYPE_1D, [x, 1, 1])
             }
@@ -187,7 +189,8 @@ impl base::ImageBuilder for ImageBuilder {
         let vk_image = unsafe {
             let vk_device = device.vk_device();
             vk_device.create_image(&info, None)
-        }.map_err(translate_generic_error_unwrap)?;
+        }
+        .map_err(translate_generic_error_unwrap)?;
 
         let vulkan_image = Arc::new(VulkanImage {
             device,
@@ -220,7 +223,8 @@ impl base::ImageBuilder for ImageBuilder {
         Ok(Image {
             image_view,
             tracked_state,
-        }.into())
+        }
+        .into())
     }
 }
 
@@ -496,7 +500,8 @@ impl ImageView {
         let vk_image_view = unsafe {
             let vk_device = vulkan_image.device.vk_device();
             vk_device.create_image_view(&info, None)
-        }.map_err(translate_generic_error_unwrap)?;
+        }
+        .map_err(translate_generic_error_unwrap)?;
 
         Ok(Self {
             vulkan_image,
@@ -624,7 +629,8 @@ impl base::Image for Image {
         Image {
             image_view,
             tracked_state,
-        }.into()
+        }
+        .into()
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {
@@ -797,7 +803,8 @@ impl base::ImageViewBuilder for ImageViewBuilder {
                 base::ImageType::ThreeD => vk::ImageViewType::TYPE_3D,
                 base::ImageType::Cube => vk::ImageViewType::CUBE,
                 base::ImageType::CubeArray => vk::ImageViewType::CUBE_ARRAY,
-            }).unwrap_or(image.image_view.view_type);
+            })
+            .unwrap_or(image.image_view.view_type);
 
         let format = self
             .format
@@ -817,7 +824,8 @@ impl base::ImageViewBuilder for ImageViewBuilder {
         Ok(Image {
             image_view,
             tracked_state,
-        }.into())
+        }
+        .into())
     }
 }
 

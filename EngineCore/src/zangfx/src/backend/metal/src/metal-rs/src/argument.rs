@@ -5,10 +5,10 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use objc::runtime::{Class, YES, NO};
-use objc_foundation::{NSString, INSString, NSArray};
+use objc::runtime::{Class, NO, YES};
+use objc_foundation::{INSString, NSArray, NSString};
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
 use std::mem::transmute_copy;
 use texture::MTLTextureType;
@@ -20,9 +20,9 @@ pub enum MTLDataType {
     None = 0,
 
     Struct = 1,
-    Array  = 2,
+    Array = 2,
 
-    Float  = 3,
+    Float = 3,
     Float2 = 4,
     Float3 = 5,
     Float4 = 6,
@@ -39,7 +39,7 @@ pub enum MTLDataType {
     Float4x3 = 14,
     Float4x4 = 15,
 
-    Half  = 16,
+    Half = 16,
     Half2 = 17,
     Half3 = 18,
     Half4 = 19,
@@ -56,17 +56,17 @@ pub enum MTLDataType {
     Half4x3 = 27,
     Half4x4 = 28,
 
-    Int  = 29,
+    Int = 29,
     Int2 = 30,
     Int3 = 31,
     Int4 = 32,
 
-    UInt  = 33,
+    UInt = 33,
     UInt2 = 34,
     UInt3 = 35,
     UInt4 = 36,
 
-    Short  = 37,
+    Short = 37,
     Short2 = 38,
     Short3 = 39,
     Short4 = 40,
@@ -76,17 +76,17 @@ pub enum MTLDataType {
     UShort3 = 43,
     UShort4 = 44,
 
-    Char  = 45,
+    Char = 45,
     Char2 = 46,
     Char3 = 47,
     Char4 = 48,
 
-    UChar  = 49,
+    UChar = 49,
     UChar2 = 50,
     UChar3 = 51,
     UChar4 = 52,
 
-    Bool  = 53,
+    Bool = 53,
     Bool2 = 54,
     Bool3 = 55,
     Bool4 = 56,
@@ -108,11 +108,10 @@ pub enum MTLArgumentType {
 #[repr(u32)]
 #[allow(non_camel_case_types)]
 pub enum MTLArgumentAccess {
-    ReadOnly   = 0,
-    ReadWrite  = 1,
-    WriteOnly  = 2,
+    ReadOnly = 0,
+    ReadWrite = 1,
+    WriteOnly = 2,
 }
-
 
 pub enum MTLStructMemberPrototype {}
 pub type MTLStructMember = id<(MTLStructMemberPrototype, (NSObjectPrototype, ()))>;
@@ -126,27 +125,19 @@ impl<'a> MTLStructMember {
     }
 
     pub fn offset(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, offset]
-        }
+        unsafe { msg_send![self.0, offset] }
     }
 
     pub fn data_type(&self) -> MTLDataType {
-        unsafe {
-            msg_send![self.0, dataType]
-        }
+        unsafe { msg_send![self.0, dataType] }
     }
 
     pub fn struct_type(&self) -> MTLStructType {
-        unsafe {
-            msg_send![self.0, structType]
-        }
+        unsafe { msg_send![self.0, structType] }
     }
 
     pub fn array_type(&self) -> MTLArrayType {
-        unsafe {
-            msg_send![self.0, arrayType]
-        }
+        unsafe { msg_send![self.0, arrayType] }
     }
 }
 
@@ -155,17 +146,13 @@ pub type MTLStructType = id<(MTLStructTypePrototype, (NSObjectPrototype, ()))>;
 
 impl<'a> MTLStructType {
     pub fn members(&self) -> NSArray<MTLStructMember> {
-        unsafe {
-            msg_send![self.0, members]
-        }
+        unsafe { msg_send![self.0, members] }
     }
 
     pub fn member_from_name(&self, name: &str) -> MTLStructMember {
         let nsname = NSString::from_str(name);
 
-        unsafe {
-            msg_send![self.0, memberByName:transmute_copy::<_, *const ()>(&nsname)]
-        }
+        unsafe { msg_send![self.0, memberByName:transmute_copy::<_, *const ()>(&nsname)] }
     }
 }
 
@@ -180,33 +167,23 @@ pub type MTLArrayType = id<(MTLArrayTypePrototype, (NSObjectPrototype, ()))>;
 
 impl MTLArrayType {
     pub fn array_length(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, arrayLength]
-        }
+        unsafe { msg_send![self.0, arrayLength] }
     }
 
     pub fn stride(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, stride]
-        }
+        unsafe { msg_send![self.0, stride] }
     }
 
     pub fn element_type(&self) -> MTLDataType {
-        unsafe {
-            msg_send![self.0, elementType]
-        }
+        unsafe { msg_send![self.0, elementType] }
     }
 
     pub fn element_struct_type(&self) -> MTLStructType {
-        unsafe {
-            msg_send![self.0, elementStructType]
-        }
+        unsafe { msg_send![self.0, elementStructType] }
     }
 
     pub fn element_array_type(&self) -> MTLArrayType {
-        unsafe {
-            msg_send![self.0, elementArrayType]
-        }
+        unsafe { msg_send![self.0, elementArrayType] }
     }
 }
 
@@ -228,21 +205,15 @@ impl<'a> MTLArgument {
     }
 
     pub fn type_(&self) -> MTLArgumentType {
-        unsafe {
-            msg_send![self.0, type]
-        }
+        unsafe { msg_send![self.0, type] }
     }
 
     pub fn access(&self) -> MTLArgumentAccess {
-        unsafe {
-            msg_send![self.0, access]
-        }
+        unsafe { msg_send![self.0, access] }
     }
 
     pub fn index(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, index]
-        }
+        unsafe { msg_send![self.0, index] }
     }
 
     pub fn is_active(&self) -> bool {
@@ -250,57 +221,41 @@ impl<'a> MTLArgument {
             match msg_send![self.0, isActive] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
 
     pub fn buffer_alignment(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, bufferAlignment]
-        }
+        unsafe { msg_send![self.0, bufferAlignment] }
     }
 
     pub fn buffer_data_size(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, bufferDataSize]
-        }
+        unsafe { msg_send![self.0, bufferDataSize] }
     }
 
     pub fn buffer_data_type(&self) -> MTLDataType {
-        unsafe {
-            msg_send![self.0, bufferDataType]
-        }
+        unsafe { msg_send![self.0, bufferDataType] }
     }
 
     pub fn buffer_struct_type(&self) -> MTLStructType {
-        unsafe {
-            msg_send![self.0, bufferStructType]
-        }
+        unsafe { msg_send![self.0, bufferStructType] }
     }
 
     pub fn threadgroup_memory_alignment(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, threadgroupMemoryAlignment]
-        }
+        unsafe { msg_send![self.0, threadgroupMemoryAlignment] }
     }
 
     pub fn threadgroup_memory_data_size(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, threadgroupMemoryDataSize]
-        }
+        unsafe { msg_send![self.0, threadgroupMemoryDataSize] }
     }
 
     pub fn texture_type(&self) -> MTLTextureType {
-        unsafe {
-            msg_send![self.0, textureType]
-        }
+        unsafe { msg_send![self.0, textureType] }
     }
 
     pub fn texture_data_type(&self) -> MTLDataType {
-        unsafe {
-            msg_send![self.0, textureDataType]
-        }
+        unsafe { msg_send![self.0, textureDataType] }
     }
 }
 
@@ -309,4 +264,3 @@ impl NSObjectProtocol for MTLArgument {
         Class::get("MTLArgument").unwrap()
     }
 }
-

@@ -112,7 +112,8 @@ impl Device {
                 let global_heap =
                     heap::GlobalHeap::new(device_ref.clone(), heap_strategy.unwrap(), i as _);
                 Arc::new(global_heap) as base::HeapRef
-            }).collect();
+            })
+            .collect();
 
         Ok(Self {
             device_ref: Some(device_ref),

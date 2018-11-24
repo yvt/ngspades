@@ -237,7 +237,8 @@ impl<T: Allocator> BaseArgPool<T> {
             .map(|(offset, allocation)| {
                 let our_table = ArgTable { offset, allocation };
                 arg::ArgTableRef::new(our_table)
-            }).collect();
+            })
+            .collect();
         Ok(Some(tables))
     }
 

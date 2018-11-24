@@ -263,7 +263,8 @@ impl ArgPoolData {
                 .map(|x| {
                     let table: &ArgTable = x.downcast_ref().expect("bad argument table type");
                     table.vk_descriptor_set()
-                }).collect();
+                })
+                .collect();
             unsafe {
                 device.free_descriptor_sets(self.vk_d_pool, &sets);
             }
@@ -276,7 +277,8 @@ impl ArgPoolData {
         let device = self.device.vk_device();
         unsafe {
             device.reset_descriptor_pool(self.vk_d_pool, vk::DescriptorPoolResetFlags::empty())
-        }.map_err(translate_generic_error_unwrap)
+        }
+        .map_err(translate_generic_error_unwrap)
     }
 }
 

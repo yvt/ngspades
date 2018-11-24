@@ -95,7 +95,8 @@ crate fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::Access
     if value.intersects(flags![base::AccessTypeFlags::{VertexRead | FragmentRead | ComputeRead}]) {
         ret |= vk::AccessFlags::SHADER_READ;
     }
-    if value.intersects(flags![base::AccessTypeFlags::{VertexWrite | FragmentWrite | ComputeWrite}]) {
+    if value.intersects(flags![base::AccessTypeFlags::{VertexWrite | FragmentWrite | ComputeWrite}])
+    {
         ret |= vk::AccessFlags::SHADER_READ;
         ret |= vk::AccessFlags::SHADER_WRITE;
     }

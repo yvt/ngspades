@@ -222,7 +222,8 @@ impl CmdBufferData {
                 },
                 None,
             )
-        }.map_err(translate_generic_error_unwrap)?;
+        }
+        .map_err(translate_generic_error_unwrap)?;
 
         Ok(CmdBufferData {
             device: device.clone(),

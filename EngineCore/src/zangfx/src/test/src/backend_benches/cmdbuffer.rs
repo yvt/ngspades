@@ -46,7 +46,8 @@ fn cb_throughput<T: BenchDriver>(driver: T, b: &mut impl Bencher, num_cbs: usize
                             let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
                             buffer.commit().unwrap();
                             awaiter
-                        }).collect();
+                        })
+                        .collect();
 
                     queue.flush();
                     cb_ring[cb_idx] = Box::new(move || {

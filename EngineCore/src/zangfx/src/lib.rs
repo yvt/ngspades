@@ -242,7 +242,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use base::prelude::*;
     #[doc(no_inline)]
-    pub use utils::prelude::*;
-    #[doc(no_inline)]
     pub use common::{BinaryInteger, BinaryUInteger, FromWithPad, IntoWithPad};
+    #[doc(no_inline)]
+    pub use utils::prelude::*;
 }

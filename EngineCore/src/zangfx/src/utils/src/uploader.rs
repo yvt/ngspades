@@ -41,8 +41,8 @@
 //!    submitted command buffers. Staging buffers are returned to the heap upon
 //!    the retirement of their associated upload sessions.
 //!
-use itertools::unfold;
 use flags_macro::flags;
+use itertools::unfold;
 use std::collections::VecDeque;
 use std::ops::Range;
 
@@ -342,7 +342,8 @@ impl Uploader {
                 let encoder = cmd_buffer.encode_copy();
                 if let Some(ref fence) = self.sessions.last_fence {
                     // Enforce ordering
-                    encoder.wait_fence(fence, flags![base::AccessTypeFlags::{CopyRead | CopyWrite}]);
+                    encoder
+                        .wait_fence(fence, flags![base::AccessTypeFlags::{CopyRead | CopyWrite}]);
                 }
 
                 // Encode copy commands
@@ -355,7 +356,10 @@ impl Uploader {
                     request.post_copy(encoder, &buffer, range)?;
                 }
 
-                encoder.update_fence(&fence, flags![base::AccessTypeFlags::{CopyRead | CopyWrite}]);
+                encoder.update_fence(
+                    &fence,
+                    flags![base::AccessTypeFlags::{CopyRead | CopyWrite}],
+                );
             }
             for request in sub_requests.clone() {
                 request.post_encoder(&mut *cmd_buffer)?;

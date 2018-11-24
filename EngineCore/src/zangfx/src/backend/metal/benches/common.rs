@@ -5,7 +5,6 @@
 //
 #![warn(rust_2018_idioms)]
 #![feature(test)]
-
 // Despite the compiler warning, we still need this for benchmarking
 #![allow(rust_2018_idioms)]
 extern crate test;

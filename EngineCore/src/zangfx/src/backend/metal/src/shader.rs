@@ -184,7 +184,8 @@ impl Library {
                         },
                     )
                 })?,
-        ).unwrap();
+        )
+        .unwrap();
 
         if self.data.label.is_some() || pipeline_name.is_some() {
             let pipeline_name = pipeline_name

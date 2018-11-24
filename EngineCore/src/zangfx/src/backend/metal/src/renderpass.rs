@@ -120,7 +120,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
 
         Ok(RenderPass {
             data: Arc::new(data),
-        }.into())
+        }
+        .into())
     }
 }
 
@@ -392,7 +393,8 @@ impl base::RenderTargetTableBuilder for RenderTargetTableBuilder {
         Ok(RenderTargetTable {
             metal_render_pass: metal_desc,
             extents,
-        }.into())
+        }
+        .into())
     }
 }
 

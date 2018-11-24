@@ -39,7 +39,8 @@ unsafe fn ensure_cmd_buffer(
                 command_pool: vk_cmd_pool,
                 level: vk::CommandBufferLevel::PRIMARY,
                 command_buffer_count: 1,
-            }).map(|cbs| cbs[0])?;
+            })
+            .map(|cbs| cbs[0])?;
 
         *cell = Some(vk_cmd_buffer);
 

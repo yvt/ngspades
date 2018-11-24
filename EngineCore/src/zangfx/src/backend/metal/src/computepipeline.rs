@@ -142,7 +142,8 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
 
         Ok(ComputePipeline {
             data: Arc::new(data),
-        }.into())
+        }
+        .into())
     }
 }
 

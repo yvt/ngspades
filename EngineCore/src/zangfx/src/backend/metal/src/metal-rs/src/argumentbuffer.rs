@@ -4,19 +4,19 @@
 // This source code is a part of Nightingales.
 //
 
+use cocoa::foundation::{NSRange, NSUInteger};
 use objc::runtime::Class;
-use objc_foundation::{NSString, INSString};
-use cocoa::foundation::{NSUInteger, NSRange};
+use objc_foundation::{INSString, NSString};
 use std::mem::transmute_copy;
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
 use libc;
 
-use argument::{MTLDataType, MTLArgumentAccess};
+use argument::{MTLArgumentAccess, MTLDataType};
 use buffer::MTLBuffer;
-use texture::{MTLTexture, MTLTextureType};
 use sampler::MTLSamplerState;
+use texture::{MTLTexture, MTLTextureType};
 
 pub enum MTLArgumentEncoderPrototype {}
 pub type MTLArgumentEncoder = id<(MTLArgumentEncoderPrototype, (NSObjectPrototype, ()))>;
@@ -44,15 +44,11 @@ impl<'a> MTLArgumentEncoder {
     }
 
     pub fn encoded_length(&self) -> NSUInteger {
-        unsafe {
-            msg_send![self.0, encodedLength]
-        }
+        unsafe { msg_send![self.0, encodedLength] }
     }
 
     pub fn alignment(&self) -> NSUInteger {
-        unsafe {
-            msg_send![self.0, alignment]
-        }
+        unsafe { msg_send![self.0, alignment] }
     }
 
     pub fn set_buffer(&self, buffer: MTLBuffer, offset: NSUInteger, index: NSUInteger) {
@@ -112,15 +108,11 @@ impl<'a> MTLArgumentEncoder {
     }
 
     pub fn constant_data(&self, index: NSUInteger) -> *mut libc::c_void {
-        unsafe {
-            msg_send![self.0, constantDataAtIndex:index]
-        }
+        unsafe { msg_send![self.0, constantDataAtIndex: index] }
     }
 
     pub fn new_argument_encoder_for_buffer(&self, index: NSUInteger) -> MTLArgumentEncoder {
-        unsafe {
-            msg_send![self.0, newArgumentEncoderForBufferAtIndex:index]
-        }
+        unsafe { msg_send![self.0, newArgumentEncoderForBufferAtIndex: index] }
     }
 }
 
@@ -135,83 +127,56 @@ pub type MTLArgumentDescriptor = id<(MTLArgumentDescriptorPrototype, (NSObjectPr
 
 impl MTLArgumentDescriptor {
     pub fn new() -> Self {
-        unsafe {
-            msg_send![Self::class(), argumentDescriptor]
-        }
+        unsafe { msg_send![Self::class(), argumentDescriptor] }
     }
 
     pub fn data_type(&self) -> MTLDataType {
-        unsafe {
-            msg_send![self.0, dataType]
-        }
+        unsafe { msg_send![self.0, dataType] }
     }
 
     pub fn set_data_type(&self, data_type: MTLDataType) {
-        unsafe {
-            msg_send![self.0, setDataType:data_type]
-        }
+        unsafe { msg_send![self.0, setDataType: data_type] }
     }
 
     pub fn index(&self) -> NSUInteger {
-        unsafe {
-            msg_send![self.0, index]
-        }
+        unsafe { msg_send![self.0, index] }
     }
 
     pub fn set_index(&self, index: NSUInteger) {
-        unsafe {
-            msg_send![self.0, setIndex:index]
-        }
+        unsafe { msg_send![self.0, setIndex: index] }
     }
 
     pub fn access(&self) -> MTLArgumentAccess {
-        unsafe {
-            msg_send![self.0, access]
-        }
+        unsafe { msg_send![self.0, access] }
     }
 
     pub fn set_access(&self, access: MTLArgumentAccess) {
-        unsafe {
-            msg_send![self.0, setAccess:access]
-        }
+        unsafe { msg_send![self.0, setAccess: access] }
     }
 
     pub fn array_length(&self) -> NSUInteger {
-        unsafe {
-            msg_send![self.0, arrayLength]
-        }
+        unsafe { msg_send![self.0, arrayLength] }
     }
 
     pub fn set_array_length(&self, array_length: NSUInteger) {
-        unsafe {
-            msg_send![self.0, setArrayLength:array_length]
-        }
+        unsafe { msg_send![self.0, setArrayLength: array_length] }
     }
 
     pub fn constant_block_alignment(&self) -> NSUInteger {
-        unsafe {
-            msg_send![self.0, constantBlockAlignment]
-        }
+        unsafe { msg_send![self.0, constantBlockAlignment] }
     }
 
     pub fn set_constant_block_alignment(&self, constant_block_alignment: NSUInteger) {
-        unsafe {
-            msg_send![self.0, setConstantBlockAlignment:constant_block_alignment]
-        }
+        unsafe { msg_send![self.0, setConstantBlockAlignment: constant_block_alignment] }
     }
 
     pub fn texture_type(&self) -> MTLTextureType {
-        unsafe {
-            msg_send![self.0, textureType]
-        }
+        unsafe { msg_send![self.0, textureType] }
     }
 
     pub fn set_texture_type(&self, texture_type: MTLTextureType) {
-        unsafe {
-            msg_send![self.0, setTextureType:texture_type]
-        }
+        unsafe { msg_send![self.0, setTextureType: texture_type] }
     }
-
 }
 
 impl NSObjectProtocol for MTLArgumentDescriptor {

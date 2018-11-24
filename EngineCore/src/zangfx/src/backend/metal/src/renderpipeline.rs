@@ -301,7 +301,8 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         Ok(RenderPipeline {
             data: Arc::new(data),
-        }.into())
+        }
+        .into())
     }
 }
 

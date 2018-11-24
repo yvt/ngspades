@@ -6,13 +6,13 @@
 // copied, modified, or distributed except according to those terms.
 
 use objc::runtime::Class;
-use objc_foundation::{NSString, INSString};
+use objc_foundation::{INSString, NSString};
 use std::mem::transmute_copy;
 
-use super::{id, NSObjectPrototype, NSObjectProtocol};
+use super::{id, NSObjectProtocol, NSObjectPrototype};
 
-use device::MTLDevice;
 use commandbuffer::MTLCommandBuffer;
+use device::MTLDevice;
 
 pub enum MTLCommandQueuePrototype {}
 pub type MTLCommandQueue = id<(MTLCommandQueuePrototype, (NSObjectPrototype, ()))>;
@@ -33,21 +33,15 @@ impl<'a> MTLCommandQueue {
     }
 
     pub fn device(&self) -> MTLDevice {
-        unsafe {
-            msg_send![self.0, device]
-        }
+        unsafe { msg_send![self.0, device] }
     }
 
     pub fn new_command_buffer(&self) -> MTLCommandBuffer {
-        unsafe {
-            msg_send![self.0, commandBuffer]
-        }
+        unsafe { msg_send![self.0, commandBuffer] }
     }
 
     pub fn new_command_buffer_with_unretained_references(&self) -> MTLCommandBuffer {
-        unsafe {
-            msg_send![self.0, commandBufferWithUnretainedReferences]
-        }
+        unsafe { msg_send![self.0, commandBufferWithUnretainedReferences] }
     }
 }
 
@@ -56,4 +50,3 @@ impl NSObjectProtocol for MTLCommandQueue {
         Class::get("MTLCommandQueue").unwrap()
     }
 }
-

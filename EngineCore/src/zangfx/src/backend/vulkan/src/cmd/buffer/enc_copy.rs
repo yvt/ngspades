@@ -321,8 +321,18 @@ impl base::CopyCmdEncoder for CmdBufferData {
             dst_layout = vk::ImageLayout::GENERAL;
         }
 
-        self.use_image_for_copy(src_layout, vk::AccessFlags::TRANSFER_READ, my_src, src_range);
-        self.use_image_for_copy(dst_layout, vk::AccessFlags::TRANSFER_WRITE, my_dst, dst_range);
+        self.use_image_for_copy(
+            src_layout,
+            vk::AccessFlags::TRANSFER_READ,
+            my_src,
+            src_range,
+        );
+        self.use_image_for_copy(
+            dst_layout,
+            vk::AccessFlags::TRANSFER_WRITE,
+            my_dst,
+            dst_range,
+        );
 
         let src_origin: [u32; 3] = src_origin.into_with_pad(0);
         let dst_origin: [u32; 3] = dst_origin.into_with_pad(0);

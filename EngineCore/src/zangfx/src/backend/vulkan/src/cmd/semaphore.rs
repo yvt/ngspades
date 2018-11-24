@@ -53,7 +53,8 @@ impl base::SemaphoreBuilder for SemaphoreBuilder {
                     device: self.device.clone(),
                     vk_semaphore: self.raw,
                 }),
-            }.into())
+            }
+            .into())
         }
     }
 }
@@ -83,7 +84,8 @@ impl Semaphore {
         let vk_semaphore = unsafe {
             let vk_device: &crate::AshDevice = device.vk_device();
             vk_device.create_semaphore(&info, None)
-        }.map_err(translate_generic_error_unwrap)?;
+        }
+        .map_err(translate_generic_error_unwrap)?;
 
         Ok(Self {
             data: RefEqArc::new(SemaphoreData {

@@ -7,8 +7,8 @@ use num_integer::Integer;
 use std::{fmt, ops};
 
 /// Integral types with efficient binary operations.
-pub trait BinaryInteger
-    : Integer
+pub trait BinaryInteger:
+    Integer
     + Clone
     + Sized
     + ops::AddAssign
@@ -16,7 +16,8 @@ pub trait BinaryInteger
     + ops::MulAssign
     + ops::DivAssign
     + RefSaturatingAdd<Output = Self>
-    + fmt::Debug {
+    + fmt::Debug
+{
     type OneDigits: Iterator<Item = u32>;
 
     fn max_digits() -> u32;
@@ -77,7 +78,7 @@ pub trait BinaryUInteger: BinaryInteger {
 pub struct OneDigits<T>(T);
 
 macro_rules! impl_binary_integer {
-    ($size:expr, $type:ty) => (
+    ($size:expr, $type:ty) => {
         impl BinaryInteger for $type {
             type OneDigits = OneDigits<Self>;
 
@@ -154,8 +155,7 @@ macro_rules! impl_binary_integer {
                     }
                 } else {
                     let mask = Self::ones(0..fp);
-                    self.checked_add(mask)
-                        .map(|x| x & !mask)
+                    self.checked_add(mask).map(|x| x & !mask)
                 }
             }
             #[inline]
@@ -204,18 +204,18 @@ macro_rules! impl_binary_integer {
                 }
             }
         }
-    )
+    };
 }
 
 macro_rules! impl_binary_uinteger {
-    ($size:expr, $type:ty) => (
+    ($size:expr, $type:ty) => {
         impl BinaryUInteger for $type {
             #[inline]
             fn is_power_of_two(&self) -> bool {
                 Self::is_power_of_two(*self)
             }
         }
-    )
+    };
 }
 
 impl_binary_integer!(8, i8);

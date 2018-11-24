@@ -87,7 +87,8 @@ where
                                 },
                                 None,
                             )
-                        }.map_err(translate_generic_error_unwrap)?,
+                        }
+                        .map_err(translate_generic_error_unwrap)?,
                     )
                     .unwrap();
             }
@@ -110,7 +111,8 @@ where
                     Ok(()) => break,
                     Err(vk::Result::TIMEOUT) => Ok(()),
                     Err(e) => Err(translate_generic_error_unwrap(e)),
-                }.expect("failed to wait for fences");
+                }
+                .expect("failed to wait for fences");
             }
 
             // This fence is available for next use

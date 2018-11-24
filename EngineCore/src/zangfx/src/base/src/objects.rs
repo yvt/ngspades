@@ -84,5 +84,5 @@ macro_rules! define_object {
                 self
             }
         }
-    }
+    };
 }

@@ -3,8 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::{borrow, fmt, marker, mem, ops, ptr};
 use std::raw::TraitObject;
+use std::{borrow, fmt, marker, mem, ops, ptr};
 
 /// Stores unsized data without extra heap allocation.
 ///

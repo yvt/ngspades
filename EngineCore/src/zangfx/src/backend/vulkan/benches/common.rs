@@ -5,7 +5,6 @@
 //
 #![warn(rust_2018_idioms)]
 #![feature(test)]
-
 // Despite the compiler warning, we still need this for benchmarking
 #![allow(rust_2018_idioms)]
 extern crate test;
@@ -92,7 +91,8 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                         pp_enabled_extension_names: extensions.as_ptr() as *const _,
                     },
                     None,
-                ).map(UniqueInstance)
+                )
+                .map(UniqueInstance)
                 .expect("Failed to create a Vulkan instance.");
 
             let phys_devices = instance.enumerate_physical_devices().unwrap();
@@ -112,7 +112,8 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                     &instance,
                     phys_device,
                     &enabled_features,
-                ).unwrap();
+                )
+                .unwrap();
 
                 // Allocate some queues
                 use std::cmp::min;
@@ -127,7 +128,8 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                         queue_family_index: i as u32,
                         queue_count: min(2, prop.count) as u32,
                         p_queue_priorities: [0.5f32, 0.5f32].as_ptr(),
-                    }).collect::<Vec<_>>();
+                    })
+                    .collect::<Vec<_>>();
 
                 let mut config = backend::limits::DeviceConfig::new();
 
@@ -153,7 +155,8 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                             p_enabled_features: &enabled_features,
                         },
                         None,
-                    ).map(UniqueDevice)
+                    )
+                    .map(UniqueDevice)
                     .expect("Failed to create a Vulkan device.");
 
                 let gfx_device =

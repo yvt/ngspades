@@ -7,8 +7,9 @@
 extern crate include_data;
 extern crate zangfx_spirv_cross;
 
-use zangfx_spirv_cross::{ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl,
-                         VertexAttribute, VertexInputRate};
+use zangfx_spirv_cross::{
+    ExecutionModel, IndirectArgument, ResourceBinding, SpirV2Msl, VertexAttribute, VertexInputRate,
+};
 
 static TEST_FRAG: include_data::DataView =
     include_data!(concat!(env!("OUT_DIR"), "/test.frag.spv"));

@@ -30,7 +30,7 @@ pub struct DeviceInfo {
     pub vertex_features: HashMap<base::VertexFormat, base::VertexFormatCapsFlags>,
 }
 
-bitflags!{
+bitflags! {
     pub struct DeviceTraitFlags: u8 {
         /// Enables work-arounds for MoltenVK (Vulkan-on-Metal emulation layer).
         const MoltenVK = 0b1;
@@ -98,12 +98,12 @@ impl DeviceInfo {
 
         let queue_families =
             unsafe { instance.get_physical_device_queue_family_properties(phys_device) }
-            .iter()
-            .map(|qf| base::QueueFamilyInfo {
-                caps: translate_queue_flags(qf.queue_flags),
-                count: qf.queue_count as usize,
-            })
-            .collect();
+                .iter()
+                .map(|qf| base::QueueFamilyInfo {
+                    caps: translate_queue_flags(qf.queue_flags),
+                    count: qf.queue_count as usize,
+                })
+                .collect();
 
         let dev_mem = unsafe { instance.get_physical_device_memory_properties(phys_device) };
         let memory_types = dev_mem.memory_types[0..dev_mem.memory_type_count as usize]

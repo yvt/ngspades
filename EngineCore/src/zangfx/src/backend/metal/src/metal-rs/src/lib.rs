@@ -23,21 +23,21 @@ extern crate objc_foundation;
 extern crate fast_msg_send;
 extern crate block;
 
+use objc::runtime::{Class, Object, BOOL, NO, YES};
 use objc::Message;
-use objc::runtime::{Object, Class, BOOL, YES, NO};
 
-use cocoa::foundation::{NSSize, NSRect};
+use cocoa::foundation::{NSRect, NSSize};
 
-use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
-use std::ops::Deref;
 use std::any::Any;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::mem;
+use std::ops::Deref;
 
 #[allow(non_camel_case_types)]
 #[repr(C)]
-pub struct id<T=()>(pub *mut Object, pub PhantomData<T>);
+pub struct id<T = ()>(pub *mut Object, pub PhantomData<T>);
 
 impl<T> Copy for id<T> {}
 impl<T> Clone for id<T> {
@@ -47,7 +47,10 @@ impl<T> Clone for id<T> {
 }
 
 impl<T> Hash for id<T> {
-    fn hash<H>(&self, state: &mut H) where H: Hasher {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
         state.write_u64(unsafe { mem::transmute(self.0) });
         state.finish();
     }
@@ -79,10 +82,12 @@ impl<T> id<T> {
 
 impl<T, R> Deref for id<(T, R)> {
     type Target = id<R>;
-    fn deref(&self) -> &id<R> { unsafe { mem::transmute(self) } }
+    fn deref(&self) -> &id<R> {
+        unsafe { mem::transmute(self) }
+    }
 }
 
-unsafe impl<T> objc::Message for id<T> { }
+unsafe impl<T> objc::Message for id<T> {}
 
 #[allow(non_upper_case_globals)]
 pub const nil: id<()> = id(0 as *mut Object, PhantomData);
@@ -97,7 +102,7 @@ impl<T> AsObject for id<T> {
     }
 }
 
-pub trait NSObjectProtocol : Message + Sized + AsObject {
+pub trait NSObjectProtocol: Message + Sized + AsObject {
     unsafe fn retain(&self) {
         msg_send![self.as_obj(), retain]
     }
@@ -115,7 +120,7 @@ pub trait NSObjectProtocol : Message + Sized + AsObject {
     }
 
     unsafe fn is_kind_of_class(&self, class: Class) -> BOOL {
-        msg_send![self.as_obj(), isKindOfClass:class]
+        msg_send![self.as_obj(), isKindOfClass: class]
     }
 
     unsafe fn class() -> &'static Class {
@@ -126,17 +131,16 @@ pub trait NSObjectProtocol : Message + Sized + AsObject {
 pub enum NSArrayPrototype {}
 pub type NSArray<T> = id<(NSArrayPrototype, (NSObjectPrototype, (T)))>;
 
-impl<T> NSArray<T> where T: Any {
+impl<T> NSArray<T>
+where
+    T: Any,
+{
     pub fn object_at(&self, index: u64) -> T {
-        unsafe {
-            msg_send![self.0, objectAtIndex:index]
-        }
+        unsafe { msg_send![self.0, objectAtIndex: index] }
     }
 
     pub fn count(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, count]
-        }
+        unsafe { msg_send![self.0, count] }
     }
 }
 
@@ -151,21 +155,15 @@ pub type NSAutoreleasePool = id<(NSAutoreleasePoolPrototype, (NSObjectPrototype,
 
 impl NSAutoreleasePool {
     pub fn alloc() -> Self {
-        unsafe {
-            msg_send![Self::class(), alloc]
-        }
+        unsafe { msg_send![Self::class(), alloc] }
     }
 
     pub fn init(&self) -> Self {
-        unsafe {
-            msg_send![self.0, init]
-        }
+        unsafe { msg_send![self.0, init] }
     }
 
     pub fn drain(&self) {
-        unsafe {
-            msg_send![self.0, drain]
-        }
+        unsafe { msg_send![self.0, drain] }
     }
 }
 
@@ -181,13 +179,14 @@ pub type NSObject = id<(NSObjectPrototype, ())>;
 impl NSObjectProtocol for NSObject {}
 
 pub enum CAMetalDrawablePrototype {}
-pub type CAMetalDrawable = id<(CAMetalDrawablePrototype, (MTLDrawablePrototype, (NSObjectPrototype, ())))>;
+pub type CAMetalDrawable = id<(
+    CAMetalDrawablePrototype,
+    (MTLDrawablePrototype, (NSObjectPrototype, ())),
+)>;
 
 impl CAMetalDrawable {
     pub fn texture(&self) -> MTLTexture {
-        unsafe {
-            msg_send![self.0, texture]
-        }
+        unsafe { msg_send![self.0, texture] }
     }
 }
 
@@ -202,65 +201,45 @@ pub type CAMetalLayer = id<(CAMetalLayerPrototype, (NSObjectPrototype, ()))>;
 
 impl CAMetalLayer {
     pub fn new() -> CAMetalLayer {
-        unsafe {
-            msg_send![Self::class(), new]
-        }
+        unsafe { msg_send![Self::class(), new] }
     }
 
     pub fn layer() -> CAMetalLayer {
-        unsafe {
-            msg_send![Self::class(), layer]
-        }
+        unsafe { msg_send![Self::class(), layer] }
     }
 
     pub fn set_device(&self, device: MTLDevice) {
-        unsafe {
-            msg_send![self.0, setDevice:device.0]
-        }
+        unsafe { msg_send![self.0, setDevice:device.0] }
     }
 
     pub fn pixel_format(&self) -> MTLPixelFormat {
-        unsafe {
-            msg_send![self.0, pixelFormat]
-        }
+        unsafe { msg_send![self.0, pixelFormat] }
     }
 
     pub fn set_pixel_format(&self, pixel_format: MTLPixelFormat) {
-        unsafe {
-            msg_send![self.0, setPixelFormat:pixel_format]
-        }
+        unsafe { msg_send![self.0, setPixelFormat: pixel_format] }
     }
 
     pub fn set_colorspace(&self, colorspace: id<()>) {
-        unsafe {
-            msg_send![self.0, setColorspace:colorspace]
-        }
+        unsafe { msg_send![self.0, setColorspace: colorspace] }
     }
 
     pub fn drawable_size(&self) -> NSSize {
-        unsafe {
-            msg_send![self.0, drawableSize]
-        }
+        unsafe { msg_send![self.0, drawableSize] }
     }
 
     pub fn set_drawable_size(&self, size: NSSize) {
-        unsafe {
-            msg_send![self.0, setDrawableSize:size]
-        }
+        unsafe { msg_send![self.0, setDrawableSize: size] }
     }
 
     // inherited from `CALayer`
     pub fn bounds(&self) -> NSRect {
-        unsafe {
-            msg_send![self.0, bounds]
-        }
+        unsafe { msg_send![self.0, bounds] }
     }
 
     // inherited from `CALayer`
     pub fn contents_scale(&self) -> f64 {
-        unsafe {
-            msg_send![self.0, contentsScale]
-        }
+        unsafe { msg_send![self.0, contentsScale] }
     }
 
     pub fn presents_with_transaction(&self) -> bool {
@@ -268,45 +247,33 @@ impl CAMetalLayer {
             match msg_send![self.0, presentsWithTransaction] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
 
     pub fn set_presents_with_transaction(&self, transaction: bool) {
-        unsafe {
-            msg_send![self.0, setPresentsWithTransaction:transaction]
-        }
+        unsafe { msg_send![self.0, setPresentsWithTransaction: transaction] }
     }
 
     pub fn set_framebuffer_only(&self, framebuffer_only: bool) {
-        unsafe {
-            msg_send![self.0, setFramebufferOnly:framebuffer_only]
-        }
+        unsafe { msg_send![self.0, setFramebufferOnly: framebuffer_only] }
     }
 
     pub fn set_edge_antialiasing_mask(&self, mask: u64) {
-        unsafe {
-            msg_send![self.0, setEdgeAntialiasingMask:mask]
-        }
+        unsafe { msg_send![self.0, setEdgeAntialiasingMask: mask] }
     }
 
     pub fn set_masks_to_bounds(&self, masks: bool) {
-        unsafe {
-            msg_send![self.0, setMasksToBounds:masks]
-        }
+        unsafe { msg_send![self.0, setMasksToBounds: masks] }
     }
 
     pub fn set_opaque(&self, opaque: bool) {
-        unsafe {
-            msg_send![self.0, setOpaque:opaque]
-        }
+        unsafe { msg_send![self.0, setOpaque: opaque] }
     }
 
     pub fn remove_all_animations(&self) {
-        unsafe {
-            msg_send![self.0, removeAllAnimations]
-        }
+        unsafe { msg_send![self.0, removeAllAnimations] }
     }
 
     pub fn next_drawable(&self) -> Option<CAMetalDrawable> {
@@ -315,7 +282,7 @@ impl CAMetalLayer {
 
             match drawable.is_null() {
                 true => None,
-                false => Some(drawable)
+                false => Some(drawable),
             }
         }
     }
@@ -327,41 +294,40 @@ impl NSObjectProtocol for CAMetalLayer {
     }
 }
 
-mod constants;
-mod types;
-mod device;
-mod texture;
-mod sampler;
-mod resource;
-mod drawable;
-mod buffer;
-mod renderpass;
-mod commandqueue;
-mod commandbuffer;
-mod encoder;
-mod pipeline;
-mod library;
 mod argument;
 mod argumentbuffer;
-mod vertexdescriptor;
+mod buffer;
+mod commandbuffer;
+mod commandqueue;
+mod constants;
 mod depthstencil;
+mod device;
+mod drawable;
+mod encoder;
+mod library;
+mod pipeline;
+mod renderpass;
+mod resource;
+mod sampler;
+mod texture;
+mod types;
+mod vertexdescriptor;
 
-pub use constants::*;
-pub use types::*;
-pub use device::*;
-pub use texture::*;
-pub use sampler::*;
-pub use resource::*;
-pub use drawable::*;
-pub use buffer::*;
-pub use renderpass::*;
-pub use commandqueue::*;
-pub use commandbuffer::*;
-pub use encoder::*;
-pub use pipeline::*;
-pub use library::*;
 pub use argument::*;
 pub use argumentbuffer::*;
-pub use vertexdescriptor::*;
+pub use buffer::*;
+pub use commandbuffer::*;
+pub use commandqueue::*;
+pub use constants::*;
 pub use depthstencil::*;
-
+pub use device::*;
+pub use drawable::*;
+pub use encoder::*;
+pub use library::*;
+pub use pipeline::*;
+pub use renderpass::*;
+pub use resource::*;
+pub use sampler::*;
+pub use texture::*;
+pub use types::*;
+pub use vertexdescriptor::*;

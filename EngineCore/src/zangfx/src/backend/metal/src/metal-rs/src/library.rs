@@ -5,11 +5,11 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use objc::runtime::{Class, YES, NO};
-use objc_foundation::{NSString, INSString};
+use objc::runtime::{Class, NO, YES};
+use objc_foundation::{INSString, NSString};
 use std::mem::transmute_copy;
 
-use super::{id, NSObjectPrototype, NSObjectProtocol, NSArray};
+use super::{id, NSArray, NSObjectProtocol, NSObjectPrototype};
 
 use argument::MTLDataType;
 
@@ -25,15 +25,11 @@ impl<'a> MTLVertexAttribute {
     }
 
     pub fn attribute_index(&self) -> u64 {
-        unsafe {
-            msg_send![self.0, attributeIndex]
-        }
+        unsafe { msg_send![self.0, attributeIndex] }
     }
 
     pub fn attribute_type(&self) -> MTLDataType {
-        unsafe {
-            msg_send![self.0, attributeType]
-        }
+        unsafe { msg_send![self.0, attributeType] }
     }
 
     pub fn is_active(&self) -> bool {
@@ -41,11 +37,10 @@ impl<'a> MTLVertexAttribute {
             match msg_send![self.0, isActive] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
-
 }
 
 impl NSObjectProtocol for MTLVertexAttribute {
@@ -62,8 +57,6 @@ pub enum MTLFunctionType {
     Kernel = 3,
 }
 
-
-
 pub enum MTLFunctionPrototype {}
 pub type MTLFunction = id<(MTLFunctionPrototype, (NSObjectPrototype, ()))>;
 
@@ -76,15 +69,11 @@ impl<'a> MTLFunction {
     }
 
     pub fn function_type(&self) -> MTLFunctionType {
-        unsafe {
-            msg_send![self.0, functionType]
-        }
+        unsafe { msg_send![self.0, functionType] }
     }
 
     pub fn vertex_attributes(&self) -> NSArray<MTLVertexAttribute> {
-        unsafe {
-            msg_send![self.0, vertexAttributes]
-        }
+        unsafe { msg_send![self.0, vertexAttributes] }
     }
 }
 
@@ -102,39 +91,28 @@ pub enum MTLLanguageVersion {
     V2_0 = (2 << 16),
 }
 
-
 pub enum MTLCompileOptionsPrototype {}
 pub type MTLCompileOptions = id<(MTLCompileOptionsPrototype, (NSObjectPrototype, ()))>;
 
 impl MTLCompileOptions {
     pub fn new() -> Self {
-        unsafe {
-            msg_send![Self::class(), new]
-        }
+        unsafe { msg_send![Self::class(), new] }
     }
 
     pub fn alloc() -> Self {
-        unsafe {
-            msg_send![Self::class(), alloc]
-        }
+        unsafe { msg_send![Self::class(), alloc] }
     }
 
     pub fn init(&self) -> Self {
-        unsafe {
-            msg_send![self.0, init]
-        }
+        unsafe { msg_send![self.0, init] }
     }
 
     pub fn preprocessor_defines(&self) -> id {
-        unsafe {
-            msg_send![self.0, preprocessorMacros]
-        }
+        unsafe { msg_send![self.0, preprocessorMacros] }
     }
 
     pub fn set_preprocessor_defines(&self, defines: id) {
-        unsafe {
-            msg_send![self.0, setPreprocessorMacros:defines]
-        }
+        unsafe { msg_send![self.0, setPreprocessorMacros: defines] }
     }
 
     pub fn is_fast_math_enabled(&self) -> bool {
@@ -142,27 +120,21 @@ impl MTLCompileOptions {
             match msg_send![self.0, fastMathEnabled] {
                 YES => true,
                 NO => false,
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
 
     pub fn set_fast_math_enabled(&self, enabled: bool) {
-        unsafe {
-            msg_send![self.0, setFastMathEnabled:enabled]
-        }
+        unsafe { msg_send![self.0, setFastMathEnabled: enabled] }
     }
 
     pub fn language_version(&self) -> MTLLanguageVersion {
-        unsafe {
-            msg_send![self.0, languageVersion]
-        }
+        unsafe { msg_send![self.0, languageVersion] }
     }
 
     pub fn set_language_version(&self, version: MTLLanguageVersion) {
-        unsafe {
-            msg_send![self.0, setLanguageVersion:version]
-        }
+        unsafe { msg_send![self.0, setLanguageVersion: version] }
     }
 }
 
@@ -175,21 +147,19 @@ impl NSObjectProtocol for MTLCompileOptions {
 #[repr(u64)]
 #[allow(non_camel_case_types)]
 pub enum MTLLibraryError {
-    Unsupported      = 1,
-    Internal         = 2,
-    CompileFailure   = 3,
-    CompileWarning   = 4,
+    Unsupported = 1,
+    Internal = 2,
+    CompileFailure = 3,
+    CompileWarning = 4,
 }
 
 #[repr(u64)]
 #[allow(non_camel_case_types)]
 pub enum MTLRenderPipelineError {
-    Internal          = 1,
-    Unsupported       = 2,
-    InvalidInput      = 3,
+    Internal = 1,
+    Unsupported = 2,
+    InvalidInput = 3,
 }
-
-
 
 pub enum MTLLibraryPrototype {}
 pub type MTLLibrary = id<(MTLLibraryPrototype, (NSObjectPrototype, ()))>;
@@ -211,21 +181,19 @@ impl<'a> MTLLibrary {
 
     pub fn get_function(&self, name: &str) -> MTLFunction {
         unsafe {
-            use cocoa::foundation::NSString as cocoa_NSString;
             use cocoa::base::nil as cocoa_nil;
+            use cocoa::foundation::NSString as cocoa_NSString;
 
             let nsname = cocoa_NSString::alloc(cocoa_nil).init_str(name);
             //let nsname = NSString::from_str(name);
-            let func: MTLFunction = msg_send![self.0, newFunctionWithName:nsname];
+            let func: MTLFunction = msg_send![self.0, newFunctionWithName: nsname];
 
             func
         }
     }
 
     pub fn function_names(&self) -> NSArray<NSString> {
-        unsafe {
-            msg_send![self.0, functionNames]
-        }
+        unsafe { msg_send![self.0, functionNames] }
     }
 }
 
@@ -234,4 +202,3 @@ impl NSObjectProtocol for MTLLibrary {
         Class::get("MTLLibrary").unwrap()
     }
 }
-

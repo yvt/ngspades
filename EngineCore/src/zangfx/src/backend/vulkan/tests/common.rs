@@ -164,7 +164,8 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                         pp_enabled_extension_names: extensions.as_ptr() as *const _,
                     },
                     None,
-                ).map(UniqueInstance)
+                )
+                .map(UniqueInstance)
                 .expect("Failed to create a Vulkan instance.");
 
             let _debug_report = if has_debug_report {
@@ -197,7 +198,8 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                     &instance,
                     phys_device,
                     &enabled_features,
-                ).unwrap();
+                )
+                .unwrap();
 
                 // Allocate some queues
                 use std::cmp::min;
@@ -212,7 +214,8 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                         queue_family_index: i as u32,
                         queue_count: min(2, prop.count) as u32,
                         p_queue_priorities: [0.5f32, 0.5f32].as_ptr(),
-                    }).collect::<Vec<_>>();
+                    })
+                    .collect::<Vec<_>>();
 
                 let mut config = backend::limits::DeviceConfig::new();
 
@@ -238,7 +241,8 @@ impl zangfx_test::backend_tests::TestDriver for TestDriver {
                             p_enabled_features: &enabled_features,
                         },
                         None,
-                    ).map(UniqueDevice)
+                    )
+                    .map(UniqueDevice)
                     .expect("Failed to create a Vulkan device.");
 
                 let gfx_device =

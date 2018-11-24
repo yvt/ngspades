@@ -10,8 +10,8 @@ use std::sync::Arc;
 
 use crate::device::DeviceRef;
 use zangfx_base as base;
-use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_base::Result;
+use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 
 use crate::utils::translate_generic_error_unwrap;
 

@@ -5,7 +5,7 @@
 //
 //! Implementation of `Buffer` for Vulkan.
 use ash::version::*;
-use ash::{vk, prelude::VkResult};
+use ash::{prelude::VkResult, vk};
 use std::sync::Arc;
 
 use crate::device::DeviceRef;
@@ -97,7 +97,8 @@ impl base::BufferBuilder for BufferBuilder {
         let vk_buffer = unsafe {
             let vk_device = device.vk_device();
             vk_device.create_buffer(&info, None)
-        }.map_err(translate_generic_error_unwrap)?;
+        }
+        .map_err(translate_generic_error_unwrap)?;
 
         let vulkan_buffer = Arc::new(VulkanBuffer {
             device,
@@ -112,7 +113,8 @@ impl base::BufferBuilder for BufferBuilder {
         Ok(Buffer {
             vulkan_buffer,
             tracked_state,
-        }.into())
+        }
+        .into())
     }
 }
 
@@ -192,7 +194,8 @@ unsafe impl base::Buffer for Buffer {
         Buffer {
             vulkan_buffer,
             tracked_state,
-        }.into()
+        }
+        .into()
     }
 
     fn get_memory_req(&self) -> Result<base::MemoryReq> {

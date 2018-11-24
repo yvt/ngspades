@@ -156,7 +156,8 @@ impl base::RenderCmdEncoder for CmdBufferData {
                     height: vp.height,
                     min_depth: vp.min_depth,
                     max_depth: vp.max_depth,
-                }).collect();
+                })
+                .collect();
             unsafe {
                 vk_device.fp_v1_0().cmd_set_viewport(
                     self.vk_cmd_buffer(),
@@ -216,7 +217,8 @@ impl base::RenderCmdEncoder for CmdBufferData {
                 .map(|&(buffer, _)| {
                     let buffer: &Buffer = buffer.downcast_ref().expect("bad buffer type");
                     buffer.vk_buffer()
-                }).collect();
+                })
+                .collect();
             let offsets: ArrayVec<[_; 32]> = items.iter().map(|&(_, offset)| offset).collect();
             unsafe {
                 vk_device.cmd_bind_vertex_buffers(
