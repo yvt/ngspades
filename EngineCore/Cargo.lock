@@ -327,6 +327,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "flags-macro"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1961,11 +1966,11 @@ dependencies = [
 name = "zangfx_base"
 version = "0.1.0"
 dependencies = [
+ "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flags-macro 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "itervalues 0.1.0",
  "itervalues_derive 0.1.0",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ngsenumflags 0.1.2",
- "ngsenumflags_derive 0.2.2",
  "query_interface 0.3.5 (git+https://github.com/yvt/query_interface.git?rev=da91498339411afd6acd749353295dc57b9229b2)",
  "zangfx_common 0.1.0",
 ]
@@ -2116,6 +2121,7 @@ dependencies = [
 "checksum encoding-index-singlebyte 1.20141219.5 (registry+https://github.com/rust-lang/crates.io-index)" = "3351d5acffb224af9ca265f435b859c7c01537c0849754d3db3fdf2bfe2ae84a"
 "checksum encoding-index-tradchinese 1.20141219.5 (registry+https://github.com/rust-lang/crates.io-index)" = "fd0e20d5688ce3cab59eb3ef3a2083a5c77bf496cb798dc6fcdb75f323890c18"
 "checksum encoding_index_tests 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a246d82be1c9d791c5dfde9a2bd045fc3cbba3fa2b11ad558f27d01712f00569"
+"checksum flags-macro 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "48cf63a8c38ee55f5996db71b0090a8b5d74e52268403750cbf6fa34a348a32d"
 "checksum foreign-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
 "checksum foreign-types-shared 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 "checksum fragile 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2ff777830a3bf2d15c62c51a5075bc928d912784c73303db630eecadba9cb5fc"

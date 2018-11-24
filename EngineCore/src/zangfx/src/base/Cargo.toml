@@ -6,11 +6,11 @@ edition = "2018"
 
 [dependencies]
 zangfx_common = { path = "../common" }
-ngsenumflags = { path = "../../../support/ngsenumflags" }
-ngsenumflags_derive = { path = "../../../support/ngsenumflags/ngsenumflags_derive" }
+bitflags = "1.0.4"
 itervalues = { path = "../../../support/itervalues" }
 itervalues_derive = { path = "../../../support/itervalues/itervalues_derive" }
 lazy_static = "1.1"
+flags-macro = "0.1.2"
 
 [dependencies.query_interface]
 git = "https://github.com/yvt/query_interface.git"

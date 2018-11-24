@@ -3,141 +3,119 @@
 //
 // This source code is a part of Nightingales.
 //
+use bitflags::bitflags;
+use flags_macro::flags;
 use lazy_static::lazy_static;
-use {
-    ngsenumflags::{flags, BitFlags},
-    ngsenumflags_derive::NgsEnumFlags,
-};
 
 use zangfx_common::BinaryInteger;
 
-/// Specifies a pipeline stage.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum Stage {
-    IndirectDraw = 0b1,
-    VertexInput = 0b10,
-    Vertex = 0b100,
-    Fragment = 0b1000,
-    EarlyFragTests = 0b10000,
-    LateFragTests = 0b100000,
-    RenderOutput = 0b1000000,
-    Compute = 0b10000000,
-    Copy = 0b100000000,
+bitflags! {
+    /// Specifies zero or more pipeline stages.
+    pub struct StageFlags: u16 {
+        const IndirectDraw = 0b1;
+        const VertexInput = 0b10;
+        const Vertex = 0b100;
+        const Fragment = 0b1000;
+        const EarlyFragTests = 0b10000;
+        const LateFragTests = 0b100000;
+        const RenderOutput = 0b1000000;
+        const Compute = 0b10000000;
+        const Copy = 0b100000000;
+    }
 }
 
-impl Stage {
-    pub fn all() -> StageFlags {
-        StageFlags::all()
-    }
-
+impl StageFlags {
     pub fn all_render() -> StageFlags {
-        flags![Stage::{IndirectDraw | VertexInput | Vertex | Fragment | EarlyFragTests |
-            LateFragTests | RenderOutput}]
+        flags![StageFlags::{IndirectDraw | VertexInput | Vertex | Fragment |
+            EarlyFragTests | LateFragTests | RenderOutput}]
     }
 }
 
-/// Specifies zero or more pipeline stages.
-pub type StageFlags = BitFlags<Stage>;
-
-/// Specifies a type of memory access.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum AccessType {
-    IndirectDrawRead = 0b1,
-    IndexRead = 0b10,
-    VertexAttrRead = 0b100,
-    VertexUniformRead = 0b1000,
-    VertexRead = 0b10000,
-    VertexWrite = 0b100000,
-    FragmentUniformRead = 0b1000000,
-    FragmentRead = 0b10000000,
-    FragmentWrite = 0b100000000,
-    ColorRead = 0b1000000000,
-    ColorWrite = 0b10000000000,
-    DsRead = 0b100000000000,
-    DsWrite = 0b1000000000000,
-    CopyRead = 0b10000000000000,
-    CopyWrite = 0b100000000000000,
-    ComputeUniformRead = 0b1000000000000000,
-    ComputeRead = 0b10000000000000000,
-    ComputeWrite = 0b100000000000000000,
+bitflags! {
+    /// Specifies zero or more types of memory access.
+    pub struct AccessTypeFlags: u32 {
+        const IndirectDrawRead = 0b1;
+        const IndexRead = 0b10;
+        const VertexAttrRead = 0b100;
+        const VertexUniformRead = 0b1000;
+        const VertexRead = 0b10000;
+        const VertexWrite = 0b100000;
+        const FragmentUniformRead = 0b1000000;
+        const FragmentRead = 0b10000000;
+        const FragmentWrite = 0b100000000;
+        const ColorRead = 0b1000000000;
+        const ColorWrite = 0b10000000000;
+        const DsRead = 0b100000000000;
+        const DsWrite = 0b1000000000000;
+        const CopyRead = 0b10000000000000;
+        const CopyWrite = 0b100000000000000;
+        const ComputeUniformRead = 0b1000000000000000;
+        const ComputeRead = 0b10000000000000000;
+        const ComputeWrite = 0b100000000000000000;
+    }
 }
 
 lazy_static! {
     static ref ACCESS_TO_STAGES: [StageFlags; 18] = [
         // IndirectDrawRead
-        flags![Stage::{IndirectDraw}],
+        flags![StageFlags::{IndirectDraw}],
         // IndexRead
-        flags![Stage::{VertexInput}],
+        flags![StageFlags::{VertexInput}],
         // VertexAttrRead
-        flags![Stage::{VertexInput}],
+        flags![StageFlags::{VertexInput}],
         // VertexUniformRead
-        flags![Stage::{Vertex}],
+        flags![StageFlags::{Vertex}],
         // VertexRead
-        flags![Stage::{Vertex}],
+        flags![StageFlags::{Vertex}],
         // VertexWrite
-        flags![Stage::{Vertex}],
+        flags![StageFlags::{Vertex}],
         // FragmentUniformRead
-        flags![Stage::{Fragment}],
+        flags![StageFlags::{Fragment}],
         // FragmentRead
-        flags![Stage::{Fragment}],
+        flags![StageFlags::{Fragment}],
         // FragmentWrite
-        flags![Stage::{Fragment}],
+        flags![StageFlags::{Fragment}],
         // ColorRead
-        flags![Stage::{RenderOutput}],
+        flags![StageFlags::{RenderOutput}],
         // ColorWrite
-        flags![Stage::{RenderOutput}],
+        flags![StageFlags::{RenderOutput}],
         // DsRead
-        flags![Stage::{EarlyFragTests | LateFragTests}],
+        flags![StageFlags::{EarlyFragTests | LateFragTests}],
         // DsWrite
-        flags![Stage::{EarlyFragTests | LateFragTests}],
+        flags![StageFlags::{EarlyFragTests | LateFragTests}],
         // CopyRead
-        flags![Stage::{Copy}],
+        flags![StageFlags::{Copy}],
         // CopyWrite
-        flags![Stage::{Copy}],
+        flags![StageFlags::{Copy}],
         // ComputeUniformRead
-        flags![Stage::{Compute}],
+        flags![StageFlags::{Compute}],
         // ComputeRead
-        flags![Stage::{Compute}],
+        flags![StageFlags::{Compute}],
         // ComputeWrite
-        flags![Stage::{Compute}],
+        flags![StageFlags::{Compute}],
     ];
 }
 
-impl AccessType {
+impl AccessTypeFlags {
+    /// Return a set of pipeline stages supporting at least one of given access
+    /// types.
     pub fn supported_stages(&self) -> StageFlags {
-        let i = (*self as u32).trailing_zeros();
-        unsafe { *ACCESS_TO_STAGES.get_unchecked(i as usize) }
-    }
-
-    pub fn union_supported_stages(access: AccessTypeFlags) -> StageFlags {
-        access.bits().one_digits().fold(flags![Stage::{}], |x, i| {
-            x | unsafe { *ACCESS_TO_STAGES.get_unchecked(i as usize) }
-        })
+        (*self & Self::all())
+            .bits()
+            .one_digits()
+            .fold(StageFlags::empty(), |x, i| {
+                x | unsafe { *ACCESS_TO_STAGES.get_unchecked(i as usize) }
+            })
     }
 }
 
-/// Specifies zero or more types of memory access.
-pub type AccessTypeFlags = BitFlags<AccessType>;
-
-/// Specifies a color channel.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash)]
-#[repr(u32)]
-pub enum ColorChannel {
-    Red = 0b0001,
-    Green = 0b0010,
-    Blue = 0b0100,
-    Alpha = 0b1000,
-}
-
-/// Specifies zero or more color channels.
-pub type ColorChannelFlags = BitFlags<ColorChannel>;
-
-impl ColorChannel {
-    /// Return a value specifying all channels.
-    pub fn all() -> ColorChannelFlags {
-        flags![ColorChannel::{Red | Green | Blue | Alpha}]
+bitflags! {
+    /// Specifies a color channel.
+    pub struct ColorChannelFlags: u8 {
+        const Red = 0b0001;
+        const Green = 0b0010;
+        const Blue = 0b0100;
+        const Alpha = 0b1000;
     }
 }
 
@@ -148,36 +126,32 @@ mod tests {
     #[test]
     fn access_type_supported_stages() {
         assert_eq!(
-            AccessType::FragmentUniformRead.supported_stages(),
-            flags![Stage::{Fragment}]
+            AccessTypeFlags::FragmentUniformRead.supported_stages(),
+            flags![StageFlags::{Fragment}]
         );
         assert_eq!(
-            AccessType::CopyRead.supported_stages(),
-            flags![Stage::{Copy}]
+            AccessTypeFlags::CopyRead.supported_stages(),
+            flags![StageFlags::{Copy}]
         );
         assert_eq!(
-            AccessType::CopyWrite.supported_stages(),
-            flags![Stage::{Copy}]
+            AccessTypeFlags::CopyWrite.supported_stages(),
+            flags![StageFlags::{Copy}]
         );
         assert_eq!(
-            AccessType::ComputeRead.supported_stages(),
-            flags![Stage::{Compute}]
+            AccessTypeFlags::ComputeRead.supported_stages(),
+            flags![StageFlags::{Compute}]
         );
         assert_eq!(
-            AccessType::ComputeWrite.supported_stages(),
-            flags![Stage::{Compute}]
-        );
-    }
-
-    #[test]
-    fn access_type_flags_supported_stages() {
-        assert_eq!(
-            AccessType::union_supported_stages(flags![AccessType::{FragmentUniformRead}]),
-            flags![Stage::{Fragment}]
+            AccessTypeFlags::ComputeWrite.supported_stages(),
+            flags![StageFlags::{Compute}]
         );
         assert_eq!(
-            AccessType::union_supported_stages(flags![AccessType::{VertexRead | FragmentWrite}]),
-            flags![Stage::{Vertex | Fragment}]
+            flags![AccessTypeFlags::{FragmentUniformRead}].supported_stages(),
+            flags![StageFlags::{Fragment}]
+        );
+        assert_eq!(
+            flags![AccessTypeFlags::{VertexRead | FragmentWrite}].supported_stages(),
+            flags![StageFlags::{Vertex | Fragment}]
         );
     }
 }

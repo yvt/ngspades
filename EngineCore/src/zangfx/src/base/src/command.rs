@@ -4,12 +4,10 @@
 // This source code is a part of Nightingales.
 //
 //! Command queues and command buffers.
+use bitflags::bitflags;
+use flags_macro::flags;
 use std::ops::Range;
 use std::sync::Arc;
-use {
-    ngsenumflags::{flags, BitFlags},
-    ngsenumflags_derive::NgsEnumFlags,
-};
 
 use crate::formats::IndexFormat;
 use crate::resources::{BufferRef, ImageLayout, ImageRef, ImageSubRange};
@@ -531,6 +529,7 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     ///
     /// - `src` and `dst` must be associated with the queue to which this
     ///   command buffer belongs.
+    /// - `dst_aspect` must be contained by the destination image `dst`.
     ///
     fn copy_buffer_to_image(
         &mut self,
@@ -560,6 +559,7 @@ pub trait CopyCmdEncoder: Object + CmdEncoder {
     ///
     /// - `src` and `dst` must be associated with the queue to which this
     ///   command buffer belongs.
+    /// - `src_aspect` must be contained by the source image `src`.
     ///
     fn copy_image_to_buffer(
         &mut self,
@@ -686,8 +686,8 @@ pub trait CmdEncoder: Object {
     ///
     /// [`Device::global_heap`]: crate::Device::global_heap
     /// [`DynamicHeapBuilder`]: crate::heap::DynamicHeapBuilder
-    /// [`Render`]: crate::resources::ImageUsage::Render
-    /// [`Storage`]: crate::resources::ImageUsage::Storage
+    /// [`Render`]: crate::resources::ImageUsageFlags::Render
+    /// [`Storage`]: crate::resources::ImageUsageFlags::Storage
     /// [`use_resource`]: crate::command::CmdEncoderExt::use_resource
     ///
     /// # Valid Usage
@@ -768,32 +768,32 @@ pub trait CmdEncoderExt: CmdEncoder {
     /// # Examples
     ///
     ///     # use zangfx_base::*;
-    ///     use ngsenumflags::flags;
+    ///     use flags_macro::flags;
     ///
     ///     # fn test(encoder: &mut CmdEncoder, image: ImageRef, buffer: BufferRef) {
     ///     // Single resource
     ///     encoder.use_resource(
-    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{Read | Sample}],
     ///         &image,
     ///     );
     ///     encoder.use_resource(
-    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{Read | Sample}],
     ///         &buffer,
     ///     );
     ///
     ///     // Homogeneous list
     ///     encoder.use_resource(
-    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{Read | Sample}],
     ///         &[&image, &image][..],
     ///     );
     ///     encoder.use_resource(
-    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{Read | Sample}],
     ///         &[&buffer, &buffer][..],
     ///     );
     ///
     ///     // Heterogeneous list
     ///     encoder.use_resource(
-    ///         flags![ResourceUsage::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{Read | Sample}],
     ///         &resources![&image, &buffer][..],
     ///     );
     ///     # }
@@ -811,7 +811,7 @@ pub trait CmdEncoderExt: CmdEncoder {
 
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder. The usage is limited to read
-    /// accesses (`flags![ResourceUsage::{Read | Sample}]`).
+    /// accesses (`flags![ResourceUsageFlags::{Read | Sample}]`).
     ///
     /// This is an ergonomic wrapper for [`CmdEncoder::use_resource_core`].
     ///
@@ -835,12 +835,12 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///
     /// See [`CmdEncoder::use_resource_core`].
     fn use_resource_read<'a, T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
-        self.use_resource(flags![ResourceUsage::{Read | Sample}], objs)
+        self.use_resource(flags![ResourceUsageFlags::{Read | Sample}], objs)
     }
 
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder. All accesses are allowed
-    /// (`flags![ResourceUsage::{Read | Write | Sample}]`).
+    /// (`flags![ResourceUsageFlags::{Read | Write | Sample}]`).
     ///
     /// This is an ergonomic wrapper for [`CmdEncoder::use_resource_core`].
     ///
@@ -852,7 +852,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///
     /// See [`CmdEncoder::use_resource_core`].
     fn use_resource_read_write<'a, T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
-        self.use_resource(flags![ResourceUsage::{Read | Write | Sample}], objs)
+        self.use_resource(flags![ResourceUsageFlags::{Read | Write | Sample}], objs)
     }
 
     /// Insert a barrier and establish an execution dependency within the
@@ -875,32 +875,29 @@ pub trait CmdEncoderExt: CmdEncoder {
 
 impl<T: ?Sized + CmdEncoder> CmdEncoderExt for T {}
 
-/// Describes how a resource will be used in a shader.
-#[derive(NgsEnumFlags, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u32)]
-pub enum ResourceUsage {
-    /// Enables reading from the resource via arguments of the [`StorageImage`],
-    /// [`UniformBuffer`], or [`StorageBuffer`] types.
-    ///
-    /// [`StorageImage`]: crate::ArgType::StorageImage
-    /// [`UniformBuffer`]: crate::ArgType::UniformBuffer
-    /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
-    Read = 0b001,
-    /// Enables writing to the resource via arguments of the [`StorageImage`],
-    /// or [`StorageBuffer`] types.
-    ///
-    /// [`StorageImage`]: crate::ArgType::StorageImage
-    /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
-    Write = 0b010,
-    /// Enables texture sampling from the resource via arguments of the
-    /// [`SampledImage`] type.
-    ///
-    /// [`SampledImage`]: crate::ArgType::SampledImage
-    Sample = 0b100,
+bitflags! {
+    /// Describes how a resource will be used in a shader.
+    pub struct ResourceUsageFlags: u8 {
+        /// Enables reading from the resource via arguments of the [`StorageImage`],
+        /// [`UniformBuffer`], or [`StorageBuffer`] types.
+        ///
+        /// [`StorageImage`]: crate::ArgType::StorageImage
+        /// [`UniformBuffer`]: crate::ArgType::UniformBuffer
+        /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
+        const Read = 0b001;
+        /// Enables writing to the resource via arguments of the [`StorageImage`],
+        /// or [`StorageBuffer`] types.
+        ///
+        /// [`StorageImage`]: crate::ArgType::StorageImage
+        /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
+        const Write = 0b010;
+        /// Enables texture sampling from the resource via arguments of the
+        /// [`SampledImage`] type.
+        ///
+        /// [`SampledImage`]: crate::ArgType::SampledImage
+        const Sample = 0b100;
+    }
 }
-
-/// Zero or more flags describing how a resource will be used in a shader.
-pub type ResourceUsageFlags = BitFlags<ResourceUsage>;
 
 /// Specifies the layout of an image data in a buffer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

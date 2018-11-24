@@ -35,7 +35,6 @@ pub type RenderPassBuilderRef = Box<dyn RenderPassBuilder>;
 /// # Examples
 ///
 ///     # use zangfx_base::device::Device;
-///     # use zangfx_base::{AccessType, Stage};
 ///     # use zangfx_base::formats::ImageFormat;
 ///     # use zangfx_base::pass::{RenderPassBuilder, StoreOp};
 ///     # fn test(device: &Device) {

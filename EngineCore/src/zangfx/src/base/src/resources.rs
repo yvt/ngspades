@@ -4,8 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for (heap-allocated) resource objects, and other relevant types.
+use bitflags::bitflags;
+use flags_macro::flags;
 use std::ops;
-use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
 
 use crate::command::CmdQueueRef;
 use crate::formats::ImageFormat;
@@ -54,7 +55,7 @@ define_handle! {
 /// tracking granularity. The unit of tracking, a part of an image treated as
 /// one as far as image layout tracking is concerned, is called a
 /// **state-tracking unit**. By default, entire an image is considered a single
-/// state-tracking unit. [`ImageUsage`] includes flags to increase the
+/// state-tracking unit. [`ImageUsageFlags`] includes flags to increase the
 /// granularity.
 ///
 /// In most operations, state-tracking units are transparent to the
@@ -227,8 +228,8 @@ pub trait ImageBuilder: Object {
 
     /// Set the image usage.
     ///
-    /// Defaults to `ImageUsage::default_flags()`
-    /// (`ImageUsage::CopyWrite | ImageUsage::Sampled`).
+    /// Defaults to `ImageUsageFlags::default()`
+    /// (`flags![ImageUsageFlags::{CopyWrite | Sampled}]`).
     fn usage(&mut self, v: ImageUsageFlags) -> &mut dyn ImageBuilder;
 
     /// Build an `ImageRef`.
@@ -295,78 +296,74 @@ pub enum ImageLayout {
     CopyWrite,
 }
 
-/// Specifies a type of operations supported by an image.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ImageUsage {
-    /// Enables uses of the image as the source of [copy commands].
-    ///
-    /// [copy commands]: crate::CopyCmdEncoder
-    CopyRead = 0b00000001,
-    /// Enables uses of the image as the destination of [copy commands].
-    ///
-    /// [copy commands]: crate::CopyCmdEncoder
-    CopyWrite = 0b00000010,
-    /// Enables uses of the image as a [sampled image shader argument].
-    ///
-    /// [sampled image shader argument]: crate::ArgType::SampledImage
-    Sampled = 0b00000100,
-    /// Enables uses of the image as a [storage image shader argument].
-    ///
-    /// Note: The [`use_heap`] command ignores images that include this usage
-    /// flag.
-    ///
-    /// [storage image shader argument]: crate::ArgType::StorageImage
-    /// [`use_heap`]: crate::CmdEncoder::use_heap
-    Storage = 0b00001000,
-    /// Enables uses of the image as a render target.
-    ///
-    /// Note: The [`use_heap`] command ignores images that include this usage
-    /// flag.
-    ///
-    /// [`use_heap`]: crate::CmdEncoder::use_heap
-    Render = 0b00010000,
+bitflags! {
+    /// Specifies types of operations supported by an image.
+    pub struct ImageUsageFlags: u16 {
+        /// Enables uses of the image as the source of [copy commands].
+        ///
+        /// [copy commands]: crate::CopyCmdEncoder
+        const CopyRead = 0b00000001;
+        /// Enables uses of the image as the destination of [copy commands].
+        ///
+        /// [copy commands]: crate::CopyCmdEncoder
+        const CopyWrite = 0b00000010;
+        /// Enables uses of the image as a [sampled image shader argument].
+        ///
+        /// [sampled image shader argument]: crate::ArgType::SampledImage
+        const Sampled = 0b00000100;
+        /// Enables uses of the image as a [storage image shader argument].
+        ///
+        /// Note: The [`use_heap`] command ignores images that include this usage
+        /// flag.
+        ///
+        /// [storage image shader argument]: crate::ArgType::StorageImage
+        /// [`use_heap`]: crate::CmdEncoder::use_heap
+        const Storage = 0b00001000;
+        /// Enables uses of the image as a render target.
+        ///
+        /// Note: The [`use_heap`] command ignores images that include this usage
+        /// flag.
+        ///
+        /// [`use_heap`]: crate::CmdEncoder::use_heap
+        const Render = 0b00010000;
 
-    /// Enables the creation of an image view with a different type (2D/3D/...).
-    MutableType = 0b00100000,
-    /// Enables the creation of an image view with a different image format.
-    MutableFormat = 0b01000000,
-    /// Enables the creation of an image view using a partial layer range of
-    /// the original image.
-    PartialView = 0b10000000,
+        /// Enables the creation of an image view with a different type (2D/3D/...).
+        const MutableType = 0b00100000;
+        /// Enables the creation of an image view with a different image format.
+        const MutableFormat = 0b01000000;
+        /// Enables the creation of an image view using a partial layer range of
+        /// the original image.
+        const PartialView = 0b10000000;
 
-    /// This flag serves as a hint that the backend should trade off the use of
-    /// the generic image layout in memory for fewer image layout transitions.
-    Mutable = 0b100000000,
+        /// This flag serves as a hint that the backend should trade off the use of
+        /// the generic image layout in memory for fewer image layout transitions.
+        const Mutable = 0b100000000;
 
-    /// Controls the size of [state-tracking units]. This flag instructs the
-    /// backend to track the state of each mipmap level individually.
-    ///
-    /// [state-tracking units]: Image
-    TrackStatePerMipmapLevel = 0b1000000000,
-    /// Controls the size of [state-tracking units]. This flag instructs the
-    /// backend to track the state of each array layer individually.
-    ///
-    /// [state-tracking units]: Image
-    TrackStatePerArrayLayer = 0b10000000000,
-}
-
-/// Specifies types of operations supported by an image.
-pub type ImageUsageFlags = BitFlags<ImageUsage>;
-
-impl ImageUsage {
-    /// Get the default image usage flags used by [`ImageBuilder`](ImageBuilder).
-    pub fn default_flags() -> ImageUsageFlags {
-        ImageUsage::CopyWrite | ImageUsage::Sampled
+        /// Controls the size of [state-tracking units]. This flag instructs the
+        /// backend to track the state of each mipmap level individually.
+        ///
+        /// [state-tracking units]: Image
+        const TrackStatePerMipmapLevel = 0b1000000000;
+        /// Controls the size of [state-tracking units]. This flag instructs the
+        /// backend to track the state of each array layer individually.
+        ///
+        /// [state-tracking units]: Image
+        const TrackStatePerArrayLayer = 0b10000000000;
     }
 }
 
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
+impl Default for ImageUsageFlags {
+    /// Get the default image usage flags used by [`ImageBuilder`](ImageBuilder).
+    fn default() -> ImageUsageFlags {
+        flags![ImageUsageFlags::{CopyWrite | Sampled}]
+    }
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum ImageAspect {
-    Color = 0b001,
-    Depth = 0b010,
-    Stencil = 0b100,
+    Color,
+    Depth,
+    Stencil,
 }
 
 /// The builder object for buffers.
@@ -398,8 +395,8 @@ pub trait BufferBuilder: Object {
 
     /// Set the buffer usage.
     ///
-    /// Defaults to `BufferUsage::default_flags()`
-    /// (`BufferUsage::CopyWrite | BufferUsage::Uniform`).
+    /// Defaults to `BufferUsageFlags::default()`
+    /// (`flags![BufferUsageFlags::{CopyWrite | Uniform}]`).
     fn usage(&mut self, v: BufferUsageFlags) -> &mut dyn BufferBuilder;
 
     /// Build a `BufferRef`.
@@ -411,24 +408,22 @@ pub trait BufferBuilder: Object {
     fn build(&mut self) -> Result<BufferRef>;
 }
 
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum BufferUsage {
-    CopyRead = 0b0000001,
-    CopyWrite = 0b0000010,
-    Uniform = 0b0000100,
-    Storage = 0b0001000,
-    Index = 0b0010000,
-    Vertex = 0b0100000,
-    IndirectDraw = 0b1000000,
+bitflags! {
+    pub struct BufferUsageFlags: u8 {
+        const CopyRead = 0b0000001;
+        const CopyWrite = 0b0000010;
+        const Uniform = 0b0000100;
+        const Storage = 0b0001000;
+        const Index = 0b0010000;
+        const Vertex = 0b0100000;
+        const IndirectDraw = 0b1000000;
+    }
 }
 
-pub type BufferUsageFlags = BitFlags<BufferUsage>;
-
-impl BufferUsage {
-    /// Get the default image usage flags used by `ImageBuilder`.
-    pub fn default_flags() -> BufferUsageFlags {
-        BufferUsage::CopyWrite | BufferUsage::Uniform
+impl Default for BufferUsageFlags {
+    /// Get the default image usage flags used by `BufferBuilder`.
+    fn default() -> BufferUsageFlags {
+        flags![BufferUsageFlags::{CopyWrite | Uniform}]
     }
 }
 
@@ -485,7 +480,7 @@ pub trait ImageViewBuilder: Object {
     /// [`usage`] must include [`PartialView`] to specify a partial range here.
     ///
     /// [`usage`]: ImageBuilder::usage
-    /// [`PartialView`]: ImageUsage::PartialView
+    /// [`PartialView`]: ImageUsageFlags::PartialView
     fn subrange(&mut self, v: &ImageSubRange) -> &mut dyn ImageViewBuilder;
 
     /// Set the image view format.
@@ -495,7 +490,7 @@ pub trait ImageViewBuilder: Object {
     /// here.
     ///
     /// [`usage`]: ImageBuilder::usage
-    /// [`MutableFormat`]: ImageUsage::MutableFormat
+    /// [`MutableFormat`]: ImageUsageFlags::MutableFormat
     fn format(&mut self, v: ImageFormat) -> &mut dyn ImageViewBuilder;
 
     /// Set the image view type.
@@ -515,7 +510,7 @@ pub trait ImageViewBuilder: Object {
     /// | 3D                  | 3D                                |
     ///
     /// [`usage`]: ImageBuilder::usage
-    /// [`MutableType`]: ImageUsage::MutableType
+    /// [`MutableType`]: ImageUsageFlags::MutableType
     fn image_type(&mut self, v: ImageType) -> &mut dyn ImageViewBuilder;
 
     /// Build an image view.
