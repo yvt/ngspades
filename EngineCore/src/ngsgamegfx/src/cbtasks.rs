@@ -64,7 +64,7 @@ pub struct CmdBufferTaskCellSet {
 }
 
 impl CmdBufferTaskBuilder {
-    pub fn new(device: gfx::DeviceRef, queue: gfx::CmdQueueRef) -> Self {
+    pub fn new() -> Self {
         Self {
             schedule_builder: ScheduleBuilder::new(),
             encode_cell_uses: Vec::new(),
