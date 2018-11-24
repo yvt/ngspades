@@ -4,7 +4,6 @@
 // This source code is a part of Nightingales.
 //
 use arrayvec::ArrayVec;
-use ngsenumflags::flags;
 use std::ops::Range;
 use zangfx_base::{self as base, Result};
 use zangfx_common::IntoWithPad;
@@ -120,7 +119,7 @@ impl<T: CopyRequest> CmdGenerator<T> for CopyCmdGenerator {
                 if ops.len() > 0 {
                     cmd_buffer.queue_ownership_acquire(
                         src_queue_family,
-                        flags![base::AccessType::{CopyRead}],
+                        base::AccessTypeFlags::CopyRead,
                         &ops,
                     );
                 }
@@ -143,7 +142,7 @@ impl<T: CopyRequest> CmdGenerator<T> for CopyCmdGenerator {
                 if ops.len() > 0 {
                     cmd_buffer.queue_ownership_release(
                         dst_queue_family,
-                        flags![base::AccessType::{CopyWrite}],
+                        base::AccessTypeFlags::CopyWrite,
                         &ops,
                     );
                 }

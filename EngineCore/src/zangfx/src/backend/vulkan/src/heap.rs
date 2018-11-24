@@ -255,7 +255,7 @@ impl VulkanMemory {
         // Map the host-visible memory (this might fail, which is why we built
         // `vulkan_memory` first)
         let memory_type_caps = vulkan_memory.device.caps().info.memory_types[ty as usize].caps;
-        let is_host_visible = memory_type_caps.contains(base::MemoryTypeCaps::HostVisible);
+        let is_host_visible = memory_type_caps.contains(base::MemoryTypeCapsFlags::HostVisible);
         if is_host_visible {
             vulkan_memory.ptr = unsafe {
                 vulkan_memory.device.vk_device().map_memory(

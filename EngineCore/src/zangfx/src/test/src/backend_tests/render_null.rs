@@ -5,7 +5,7 @@
 //
 use super::{utils, TestDriver};
 use include_data::include_data;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
 
@@ -41,7 +41,7 @@ pub fn render_null<T: TestDriver>(driver: T) {
             .build_image()
             .extents(&[256, 256])
             .format(<u8>::as_rgba_norm())
-            .usage(flags![gfx::ImageUsage::{Render}])
+            .usage(gfx::ImageUsageFlags::Render)
             .queue(&queue)
             .build()
             .unwrap();
@@ -51,8 +51,8 @@ pub fn render_null<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-            flags![gfx::MemoryTypeCaps::{DeviceLocal}],
+            gfx::MemoryTypeCapsFlags::DeviceLocal,
+            gfx::MemoryTypeCapsFlags::DeviceLocal,
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -84,7 +84,7 @@ pub fn render_null<T: TestDriver>(driver: T) {
                 let raster = builder.rasterize();
                 raster
                     .color_target(0)
-                    .set_write_mask(flags![gfx::ColorChannel::{}]);
+                    .set_write_mask(flags![gfx::ColorChannelFlags::{}]);
             }
             builder.build().unwrap()
         };

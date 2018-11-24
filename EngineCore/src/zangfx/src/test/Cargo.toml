@@ -8,9 +8,9 @@ edition = "2018"
 zangfx_common = { path = "../common" }
 zangfx_base = { path = "../base" }
 zangfx_utils = { path = "../utils" }
-ngsenumflags = { path = "../../../support/ngsenumflags" }
 include_data = { path = "../../../support/include_data" }
 volatile_view = { path = "../../../support/volatile_view" }
+flags-macro = "0.1.2"
 
 [build-dependencies]
 prebuild-glslang = { path = "../../../support/prebuild-glslang" }

@@ -9,7 +9,7 @@ use std::ops;
 use std::sync::Arc;
 
 use cocoa::foundation::NSRange;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use zangfx_base::{self as base, Result};
 use zangfx_base::{zangfx_impl_handle, zangfx_impl_object};
 use zangfx_metal_rs as metal;
@@ -59,7 +59,7 @@ impl ImageBuilder {
             num_layers: None,
             num_mip_levels: 1,
             format: None,
-            usage: base::ImageUsage::default_flags(),
+            usage: base::ImageUsageFlags::default(),
             label: None,
         }
     }
@@ -136,19 +136,19 @@ impl base::ImageBuilder for ImageBuilder {
         let mut usage = metal::MTLTextureUsage::empty();
         if self
             .usage
-            .intersects(flags![base::ImageUsage::{Sampled | Storage}])
+            .intersects(flags![base::ImageUsageFlags::{Sampled | Storage}])
         {
             usage |= metal::MTLTextureUsageShaderRead;
         }
-        if self.usage.intersects(base::ImageUsage::Storage) {
+        if self.usage.intersects(base::ImageUsageFlags::Storage) {
             usage |= metal::MTLTextureUsageShaderWrite;
         }
-        if self.usage.intersects(base::ImageUsage::Render) {
+        if self.usage.intersects(base::ImageUsageFlags::Render) {
             usage |= metal::MTLTextureUsageRenderTarget;
         }
         if self
             .usage
-            .intersects(flags![base::ImageUsage::{MutableType | MutableFormat | PartialView}])
+            .intersects(flags![base::ImageUsageFlags::{MutableType | MutableFormat | PartialView}])
         {
             usage |= metal::MTLTextureUsagePixelFormatView;
         }

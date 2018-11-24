@@ -7,8 +7,8 @@ edition = "2018"
 [dependencies]
 zangfx_common = { path = "../../common" }
 zangfx_base = { path = "../../base" }
-ngsenumflags = { path = "../../../../support/ngsenumflags" }
-ngsenumflags_derive = { path = "../../../../support/ngsenumflags/ngsenumflags_derive" }
+bitflags = "1.0.4"
+flags-macro = "0.1.3"
 parking_lot = "0.6"
 tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }

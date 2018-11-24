@@ -5,7 +5,7 @@
 //
 use super::{utils, TestDriver};
 use include_data::include_data;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use volatile_view::prelude::*;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
@@ -140,7 +140,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         let buffer = device
             .build_buffer()
             .size(4096)
-            .usage(flags![gfx::BufferUsage::{Storage | Uniform}])
+            .usage(flags![gfx::BufferUsageFlags::{Storage | Uniform}])
             .queue(&queue)
             .build()
             .unwrap();
@@ -166,8 +166,8 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -182,8 +182,8 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCaps::{}],
-            flags![gfx::MemoryTypeCaps::{}],
+            flags![gfx::MemoryTypeCapsFlags::{}],
+            flags![gfx::MemoryTypeCapsFlags::{}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -271,7 +271,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
             e.dispatch(&[]);
         }
         cmd_buffer.host_barrier(
-            flags![gfx::AccessType::{ComputeWrite}],
+            gfx::AccessTypeFlags::ComputeWrite,
             &[(range(0), &buffer)],
         );
 

@@ -42,7 +42,7 @@
 //!    the retirement of their associated upload sessions.
 //!
 use itertools::unfold;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::collections::VecDeque;
 use std::ops::Range;
 
@@ -142,7 +142,7 @@ impl Uploader {
             .build_dynamic_heap()
             .memory_type(
                 device
-                    .try_choose_memory_type_shared(flags![base::BufferUsage::{CopyRead}])?
+                    .try_choose_memory_type_shared(base::BufferUsageFlags::CopyRead)?
                     .unwrap(),
             )
             .size(params.max_bytes_ongoing as u64)
@@ -291,7 +291,7 @@ impl Uploader {
                 .device
                 .build_buffer()
                 .size(session_size as _)
-                .usage(flags![base::BufferUsage::{CopyRead}])
+                .usage(base::BufferUsageFlags::CopyRead)
                 .build()?;
 
             loop {
@@ -342,7 +342,7 @@ impl Uploader {
                 let encoder = cmd_buffer.encode_copy();
                 if let Some(ref fence) = self.sessions.last_fence {
                     // Enforce ordering
-                    encoder.wait_fence(fence, flags![base::AccessType::{CopyRead | CopyWrite}]);
+                    encoder.wait_fence(fence, flags![base::AccessTypeFlags::{CopyRead | CopyWrite}]);
                 }
 
                 // Encode copy commands
@@ -355,7 +355,7 @@ impl Uploader {
                     request.post_copy(encoder, &buffer, range)?;
                 }
 
-                encoder.update_fence(&fence, flags![base::AccessType::{CopyRead | CopyWrite}]);
+                encoder.update_fence(&fence, flags![base::AccessTypeFlags::{CopyRead | CopyWrite}]);
             }
             for request in sub_requests.clone() {
                 request.post_encoder(&mut *cmd_buffer)?;

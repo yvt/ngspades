@@ -6,7 +6,7 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::ops::Range;
 
 use zangfx_base as base;
@@ -39,7 +39,7 @@ impl CmdBufferData {
             self.use_image_for_pass(
                 *initial_layout,
                 *final_layout,
-                flags![base::AccessType::{ColorRead | ColorWrite}],
+                flags![base::AccessTypeFlags::{ColorRead | ColorWrite}],
                 image,
             );
         }

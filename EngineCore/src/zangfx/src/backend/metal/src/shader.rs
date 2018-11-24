@@ -118,10 +118,13 @@ impl Library {
         self.data.spirv_code.as_slice()
     }
 
+    /// Construct a `MTLFunction` based on this `Library`.
+    ///
+    /// `stage` must specify exactly one shader stage.
     pub(crate) fn new_metal_function<T>(
         &self,
         entry_point: &str,
-        stage: shader::ShaderStage,
+        stage: shader::ShaderStageFlags,
         root_sig: &RootSig,
         vertex_attrs: T,
         metal_device: metal::MTLDevice,
@@ -134,11 +137,16 @@ impl Library {
 
         let mut s2m = SpirV2Msl::new(self.spirv_code());
 
-        let model = match stage {
-            shader::ShaderStage::Fragment => ExecutionModel::Fragment,
-            shader::ShaderStage::Vertex => ExecutionModel::Vertex,
-            shader::ShaderStage::Compute => ExecutionModel::GLCompute,
-        };
+        let model = [
+            (shader::ShaderStageFlags::Fragment, ExecutionModel::Fragment),
+            (shader::ShaderStageFlags::Vertex, ExecutionModel::Vertex),
+            (shader::ShaderStageFlags::Compute, ExecutionModel::GLCompute),
+        ]
+        .iter()
+        .cloned()
+        .find(|(x, _)| x == &stage)
+        .unwrap()
+        .1;
 
         root_sig.setup_spirv2msl(&mut s2m, model);
 

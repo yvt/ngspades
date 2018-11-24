@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::{utils, TestDriver};
-use ngsenumflags::flags;
+use flags_macro::flags;
 use volatile_view::prelude::*;
 use zangfx_base as gfx;
 use zangfx_base::prelude::*;
@@ -25,7 +25,7 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             .build_buffer()
             .label("Buffer 1")
             .size(65536)
-            .usage(flags![gfx::BufferUsage::{CopyWrite}])
+            .usage(gfx::BufferUsageFlags::CopyWrite)
             .queue(&queue)
             .build()
             .unwrap();
@@ -35,8 +35,8 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -67,7 +67,7 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             e.end_debug_group();
         }
         buffer.host_barrier(
-            flags![gfx::AccessType::{CopyWrite}],
+            gfx::AccessTypeFlags::CopyWrite,
             &[(0..65536, &buffer1)],
         );
 
@@ -106,7 +106,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             .build_buffer()
             .label("Buffer 1")
             .size(65536)
-            .usage(flags![gfx::BufferUsage::{CopyRead}])
+            .usage(gfx::BufferUsageFlags::CopyRead)
             .queue(&queue)
             .build()
             .unwrap();
@@ -114,7 +114,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             .build_buffer()
             .label("Buffer 2")
             .size(65536)
-            .usage(flags![gfx::BufferUsage::{CopyWrite}])
+            .usage(gfx::BufferUsageFlags::CopyWrite)
             .queue(&queue)
             .build()
             .unwrap();
@@ -124,8 +124,8 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -161,7 +161,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             e.end_debug_group();
         }
         buffer.host_barrier(
-            flags![gfx::AccessType::{CopyWrite}],
+            gfx::AccessTypeFlags::CopyWrite,
             &[(0..65536, &buffer2)],
         );
 

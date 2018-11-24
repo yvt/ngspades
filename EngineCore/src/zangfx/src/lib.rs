@@ -82,49 +82,39 @@
 //!
 //! ## Flags
 //!
-//! Parameters that accept multiple flags are defined as [`BitFlags<T>`]
-//! (provided by the [`ngsenumflags`] crate) where `T` is an enumerated type
-//! (e.g., `AccessType`).
-//! For every enumerated type for which such parameters exist, a type alias to
-//! `BitFlags<T>` is defined with its name suffixed with `Flags` (e.g.,
-//! [`AccessTypeFlags`]).
+//! Types representing a subset of predetermined values are defined using
+//! the [`bitflags`] crate. Such types usually have `Flags` as suffix in their
+//! names (e.g., [`AccessTypeFlags`]).
 //!
-//! The following example shows how to provide a `BitFlags<T>` value with an
-//! arbitrary number of flags (`T` values):
+//! The following example shows how to use such types:
 //!
 //! ```
-//! use zangfx::base::{AccessType, AccessTypeFlags};
-//! let no_access1: AccessTypeFlags = AccessTypeFlags::empty();
-//! let no_access2: AccessTypeFlags = AccessType::empty_bitflag();
+//! use zangfx::base::AccessTypeFlags;
+//! let no_access: AccessTypeFlags = AccessTypeFlags::empty();
 //!
-//! let oneway_access: AccessTypeFlags = AccessType::CopyRead.into();
+//! let oneway_access: AccessTypeFlags = AccessTypeFlags::CopyRead;
 //!
-//! let twoway_access_1: AccessTypeFlags =
-//!     AccessType::CopyRead |
-//!     AccessType::CopyWrite;
-//!
-//! let twoway_access_2 =
-//!     AccessType::CopyRead |
-//!     AccessType::CopyWrite;
+//! let twoway_access: AccessTypeFlags =
+//!     AccessTypeFlags::CopyRead |
+//!     AccessTypeFlags::CopyWrite;
 //! ```
 //!
-//! Or, by using the `flags!` macro:
+//! Or, by using the [`flags!`](flags_macro::flags) macro:
 //!
 //! ```
 //! #[macro_use(flags)]
-//! extern crate ngsenumflags;
+//! extern crate flags_macro;
 //! # extern crate zangfx;
-//! use zangfx::base::AccessType;
+//! use zangfx::base::AccessTypeFlags;
 //! # fn main() {
 //!
-//! let no_access = flags![AccessType::{}];
-//! let oneway_access = flags![AccessType::{CopyRead}];
-//! let twoway_access = flags![AccessType::{CopyRead | CopyWrite}];
+//! let no_access = flags![AccessTypeFlags::{}];
+//! let oneway_access = flags![AccessTypeFlags::{CopyRead}];
+//! let twoway_access = flags![AccessTypeFlags::{CopyRead | CopyWrite}];
 //! # }
 //! ```
 //!
-//! [`ngsenumflags`]: ../ngsenumflags/index.html
-//! [`BitFlags<T>`]: ../ngsenumflags/struct.BitFlags.html
+//! [`bitflags`]: ../bitflags/index.html
 //! [`AccessTypeFlags`]: ../zangfx_base/type.AccessTypeFlags.html
 //!
 //! ## Objects

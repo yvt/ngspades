@@ -5,7 +5,7 @@
 //
 use super::{utils, TestDriver};
 use include_data::include_data;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::mem::size_of_val;
 use volatile_view::prelude::*;
 use zangfx_base as gfx;
@@ -66,7 +66,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Input buffer")
             .size(input_bytes)
-            .usage(flags![gfx::BufferUsage::{Storage}])
+            .usage(gfx::BufferUsageFlags::Storage)
             .queue(&queue)
             .build()
             .unwrap();
@@ -74,7 +74,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Kernel buffer")
             .size(kernel_bytes)
-            .usage(flags![gfx::BufferUsage::{Uniform}])
+            .usage(gfx::BufferUsageFlags::Uniform)
             .queue(&queue)
             .build()
             .unwrap();
@@ -82,7 +82,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Output buffer")
             .size(output_bytes)
-            .usage(flags![gfx::BufferUsage::{Storage}])
+            .usage(gfx::BufferUsageFlags::Storage)
             .queue(&queue)
             .build()
             .unwrap();
@@ -90,7 +90,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Indirect argument buffer")
             .size(indirect_bytes)
-            .usage(flags![gfx::BufferUsage::{IndirectDraw}])
+            .usage(gfx::BufferUsageFlags::IndirectDraw)
             .queue(&queue)
             .build()
             .unwrap();
@@ -108,8 +108,8 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -228,7 +228,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             e.end_debug_group();
         }
         buffer.host_barrier(
-            flags![gfx::AccessType::{ComputeWrite}],
+            gfx::AccessTypeFlags::ComputeWrite,
             &[(0..output_bytes, &output_buffer)],
         );
 

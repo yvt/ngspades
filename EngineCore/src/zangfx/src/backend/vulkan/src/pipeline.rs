@@ -23,20 +23,22 @@ use crate::shader::Library;
 use crate::utils::{
     clip_rect2d_u31, translate_bool, translate_color_channel_flags, translate_compare_op,
     translate_generic_error_unwrap, translate_rect2d_u32, translate_sample_count,
-    translate_shader_stage,
+    translate_shader_stage_flags,
 };
 
 /// Constructs `vk::PipelineShaderStageCreateInfo`.
+///
+/// `stage` must specify exactly one shader stage.
 ///
 /// Returns a created `vk::PipelineShaderStageCreateInfo` and `CString`.
 /// The returned `CString` should live at least as long as the
 /// `vk::PipelineShaderStageCreateInfo` is used.
 fn new_shader_stage_description(
-    stage: base::ShaderStage,
+    stage: base::ShaderStageFlags,
     library: &Library,
     entry_point_name: &str,
 ) -> (vk::PipelineShaderStageCreateInfo, ffi::CString) {
-    let stage = translate_shader_stage(stage);
+    let stage = translate_shader_stage_flags(stage);
 
     let name = ffi::CString::new(entry_point_name).unwrap();
 
@@ -113,7 +115,7 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
         let root_sig = self.root_sig.as_ref().expect("root_sig");
 
         let stage = new_shader_stage_description(
-            base::ShaderStage::Compute,
+            base::ShaderStageFlags::Compute,
             &compute_shader.0,
             &compute_shader.1,
         );
@@ -318,12 +320,12 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         let vertex_stage = self
             .vertex_shader
             .as_ref()
-            .map(|s| new_shader_stage_description(base::ShaderStage::Vertex, &s.0, &s.1));
+            .map(|s| new_shader_stage_description(base::ShaderStageFlags::Vertex, &s.0, &s.1));
 
         let fragment_stage = self
             .fragment_shader
             .as_ref()
-            .map(|s| new_shader_stage_description(base::ShaderStage::Fragment, &s.0, &s.1));
+            .map(|s| new_shader_stage_description(base::ShaderStageFlags::Fragment, &s.0, &s.1));
 
         let stages: Vec<vk::PipelineShaderStageCreateInfo> = [&vertex_stage, &fragment_stage]
             .iter()

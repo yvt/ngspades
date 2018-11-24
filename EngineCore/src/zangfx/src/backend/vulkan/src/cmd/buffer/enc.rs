@@ -6,7 +6,7 @@
 use arrayvec::ArrayVec;
 use ash::version::*;
 use ash::vk;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use smallvec::SmallVec;
 use std::collections::HashSet;
 use std::ops::Range;
@@ -20,7 +20,7 @@ use crate::buffer::Buffer;
 use crate::cmd::fence::Fence;
 use crate::device::DeviceRef;
 use crate::image::{Image, ImageStateAddresser, ImageView};
-use crate::limits::DeviceTrait;
+use crate::limits::DeviceTraitFlags;
 use crate::pipeline::{ComputePipeline, RenderPipeline};
 use crate::renderpass::RenderTargetTable;
 use crate::resstate::{CmdBuffer, RefTable};
@@ -394,8 +394,7 @@ impl CmdBufferData {
         let vk_device = self.device.vk_device();
 
         let src_access_mask = translate_access_type_flags(src_access);
-        let src_stages =
-            translate_pipeline_stage_flags(base::AccessType::union_supported_stages(src_access));
+        let src_stages = translate_pipeline_stage_flags(src_access.supported_stages());
         for buffers in buffers.chunks(64) {
             let buf_barriers: ArrayVec<[_; 64]> = buffers
                 .iter()
@@ -554,7 +553,7 @@ impl CmdBufferData {
         dst_access: base::AccessTypeFlags,
         transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
-        let dst_stage = base::AccessType::union_supported_stages(dst_access);
+        let dst_stage = dst_access.supported_stages();
 
         self.queue_ownership(
             src_queue_family,
@@ -578,7 +577,7 @@ impl CmdBufferData {
         src_access: base::AccessTypeFlags,
         transfer: &[base::QueueOwnershipTransfer<'_>],
     ) {
-        let src_stage = base::AccessType::union_supported_stages(src_access);
+        let src_stage = src_access.supported_stages();
 
         self.queue_ownership(
             self.queue_family,
@@ -622,12 +621,12 @@ impl CmdBufferData {
     /// Encode `vkCmdSetEvent` to do the fence updating operation.
     crate fn cmd_update_fence(&self, fence: &Fence, src_access: base::AccessTypeFlags) {
         let traits = self.device.caps().info.traits;
-        if traits.intersects(DeviceTrait::MoltenVK) {
+        if traits.intersects(DeviceTraitFlags::MoltenVK) {
             // Skip all event operations on MoltenVK
             return;
         }
 
-        let src_stage = base::AccessType::union_supported_stages(src_access);
+        let src_stage = src_access.supported_stages();
 
         let device = self.device.vk_device();
         unsafe {
@@ -713,17 +712,16 @@ impl base::CmdEncoder for CmdBufferData {
         }
 
         // TODO: Add "access type" to the base API
-        let access = usage
-            .iter()
-            .map(|usage| match usage {
-                base::ResourceUsage::Read | base::ResourceUsage::Sample => {
-                    flags![base::AccessType::{
+        let mut access = base::AccessTypeFlags::empty();
+        if usage.intersects(flags![base::ResourceUsageFlags::{Read | Sample}]) {
+            access |= flags![base::AccessTypeFlags::{
                 VertexUniformRead | VertexRead | FragmentUniformRead | FragmentRead |
-                ComputeUniformRead | ComputeRead}]
-                }
-                base::ResourceUsage::Write => flags![base::AccessType::{
-                VertexWrite | FragmentWrite | ComputeWrite}],
-            }).fold(base::AccessTypeFlags::empty(), |x, y| x | y);
+                ComputeUniformRead | ComputeRead}];
+        }
+        if usage.intersects(base::ResourceUsageFlags::Write) {
+            access |= flags![base::AccessTypeFlags::{
+                VertexWrite | FragmentWrite | ComputeWrite}];
+        }
 
         for image in objs.images() {
             let image: &Image = image.downcast_ref().expect("bad image type");
@@ -797,8 +795,8 @@ impl base::CmdEncoder for CmdBufferData {
         src_access: base::AccessTypeFlags,
         dst_access: base::AccessTypeFlags,
     ) {
-        let src_stage = base::AccessType::union_supported_stages(src_access);
-        let dst_stage = base::AccessType::union_supported_stages(dst_access);
+        let src_stage = src_access.supported_stages();
+        let dst_stage = dst_access.supported_stages();
 
         let vk_device = self.device.vk_device();
         unsafe {

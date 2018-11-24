@@ -38,7 +38,7 @@ impl BufferBuilder {
             metal_device: OCPtr::new(metal_device).expect("nil device"),
             size: None,
             label: None,
-            usage: base::BufferUsage::default_flags(),
+            usage: base::BufferUsageFlags::default(),
         }
     }
 }
@@ -107,10 +107,10 @@ impl Buffer {
         );
 
         use std::cmp::max;
-        if usage.contains(base::BufferUsage::Storage) {
+        if usage.contains(base::BufferUsageFlags::Storage) {
             metal_req.align = max(metal_req.align, crate::STORAGE_BUFFER_MIN_ALIGN);
         }
-        if usage.contains(base::BufferUsage::Uniform) {
+        if usage.contains(base::BufferUsageFlags::Uniform) {
             metal_req.align = max(metal_req.align, crate::UNIFORM_BUFFER_MIN_ALIGN);
         }
 

@@ -6,7 +6,7 @@
 //! Implementation of `Image` for Vulkan.
 use ash::version::*;
 use ash::{prelude::VkResult, vk};
-use ngsenumflags::flags;
+use flags_macro::flags;
 use smallvec::{smallvec, SmallVec};
 use std::ops;
 use std::sync::Arc;
@@ -55,7 +55,7 @@ impl ImageBuilder {
             num_layers: None,
             num_mip_levels: 1,
             format: None,
-            usage: base::ImageUsage::default_flags(),
+            usage: base::ImageUsageFlags::default(),
         }
     }
 }
@@ -132,7 +132,7 @@ impl base::ImageBuilder for ImageBuilder {
         };
 
         let mut flags = vk::ImageCreateFlags::empty();
-        if self.usage.contains(base::ImageUsage::MutableFormat) {
+        if self.usage.contains(base::ImageUsageFlags::MutableFormat) {
             flags |= vk::ImageCreateFlags::MUTABLE_FORMAT;
         }
         if let ImageExtents::Cube(_) = extents {
@@ -686,19 +686,19 @@ fn translate_image_usage(
     format: base::ImageFormat,
 ) -> vk::ImageUsageFlags {
     let mut usage = vk::ImageUsageFlags::empty();
-    if value.contains(base::ImageUsage::CopyRead) {
+    if value.contains(base::ImageUsageFlags::CopyRead) {
         usage |= vk::ImageUsageFlags::TRANSFER_SRC;
     }
-    if value.contains(base::ImageUsage::CopyWrite) {
+    if value.contains(base::ImageUsageFlags::CopyWrite) {
         usage |= vk::ImageUsageFlags::TRANSFER_DST;
     }
-    if value.contains(base::ImageUsage::Sampled) {
+    if value.contains(base::ImageUsageFlags::Sampled) {
         usage |= vk::ImageUsageFlags::SAMPLED;
     }
-    if value.contains(base::ImageUsage::Storage) {
+    if value.contains(base::ImageUsageFlags::Storage) {
         usage |= vk::ImageUsageFlags::STORAGE;
     }
-    if value.contains(base::ImageUsage::Render) {
+    if value.contains(base::ImageUsageFlags::Render) {
         if format.has_depth() || format.has_stencil() {
             usage |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
         } else {
@@ -721,8 +721,8 @@ crate fn translate_image_layout(
     value: base::ImageLayout,
     is_depth_stencil: bool,
 ) -> vk::ImageLayout {
-    let mutable = usage.contains(base::ImageUsage::Mutable);
-    let storage = usage.contains(base::ImageUsage::Storage);
+    let mutable = usage.contains(base::ImageUsageFlags::Mutable);
+    let storage = usage.contains(base::ImageUsageFlags::Storage);
 
     match (value, is_depth_stencil, mutable, storage) {
         // The render layouts cannot be controlled via the `Mutable` flag
@@ -853,9 +853,9 @@ impl ImageStateAddresser {
         // is used as a render target and at the same time another portion is
         // access by a shader.
         let track_per_layer =
-            usage.intersects(flags![base::ImageUsage::{TrackStatePerMipmapLevel | Render}]);
+            usage.intersects(flags![base::ImageUsageFlags::{TrackStatePerMipmapLevel | Render}]);
         let track_per_mip =
-            usage.intersects(flags![base::ImageUsage::{TrackStatePerArrayLayer | Render}]);
+            usage.intersects(flags![base::ImageUsageFlags::{TrackStatePerArrayLayer | Render}]);
 
         Self {
             num_layers: image.num_layers,

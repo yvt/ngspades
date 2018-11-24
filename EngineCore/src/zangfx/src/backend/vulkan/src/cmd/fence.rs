@@ -27,7 +27,7 @@ use zangfx_base::{zangfx_impl_handle, Result};
 
 use crate::cmd::queue::Item;
 use crate::device::DeviceRef;
-use crate::limits::DeviceTrait;
+use crate::limits::DeviceTraitFlags;
 use crate::resstate;
 use crate::utils::translate_generic_error_unwrap;
 
@@ -82,7 +82,7 @@ impl Fence {
         // Skip all event operations on MoltenVK -- Events are not supported.
         // It'll (probably) work without them thanks to Metal's automatic memory
         // barriers anyway.
-        if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
+        if !device.caps().info.traits.intersects(DeviceTraitFlags::MoltenVK) {
             let vk_device: &crate::AshDevice = device.vk_device();
             match vk_device.fp_v1_0().create_event(
                 vk_device.handle(),
@@ -127,7 +127,7 @@ impl resstate::Resource for Fence {
 impl Drop for FenceData {
     fn drop(&mut self) {
         let ref device = self.device;
-        if !device.caps().info.traits.intersects(DeviceTrait::MoltenVK) {
+        if !device.caps().info.traits.intersects(DeviceTraitFlags::MoltenVK) {
             let vk_device: &crate::AshDevice = self.device.vk_device();
             unsafe {
                 vk_device

@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::result::Result as StdResult;
 
 use zangfx_base::{self as base, Error, Result};
@@ -22,7 +22,7 @@ pub trait DeviceUtils: base::Device {
     ///
     /// # Examples
     ///
-    ///     use ngsenumflags::flags;
+    ///     use flags_macro::flags;
     ///     use zangfx_base::*;
     ///     use zangfx_utils::DeviceUtils;
     ///     # fn test(
@@ -36,8 +36,8 @@ pub trait DeviceUtils: base::Device {
     ///     let memory_type = device
     ///         .choose_memory_type(
     ///             buffer.get_memory_req()?.memory_types,
-    ///             flags![MemoryTypeCaps::{HostVisible | HostCoherent}],
-    ///             flags![MemoryTypeCaps::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
     ///         )
     ///         .expect("suitable memory type was not found");
     ///
@@ -86,7 +86,7 @@ pub trait DeviceUtils: base::Device {
     ///
     /// # Examples
     ///
-    ///     use ngsenumflags::flags;
+    ///     use flags_macro::flags;
     ///     use zangfx_base::*;
     ///     use zangfx_utils::DeviceUtils;
     ///     # fn test(
@@ -102,8 +102,8 @@ pub trait DeviceUtils: base::Device {
     ///     let memory_type = device
     ///         .try_choose_memory_type(
     ///             &buffer,
-    ///             flags![MemoryTypeCaps::{HostVisible | HostCoherent}],
-    ///             flags![MemoryTypeCaps::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
     ///         )?
     ///         .expect("suitable memory type was not found");
     ///
@@ -117,7 +117,7 @@ pub trait DeviceUtils: base::Device {
     ///
     /// Or, alternatively:
     ///
-    ///     # use ngsenumflags::flags;
+    ///     # use flags_macro::flags;
     ///     # use zangfx_base::*;
     ///     # use zangfx_utils::DeviceUtils;
     ///     # fn test(
@@ -126,8 +126,8 @@ pub trait DeviceUtils: base::Device {
     ///     let memory_type = device
     ///         .try_choose_memory_type(
     ///             flags![BufferUsage::{Vertex}],
-    ///             flags![MemoryTypeCaps::{HostVisible | HostCoherent}],
-    ///             flags![MemoryTypeCaps::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
     ///         )?
     ///         .expect("suitable memory type was not found");
     ///     # Ok(())
@@ -135,7 +135,7 @@ pub trait DeviceUtils: base::Device {
     ///
     /// You can use `ImageFormat` too:
     ///
-    ///     # use ngsenumflags::flags;
+    ///     # use flags_macro::flags;
     ///     # use zangfx_base::*;
     ///     # use zangfx_utils::DeviceUtils;
     ///     # fn test(
@@ -144,8 +144,8 @@ pub trait DeviceUtils: base::Device {
     ///     let memory_type = device
     ///         .try_choose_memory_type(
     ///             ImageFormat::SrgbBgra8,
-    ///             flags![MemoryTypeCaps::{DeviceLocal}],
-    ///             flags![MemoryTypeCaps::{}],
+    ///             flags![MemoryTypeCapsFlags::{DeviceLocal}],
+    ///             flags![MemoryTypeCapsFlags::{}],
     ///         )?
     ///         .expect("suitable memory type was not found");
     ///     # Ok(())
@@ -195,7 +195,7 @@ pub trait DeviceUtils: base::Device {
     ///
     /// # Examples
     ///
-    ///     # use ngsenumflags::flags;
+    ///     # use flags_macro::flags;
     ///     # use zangfx_base::*;
     ///     # use zangfx_utils::DeviceUtils;
     ///     # fn test(
@@ -212,8 +212,8 @@ pub trait DeviceUtils: base::Device {
     ) -> StdResult<Option<base::MemoryType>, T::Error> {
         self.try_choose_memory_type(
             valid_memory_types,
-            flags![base::MemoryTypeCaps::{HostVisible | HostCoherent}],
-            flags![base::MemoryTypeCaps::{HostVisible | HostCoherent}],
+            flags![base::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![base::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
         )
     }
 
@@ -234,7 +234,7 @@ pub trait DeviceUtils: base::Device {
     ///
     /// # Examples
     ///
-    ///     # use ngsenumflags::flags;
+    ///     # use flags_macro::flags;
     ///     # use zangfx_base::*;
     ///     # use zangfx_utils::DeviceUtils;
     ///     # fn test(
@@ -251,8 +251,8 @@ pub trait DeviceUtils: base::Device {
     ) -> StdResult<Option<base::MemoryType>, T::Error> {
         self.try_choose_memory_type(
             valid_memory_types,
-            flags![base::MemoryTypeCaps::{DeviceLocal}],
-            flags![base::MemoryTypeCaps::{}],
+            flags![base::MemoryTypeCapsFlags::{DeviceLocal}],
+            flags![base::MemoryTypeCapsFlags::{}],
         )
     }
 
@@ -272,7 +272,7 @@ pub trait DeviceUtils: base::Device {
         let image = self
             .build_image()
             .extents(&[1, 1])
-            .usage(flags![base::ImageUsage::{CopyRead | CopyWrite}])
+            .usage(flags![base::ImageUsageFlags::{CopyRead | CopyWrite}])
             .format(format)
             .build()?;
         Ok(image.get_memory_req()?.memory_types)

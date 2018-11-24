@@ -8,8 +8,8 @@
 use ash;
 use ash::version::*;
 use ash::vk::{self, FALSE};
-use ngsenumflags::{flags, BitFlags};
-use ngsenumflags_derive::NgsEnumFlags;
+use bitflags::bitflags;
+use flags_macro::flags;
 use std::collections::HashMap;
 use zangfx_base as base;
 use zangfx_base::{zangfx_impl_object, Result};
@@ -30,14 +30,12 @@ pub struct DeviceInfo {
     pub vertex_features: HashMap<base::VertexFormat, base::VertexFormatCapsFlags>,
 }
 
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum DeviceTrait {
-    /// Enables work-arounds for MoltenVK (Vulkan-on-Metal emulation layer).
-    MoltenVK = 0b1,
+bitflags!{
+    pub struct DeviceTraitFlags: u8 {
+        /// Enables work-arounds for MoltenVK (Vulkan-on-Metal emulation layer).
+        const MoltenVK = 0b1;
+    }
 }
-
-pub type DeviceTraitFlags = BitFlags<DeviceTrait>;
 
 impl DeviceInfo {
     pub fn from_physical_device(
@@ -46,7 +44,7 @@ impl DeviceInfo {
         enabled_features: &vk::PhysicalDeviceFeatures,
     ) -> Result<Self> {
         use std::cmp::min;
-        let mut traits = flags![DeviceTrait::{}];
+        let mut traits = flags![DeviceTraitFlags::{}];
 
         let exts = unsafe {
             instance
@@ -60,7 +58,7 @@ impl DeviceInfo {
             .iter()
             .any(|p| unsafe { CStr::from_ptr(p.extension_name.as_ptr()) } == mvk_ext_name);
         if is_molten_vk {
-            traits |= DeviceTrait::MoltenVK;
+            traits |= DeviceTraitFlags::MoltenVK;
         }
 
         let dev_prop = unsafe { instance.get_physical_device_properties(phys_device) };
@@ -132,7 +130,7 @@ impl DeviceInfo {
                     translate_image_format_caps_flags(fp.optimal_tiling_features),
                 );
             } else {
-                image_features.insert(fmt, flags![base::ImageFormatCaps::{}]);
+                image_features.insert(fmt, flags![base::ImageFormatCapsFlags::{}]);
             }
         }
         for &fmt in base::VertexFormat::values().iter() {
@@ -141,7 +139,7 @@ impl DeviceInfo {
                     unsafe { instance.get_physical_device_format_properties(phys_device, vk_fmt) };
                 vertex_features.insert(fmt, translate_vertex_format_caps_flags(fp.buffer_features));
             } else {
-                vertex_features.insert(fmt, flags![base::VertexFormatCaps::{}]);
+                vertex_features.insert(fmt, flags![base::VertexFormatCapsFlags::{}]);
             }
         }
 
@@ -158,68 +156,68 @@ impl DeviceInfo {
 }
 
 fn translate_queue_flags(flags: vk::QueueFlags) -> base::QueueFamilyCapsFlags {
-    let mut ret = flags![base::QueueFamilyCaps::{}];
+    let mut ret = flags![base::QueueFamilyCapsFlags::{}];
     if flags.intersects(vk::QueueFlags::GRAPHICS) {
-        ret |= base::QueueFamilyCaps::Render;
-        ret |= base::QueueFamilyCaps::Copy;
+        ret |= base::QueueFamilyCapsFlags::Render;
+        ret |= base::QueueFamilyCapsFlags::Copy;
     }
     if flags.intersects(vk::QueueFlags::COMPUTE) {
-        ret |= base::QueueFamilyCaps::Compute;
-        ret |= base::QueueFamilyCaps::Copy;
+        ret |= base::QueueFamilyCapsFlags::Compute;
+        ret |= base::QueueFamilyCapsFlags::Copy;
     }
     if flags.intersects(vk::QueueFlags::TRANSFER) {
-        ret |= base::QueueFamilyCaps::Copy;
+        ret |= base::QueueFamilyCapsFlags::Copy;
     }
     ret
 }
 
 fn translate_memory_type_flags(flags: vk::MemoryPropertyFlags) -> base::MemoryTypeCapsFlags {
-    let mut ret = flags![base::MemoryTypeCaps::{}];
+    let mut ret = flags![base::MemoryTypeCapsFlags::{}];
     if flags.intersects(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
-        ret |= base::MemoryTypeCaps::DeviceLocal;
+        ret |= base::MemoryTypeCapsFlags::DeviceLocal;
     }
     if flags.intersects(vk::MemoryPropertyFlags::HOST_VISIBLE) {
-        ret |= base::MemoryTypeCaps::HostVisible;
+        ret |= base::MemoryTypeCapsFlags::HostVisible;
     }
     if flags.intersects(vk::MemoryPropertyFlags::HOST_CACHED) {
-        ret |= base::MemoryTypeCaps::HostCached;
+        ret |= base::MemoryTypeCapsFlags::HostCached;
     }
     if flags.intersects(vk::MemoryPropertyFlags::HOST_COHERENT) {
-        ret |= base::MemoryTypeCaps::HostCoherent;
+        ret |= base::MemoryTypeCapsFlags::HostCoherent;
     }
     ret
 }
 
 fn translate_image_format_caps_flags(value: vk::FormatFeatureFlags) -> base::ImageFormatCapsFlags {
-    let mut ret = flags![base::ImageFormatCaps::{}];
+    let mut ret = flags![base::ImageFormatCapsFlags::{}];
     if value.intersects(vk::FormatFeatureFlags::SAMPLED_IMAGE) {
-        ret |= base::ImageFormatCaps::Sampled;
+        ret |= base::ImageFormatCapsFlags::Sampled;
     }
     if value.intersects(vk::FormatFeatureFlags::STORAGE_IMAGE) {
-        ret |= base::ImageFormatCaps::Storage;
+        ret |= base::ImageFormatCapsFlags::Storage;
     }
     if value.intersects(vk::FormatFeatureFlags::STORAGE_IMAGE_ATOMIC) {
-        ret |= base::ImageFormatCaps::StorageAtomic;
+        ret |= base::ImageFormatCapsFlags::StorageAtomic;
     }
     if value.intersects(vk::FormatFeatureFlags::COLOR_ATTACHMENT) {
-        ret |= base::ImageFormatCaps::Render;
+        ret |= base::ImageFormatCapsFlags::Render;
     }
     if value.intersects(vk::FormatFeatureFlags::COLOR_ATTACHMENT_BLEND) {
-        ret |= base::ImageFormatCaps::RenderBlend;
+        ret |= base::ImageFormatCapsFlags::RenderBlend;
     }
     if value.intersects(vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT) {
-        ret |= base::ImageFormatCaps::Render;
+        ret |= base::ImageFormatCapsFlags::Render;
     }
     if value.intersects(vk::FormatFeatureFlags::SAMPLED_IMAGE_FILTER_LINEAR) {
-        ret |= base::ImageFormatCaps::SampledFilterLinear;
+        ret |= base::ImageFormatCapsFlags::SampledFilterLinear;
     }
     // Without the extension `VK_KHR_maintenance1`, any other flags imply that
     // transfer is possible
     if value.is_empty() {
         // TODO: `FORMAT_FEATURE_TRANSFER_{SRC,DST}_BIT_KHR`
     } else {
-        ret |= base::ImageFormatCaps::CopyRead;
-        ret |= base::ImageFormatCaps::CopyWrite;
+        ret |= base::ImageFormatCapsFlags::CopyRead;
+        ret |= base::ImageFormatCapsFlags::CopyWrite;
     }
     ret
 }
@@ -227,9 +225,9 @@ fn translate_image_format_caps_flags(value: vk::FormatFeatureFlags) -> base::Ima
 fn translate_vertex_format_caps_flags(
     value: vk::FormatFeatureFlags,
 ) -> base::VertexFormatCapsFlags {
-    let mut ret = flags![base::VertexFormatCaps::{}];
+    let mut ret = flags![base::VertexFormatCapsFlags::{}];
     if value.intersects(vk::FormatFeatureFlags::VERTEX_BUFFER) {
-        ret |= base::VertexFormatCaps::Vertex;
+        ret |= base::VertexFormatCapsFlags::Vertex;
     }
     ret
 }

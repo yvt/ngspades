@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::fmt;
 use std::ops::Deref;
 use zangfx_base as base;
@@ -99,13 +99,13 @@ crate fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStag
     let mut stages = metal::MTLRenderStages::empty();
 
     if stage.intersects(flags![
-        base::Stage::{IndirectDraw | VertexInput | Vertex}])
+        base::StageFlags::{IndirectDraw | VertexInput | Vertex}])
     {
         stages |= metal::MTLRenderStageVertex;
     }
 
     if stage.intersects(flags![
-        base::Stage::{Fragment | EarlyFragTests | LateFragTests | RenderOutput}])
+        base::StageFlags::{Fragment | EarlyFragTests | LateFragTests | RenderOutput}])
     {
         stages |= metal::MTLRenderStageFragment;
     }
