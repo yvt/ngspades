@@ -6,8 +6,7 @@ edition = "2018"
 
 [dependencies]
 ngscom = { path = "../ngscom", version = "0.1" }
-ngsenumflags = { path = "../support/ngsenumflags" }
-ngsenumflags_derive = { path = "../support/ngsenumflags/ngsenumflags_derive" }
+bitflags = "1.0.4"
 cggeom = { path = "../support/cggeom" }
 cgmath = "0.16.1"
 num-traits = "0.2.4"
