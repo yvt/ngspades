@@ -144,8 +144,8 @@ pub mod di {
 
 use arrayvec::ArrayVec;
 use either::Either;
-use futures::{executor, future, prelude::*, stream};
 use flags_macro::flags;
+use futures::{executor, future, prelude::*, stream};
 use std::{
     pin::Unpin,
     sync::{Arc, Mutex},
@@ -243,8 +243,8 @@ impl<T: Send + Sync + 'static> StaticData<T> {
 
         // Initiate the upload
         // TODO: Use a global thread pool
-        use std::sync::Mutex;
         use futures::task::SpawnExt;
+        use std::sync::Mutex;
         lazy_static! {
             static ref POOL: Mutex<executor::ThreadPool> =
                 Mutex::new(executor::ThreadPool::new().unwrap());

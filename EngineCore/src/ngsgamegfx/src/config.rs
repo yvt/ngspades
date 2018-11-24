@@ -5,7 +5,7 @@
 //
 //! Configuration of the rendering engine.
 use query_interface::{interfaces, vtable_for, Object, ObjectEq, ObjectHash, ObjectPartialEq};
-use std::{hash, fmt::Debug};
+use std::{fmt::Debug, hash};
 
 /// A metadata of a single configuration option.
 pub trait ConfigItem: Send + Sync {
