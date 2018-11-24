@@ -5,8 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 
 [dependencies]
 libc = "0.2.7"
-ngsenumflags = { path = "../support/ngsenumflags" }
-ngsenumflags_derive = { path = "../support/ngsenumflags/ngsenumflags_derive" }
+bitflags = "1.0.4"
 
 [build-dependencies]
 cc = "1.0.3"

@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Provides an information regarding a device's capabilities and limits.
-use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
+use bitflags::bitflags;
 
 use crate::formats::{ImageFormat, VertexFormat};
 use crate::Object;
@@ -72,60 +72,51 @@ pub struct DeviceLimits {
     // TODO: expose more limits
 }
 
-/// Indicates an operation on a specific `ImageFormat` supported by a device.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ImageFormatCaps {
-    Sampled = 0b000000001,
-    SampledFilterLinear = 0b000000010,
-    Storage = 0b000000100,
-    StorageAtomic = 0b000001000,
-    Render = 0b000010000,
-    RenderBlend = 0b000100000,
-    CopyRead = 0b010000000,
-    CopyWrite = 0b100000000,
+bitflags! {
+    /// Indicates a set of operations on a specific `ImageFormat` supported by
+    /// a device.
+    pub struct ImageFormatCapsFlags: u16 {
+        const Sampled = 0b000000001;
+        const SampledFilterLinear = 0b000000010;
+        const Storage = 0b000000100;
+        const StorageAtomic = 0b000001000;
+        const Render = 0b000010000;
+        const RenderBlend = 0b000100000;
+        const CopyRead = 0b010000000;
+        const CopyWrite = 0b100000000;
+    }
 }
 
-/// Indicates an operation on a specific `VertexFormat` supported by a device.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum VertexFormatCaps {
-    Vertex = 0b1,
+bitflags! {
+    /// Indicates a set of operations on a specific `VertexFormat` supported by a
+    /// device.
+    pub struct VertexFormatCapsFlags: u8 {
+        const Vertex = 0b1;
+    }
 }
 
-/// Indicates a set of operations on a specific `ImageFormat` supported by a
-/// device.
-pub type ImageFormatCapsFlags = BitFlags<ImageFormatCaps>;
-
-/// Indicates a set of operations on a specific `VertexFormat` supported by a
-/// device.
-pub type VertexFormatCapsFlags = BitFlags<VertexFormatCaps>;
-
-/// Indicates a capability of a specific memory type of a device.
-///
-/// See Vulkan 1.0 Specification "10.2. Device Memory" for details and usage.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum MemoryTypeCaps {
-    HostVisible = 0b0001,
-    /// Indicates that the coherency of the memory contents between the host and
-    /// the device is maintained automatically. Note that even with this flag
-    /// you still have to insert appropriate memory barriers by issuing
-    /// [`host_barrier`] commands.
+bitflags! {
+    /// Indicates a capability of a specific memory type of a device.
     ///
-    /// For a memory type without this flag, you must perform cache maintenance
-    /// operations manually. (Currently API does not define a way to do this.
-    /// Therefore, host-visible memory types without this flag are practially
-    /// useless.)
-    ///
-    /// [`host_barrier`]: crate::CmdBuffer::host_barrier
-    HostCoherent = 0b0010,
-    HostCached = 0b0100,
-    DeviceLocal = 0b1000,
+    /// See Vulkan 1.0 Specification "10.2. Device Memory" for details and usage.
+    pub struct MemoryTypeCapsFlags: u8 {
+        const HostVisible = 0b0001;
+        /// Indicates that the coherency of the memory contents between the host and
+        /// the device is maintained automatically. Note that even with this flag
+        /// you still have to insert appropriate memory barriers by issuing
+        /// [`host_barrier`] commands.
+        ///
+        /// For a memory type without this flag, you must perform cache maintenance
+        /// operations manually. (Currently API does not define a way to do this.
+        /// Therefore, host-visible memory types without this flag are practially
+        /// useless.)
+        ///
+        /// [`host_barrier`]: crate::CmdBuffer::host_barrier
+        const HostCoherent = 0b0010;
+        const HostCached = 0b0100;
+        const DeviceLocal = 0b1000;
+    }
 }
-
-/// Indicates a set of capabilities of a specific memory type of a device.
-pub type MemoryTypeCapsFlags = BitFlags<MemoryTypeCaps>;
 
 /// Describes the properties of a specific memory type of a device.
 #[derive(Debug, Clone, Copy)]
@@ -140,19 +131,16 @@ pub struct MemoryRegionInfo {
     pub size: DeviceSize,
 }
 
-/// Indicates a capability of a specific queue family of a device.
-///
-/// See Vulkan 1.0 Specification "4.1. Physical Devices" for details and usage.
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
-pub enum QueueFamilyCaps {
-    Render = 0b001,
-    Compute = 0b010,
-    Copy = 0b100,
+bitflags! {
+    /// Indicates a capability of a specific queue family of a device.
+    ///
+    /// See Vulkan 1.0 Specification "4.1. Physical Devices" for details and usage.
+    pub struct QueueFamilyCapsFlags: u8 {
+        const Render = 0b001;
+        const Compute = 0b010;
+        const Copy = 0b100;
+    }
 }
-
-/// Indicates a set of capabilities of a specific queue family of a device.
-pub type QueueFamilyCapsFlags = BitFlags<QueueFamilyCaps>;
 
 /// Describes the properties of a specific queue family of a device.
 #[derive(Debug, Clone, Copy)]

@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::u32;
 
 use zangfx_base::{self as base, limits, zangfx_impl_object};
@@ -72,11 +72,11 @@ impl DeviceCaps {
 
         let memory_types = [
             limits::MemoryTypeInfo {
-                caps: flags![limits::MemoryTypeCaps::{DeviceLocal}],
+                caps: flags![limits::MemoryTypeCapsFlags::{DeviceLocal}],
                 region: MEMORY_REGION_GLOBAL,
             },
             limits::MemoryTypeInfo {
-                caps: flags![limits::MemoryTypeCaps::{HostVisible | HostCoherent}],
+                caps: flags![limits::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
                 region: MEMORY_REGION_GLOBAL,
             },
         ];
@@ -86,7 +86,7 @@ impl DeviceCaps {
         }];
 
         let queue_families = [limits::QueueFamilyInfo {
-            caps: flags![limits::QueueFamilyCaps::{Render | Compute | Copy}],
+            caps: flags![limits::QueueFamilyCapsFlags::{Render | Compute | Copy}],
             count: <usize>::max_value(),
         }];
 
@@ -113,13 +113,14 @@ impl limits::DeviceCaps for DeviceCaps {
         use zangfx_base::formats::ImageFormat;
         use zangfx_base::formats::Normalizedness::*;
         use zangfx_base::formats::Signedness::*;
-        use zangfx_base::limits::ImageFormatCaps::*;
+        use zangfx_base::limits::ImageFormatCapsFlags;
 
-        let trans = CopyRead | CopyWrite;
-        let all = Sampled | SampledFilterLinear | Storage | Render | RenderBlend | trans; // + MSAA w/Resolve
+        let trans = flags![ImageFormatCapsFlags::{CopyRead | CopyWrite}];
+        let all = flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Storage | Render | RenderBlend}]
+            | trans; // + MSAA w/Resolve
 
         // "Unavailable"
-        let empty = limits::ImageFormatCapsFlags::empty();
+        let empty = flags![ImageFormatCapsFlags::{}];
 
         // Not supported by Metal at this point
         let undefined = empty;
@@ -133,8 +134,14 @@ impl limits::DeviceCaps for DeviceCaps {
         match format {
             ImageFormat::SrgbR8 => empty,
             ImageFormat::SrgbRg8 => empty,
-            ImageFormat::SrgbRgba8 => Sampled | SampledFilterLinear | Render | RenderBlend | trans, // + MSAA w/Resolve
-            ImageFormat::SrgbBgra8 => Sampled | SampledFilterLinear | Render | RenderBlend | trans, // + MSAA w/Resolve
+            ImageFormat::SrgbRgba8 => {
+                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render | RenderBlend}]
+                    | trans
+            } // + MSAA w/Resolve
+            ImageFormat::SrgbBgra8 => {
+                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render | RenderBlend}]
+                    | trans
+            } // + MSAA w/Resolve
 
             ImageFormat::Rgb10A2(Signed, _) => undefined,
 
@@ -163,23 +170,29 @@ impl limits::DeviceCaps for DeviceCaps {
             | ImageFormat::Rgb10A2(Unsigned, Unnormalized)
             | ImageFormat::R32(_, Unnormalized)
             | ImageFormat::Rg32(_, Unnormalized)
-            | ImageFormat::Rgba32(_, Unnormalized) => Sampled | Storage | Render | trans, // + MSAA
+            | ImageFormat::Rgba32(_, Unnormalized) => {
+                flags![ImageFormatCapsFlags::{Sampled | Storage | Render}] | trans
+            } // + MSAA
 
             ImageFormat::R32(_, Normalized) => undefined,
             ImageFormat::Rg32(_, Normalized) => undefined,
             ImageFormat::Rgba32(_, Normalized) => undefined,
 
             // Since macOS_GPUFamily1_v2 (macOS 10.12)
-            ImageFormat::Depth16 => Sampled | SampledFilterLinear | Render | trans, // + MSAA w/Resolve
+            ImageFormat::Depth16 => {
+                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render}] | trans
+            } // + MSAA w/Resolve
 
             ImageFormat::Depth24 => undefined,
-            ImageFormat::Depth24Stencil8 => if self.d24_s8_supported {
-                Sampled | SampledFilterLinear | Render | trans
-            } else {
-                empty
-            },
+            ImageFormat::Depth24Stencil8 => {
+                if self.d24_s8_supported {
+                    flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render}] | trans
+                } else {
+                    empty
+                }
+            }
             ImageFormat::DepthFloat32 | ImageFormat::DepthFloat32Stencil8 => {
-                Sampled | SampledFilterLinear | Render | trans
+                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render}] | trans
             } // + MSAA w/Resolve
         }
     }
@@ -190,7 +203,7 @@ impl limits::DeviceCaps for DeviceCaps {
     ) -> limits::VertexFormatCapsFlags {
         use crate::formats::translate_vertex_format;
         if translate_vertex_format(format).is_some() {
-            limits::VertexFormatCaps::Vertex.into()
+            limits::VertexFormatCapsFlags::Vertex
         } else {
             limits::VertexFormatCapsFlags::empty()
         }

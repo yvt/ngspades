@@ -71,8 +71,8 @@ impl base::RenderPassBuilder for RenderPassBuilder {
         let src_access_mask = translate_access_type_flags(src_access);
         let dst_access_mask = translate_access_type_flags(dst_access);
 
-        let src_stages = base::AccessType::union_supported_stages(src_access);
-        let dst_stages = base::AccessType::union_supported_stages(dst_access);
+        let src_stages = src_access.supported_stages();
+        let dst_stages = dst_access.supported_stages();
 
         let src_stage_mask = translate_pipeline_stage_flags(src_stages);
         let dst_stage_mask = translate_pipeline_stage_flags(dst_stages);

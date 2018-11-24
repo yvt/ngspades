@@ -64,7 +64,6 @@ static BOX_VERTICES: &[[u16; 2]] = &[[0, 0], [1, 0], [0, 1], [1, 1]];
 pub mod composite {
     use cgmath::{Matrix4, Vector4};
     use include_data;
-    use ngsenumflags::BitFlags;
     use zangfx::base::*;
 
     pub static SPIRV_FRAG: include_data::DataView =
@@ -87,13 +86,11 @@ pub mod composite {
     pub static ARG_C_MASK: ArgIndex = 2;
     pub static ARG_C_MASK_SAMPLER: ArgIndex = 3;
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
-    #[repr(u32)]
-    pub enum SpriteFlagsBit {
-        StraightAlpha = 1,
+    bitflags! {
+        pub struct SpriteFlags: u32 {
+            const StraightAlpha = 1;
+        }
     }
-
-    pub type SpriteFlags = BitFlags<SpriteFlagsBit>;
 
     #[derive(Debug, Clone, Copy)]
     #[repr(C)]
@@ -158,23 +155,23 @@ impl Compositor {
                 let mut builder = device.build_arg_table_sig();
                 builder
                     .arg(composite::ARG_G_SPRITE_PARAMS, gfx::ArgType::StorageBuffer)
-                    .set_stages(flags![gfx::ShaderStage::{Vertex}]);
+                    .set_stages(gfx::ShaderStageFlags::Vertex);
                 builder.build()?
             },
             {
                 let mut builder = device.build_arg_table_sig();
                 builder
                     .arg(composite::ARG_C_IMAGE, gfx::ArgType::SampledImage)
-                    .set_stages(flags![gfx::ShaderStage::{Fragment}]);
+                    .set_stages(gfx::ShaderStageFlags::Fragment);
                 builder
                     .arg(composite::ARG_C_IMAGE_SAMPLER, gfx::ArgType::Sampler)
-                    .set_stages(flags![gfx::ShaderStage::{Fragment}]);
+                    .set_stages(gfx::ShaderStageFlags::Fragment);
                 builder
                     .arg(composite::ARG_C_MASK, gfx::ArgType::SampledImage)
-                    .set_stages(flags![gfx::ShaderStage::{Fragment}]);
+                    .set_stages(gfx::ShaderStageFlags::Fragment);
                 builder
                     .arg(composite::ARG_C_MASK_SAMPLER, gfx::ArgType::Sampler)
-                    .set_stages(flags![gfx::ShaderStage::{Fragment}]);
+                    .set_stages(gfx::ShaderStageFlags::Fragment);
                 builder.build()?
             },
         ];
@@ -217,8 +214,8 @@ impl Compositor {
             let memory_type = device
                 .choose_memory_type(
                     white_image.get_memory_req()?.memory_types,
-                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                    flags![gfx::MemoryTypeCaps::{}],
+                    gfx::MemoryTypeCapsFlags::DeviceLocal,
+                    flags![gfx::MemoryTypeCapsFlags::{}],
                 ).unwrap();
 
             if !device
@@ -254,14 +251,14 @@ impl Compositor {
         let box_vertices = device
             .build_buffer()
             .size(size_of_val(BOX_VERTICES) as u64)
-            .usage(flags![gfx::BufferUsage::{Vertex | CopyWrite}])
+            .usage(flags![gfx::BufferUsageFlags::{Vertex | CopyWrite}])
             .build()?;
         {
             let memory_type = device
                 .choose_memory_type(
                     box_vertices.get_memory_req()?.memory_types,
-                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                    flags![gfx::MemoryTypeCaps::{}],
+                    gfx::MemoryTypeCapsFlags::DeviceLocal,
+                    flags![gfx::MemoryTypeCapsFlags::{}],
                 ).unwrap();
 
             if !device
@@ -308,7 +305,7 @@ impl Compositor {
             samplers,
 
             buffer_memory_type: device
-                .try_choose_memory_type_shared(flags![gfx::BufferUsage::{Storage}])?
+                .try_choose_memory_type_shared(gfx::BufferUsageFlags::Storage)?
                 .unwrap(),
             backing_store_memory_type: device
                 .try_choose_memory_type_private(gfx::ImageFormat::SrgbBgra8)?
@@ -483,9 +480,9 @@ impl CompositorWindow {
                         (ImageContents::ManagedImage(image.clone()), sampler),
                         uv_matrix,
                         if premul {
-                            flags![composite::SpriteFlagsBit::{}]
+                            flags![composite::SpriteFlags::{}]
                         } else {
-                            flags![composite::SpriteFlagsBit::{StraightAlpha}]
+                            flags![composite::SpriteFlags::{StraightAlpha}]
                         },
                         Vector4::new(1.0, 1.0, 1.0, opacity),
                     ))
@@ -564,7 +561,7 @@ impl CompositorWindow {
             opacity: f32,
         ) -> Result<()> {
             use super::LayerContents::*;
-            use super::{LayerFlags, LayerFlagsBit};
+            use super::LayerFlags;
 
             let flags: LayerFlags = *layer.flags.read_presenter(c.frame).unwrap();
             let transform = *layer.transform.read_presenter(c.frame).unwrap();
@@ -573,7 +570,7 @@ impl CompositorWindow {
             let bounds: Box2<f32> = *layer.bounds.read_presenter(c.frame).unwrap();
             let opacity = opacity * *layer.opacity.read_presenter(c.frame).unwrap();
 
-            let flatten = flags.contains(LayerFlagsBit::FlattenContents);
+            let flatten = flags.contains(LayerFlags::FlattenContents);
             let use_backdrop = match contents {
                 &BackDrop => true,
                 _ => false,
@@ -644,7 +641,7 @@ impl CompositorWindow {
                     .build_image()
                     .extents(&pixel_size[..])
                     .format(gfx::ImageFormat::SrgbRgba8)
-                    .usage(flags![gfx::ImageUsage::{Render | Sampled}])
+                    .usage(flags![gfx::ImageUsageFlags::{Render | Sampled}])
                     .build()?;
 
                 c.compositor.temp_res_pool.bind(
@@ -696,7 +693,7 @@ impl CompositorWindow {
                         .build_image()
                         .extents(&pixel_size[..])
                         .format(gfx::ImageFormat::SrgbBgra8)
-                        .usage(flags![gfx::ImageUsage::{Render | Sampled}])
+                        .usage(flags![gfx::ImageUsageFlags::{Render | Sampled}])
                         .build()?;
 
                     c.compositor.temp_res_pool.bind(
@@ -861,7 +858,7 @@ impl CompositorWindow {
             .device
             .build_buffer()
             .size(sprites_size)
-            .usage(flags![gfx::BufferUsage::{Storage}])
+            .usage(gfx::BufferUsageFlags::Storage)
             .build()?;
         compositor.temp_res_pool.bind(
             &mut c.temp_res_table,
@@ -1106,7 +1103,7 @@ impl CompositorWindow {
                         enc = cb.encode_render(fb);
 
                         if let Some(ref fence) = fence.take() {
-                            enc.wait_fence(fence, flags![gfx::AccessType::{FragmentRead}]);
+                            enc.wait_fence(fence, gfx::AccessTypeFlags::FragmentRead);
                         }
 
                         enc.bind_pipeline(&compositor.statesets[0].composite_pipeline);
@@ -1142,7 +1139,7 @@ impl CompositorWindow {
 
                                         enc.wait_fence(
                                             &port_output.fence,
-                                            flags![gfx::AccessType::{FragmentRead}],
+                                            gfx::AccessTypeFlags::FragmentRead,
                                         );
                                     }
                                     _ => {}
@@ -1164,8 +1161,8 @@ impl CompositorWindow {
             drawable.encode_prepare_present(
                 &mut cb,
                 compositor.gfx_objects.main_queue.queue_family,
-                flags![gfx::Stage::{RenderOutput}],
-                flags![gfx::AccessType::{ColorWrite}],
+                gfx::StageFlags::RenderOutput,
+                gfx::AccessTypeFlags::ColorWrite,
             );
 
             cb.commit()?;

@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::TestDriver;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use zangfx_base as gfx;
 use zangfx_common::BinaryInteger;
 
@@ -42,22 +42,22 @@ pub fn image_all_formats<T: TestDriver>(driver: T) {
                 continue;
             }
 
-            let mut usage = flags![gfx::ImageUsage::{}];
+            let mut usage = flags![gfx::ImageUsageFlags::{}];
 
-            if caps.contains(gfx::ImageFormatCaps::Render) {
-                usage |= gfx::ImageUsage::Render;
+            if caps.contains(gfx::ImageFormatCapsFlags::Render) {
+                usage |= gfx::ImageUsageFlags::Render;
             }
-            if caps.contains(gfx::ImageFormatCaps::CopyRead) {
-                usage |= gfx::ImageUsage::CopyRead;
+            if caps.contains(gfx::ImageFormatCapsFlags::CopyRead) {
+                usage |= gfx::ImageUsageFlags::CopyRead;
             }
-            if caps.contains(gfx::ImageFormatCaps::CopyWrite) {
-                usage |= gfx::ImageUsage::CopyWrite;
+            if caps.contains(gfx::ImageFormatCapsFlags::CopyWrite) {
+                usage |= gfx::ImageUsageFlags::CopyWrite;
             }
-            if caps.contains(gfx::ImageFormatCaps::Sampled) {
-                usage |= gfx::ImageUsage::Sampled;
+            if caps.contains(gfx::ImageFormatCapsFlags::Sampled) {
+                usage |= gfx::ImageUsageFlags::Sampled;
             }
-            if caps.contains(gfx::ImageFormatCaps::Storage) {
-                usage |= gfx::ImageUsage::Storage;
+            if caps.contains(gfx::ImageFormatCapsFlags::Storage) {
+                usage |= gfx::ImageUsageFlags::Storage;
             }
 
             try_all_memory_types(

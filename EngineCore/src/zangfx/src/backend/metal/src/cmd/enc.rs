@@ -58,14 +58,16 @@ crate trait UseResources {
     fn use_metal_heaps(&self, heaps: &[metal::MTLHeap]);
 
     fn use_gfx_resource(&self, usage: command::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
-        let metal_usage = usage
-            .iter()
-            .map(|x| match x {
-                command::ResourceUsage::Read => metal::MTLResourceUsageRead,
-                command::ResourceUsage::Write => metal::MTLResourceUsageWrite,
-                command::ResourceUsage::Sample => metal::MTLResourceUsageSample,
-            })
-            .fold(MTLResourceUsage::empty(), |x, y| x | y);
+        let mut metal_usage = MTLResourceUsage::empty();
+        if usage.intersects(command::ResourceUsageFlags::Read) {
+            metal_usage |= metal::MTLResourceUsageRead;
+        }
+        if usage.intersects(command::ResourceUsageFlags::Write) {
+            metal_usage |= metal::MTLResourceUsageWrite;
+        }
+        if usage.intersects(command::ResourceUsageFlags::Sample) {
+            metal_usage |= metal::MTLResourceUsageSample;
+        }
 
         let mut metal_resources: ArrayVec<[_; 256]> = ArrayVec::new();
         let mut chunk_metal_usage = metal_usage;

@@ -8,7 +8,7 @@ edition = "2018"
 zangfx_common = { path = "../../common" }
 zangfx_base = { path = "../../base" }
 zangfx_metal-rs = { path = "src/metal-rs"}
-ngsenumflags = { path = "../../../../support/ngsenumflags" }
+flags-macro = "0.1.3"
 zangfx_spirv-cross = { path = "src/spirv-cross" }
 block = "0.1.5"
 rspirv = "0.5.1"

@@ -324,19 +324,19 @@ impl INgsPFCharStyleTrait for ComCharStyle {
 
     fn get_text_decoration(&self, retval: &mut ngsbase::TextDecoration) -> HResult {
         *retval = if let Some(styles) = self.with(|style| style.text_decoration) {
-            styles
-                .iter()
-                .fold(ngsbase::TextDecoration::empty(), |r, x| {
-                    r | match x {
-                        text::TextDecoration::Underline => ngsbase::TextDecorationItem::Underline,
-                        text::TextDecoration::Overline => ngsbase::TextDecorationItem::Overline,
-                        text::TextDecoration::Strikethrough => {
-                            ngsbase::TextDecorationItem::Strikethrough
-                        }
-                    }
-                })
+            let mut ret = ngsbase::TextDecoration::empty();
+            if styles.intersects(text::TextDecorationFlags::Underline) {
+                ret |= ngsbase::TextDecoration::Underline;
+            }
+            if styles.intersects(text::TextDecorationFlags::Overline) {
+                ret |= ngsbase::TextDecoration::Overline;
+            }
+            if styles.intersects(text::TextDecorationFlags::Strikethrough) {
+                ret |= ngsbase::TextDecoration::Strikethrough;
+            }
+            ret
         } else {
-            ngsbase::TextDecorationItem::Inherited.into()
+            ngsbase::TextDecoration::Inherited
         };
         hresults::E_OK
     }
@@ -344,25 +344,20 @@ impl INgsPFCharStyleTrait for ComCharStyle {
     fn set_text_decoration(&self, value: ngsbase::TextDecoration) -> HResult {
         let translated;
 
-        if value.contains(ngsbase::TextDecorationItem::Inherited) {
+        if value.contains(ngsbase::TextDecoration::Inherited) {
             translated = None;
         } else {
-            translated = Some(
-                value
-                    .iter()
-                    .fold(text::TextDecorationFlags::empty(), |r, x| {
-                        r | match x {
-                            ngsbase::TextDecorationItem::Underline => {
-                                text::TextDecoration::Underline
-                            }
-                            ngsbase::TextDecorationItem::Overline => text::TextDecoration::Overline,
-                            ngsbase::TextDecorationItem::Strikethrough => {
-                                text::TextDecoration::Strikethrough
-                            }
-                            ngsbase::TextDecorationItem::Inherited => unreachable!(),
-                        }
-                    }),
-            );
+            let mut ret = text::TextDecorationFlags::empty();
+            if value.contains(ngsbase::TextDecoration::Underline) {
+                ret |= text::TextDecorationFlags::Underline;
+            }
+            if value.contains(ngsbase::TextDecoration::Overline) {
+                ret |= text::TextDecorationFlags::Overline;
+            }
+            if value.contains(ngsbase::TextDecoration::Strikethrough) {
+                ret |= text::TextDecorationFlags::Strikethrough;
+            }
+            translated = Some(ret);
         }
 
         self.with(|style| {

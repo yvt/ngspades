@@ -75,16 +75,16 @@ pub fn cmdqueue_create_encoder<T: TestDriver>(driver: T) {
             let mut buffer = queue.new_cmd_buffer().unwrap();
 
             let caps = queue_family.caps;
-            if caps.intersects(gfx::limits::QueueFamilyCaps::Render) {
+            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::Render) {
                 println!("- Skipping a render encoder");
                 // Starting a render encoder requires other multiple structures
                 // to be set up -- let's not do it here
             }
-            if caps.intersects(gfx::limits::QueueFamilyCaps::Compute) {
+            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::Compute) {
                 println!("- Creating a compute encoder");
                 buffer.encode_compute();
             }
-            if caps.intersects(gfx::limits::QueueFamilyCaps::Copy) {
+            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::Copy) {
                 println!("- Creating a copy encoder");
                 buffer.encode_copy();
             }
@@ -159,12 +159,12 @@ pub fn cmdqueue_buffer_noop_multiple_completes<T: TestDriver>(driver: T) {
         println!("- Encoding 1");
         {
             let e = buffer1.encode_copy();
-            e.update_fence(&fence, gfx::AccessType::max_bitflag());
+            e.update_fence(&fence, gfx::AccessTypeFlags::all());
         }
         println!("- Encoding 2");
         {
             let e = buffer2.encode_copy();
-            e.wait_fence(&fence, gfx::AccessType::max_bitflag());
+            e.wait_fence(&fence, gfx::AccessTypeFlags::all());
         }
 
         println!("- Installing a completion handler");
@@ -199,11 +199,11 @@ pub fn cmdqueue_buffer_fence_update_wait_completes<T: TestDriver>(driver: T) {
         // Update and wait on a fence from the same command buffer.
         {
             let e = buffer.encode_copy();
-            e.update_fence(&fence, gfx::AccessType::max_bitflag());
+            e.update_fence(&fence, gfx::AccessTypeFlags::all());
         }
         {
             let e = buffer.encode_copy();
-            e.wait_fence(&fence, gfx::AccessType::max_bitflag());
+            e.wait_fence(&fence, gfx::AccessTypeFlags::all());
         }
 
         println!("- Installing a completion handler");

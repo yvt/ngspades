@@ -13,17 +13,15 @@ pub struct ENetPacket {
     pub userData: *mut c_void,
 }
 
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
-pub enum ENetPacketFlag {
-    Reliable = 1,
-    Unsequenced = 0b10,
-    NoAllocate = 0b100,
-    UnreliableFragment = 0b1000,
-    Sent = 0b100000000,
+bitflags! {
+    pub struct ENetPacketFlags: u32 {
+        const Reliable = 1;
+        const Unsequenced = 0b10;
+        const NoAllocate = 0b100;
+        const UnreliableFragment = 0b1000;
+        const Sent = 0b100000000;
+    }
 }
-
-pub type ENetPacketFlags = ::ngsenumflags::BitFlags<ENetPacketFlag>;
 
 extern "C" {
     pub fn enet_crc32(buffers: *const ENetBuffer, bufferCount: size_t) -> uint32_t;

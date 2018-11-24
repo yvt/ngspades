@@ -9,7 +9,7 @@ extern crate include_data;
 extern crate ngspf;
 extern crate refeq;
 #[macro_use]
-extern crate ngsenumflags;
+extern crate flags_macro;
 
 use ngspf::viewport::zangfx::base as gfx;
 use ngspf::viewport::zangfx::utils as gfxut;
@@ -27,7 +27,7 @@ use ngspf::cggeom::Box2;
 use ngspf::prelude::*;
 use ngspf::viewport::{
     LayerBuilder, LayerContents, RootRef, VirtualKeyCode, WindowBuilder, WindowEvent,
-    WindowFlagsBit, WindowRef, WorkspaceBuilder,
+    WindowFlags, WindowRef, WorkspaceBuilder,
 };
 
 mod triangle {
@@ -195,15 +195,15 @@ mod triangle {
             let buffer = device
                 .build_buffer()
                 .size(size as u64)
-                .usage(flags![gfx::BufferUsage::{Vertex}])
+                .usage(gfx::BufferUsageFlags::Vertex)
                 .build()
                 .unwrap();
 
             let memory_type = device
                 .choose_memory_type(
                     buffer.get_memory_req().unwrap().memory_types,
-                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
-                    flags![gfx::MemoryTypeCaps::{HostVisible | HostCoherent}],
+                    flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+                    flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
                 )
                 .unwrap();
 
@@ -264,7 +264,7 @@ mod triangle {
                 e.set_viewports(0, &[viewport]);
                 e.draw(0..3, frame_index..frame_index + 1); // easiest way to pass a number
 
-                e.update_fence(&context.fence, flags![gfx::AccessType::{ColorWrite}]);
+                e.update_fence(&context.fence, gfx::AccessTypeFlags::ColorWrite);
             }
             buffer.commit().unwrap();
 
@@ -296,7 +296,7 @@ fn main() {
             .build(&context);
 
         window = WindowBuilder::new()
-            .flags(WindowFlagsBit::Resizable)
+            .flags(WindowFlags::Resizable)
             .child(Some(image.into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop

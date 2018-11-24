@@ -219,7 +219,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
         let vertex_fn = vertex_shader.0.new_metal_function(
             &vertex_shader.1,
-            base::ShaderStage::Vertex,
+            base::ShaderStageFlags::Vertex,
             root_sig,
             shader_va_infos,
             *self.metal_device,
@@ -235,7 +235,7 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
 
             let fragment_fn = fragment_shader.0.new_metal_function(
                 &fragment_shader.1,
-                base::ShaderStage::Fragment,
+                base::ShaderStageFlags::Fragment,
                 root_sig,
                 ::std::iter::empty(),
                 *self.metal_device,
@@ -669,16 +669,16 @@ impl base::RasterizerColorTarget for RasterizerColorTarget {
         v: base::ColorChannelFlags,
     ) -> &mut dyn base::RasterizerColorTarget {
         let mut mask = metal::MTLColorWriteMaskNone;
-        if v.intersects(base::ColorChannel::Red) {
+        if v.intersects(base::ColorChannelFlags::Red) {
             mask |= metal::MTLColorWriteMaskRed;
         }
-        if v.intersects(base::ColorChannel::Green) {
+        if v.intersects(base::ColorChannelFlags::Green) {
             mask |= metal::MTLColorWriteMaskGreen;
         }
-        if v.intersects(base::ColorChannel::Blue) {
+        if v.intersects(base::ColorChannelFlags::Blue) {
             mask |= metal::MTLColorWriteMaskBlue;
         }
-        if v.intersects(base::ColorChannel::Alpha) {
+        if v.intersects(base::ColorChannelFlags::Alpha) {
             mask |= metal::MTLColorWriteMaskAlpha;
         }
         self.write_mask = mask;

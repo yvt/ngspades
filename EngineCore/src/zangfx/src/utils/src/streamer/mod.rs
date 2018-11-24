@@ -72,7 +72,6 @@
 //! other means.
 //!
 use futures::{prelude::*, task, try_ready, Future, Poll, Sink};
-use ngsenumflags::flags;
 use std::{
     borrow::Borrow,
     collections::VecDeque,
@@ -191,7 +190,7 @@ impl<G> Builder<G> {
             .build_dynamic_heap()
             .memory_type(
                 self.device
-                    .try_choose_memory_type_shared(flags![base::BufferUsage::{CopyRead}])?
+                    .try_choose_memory_type_shared(base::BufferUsageFlags::CopyRead)?
                     .unwrap(),
             )
             .size(heap_size)
@@ -222,7 +221,7 @@ pub trait Request {
 
     /// Get the usage flags required for the staging buffer.
     fn staging_buffer_usage(&self) -> base::BufferUsageFlags {
-        flags![base::BufferUsage::{CopyRead}]
+        base::BufferUsageFlags::CopyRead
     }
 
     /// Retrieve the data stored in the staging buffer after the device operation.

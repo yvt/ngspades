@@ -145,7 +145,7 @@ pub mod di {
 use arrayvec::ArrayVec;
 use either::Either;
 use futures::{executor, future, prelude::*, stream};
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::{
     pin::Unpin,
     sync::{Arc, Mutex},
@@ -285,7 +285,7 @@ pub trait StaticBufferSource:
     std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug + Unpin
 {
     fn usage(&self) -> gfx::BufferUsageFlags {
-        flags![gfx::BufferUsage::{CopyWrite | Uniform}]
+        flags![gfx::BufferUsageFlags::{CopyWrite | Uniform}]
     }
 
     fn bytes(&self) -> &[u8];
@@ -321,8 +321,8 @@ impl StaticBuffer {
             let memory_type = device
                 .try_choose_memory_type(
                     &buffer,
-                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                    flags![gfx::MemoryTypeCaps::{}],
+                    flags![gfx::MemoryTypeCapsFlags::{DeviceLocal}],
+                    flags![gfx::MemoryTypeCapsFlags::{}],
                 )?
                 .unwrap();
 
@@ -355,7 +355,7 @@ pub unsafe trait StaticImageSource:
     std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug + Unpin
 {
     fn usage(&self) -> gfx::ImageUsageFlags {
-        flags![gfx::ImageUsage::{CopyWrite | Sampled}]
+        flags![gfx::ImageUsageFlags::{CopyWrite | Sampled}]
     }
 
     fn extents(&self) -> ImageExtents;
@@ -415,8 +415,8 @@ impl StaticImage {
             let memory_type = device
                 .try_choose_memory_type(
                     &image,
-                    flags![gfx::MemoryTypeCaps::{DeviceLocal}],
-                    flags![gfx::MemoryTypeCaps::{}],
+                    flags![gfx::MemoryTypeCapsFlags::{DeviceLocal}],
+                    flags![gfx::MemoryTypeCapsFlags::{}],
                 )?
                 .unwrap();
 
@@ -452,7 +452,7 @@ struct QuadVertices;
 
 impl StaticBufferSource for QuadVertices {
     fn usage(&self) -> gfx::BufferUsageFlags {
-        flags![gfx::BufferUsage::{CopyWrite | Vertex}]
+        flags![gfx::BufferUsageFlags::{CopyWrite | Vertex}]
     }
 
     fn bytes(&self) -> &[u8] {
@@ -466,7 +466,7 @@ struct HugeTriangleVertices;
 
 impl StaticBufferSource for HugeTriangleVertices {
     fn usage(&self) -> gfx::BufferUsageFlags {
-        flags![gfx::BufferUsage::{CopyWrite | Vertex}]
+        flags![gfx::BufferUsageFlags::{CopyWrite | Vertex}]
     }
 
     fn bytes(&self) -> &[u8] {

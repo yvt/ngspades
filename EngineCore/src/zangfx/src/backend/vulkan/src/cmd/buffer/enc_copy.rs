@@ -5,7 +5,7 @@
 //
 use ash::version::*;
 use ash::vk;
-use ngsenumflags::flags;
+use flags_macro::flags;
 use std::ops::Range;
 
 use zangfx_base as base;
@@ -38,7 +38,7 @@ impl CmdBufferData {
             return self.use_image_for_pass(
                 layout,
                 layout,
-                flags![base::AccessType::{CopyRead | CopyWrite}],
+                flags![base::AccessTypeFlags::{CopyRead | CopyWrite}],
                 image,
             );
         }
@@ -97,7 +97,7 @@ impl CmdBufferData {
                 unit_index: i,
                 initial_layout: layout,
                 final_layout: layout,
-                access: flags![base::AccessType::{CopyRead | CopyWrite}],
+                access: flags![base::AccessTypeFlags::{CopyRead | CopyWrite}],
             });
 
             op.units[i] = Some(ImageUnitOp {

@@ -16,4 +16,4 @@ zangfx_vulkan = { path = "src/backend/vulkan" }
 zangfx_metal = { path = "src/backend/metal" }
 
 [dev-dependencies]
-ngsenumflags = { path = "../support/ngsenumflags" }
+flags-macro = "0.1.2"

@@ -7,14 +7,14 @@
 //! submission.
 use ash::version::*;
 use ash::{prelude::VkResult, vk};
-use ngsenumflags::flags;
+use flags_macro::flags;
 use smallvec::SmallVec;
 
 use zangfx_base as base;
 
 use crate::device::DeviceRef;
 use crate::image::ImageStateAddresser;
-use crate::limits::DeviceTrait;
+use crate::limits::DeviceTraitFlags;
 use crate::resstate::Queue;
 use crate::utils::{
     translate_access_type_flags, translate_image_subresource_range, translate_pipeline_stage_flags,
@@ -118,7 +118,7 @@ impl CmdBufferData {
                     .expect("attempted to wait on an unsignalled fence");
                 event_src_access |= src_access;
 
-                let src_stages = base::AccessType::union_supported_stages(src_access);
+                let src_stages = src_access.supported_stages();
                 event_src_stages |= if src_stages.is_empty() {
                     vk::PipelineStageFlags::TOP_OF_PIPE
                 } else {
@@ -176,9 +176,9 @@ impl CmdBufferData {
 
             // Events are not supported by MoltenVK and will cause
             // a `FeatureNotPresent` error
-            if vk_events.len() > 0 && !traits.intersects(DeviceTrait::MoltenVK) {
+            if vk_events.len() > 0 && !traits.intersects(DeviceTraitFlags::MoltenVK) {
                 let src_stage = event_src_stages;
-                let dst_stage = base::AccessType::union_supported_stages(barrier_dst_access);
+                let dst_stage = barrier_dst_access.supported_stages();
 
                 // This might be too conservative especially if there are image
                 // layout transitions with overlapping access type flags.
@@ -191,7 +191,7 @@ impl CmdBufferData {
                     src_access_mask: translate_access_type_flags(
                         // Read-to-write hazards need only pipeline barrier to deal with
                         barrier_src_access
-                            & flags![base::AccessType::{VertexWrite | FragmentWrite |
+                            & flags![base::AccessTypeFlags::{VertexWrite | FragmentWrite |
                             ColorWrite | DsWrite | CopyWrite | ComputeWrite}],
                     ),
                     dst_access_mask: translate_access_type_flags(barrier_dst_access),
@@ -221,7 +221,7 @@ impl CmdBufferData {
                     );
                 }
             } else if vk_image_barriers.len() > 0 {
-                let dst_stage = base::AccessType::union_supported_stages(barrier_dst_access);
+                let dst_stage = barrier_dst_access.supported_stages();
 
                 unsafe {
                     vk_device.cmd_pipeline_barrier(

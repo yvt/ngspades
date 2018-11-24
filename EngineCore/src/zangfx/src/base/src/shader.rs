@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Builder for shader library objects, and other relevant types.
-use {ngsenumflags::BitFlags, ngsenumflags_derive::NgsEnumFlags};
+use bitflags::bitflags;
 
 use crate::{Object, Result};
 
@@ -48,12 +48,10 @@ pub trait LibraryBuilder: Object {
     fn build(&mut self) -> Result<LibraryRef>;
 }
 
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u8)]
-pub enum ShaderStage {
-    Vertex = 0b001,
-    Fragment = 0b010,
-    Compute = 0b100,
+bitflags! {
+    pub struct ShaderStageFlags: u8 {
+        const Vertex = 0b001;
+        const Fragment = 0b010;
+        const Compute = 0b100;
+    }
 }
-
-pub type ShaderStageFlags = BitFlags<ShaderStage>;

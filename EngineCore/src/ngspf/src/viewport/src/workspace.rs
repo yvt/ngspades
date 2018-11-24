@@ -9,11 +9,10 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use cgmath::Vector2;
-use ngsenumflags::BitFlags;
 use winit::{self, dpi::LogicalPosition, dpi::LogicalSize, EventsLoop};
 
 use super::compositor::{CompositeContext, Compositor, CompositorWindow};
-use super::{Window, WindowActionBit, WindowFlagsBit};
+use super::{Window, WindowActionFlags, WindowFlags};
 use core::prelude::*;
 use core::{
     Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame, ProducerDataCell,
@@ -255,7 +254,7 @@ impl WindowSet {
         winit_event: winit::WindowEvent,
         frame: &mut PresenterFrame,
     ) {
-        use super::{KeyModifier, KeyModifierFlags, MouseButton, MousePosition, WindowEvent};
+        use super::{KeyModifierFlags, MouseButton, MousePosition, WindowEvent};
 
         if let Some((node_ref, winit_win)) = self.node_ref_and_winit_win_with_window_id(win_id) {
             let win: &Window = node_ref.downcast_ref().unwrap();
@@ -307,16 +306,16 @@ impl WindowSet {
                     input.virtual_keycode.map(|vk| {
                         let mut keymod = KeyModifierFlags::empty();
                         if input.modifiers.shift {
-                            keymod |= KeyModifier::Shift;
+                            keymod |= KeyModifierFlags::Shift;
                         }
                         if input.modifiers.ctrl {
-                            keymod |= KeyModifier::Control;
+                            keymod |= KeyModifierFlags::Control;
                         }
                         if input.modifiers.alt {
-                            keymod |= KeyModifier::Alt;
+                            keymod |= KeyModifierFlags::Alt;
                         }
                         if input.modifiers.logo {
-                            keymod |= KeyModifier::Meta;
+                            keymod |= KeyModifierFlags::Meta;
                         }
 
                         let pressed = input.state == winit::ElementState::Pressed;
@@ -388,9 +387,9 @@ impl WindowSet {
                 .map(|x| x.cast::<f64>().unwrap());
 
             let mut builder = winit::WindowBuilder::new()
-                .with_transparency(flags.contains(WindowFlagsBit::Transparent))
-                .with_decorations(!flags.contains(WindowFlagsBit::Borderless))
-                .with_resizable(flags.contains(WindowFlagsBit::Resizable))
+                .with_transparency(flags.contains(WindowFlags::Transparent))
+                .with_decorations(!flags.contains(WindowFlags::Borderless))
+                .with_resizable(flags.contains(WindowFlags::Resizable))
                 .with_title(title)
                 .with_dimensions(LogicalSize {
                     width: inner_size.x,
@@ -416,7 +415,7 @@ impl WindowSet {
             let winit_window_id = winit_window.id();
 
             let wm_window_options = wsi::WindowOptions {
-                transparent: flags.contains(WindowFlagsBit::Transparent),
+                transparent: flags.contains(WindowFlags::Transparent),
             };
 
             let surface =
@@ -451,9 +450,9 @@ impl WindowSet {
             use std::mem::replace;
             let action = replace(
                 window.action.write_presenter(frame).unwrap(),
-                BitFlags::empty(),
+                WindowActionFlags::empty(),
             );
-            if action.contains(WindowActionBit::ChangeSize) {
+            if action.contains(WindowActionFlags::ChangeSize) {
                 let size = (window.size.read_presenter(frame).unwrap())
                     .cast::<f64>()
                     .unwrap();
@@ -476,7 +475,7 @@ impl WindowSet {
                     height: t.y,
                 }));
             }
-            if action.contains(WindowActionBit::ChangeTitle) {
+            if action.contains(WindowActionFlags::ChangeTitle) {
                 let new_value = window.title.read_presenter(frame).unwrap();
                 winit_window.set_title(new_value);
             }

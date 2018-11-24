@@ -67,11 +67,9 @@ impl command::CmdEncoder for RenderEncoder {
     }
 
     fn wait_fence(&mut self, fence: &base::FenceRef, dst_access: base::AccessTypeFlags) {
-        use zangfx_base::AccessType;
-
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
 
-        let stages = translate_render_stage(AccessType::union_supported_stages(dst_access));
+        let stages = translate_render_stage(dst_access.supported_stages());
         self.metal_encoder
             .wait_for_fence_before_stages(our_fence.metal_fence(), stages);
 
@@ -79,11 +77,9 @@ impl command::CmdEncoder for RenderEncoder {
     }
 
     fn update_fence(&mut self, fence: &base::FenceRef, src_access: base::AccessTypeFlags) {
-        use zangfx_base::AccessType;
-
         let our_fence = Fence::clone(fence.downcast_ref().expect("bad fence type"));
 
-        let stages = translate_render_stage(AccessType::union_supported_stages(src_access));
+        let stages = translate_render_stage(src_access.supported_stages());
         self.metal_encoder
             .update_fence_after_stages(our_fence.metal_fence(), stages);
 
