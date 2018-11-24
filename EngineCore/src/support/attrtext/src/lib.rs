@@ -7,9 +7,8 @@
 extern crate rgb;
 extern crate itertools;
 
-extern crate ngsenumflags;
 #[macro_use]
-extern crate ngsenumflags_derive;
+extern crate bitflags;
 
 extern crate opaque_typedef;
 #[macro_use]

@@ -3,7 +3,6 @@
 //
 // This source code is a part of Nightingales.
 //
-use ngsenumflags::BitFlags;
 use rgb::RGBA16;
 
 /// Sets of partially specified styling properties that can be constructed by
@@ -72,12 +71,10 @@ pub enum FontStyle {
     Oblique,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, NgsEnumFlags)]
-#[repr(u8)]
-pub enum TextDecoration {
-    Underline = 0b001,
-    Overline = 0b010,
-    Strikethrough = 0b100,
+bitflags! {
+    pub struct TextDecorationFlags: u8 {
+        const Underline = 0b001;
+        const Overline = 0b010;
+        const Strikethrough = 0b100;
+    }
 }
-
-pub type TextDecorationFlags = BitFlags<TextDecoration>;
