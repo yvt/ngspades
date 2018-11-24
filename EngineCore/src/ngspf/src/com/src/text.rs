@@ -324,17 +324,17 @@ impl INgsPFCharStyleTrait for ComCharStyle {
 
     fn get_text_decoration(&self, retval: &mut ngsbase::TextDecoration) -> HResult {
         *retval = if let Some(styles) = self.with(|style| style.text_decoration) {
-            styles
-                .iter()
-                .fold(ngsbase::TextDecoration::empty(), |r, x| {
-                    r | match x {
-                        text::TextDecoration::Underline => ngsbase::TextDecorationItem::Underline,
-                        text::TextDecoration::Overline => ngsbase::TextDecorationItem::Overline,
-                        text::TextDecoration::Strikethrough => {
-                            ngsbase::TextDecorationItem::Strikethrough
-                        }
-                    }
-                })
+            let mut ret = ngsbase::TextDecoration::empty();
+            if styles.intersects(text::TextDecorationFlags::Underline) {
+                ret |= ngsbase::TextDecorationItem::Underline;
+            }
+            if styles.intersects(text::TextDecorationFlags::Overline) {
+                ret |= ngsbase::TextDecorationItem::Overline;
+            }
+            if styles.intersects(text::TextDecorationFlags::Strikethrough) {
+                ret |= ngsbase::TextDecorationItem::Strikethrough;
+            }
+            ret
         } else {
             ngsbase::TextDecorationItem::Inherited.into()
         };
@@ -353,11 +353,11 @@ impl INgsPFCharStyleTrait for ComCharStyle {
                     .fold(text::TextDecorationFlags::empty(), |r, x| {
                         r | match x {
                             ngsbase::TextDecorationItem::Underline => {
-                                text::TextDecoration::Underline
+                                text::TextDecorationFlags::Underline
                             }
-                            ngsbase::TextDecorationItem::Overline => text::TextDecoration::Overline,
+                            ngsbase::TextDecorationItem::Overline => text::TextDecorationFlags::Overline,
                             ngsbase::TextDecorationItem::Strikethrough => {
-                                text::TextDecoration::Strikethrough
+                                text::TextDecorationFlags::Strikethrough
                             }
                             ngsbase::TextDecorationItem::Inherited => unreachable!(),
                         }

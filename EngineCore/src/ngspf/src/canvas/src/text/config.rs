@@ -9,7 +9,7 @@ use rgb::RGBA;
 use std::ops::Range;
 
 // Reuse useful definitions
-pub use attrtext::{FontStyle, TextDecoration, TextDecorationFlags};
+pub use attrtext::{FontStyle, TextDecorationFlags};
 
 /// A set of paragraph styles.
 #[derive(Debug, Clone, PartialEq)]
