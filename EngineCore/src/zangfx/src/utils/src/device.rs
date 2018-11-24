@@ -30,7 +30,7 @@ pub trait DeviceUtils: base::Device {
     ///     # ) -> Result<()> {
     ///     let buffer = device.build_buffer()
     ///         .size(64 as u64)
-    ///         .usage(flags![BufferUsage::{Vertex}])
+    ///         .usage(flags![BufferUsageFlags::{Vertex}])
     ///         .build()?;
     ///
     ///     let memory_type = device
@@ -95,7 +95,7 @@ pub trait DeviceUtils: base::Device {
     ///     // Create a buffer. At this point, this buffer is not bound to any heap yet.
     ///     let buffer = device.build_buffer()
     ///         .size(64 as u64)
-    ///         .usage(flags![BufferUsage::{Vertex}])
+    ///         .usage(flags![BufferUsageFlags::{Vertex}])
     ///         .build()?;
     ///
     ///     // Figure out the best memory type for this buffer
@@ -125,7 +125,7 @@ pub trait DeviceUtils: base::Device {
     ///     # ) -> Result<()> {
     ///     let memory_type = device
     ///         .try_choose_memory_type(
-    ///             flags![BufferUsage::{Vertex}],
+    ///             flags![BufferUsageFlags::{Vertex}],
     ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
     ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
     ///         )?
@@ -241,7 +241,7 @@ pub trait DeviceUtils: base::Device {
     ///     #     device: &Device,
     ///     # ) -> Result<()> {
     ///     let memory_type = device
-    ///         .try_choose_memory_type_shared(flags![BufferUsage::{Vertex}])?
+    ///         .try_choose_memory_type_shared(flags![BufferUsageFlags::{Vertex}])?
     ///         .expect("suitable memory type was not found - this should never happen!");
     ///     # Ok(())
     ///     # }
