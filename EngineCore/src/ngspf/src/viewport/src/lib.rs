@@ -18,7 +18,9 @@ extern crate refeq;
 pub extern crate rgb;
 extern crate winit;
 
-#[macro_use]
+#[macro_use(flags)]
+extern crate flags_macro;
+
 extern crate ngsenumflags;
 #[macro_use]
 extern crate ngsenumflags_derive;

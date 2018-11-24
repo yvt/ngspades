@@ -62,7 +62,7 @@ pub struct PortRenderContext {
 pub trait PortInstance: fmt::Debug + Send + Sync + 'static {
     /// The usage of the backing store image (`PortRenderContext::image`).
     fn image_usage(&self) -> gfx::ImageUsageFlags {
-        flags![gfx::ImageUsage::{Render}]
+        gfx::ImageUsageFlags::Render
     }
 
     /// The format of the backing store image (`PortRenderContext::image`).

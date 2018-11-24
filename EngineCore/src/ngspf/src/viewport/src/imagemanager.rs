@@ -274,7 +274,7 @@ impl ImageManager {
                     .build_image()
                     .extents(&image_data.size().cast::<u32>().unwrap()[0..2])
                     .format(gfx::ImageFormat::SrgbRgba8)
-                    .usage(flags![gfx::ImageUsage::{CopyWrite | Sampled}])
+                    .usage(flags![gfx::ImageUsageFlags::{CopyWrite | Sampled}])
                     .build()?;
 
                 Ok(gfx_image)
