@@ -18,8 +18,6 @@ members = [
     "src/support/itervalues",
     "src/support/itervalues/itervalues_derive",
     "src/support/iterpool",
-    "src/support/ngsenumflags",
-    "src/support/ngsenumflags/ngsenumflags_derive",
     "src/support/include_data",
     "src/support/injector",
     "src/support/prebuild-glslang",
