@@ -8,7 +8,7 @@ use crate::passman;
 #[derive(Debug)]
 struct MyResource(usize);
 
-impl passman::TransientResource for MyResource {
+impl passman::Resource for MyResource {
     fn resource_bind(&self) -> Option<passman::ResourceBind<'_>> {
         None
     }
@@ -23,17 +23,17 @@ fn test() {
     let res2 = builder.define_resource(MyResource(3));
 
     builder.define_pass(passman::PassInfo {
-        transient_resource_uses: vec![res0.use_as_producer()],
+        resource_uses: vec![res0.use_as_producer()],
         factory: Box::new(|_| unreachable!()),
     });
 
     builder.define_pass(passman::PassInfo {
-        transient_resource_uses: vec![res0.use_as_consumer(), res1.use_as_producer()],
+        resource_uses: vec![res0.use_as_consumer(), res1.use_as_producer()],
         factory: Box::new(|_| unreachable!()),
     });
 
     builder.define_pass(passman::PassInfo {
-        transient_resource_uses: vec![
+        resource_uses: vec![
             res0.use_as_consumer(),
             res1.use_as_consumer(),
             res2.use_as_producer(),
@@ -69,12 +69,12 @@ fn panic_on_cyclic_dependency() {
     let res1 = builder.define_resource(MyResource(2));
 
     builder.define_pass(passman::PassInfo {
-        transient_resource_uses: vec![res0.use_as_consumer(), res1.use_as_producer()],
+        resource_uses: vec![res0.use_as_consumer(), res1.use_as_producer()],
         factory: Box::new(|_| unreachable!()),
     });
 
     builder.define_pass(passman::PassInfo {
-        transient_resource_uses: vec![res1.use_as_consumer(), res0.use_as_producer()],
+        resource_uses: vec![res1.use_as_consumer(), res0.use_as_producer()],
         factory: Box::new(|_| unreachable!()),
     });
 

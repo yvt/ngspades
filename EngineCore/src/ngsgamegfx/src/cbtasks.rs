@@ -12,7 +12,7 @@ use zangfx::{
 };
 
 use crate::{
-    passman::{ScheduleBuilder, ScheduleRunner, TransientResourceId},
+    passman::{ResourceId, ScheduleBuilder, ScheduleRunner},
     taskman::{CellId, CellRef, CellUse, GraphBuilder, GraphContext, Task, TaskInfo},
 };
 
@@ -96,7 +96,7 @@ impl CmdBufferTaskBuilder {
         device: &gfx::DeviceRef,
         queue: &gfx::CmdQueueRef,
         graph_builder: &mut GraphBuilder<gfx::Error>,
-        output_resources: &[TransientResourceId],
+        output_resources: &[ResourceId],
     ) -> gfx::Result<CmdBufferTaskCellSet> {
         // Finalize the GPU task graph
         let schedule = self.schedule_builder.schedule(output_resources);

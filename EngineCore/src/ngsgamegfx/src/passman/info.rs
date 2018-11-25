@@ -10,11 +10,11 @@ use zangfx::base as gfx;
 use super::scheduler::PassInstantiationContext;
 use crate::utils::any::AsAnySendSync;
 
-pub type TransientResourceRef = Arc<dyn TransientResource>;
+pub type ResourceRef = Arc<dyn Resource>;
 
 /// Represents a pass.
 pub struct PassInfo<C: ?Sized> {
-    pub transient_resource_uses: Vec<TransientResourceUse>,
+    pub resource_uses: Vec<ResourceUse>,
     pub factory:
         Box<dyn FnOnce(&PassInstantiationContext) -> gfx::Result<Box<dyn Pass<C>>> + 'static>,
 }
@@ -22,15 +22,15 @@ pub struct PassInfo<C: ?Sized> {
 impl<C: ?Sized> fmt::Debug for PassInfo<C> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("PassInfo")
-            .field("transient_resource_uses", &self.transient_resource_uses)
+            .field("resource_uses", &self.resource_uses)
             .field("factory", &())
             .finish()
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TransientResourceUse {
-    pub resource: TransientResourceId,
+pub struct ResourceUse {
+    pub resource: ResourceId,
 
     /// Indicates whether this use indicates the production of the resource
     /// contents.
@@ -47,25 +47,25 @@ pub struct TransientResourceUse {
     pub aliasable: bool,
 }
 
-impl TransientResourceId {
-    pub fn use_as_producer(self) -> TransientResourceUse {
-        TransientResourceUse {
+impl ResourceId {
+    pub fn use_as_producer(self) -> ResourceUse {
+        ResourceUse {
             resource: self,
             produce: true,
             aliasable: true,
         }
     }
 
-    pub fn use_as_consumer(self) -> TransientResourceUse {
-        TransientResourceUse {
+    pub fn use_as_consumer(self) -> ResourceUse {
+        ResourceUse {
             resource: self,
             produce: false,
             aliasable: true,
         }
     }
 
-    pub fn use_as_non_aliasable(self) -> TransientResourceUse {
-        TransientResourceUse {
+    pub fn use_as_non_aliasable(self) -> ResourceUse {
+        ResourceUse {
             resource: self,
             produce: true,
             aliasable: false,
@@ -74,7 +74,7 @@ impl TransientResourceId {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub struct TransientResourceId(pub(super) usize);
+pub struct ResourceId(pub(super) usize);
 
 pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
     // TODO: Add context data?
@@ -114,13 +114,13 @@ pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
 }
 
 /// Represents a single transient resource.
-pub trait TransientResource: AsAnySendSync + std::fmt::Debug {
+pub trait Resource: AsAnySendSync + std::fmt::Debug {
     /// Retrieve a `ResourceBind` to be bound to a heap when a graph is
     /// instantiated.
     fn resource_bind(&self) -> Option<ResourceBind<'_>>;
 }
 
-impl dyn TransientResource {
+impl dyn Resource {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         (*self).as_any().downcast_ref()
     }
@@ -139,18 +139,18 @@ pub struct ResourceBind<'a> {
 
 /// Represents a single image transient resource.
 #[derive(Debug)]
-pub struct ImageTransientResource {
+pub struct ImageResource {
     pub image: gfx::ImageRef,
     pub memory_type: Option<gfx::MemoryType>,
 }
 
-impl ImageTransientResource {
+impl ImageResource {
     pub fn new(image: gfx::ImageRef, memory_type: Option<gfx::MemoryType>) -> Self {
         Self { image, memory_type }
     }
 }
 
-impl TransientResource for ImageTransientResource {
+impl Resource for ImageResource {
     fn resource_bind(&self) -> Option<ResourceBind<'_>> {
         if let Some(memory_type) = self.memory_type {
             Some(ResourceBind {
@@ -165,12 +165,12 @@ impl TransientResource for ImageTransientResource {
 
 /// Represents a single buffer transient resource.
 #[derive(Debug)]
-pub struct BufferTransientResource {
+pub struct BufferResource {
     pub buffer: gfx::BufferRef,
     pub memory_type: Option<gfx::MemoryType>,
 }
 
-impl BufferTransientResource {
+impl BufferResource {
     pub fn new(buffer: gfx::BufferRef, memory_type: Option<gfx::MemoryType>) -> Self {
         Self {
             buffer,
@@ -179,7 +179,7 @@ impl BufferTransientResource {
     }
 }
 
-impl TransientResource for BufferTransientResource {
+impl Resource for BufferResource {
     fn resource_bind(&self) -> Option<ResourceBind<'_>> {
         if let Some(memory_type) = self.memory_type {
             Some(ResourceBind {

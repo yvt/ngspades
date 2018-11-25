@@ -12,7 +12,7 @@ use std::{
 
 use zangfx::base as gfx;
 
-use super::{Pass, PassInfo, TransientResource, TransientResourceId, TransientResourceRef};
+use super::{Pass, PassInfo, Resource, ResourceId, ResourceRef};
 use crate::utils::iterator_mut::{IteratorMut, IteratorToIteratorMutExt};
 
 #[cfg(test)]
@@ -72,7 +72,7 @@ impl<C: ?Sized> From<PassInfo<C>> for BuilderPass<C> {
 
 #[derive(Debug)]
 struct BuilderResource {
-    object: Box<dyn TransientResource>,
+    object: Box<dyn Resource>,
 
     // The rest of the fields are used as a temporary storage for
     // `ScheduleBuilder::schedule`
@@ -92,8 +92,8 @@ struct BuilderResource {
     aliasable: bool,
 }
 
-impl From<Box<dyn TransientResource>> for BuilderResource {
-    fn from(x: Box<dyn TransientResource>) -> Self {
+impl From<Box<dyn Resource>> for BuilderResource {
+    fn from(x: Box<dyn Resource>) -> Self {
         Self {
             object: x,
             is_output: false,
@@ -115,13 +115,13 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 
     /// Define a resource.
     ///
-    /// Returns the `TransientResourceId` representing the newly defined
-    /// resource. The returned `TransientResourceId` only pertains to `self`.
-    pub fn define_resource<T: TransientResource>(&mut self, resource: T) -> TransientResourceId {
+    /// Returns the `ResourceId` representing the newly defined
+    /// resource. The returned `ResourceId` only pertains to `self`.
+    pub fn define_resource<T: Resource>(&mut self, resource: T) -> ResourceId {
         let next_index = self.resources.len();
         self.resources
-            .push((Box::new(resource) as Box<dyn TransientResource>).into());
-        TransientResourceId(next_index)
+            .push((Box::new(resource) as Box<dyn Resource>).into());
+        ResourceId(next_index)
     }
 
     /// Replace a resource specified by `id` with `new_resource`.
@@ -129,11 +129,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
     /// `T`, the type of `new_resource`, must match the original type
     /// of the resource. In other words, this method cannot change the type of
     /// a resource.
-    pub fn replace_resource<T: TransientResource>(
-        &mut self,
-        id: TransientResourceId,
-        new_resource: T,
-    ) -> T {
+    pub fn replace_resource<T: Resource>(&mut self, id: ResourceId, new_resource: T) -> T {
         let ref mut resource_box = self.resources[id.0].object;
         let resource_any: &mut (dyn Any + Send + Sync) = (**resource_box).as_any_mut();
         let resource_cell: &mut T = resource_any.downcast_mut().expect("type mismatch");
@@ -152,7 +148,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
     /// Will panic if there exists no ordering of passes that agrees with
     /// their resource dependencies.
     ///
-    pub fn schedule(mut self, output_resources: &[TransientResourceId]) -> Schedule<C> {
+    pub fn schedule(mut self, output_resources: &[ResourceId]) -> Schedule<C> {
         use std::mem::replace;
 
         // Nonce token
@@ -181,7 +177,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
         let mut pass_order = Vec::with_capacity(self.passes.len());
 
         for pass in &self.passes {
-            for res_use in &pass.info().transient_resource_uses {
+            for res_use in &pass.info().resource_uses {
                 if !res_use.produce {
                     self.resources[res_use.resource.0].num_consuming_passes += 1;
                 }
@@ -206,7 +202,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 
                 has_remaining_passes = true;
 
-                for res_use in &pass.info().transient_resource_uses {
+                for res_use in &pass.info().resource_uses {
                     if res_use.produce
                         && self.resources[res_use.resource.0].num_consuming_passes > 0
                     {
@@ -246,7 +242,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
                     .enumerate()
                     .min_by_key(|&(_, &i)| {
                         let ref pass = self.passes[i];
-                        (pass.info().transient_resource_uses)
+                        (pass.info().resource_uses)
                             .iter()
                             .filter_map(|res_use| {
                                 let ref res: BuilderResource = self.resources[res_use.resource.0];
@@ -274,7 +270,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 
             pass.scheduled = true;
 
-            for res_use in &pass.info().transient_resource_uses {
+            for res_use in &pass.info().resource_uses {
                 if !res_use.produce {
                     let ref mut res: BuilderResource = self.resources[res_use.resource.0];
                     res.num_consuming_passes -= 1;
@@ -361,7 +357,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
         for (i, &pass_i) in pass_order.iter().enumerate() {
             let ref mut pass: BuilderPass<C> = self.passes[pass_i];
 
-            for res_use in &pass.info().transient_resource_uses {
+            for res_use in &pass.info().resource_uses {
                 let ref mut res: BuilderResource = self.resources[res_use.resource.0];
 
                 if !res_use.aliasable {
@@ -383,7 +379,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
             // Generate a new `token`
             token += 1;
 
-            for r_use in self.passes[pass_i].info().transient_resource_uses.iter() {
+            for r_use in self.passes[pass_i].info().resource_uses.iter() {
                 let ref res: BuilderResource = self.resources[r_use.resource.0];
                 if !r_use.produce {
                     assert!(r_use.aliasable);
@@ -442,7 +438,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
             //
             // Extend the lifetimes of resources used by `i` to eliminate
             // any such explicit aliasing barriers.
-            let i_lifetime_end_min = (i_pass.info().transient_resource_uses)
+            let i_lifetime_end_min = (i_pass.info().resource_uses)
                 .iter()
                 .map(|res_use| self.resources[res_use.resource.0].lifetime.end)
                 .min()
@@ -462,7 +458,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 
             use std::cmp::max;
 
-            for res_use in &i_pass.info().transient_resource_uses {
+            for res_use in &i_pass.info().resource_uses {
                 let ref mut res: BuilderResource = self.resources[res_use.resource.0];
                 res.lifetime.end = max(res.lifetime.end, new_i_lifetime_end_min);
             }
@@ -512,7 +508,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 #[derive(Debug)]
 pub struct Schedule<C: ?Sized> {
     passes: Vec<SchedulePass<C>>,
-    resources: Vec<Box<dyn TransientResource>>,
+    resources: Vec<Box<dyn Resource>>,
 }
 
 #[derive(Debug)]
@@ -526,7 +522,7 @@ struct SchedulePass<C: ?Sized> {
 
 #[derive(Debug)]
 pub struct PassInstantiationContext<'a> {
-    resources: &'a [TransientResourceRef],
+    resources: &'a [ResourceRef],
 }
 
 impl<C: ?Sized> Schedule<C> {
@@ -569,8 +565,7 @@ impl<C: ?Sized> Schedule<C> {
             // Bound resources automatically keep a reference to a heap
         }
 
-        let resources: Vec<TransientResourceRef> =
-            self.resources.into_iter().map(Box::into).collect();
+        let resources: Vec<ResourceRef> = self.resources.into_iter().map(Box::into).collect();
 
         let context = PassInstantiationContext {
             resources: &resources[..],
@@ -598,7 +593,7 @@ impl<C: ?Sized> Schedule<C> {
 }
 
 impl<'a> PassInstantiationContext<'a> {
-    pub fn get_resource(&self, id: TransientResourceId) -> &TransientResourceRef {
+    pub fn get_resource(&self, id: ResourceId) -> &ResourceRef {
         &self.resources[id.0]
     }
 }
