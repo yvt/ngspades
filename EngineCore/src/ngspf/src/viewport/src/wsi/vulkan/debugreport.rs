@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use super::ash::{self, extensions, vk};
-use ngsenumflags::BitFlags;
+use bitflags::bitflags;
 use std::sync::Arc;
 use std::{fmt, ptr};
 
@@ -24,27 +24,44 @@ pub trait DebugReportHandler: Send + Sync {
     fn log(&self, report: &DebugReport);
 }
 
-#[derive(NgsEnumFlags, Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[repr(u32)]
+bitflags! {
+    pub struct DebugReportTypeFlags: u32 {
+        /// Informational messages that may be handy when debugging an
+        /// application.
+        const Information = 0b00001;
+
+        /// Reports for potentially wrong, but not immediately harmful API usages.
+        const Warning = 0b00010;
+
+        /// Reports for non-optimal API usages.
+        const PerformanceWarning = 0b00100;
+
+        /// Reports for usages that may cause undefined results.
+        const Error = 0b01000;
+
+        /// Diagnostic informations.
+        const Debug = 0b10000;
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum DebugReportType {
     /// Informational messages that may be handy when debugging an
     /// application.
-    Information = 0b00001,
+    Information,
 
     /// Reports for potentially wrong, but not immediately harmful API usages.
-    Warning = 0b00010,
+    Warning,
 
     /// Reports for non-optimal API usages.
-    PerformanceWarning = 0b00100,
+    PerformanceWarning,
 
     /// Reports for usages that may cause undefined results.
-    Error = 0b01000,
+    Error,
 
     /// Diagnostic informations.
-    Debug = 0b10000,
+    Debug,
 }
-
-pub type DebugReportTypeFlags = BitFlags<DebugReportType>;
 
 /// Wraps the interface to the `VK_EXT_debug_report` instance extension.
 pub struct DebugReportConduit {
@@ -112,22 +129,36 @@ impl DebugReportConduit {
     }
 
     pub fn add_handler(&mut self, flags: DebugReportTypeFlags, handler: Arc<DebugReportHandler>) {
-        for &(typ, vk_typ) in [
+        for &(typ_flag, vk_typ, typ) in [
             (
-                DebugReportType::Information,
+                DebugReportTypeFlags::Information,
                 vk::DebugReportFlagsEXT::INFORMATION,
+                DebugReportType::Information,
             ),
-            (DebugReportType::Warning, vk::DebugReportFlagsEXT::WARNING),
             (
-                DebugReportType::PerformanceWarning,
-                vk::DebugReportFlagsEXT::PERFORMANCE_WARNING,
+                DebugReportTypeFlags::Warning,
+                vk::DebugReportFlagsEXT::WARNING,
+                DebugReportType::Warning,
             ),
-            (DebugReportType::Error, vk::DebugReportFlagsEXT::ERROR),
-            (DebugReportType::Debug, vk::DebugReportFlagsEXT::DEBUG),
+            (
+                DebugReportTypeFlags::PerformanceWarning,
+                vk::DebugReportFlagsEXT::PERFORMANCE_WARNING,
+                DebugReportType::PerformanceWarning,
+            ),
+            (
+                DebugReportTypeFlags::Error,
+                vk::DebugReportFlagsEXT::ERROR,
+                DebugReportType::Error,
+            ),
+            (
+                DebugReportTypeFlags::Debug,
+                vk::DebugReportFlagsEXT::DEBUG,
+                DebugReportType::Debug,
+            ),
         ]
         .iter()
         {
-            if flags.contains(typ) {
+            if flags.contains(typ_flag) {
                 self.callbacks.reserve(1);
                 let mut data = Box::new(DebugReportCallbackData(Arc::clone(&handler), typ));
                 let handle = unsafe {

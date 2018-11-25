@@ -137,7 +137,7 @@ impl<P: Painter> WindowManager<P> {
         let report_conduit = if enable_debug_report {
             let mut report_conduit = debugreport::DebugReportConduit::new(&entry, &instance);
 
-            let flags = flags![debugreport::DebugReportType::
+            let flags = flags![debugreport::DebugReportTypeFlags::
                 {Warning | PerformanceWarning | Error}];
             report_conduit
                 .add_handler(flags, Arc::new(debugreport::PrintDebugReportHandler::new()));
@@ -943,8 +943,8 @@ impl Swapchain {
                     let cmd_buffer: &mut BeCmdBuffer = cmd_buffer.query_mut().unwrap();
                     let image: &be::image::Image = self.image.downcast_ref().unwrap();
 
-                    assert_eq!(access, flags![gfx::AccessType::{ColorWrite}]);
-                    assert_eq!(stage, flags![gfx::Stage::{RenderOutput}]);
+                    assert_eq!(access, gfx::AccessTypeFlags::ColorWrite);
+                    assert_eq!(stage, gfx::StageFlags::RenderOutput);
 
                     let mut barrier = vk::ImageMemoryBarrier {
                         s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
@@ -999,7 +999,7 @@ impl Swapchain {
                         .presentation_queue
                         .new_cmd_buffer()
                         .expect("Failed to create a command buffer.");
-                    cmd_buffer.wait_semaphore(&gfx_semaphore, flags![gfx::Stage::{}]);
+                    cmd_buffer.wait_semaphore(&gfx_semaphore, flags![gfx::StageFlags::{}]);
 
                     {
                         let cmd_buffer: &mut BeCmdBuffer = cmd_buffer.query_mut().unwrap();
@@ -1046,7 +1046,7 @@ impl Swapchain {
                     }
                     *self.cb_state_tracker = Some(CbStateTracker::new(&mut *cmd_buffer));
 
-                    cmd_buffer.signal_semaphore(&gfx_semaphore, flags![gfx::Stage::{}]);
+                    cmd_buffer.signal_semaphore(&gfx_semaphore, flags![gfx::StageFlags::{}]);
                     cmd_buffer
                         .commit()
                         .expect("Failed to commit a command buffer.");
@@ -1272,7 +1272,7 @@ impl VkSurfaceProps {
             view_type: vk::ImageViewType::TYPE_2D,
             num_mip_levels: 1,
             num_layers: 1,
-            usage: flags![gfx::ImageUsage::{}],
+            usage: flags![gfx::ImageUsageFlags::{}],
             aspects: vk::ImageAspectFlags::COLOR,
             destroy_manually: true,
         }
@@ -1405,7 +1405,7 @@ impl PhysicalDeviceInfo {
 
             // Choose the main queue. (Mandatory)
             let result = choose(&|caps| {
-                caps.contains(flags![gfx::QueueFamilyCaps::{Render | Compute | Copy}])
+                caps.contains(flags![gfx::QueueFamilyCapsFlags::{Render | Compute | Copy}])
             });
             main_queue_family = if let Some(x) = result {
                 x
@@ -1415,7 +1415,7 @@ impl PhysicalDeviceInfo {
 
             // Choose the copy queue. Popular discrete GPUs have one or more
             // DMA engines dedicated for copy operations.
-            copy_queue_family = choose(&|caps| caps == flags![gfx::QueueFamilyCaps::{Copy}]);
+            copy_queue_family = choose(&|caps| caps == gfx::QueueFamilyCapsFlags::Copy);
         }
 
         Ok(Some(Self {
