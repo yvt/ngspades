@@ -101,6 +101,7 @@ impl<C: ?Sized> From<PassInfo<C>> for BuilderPass<C> {
 #[derive(Debug)]
 struct BuilderResource {
     object: Box<dyn UntypedResourceInfo>,
+    late_bound: bool,
 
     // The rest of the fields are used as a temporary storage for
     // `ScheduleBuilder::schedule`
@@ -124,6 +125,7 @@ impl From<Box<dyn UntypedResourceInfo>> for BuilderResource {
     fn from(x: Box<dyn UntypedResourceInfo>) -> Self {
         Self {
             object: x,
+            late_bound: false,
             is_output: false,
             num_consuming_passes: 0,
             earliest_consuming_pass_index: 0,
@@ -157,6 +159,11 @@ impl<C: ?Sized> ScheduleBuilder<C> {
         ((*self.resources[id.0].object).as_any_mut())
             .downcast_mut()
             .expect("type mismatch")
+    }
+
+    /// Mark a resource as late-bound.
+    pub fn mark_resource_as_late_bound(&mut self, id: &ResourceId) {
+        self.resources[id.0].late_bound = true;
     }
 
     pub fn define_pass(&mut self, pass: PassInfo<C>) {
@@ -517,7 +524,14 @@ impl<C: ?Sized> ScheduleBuilder<C> {
             }
         }
 
-        let proto_resources = self.resources.drain(..).map(|r| r.object).collect();
+        let proto_resources = self
+            .resources
+            .drain(..)
+            .map(|r| ScheduleResource {
+                object: r.object,
+                late_bound: r.late_bound,
+            })
+            .collect();
 
         Schedule {
             passes: proto_passes,
@@ -530,7 +544,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 #[derive(Debug)]
 pub struct Schedule<C: ?Sized> {
     passes: Vec<SchedulePass<C>>,
-    resources: Vec<Box<dyn UntypedResourceInfo>>,
+    resources: Vec<ScheduleResource>,
 }
 
 #[derive(Debug)]
@@ -543,6 +557,12 @@ struct SchedulePass<C: ?Sized> {
 }
 
 #[derive(Debug)]
+struct ScheduleResource {
+    object: Box<dyn UntypedResourceInfo>,
+    late_bound: bool,
+}
+
+#[derive(Debug)]
 pub struct ResourceInstantiationContext<'a> {
     device: &'a gfx::DeviceRef,
     queue: &'a gfx::CmdQueueRef,
@@ -551,7 +571,7 @@ pub struct ResourceInstantiationContext<'a> {
 
 #[derive(Debug)]
 pub struct PassInstantiationContext<'a> {
-    resources: &'a [Arc<dyn Resource>],
+    resources: &'a [RunnerResource],
 }
 
 impl<C: ?Sized> Schedule<C> {
@@ -569,7 +589,9 @@ impl<C: ?Sized> Schedule<C> {
         arg_pool_builder.queue(queue);
 
         for res in &self.resources {
-            res.reserve_arg_pool(&mut arg_pool_builder);
+            if !res.late_bound {
+                res.object.reserve_arg_pool(&mut arg_pool_builder);
+            }
         }
 
         let arg_pool = arg_pool_builder.build()?;
@@ -580,12 +602,24 @@ impl<C: ?Sized> Schedule<C> {
             queue,
             arg_pool: &arg_pool,
         };
-        let resources: Vec<Arc<dyn Resource>> = self
+        let resources: Vec<RunnerResource> = self
             .resources
             .into_iter()
             .map(|r| {
-                let boxed = r.build_untyped(&context)?;
-                Ok(boxed.into()) // convert `Box` into `Arc`
+                if r.late_bound {
+                    // Do not instantiate the late-bound resource
+                    Ok(RunnerResource {
+                        object: None,
+                        late_bound: true,
+                    })
+                } else {
+                    // Instantiate the resource
+                    let boxed = r.object.build_untyped(&context)?;
+                    Ok(RunnerResource {
+                        object: Some(boxed.into()), // convert `Box` into `Arc`
+                        late_bound: false,
+                    })
+                }
             })
             .collect::<gfx::Result<_>>()?;
 
@@ -593,16 +627,21 @@ impl<C: ?Sized> Schedule<C> {
         for pass in &self.passes {
             for &i in &pass.bind_resources {
                 let ref resource = resources[i];
-                if let Some(resource_bind) = resource.resource_bind() {
-                    let ref mut hb_cell = heap_builders[resource_bind.memory_type as usize];
-                    if hb_cell.is_none() {
-                        let mut hb = device.build_dedicated_heap();
-                        hb.queue(queue).memory_type(resource_bind.memory_type);
-                        *hb_cell = Some(hb);
-                    }
 
-                    let hb = hb_cell.as_mut().unwrap();
-                    hb.bind(resource_bind.resource);
+                // Is it early-bound?
+                if let Some(object) = &resource.object {
+                    // Does it require memory binding?
+                    if let Some(resource_bind) = object.resource_bind() {
+                        let ref mut hb_cell = heap_builders[resource_bind.memory_type as usize];
+                        if hb_cell.is_none() {
+                            let mut hb = device.build_dedicated_heap();
+                            hb.queue(queue).memory_type(resource_bind.memory_type);
+                            *hb_cell = Some(hb);
+                        }
+
+                        let hb = hb_cell.as_mut().unwrap();
+                        hb.bind(resource_bind.resource);
+                    }
                 }
             }
 
@@ -639,6 +678,7 @@ impl<C: ?Sized> Schedule<C> {
         Ok(ScheduleRunner {
             queue: queue.clone(),
             passes,
+            resources,
             fences: Vec::new(),
         })
     }
@@ -659,15 +699,19 @@ impl<'a> ResourceInstantiationContext<'a> {
 }
 
 impl<'a> PassInstantiationContext<'a> {
-    pub fn get_dyn_resource(&self, id: ResourceId) -> &Arc<dyn Resource> {
-        &self.resources[id.0]
+    /// Borrow a `dyn Resource` using a weakly-typed cell identifier.
+    ///
+    /// Returns `None` if the resource represented by `id` is late-bound.
+    pub fn get_dyn_resource(&self, id: ResourceId) -> Option<&Arc<dyn Resource>> {
+        (self.resources[id.0].object).as_ref()
     }
 
     /// Borrow a `impl Resource` using a strongly-typed cell identifier.
-    pub fn get_resource<T: ResourceInfo>(&self, id: ResourceRef<T>) -> &T::Resource {
+    ///
+    /// Returns `None` if the resource represented by `id` is late-bound.
+    pub fn get_resource<T: ResourceInfo>(&self, id: ResourceRef<T>) -> Option<&T::Resource> {
         self.get_dyn_resource(id.id())
-            .downcast_ref::<T::Resource>()
-            .expect("type mismatch")
+            .map(|x| x.downcast_ref::<T::Resource>().expect("type mismatch"))
     }
 }
 
@@ -677,6 +721,7 @@ impl<'a> PassInstantiationContext<'a> {
 pub struct ScheduleRunner<C: ?Sized> {
     queue: gfx::CmdQueueRef,
     passes: Vec<RunnerPass<C>>,
+    resources: Vec<RunnerResource>,
 
     /// `Vec` used to store fences associated with passes. The contents are
     /// only relevant to a single run but the storage persists between runs.
@@ -700,6 +745,15 @@ struct RunnerPass<C: ?Sized> {
     update_fence_range: Range<usize>,
 }
 
+#[derive(Debug)]
+struct RunnerResource {
+    /// The (instantiated) resource object. Can be `None` if it's late-bound.
+    object: Option<Arc<dyn Resource>>,
+
+    /// Indicates whether this is a late-bound resource or not.
+    late_bound: bool,
+}
+
 impl<C: ?Sized> RunnerPass<C> {
     fn num_update_fences(&self) -> usize {
         self.update_fence_range.len()
@@ -710,6 +764,11 @@ impl<C: ?Sized> RunnerPass<C> {
 #[derive(Debug)]
 pub struct Run<'a, C: ?Sized> {
     schedule: &'a mut ScheduleRunner<C>,
+}
+
+#[derive(Debug)]
+pub struct PassEncodingContext<'a> {
+    resources: &'a [RunnerResource],
 }
 
 impl<C: ?Sized> ScheduleRunner<C> {
@@ -765,18 +824,30 @@ impl<C: ?Sized> Run<'_, C> {
             .gather_mut(&mut self.schedule.fences)
     }
 
+    /// Bind a late-bound resource.
+    pub fn bind<T: ResourceInfo>(&mut self, id: ResourceRef<T>, object: T::Resource) {
+        let ref mut resource = self.schedule.resources[id.id().0];
+        assert!(resource.late_bound, "not marked as late-bound");
+        resource.object = Some(Arc::new(object) as Arc<dyn Resource>);
+    }
+
     /// Encode commands into a given command buffer.
     ///
     /// `input_fences` specifies the fences that must be waited for before
     /// executing commands. `input_fences` must include output fences
     /// ([`Run::output_fences_mut`]) of the same `Run` from the previous frame.
+    ///
+    /// All late-bound resources must be bound by calling `bind` on all
+    /// resources previously marked as late-bound. This must be done every time
+    /// `Run` is created and then `encode` is called.
+    /// Otherwise, `encode` may panic.
     pub fn encode(
         self,
         cmd_buffer: &mut gfx::CmdBufferRef,
         input_fences: &[&gfx::FenceRef],
         context: &C,
     ) -> gfx::Result<()> {
-        let schedule = self.schedule;
+        let schedule = &mut *self.schedule;
 
         let passes = &schedule.passes;
         let fences = &mut schedule.fences;
@@ -795,6 +866,10 @@ impl<C: ?Sized> Run<'_, C> {
         );
         let mut update_fences_storage =
             Vec::with_capacity(passes.iter().map(|pass| pass.num_update_fences()).sum());
+
+        let enc_context = PassEncodingContext {
+            resources: &schedule.resources[..],
+        };
 
         for pass in passes {
             let wait_fences = if pass.wait_on_passes.len() == 0 {
@@ -816,11 +891,48 @@ impl<C: ?Sized> Run<'_, C> {
 
             let update_fences = &update_fences_storage[..];
 
-            pass.pass
-                .borrow_mut()
-                .encode(cmd_buffer, wait_fences, update_fences, context)?;
+            pass.pass.borrow_mut().encode(
+                cmd_buffer,
+                wait_fences,
+                update_fences,
+                context,
+                &enc_context,
+            )?;
         }
 
         Ok(())
+    }
+}
+
+impl<C: ?Sized> Drop for Run<'_, C> {
+    fn drop(&mut self) {
+        // Unbound all late-bound resources
+        for resource in self.schedule.resources.iter_mut() {
+            if resource.late_bound {
+                resource.object = None;
+            }
+        }
+    }
+}
+
+impl PassEncodingContext<'_> {
+    /// Borrow a `dyn Resource` using a weakly-typed cell identifier.
+    ///
+    /// This method assumes that the resource is bound (i.e., if it's marked as
+    /// late-bound, it's bound by a call to `Run::bind`). Otherwise, it'll panic.
+    pub fn get_dyn_resource(&self, id: ResourceId) -> &Arc<dyn Resource> {
+        (self.resources[id.0].object)
+            .as_ref()
+            .expect("late-bound resource is not bound")
+    }
+
+    /// Borrow a `impl Resource` using a strongly-typed cell identifier.
+    ///
+    /// This method assumes that the resource is bound (i.e., if it's marked as
+    /// late-bound, it's bound by a call to `Run::bind`). Otherwise, it'll panic.
+    pub fn get_resource<T: ResourceInfo>(&self, id: ResourceRef<T>) -> &T::Resource {
+        self.get_dyn_resource(id.id())
+            .downcast_ref::<T::Resource>()
+            .expect("type mismatch")
     }
 }

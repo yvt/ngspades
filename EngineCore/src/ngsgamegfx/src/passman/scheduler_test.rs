@@ -14,7 +14,7 @@ impl passman::ResourceInfo for MyResourceInfo {
 
     fn build(
         &self,
-        context: &passman::ResourceInstantiationContext<'_>,
+        _context: &passman::ResourceInstantiationContext<'_>,
     ) -> gfx::Result<Box<Self::Resource>> {
         unreachable!()
     }

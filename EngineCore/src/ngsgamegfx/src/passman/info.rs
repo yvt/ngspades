@@ -7,7 +7,9 @@ use std::{any::Any, fmt, marker::PhantomData};
 
 use zangfx::base as gfx;
 
-use super::scheduler::{PassInstantiationContext, ResourceInstantiationContext};
+use super::scheduler::{
+    PassEncodingContext, PassInstantiationContext, ResourceInstantiationContext,
+};
 use crate::utils::any::AsAnySendSync;
 
 /// Represents a pass.
@@ -147,6 +149,7 @@ pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
         wait_fences: &[&gfx::FenceRef],
         update_fences: &[&gfx::FenceRef],
         context: &C,
+        enc_context: &PassEncodingContext,
     ) -> gfx::Result<()>;
 }
 
