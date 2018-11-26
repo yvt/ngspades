@@ -155,6 +155,13 @@ pub trait ResourceInfo: AsAnySendSync + std::fmt::Debug {
     /// The type of the resource object constructed by the `build` method.
     type Resource: Resource;
 
+    /// Pre-allocate a space in an argument pool.
+    ///
+    /// If the implementation intends to allocate argument table(s) from
+    /// `ResourceInstantiationContext::arg_pool()` when `build` is called, it
+    /// must pre-allocate a space when this method is called.
+    fn reserve_arg_pool(&self, _builder: &mut gfx::ArgPoolBuilderRef) {}
+
     /// Instantiate a transient resource.
     ///
     /// Instantiating a resource usually involves the construction of a resource

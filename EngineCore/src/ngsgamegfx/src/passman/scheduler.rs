@@ -30,6 +30,8 @@ pub trait UntypedResourceInfo: AsAnySendSync + std::fmt::Debug {
         &self,
         context: &ResourceInstantiationContext<'_>,
     ) -> gfx::Result<Box<dyn Resource>>;
+
+    fn reserve_arg_pool(&self, builder: &mut gfx::ArgPoolBuilderRef);
 }
 
 impl<T: ResourceInfo> UntypedResourceInfo for T {
@@ -38,6 +40,10 @@ impl<T: ResourceInfo> UntypedResourceInfo for T {
         context: &ResourceInstantiationContext<'_>,
     ) -> gfx::Result<Box<dyn Resource>> {
         self.build(context).map(|x| x as Box<dyn Resource>) // unsize `Self::Resource` to `dyn Resource`
+    }
+
+    fn reserve_arg_pool(&self, builder: &mut gfx::ArgPoolBuilderRef) {
+        ResourceInfo::reserve_arg_pool(self, builder)
     }
 }
 
@@ -540,6 +546,7 @@ struct SchedulePass<C: ?Sized> {
 pub struct ResourceInstantiationContext<'a> {
     device: &'a gfx::DeviceRef,
     queue: &'a gfx::CmdQueueRef,
+    arg_pool: &'a gfx::ArgPoolRef,
 }
 
 #[derive(Debug)]
@@ -557,8 +564,22 @@ impl<C: ?Sized> Schedule<C> {
     ) -> gfx::Result<ScheduleRunner<C>> {
         let mut heap_builders = vec![None; 32];
 
+        // Create an argument pool
+        let mut arg_pool_builder = device.build_arg_pool();
+        arg_pool_builder.queue(queue);
+
+        for res in &self.resources {
+            res.reserve_arg_pool(&mut arg_pool_builder);
+        }
+
+        let arg_pool = arg_pool_builder.build()?;
+
         // Instantiate resources
-        let context = ResourceInstantiationContext { device, queue };
+        let context = ResourceInstantiationContext {
+            device,
+            queue,
+            arg_pool: &arg_pool,
+        };
         let resources: Vec<Arc<dyn Resource>> = self
             .resources
             .into_iter()
@@ -630,6 +651,10 @@ impl<'a> ResourceInstantiationContext<'a> {
 
     pub fn queue(&self) -> &'a gfx::CmdQueueRef {
         self.queue
+    }
+
+    pub fn arg_pool(&self) -> &'a gfx::ArgPoolRef {
+        self.arg_pool
     }
 }
 

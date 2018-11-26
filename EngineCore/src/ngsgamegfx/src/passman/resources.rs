@@ -165,3 +165,68 @@ impl Resource for BufferResource {
         }
     }
 }
+
+/// Contains information for constructing a single argument table transient
+/// resource.
+#[derive(Debug)]
+pub struct ArgTableResourceInfo {
+    pub sig: gfx::ArgTableSigRef,
+    pub count: usize,
+}
+
+impl ArgTableResourceInfo {
+    pub fn new(sig: gfx::ArgTableSigRef) -> Self {
+        Self { sig, count: 1 }
+    }
+
+    pub fn with_count(self, count: usize) -> Self {
+        Self { count, ..self }
+    }
+}
+
+impl ResourceInfo for ArgTableResourceInfo {
+    type Resource = ArgTableResource;
+
+    fn reserve_arg_pool(&self, builder: &mut gfx::ArgPoolBuilderRef) {
+        builder.reserve_table_sig(self.count, &self.sig);
+    }
+
+    fn build(
+        &self,
+        context: &ResourceInstantiationContext<'_>,
+    ) -> gfx::Result<Box<Self::Resource>> {
+        let tables = context
+            .arg_pool()
+            .new_tables(self.count, &self.sig)?
+            .expect("arg table allocation failed");
+
+        Ok(Box::new(ArgTableResource {
+            pool: context.arg_pool().clone(),
+            tables,
+        }))
+    }
+}
+
+/// Represents a single argument table resource.
+///
+/// Although it's labeled as a transient resource, it's in fact intended to be
+/// used as something like an immutable resource -- each of them is to be
+/// associated with only one pass (as a produced resource) and written only
+/// once when the pass is instantiated.
+#[derive(Debug)]
+pub struct ArgTableResource {
+    pub pool: gfx::ArgPoolRef,
+    pub tables: Vec<gfx::ArgTableRef>,
+}
+
+impl ArgTableResource {
+    pub fn new(pool: gfx::ArgPoolRef, tables: Vec<gfx::ArgTableRef>) -> Self {
+        Self { pool, tables }
+    }
+}
+
+impl Resource for ArgTableResource {
+    fn resource_bind(&self) -> Option<ResourceBind<'_>> {
+        None
+    }
+}
