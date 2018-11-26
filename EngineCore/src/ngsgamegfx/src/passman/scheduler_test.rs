@@ -10,10 +10,12 @@ use zangfx::base as gfx;
 struct MyResourceInfo(usize);
 
 impl passman::ResourceInfo for MyResourceInfo {
+    type Resource = passman::ImageResource;
+
     fn build(
         &self,
         context: &passman::ResourceInstantiationContext<'_>,
-    ) -> gfx::Result<Box<dyn passman::Resource>> {
+    ) -> gfx::Result<Box<Self::Resource>> {
         unreachable!()
     }
 }
@@ -25,6 +27,10 @@ fn test() {
     let res0 = builder.define_resource(MyResourceInfo(1));
     let res1 = builder.define_resource(MyResourceInfo(2));
     let res2 = builder.define_resource(MyResourceInfo(3));
+
+    assert_eq!(builder.get_resource_info_mut(res0).0, 1);
+    assert_eq!(builder.get_resource_info_mut(res1).0, 2);
+    assert_eq!(builder.get_resource_info_mut(res2).0, 3);
 
     builder.define_pass(passman::PassInfo {
         resource_uses: vec![res0.use_as_producer()],
@@ -45,7 +51,7 @@ fn test() {
         factory: Box::new(|_| unreachable!()),
     });
 
-    let schedule = builder.schedule(&[res2]);
+    let schedule = builder.schedule(&[&res2]);
 
     println!("{:#?}", schedule);
 
@@ -82,7 +88,7 @@ fn panic_on_cyclic_dependency() {
         factory: Box::new(|_| unreachable!()),
     });
 
-    let schedule = builder.schedule(&[res1]);
+    let schedule = builder.schedule(&[&res1]);
 
     println!("{:#?}", schedule);
 }

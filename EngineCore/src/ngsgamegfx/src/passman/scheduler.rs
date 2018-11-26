@@ -7,16 +7,39 @@ use atomic_refcell::AtomicRefCell;
 use std::{
     cell::{Cell, RefCell},
     ops::Range,
+    sync::Arc,
 };
 
 use zangfx::base as gfx;
 
-use super::{Pass, PassInfo, ResourceId, ResourceInfo, ResourceRef};
-use crate::utils::iterator_mut::{IteratorMut, IteratorToIteratorMutExt};
+use super::{Pass, PassInfo, Resource, ResourceId, ResourceInfo, ResourceRef};
+use crate::utils::{
+    any::AsAnySendSync,
+    iterator_mut::{IteratorMut, IteratorToIteratorMutExt},
+};
 
 #[cfg(test)]
 #[path = "./scheduler_test.rs"]
 mod scheduler_test;
+
+/// `ResourceInfo` with type-erased `Self::Resource`.
+///
+/// Has a blanket implementation for every `T: ResourceInfo`.
+pub trait UntypedResourceInfo: AsAnySendSync + std::fmt::Debug {
+    fn build_untyped(
+        &self,
+        context: &ResourceInstantiationContext<'_>,
+    ) -> gfx::Result<Box<dyn Resource>>;
+}
+
+impl<T: ResourceInfo> UntypedResourceInfo for T {
+    fn build_untyped(
+        &self,
+        context: &ResourceInstantiationContext<'_>,
+    ) -> gfx::Result<Box<dyn Resource>> {
+        self.build(context).map(|x| x as Box<dyn Resource>) // unsize `Self::Resource` to `dyn Resource`
+    }
+}
 
 /// Stores the description of a pass graph and serves as a builder object of
 /// [`Schedule`].
@@ -71,7 +94,7 @@ impl<C: ?Sized> From<PassInfo<C>> for BuilderPass<C> {
 
 #[derive(Debug)]
 struct BuilderResource {
-    object: Box<dyn ResourceInfo>,
+    object: Box<dyn UntypedResourceInfo>,
 
     // The rest of the fields are used as a temporary storage for
     // `ScheduleBuilder::schedule`
@@ -91,8 +114,8 @@ struct BuilderResource {
     aliasable: bool,
 }
 
-impl From<Box<dyn ResourceInfo>> for BuilderResource {
-    fn from(x: Box<dyn ResourceInfo>) -> Self {
+impl From<Box<dyn UntypedResourceInfo>> for BuilderResource {
+    fn from(x: Box<dyn UntypedResourceInfo>) -> Self {
         Self {
             object: x,
             is_output: false,
@@ -114,18 +137,20 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 
     /// Define a `ResourceInfo`.
     ///
-    /// Returns the `ResourceId` representing the newly defined
-    /// resource. The returned `ResourceId` only pertains to `self`.
-    pub fn define_resource<T: ResourceInfo>(&mut self, resource: T) -> ResourceId {
+    /// Returns the `ResourceRef` representing the newly defined
+    /// resource. The returned `ResourceRef` only pertains to `self`.
+    pub fn define_resource<T: ResourceInfo>(&mut self, resource: T) -> ResourceRef<T> {
         let next_index = self.resources.len();
         self.resources
-            .push((Box::new(resource) as Box<dyn ResourceInfo>).into());
-        ResourceId(next_index)
+            .push((Box::new(resource) as Box<dyn UntypedResourceInfo>).into());
+        ResourceRef::new(ResourceId(next_index))
     }
 
     /// Mutably borrow a `ResourceInfo` specified by `id`.
-    pub fn get_resource_mut(&mut self, id: ResourceId) -> &mut dyn ResourceInfo {
-        &mut *self.resources[id.0].object
+    pub fn get_resource_info_mut<T: ResourceInfo>(&mut self, id: ResourceRef<T>) -> &mut T {
+        ((*self.resources[id.0].object).as_any_mut())
+            .downcast_mut()
+            .expect("type mismatch")
     }
 
     pub fn define_pass(&mut self, pass: PassInfo<C>) {
@@ -139,7 +164,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
     /// Will panic if there exists no ordering of passes that agrees with
     /// their resource dependencies.
     ///
-    pub fn schedule(mut self, output_resources: &[ResourceId]) -> Schedule<C> {
+    pub fn schedule(mut self, output_resources: &[&ResourceId]) -> Schedule<C> {
         use std::mem::replace;
 
         // Nonce token
@@ -499,7 +524,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 #[derive(Debug)]
 pub struct Schedule<C: ?Sized> {
     passes: Vec<SchedulePass<C>>,
-    resources: Vec<Box<dyn ResourceInfo>>,
+    resources: Vec<Box<dyn UntypedResourceInfo>>,
 }
 
 #[derive(Debug)]
@@ -519,7 +544,7 @@ pub struct ResourceInstantiationContext<'a> {
 
 #[derive(Debug)]
 pub struct PassInstantiationContext<'a> {
-    resources: &'a [ResourceRef],
+    resources: &'a [Arc<dyn Resource>],
 }
 
 impl<C: ?Sized> Schedule<C> {
@@ -534,11 +559,11 @@ impl<C: ?Sized> Schedule<C> {
 
         // Instantiate resources
         let context = ResourceInstantiationContext { device, queue };
-        let resources: Vec<ResourceRef> = self
+        let resources: Vec<Arc<dyn Resource>> = self
             .resources
             .into_iter()
             .map(|r| {
-                let boxed = r.build(&context)?;
+                let boxed = r.build_untyped(&context)?;
                 Ok(boxed.into()) // convert `Box` into `Arc`
             })
             .collect::<gfx::Result<_>>()?;
@@ -609,8 +634,15 @@ impl<'a> ResourceInstantiationContext<'a> {
 }
 
 impl<'a> PassInstantiationContext<'a> {
-    pub fn get_resource(&self, id: ResourceId) -> &ResourceRef {
+    pub fn get_dyn_resource(&self, id: ResourceId) -> &Arc<dyn Resource> {
         &self.resources[id.0]
+    }
+
+    /// Borrow a `impl Resource` using a strongly-typed cell identifier.
+    pub fn get_resource<T: ResourceInfo>(&self, id: ResourceRef<T>) -> &T::Resource {
+        self.get_dyn_resource(id.id())
+            .downcast_ref::<T::Resource>()
+            .expect("type mismatch")
     }
 }
 

@@ -4,14 +4,12 @@
 // This source code is a part of Nightingales.
 //
 use flags_macro::flags;
-use std::{any::Any, fmt, sync::Arc};
+use std::{any::Any, fmt, marker::PhantomData};
 
 use zangfx::{base as gfx, prelude::*};
 
 use super::scheduler::{PassInstantiationContext, ResourceInstantiationContext};
 use crate::utils::any::AsAnySendSync;
-
-pub type ResourceRef = Arc<dyn Resource>;
 
 /// Represents a pass.
 pub struct PassInfo<C: ?Sized> {
@@ -77,6 +75,45 @@ impl ResourceId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct ResourceId(pub(super) usize);
 
+/// A strongly typed version of `ResourceId`.
+///
+/// This is a simple wrapper around `ResourceId` that adds concrete type
+/// information.
+///
+/// The reason that this is defined as a type alias is to circumvent the
+/// restrictions of `derive` macros that trait bounds are not generated properly
+/// for tricky cases of generic types.
+pub type ResourceRef<T> = ResourceRefInner<fn(T) -> T>;
+
+/// The internal implementation of `ResourceRef`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ResourceRefInner<T> {
+    id: ResourceId,
+    _phantom: PhantomData<T>,
+}
+
+impl<T> ResourceRef<T> {
+    pub fn new(id: ResourceId) -> Self {
+        Self {
+            id,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Get a raw (untyped) Resource identifier.
+    pub fn id(&self) -> ResourceId {
+        self.id
+    }
+}
+
+impl<T> std::ops::Deref for ResourceRef<T> {
+    type Target = ResourceId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.id
+    }
+}
+
 pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
     // TODO: Add context data?
 
@@ -116,8 +153,8 @@ pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
 
 /// Stores information used to construct a single transient resource.
 pub trait ResourceInfo: AsAnySendSync + std::fmt::Debug {
-    // The type of the resource object constructed by the `build` method.
-    // TODO: type Resource: Resource;
+    /// The type of the resource object constructed by the `build` method.
+    type Resource: Resource;
 
     /// Instantiate a transient resource.
     ///
@@ -127,17 +164,8 @@ pub trait ResourceInfo: AsAnySendSync + std::fmt::Debug {
     /// which calls `Resource::resource_bind` after `Resource`s are constructed.
     ///
     /// Returns a boxed `Self::Resource` on success.
-    fn build(&self, context: &ResourceInstantiationContext<'_>) -> gfx::Result<Box<dyn Resource>>;
-}
-
-impl dyn ResourceInfo {
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        (*self).as_any().downcast_ref()
-    }
-
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        (*self).as_any_mut().downcast_mut()
-    }
+    fn build(&self, context: &ResourceInstantiationContext<'_>)
+        -> gfx::Result<Box<Self::Resource>>;
 }
 
 /// Represents a single transient resource.
@@ -191,7 +219,12 @@ impl ImageResourceInfo {
 }
 
 impl ResourceInfo for ImageResourceInfo {
-    fn build(&self, context: &ResourceInstantiationContext<'_>) -> gfx::Result<Box<dyn Resource>> {
+    type Resource = ImageResource;
+
+    fn build(
+        &self,
+        context: &ResourceInstantiationContext<'_>,
+    ) -> gfx::Result<Box<Self::Resource>> {
         let image = (context.device())
             .build_image()
             .queue(context.queue())
@@ -262,7 +295,12 @@ impl BufferResourceInfo {
 }
 
 impl ResourceInfo for BufferResourceInfo {
-    fn build(&self, context: &ResourceInstantiationContext<'_>) -> gfx::Result<Box<dyn Resource>> {
+    type Resource = BufferResource;
+
+    fn build(
+        &self,
+        context: &ResourceInstantiationContext<'_>,
+    ) -> gfx::Result<Box<Self::Resource>> {
         let buffer = (context.device())
             .build_buffer()
             .queue(context.queue())
