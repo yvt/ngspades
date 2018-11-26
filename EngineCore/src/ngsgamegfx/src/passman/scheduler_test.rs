@@ -4,13 +4,17 @@
 // This source code is a part of Nightingales.
 //
 use crate::passman;
+use zangfx::base as gfx;
 
 #[derive(Debug)]
-struct MyResource(usize);
+struct MyResourceInfo(usize);
 
-impl passman::Resource for MyResource {
-    fn resource_bind(&self) -> Option<passman::ResourceBind<'_>> {
-        None
+impl passman::ResourceInfo for MyResourceInfo {
+    fn build(
+        &self,
+        context: &passman::ResourceInstantiationContext<'_>,
+    ) -> gfx::Result<Box<dyn passman::Resource>> {
+        unreachable!()
     }
 }
 
@@ -18,9 +22,9 @@ impl passman::Resource for MyResource {
 fn test() {
     let mut builder = passman::ScheduleBuilder::<()>::new();
 
-    let res0 = builder.define_resource(MyResource(1));
-    let res1 = builder.define_resource(MyResource(2));
-    let res2 = builder.define_resource(MyResource(3));
+    let res0 = builder.define_resource(MyResourceInfo(1));
+    let res1 = builder.define_resource(MyResourceInfo(2));
+    let res2 = builder.define_resource(MyResourceInfo(3));
 
     builder.define_pass(passman::PassInfo {
         resource_uses: vec![res0.use_as_producer()],
@@ -65,8 +69,8 @@ fn test() {
 fn panic_on_cyclic_dependency() {
     let mut builder = passman::ScheduleBuilder::<()>::new();
 
-    let res0 = builder.define_resource(MyResource(1));
-    let res1 = builder.define_resource(MyResource(2));
+    let res0 = builder.define_resource(MyResourceInfo(1));
+    let res1 = builder.define_resource(MyResourceInfo(2));
 
     builder.define_pass(passman::PassInfo {
         resource_uses: vec![res0.use_as_consumer(), res1.use_as_producer()],

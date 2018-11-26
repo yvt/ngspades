@@ -5,14 +5,13 @@
 //
 use atomic_refcell::AtomicRefCell;
 use std::{
-    any::Any,
     cell::{Cell, RefCell},
     ops::Range,
 };
 
 use zangfx::base as gfx;
 
-use super::{Pass, PassInfo, Resource, ResourceId, ResourceRef};
+use super::{Pass, PassInfo, ResourceId, ResourceInfo, ResourceRef};
 use crate::utils::iterator_mut::{IteratorMut, IteratorToIteratorMutExt};
 
 #[cfg(test)]
@@ -72,7 +71,7 @@ impl<C: ?Sized> From<PassInfo<C>> for BuilderPass<C> {
 
 #[derive(Debug)]
 struct BuilderResource {
-    object: Box<dyn Resource>,
+    object: Box<dyn ResourceInfo>,
 
     // The rest of the fields are used as a temporary storage for
     // `ScheduleBuilder::schedule`
@@ -92,8 +91,8 @@ struct BuilderResource {
     aliasable: bool,
 }
 
-impl From<Box<dyn Resource>> for BuilderResource {
-    fn from(x: Box<dyn Resource>) -> Self {
+impl From<Box<dyn ResourceInfo>> for BuilderResource {
+    fn from(x: Box<dyn ResourceInfo>) -> Self {
         Self {
             object: x,
             is_output: false,
@@ -113,28 +112,20 @@ impl<C: ?Sized> ScheduleBuilder<C> {
         }
     }
 
-    /// Define a resource.
+    /// Define a `ResourceInfo`.
     ///
     /// Returns the `ResourceId` representing the newly defined
     /// resource. The returned `ResourceId` only pertains to `self`.
-    pub fn define_resource<T: Resource>(&mut self, resource: T) -> ResourceId {
+    pub fn define_resource<T: ResourceInfo>(&mut self, resource: T) -> ResourceId {
         let next_index = self.resources.len();
         self.resources
-            .push((Box::new(resource) as Box<dyn Resource>).into());
+            .push((Box::new(resource) as Box<dyn ResourceInfo>).into());
         ResourceId(next_index)
     }
 
-    /// Replace a resource specified by `id` with `new_resource`.
-    ///
-    /// `T`, the type of `new_resource`, must match the original type
-    /// of the resource. In other words, this method cannot change the type of
-    /// a resource.
-    pub fn replace_resource<T: Resource>(&mut self, id: ResourceId, new_resource: T) -> T {
-        let ref mut resource_box = self.resources[id.0].object;
-        let resource_any: &mut (dyn Any + Send + Sync) = (**resource_box).as_any_mut();
-        let resource_cell: &mut T = resource_any.downcast_mut().expect("type mismatch");
-
-        std::mem::replace(resource_cell, new_resource)
+    /// Mutably borrow a `ResourceInfo` specified by `id`.
+    pub fn get_resource_mut(&mut self, id: ResourceId) -> &mut dyn ResourceInfo {
+        &mut *self.resources[id.0].object
     }
 
     pub fn define_pass(&mut self, pass: PassInfo<C>) {
@@ -508,7 +499,7 @@ impl<C: ?Sized> ScheduleBuilder<C> {
 #[derive(Debug)]
 pub struct Schedule<C: ?Sized> {
     passes: Vec<SchedulePass<C>>,
-    resources: Vec<Box<dyn Resource>>,
+    resources: Vec<Box<dyn ResourceInfo>>,
 }
 
 #[derive(Debug)]
@@ -518,6 +509,12 @@ struct SchedulePass<C: ?Sized> {
     bind_resources: Vec<usize>,
     unbind_resources: Vec<usize>,
     output: bool,
+}
+
+#[derive(Debug)]
+pub struct ResourceInstantiationContext<'a> {
+    device: &'a gfx::DeviceRef,
+    queue: &'a gfx::CmdQueueRef,
 }
 
 #[derive(Debug)]
@@ -535,10 +532,21 @@ impl<C: ?Sized> Schedule<C> {
     ) -> gfx::Result<ScheduleRunner<C>> {
         let mut heap_builders = vec![None; 32];
 
-        // Bind resources
+        // Instantiate resources
+        let context = ResourceInstantiationContext { device, queue };
+        let resources: Vec<ResourceRef> = self
+            .resources
+            .into_iter()
+            .map(|r| {
+                let boxed = r.build(&context)?;
+                Ok(boxed.into()) // convert `Box` into `Arc`
+            })
+            .collect::<gfx::Result<_>>()?;
+
+        // Bind GFX resources
         for pass in &self.passes {
             for &i in &pass.bind_resources {
-                let ref resource = self.resources[i];
+                let ref resource = resources[i];
                 if let Some(resource_bind) = resource.resource_bind() {
                     let ref mut hb_cell = heap_builders[resource_bind.memory_type as usize];
                     if hb_cell.is_none() {
@@ -565,8 +573,6 @@ impl<C: ?Sized> Schedule<C> {
             // Bound resources automatically keep a reference to a heap
         }
 
-        let resources: Vec<ResourceRef> = self.resources.into_iter().map(Box::into).collect();
-
         let context = PassInstantiationContext {
             resources: &resources[..],
         };
@@ -589,6 +595,16 @@ impl<C: ?Sized> Schedule<C> {
             passes,
             fences: Vec::new(),
         })
+    }
+}
+
+impl<'a> ResourceInstantiationContext<'a> {
+    pub fn device(&self) -> &'a gfx::DeviceRef {
+        self.device
+    }
+
+    pub fn queue(&self) -> &'a gfx::CmdQueueRef {
+        self.queue
     }
 }
 

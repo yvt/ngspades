@@ -3,11 +3,12 @@
 //
 // This source code is a part of Nightingales.
 //
+use flags_macro::flags;
 use std::{any::Any, fmt, sync::Arc};
 
-use zangfx::base as gfx;
+use zangfx::{base as gfx, prelude::*};
 
-use super::scheduler::PassInstantiationContext;
+use super::scheduler::{PassInstantiationContext, ResourceInstantiationContext};
 use crate::utils::any::AsAnySendSync;
 
 pub type ResourceRef = Arc<dyn Resource>;
@@ -113,6 +114,32 @@ pub trait Pass<C: ?Sized>: std::fmt::Debug + Send + Sync {
     ) -> gfx::Result<()>;
 }
 
+/// Stores information used to construct a single transient resource.
+pub trait ResourceInfo: AsAnySendSync + std::fmt::Debug {
+    // The type of the resource object constructed by the `build` method.
+    // TODO: type Resource: Resource;
+
+    /// Instantiate a transient resource.
+    ///
+    /// Instantiating a resource usually involves the construction of a resource
+    /// object such as `ImageRef`, but does not mean it is bound to device
+    /// memory. Binding resources to device memory is done by the scheduler,
+    /// which calls `Resource::resource_bind` after `Resource`s are constructed.
+    ///
+    /// Returns a boxed `Self::Resource` on success.
+    fn build(&self, context: &ResourceInstantiationContext<'_>) -> gfx::Result<Box<dyn Resource>>;
+}
+
+impl dyn ResourceInfo {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        (*self).as_any().downcast_ref()
+    }
+
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+        (*self).as_any_mut().downcast_mut()
+    }
+}
+
 /// Represents a single transient resource.
 pub trait Resource: AsAnySendSync + std::fmt::Debug {
     /// Retrieve a `ResourceBind` to be bound to a heap when a graph is
@@ -135,6 +162,53 @@ impl dyn Resource {
 pub struct ResourceBind<'a> {
     pub resource: gfx::ResourceRef<'a>,
     pub memory_type: gfx::MemoryType,
+}
+
+/// Contains information for constructing a single image transient resource.
+#[derive(Debug)]
+pub struct ImageResourceInfo {
+    pub extents: [u32; 2],
+    pub format: gfx::ImageFormat,
+    pub usage: gfx::ImageUsageFlags,
+}
+
+impl ImageResourceInfo {
+    pub fn new(extents: [u32; 2], format: gfx::ImageFormat) -> Self {
+        Self {
+            extents,
+            format,
+            usage: flags![gfx::ImageUsageFlags::{Render | Sampled}],
+        }
+    }
+
+    pub fn with_usage(self, usage: gfx::ImageUsageFlags) -> Self {
+        Self { usage, ..self }
+    }
+
+    pub fn add_usage(&mut self, usage: gfx::ImageUsageFlags) {
+        self.usage |= usage;
+    }
+}
+
+impl ResourceInfo for ImageResourceInfo {
+    fn build(&self, context: &ResourceInstantiationContext<'_>) -> gfx::Result<Box<dyn Resource>> {
+        let image = (context.device())
+            .build_image()
+            .queue(context.queue())
+            .extents(&self.extents)
+            .format(self.format)
+            .usage(self.usage)
+            .build()?;
+
+        let memory_type = (context.device())
+            .try_choose_memory_type_private(&image)?
+            .expect("suitable memory type was not found - this should never happen!");
+
+        Ok(Box::new(ImageResource {
+            image,
+            memory_type: Some(memory_type),
+        }))
+    }
 }
 
 /// Represents a single image transient resource.
@@ -160,6 +234,50 @@ impl Resource for ImageResource {
         } else {
             None
         }
+    }
+}
+
+/// Contains information for constructing a single buffer transient resource.
+#[derive(Debug)]
+pub struct BufferResourceInfo {
+    pub size: gfx::DeviceSize,
+    pub usage: gfx::BufferUsageFlags,
+}
+
+impl BufferResourceInfo {
+    pub fn new(size: gfx::DeviceSize) -> Self {
+        Self {
+            size,
+            usage: flags![gfx::BufferUsageFlags::{Storage}],
+        }
+    }
+
+    pub fn with_usage(self, usage: gfx::BufferUsageFlags) -> Self {
+        Self { usage, ..self }
+    }
+
+    pub fn add_usage(&mut self, usage: gfx::BufferUsageFlags) {
+        self.usage |= usage;
+    }
+}
+
+impl ResourceInfo for BufferResourceInfo {
+    fn build(&self, context: &ResourceInstantiationContext<'_>) -> gfx::Result<Box<dyn Resource>> {
+        let buffer = (context.device())
+            .build_buffer()
+            .queue(context.queue())
+            .size(self.size)
+            .usage(self.usage)
+            .build()?;
+
+        let memory_type = (context.device())
+            .try_choose_memory_type_private(&buffer)?
+            .expect("suitable memory type was not found - this should never happen!");
+
+        Ok(Box::new(BufferResource {
+            buffer,
+            memory_type: Some(memory_type),
+        }))
     }
 }
 
