@@ -34,12 +34,39 @@ pub fn arg_table_sig_create_sampler<T: TestDriver>(driver: T) {
     arg_table_sig_create(driver, gfx::ArgType::Sampler)
 }
 
-fn arg_table<T: TestDriver>(driver: T, arg_type: gfx::ArgType) {
+/// Construct an `ArgPool` with zero capacity.
+pub fn arg_pool_empty<T: TestDriver>(driver: T) {
+    driver.for_each_device(&mut |device| {
+        device.build_arg_pool().build().unwrap();
+    });
+}
+
+/// Construct an `ArgPool` with zero capacity for argument tables.
+pub fn arg_pool_no_tables<T: TestDriver>(driver: T) {
+    driver.for_each_device(&mut |device| {
+        device
+            .build_arg_pool()
+            .reserve_arg(1, gfx::ArgType::Sampler)
+            .build()
+            .unwrap();
+    });
+}
+
+/// Construct an `ArgPool` with zero capacity for arguments.
+pub fn arg_pool_no_args<T: TestDriver>(driver: T) {
+    driver.for_each_device(&mut |device| {
+        device.build_arg_pool().reserve_table(1).build().unwrap();
+    });
+}
+
+fn arg_table<T: TestDriver>(driver: T, arg_types: &[gfx::ArgType]) {
     driver.for_each_device(&mut |device| {
         const TABLE_COUNT: usize = 4;
 
         let mut builder = device.build_arg_table_sig();
-        builder.arg(0, arg_type).set_len(4);
+        for &arg_type in arg_types {
+            builder.arg(0, arg_type).set_len(4);
+        }
         let sig = builder.build().unwrap();
 
         println!("- Allocating a pool with deallocation disabled");
@@ -89,16 +116,20 @@ fn arg_table<T: TestDriver>(driver: T, arg_type: gfx::ArgType) {
     });
 }
 
+pub fn arg_table_empty<T: TestDriver>(driver: T) {
+    arg_table(driver, &[])
+}
+
 pub fn arg_table_image<T: TestDriver>(driver: T) {
-    arg_table(driver, gfx::ArgType::StorageImage)
+    arg_table(driver, &[gfx::ArgType::StorageImage])
 }
 
 pub fn arg_table_buffer<T: TestDriver>(driver: T) {
-    arg_table(driver, gfx::ArgType::StorageBuffer)
+    arg_table(driver, &[gfx::ArgType::StorageBuffer])
 }
 
 pub fn arg_table_sampler<T: TestDriver>(driver: T) {
-    arg_table(driver, gfx::ArgType::Sampler)
+    arg_table(driver, &[gfx::ArgType::Sampler])
 }
 
 /// Create an argument table containg various kinds of arguments and see if

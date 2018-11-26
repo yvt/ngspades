@@ -69,6 +69,9 @@ macro_rules! zangfx_generate_backend_tests {
         $crate::zangfx_test_single! { arg_table_buffer, $driver }
         $crate::zangfx_test_single! { arg_table_sampler, $driver }
         $crate::zangfx_test_single! { arg_table_mixed_read, $driver }
+        $crate::zangfx_test_single! { arg_pool_empty, $driver }
+        $crate::zangfx_test_single! { arg_pool_no_tables, $driver }
+        $crate::zangfx_test_single! { arg_pool_no_args, $driver }
 
         $crate::zangfx_test_single! { cmdqueue_create, $driver }
         $crate::zangfx_test_single! { #[should_panic] cmdqueue_create_fail_missing_queue_family, $driver }

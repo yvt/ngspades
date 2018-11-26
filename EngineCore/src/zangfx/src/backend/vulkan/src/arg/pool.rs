@@ -87,7 +87,23 @@ impl base::ArgPoolBuilder for ArgPoolBuilder {
             flags |= vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
         }
 
-        let pool_sizes = self.count.as_pool_sizes();
+        let mut pool_sizes = self.count.as_pool_sizes();
+
+        if pool_sizes.len() == 0 || self.num_sets == 0 {
+            if self.num_sets == 0 {
+                return Ok(Arc::new(ZeroSizedArgPool));
+            } else {
+                // Since we don't prohibit the creation of zero-sized argument
+                // table signatures, it's possible to make an argument pool
+                // capable of storing some tables but no arguments. Still,
+                // Vulkan requires `pool_size_count > 0`, so add a dummy element
+                // to `pool_sizes`.
+                pool_sizes.push(vk::DescriptorPoolSize {
+                    ty: vk::DescriptorType::STORAGE_BUFFER,
+                    descriptor_count: 1,
+                });
+            }
+        }
 
         let queue_id = self.queue_id.get(&self.device);
 
@@ -279,6 +295,30 @@ impl ArgPoolData {
             device.reset_descriptor_pool(self.vk_d_pool, vk::DescriptorPoolResetFlags::empty())
         }
         .map_err(translate_generic_error_unwrap)
+    }
+}
+
+/// Implementation of `ArgPool` for Vulkan. Size is zero.
+#[derive(Debug)]
+pub struct ZeroSizedArgPool;
+
+zangfx_impl_object! { ZeroSizedArgPool: dyn base::ArgPool, dyn crate::Debug }
+
+impl base::ArgPool for ZeroSizedArgPool {
+    fn new_tables(
+        &self,
+        _count: usize,
+        _table: &base::ArgTableSigRef,
+    ) -> Result<Option<Vec<base::ArgTableRef>>> {
+        Ok(None)
+    }
+
+    fn destroy_tables(&self, _: &[&base::ArgTableRef]) -> Result<()> {
+        panic!("ZeroSizedArgPool does not support allocation at all")
+    }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
     }
 }
 
