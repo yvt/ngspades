@@ -5,6 +5,8 @@
 //
 //! The render pass manager.
 mod info;
+mod resources;
 mod scheduler;
 pub use self::info::*;
+pub use self::resources::*;
 pub use self::scheduler::*;
