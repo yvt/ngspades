@@ -4,19 +4,20 @@
 // This source code is a part of Nightingales.
 //
 //! NgsGameGFX — Nightingales Game GFX
-#![feature(unsized_locals)] // For calling boxed `FnOnce`
+//!
+//! # Sub-crates
+//!
+//!  - [`ngsgamegfx_common`](../ngsgamegfx_common/index.html)
+//!  - [`ngsgamegfx_graph`](../ngsgamegfx_graph/index.html)
+//!
 #![feature(futures_api)]
 #![feature(pin)]
-#![feature(arbitrary_self_types)]
+#![feature(unsized_locals)] // For calling boxed `FnOnce`
 
 mod asyncuploader;
-mod cbtasks;
 pub mod config;
 mod di;
-mod passman;
 pub mod port;
 mod staticdata;
-mod taskman;
-mod utils;
 
-pub use crate::utils::progress::Progress;
+pub use ngsgamegfx_common::progress::Progress;

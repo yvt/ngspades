@@ -242,7 +242,7 @@ impl AsyncUploader {
         // This `Send`-able closure is executed on the uploader thread and
         // returns a non-`Send`-able `Stream`
         let payload = move || {
-            use crate::utils::futures::PrivateStreamExt;
+            use ngsgamegfx_common::futures::PrivateStreamExt;
 
             let sender_cell = Some(sender);
 

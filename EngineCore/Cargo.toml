@@ -6,6 +6,8 @@ members = [
     "src/ngsengine",
     "src/ngsloader",
     "src/ngsgamegfx",
+    "src/ngsgamegfx/src/common",
+    "src/ngsgamegfx/src/graph",
     "src/ngspf",
     "src/ngspf/src/canvas",
     "src/ngspf/src/com",

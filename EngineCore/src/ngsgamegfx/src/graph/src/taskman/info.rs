@@ -7,7 +7,7 @@ use std::{any::Any, marker::PhantomData};
 
 use super::GraphContext;
 
-use crate::utils::any::AsAnySendSync;
+use ngsgamegfx_common::any::AsAnySendSync;
 
 /// Represents a task.
 #[derive(Debug)]

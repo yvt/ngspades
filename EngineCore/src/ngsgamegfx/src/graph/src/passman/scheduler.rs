@@ -13,7 +13,7 @@ use std::{
 use zangfx::base as gfx;
 
 use super::{Pass, PassInfo, Resource, ResourceId, ResourceInfo, ResourceRef};
-use crate::utils::{
+use ngsgamegfx_common::{
     any::AsAnySendSync,
     iterator_mut::{IteratorMut, IteratorToIteratorMutExt},
 };

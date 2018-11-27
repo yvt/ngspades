@@ -16,7 +16,7 @@ use std::{
 
 use super::{Cell, CellId, CellRef, Task, TaskInfo};
 
-use crate::utils::owning_ref::AssertStableAddress;
+use ngsgamegfx_common::owning_ref::AssertStableAddress;
 
 #[cfg(test)]
 #[path = "./scheduler_test.rs"]

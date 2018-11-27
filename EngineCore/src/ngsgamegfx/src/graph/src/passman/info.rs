@@ -10,7 +10,7 @@ use zangfx::base as gfx;
 use super::scheduler::{
     PassEncodingContext, PassInstantiationContext, ResourceInstantiationContext,
 };
-use crate::utils::any::AsAnySendSync;
+use ngsgamegfx_common::any::AsAnySendSync;
 
 /// Represents a pass.
 pub struct PassInfo<C: ?Sized> {

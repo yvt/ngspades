@@ -176,7 +176,7 @@ impl Task<gfx::Error> for CbEncodeTask {
         // Override the output fence
         let output_fence;
         {
-            use crate::utils::iterator_mut::IteratorMut;
+            use ngsgamegfx_common::iterator_mut::IteratorMut;
 
             let mut iter = run.output_fences_mut();
             let output_fence_place: &mut gfx::FenceRef = iter.next().unwrap();

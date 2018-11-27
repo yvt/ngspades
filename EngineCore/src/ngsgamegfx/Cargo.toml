@@ -5,27 +5,21 @@ authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 
 [dependencies]
-query_interface = "0.3.4"
-futures-preview = "0.3.0-alpha.9"
-pod = "0.5.0"
 arrayvec = "0.4.1"
-rand = "0.6.0"
-lazy_static = "1.1"
-atomic_refcell = "0.1.3"
-parking_lot = "0.6"
-owning_ref = "0.4.0"
-opaque_typedef = "0.0.4"
-opaque_typedef_macros = "0.0.4"
-pin-utils = "0.1.0-alpha.3"
-cryo = { version = "0.1.2", features = ["parking_lot"] }
 either = { version = "1.4" }
-zangfx = { path = "../zangfx" }
-ngspf = { path = "../ngspf" }
 flags-macro = "0.1.2"
-
+futures-preview = "0.3.0-alpha.9"
 injector = { path = "../support/injector" }
+lazy_static = "1.1"
+ngspf = { path = "../ngspf" }
+pod = "0.5.0"
+query_interface = "0.3.4"
+rand = "0.6.0"
 volatile_view = { path = "../support/volatile_view" }
-xdispatch = { path = "../xdispatch/xdispatch" }
+zangfx = { path = "../zangfx" }
+
+ngsgamegfx_common = { path = "src/common" }
+ngsgamegfx_graph = { path = "src/graph" }
 
 [dev-dependencies]
 cgmath = "0.16.1"
