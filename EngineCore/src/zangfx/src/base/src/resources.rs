@@ -67,6 +67,51 @@ define_handle! {
 /// [`queue_ownership_acquire`]: crate::CmdBuffer::queue_ownership_acquire
 /// [`queue_ownership_release`]: crate::CmdBuffer::queue_ownership_release
 ///
+/// # Additional fencing requirement
+///
+/// At any momenet, each image only can be in one layout. ZanGFX provides
+/// automatic image layout tracking, which only happens at fencing boundaries.
+/// For this reason, **you might need to perform extra fencing** in cases which
+/// at first glance don't seem to need that.
+///
+/// The following pseudocode illustrates one of such cases:
+///
+/// ```text
+/// render:
+///     use(Image)                  (image = Shader)
+///     update_fence(Fence1)
+/// compute:
+///     wait_fence(Fence1)
+///     use(Image)                  (image = Shader)
+/// copy:
+///     wait_fence(Fence1)
+///     copy_from_image_to_buffer(
+///         Image, Buffer)          (image = Copy)
+/// ```
+///
+/// In this example, the first two passes uses `Image` in the `Shader` layout
+/// while the last one has to transition it into the `Copy` layout. Since there
+/// isn't a fence defined between the second and third pass, the system might
+/// try to perform layout transition while the image is still in use by the
+/// second pass. The following modified pseudocode doesn't have this problem:
+///
+/// ```text
+/// render:
+///     use(Image)
+///     update_fence(Fence1)
+/// compute:
+///     wait_fence(Fence1)
+///     use(Image)
+///     update_fence(Fence2)
+/// copy:
+///     wait_fence(Fence1)
+///     wait_fence(Fence2)
+///     copy_from_image_to_buffer(Image, Buffer)
+/// ```
+///
+/// This additional fencing requirement does not apply to images marked with
+/// [`ImageUsageFlags::Mutable`].
+///
 pub trait Image: CloneHandle<ImageRef> {
     /// Create a proxy object to use this image from a specified queue.
     ///
@@ -337,6 +382,10 @@ bitflags! {
 
         /// This flag serves as a hint that the backend should trade off the use of
         /// the generic image layout in memory for fewer image layout transitions.
+        ///
+        /// Using this flag removes [the additional fencing requirement].
+        ///
+        /// [the additional fencing requirement]: Image
         const Mutable = 0b100000000;
 
         /// Controls the size of [state-tracking units]. This flag instructs the
