@@ -27,7 +27,7 @@ use crate::resstate::{CmdBuffer, RefTable};
 use crate::utils::{translate_access_type_flags, translate_pipeline_stage_flags};
 
 use super::super::semaphore::Semaphore;
-use super::{CmdBufferData, EncodingState, Pass, PassImageBarrier};
+use super::{CmdBufferData, EncodingState, Pass, PassImageBarrier, PassType};
 
 #[derive(Debug, Default)]
 crate struct FenceSet {
@@ -313,7 +313,7 @@ impl CmdBufferData {
     }
 
     /// Start a new pass. Terminate the current one (if any).
-    crate fn begin_pass(&mut self) {
+    crate fn begin_pass(&mut self, ty: PassType) {
         self.end_pass();
 
         self.passes.reserve(1);
@@ -349,6 +349,7 @@ impl CmdBufferData {
         // TODO: Handle command buffer beginning error
 
         self.passes.push(Pass {
+            ty,
             vk_cmd_buffer,
             signal_fences: Vec::new(),
             wait_fences: Vec::new(),
@@ -386,7 +387,7 @@ impl CmdBufferData {
         buffers: &[(Range<base::DeviceSize>, &base::BufferRef)],
     ) {
         if self.state == EncodingState::None {
-            self.begin_pass();
+            self.begin_pass(PassType::Implicit);
         }
 
         for (_, buffer) in buffers.iter() {
@@ -446,7 +447,7 @@ impl CmdBufferData {
         use zangfx_base::QueueOwnershipTransfer;
 
         if self.state == EncodingState::None {
-            self.begin_pass();
+            self.begin_pass(PassType::Implicit);
         }
 
         let vk_cmd_buffer = self.vk_cmd_buffer();
@@ -601,7 +602,7 @@ impl CmdBufferData {
 
     crate fn invalidate_image(&mut self, images: &[&base::ImageRef]) {
         if self.state == EncodingState::None {
-            self.begin_pass();
+            self.begin_pass(PassType::Implicit);
         }
 
         let current_pass = self.passes.last_mut().unwrap();
@@ -716,6 +717,7 @@ impl base::CmdEncoder for CmdBufferData {
         }
 
         // TODO: Add "access type" to the base API
+
         let mut access = base::AccessTypeFlags::empty();
         if usage.intersects(flags![base::ResourceUsageFlags::{Read | Sample}]) {
             access |= flags![base::AccessTypeFlags::{
@@ -725,6 +727,20 @@ impl base::CmdEncoder for CmdBufferData {
         if usage.intersects(base::ResourceUsageFlags::Write) {
             access |= flags![base::AccessTypeFlags::{
                 VertexWrite | FragmentWrite | ComputeWrite}];
+        }
+
+        match self.passes.last().unwrap().ty {
+            PassType::Implicit => unreachable!(),
+            PassType::Render => {
+                access &= flags![base::AccessTypeFlags::{
+                    VertexUniformRead | VertexRead | FragmentUniformRead | FragmentRead |
+                    VertexWrite | FragmentWrite}];
+            }
+            PassType::Compute => {
+                access &= flags![base::AccessTypeFlags::{
+                    ComputeUniformRead | ComputeRead | ComputeWrite}];
+            }
+            PassType::Copy => return,
         }
 
         for image in objs.images() {
