@@ -222,12 +222,18 @@ impl CmdBufferData {
                     );
                 }
             } else if vk_image_barriers.len() > 0 {
+                let src_stage = if event_src_stages.is_empty() {
+                    vk::PipelineStageFlags::TOP_OF_PIPE
+                } else {
+                    event_src_stages
+                };
+
                 let dst_stage = barrier_dst_access.supported_stages();
 
                 unsafe {
                     vk_device.cmd_pipeline_barrier(
                         vk_prev_cmd_buffer!(),
-                        vk::PipelineStageFlags::TOP_OF_PIPE,
+                        src_stage,
                         if dst_stage.is_empty() {
                             vk::PipelineStageFlags::BOTTOM_OF_PIPE
                         } else {
