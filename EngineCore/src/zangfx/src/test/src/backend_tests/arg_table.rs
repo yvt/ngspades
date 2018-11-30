@@ -298,6 +298,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         {
             let e: &mut dyn gfx::ComputeCmdEncoder = cmd_buffer.encode_compute();
             e.use_resource_read_write(&buffer);
+            e.use_resource_read(&[&image_cube, &image_2d, &image_3d, &image_2ds][..]);
             e.bind_pipeline(&pipeline);
             e.bind_arg_table(0, &[(&pool, &arg_table)]);
             e.dispatch(&[]);
