@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 struct BenchDriver;
 
-struct UniqueInstance(ash::Instance<V1_0>);
+struct UniqueInstance(ash::Instance);
 
 impl Drop for UniqueInstance {
     fn drop(&mut self) {
@@ -34,13 +34,13 @@ impl Drop for UniqueInstance {
 }
 
 impl Deref for UniqueInstance {
-    type Target = ash::Instance<V1_0>;
+    type Target = ash::Instance;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-struct UniqueDevice(ash::Device<V1_0>);
+struct UniqueDevice(ash::Device);
 
 impl Drop for UniqueDevice {
     fn drop(&mut self) {
@@ -51,7 +51,7 @@ impl Drop for UniqueDevice {
 }
 
 impl Deref for UniqueDevice {
-    type Target = ash::Device<V1_0>;
+    type Target = ash::Device;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -60,7 +60,7 @@ impl Deref for UniqueDevice {
 impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
     fn choose_device(&self, runner: &mut dyn FnMut(&base::device::DeviceRef)) {
         unsafe {
-            let entry = match ash::Entry::<V1_0>::new() {
+            let entry = match ash::Entry::new() {
                 Ok(entry) => entry,
                 Err(err) => {
                     panic!("Failed to load the Vulkan runtime.: {:?}", err);
@@ -73,11 +73,11 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
             let instance: UniqueInstance = entry
                 .create_instance(
                     &ash::vk::InstanceCreateInfo {
-                        s_type: ash::vk::StructureType::InstanceCreateInfo,
+                        s_type: ash::vk::StructureType::INSTANCE_CREATE_INFO,
                         p_next: null(),
                         flags: ash::vk::InstanceCreateFlags::empty(),
                         p_application_info: &ash::vk::ApplicationInfo {
-                            s_type: ash::vk::StructureType::ApplicationInfo,
+                            s_type: ash::vk::StructureType::APPLICATION_INFO,
                             p_next: null(),
                             p_application_name: b"ZanGFX Test Suite\0".as_ptr() as *const _,
                             application_version: 1,
@@ -122,7 +122,7 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                     .iter()
                     .enumerate()
                     .map(|(i, prop)| ash::vk::DeviceQueueCreateInfo {
-                        s_type: ash::vk::StructureType::DeviceQueueCreateInfo,
+                        s_type: ash::vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
                         p_next: null(),
                         flags: ash::vk::DeviceQueueCreateFlags::empty(),
                         queue_family_index: i as u32,
@@ -143,7 +143,7 @@ impl zangfx_test::backend_benches::BenchDriver for BenchDriver {
                     .create_device(
                         phys_device,
                         &ash::vk::DeviceCreateInfo {
-                            s_type: ash::vk::StructureType::DeviceCreateInfo,
+                            s_type: ash::vk::StructureType::DEVICE_CREATE_INFO,
                             p_next: null(),
                             flags: ash::vk::DeviceCreateFlags::empty(),
                             queue_create_info_count: queues.len() as u32,
