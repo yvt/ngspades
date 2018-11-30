@@ -14,6 +14,7 @@ pub struct ENetPacket {
 }
 
 bitflags! {
+    #[repr(C)]
     pub struct ENetPacketFlags: u32 {
         const Reliable = 1;
         const Unsequenced = 0b10;
