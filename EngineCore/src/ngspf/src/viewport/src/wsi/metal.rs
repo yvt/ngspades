@@ -17,13 +17,13 @@ use zangfx::backends::metal::metal;
 use cocoa::appkit::{NSView, NSWindow};
 use cocoa::base::id as cocoa_id;
 use cocoa::foundation::{NSSize, NSString};
-use objc::runtime::YES;
+use objc::{msg_send, runtime::YES, sel, sel_impl};
 
 use zangfx::backends::metal as be;
 use zangfx::base as gfx;
 
 use super::{AppInfo, GfxQueue, Painter, SurfaceProps, WindowOptions, WmDevice};
-use metalutils::OCPtr;
+use crate::metalutils::OCPtr;
 
 use super::cvdisplaylink::CVDisplayLink;
 
@@ -51,13 +51,13 @@ struct RefreshState {
     needs_update: AtomicBool,
 }
 
-impl<P: Painter> ::Debug for WindowManager<P>
+impl<P: Painter> crate::Debug for WindowManager<P>
 where
-    P: ::Debug,
-    P::DeviceData: ::Debug,
-    P::SurfaceData: ::Debug,
+    P: crate::Debug,
+    P::DeviceData: crate::Debug,
+    P::SurfaceData: crate::Debug,
 {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_struct("WindowManager")
             .field("painter", &self.painter)
             .field("wm_device", &self.wm_device)
@@ -68,11 +68,11 @@ where
     }
 }
 
-impl<D> ::Debug for Surface<D>
+impl<D> crate::Debug for Surface<D>
 where
-    D: ::Debug,
+    D: crate::Debug,
 {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_struct("Surface")
             .field("surface_data", &self.surface_data)
             .field("layer", &self.layer)

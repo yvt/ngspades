@@ -2,6 +2,7 @@
 name = "ngspf_canvas"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
 
 [dependencies]
 cgmath = "0.16.1"

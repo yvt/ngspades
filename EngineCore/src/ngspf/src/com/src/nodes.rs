@@ -4,16 +4,18 @@
 // This source code is a part of Nightingales.
 //
 use ngscom::{
-    hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IAny, IUnknown, IUnknownTrait,
-    UnownedComPtr,
+    com_iid, com_impl, com_interface, hresults, to_hresult, BString, BStringRef, ComPtr, HResult,
+    IAny, IUnknown, IUnknownTrait, UnownedComPtr,
 };
 use tokenlock::TokenLock;
 use {cggeom, cgmath, ngsbase, rgb};
 
-use core::prelude::*;
-use hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_IMAGE, E_PF_NOT_NODE};
-use {core, viewport};
-use {ComContext, ComImage, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow, INgsPFWindowListener};
+use crate::hresults::{E_PF_LOCKED, E_PF_NODE_MATERIALIZED, E_PF_NOT_IMAGE, E_PF_NOT_NODE};
+use crate::{
+    ComContext, ComImage, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow, INgsPFWindowListener,
+};
+use ngspf_core::prelude::*;
+use {ngspf_core as core, ngspf_viewport as viewport};
 
 pub(crate) fn translate_context_error(e: core::ContextError) -> HResult {
     match e {
@@ -500,14 +502,14 @@ impl ngsbase::INgsPFWindowTrait for ComWindow {
         let value: Option<viewport::WindowListener> = if !value.is_null() {
             let listener: ComPtr<INgsPFWindowListener> = value.to_owned();
             Some(Box::new(move |e| {
-                use viewport::WindowEvent::*;
+                use ngspf_viewport::WindowEvent::*;
                 let result = match e {
                     &Resized(size) => listener.resized(size),
                     &Moved(position) => listener.moved(position),
                     &Close => listener.close(),
                     &Focused(focused) => listener.focused(focused),
                     &MouseButton(position, button, pressed) => {
-                        use viewport::MouseButton::*;
+                        use ngspf_viewport::MouseButton::*;
                         listener.mouse_button(
                             trans_mouse_pos(position),
                             match button {

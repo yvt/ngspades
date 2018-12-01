@@ -24,7 +24,7 @@ mod os {
 
 #[cfg(target_os = "macos")]
 mod os {
-    use metalutils::OCPtr;
+    use crate::metalutils::OCPtr;
     use zangfx::backends::metal::metal;
 
     pub fn autorelease_pool_scope<T, S>(cb: T) -> S

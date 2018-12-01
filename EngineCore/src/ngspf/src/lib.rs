@@ -8,17 +8,17 @@
 //!
 //! todo
 //!
-pub extern crate ngspf_canvas as canvas;
-pub extern crate ngspf_core as core;
-pub extern crate ngspf_viewport as viewport;
+pub use ngspf_canvas as canvas;
+pub use ngspf_core as core;
+pub use ngspf_viewport as viewport;
 
-pub extern crate cggeom;
+pub use cggeom;
 
 /// The NgsPF prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use core::prelude::*;
+    pub use ngspf_core::prelude::*;
 
     #[doc(no_inline)]
-    pub use canvas::prelude::*;
+    pub use ngspf_canvas::prelude::*;
 }

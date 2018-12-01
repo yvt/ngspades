@@ -137,7 +137,7 @@ mod os {
 
         let create_info = vk::MacOSSurfaceCreateInfoMVK {
             s_type: vk::StructureType::MACOS_SURFACE_CREATE_INFO_M,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: Default::default(),
             p_view: unsafe { transmute(view) },
         };

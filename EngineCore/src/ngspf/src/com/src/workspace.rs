@@ -8,14 +8,16 @@ use std::cell::RefCell;
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex, TryLockError};
 
-use ngscom::{hresults, to_hresult, BStringRef, ComPtr, HResult, IAny, IUnknown, UnownedComPtr};
+use ngscom::{
+    com_impl, hresults, to_hresult, BStringRef, ComPtr, HResult, IAny, IUnknown, UnownedComPtr,
+};
 
-use core::{prelude::*, Context};
-use hresults::{E_PF_LOCKED, E_PF_NOT_NODE, E_PF_THREAD};
+use crate::hresults::{E_PF_LOCKED, E_PF_NOT_NODE, E_PF_THREAD};
+use crate::nodes::{translate_context_error, INodeRef};
+use crate::ComContext;
 use ngsbase::{INgsPFContext, INgsPFWorkspace, INgsPFWorkspaceListener, INgsPFWorkspaceTrait};
-use nodes::{translate_context_error, INodeRef};
-use viewport::{RootRef, Workspace, WorkspaceBuilder, WorkspaceError};
-use ComContext;
+use ngspf_core::{prelude::*, Context};
+use ngspf_viewport::{RootRef, Workspace, WorkspaceBuilder, WorkspaceError};
 
 fn translate_workspace_error(e: WorkspaceError) -> HResult {
     match e {

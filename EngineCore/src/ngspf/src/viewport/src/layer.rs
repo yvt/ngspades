@@ -6,16 +6,17 @@
 //! Layer node.
 use std::sync::Arc;
 
+use bitflags::bitflags;
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Point2};
 use refeq::RefEqArc;
 use rgb::RGBA;
 
 use super::Port;
-use canvas::ImageRef;
 use cggeom::prelude::*;
 use cggeom::Box2;
-use core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, PropertyAccessor};
+use ngspf_canvas::ImageRef;
+use ngspf_core::{Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, PropertyAccessor};
 
 bitflags! {
     pub struct LayerFlags: u8 {

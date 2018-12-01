@@ -6,17 +6,18 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
+use flags_macro::flags;
 use iterpool::{Pool, PoolPtr};
 
 use zangfx::base as gfx;
 use zangfx::base::Result;
 use zangfx::utils::{uploader, DeviceUtils};
 
-use canvas::{ImageData, ImageRef};
-use core::prelude::*;
-use core::PresenterFrame;
+use ngspf_canvas::{ImageData, ImageRef};
+use ngspf_core::prelude::*;
+use ngspf_core::PresenterFrame;
 
-use gfxutils::{ArgPoolSet, ArgPoolTable, HeapSet, HeapSetAlloc};
+use crate::gfxutils::{ArgPoolSet, ArgPoolTable, HeapSet, HeapSetAlloc};
 
 /// Manages residency of `ImageRef` on a ZanGFX device.
 ///

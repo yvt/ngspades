@@ -3,15 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate cgmath;
-extern crate ngspf;
-extern crate ttf_noto_sans;
-#[macro_use]
-extern crate attrtext;
-extern crate lipsum;
-
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
+
+use attrtext::text as attr_text;
 
 use cgmath::prelude::*;
 use cgmath::{vec3, Matrix4, Point2, Vector2};
@@ -44,7 +39,7 @@ fn render_second_image(font_config: &text::FontConfig, extents: [usize; 2]) -> I
         };
 
         let lipsum = lipsum::lipsum(100);
-        let text = text! {{ body; {emph; ("Example text\n")} (lipsum.as_str()) }};
+        let text = attr_text! {{ body; {emph; ("Example text\n")} (lipsum.as_str()) }};
 
         let boundary = text::BoxBoundary::new(0.0..extents[0] as f64);
 
@@ -108,7 +103,7 @@ fn main() {
             ..Default::default()
         };
 
-        let text = text! {{ body; {emph; ("Hello")} (", world! مرحبا ") }};
+        let text = attr_text! {{ body; {emph; ("Hello")} (", world! مرحبا ") }};
 
         let layout = font_config.layout_point_text(&text, &para_style);
 

@@ -5,18 +5,19 @@
 //
 use cggeom::Box2;
 use ngscom::{
-    hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IAny, IUnknown, UnownedComPtr,
+    com_impl, hresults, to_hresult, BString, BStringRef, ComPtr, HResult, IAny, IUnknown,
+    UnownedComPtr,
 };
 use rgb::RGBA;
 use std::sync::{Arc, Mutex};
 
-use canvas::text;
 use ngsbase::{
     self, INgsPFCharStyle, INgsPFCharStyleTrait, INgsPFFont, INgsPFFontConfig,
     INgsPFFontConfigTrait, INgsPFFontFace, INgsPFFontFaceTrait, INgsPFFontFactory,
     INgsPFFontFactoryTrait, INgsPFFontTrait, INgsPFParagraphStyle, INgsPFParagraphStyleTrait,
     INgsPFTextLayout, INgsPFTextLayoutTrait,
 };
+use ngspf_canvas::text;
 
 com_impl! {
     /// An implementation of `INgsPFFontFactory`.

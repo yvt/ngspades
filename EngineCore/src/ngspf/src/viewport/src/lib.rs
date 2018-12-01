@@ -11,33 +11,7 @@
 //! pixels, with the exceptions of the cases where the exact number of physical
 //! pixels is important.
 //!
-extern crate cggeom;
-extern crate cgmath;
-extern crate iterpool;
-extern crate refeq;
-pub extern crate rgb;
-extern crate winit;
-
-#[macro_use(flags)]
-extern crate flags_macro;
-
-#[macro_use]
-extern crate bitflags;
-
-extern crate ngspf_canvas as canvas;
-extern crate ngspf_core as core;
-pub extern crate zangfx;
-
-#[macro_use]
-extern crate include_data;
-
-#[cfg(target_os = "macos")]
-extern crate cocoa;
-#[cfg(target_os = "macos")]
-#[macro_use]
-extern crate objc;
-
-extern crate xdispatch;
+pub use {zangfx, rgb};
 
 mod compositor;
 // mod device;
@@ -51,10 +25,10 @@ mod workspace;
 mod wsi;
 
 // pub use device::*;
-pub use layer::*;
-pub use port::*;
-pub use window::*;
-pub use workspace::*;
+pub use self::layer::*;
+pub use self::port::*;
+pub use self::window::*;
+pub use self::workspace::*;
 
 mod gfxutils;
 

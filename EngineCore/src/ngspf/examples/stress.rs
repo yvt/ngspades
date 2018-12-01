@@ -5,10 +5,6 @@
 //
 //! Displays and animates a crazy number of layers.
 //! Use arrow keys to adjust the layer count.
-extern crate cgmath;
-extern crate ngspf;
-extern crate rand;
-
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 

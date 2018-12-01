@@ -7,9 +7,9 @@ use cgmath::{prelude::*, Vector2};
 use rgb::RGBA;
 use std::ops::Range;
 
-use painter::{text::rasterize_text_layout, Painter};
-use text::{FontConfig, TextLayout};
-use {Affine2, ImageData, ImageFormat};
+use crate::painter::{text::rasterize_text_layout, Painter};
+use crate::text::{FontConfig, TextLayout};
+use crate::{Affine2, ImageData, ImageFormat};
 
 #[derive(Debug)]
 struct ImagePainter<T> {
@@ -80,7 +80,7 @@ impl<T: RasterPort> Painter for ImagePainter<T> {
 
 use super::blend;
 
-pub(crate) trait RasterPort: ::Debug {
+pub(crate) trait RasterPort: crate::Debug {
     fn size(&self) -> Vector2<usize>;
 
     /// The color type used by the intermediate calculation.

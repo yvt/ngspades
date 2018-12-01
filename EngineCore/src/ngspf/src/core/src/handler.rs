@@ -21,8 +21,8 @@ impl CommitHandlerList {
     }
 }
 
-impl ::fmt::Debug for CommitHandlerList {
-    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl std::fmt::Debug for CommitHandlerList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_tuple("CommitHandlerList").finish()
     }
 }

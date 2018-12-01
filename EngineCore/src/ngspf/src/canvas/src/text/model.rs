@@ -40,7 +40,7 @@ impl<'a> ElementRef<'a> {
 }
 
 /// A foreign object that can be embedded into a paragraph.
-pub trait ForeignObject: ::Debug {
+pub trait ForeignObject: crate::Debug {
     /// The dimensions of the foreign object.
     fn extents(&self) -> [f64; 2];
 

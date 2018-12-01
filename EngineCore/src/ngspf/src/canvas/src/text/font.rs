@@ -5,7 +5,6 @@
 //
 use super::{ftutils, hbutils, CharStyleRef, FONT_SCALE};
 use attrtext::FontStyle;
-use harfbuzz;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -13,7 +12,7 @@ use std::sync::Arc;
 /// Maintains a set of fonts and their associated font style values which are
 /// used to determine the optimal font for rendering given characters.
 ///
-/// `FontConfig` is not `Sync` because FreeType's `FT_Face` is not thread-safe.
+/// `FontConfig` is not `Sync` because freetype's `FT_Face` is not thread-safe.
 ///
 /// Font selection is done as following:
 ///
@@ -257,8 +256,8 @@ impl FontFaceProps {
 
 impl FontFace {
     fn contains(&self, x: char) -> bool {
-        let mut glyph: harfbuzz::hb_codepoint_t = 0;
-        unsafe { harfbuzz::hb_font_get_glyph(self.hb_font.get(), x as u32, 0, &mut glyph) != 0 }
+        let mut glyph: harfbuzz_sys::hb_codepoint_t = 0;
+        unsafe { harfbuzz_sys::hb_font_get_glyph(self.hb_font.get(), x as u32, 0, &mut glyph) != 0 }
     }
 }
 

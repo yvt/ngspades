@@ -4,8 +4,9 @@
 // This source code is a part of Nightingales.
 //
 //! Window node.
+use bitflags::bitflags;
 use cgmath::Vector2;
-use core::{
+use ngspf_core::{
     Context, KeyedProperty, KeyedPropertyAccessor, Node, NodeRef, ProducerDataCell, ProducerFrame,
     PropertyAccessor, PropertyError, PropertyProducerWrite, RefPropertyAccessor,
     RoPropertyAccessor, UpdateId, WoProperty,

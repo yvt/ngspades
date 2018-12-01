@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use cgmath::Vector2;
-use core::{RefPropertyAccessor, RoPropertyAccessor};
+use ngspf_core::{RefPropertyAccessor, RoPropertyAccessor};
 use refeq::RefEqArc;
 
 /// Owned raster image data.

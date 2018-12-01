@@ -3,14 +3,15 @@
 //
 // This source code is a part of Nightingales.
 //
+#[rustfmt::skip] // Removing the preceding `::` results in a compile error
+use ::freetype::freetype::{self, FT_BBox, FT_Matrix};
 use cgmath::prelude::*;
-use freetype::freetype::{self, FT_BBox, FT_Matrix};
 use rgb::RGBA;
 use std::os::raw::c_long;
 
-use painter::RasterPort;
-use text::{ftutils::Library, FontConfig, TextLayout};
-use Affine2;
+use crate::painter::RasterPort;
+use crate::text::{ftutils::Library, FontConfig, TextLayout};
+use crate::Affine2;
 
 pub(crate) fn rasterize_text_layout<R: RasterPort>(
     port: &mut R,

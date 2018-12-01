@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 
 use zangfx::base as gfx;
 
-use core::PresenterFrame;
-pub use wsi::GfxQueue;
+pub use crate::wsi::GfxQueue;
+use ngspf_core::PresenterFrame;
 
 /// ZanGFX objects passed to ports.
 ///

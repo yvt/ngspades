@@ -4,16 +4,16 @@
 // This source code is a part of Nightingales.
 //
 use cgmath::Vector2;
-use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown, UnownedComPtr};
+use ngscom::{com_impl, hresults, to_hresult, ComPtr, HResult, IAny, IUnknown, UnownedComPtr};
 use owning_ref::OwningRefMut;
 use rgb::RGBA;
 use stickylock::{StickyMutex, StickyMutexGuard};
 
-use canvas::painter::Painter;
-use hresults::E_PF_THREAD;
+use crate::hresults::E_PF_THREAD;
 use ngsbase::{INgsPFPainter, INgsPFPainterTrait, INgsPFTextLayout};
+use ngspf_canvas::painter::Painter;
 
-use text::ComTextLayout;
+use crate::text::ComTextLayout;
 
 com_impl! {
     /// A COM wrapper for `ngspf::canvas::Painter`.

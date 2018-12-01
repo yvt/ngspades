@@ -3,9 +3,6 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate cgmath;
-extern crate ngspf;
-
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 

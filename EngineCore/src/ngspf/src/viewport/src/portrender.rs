@@ -8,11 +8,11 @@ use std::collections::HashMap;
 use xdispatch;
 use zangfx::{base as gfx, base::Result};
 
-use core::{NodeRef, PresenterFrame};
+use ngspf_core::{NodeRef, PresenterFrame};
 
-use layer::{Layer, LayerContents};
-use port::{GfxObjects, Port, PortImageProps, PortManager, PortRenderContext};
-use temprespool::{TempResPool, TempResTable};
+use crate::layer::{Layer, LayerContents};
+use crate::port::{GfxObjects, Port, PortImageProps, PortManager, PortRenderContext};
+use crate::temprespool::{TempResPool, TempResTable};
 
 /// Manages rendering work on `Port`s in a certain frame.
 #[derive(Debug)]
@@ -134,7 +134,7 @@ impl<'a> PortRenderFrame<'a> {
                         // dispatches are done
                         let frame = &*(frame as *const PresenterFrame);
 
-                        queue.async(move || {
+                        queue.r#async(move || {
                             port_instance
                                 .lock()
                                 .unwrap()

@@ -4,7 +4,8 @@
 // This source code is a part of Nightingales.
 //
 //! Utilities for interacting with FreeType.
-use freetype::{freetype, succeeded};
+use ::freetype::{freetype, succeeded};
+use lazy_static::lazy_static;
 use std::cell::{RefCell, RefMut};
 use std::mem::ManuallyDrop;
 use std::os::raw::{c_int, c_long, c_uint, c_void};
@@ -30,12 +31,12 @@ unsafe impl Send for Library {}
 
 impl Library {
     fn new() -> Result<Self, Error> {
-        let mut handle: freetype::FT_Library = ::null_mut();
+        let mut handle: freetype::FT_Library = crate::null_mut();
         Error::from_raw(unsafe { freetype::FT_Init_FreeType(&mut handle) })?;
         Ok(Library(handle))
     }
 
-    pub fn global() -> impl ::Deref<Target = Library> + 'static {
+    pub fn global() -> impl crate::Deref<Target = Library> + 'static {
         lazy_static! {
             static ref LIBRARY: Mutex<Library> = Mutex::new(Library::new().unwrap());
         }
@@ -51,7 +52,7 @@ impl Library {
         buffer: T,
         face_index: i32,
     ) -> Result<MemoryFace, (Error, T)> {
-        let mut handle: freetype::FT_Face = ::null_mut();
+        let mut handle: freetype::FT_Face = crate::null_mut();
 
         match Error::from_raw(unsafe {
             freetype::FT_New_Memory_Face(
@@ -77,7 +78,7 @@ impl Drop for Library {
     }
 }
 
-pub unsafe trait FaceBuffer: ::Debug + Sync + Send {
+pub unsafe trait FaceBuffer: crate::Debug + Sync + Send {
     /// Return the contents as a slice. The returned slice must **not** move
     /// throughout the lifetime of `self` (which is why this trait is marked as
     /// `unsafe`).
@@ -114,7 +115,7 @@ unsafe impl<T: FaceBuffer> FaceBuffer for Arc<T> {
 #[derive(Debug)]
 pub struct MemoryFace(ManuallyDrop<Face>, Box<FaceBuffer>);
 
-impl ::Deref for MemoryFace {
+impl crate::Deref for MemoryFace {
     type Target = Face;
 
     fn deref(&self) -> &Face {
@@ -213,8 +214,8 @@ impl Outline {
         }
 
         let mut params = freetype::FT_Raster_Params {
-            target: ::null(),
-            source: ::null(),
+            target: crate::null(),
+            source: crate::null(),
             flags: (freetype::FT_RASTER_FLAG_DIRECT
                 | freetype::FT_RASTER_FLAG_AA
                 | if clip_box.is_some() {

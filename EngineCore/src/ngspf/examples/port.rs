@@ -3,14 +3,6 @@
 //
 // This source code is a part of Nightingales.
 //
-extern crate cgmath;
-#[macro_use]
-extern crate include_data;
-extern crate ngspf;
-extern crate refeq;
-#[macro_use]
-extern crate flags_macro;
-
 use ngspf::viewport::zangfx::base as gfx;
 use ngspf::viewport::zangfx::utils as gfxut;
 
@@ -31,16 +23,18 @@ use ngspf::viewport::{
 };
 
 mod triangle {
-    use include_data;
+    use include_data::{include_data, DataView};
 
-    static SPIRV_FRAG: include_data::DataView =
+    static SPIRV_FRAG: DataView =
         include_data!(concat!(env!("OUT_DIR"), "/triangle.frag.spv"));
-    static SPIRV_VERT: include_data::DataView =
+    static SPIRV_VERT: DataView =
         include_data!(concat!(env!("OUT_DIR"), "/triangle.vert.spv"));
 
-    use gfx;
-    use gfx::prelude::*;
-    use gfxut::DeviceUtils;
+    use crate::gfx;
+    use crate::gfx::prelude::*;
+    use crate::gfxut::DeviceUtils;
+
+    use flags_macro::flags;
 
     use std::mem;
     use std::sync::Arc;
@@ -287,7 +281,7 @@ fn main() {
     // Produce the first frame
     let root = RootRef::clone(ws.root());
     let window: WindowRef;
-    let port = RefEqArc::new(::triangle::MyPort::new(&context));
+    let port = RefEqArc::new(crate::triangle::MyPort::new(&context));
     {
         let image = LayerBuilder::new()
             .contents(LayerContents::Port(port.clone()))

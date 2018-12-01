@@ -5,14 +5,14 @@
 //
 use arclock::{ArcLock, ArcLockGuard};
 use cgmath::Vector2;
-use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
+use ngscom::{com_impl, hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
 use owning_ref::{OwningHandle, OwningRefMut};
 use std::sync::Mutex;
 
-use canvas::{painter::new_painter_for_image_data, ImageData, ImageFormat, ImageRef};
-use hresults::E_PF_THREAD;
+use crate::hresults::E_PF_THREAD;
+use crate::ComPainter;
 use ngsbase::{self, INgsPFBitmap, INgsPFBitmapTrait, INgsPFPainter};
-use ComPainter;
+use ngspf_canvas::{painter::new_painter_for_image_data, ImageData, ImageFormat, ImageRef};
 
 // The methods provided by `INgsPFBitmap` are inherently unsafe. This unsafeness is
 // hidden from partially-trusted assemblies using the .NET wrapper class `Bitmap`.
@@ -98,12 +98,12 @@ impl INgsPFBitmapTrait for ComBitmap {
             // `OwningRefMut` doesn't implement `AsMut`. Make it implement `AsMut`
             // by wrapping it with a newtype. (I think this is an oversight, too)
             struct PainterAsMut<T>(T);
-            impl<T: ::Deref> AsRef<T::Target> for PainterAsMut<T> {
+            impl<T: crate::Deref> AsRef<T::Target> for PainterAsMut<T> {
                 fn as_ref(&self) -> &T::Target {
                     &*self.0
                 }
             }
-            impl<T: ::Deref + ::DerefMut> AsMut<T::Target> for PainterAsMut<T> {
+            impl<T: crate::Deref + crate::DerefMut> AsMut<T::Target> for PainterAsMut<T> {
                 fn as_mut(&mut self) -> &mut T::Target {
                     &mut *self.0
                 }

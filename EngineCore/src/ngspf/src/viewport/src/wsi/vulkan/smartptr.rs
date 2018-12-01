@@ -14,8 +14,8 @@ pub trait AutoPtr<T>: Deref<Target = T> + Sized {
 
 pub struct UniqueInstance(pub ash::Instance);
 
-impl ::Debug for UniqueInstance {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl crate::Debug for UniqueInstance {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_tuple("UniqueInstance")
             .field(&self.0.handle())
             .finish()
@@ -39,8 +39,8 @@ impl Deref for UniqueInstance {
 
 pub struct UniqueDevice(pub ash::Device);
 
-impl ::Debug for UniqueDevice {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl crate::Debug for UniqueDevice {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_tuple("UniqueDevice")
             .field(&self.0.handle())
             .finish()

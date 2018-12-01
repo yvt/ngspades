@@ -71,8 +71,8 @@ pub(super) struct SwapchainManager {
 
 type FenceSet = Vec<vk::Fence>;
 
-impl ::Debug for SwapchainManager {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl crate::Debug for SwapchainManager {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_struct("SwapchainManager")
             .field("device", &self.device)
             .field("fences_send", &self.fences_send)
@@ -341,7 +341,7 @@ impl SwapchainManager {
             vk_device.create_fence(
                 &vk::FenceCreateInfo {
                     s_type: vk::StructureType::FENCE_CREATE_INFO,
-                    p_next: ::null(),
+                    p_next: crate::null(),
                     flags: vk::FenceCreateFlags::empty(),
                 },
                 None,

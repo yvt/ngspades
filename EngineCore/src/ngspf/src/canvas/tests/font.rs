@@ -8,7 +8,7 @@ extern crate lipsum;
 extern crate ngspf_canvas as canvas;
 extern crate ttf_noto_sans;
 
-use canvas::{painter::*, text::*, *};
+use crate::canvas::{painter::*, text::*, *};
 use cgmath::Vector2;
 
 const BEHDAD_REGULAR: &[u8] = include_bytes!("fonts/Behdad-Regular.otf");

@@ -13,6 +13,7 @@
 //! - `VkXXX`: Vulkan type, or something that pertains to it
 extern crate atomic_refcell;
 
+use flags_macro::flags;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
@@ -66,13 +67,13 @@ pub struct WindowManager<P: Painter> {
     next_surface_id: u32,
 }
 
-impl<P: Painter> ::Debug for WindowManager<P>
+impl<P: Painter> crate::Debug for WindowManager<P>
 where
-    P: ::Debug,
-    P::DeviceData: ::Debug,
-    P::SurfaceData: ::Debug,
+    P: crate::Debug,
+    P::DeviceData: crate::Debug,
+    P::SurfaceData: crate::Debug,
 {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_struct("WindowManager")
             .field("painter", &self.painter)
             .field("entry", &())
@@ -307,12 +308,12 @@ struct PhysicalDevice<P: Painter> {
     device_data: Option<P::DeviceData>,
 }
 
-impl<P: Painter> ::Debug for PhysicalDevice<P>
+impl<P: Painter> crate::Debug for PhysicalDevice<P>
 where
-    P::DeviceData: ::Debug,
-    P::SurfaceData: ::Debug,
+    P::DeviceData: crate::Debug,
+    P::SurfaceData: crate::Debug,
 {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_struct("PhysicalDevice")
             .field("info", &self.info)
             .field("vk_device", &self.vk_device)
@@ -389,7 +390,7 @@ impl<P: Painter> PhysicalDevice<P> {
                 if count > 0 {
                     Some(ash::vk::DeviceQueueCreateInfo {
                         s_type: ash::vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         flags: ash::vk::DeviceQueueCreateFlags::empty(),
                         queue_family_index: queue_family as u32,
                         queue_count: count,
@@ -807,11 +808,11 @@ struct Surface<P: Painter> {
     last_error: Option<PresentError>,
 }
 
-impl<P: Painter> ::Debug for Surface<P>
+impl<P: Painter> crate::Debug for Surface<P>
 where
-    P::SurfaceData: ::Debug,
+    P::SurfaceData: crate::Debug,
 {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_struct("Surface")
             .field("vk_surface", &self.vk_surface)
             .field("window", &())
@@ -948,7 +949,7 @@ impl Swapchain {
 
                     let mut barrier = vk::ImageMemoryBarrier {
                         s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         src_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
                         dst_access_mask: vk::AccessFlags::empty(),
                         old_layout: image.translate_layout(gfx::ImageLayout::Render),
@@ -1007,7 +1008,7 @@ impl Swapchain {
 
                         let mut barrier = vk::ImageMemoryBarrier {
                             s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
-                            p_next: ::null(),
+                            p_next: crate::null(),
                             src_access_mask: vk::AccessFlags::empty(),
                             dst_access_mask: vk::AccessFlags::empty(),
                             old_layout: image.translate_layout(gfx::ImageLayout::Render),
@@ -1060,13 +1061,13 @@ impl Swapchain {
 
                 let present_info = vk::PresentInfoKHR {
                     s_type: vk::StructureType::PRESENT_INFO_KHR,
-                    p_next: ::null(),
+                    p_next: crate::null(),
                     wait_semaphore_count: 1,
                     p_wait_semaphores: &vk_semaphore,
                     swapchain_count: 1,
                     p_swapchains: &self.vk_swapchain,
                     p_image_indices: &self.image_index,
-                    p_results: ::null_mut(),
+                    p_results: crate::null_mut(),
                 };
 
                 let result = unsafe {
@@ -1290,7 +1291,7 @@ impl VkSurfaceProps {
         }
         Some(vk::SwapchainCreateInfoKHR {
             s_type: vk::StructureType::SWAPCHAIN_CREATE_INFO_KHR,
-            p_next: ::null(),
+            p_next: crate::null(),
             flags: vk::SwapchainCreateFlagsKHR::empty(),
             surface,
             min_image_count: self.min_image_count,
@@ -1304,7 +1305,7 @@ impl VkSurfaceProps {
             image_usage: vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::COLOR_ATTACHMENT,
             image_sharing_mode: vk::SharingMode::EXCLUSIVE,
             queue_family_index_count: 0,
-            p_queue_family_indices: ::null(),
+            p_queue_family_indices: crate::null(),
             pre_transform: self.pre_transform,
             composite_alpha: self.composite_alpha,
             present_mode: self.present_mode,

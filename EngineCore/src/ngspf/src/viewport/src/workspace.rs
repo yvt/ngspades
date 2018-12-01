@@ -13,8 +13,8 @@ use winit::{self, dpi::LogicalPosition, dpi::LogicalSize, EventsLoop};
 
 use super::compositor::{CompositeContext, Compositor, CompositorWindow};
 use super::{Window, WindowActionFlags, WindowFlags};
-use core::prelude::*;
-use core::{
+use ngspf_core::prelude::*;
+use ngspf_core::{
     Context, KeyedProperty, KeyedPropertyAccessor, NodeRef, PresenterFrame, ProducerDataCell,
     ProducerFrame, PropertyAccessor, PropertyError, UpdateId, WoProperty,
 };
@@ -232,8 +232,8 @@ struct WorkspaceWindow {
     winit_window_id: winit::WindowId,
 }
 
-impl ::Debug for WorkspaceWindow {
-    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl crate::Debug for WorkspaceWindow {
+    fn fmt(&self, fmt: &mut crate::fmt::Formatter) -> crate::fmt::Result {
         fmt.debug_struct("WorkspaceWindow")
             .field("surface", &self.surface)
             .finish()
@@ -515,7 +515,7 @@ impl wsi::Painter for Painter {
     type UpdateParam = PresenterFrame;
 
     fn add_device(&mut self, device: &wsi::WmDevice) -> Self::DeviceData {
-        use port::GfxObjects;
+        use crate::port::GfxObjects;
         let compositor = Compositor::new(&GfxObjects {
             device: device.device.clone(),
             main_queue: device.main_queue.clone(),

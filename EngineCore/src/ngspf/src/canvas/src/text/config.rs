@@ -5,6 +5,7 @@
 //
 //! Character and paragraphy styles.
 use attrtext;
+use lazy_static::lazy_static;
 use rgb::RGBA;
 use std::ops::Range;
 

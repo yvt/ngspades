@@ -8,12 +8,12 @@ use stickylock::{StickyMutex, StickyMutexGuard};
 use tokenlock::{Token, TokenRef};
 
 use ngsbase;
-use ngscom::{hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
+use ngscom::{com_impl, hresults, to_hresult, ComPtr, HResult, IAny, IUnknown};
 
-use core::{Context, ProducerFrame};
-use hresults::{E_PF_LOCKED, E_PF_THREAD};
-use nodes::translate_context_error;
-use {nodes, INgsPFContext, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow};
+use crate::hresults::{E_PF_LOCKED, E_PF_THREAD};
+use crate::nodes::translate_context_error;
+use crate::{nodes, INgsPFContext, INgsPFLayer, INgsPFNodeGroup, INgsPFWindow};
+use ngspf_core::{Context, ProducerFrame};
 
 com_impl! {
     #[derive(Debug)]

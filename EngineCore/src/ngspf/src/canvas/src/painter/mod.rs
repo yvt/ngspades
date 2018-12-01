@@ -4,12 +4,12 @@
 // This source code is a part of Nightingales.
 //
 //! Draws graphical contents using a software-based renderer.
+use crate::text::{FontConfig, TextLayout};
 use cgmath::Vector2;
 use rgb::RGBA;
-use text::{FontConfig, TextLayout};
 
 /// An abstract interface used to issue draw operations.
-pub trait Painter: ::Debug {
+pub trait Painter: crate::Debug {
     /// Save the current drawing state to the stack.
     ///
     /// The drawing state stored to the stack includes:

@@ -62,7 +62,6 @@
 //! [UAX14]: http://www.unicode.org/reports/tr14/
 use attrtext::{text::Cursor, Override, Span, Text};
 use cgmath::{Point2, Vector2};
-use harfbuzz;
 use rgb::RGBA;
 use std::borrow::Cow;
 use std::ops::Range;
@@ -234,7 +233,7 @@ impl FontConfig {
         };
 
         // Shape each shaping cluster.
-        use iterutils::IterUtils;
+        use crate::iterutils::IterUtils;
         let hb_buffers: Vec<_> = shaping_clusters
             .iter()
             // Generate `flattened_range`, a byte range in `flattened`
@@ -250,7 +249,7 @@ impl FontConfig {
                     };
 
                     let mut hb_buffer = hbutils::Buffer::new();
-                    hb_buffer.set_content_type(harfbuzz::HB_BUFFER_CONTENT_TYPE_UNICODE);
+                    hb_buffer.set_content_type(harfbuzz_sys::HB_BUFFER_CONTENT_TYPE_UNICODE);
                     if let Some(x) = shaping_props.language {
                         hb_buffer.set_language(x);
                     }
@@ -259,10 +258,10 @@ impl FontConfig {
                     }
                     hb_buffer.set_direction(
                         match (is_vertical, shaping_props.bidi_level.is_rtl()) {
-                            (false, false) => harfbuzz::HB_DIRECTION_LTR,
-                            (false, true) => harfbuzz::HB_DIRECTION_RTL,
-                            (true, false) => harfbuzz::HB_DIRECTION_TTB,
-                            (true, true) => harfbuzz::HB_DIRECTION_BTT,
+                            (false, false) => harfbuzz_sys::HB_DIRECTION_LTR,
+                            (false, true) => harfbuzz_sys::HB_DIRECTION_RTL,
+                            (true, false) => harfbuzz_sys::HB_DIRECTION_TTB,
+                            (true, true) => harfbuzz_sys::HB_DIRECTION_BTT,
                         },
                     );
                     for (i, c) in flattened[flattened_range.clone()].char_indices() {
@@ -337,8 +336,8 @@ impl FontConfig {
             #[derive(Debug, Copy, Clone)]
             enum GlyphOrForeign<'a> {
                 Glyph(
-                    &'a harfbuzz::hb_glyph_info_t,
-                    &'a harfbuzz::hb_glyph_position_t,
+                    &'a harfbuzz_sys::hb_glyph_info_t,
+                    &'a harfbuzz_sys::hb_glyph_position_t,
                     &'a ShapingProps,
                 ),
                 Foreign(&'a ForeignObject, f64),
@@ -828,7 +827,7 @@ impl FontConfig {
                         || bytes.len() >= 2 && bytes[0] == 0xc2 && bytes[1] == 0xa0
                 }
 
-                let is_glyph_info_expansible = |x: &harfbuzz::hb_glyph_info_t| {
+                let is_glyph_info_expansible = |x: &harfbuzz_sys::hb_glyph_info_t| {
                     starts_with_space(&flattened[x.cluster as usize..])
                 };
 
@@ -1122,7 +1121,7 @@ struct GlyphExtents {
 }
 
 impl GlyphExtents {
-    fn from_hb_glyph_extents(x: &harfbuzz::hb_glyph_extents_t) -> Self {
+    fn from_hb_glyph_extents(x: &harfbuzz_sys::hb_glyph_extents_t) -> Self {
         Self {
             origin: Vector2::new(x.x_bearing, -x.y_bearing),
             size: Vector2::new(x.width, -x.height),

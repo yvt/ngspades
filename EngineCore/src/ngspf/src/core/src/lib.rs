@@ -736,7 +736,7 @@ impl<T, S> RoPropertyAccessor<S> for RefPropertyAccessor<T> where T: borrow::Bor
 /// The NgsPF prelude.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use {
+    pub use crate::{
         PropertyAccessor, PropertyPresenterRead, PropertyProducerRead, PropertyProducerWrite,
         RoPropertyAccessor,
     };

@@ -110,7 +110,7 @@ impl<'a> InstanceBuilder<'a> {
 
         let application_info = vk::ApplicationInfo {
             s_type: vk::StructureType::APPLICATION_INFO,
-            p_next: ::null(),
+            p_next: crate::null(),
             p_application_name: application_name.as_ptr(),
             application_version: app_info.version,
             p_engine_name: b"Nightingales\0".as_ptr() as *const _,
@@ -123,7 +123,7 @@ impl<'a> InstanceBuilder<'a> {
                 .create_instance(
                     &vk::InstanceCreateInfo {
                         s_type: vk::StructureType::INSTANCE_CREATE_INFO,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         flags: vk::InstanceCreateFlags::empty(),
                         p_application_info: &application_info,
                         enabled_layer_count: layers.len() as u32,
@@ -200,12 +200,12 @@ impl<'a> DeviceBuilder<'a> {
                     self.phys_device,
                     &vk::DeviceCreateInfo {
                         s_type: vk::StructureType::DEVICE_CREATE_INFO,
-                        p_next: ::null(),
+                        p_next: crate::null(),
                         flags: vk::DeviceCreateFlags::empty(),
                         queue_create_info_count: queue_create_infos.len() as u32,
                         p_queue_create_infos: queue_create_infos.as_ptr(),
                         enabled_layer_count: 0,
-                        pp_enabled_layer_names: ::null(),
+                        pp_enabled_layer_names: crate::null(),
                         enabled_extension_count: extensions.len() as u32,
                         pp_enabled_extension_names: extensions.as_ptr() as *const _,
                         p_enabled_features: enabled_features,

@@ -4,23 +4,6 @@
 // This source code is a part of Nightingales.
 //
 //! NgsCOM bridges to [NgsPF](../ngspf/index.html).
-extern crate arclock;
-extern crate atomic_refcell;
-extern crate cgmath;
-extern crate owning_ref;
-extern crate rgb;
-extern crate send_cell;
-extern crate stickylock;
-extern crate tokenlock;
-
-extern crate cggeom;
-extern crate ngsbase;
-#[macro_use]
-extern crate ngscom;
-extern crate ngspf_canvas as canvas;
-extern crate ngspf_core as core;
-extern crate ngspf_viewport as viewport;
-
 mod context;
 mod image;
 mod nodes;
@@ -33,11 +16,11 @@ pub use ngsbase::{
     INgsPFWorkspace,
 };
 
-pub use context::{ComContext, ProducerFrameLockGuard, ProducerFrameRefMut};
-pub use image::{ComBitmap, ComImage};
-pub use nodes::{INodeRef, INodeRefTrait};
-pub use painter::ComPainter;
-pub use workspace::ComWorkspace;
+pub use crate::context::{ComContext, ProducerFrameLockGuard, ProducerFrameRefMut};
+pub use crate::image::{ComBitmap, ComImage};
+pub use crate::nodes::{INodeRef, INodeRefTrait};
+pub use crate::painter::ComPainter;
+pub use crate::workspace::ComWorkspace;
 
 use std::ops::{Deref, DerefMut};
 

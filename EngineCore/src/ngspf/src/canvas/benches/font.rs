@@ -9,7 +9,7 @@ extern crate ngspf_canvas as canvas;
 extern crate test;
 extern crate ttf_noto_sans;
 
-use canvas::{painter::*, text::*, *};
+use crate::canvas::{painter::*, text::*, *};
 use cgmath::Vector2;
 
 fn load_noto_sans() -> Font {

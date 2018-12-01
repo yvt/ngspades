@@ -8,7 +8,7 @@ use std::sync::Arc;
 use self::gfx::Result;
 use zangfx::base as gfx;
 
-use gfxutils::{MultiHeapSet, MultiHeapSetAlloc};
+use crate::gfxutils::{MultiHeapSet, MultiHeapSetAlloc};
 
 /// Temporary resource pool (duh).
 #[derive(Debug)]

@@ -8,19 +8,20 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 use cgmath::{prelude::*, Matrix4, Vector2, Vector3, Vector4};
+use flags_macro::flags;
 use refeq::RefEqArc;
 use xdispatch;
 use zangfx::{base as gfx, base::Result, prelude::*, utils as gfxut};
 
-use core::{prelude::*, NodeRef, PresenterFrame};
+use ngspf_core::{prelude::*, NodeRef, PresenterFrame};
 
-use canvas::{ImageFormat, ImageRef};
-use imagemanager::{ImageManager, ImageRefTable};
-use layer::{ImageWrapMode, Layer};
-use port::{GfxObjects, Port, PortManager};
-use portrender::PortRenderFrame;
-use temprespool::{TempResPool, TempResTable};
-use wsi;
+use crate::imagemanager::{ImageManager, ImageRefTable};
+use crate::layer::{ImageWrapMode, Layer};
+use crate::port::{GfxObjects, Port, PortManager};
+use crate::portrender::PortRenderFrame;
+use crate::temprespool::{TempResPool, TempResTable};
+use crate::wsi;
+use ngspf_canvas::{ImageFormat, ImageRef};
 
 /// Compositor.
 ///
@@ -62,13 +63,14 @@ struct CompositorShaders {
 static BOX_VERTICES: &[[u16; 2]] = &[[0, 0], [1, 0], [0, 1], [1, 1]];
 
 pub mod composite {
+    use bitflags::bitflags;
     use cgmath::{Matrix4, Vector4};
-    use include_data;
+    use include_data::{include_data, DataView};
     use zangfx::base::*;
 
-    pub static SPIRV_FRAG: include_data::DataView =
+    pub static SPIRV_FRAG: DataView =
         include_data!(concat!(env!("OUT_DIR"), "/composite.frag.spv"));
-    pub static SPIRV_VERT: include_data::DataView =
+    pub static SPIRV_VERT: DataView =
         include_data!(concat!(env!("OUT_DIR"), "/composite.vert.spv"));
 
     // Vertex attribute locations
