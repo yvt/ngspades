@@ -779,16 +779,20 @@ impl CompositorWindow {
         // Scan for `Port`s first
         self.port_manager.prepare_frame();
 
-        let port_frame = PortRenderFrame::new(
-            &mut compositor.port_dispatch_queue,
-            frame,
-            root,
-            &compositor.gfx_objects,
-            &mut compositor.temp_res_pool,
-            &mut temp_res_table,
-            compositor.backing_store_memory_type,
-            &mut self.port_manager,
-        )?;
+        // This `unsafe` block is okay because we don't `forget` this
+        // `port_frame`.
+        let port_frame = unsafe {
+            PortRenderFrame::new(
+                &mut compositor.port_dispatch_queue,
+                frame,
+                root,
+                &compositor.gfx_objects,
+                &mut compositor.temp_res_pool,
+                &mut temp_res_table,
+                compositor.backing_store_memory_type,
+                &mut self.port_manager,
+            )?
+        };
 
         let mut c = LocalContext {
             compositor: &mut *compositor,

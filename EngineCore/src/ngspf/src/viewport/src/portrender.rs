@@ -39,7 +39,12 @@ impl<'a> Drop for PortRenderFrame<'a> {
 
 impl<'a> PortRenderFrame<'a> {
     /// Construct a `PortRenderFrame`. Start rendering work.
-    pub fn new(
+    ///
+    /// # Safety
+    ///
+    /// The constructed `PortRenderFrame` must not be disposed without dropping
+    /// (e.g., passed to `std::mem::forget`).
+    pub unsafe fn new(
         queue: &xdispatch::Queue,
         frame: &'a PresenterFrame,
         root: &Option<NodeRef>,
@@ -127,7 +132,7 @@ impl<'a> PortRenderFrame<'a> {
                         // Extend the lifetime. Should be okay since we insert
                         // `barrier_sync` at `Self::drop` which blocks until all
                         // dispatches are done
-                        let frame = unsafe { &*(frame as *const PresenterFrame) };
+                        let frame = &*(frame as *const PresenterFrame);
 
                         queue.async(move || {
                             port_instance
