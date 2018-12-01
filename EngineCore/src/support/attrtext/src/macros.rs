@@ -67,7 +67,7 @@
 ///     assert_eq!(flat, text);
 ///     # }
 ///
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! text {
     ($({$($rest:tt)*})*) => {{
         let mut text = $crate::TextBuf::new();
