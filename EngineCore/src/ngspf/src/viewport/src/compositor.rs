@@ -776,8 +776,8 @@ impl CompositorWindow {
         let mut temp_res_table = compositor.temp_res_pool.new_table();
         let image_ref_table = compositor.image_manager.new_ref_table();
 
-        // Scan for `Port`s first
-        self.port_manager.prepare_frame();
+        // Scan for `Port`s first. Firstly, delete all out-dated port instances.
+        self.port_manager.purge();
 
         // This `unsafe` block is okay because we don't `forget` this
         // `port_frame`.

@@ -100,11 +100,9 @@ impl PortManager {
         }
     }
 
-    /// Mark the start of a new frame.
-    ///
-    /// Destroys out-dated port instances (that is, whose nodes are no longer
+    /// Destroy out-dated port instances (that is, whose nodes are no longer
     /// on the layer tree).
-    pub fn prepare_frame(&mut self) {
+    pub fn purge(&mut self) {
         use std::mem::replace;
         self.port_map
             .retain(|_, map| replace(&mut map.used_in_last_frame, false));
