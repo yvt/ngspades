@@ -27,7 +27,7 @@ use crate::resstate::{CmdBuffer, RefTable};
 use crate::utils::{translate_access_type_flags, translate_pipeline_stage_flags};
 
 use super::super::semaphore::Semaphore;
-use super::{CmdBufferData, EncodingState, Pass, PassImageBarrier, PassType};
+use super::{CmdBufferData, EncodingState, Pass, PassImageBarrier};
 
 #[derive(Debug, Default)]
 crate struct FenceSet {
@@ -313,7 +313,7 @@ impl CmdBufferData {
     }
 
     /// Start a new pass. Terminate the current one (if any).
-    crate fn begin_pass(&mut self, ty: PassType) {
+    crate fn begin_pass(&mut self) {
         self.end_pass();
 
         self.passes.reserve(1);
@@ -349,7 +349,6 @@ impl CmdBufferData {
         // TODO: Handle command buffer beginning error
 
         self.passes.push(Pass {
-            ty,
             vk_cmd_buffer,
             signal_fences: Vec::new(),
             wait_fences: Vec::new(),
@@ -387,7 +386,7 @@ impl CmdBufferData {
         buffers: &[(Range<base::DeviceSize>, &base::BufferRef)],
     ) {
         if self.state == EncodingState::None {
-            self.begin_pass(PassType::Implicit);
+            self.begin_pass();
         }
 
         for (_, buffer) in buffers.iter() {
@@ -447,7 +446,7 @@ impl CmdBufferData {
         use zangfx_base::QueueOwnershipTransfer;
 
         if self.state == EncodingState::None {
-            self.begin_pass(PassType::Implicit);
+            self.begin_pass();
         }
 
         let vk_cmd_buffer = self.vk_cmd_buffer();
@@ -602,7 +601,7 @@ impl CmdBufferData {
 
     crate fn invalidate_image(&mut self, images: &[&base::ImageRef]) {
         if self.state == EncodingState::None {
-            self.begin_pass(PassType::Implicit);
+            self.begin_pass();
         }
 
         let current_pass = self.passes.last_mut().unwrap();
@@ -717,7 +716,6 @@ impl base::CmdEncoder for CmdBufferData {
         }
 
         // TODO: Add "access type" to the base API
-
         let mut access = base::AccessTypeFlags::empty();
         if usage.intersects(flags![base::ResourceUsageFlags::{Read | Sample}]) {
             access |= flags![base::AccessTypeFlags::{
@@ -729,19 +727,45 @@ impl base::CmdEncoder for CmdBufferData {
                 VertexWrite | FragmentWrite | ComputeWrite}];
         }
 
-        match self.passes.last().unwrap().ty {
-            PassType::Implicit => unreachable!(),
-            PassType::Render => {
-                access &= flags![base::AccessTypeFlags::{
-                    VertexUniformRead | VertexRead | FragmentUniformRead | FragmentRead |
-                    VertexWrite | FragmentWrite}];
-            }
-            PassType::Compute => {
-                access &= flags![base::AccessTypeFlags::{
-                    ComputeUniformRead | ComputeRead | ComputeWrite}];
-            }
-            PassType::Copy => return,
+        // We must use every access flags bit supported by any of render and
+        // compute pass types as the destination access type because image
+        // layout transition serves as an implicit write access on an image,
+        // and we insert image layout barriers only when a corresponding fence
+        // wait operation is defined.
+        //
+        // Previously we masked the destination access type with the current
+        // command pass type, which turned out to be wrong. To understand why
+        // this is wrong, consider the following example:
+        //
+        //    copy:
+        //        copy_buffer_to_image(..., Image)
+        //        update(Fence)
+        //    render:
+        //        wait(Fence)    // Layout change (Copy → Image),
+        //                       // dst_access = Render
+        //        use(Image)
+        //    compute:
+        //        wait(Fence)    // No layout change
+        //        use(Image)     // BUG: Layout transiton of Image might not be
+        //                       // complete at this point
+        //
+        // In this example, the compute pass might observe a corrupted image
+        // because an image layout transition operation defined in the second
+        // pass might be still in progress.
+        use zangfx_base::QueueFamilyCapsFlags;
+        let mut supported = base::AccessTypeFlags::empty();
+        let qf_caps = self.device.caps().info.queue_families[self.queue_family as usize].caps;
+        if qf_caps.contains(QueueFamilyCapsFlags::Render) {
+            supported |= flags![base::AccessTypeFlags::{
+                VertexUniformRead | VertexRead | FragmentUniformRead | FragmentRead |
+                VertexWrite | FragmentWrite}];
         }
+        if qf_caps.contains(QueueFamilyCapsFlags::Compute) {
+            supported |= flags![base::AccessTypeFlags::{
+                    ComputeUniformRead | ComputeRead | ComputeWrite}];
+        }
+
+        access &= supported;
 
         for image in objs.images() {
             let image: &Image = image.downcast_ref().expect("bad image type");

@@ -50,7 +50,7 @@ zangfx_impl_object! { CmdBuffer: dyn base::CmdBuffer, dyn (crate::Debug) }
 /// a command buffer is returned to a pool and is allocated again.
 #[derive(Debug)]
 crate struct CmdBufferData {
-    device: DeviceRef,
+    crate device: DeviceRef,
     scheduler: Arc<Scheduler>,
     vk_cmd_pool: vk::CommandPool,
 
@@ -128,8 +128,6 @@ crate struct CallbackSet(Vec<Box<dyn FnMut(Result<()>) + Sync + Send>>);
 /// `Pass`es.
 #[derive(Debug)]
 crate struct Pass {
-    crate ty: PassType,
-
     crate vk_cmd_buffer: vk::CommandBuffer,
 
     /// A set of fence that must be signaled before executing the pass.
@@ -145,16 +143,6 @@ crate struct Pass {
     crate image_barriers: Vec<PassImageBarrier>,
 
     crate image_layout_overrides: Vec<(usize, usize, vk::ImageLayout)>,
-}
-
-#[derive(Debug)]
-crate enum PassType {
-    /// An implicitly created pass that does not correspond to any of
-    /// the encoder types exposed by ZanGFX.
-    Implicit,
-    Render,
-    Compute,
-    Copy,
 }
 
 /// Represents a layout transition of an image before/after a pass.
@@ -210,7 +198,7 @@ impl CmdBuffer {
         if uncommited.state == EncodingState::Render {
             uncommited.end_render_pass();
         } else if uncommited.state == EncodingState::None {
-            uncommited.begin_pass(PassType::Implicit);
+            uncommited.begin_pass();
         }
         Some(uncommited.vk_cmd_buffer())
     }
@@ -339,7 +327,7 @@ impl base::CmdBuffer for CmdBuffer {
             .as_mut()
             .expect("command buffer is already commited");
 
-        uncommited.begin_pass(PassType::Render);
+        uncommited.begin_pass();
         uncommited.begin_render_pass(rtt);
 
         &mut ***uncommited
@@ -350,7 +338,7 @@ impl base::CmdBuffer for CmdBuffer {
             .as_mut()
             .expect("command buffer is already commited");
 
-        uncommited.begin_pass(PassType::Compute);
+        uncommited.begin_pass();
 
         &mut ***uncommited
     }
@@ -360,7 +348,7 @@ impl base::CmdBuffer for CmdBuffer {
             .as_mut()
             .expect("command buffer is already commited");
 
-        uncommited.begin_pass(PassType::Copy);
+        uncommited.begin_pass();
 
         &mut ***uncommited
     }
