@@ -28,7 +28,7 @@ mod os {
         let hinstance = unsafe { user32::GetWindow(hwnd, 0) as *const () };
         let win32_create_info = vk::Win32SurfaceCreateInfoKHR {
             s_type: vk::StructureType::WIN32_SURFACE_CREATE_INFO_KHR,
-            p_next: ::null(),
+            p_next: std::ptr::null(),
             flags: Default::default(),
             hinstance: hinstance as *const _,
             hwnd: hwnd as *const _,
@@ -64,7 +64,7 @@ mod os {
         if let (Some(wl_display), Some(wl_surface)) = (wl_display, wl_surface) {
             let wl_create_info = vk::WaylandSurfaceCreateInfoKHR {
                 s_type: vk::StructureType::WAYLAND_SURFACE_CREATE_INFO_KHR,
-                p_next: ::null(),
+                p_next: std::ptr::null(),
                 flags: Default::default(),
                 surface: wl_surface as *mut _,
                 display: wl_display as *mut _,
@@ -79,7 +79,7 @@ mod os {
         let x11_window = window.get_xlib_window().unwrap();
         let x11_create_info = vk::XlibSurfaceCreateInfoKHR {
             s_type: vk::StructureType::XLIB_SURFACE_CREATE_INFO_KHR,
-            p_next: ::null(),
+            p_next: std::ptr::null(),
             flags: Default::default(),
             window: x11_window as vk::Window,
             dpy: x11_display as *mut vk::Display,
@@ -137,7 +137,7 @@ mod os {
 
         let create_info = vk::MacOSSurfaceCreateInfoMVK {
             s_type: vk::StructureType::MACOS_SURFACE_CREATE_INFO_M,
-            p_next: crate::null(),
+            p_next: std::ptr::null(),
             flags: Default::default(),
             p_view: unsafe { transmute(view) },
         };
