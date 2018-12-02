@@ -12,7 +12,7 @@ use zangfx::{
 };
 
 use crate::{
-    passman::{ResourceId, ScheduleBuilder, ScheduleRunner},
+    passman::{ResourceId, Run, ScheduleBuilder, ScheduleRunner},
     taskman::{CellId, CellRef, CellUse, GraphBuilder, GraphContext, Task, TaskInfo},
 };
 
@@ -57,7 +57,11 @@ pub type PassContext = GraphContext;
 pub struct CmdBufferTaskCellSet {
     /// If a fence is stored to this cell before a graph is run, the fence
     /// will be updated after the command buffer execution.
-    pub fence_cell: CellRef<Option<gfx::FenceRef>>,
+    pub update_fence: CellRef<Option<gfx::FenceRef>>,
+
+    /// If a closure is stored to this cell, the closure will be called to bind
+    /// late-bound resources.
+    pub late_resource_binder: CellRef<LateResourceBinderCell>,
 
     /// `CmdBufferResult` will be stored after command buffer submission.
     pub cmd_buffer_result: CellRef<Option<CmdBufferResult>>,
@@ -109,7 +113,9 @@ impl CmdBufferTaskBuilder {
         let cmd_buffer_cell = graph_builder.define_cell(None);
 
         let prev_fence_cell = graph_builder.define_cell(None);
-        let fence_cell = graph_builder.define_cell(None);
+        let update_fence = graph_builder.define_cell(None);
+
+        let late_resource_binder = graph_builder.define_cell(LateResourceBinderCell::default());
 
         let cmd_buffer_result = graph_builder.define_cell(None);
 
@@ -123,7 +129,8 @@ impl CmdBufferTaskBuilder {
             task: Box::new(CbEncodeTask {
                 cmd_buffer_cell,
                 prev_fence_cell,
-                fence_cell,
+                update_fence,
+                late_resource_binder,
                 queue: queue.clone(),
                 schedule_runner,
             }),
@@ -141,8 +148,9 @@ impl CmdBufferTaskBuilder {
         });
 
         Ok(CmdBufferTaskCellSet {
-            fence_cell,
+            update_fence,
             cmd_buffer_result,
+            late_resource_binder,
         })
     }
 }
@@ -151,7 +159,8 @@ impl CmdBufferTaskBuilder {
 pub struct CbEncodeTask {
     cmd_buffer_cell: CellRef<Option<gfx::CmdBufferRef>>,
     prev_fence_cell: CellRef<Option<gfx::FenceRef>>,
-    fence_cell: CellRef<Option<gfx::FenceRef>>,
+    update_fence: CellRef<Option<gfx::FenceRef>>,
+    late_resource_binder: CellRef<LateResourceBinderCell>,
     queue: gfx::CmdQueueRef,
     schedule_runner: CellRef<ScheduleRunner<PassContext>>,
 }
@@ -168,7 +177,7 @@ impl Task<gfx::Error> for CbEncodeTask {
 
         let mut schedule_runner = graph_context.borrow_cell_mut(self.schedule_runner);
         let mut prev_fence_cell = graph_context.borrow_cell_mut(self.prev_fence_cell);
-        let mut fence_cell = graph_context.borrow_cell_mut(self.fence_cell);
+        let mut update_fence = graph_context.borrow_cell_mut(self.update_fence);
 
         // Prepare the run
         let mut run = schedule_runner.run()?;
@@ -180,12 +189,18 @@ impl Task<gfx::Error> for CbEncodeTask {
 
             let mut iter = run.output_fences_mut();
             let output_fence_place: &mut gfx::FenceRef = iter.next().unwrap();
-            if let Some(fence) = fence_cell.take() {
+            if let Some(fence) = update_fence.take() {
                 output_fence = fence.clone();
                 *output_fence_place = fence;
             } else {
                 output_fence = output_fence_place.clone();
             }
+        }
+
+        // Bind late-bound resouce
+        let mut late_resource_binder = graph_context.borrow_cell_mut(self.late_resource_binder);
+        if let Some(binder) = late_resource_binder.cell.take() {
+            binder(&mut run);
         }
 
         // Encode commands
@@ -214,5 +229,31 @@ impl Task<gfx::Error> for CbSubmitTask {
         cmd_buffer.commit()?;
 
         Ok(())
+    }
+}
+
+/// Used to pass a closure for binding late-bound resources to a command buffer
+/// generation task.
+///
+/// `FnOnce` is not `Debug`, thus it does not implement [`Cell`]. This type
+/// wraps `FnOnce` so it can be passed via a cell.
+///
+/// [`Cell`]: crate::taskman::Cell
+#[derive(Default)]
+pub struct LateResourceBinderCell {
+    cell: Option<Box<dyn FnOnce(&mut Run<PassContext>) + Send + Sync>>,
+}
+
+impl std::fmt::Debug for LateResourceBinderCell {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("LateResourceBinderCell")
+            .field("cell", &self.cell.as_ref().map(|_| ()))
+            .finish()
+    }
+}
+
+impl LateResourceBinderCell {
+    pub fn set(&mut self, x: impl FnOnce(&mut Run<PassContext>) + Send + Sync + 'static) {
+        self.cell = Some(Box::new(x));
     }
 }
