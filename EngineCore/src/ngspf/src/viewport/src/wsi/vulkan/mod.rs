@@ -646,7 +646,7 @@ impl<P: Painter> PhysicalDevice<P> {
             };
             surface.last_error = None;
 
-            let mut new_props = surface.optimal_props(
+            let new_props = surface.optimal_props(
                 if out_dated {
                     None
                 } else {
@@ -1006,7 +1006,7 @@ impl Swapchain {
                         let cmd_buffer: &mut BeCmdBuffer = cmd_buffer.query_mut().unwrap();
                         let image: &be::image::Image = self.image.downcast_ref().unwrap();
 
-                        let mut barrier = vk::ImageMemoryBarrier {
+                        let barrier = vk::ImageMemoryBarrier {
                             s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
                             p_next: crate::null(),
                             src_access_mask: vk::AccessFlags::empty(),
