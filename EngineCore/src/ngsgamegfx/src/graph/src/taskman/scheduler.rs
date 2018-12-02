@@ -186,12 +186,18 @@ pub trait Executor {
 pub struct GraphContext([AtomicRefCell<Box<dyn Cell>>]);
 
 impl<E: Send + 'static> Graph<E> {
+    /// Mutably borrow a cell using a strongly-typed cell identifier.
+    ///
     /// # Panics
     ///
-    ///  - Might panic if `Graph` is in the "poisoned" state.
+    ///  - This method panics if the concrete type of `cell_ref` does not match
+    ///    that of the cell specified by `cell_ref`.
+    ///  - Might panic if the `Graph` is in the "poisoned" state.
     ///
-    pub fn borrow_cell_mut(&mut self, cell_id: CellId) -> &mut dyn Cell {
-        self.cells[cell_id.0].get_mut()
+    pub fn borrow_cell_mut<T: Cell>(&mut self, cell_id: CellRef<T>) -> &mut T {
+        (self.cells[cell_id.0].get_mut())
+            .downcast_mut::<T>()
+            .expect("type mismatch")
     }
 
     /// Run a task graph. Block the current thread until all tasks complete
