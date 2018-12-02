@@ -212,6 +212,9 @@ impl Task<gfx::Error> for CbEncodeTask {
         // Store the fence
         *prev_fence_cell = Some(output_fence);
 
+        // Store the command buffer
+        *graph_context.borrow_cell_mut(self.cmd_buffer_cell) = Some(cmd_buffer);
+
         Ok(())
     }
 }
