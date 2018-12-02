@@ -17,8 +17,8 @@ use ngspf_core::{prelude::*, NodeRef, PresenterFrame};
 
 use crate::imagemanager::{ImageManager, ImageRefTable};
 use crate::layer::{ImageWrapMode, Layer};
-use crate::port::{GfxObjects, Port, PortManager};
-use crate::portrender::PortRenderFrame;
+use crate::port::{GfxObjects, Port};
+use crate::portrender::{PortManager, PortRenderFrame};
 use crate::temprespool::{TempResPool, TempResTable};
 use crate::wsi;
 use ngspf_canvas::{ImageFormat, ImageRef};
@@ -778,9 +778,8 @@ impl CompositorWindow {
         let mut temp_res_table = compositor.temp_res_pool.new_table();
         let image_ref_table = compositor.image_manager.new_ref_table();
 
-        // Scan for `Port`s first. Firstly, delete all out-dated port instances.
-        self.port_manager.purge();
-
+        // Scan for `Port`s first.
+        //
         // This `unsafe` block is okay because we don't `forget` this
         // `port_frame`.
         let port_frame = unsafe {

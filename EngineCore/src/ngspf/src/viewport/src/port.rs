@@ -3,10 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use refeq::RefEqArc;
-use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use zangfx::base as gfx;
 
@@ -26,7 +24,7 @@ pub struct GfxObjects {
 /// Trait for creating `PortInstance` for a specific NgsGFX device.
 pub trait Port: fmt::Debug + Send + Sync + 'static {
     /// Create a port instance for a specific NgsGFX device.
-    fn mount(&self, objects: &GfxObjects) -> Box<PortInstance>;
+    fn mount(&self, objects: &GfxObjects) -> Box<dyn PortInstance>;
 }
 
 /// The properties of a backing store image.
@@ -60,72 +58,34 @@ pub struct PortRenderContext {
 
 /// Trait for rendering custom contents as layer contents.
 pub trait PortInstance: fmt::Debug + Send + Sync + 'static {
+    /// Start rendering a frame.
+    ///
+    /// The system will inquire the required properties of the rendered image
+    /// using the methods of `PortFrame`. After that, the system will allocate
+    /// an image and request to start a rendering operation via
+    /// `PortFrame::render`.
+    ///
+    /// The implementation might want to store `frame` in the returned
+    /// `PortFrame` so it can read properties from `Port`.
+    fn start_frame<'a>(
+        &'a mut self,
+        frame: &'a PresenterFrame,
+    ) -> gfx::Result<Box<dyn PortFrame + 'a>>;
+}
+
+pub trait PortFrame: fmt::Debug + Send {
     /// The usage of the backing store image (`PortRenderContext::image`).
-    fn image_usage(&self) -> gfx::ImageUsageFlags {
+    fn image_usage(&mut self) -> gfx::ImageUsageFlags {
         gfx::ImageUsageFlags::Render
     }
 
     /// The format of the backing store image (`PortRenderContext::image`).
-    fn image_format(&self) -> gfx::ImageFormat {
+    fn image_format(&mut self) -> gfx::ImageFormat {
         gfx::ImageFormat::SrgbRgba8
     }
 
     /// The size of the backing store image (`PortRenderContext::image`).
-    fn image_extents(&self) -> [u32; 2];
+    fn image_extents(&mut self) -> [u32; 2];
 
-    fn render(
-        &mut self,
-        context: &mut PortRenderContext,
-        frame: &PresenterFrame,
-    ) -> gfx::Result<()>;
-}
-
-/// Maintains port instances associated with `Port`s.
-#[derive(Debug)]
-pub(super) struct PortManager {
-    /// Set of mounted port instances.
-    port_map: HashMap<RefEqArc<Port>, PortMapping>,
-}
-
-#[derive(Debug)]
-struct PortMapping {
-    instance: Arc<Mutex<Box<PortInstance>>>,
-    used_in_last_frame: bool,
-}
-
-impl PortManager {
-    pub fn new() -> Self {
-        Self {
-            port_map: HashMap::new(),
-        }
-    }
-
-    /// Destroy out-dated port instances (that is, whose nodes are no longer
-    /// on the layer tree).
-    pub fn purge(&mut self) {
-        use std::mem::replace;
-        self.port_map
-            .retain(|_, map| replace(&mut map.used_in_last_frame, false));
-    }
-
-    pub fn get(
-        &mut self,
-        port: &RefEqArc<Port>,
-        gfx_objects: &GfxObjects,
-    ) -> &Arc<Mutex<Box<PortInstance>>> {
-        let ent = self.port_map.entry(RefEqArc::clone(port));
-        let map = ent.or_insert_with(|| {
-            // The port instance has not yet been created for the `Port`.
-            // Mount the port and create the port instance.
-            let instance = port.mount(gfx_objects);
-
-            // Save the created instance and return a reference to it
-            PortMapping {
-                instance: Arc::new(Mutex::new(instance)),
-                used_in_last_frame: true,
-            }
-        });
-        map.used_in_last_frame = true;
-        &map.instance
-    }
+    fn render(&mut self, context: &mut PortRenderContext) -> gfx::Result<()>;
 }

@@ -25,10 +25,8 @@ use ngspf::viewport::{
 mod triangle {
     use include_data::{include_data, DataView};
 
-    static SPIRV_FRAG: DataView =
-        include_data!(concat!(env!("OUT_DIR"), "/triangle.frag.spv"));
-    static SPIRV_VERT: DataView =
-        include_data!(concat!(env!("OUT_DIR"), "/triangle.vert.spv"));
+    static SPIRV_FRAG: DataView = include_data!(concat!(env!("OUT_DIR"), "/triangle.frag.spv"));
+    static SPIRV_VERT: DataView = include_data!(concat!(env!("OUT_DIR"), "/triangle.vert.spv"));
 
     use crate::gfx;
     use crate::gfx::prelude::*;
@@ -42,7 +40,7 @@ mod triangle {
     use ngspf::core::{
         Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor,
     };
-    use ngspf::viewport::{GfxObjects, GfxQueue, Port, PortInstance, PortRenderContext};
+    use ngspf::viewport::{GfxObjects, GfxQueue, Port, PortFrame, PortInstance, PortRenderContext};
 
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
@@ -216,16 +214,32 @@ mod triangle {
     }
 
     impl PortInstance for MyPortInstance {
-        fn image_extents(&self) -> [u32; 2] {
+        fn start_frame<'a>(
+            &'a mut self,
+            frame: &'a PresenterFrame,
+        ) -> gfx::Result<Box<dyn PortFrame + 'a>> {
+            Ok(Box::new(MyPortFrame {
+                instance: self,
+                frame,
+            }))
+        }
+    }
+
+    #[derive(Debug)]
+    struct MyPortFrame<'a> {
+        instance: &'a mut MyPortInstance,
+        frame: &'a PresenterFrame,
+    }
+
+    impl PortFrame for MyPortFrame<'_> {
+        fn image_extents(&mut self) -> [u32; 2] {
             [128, 128]
         }
 
-        fn render(
-            &mut self,
-            context: &mut PortRenderContext,
-            frame: &PresenterFrame,
-        ) -> gfx::Result<()> {
-            let frame_index = *self.data.frame.read_presenter(frame).unwrap() as u32;
+        fn render(&mut self, context: &mut PortRenderContext) -> gfx::Result<()> {
+            let instance = &mut *self.instance;
+            let frame = self.frame;
+            let frame_index = *instance.data.frame.read_presenter(frame).unwrap() as u32;
 
             let ref extents = context.image_props.extents;
             assert_eq!(context.image_props.format, RT_FORMAT);
@@ -240,21 +254,21 @@ mod triangle {
             };
 
             let rtt = {
-                let mut builder = self.device.build_render_target_table();
+                let mut builder = instance.device.build_render_target_table();
                 builder
                     .target(0, &context.image)
                     .clear_float(&[0.2, 0.2, 0.2, 1.0]);
                 builder
-                    .render_pass(&self.render_pass)
+                    .render_pass(&instance.render_pass)
                     .extents(extents)
                     .build()?
             };
 
-            let mut buffer = self.main_queue.queue.new_cmd_buffer()?;
+            let mut buffer = instance.main_queue.queue.new_cmd_buffer()?;
             {
                 let e = buffer.encode_render(&rtt);
-                e.bind_pipeline(&self.pipeline);
-                e.bind_vertex_buffers(0, &[(&self.vertex_buffer, 0)]);
+                e.bind_pipeline(&instance.pipeline);
+                e.bind_vertex_buffers(0, &[(&instance.vertex_buffer, 0)]);
                 e.set_viewports(0, &[viewport]);
                 e.draw(0..3, frame_index..frame_index + 1); // easiest way to pass a number
 

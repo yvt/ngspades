@@ -96,22 +96,37 @@ impl Drop for Port {
     }
 }
 
+#[derive(Debug)]
+struct PortFrame<'a> {
+    instance: &'a mut Port,
+    _frame: &'a PresenterFrame,
+}
+
 impl viewport::PortInstance for Port {
-    fn image_extents(&self) -> [u32; 2] {
+    fn start_frame<'a>(
+        &'a mut self,
+        frame: &'a PresenterFrame,
+    ) -> gfx::Result<Box<dyn viewport::PortFrame + 'a>> {
+        Ok(Box::new(PortFrame {
+            instance: self,
+            _frame: frame,
+        }))
+    }
+}
+
+impl viewport::PortFrame for PortFrame<'_> {
+    fn image_extents(&mut self) -> [u32; 2] {
         [4, 4]
     }
 
-    fn render(
-        &mut self,
-        context: &mut viewport::PortRenderContext,
-        _frame: &PresenterFrame,
-    ) -> gfx::Result<()> {
+    fn render(&mut self, context: &mut viewport::PortRenderContext) -> gfx::Result<()> {
+        let instance = &mut *self.instance;
         // TODO: Render an actual content
 
-        if let Some(x) = self.cb_state_tracker.take() {
+        if let Some(x) = instance.cb_state_tracker.take() {
             x.wait();
         }
-        let mut cmd_buffer = self.gfx_objects.main_queue.queue.new_cmd_buffer()?;
+        let mut cmd_buffer = instance.gfx_objects.main_queue.queue.new_cmd_buffer()?;
 
         cmd_buffer.invalidate_image(&[&context.image]);
         {
@@ -119,7 +134,7 @@ impl viewport::PortInstance for Port {
             enc.update_fence(&context.fence, flags![gfx::AccessTypeFlags::{}]);
         }
 
-        self.cb_state_tracker = Some(gfxut::CbStateTracker::new(&mut *cmd_buffer));
+        instance.cb_state_tracker = Some(gfxut::CbStateTracker::new(&mut *cmd_buffer));
         cmd_buffer.commit().unwrap();
 
         context.schedule_next_frame = true;
