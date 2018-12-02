@@ -485,7 +485,7 @@ impl FontConfig {
                             // Specifically, are we at a middle of a glyph there?
                             //
                             // Calculate the word width at the same time.
-                            let mut okay = clusters_advance_until(
+                            let okay = clusters_advance_until(
                                 &mut st.cluster_it,
                                 &mut st.glyph_index,
                                 end_flattened,
