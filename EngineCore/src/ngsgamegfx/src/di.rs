@@ -54,5 +54,8 @@ pub(crate) fn new_device_container(
     use crate::staticdata::di::StaticDataDeviceContainerExt;
     container.register_static_data_default();
 
+    use crate::testpass::di::TestPassRendererDeviceContainerExt;
+    container.register_test_pass_renderer_default();
+
     container
 }

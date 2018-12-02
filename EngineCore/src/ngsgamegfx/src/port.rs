@@ -5,10 +5,9 @@
 //
 //! Provides a NgsPF port type for embedding a NgsGameGFX viewport.
 use cgmath::{vec2, Vector2};
-use injector::Container;
-use std::sync::Arc;
+use futures::executor::block_on;
+use std::{collections::VecDeque, sync::Arc};
 
-use flags_macro::flags;
 use ngspf::core::{
     Context, KeyedProperty, KeyedPropertyAccessor, PresenterFrame, PropertyAccessor,
 };
@@ -19,6 +18,12 @@ use zangfx::{base as gfx, prelude::*, utils as gfxut};
 use crate::{
     config::Config,
     di::{new_device_container, CmdQueueSet},
+    testpass::TestPassRenderer,
+};
+use ngsgamegfx_graph::{
+    cbtasks::{CmdBufferTaskBuilder, CmdBufferTaskCellSet},
+    passman::{ImageResource, ImageResourceInfo, ResourceRef},
+    taskman::{Graph, GraphBuilder},
 };
 
 /// `Port` used to display the viewport of NgsGameGFX.
@@ -60,16 +65,21 @@ impl viewport::Port for PortRef {
             },
         );
 
-        // Test the static data loader
-        use crate::staticdata::di::StaticDataDeviceContainerExt;
-        device_container.get_quad_vertices_or_build();
-        device_container.get_noise_image_or_build();
+        // Load the test renderer
+        //
+        // TODO: Render an actual content
+        use crate::testpass::di::TestPassRendererDeviceContainerExt;
+        let renderer = device_container
+            .get_test_pass_renderer_or_build()
+            .as_ref()
+            .expect("Failed to create TestPassRenderer.")
+            .clone();
 
         Box::new(Port {
             props: self.0.clone(),
             gfx_objects: objects.clone(),
-            cb_state_tracker: None,
-            device_container,
+            render_graph: None,
+            renderer,
         })
     }
 }
@@ -94,16 +104,26 @@ impl PortProps {
 struct Port {
     props: Arc<PortProps>,
     gfx_objects: viewport::GfxObjects,
-    device_container: Container,
-    cb_state_tracker: Option<gfxut::CbStateTracker>,
+    renderer: Arc<TestPassRenderer>,
+    render_graph: Option<PortRenderGraph>,
 }
 
-impl Drop for Port {
-    fn drop(&mut self) {
-        if let Some(x) = self.cb_state_tracker.take() {
-            x.wait();
-        }
-    }
+#[derive(Debug)]
+struct PortRenderGraph {
+    /// The extents of the render target.
+    extents: Vector2<u32>,
+
+    /// CPU task graph.
+    graph: Graph<gfx::Error>,
+
+    /// I/O cells of command buffer generation/submission tasks
+    /// defined in `graph`.
+    cbtasks_cells: CmdBufferTaskCellSet,
+
+    output_resource: ResourceRef<ImageResourceInfo>,
+
+    /// `Future`s representing results of command buffer execution
+    cb_results: VecDeque<gfxut::CmdBufferResult>,
 }
 
 #[derive(Debug)]
@@ -135,23 +155,102 @@ impl viewport::PortFrame for PortFrame<'_> {
 
     fn render(&mut self, context: &mut viewport::PortRenderContext) -> gfx::Result<()> {
         let instance = &mut *self.instance;
-        // TODO: Render an actual content
 
-        if let Some(x) = instance.cb_state_tracker.take() {
-            x.wait();
+        let extents: Vector2<u32> = context.image_props.extents.into();
+        let old_extents = instance.render_graph.as_ref().map(|g| g.extents);
+
+        if Some(extents) != old_extents {
+            // The extents of the viewport has changed. Re-create the render pass graph.
+            instance.render_graph = None;
+            instance.render_graph = Some(PortRenderGraph::new(
+                &instance.gfx_objects,
+                &instance.renderer,
+                extents,
+            )?);
         }
-        let mut cmd_buffer = instance.gfx_objects.main_queue.queue.new_cmd_buffer()?;
 
-        cmd_buffer.invalidate_image(&[&context.image]);
-        {
-            let enc = cmd_buffer.encode_copy();
-            enc.update_fence(&context.fence, flags![gfx::AccessTypeFlags::{}]);
-        }
-
-        instance.cb_state_tracker = Some(gfxut::CbStateTracker::new(&mut *cmd_buffer));
-        cmd_buffer.commit().unwrap();
+        let render_graph = instance.render_graph.as_mut().unwrap();
+        render_graph.encode(context)?;
 
         context.schedule_next_frame = true;
         Ok(())
+    }
+}
+
+impl PortRenderGraph {
+    fn new(
+        gfx_objects: &viewport::GfxObjects,
+        renderer: &Arc<TestPassRenderer>,
+        extents: Vector2<u32>,
+    ) -> gfx::Result<Self> {
+        let mut cb_task_builder = CmdBufferTaskBuilder::new();
+
+        // Construct a GPU pass graph
+        let output_resource = renderer.define_pass(cb_task_builder.schedule_builder(), extents);
+
+        // The output image is supplied by the compositor, so mark it
+        // as late-bound
+        cb_task_builder
+            .schedule_builder()
+            .mark_resource_as_late_bound(&output_resource);
+
+        let mut graph_builder = GraphBuilder::new();
+        let cbtasks_cells = cb_task_builder.add_to_graph(
+            &gfx_objects.device,
+            &gfx_objects.main_queue.queue,
+            &mut graph_builder,
+            &[&output_resource],
+        )?;
+
+        Ok(Self {
+            extents,
+            graph: graph_builder.build(),
+            cbtasks_cells,
+            cb_results: VecDeque::new(),
+            output_resource,
+        })
+    }
+
+    fn encode(&mut self, context: &mut viewport::PortRenderContext) -> gfx::Result<()> {
+        // Retire old CBs
+        while self.cb_results.len() > 2 {
+            let cb_result = self.cb_results.pop_front().unwrap();
+            block_on(cb_result).unwrap()?;
+        }
+
+        let graph = &mut self.graph;
+        let cbtasks_cells = &self.cbtasks_cells;
+
+        // Set graph inputs
+        *graph.borrow_cell_mut(cbtasks_cells.update_fence) = Some(context.fence.clone());
+
+        let image = context.image.clone();
+        let output_resource = self.output_resource;
+        graph
+            .borrow_cell_mut(cbtasks_cells.late_resource_binder)
+            .set(move |run| {
+                run.bind(output_resource, ImageResource::new(image, None));
+            });
+
+        // Execute the task graph
+        let executor = xdispatch::Queue::global(xdispatch::QueuePriority::High);
+        graph.run(&executor)?;
+
+        // Get graph outputs
+        let cb_result = graph
+            .borrow_cell_mut(cbtasks_cells.cmd_buffer_result)
+            .take()
+            .unwrap();
+        self.cb_results.push_back(cb_result);
+
+        Ok(())
+    }
+}
+
+impl Drop for PortRenderGraph {
+    fn drop(&mut self) {
+        for cb_result in self.cb_results.drain(..) {
+            let _ = block_on(cb_result).unwrap();
+        }
     }
 }
