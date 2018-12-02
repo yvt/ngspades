@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Provides a NgsPF port type for embedding a NgsGameGFX viewport.
+use cgmath::{vec2, Vector2};
 use injector::Container;
 use std::sync::Arc;
 
@@ -32,6 +33,13 @@ impl PortRef {
     pub fn config<'a>(&'a self) -> impl PropertyAccessor<Config> + 'a {
         fn select(this: &Arc<PortProps>) -> &KeyedProperty<Config> {
             &this.config
+        }
+        KeyedPropertyAccessor::new(&self.0, select)
+    }
+
+    pub fn extents<'a>(&'a self) -> impl PropertyAccessor<Vector2<u32>> + 'a {
+        fn select(this: &Arc<PortProps>) -> &KeyedProperty<Vector2<u32>> {
+            &this.extents
         }
         KeyedPropertyAccessor::new(&self.0, select)
     }
@@ -69,12 +77,14 @@ impl viewport::Port for PortRef {
 #[derive(Debug)]
 struct PortProps {
     config: KeyedProperty<Config>,
+    extents: KeyedProperty<Vector2<u32>>,
 }
 
 impl PortProps {
     pub fn new(context: &Context) -> Self {
         Self {
             config: KeyedProperty::new(context, Config::default()),
+            extents: KeyedProperty::new(context, vec2(1280, 720)),
         }
     }
 }
@@ -99,7 +109,7 @@ impl Drop for Port {
 #[derive(Debug)]
 struct PortFrame<'a> {
     instance: &'a mut Port,
-    _frame: &'a PresenterFrame,
+    frame: &'a PresenterFrame,
 }
 
 impl viewport::PortInstance for Port {
@@ -109,14 +119,18 @@ impl viewport::PortInstance for Port {
     ) -> gfx::Result<Box<dyn viewport::PortFrame + 'a>> {
         Ok(Box::new(PortFrame {
             instance: self,
-            _frame: frame,
+            frame,
         }))
     }
 }
 
 impl viewport::PortFrame for PortFrame<'_> {
     fn image_extents(&mut self) -> [u32; 2] {
-        [4, 4]
+        (self.instance.props.extents)
+            .read_presenter(self.frame)
+            .unwrap()
+            .clone()
+            .into()
     }
 
     fn render(&mut self, context: &mut viewport::PortRenderContext) -> gfx::Result<()> {

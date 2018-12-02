@@ -102,6 +102,9 @@ fn main() {
                                 Box2::new(Point2::origin(), Point2::new(x.x, x.y)),
                             )
                             .unwrap();
+                        port.extents()
+                            .set(&mut frame, x.cast::<u32>().unwrap())
+                            .unwrap();
                     }
 
                     if exit {
