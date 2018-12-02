@@ -282,7 +282,11 @@ impl Drop for AsyncUploader {
     fn drop(&mut self) {
         // FIXME: Cancel all pending requests?
         self.sender.close_channel();
-        self.join_handle.take().unwrap().join().unwrap();
+
+        let join_handle = self.join_handle.take().unwrap();
+        if join_handle.thread().id() != thread::current().id() {
+            join_handle.join().unwrap();
+        }
     }
 }
 
