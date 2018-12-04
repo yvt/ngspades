@@ -108,3 +108,32 @@ pub trait Task<E>: std::fmt::Debug + Send + Sync {
     /// Execute the task.
     fn execute(&self, graph_context: &GraphContext) -> Result<(), E>;
 }
+
+/// Construct a `Box<dyn Task>` from a closure.
+pub fn task_from_closure<T: 'static + Send + Sync, E>(
+    data: T,
+    closure: impl Fn(&T, &GraphContext) -> Result<(), E> + Send + Sync + 'static,
+) -> Box<dyn Task<E>> {
+    struct ClosureTask<T, F> {
+        data: T,
+        closure: F,
+    }
+
+    impl<T, F> std::fmt::Debug for ClosureTask<T, F> {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            f.debug_struct("ClosureTask").finish()
+        }
+    }
+
+    impl<T, F, E> Task<E> for ClosureTask<T, F>
+    where
+        T: 'static + Send + Sync,
+        F: Fn(&T, &GraphContext) -> Result<(), E> + Send + Sync + 'static,
+    {
+        fn execute(&self, graph_context: &GraphContext) -> Result<(), E> {
+            (self.closure)(&self.data, graph_context)
+        }
+    }
+
+    Box::new(ClosureTask { data, closure })
+}
