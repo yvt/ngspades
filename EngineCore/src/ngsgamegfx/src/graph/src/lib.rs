@@ -7,7 +7,9 @@
 //!
 //! Provides components for facilitating run-time task graph construction.
 #![feature(unsized_locals)] // For calling boxed `FnOnce`
+#![feature(futures_api)]
 
 pub mod cbtasks;
 pub mod passman;
 pub mod taskman;
+pub mod ring;

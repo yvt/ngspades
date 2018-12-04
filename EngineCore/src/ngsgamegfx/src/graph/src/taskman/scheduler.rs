@@ -305,8 +305,8 @@ impl<E: Send + 'static> Graph<E> {
 impl GraphContext {
     /// Mutably borrow a cell using a strongly-typed cell identifier.
     ///
-    /// The calling task must have a producing use of the cell defined when
-    /// registered to the task graph.
+    /// The calling task must have a producing or unique consuming use of the
+    /// cell defined when registered to the task graph.
     /// Otherwise, calling this method might interfere with the operation of
     /// the task runner.
     ///
@@ -345,8 +345,8 @@ impl GraphContext {
 
     /// Mutably borrow a cell using an untyped cell identifier.
     ///
-    /// The calling task must have a producing use of the cell defined when
-    /// registered to the task graph.
+    /// The calling task must have a producing or unique consuming use of the
+    /// cell defined when registered to the task graph.
     /// Otherwise, calling this method might interfere with the operation of
     /// the task runner.
     pub fn borrow_dyn_cell_mut<'a>(
