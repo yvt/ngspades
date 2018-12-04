@@ -200,6 +200,7 @@ impl PortRenderGraph {
             &gfx_objects.main_queue.queue,
             &mut graph_builder,
             &[&output_resource],
+            1, // num_result_cells
         )?;
 
         Ok(Self {
@@ -238,7 +239,7 @@ impl PortRenderGraph {
 
         // Get graph outputs
         let cb_result = graph
-            .borrow_cell_mut(cbtasks_cells.cmd_buffer_result)
+            .borrow_cell_mut(cbtasks_cells.cmd_buffer_results[0])
             .take()
             .unwrap();
         self.cb_results.push_back(cb_result);

@@ -53,7 +53,7 @@ pub struct CmdBufferTaskBuilder {
 /// use this to access cell contents during command buffer encoding.
 pub type PassContext = GraphContext;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct CmdBufferTaskCellSet {
     /// If a fence is stored to this cell before a graph is run, the fence
     /// will be updated after the command buffer execution.
@@ -63,8 +63,10 @@ pub struct CmdBufferTaskCellSet {
     /// late-bound resources.
     pub late_resource_binder: CellRef<LateResourceBinderCell>,
 
-    /// `CmdBufferResult` will be stored after command buffer submission.
-    pub cmd_buffer_result: CellRef<Option<CmdBufferResult>>,
+    /// `CmdBufferResult` will be stored after command buffer submission. The
+    /// number of elements is determined by the `num_result_cells` parameter
+    /// of `CmdBufferTaskBuffer::add_to_graph`.
+    pub cmd_buffer_results: Vec<CellRef<Option<CmdBufferResult>>>,
 }
 
 impl CmdBufferTaskBuilder {
@@ -101,6 +103,7 @@ impl CmdBufferTaskBuilder {
         queue: &gfx::CmdQueueRef,
         graph_builder: &mut GraphBuilder<gfx::Error>,
         output_resources: &[&ResourceId],
+        num_result_cells: usize,
     ) -> gfx::Result<CmdBufferTaskCellSet> {
         // Finalize the GPU task graph
         let schedule = self.schedule_builder.schedule(output_resources);
@@ -117,7 +120,9 @@ impl CmdBufferTaskBuilder {
 
         let late_resource_binder = graph_builder.define_cell(LateResourceBinderCell::default());
 
-        let cmd_buffer_result = graph_builder.define_cell(None);
+        let cmd_buffer_results: Vec<_> = (0..num_result_cells)
+            .map(|_| graph_builder.define_cell(None))
+            .collect();
 
         // Command buffer generation
         self.encode_cell_uses
@@ -143,13 +148,13 @@ impl CmdBufferTaskBuilder {
             cell_uses: self.submit_cell_uses,
             task: Box::new(CbSubmitTask {
                 cmd_buffer_cell,
-                cmd_buffer_result,
+                cmd_buffer_results: cmd_buffer_results.clone(),
             }),
         });
 
         Ok(CmdBufferTaskCellSet {
             update_fence,
-            cmd_buffer_result,
+            cmd_buffer_results,
             late_resource_binder,
         })
     }
@@ -168,7 +173,7 @@ pub struct CbEncodeTask {
 #[derive(Debug)]
 struct CbSubmitTask {
     cmd_buffer_cell: CellRef<Option<gfx::CmdBufferRef>>,
-    cmd_buffer_result: CellRef<Option<CmdBufferResult>>,
+    cmd_buffer_results: Vec<CellRef<Option<CmdBufferResult>>>,
 }
 
 impl Task<gfx::Error> for CbEncodeTask {
@@ -227,7 +232,9 @@ impl Task<gfx::Error> for CbSubmitTask {
             .expect("cb is missing");
 
         // Create a `Future` representing the result of command buffer execution
-        *graph_context.borrow_cell_mut(self.cmd_buffer_result) = Some(cmd_buffer.result());
+        for &cmd_buffer_result_cell in self.cmd_buffer_results.iter() {
+            *graph_context.borrow_cell_mut(cmd_buffer_result_cell) = Some(cmd_buffer.result());
+        }
 
         cmd_buffer.commit()?;
 
