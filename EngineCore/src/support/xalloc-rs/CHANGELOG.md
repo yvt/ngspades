@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.5] - 2018-12-05
+
+- Add `Ring`, a circular memory allocator
+- Wrap `allow(clippy::*)` with `cfg_attr(feature = "cargo-clippy", ...)` in order to make it compatible with the current stable toolchain
+
 ## [0.2.4] - 2018-11-07
 
 - Fix a compilation issue that happens when multiple versions of `num-*` crates are mixed up
