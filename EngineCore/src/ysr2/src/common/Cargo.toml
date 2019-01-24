@@ -8,6 +8,6 @@ xdispatch = { path = "../../../xdispatch/xdispatch", optional = true }
 iterpool = { path = "../../../support/iterpool" }
 num_cpus = "1.0"
 cgmath = "0.16.1"
-simd = "0.2.0"
+packed_simd = "0.3.0"
 arrayvec = "0.4.1"
 parking_lot = "0.6"

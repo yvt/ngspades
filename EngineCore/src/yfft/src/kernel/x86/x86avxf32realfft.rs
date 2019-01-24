@@ -7,7 +7,7 @@ use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapp
 use super::{Kernel, KernelParams, SliceAccessor};
 
 use num_iter::range_step;
-use simd::x86::avx::{f32x8, u32x8};
+use packed_simd::{f32x8, u32x8};
 use std::f32;
 use std::mem;
 use std::ptr::{read_unaligned, write_unaligned};
@@ -95,8 +95,8 @@ impl AlignReqKernel<f32> for AvxF32RealFFTPrePostProcessKernel {
 
             let x1c = avx_f32x8_bitxor(x1, conj_mask);
             let x2c = avx_f32x8_bitxor(x2, conj_mask);
-            let x1c = f32x8_shuffle!(x1c, x1c, [6, 7, 4, 5, 2, 3, 0, 1]);
-            let x2c = f32x8_shuffle!(x2c, x2c, [6, 7, 4, 5, 2, 3, 0, 1]);
+            let x1c = shuffle!(x1c, x1c, [6, 7, 4, 5, 2, 3, 0, 1]);
+            let x2c = shuffle!(x2c, x2c, [6, 7, 4, 5, 2, 3, 0, 1]);
 
             let g1 = avx_f32x8_complex_mul_riri(x1, a1) + avx_f32x8_complex_mul_riri(x2c, b1);
             let g2 = avx_f32x8_complex_mul_riri(x2, a2) + avx_f32x8_complex_mul_riri(x1c, b2);

@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 #![allow(unused_imports)]
-use crate::{intrin, simd16};
+use crate::simd16;
 use crate::{ScalarMode, SimdMode};
 use packed_simd::{self as simd, Cast};
 #[cfg(target_arch = "x86")]
@@ -219,8 +219,8 @@ pub trait MapU8x4InplaceKernelExt: MapU8x4InplaceKernel {
         let h0 = vendor::_mm256_permute4x64_epi64(g0, 0b11_01_10_00); // 10 ponmlkji / 10 hgfedcba
         let h1 = vendor::_mm256_permute4x64_epi64(g1, 0b11_01_10_00); // 32 ponmlkji / 32 hgfedcba
 
-        let i0 = intrin::mm256_permute2x128_si256(h0, h1, 0b0010_0000); // 3210 hgfedcba
-        let i1 = intrin::mm256_permute2x128_si256(h0, h1, 0b0011_0001); // 3210 ponmlkji
+        let i0 = vendor::_mm256_permute2x128_si256(h0, h1, 0b0010_0000); // 3210 hgfedcba
+        let i1 = vendor::_mm256_permute2x128_si256(h0, h1, 0b0011_0001); // 3210 ponmlkji
 
         let transpose2x4 = transmute(simd::u32x8::new(0, 2, 4, 6, 1, 3, 5, 7));
 

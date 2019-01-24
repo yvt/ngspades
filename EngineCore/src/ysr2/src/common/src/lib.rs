@@ -10,7 +10,8 @@ extern crate xdispatch;
 #[cfg(feature = "xdispatch")]
 extern crate num_cpus;
 extern crate cgmath;
-extern crate simd;
+#[macro_use]
+extern crate packed_simd;
 extern crate arrayvec;
 extern crate parking_lot;
 

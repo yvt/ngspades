@@ -4,111 +4,15 @@
 // This source code is a part of Nightingales.
 //
 
-#[cfg(target_feature = "avx")]
-pub use simd::x86::avx::{f32x8, i32x8, u32x8, u64x4, AvxF32x8};
-#[cfg(target_feature = "sse2")]
-pub use simd::x86::sse2::{f64x2, u64x2};
-#[cfg(target_feature = "sse3")]
-#[allow(unused_imports)]
-use simd::x86::sse3::Sse3F32x4;
-pub use simd::{f32x4, i32x4, u32x4, Simd};
+#[cfg(target_arch = "x86")]
+use std::arch::x86 as vendor;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64 as vendor;
 use std::mem;
+pub use packed_simd::{f32x8, i32x8, u32x8, u64x4, f32x4, i32x4, u32x4};
 
 #[cfg(test)]
 use num_complex::Complex;
-
-/// Shuffles `u64x2` elements.
-#[allow(unused_macros)]
-macro_rules! u64x2_shuffle {
-    ($x:expr, $y:expr, $idx:expr) => {
-        unsafe {
-            $crate::simdutils::simd_shuffle2::<$crate::simdutils::u64x2, $crate::simdutils::u64x2>(
-                $x, $y, $idx,
-            )
-        }
-    };
-}
-
-/// Shuffles `f64x2` elements.
-#[allow(unused_macros)]
-macro_rules! f64x2_shuffle {
-    ($x:expr, $y:expr, $idx:expr) => {
-        unsafe {
-            $crate::simdutils::simd_shuffle2::<$crate::simdutils::f64x2, $crate::simdutils::f64x2>(
-                $x, $y, $idx,
-            )
-        }
-    };
-}
-
-/// Shuffles `f32x4` elements.
-macro_rules! f32x4_shuffle {
-    ($x:expr, $y:expr, $idx:expr) => {
-        unsafe {
-            $crate::simdutils::simd_shuffle4::<$crate::simdutils::f32x4, $crate::simdutils::f32x4>(
-                $x, $y, $idx,
-            )
-        }
-    };
-}
-
-/// Shuffles `f32x8` elements.
-#[allow(unused_macros)]
-macro_rules! f32x8_shuffle {
-    ($x:expr, $y:expr, $idx:expr) => {
-        unsafe {
-            $crate::simdutils::simd_shuffle8::<$crate::simdutils::f32x8, $crate::simdutils::f32x8>(
-                $x, $y, $idx,
-            )
-        }
-    };
-}
-
-/// Shuffles `u64x4` elements.
-#[allow(unused_macros)]
-macro_rules! u64x4_shuffle {
-    ($x:expr, $y:expr, $idx:expr) => {
-        unsafe {
-            $crate::simdutils::simd_shuffle4::<$crate::simdutils::u64x4, $crate::simdutils::u64x4>(
-                $x, $y, $idx,
-            )
-        }
-    };
-}
-
-#[allow(dead_code)]
-extern "platform-intrinsic" {
-    pub fn simd_shuffle2<T: Simd, U: Simd<Elem = T::Elem>>(x: T, y: T, idx: [u32; 2]) -> U;
-    pub fn simd_shuffle4<T: Simd, U: Simd<Elem = T::Elem>>(x: T, y: T, idx: [u32; 4]) -> U;
-    pub fn simd_shuffle8<T: Simd, U: Simd<Elem = T::Elem>>(x: T, y: T, idx: [u32; 8]) -> U;
-    pub fn simd_shuffle16<T: Simd, U: Simd<Elem = T::Elem>>(x: T, y: T, idx: [u32; 16]) -> U;
-    #[cfg(all(target_feature = "fma"))]
-    pub fn x86_mm_fmaddsub_ps(x: f32x4, y: f32x4, z: f32x4) -> f32x4;
-    #[cfg(all(target_feature = "fma", target_feature = "avx"))]
-    pub fn x86_mm256_fmadd_ps(x: f32x8, y: f32x8, z: f32x8) -> f32x8;
-    #[cfg(all(target_feature = "fma", target_feature = "avx"))]
-    pub fn x86_mm256_fmsub_ps(x: f32x8, y: f32x8, z: f32x8) -> f32x8;
-    #[cfg(all(target_feature = "fma", target_feature = "avx"))]
-    pub fn x86_mm256_fmaddsub_ps(x: f32x8, y: f32x8, z: f32x8) -> f32x8;
-}
-
-#[test]
-fn test_f32x4_shuffle() {
-    let x = f32x4::new(1f32, 2f32, 3f32, 4f32);
-    let y = f32x4::new(5f32, 6f32, 7f32, 8f32);
-    assert_eq!(
-        f32x4_to_array(f32x4_shuffle!(x, y, [0, 1, 2, 3])),
-        [1f32, 2f32, 3f32, 4f32]
-    );
-    assert_eq!(
-        f32x4_to_array(f32x4_shuffle!(x, y, [0, 1, 4, 5])),
-        [1f32, 2f32, 5f32, 6f32]
-    );
-    assert_eq!(
-        f32x4_to_array(f32x4_shuffle!(x, y, [2, 3, 6, 7])),
-        [3f32, 4f32, 7f32, 8f32]
-    );
-}
 
 #[allow(dead_code)]
 #[inline]
@@ -127,7 +31,7 @@ pub fn f32x4_to_array(x: f32x4) -> [f32; 4] {
 /// `neg_mask` must be `[0x80000000, 0x80000000, 0, 0]`
 #[inline]
 pub fn f32x4_complex_mul_rrii(x: f32x4, y: f32x4, neg_mask: f32x4) -> f32x4 {
-    let y_iirr = f32x4_shuffle!(y, y, [2, 3, 4, 5]);
+    let y_iirr = shuffle!(y, y, [2, 3, 4, 5]);
 
     // (y1a.r * ta.r, y1b.r * tb.r, y1a.i * ta.i, y1b.i * tb.i)
     let t2 = x * y;
@@ -136,10 +40,10 @@ pub fn f32x4_complex_mul_rrii(x: f32x4, y: f32x4, neg_mask: f32x4) -> f32x4 {
     let t3 = x * y_iirr;
 
     // (y1a.r * ta.r, y1b.r * tb.r, y1a.r * ta.i, y1b.r * tb.i)
-    let t4 = f32x4_shuffle!(t2, t3, [0, 1, 4, 5]);
+    let t4 = shuffle!(t2, t3, [0, 1, 4, 5]);
 
     // (y1a.i * ta.i, y1b.i * tb.i, y1a.i * ta.r, y1b.i * tb.r)
-    let t5 = f32x4_shuffle!(t2, t3, [2, 3, 6, 7]);
+    let t5 = shuffle!(t2, t3, [2, 3, 6, 7]);
 
     // (-y1a.i * ta.i, -y1b.i * tb.i, y1a.i * ta.r, y1b.i * tb.r)
     let t6 = f32x4_bitxor(t5, neg_mask);
@@ -172,13 +76,20 @@ fn test_f32x4_complex_mul_rrii() {
 #[cfg(all(target_feature = "sse3", not(target_feature = "fma")))]
 #[allow(dead_code)]
 pub fn sse3_fma_f32x4_fmaddsub(x: f32x4, y: f32x4, z: f32x4) -> f32x4 {
-    (x * y).addsub(z)
+    let xy = unsafe { mem::transmute(x * y) };
+    let z = unsafe { mem::transmute(z) };
+    let w = unsafe { vendor::_mm_addsub_ps(xy, z) };
+    unsafe { mem::transmute(w) }
 }
 
 #[cfg(all(target_feature = "sse3", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn sse3_fma_f32x4_fmaddsub(x: f32x4, y: f32x4, z: f32x4) -> f32x4 {
-    unsafe { x86_mm_fmaddsub_ps(x, y, z) }
+    let x = unsafe { mem::transmute(x) };
+    let y = unsafe { mem::transmute(y) };
+    let z = unsafe { mem::transmute(z) };
+    let w = unsafe { vendor::_mm_fmaddsub_ps(x, y, z) };
+    unsafe { mem::transmute(w) }
 }
 
 #[cfg(target_feature = "sse3")]
@@ -187,10 +98,10 @@ pub fn sse3_fma_f32x4_fmaddsub(x: f32x4, y: f32x4, z: f32x4) -> f32x4 {
 pub fn sse3_f32x4_complex_mul_riri(x: f32x4, y: f32x4) -> f32x4 {
     // (r1, i1, ...) * (r3, i3, ...)
     //   --> ((r1 * r3) - (i1 * i3), (r1 * i3) + (i1 * r3), ...)
-    let x1 = f32x4_shuffle!(x, x, [0, 0, 2, 2]); // movsldup
-    let x2 = f32x4_shuffle!(x, x, [1, 1, 3, 3]); // movshdup
-    let y1 = y;
-    let y2 = f32x4_shuffle!(y, y, [1, 0, 3, 2]); // shufps
+    let x1: f32x4 = shuffle!(x, x, [0, 0, 2, 2]); // movsldup
+    let x2: f32x4 = shuffle!(x, x, [1, 1, 3, 3]); // movshdup
+    let y1: f32x4 = y;
+    let y2: f32x4 = shuffle!(y, y, [1, 0, 3, 2]); // shufps
     let z = sse3_fma_f32x4_fmaddsub(x1, y1, x2 * y2); // vaddsubps/vfmaddsubXXXps
     return z;
 }
@@ -223,7 +134,10 @@ pub fn avx_fma_f32x8_fmadd(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
 #[cfg(all(target_feature = "avx", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn avx_fma_f32x8_fmadd(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
-    unsafe { x86_mm256_fmadd_ps(x, y, z) }
+    let x: vendor::__m256 = unsafe { mem::transmute(x) };
+    let y: vendor::__m256 = unsafe { mem::transmute(y) };
+    let z: vendor::__m256 = unsafe { mem::transmute(z) };
+    unsafe { mem::transmute(vendor::_mm256_fmadd_ps(x, y, z)) }
 }
 
 #[cfg(all(target_feature = "avx", not(target_feature = "fma")))]
@@ -235,19 +149,27 @@ pub fn avx_fma_f32x8_fmsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
 #[cfg(all(target_feature = "avx", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn avx_fma_f32x8_fmsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
-    unsafe { x86_mm256_fmsub_ps(x, y, z) }
+    let x: vendor::__m256 = unsafe { mem::transmute(x) };
+    let y: vendor::__m256 = unsafe { mem::transmute(y) };
+    let z: vendor::__m256 = unsafe { mem::transmute(z) };
+    unsafe { mem::transmute(vendor::_mm256_fmsub_ps(x, y, z)) }
 }
 
 #[cfg(all(target_feature = "avx", not(target_feature = "fma")))]
 #[allow(dead_code)]
 pub fn avx_fma_f32x8_fmaddsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
-    (x * y).addsub(z)
+    let xy: vendor::__m256 = unsafe { mem::transmute(x * y) };
+    let z: vendor::__m256 = unsafe { mem::transmute(z) };
+    unsafe { mem::transmute(vendor::_mm256_addsub_ps(xy, z)) }
 }
 
 #[cfg(all(target_feature = "avx", target_feature = "fma"))]
 #[allow(dead_code)]
 pub fn avx_fma_f32x8_fmaddsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
-    unsafe { x86_mm256_fmaddsub_ps(x, y, z) }
+    let x: vendor::__m256 = unsafe { mem::transmute(x) };
+    let y: vendor::__m256 = unsafe { mem::transmute(y) };
+    let z: vendor::__m256 = unsafe { mem::transmute(z) };
+    unsafe { mem::transmute(vendor::_mm256_fmaddsub_ps(x, y, z)) }
 }
 
 #[cfg(target_feature = "avx")]
@@ -256,10 +178,10 @@ pub fn avx_fma_f32x8_fmaddsub(x: f32x8, y: f32x8, z: f32x8) -> f32x8 {
 pub fn avx_f32x8_complex_mul_riri(x: f32x8, y: f32x8) -> f32x8 {
     // (r1, i1, ...) * (r3, i3, ...)
     //   --> ((r1 * r3) - (i1 * i3), (r1 * i3) + (i1 * r3), ...)
-    let x1 = f32x8_shuffle!(x, x, [0, 0, 2, 2, 4, 4, 6, 6]); // vmovsldup
-    let x2 = f32x8_shuffle!(x, x, [1, 1, 3, 3, 5, 5, 7, 7]); // vmovshdup
-    let y1 = y;
-    let y2 = f32x8_shuffle!(y, y, [1, 0, 3, 2, 5, 4, 7, 6]); // vpermilps
+    let x1: f32x8 = shuffle!(x, x, [0, 0, 2, 2, 4, 4, 6, 6]); // vmovsldup
+    let x2: f32x8 = shuffle!(x, x, [1, 1, 3, 3, 5, 5, 7, 7]); // vmovshdup
+    let y1: f32x8 = y;
+    let y2: f32x8 = shuffle!(y, y, [1, 0, 3, 2, 5, 4, 7, 6]); // vpermilps
     let z = avx_fma_f32x8_fmaddsub(x1, y1, x2 * y2); // vaddsubps/vfmaddsubXXXps
     return z;
 }

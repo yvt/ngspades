@@ -27,13 +27,14 @@
 // This source code is a part of Nightingales.
 //
 #![cfg_attr(test, feature(test))]
-#![cfg_attr(not(debug_assertions), feature(slice_get_slice))]
 #![feature(platform_intrinsics)]
 
 extern crate num_complex;
 extern crate num_iter;
 extern crate num_traits;
-extern crate simd;
+
+#[macro_use]
+extern crate packed_simd;
 
 use std::fmt::Debug;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};

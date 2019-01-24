@@ -12,7 +12,6 @@
 //!
 #![feature(arbitrary_self_types)]
 #![feature(futures_api)]
-#![feature(pin)]
 #![feature(unsized_locals)] // For calling boxed `FnOnce`
 
 mod asyncuploader;

@@ -7,7 +7,7 @@ use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapp
 use super::{Kernel, KernelParams, SliceAccessor};
 
 use num_iter::range_step;
-use simd::{f32x4, u32x4};
+use packed_simd::{f32x4, u32x4};
 use std::f32;
 use std::mem;
 use std::ptr::{read_unaligned, write_unaligned};
@@ -112,17 +112,17 @@ impl AlignReqKernel<f32> for SseRealFFTPrePostProcessKernel {
             let b2i = unsafe { *b_p2 };
 
             // riri to rrii
-            let t1 = f32x4_shuffle!(x1, x1, [0, 2, 5, 7]);
-            let t2 = f32x4_shuffle!(x2, x2, [0, 2, 5, 7]);
-            let a1 = f32x4_shuffle!(a1i, a1i, [0, 2, 5, 7]);
-            let a2 = f32x4_shuffle!(a2i, a2i, [0, 2, 5, 7]);
-            let b1 = f32x4_shuffle!(b1i, b1i, [0, 2, 5, 7]);
-            let b2 = f32x4_shuffle!(b2i, b2i, [0, 2, 5, 7]);
+            let t1 = shuffle!(x1, x1, [0, 2, 5, 7]);
+            let t2 = shuffle!(x2, x2, [0, 2, 5, 7]);
+            let a1 = shuffle!(a1i, a1i, [0, 2, 5, 7]);
+            let a2 = shuffle!(a2i, a2i, [0, 2, 5, 7]);
+            let b1 = shuffle!(b1i, b1i, [0, 2, 5, 7]);
+            let b2 = shuffle!(b2i, b2i, [0, 2, 5, 7]);
 
             let t1c = f32x4_bitxor(t1, conj_mask);
             let t2c = f32x4_bitxor(t2, conj_mask);
-            let t1c = f32x4_shuffle!(t1c, t1c, [1, 0, 7, 6]);
-            let t2c = f32x4_shuffle!(t2c, t2c, [1, 0, 7, 6]);
+            let t1c = shuffle!(t1c, t1c, [1, 0, 7, 6]);
+            let t2c = shuffle!(t2c, t2c, [1, 0, 7, 6]);
 
             let g1 = f32x4_complex_mul_rrii(t1, a1, neg_mask)
                 + f32x4_complex_mul_rrii(t2c, b1, neg_mask);
@@ -130,8 +130,8 @@ impl AlignReqKernel<f32> for SseRealFFTPrePostProcessKernel {
                 + f32x4_complex_mul_rrii(t1c, b2, neg_mask);
 
             // rrii to riri
-            let y1 = f32x4_shuffle!(g1, g1, [0, 2, 5, 7]);
-            let y2 = f32x4_shuffle!(g2, g2, [0, 2, 5, 7]);
+            let y1 = shuffle!(g1, g1, [0, 2, 5, 7]);
+            let y2 = shuffle!(g2, g2, [0, 2, 5, 7]);
 
             unsafe {
                 write_unaligned(cur1, y1);

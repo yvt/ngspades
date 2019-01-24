@@ -3,8 +3,6 @@
 //
 // This source code is a part of Nightingales.
 //
-#[allow(unused_imports)]
-use crate::intrin;
 use crate::{IntPacked, Packed, PackedI16, PackedU16, PackedU32, PackedU8, SimdMode};
 #[allow(unused_imports)]
 use packed_simd::{self as simd, Cast};
@@ -89,10 +87,23 @@ unsafe impl Packed for Simd16U8 {
         scale: u8,
     ) -> Self {
         // Load 4-byte values
-        let data0 =
-            intrin::mm256_i32gather_epi32(base as *const _, transmute(offset.0), scale as i32);
-        let data1 =
-            intrin::mm256_i32gather_epi32(base as *const _, transmute(offset.1), scale as i32);
+        let (data0, data1) = constantify! {
+            match (scale) {
+                1 | 2 | 4 | 8 @ scale: i32 => (
+                    vendor::_mm256_i32gather_epi32(
+                        base as *const _,
+                        transmute(offset.0),
+                        scale,
+                    ),
+                    vendor::_mm256_i32gather_epi32(
+                        base as *const _,
+                        transmute(offset.1),
+                        scale,
+                    ),
+                ),
+                _ => return Self::gather32_ptr_slow(base, offset, scale),
+            }
+        };
 
         // Throw away the extra 24 MSBs
         Simd16U32(transmute(data0), transmute(data1)).as_u8()
@@ -195,16 +206,23 @@ mod avx2 {
             scale: u8,
         ) -> Self {
             // Load 4-byte values
-            let data0 = intrin::mm256_i32gather_epi32(
-                base as *const _,
-                transmute(offset.0),
-                (scale * 2) as i32,
-            );
-            let data1 = intrin::mm256_i32gather_epi32(
-                base as *const _,
-                transmute(offset.1),
-                (scale * 2) as i32,
-            );
+            let (data0, data1) = constantify! {
+                match (scale) {
+                    1 | 2 | 4 @ scale: i32 => (
+                        vendor::_mm256_i32gather_epi32(
+                            base as *const _,
+                            transmute(offset.0),
+                            scale * 2,
+                        ),
+                        vendor::_mm256_i32gather_epi32(
+                            base as *const _,
+                            transmute(offset.1),
+                            scale * 2,
+                        ),
+                    ),
+                    _ => return Self::gather32_ptr_slow(base, offset, scale),
+                }
+            };
 
             // Throw away the extra 16 MSBs
             Simd16U32(transmute(data0), transmute(data1)).as_u16()
@@ -316,18 +334,23 @@ mod avx2 {
             offset: <Self::Mode as SimdMode>::U32,
             scale: u8,
         ) -> Self {
-            Simd16U32(
-                transmute(intrin::mm256_i32gather_epi32(
-                    base as *const _,
-                    transmute(offset.0),
-                    (scale * 4) as i32,
-                )),
-                transmute(intrin::mm256_i32gather_epi32(
-                    base as *const _,
-                    transmute(offset.1),
-                    (scale * 4) as i32,
-                )),
-            )
+            constantify! {
+                match (scale) {
+                    1 | 2 @ scale: i32 => Simd16U32(
+                        transmute(vendor::_mm256_i32gather_epi32(
+                            base as *const _,
+                            transmute(offset.0),
+                            scale * 4,
+                        )),
+                        transmute(vendor::_mm256_i32gather_epi32(
+                            base as *const _,
+                            transmute(offset.1),
+                            scale * 4,
+                        )),
+                    ),
+                    _ => Self::gather32_ptr_slow(base, offset, scale),
+                }
+            }
         }
     }
 

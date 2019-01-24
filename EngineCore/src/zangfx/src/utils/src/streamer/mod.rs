@@ -75,8 +75,9 @@ use futures::{prelude::*, task, try_ready, Future, Poll, Sink};
 use std::{
     borrow::Borrow,
     collections::VecDeque,
+    marker::Unpin,
     ops::Range,
-    pin::{Pin, Unpin},
+    pin::Pin,
 };
 use volatile_view::Volatile;
 

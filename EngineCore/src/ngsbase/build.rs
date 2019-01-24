@@ -17,7 +17,6 @@ fn main() {
     if !interopgen_path.exists() {
         panic!("Ngs.RustInteropGen was not found.");
     }
-    let interopgen_csproj_path = interopgen_path.join("Ngs.RustInteropGen.csproj");
 
     // Interface definitions
     let interop_path = project_path.join("Ngs.Engine.Core");
@@ -26,21 +25,35 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("interop.rs");
 
-    let st = Command::new("dotnet")
+    // Calling `dotnet` directly causes "Unable to load shared library
+    // 'libproc'" error similar to <https://github.com/dotnet/corefx/issues/25157>,
+    // so we try calling it via the shell.
+    // (The actual cause of this problem is unknown.)
+    let st;
+    match Command::new("/bin/sh")
+        .current_dir(&interopgen_path)
         .args(&[
-            "run",
-            "-p",
-            interopgen_csproj_path.to_str().unwrap(),
-            "--",
-            "-o",
-            dest_path.to_str().unwrap(),
-        ]).status()
-        .unwrap();
+            "-c",
+            &format!("dotnet run -- -o \"{}\"", dest_path.to_str().unwrap()),
+        ])
+        .status()
+    {
+        Ok(status) => {
+            st = status;
+        }
+        Err(_) => {
+            // A shell is unavailable. Probably we are running on Windows.
+            st = Command::new("dotnet")
+                .current_dir(&interopgen_path)
+                .args(&["run", "--", "-o", dest_path.to_str().unwrap()])
+                .status()
+                .unwrap();
+        }
+    }
 
     if !st.success() {
         panic!(
-            "Command dotnet run -p \"{}\" -- -o \"{}\" failed with exit code {}",
-            interopgen_csproj_path.to_str().unwrap(),
+            "Command dotnet run -- -o \"{}\" failed with exit code {}",
             dest_path.to_str().unwrap(),
             st
         );

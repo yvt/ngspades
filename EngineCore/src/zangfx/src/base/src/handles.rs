@@ -69,7 +69,7 @@
 //!
 use std::any::Any;
 use std::fmt;
-use std::pin::Unpin;
+use std::marker::Unpin;
 
 /// Implements the clone behavior of fat handles.
 ///

@@ -25,7 +25,7 @@ use simdutils::{
 use num_complex::Complex;
 use num_iter::range_step;
 
-use simd::x86::avx::{f32x8, u32x8};
+use packed_simd::{f32x8, u32x8};
 
 use std::{f32, mem};
 
@@ -134,14 +134,14 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
             let (xy2, zw2) = if pre_twiddle {
                 // riririri-riririri -> riririri
                 //   12  34   56  78    12563478
-                let t1 = f32x8_shuffle!(xy1, zw1, [2, 3, 10, 11, 6, 7, 14, 15]);
-                let t2 = avx_f32x8_complex_mul_riri(t1, twiddles);
+                let t1: f32x8 = shuffle!(xy1, zw1, [2, 3, 10, 11, 6, 7, 14, 15]);
+                let t2: f32x8 = avx_f32x8_complex_mul_riri(t1, twiddles);
                 // t3: --12--34 (vmovddup)
-                let t3 = f32x8_shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
+                let t3: f32x8 = shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
                 // vblendps
                 (
-                    f32x8_shuffle!(xy1, t3, [0, 1, 10, 11, 4, 5, 14, 15]),
-                    f32x8_shuffle!(zw1, t2, [0, 1, 10, 11, 4, 5, 14, 15]),
+                    shuffle!(xy1, t3, [0, 1, 10, 11, 4, 5, 14, 15]),
+                    shuffle!(zw1, t2, [0, 1, 10, 11, 4, 5, 14, 15]),
                 )
             } else {
                 (xy1, zw1)
@@ -152,13 +152,13 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
             let t34 = xy2 - zw2;
 
             // transpose (vperm2f128)
-            let t13 = f32x8_shuffle!(t12, t34, [0, 1, 2, 3, 8, 9, 10, 11]);
-            let t24t = f32x8_shuffle!(t12, t34, [4, 5, 6, 7, 12, 13, 14, 15]);
+            let t13: f32x8 = shuffle!(t12, t34, [0, 1, 2, 3, 8, 9, 10, 11]);
+            let t24t: f32x8 = shuffle!(t12, t34, [4, 5, 6, 7, 12, 13, 14, 15]);
 
             // t4 = t4 * i (backward), t4 = t4 * -i (forward)
-            let t24t2 = f32x8_shuffle!(t24t, t24t, [1, 0, 3, 2, 5, 4, 7, 6]); // vpermilps (t3 * i, t4 * i)
-            let t24t3 = f32x8_shuffle!(t24t, t24t2, [0, 1, 2, 3, 12, 13, 14, 15]); // vblendps or vperm2f128 (t3, t4 * i)
-            let t24 = avx_f32x8_bitxor(t24t3, neg_mask2);
+            let t24t2: f32x8 = shuffle!(t24t, t24t, [1, 0, 3, 2, 5, 4, 7, 6]); // vpermilps (t3 * i, t4 * i)
+            let t24t3: f32x8 = shuffle!(t24t, t24t2, [0, 1, 2, 3, 12, 13, 14, 15]); // vblendps or vperm2f128 (t3, t4 * i)
+            let t24: f32x8 = avx_f32x8_bitxor(t24t3, neg_mask2);
 
             let (xy3, zw3) = (t13 + t24, t13 - t24);
 
@@ -166,14 +166,14 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel2<T> {
             let (xy4, zw4) = if post_twiddle {
                 // riririri-riririri -> riririri
                 //   12  34   56  78    12563478
-                let t1 = f32x8_shuffle!(xy3, zw3, [2, 3, 10, 11, 6, 7, 14, 15]);
-                let t2 = avx_f32x8_complex_mul_riri(t1, twiddles);
+                let t1: f32x8 = shuffle!(xy3, zw3, [2, 3, 10, 11, 6, 7, 14, 15]);
+                let t2: f32x8 = avx_f32x8_complex_mul_riri(t1, twiddles);
                 // t3: --12--34 (vmovddup)
-                let t3 = f32x8_shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
+                let t3: f32x8 = shuffle!(t2, t2, [0, 1, 8, 9, 4, 5, 12, 13]);
                 // vblendps
                 (
-                    f32x8_shuffle!(xy3, t3, [0, 1, 10, 11, 4, 5, 14, 15]),
-                    f32x8_shuffle!(zw3, t2, [0, 1, 10, 11, 4, 5, 14, 15]),
+                    shuffle!(xy3, t3, [0, 1, 10, 11, 4, 5, 14, 15]),
+                    shuffle!(zw3, t2, [0, 1, 10, 11, 4, 5, 14, 15]),
                 )
             } else {
                 (xy3, zw3)
@@ -319,7 +319,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel3<T> {
 
                 // w3 = w3t * i
                 let w3 = avx_f32x8_bitxor(
-                    f32x8_shuffle!(w3t, w3t, [1, 0, 11, 10, 5, 4, 15, 14]),
+                    shuffle!(w3t, w3t, [1, 0, 11, 10, 5, 4, 15, 14]),
                     neg_mask2,
                 );
 
@@ -509,14 +509,14 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel4<T> {
 
                 // convert riririri-riririri to rrrrrrrr-iiiiiiii (vshufps)
                 //         1 2 3 4  5 6 7 8     12563478
-                let x2r = f32x8_shuffle!(x1a, x1b, [0, 2, 8, 10, 4, 6, 12, 14]);
-                let x2i = f32x8_shuffle!(x1a, x1b, [1, 3, 9, 11, 5, 7, 13, 15]);
-                let y2r = f32x8_shuffle!(y1a, y1b, [0, 2, 8, 10, 4, 6, 12, 14]);
-                let y2i = f32x8_shuffle!(y1a, y1b, [1, 3, 9, 11, 5, 7, 13, 15]);
-                let z2r = f32x8_shuffle!(z1a, z1b, [0, 2, 8, 10, 4, 6, 12, 14]);
-                let z2i = f32x8_shuffle!(z1a, z1b, [1, 3, 9, 11, 5, 7, 13, 15]);
-                let w2r = f32x8_shuffle!(w1a, w1b, [0, 2, 8, 10, 4, 6, 12, 14]);
-                let w2i = f32x8_shuffle!(w1a, w1b, [1, 3, 9, 11, 5, 7, 13, 15]);
+                let x2r = shuffle!(x1a, x1b, [0, 2, 8, 10, 4, 6, 12, 14]);
+                let x2i = shuffle!(x1a, x1b, [1, 3, 9, 11, 5, 7, 13, 15]);
+                let y2r = shuffle!(y1a, y1b, [0, 2, 8, 10, 4, 6, 12, 14]);
+                let y2i = shuffle!(y1a, y1b, [1, 3, 9, 11, 5, 7, 13, 15]);
+                let z2r = shuffle!(z1a, z1b, [0, 2, 8, 10, 4, 6, 12, 14]);
+                let z2i = shuffle!(z1a, z1b, [1, 3, 9, 11, 5, 7, 13, 15]);
+                let w2r = shuffle!(w1a, w1b, [0, 2, 8, 10, 4, 6, 12, 14]);
+                let w2i = shuffle!(w1a, w1b, [1, 3, 9, 11, 5, 7, 13, 15]);
 
                 // apply twiddle factor
                 let x3r = x2r;
@@ -607,14 +607,14 @@ impl<T: StaticParams> AlignReqKernel<f32> for AvxRadix4Kernel4<T> {
                 };
 
                 // convert to rrrrrrrr-iiiiiiii to riririri-riririri (vunpcklps/vunpckups)
-                let x7a = f32x8_shuffle!(x6r, x6i, [0, 8, 1, 9, 4, 12, 5, 13]);
-                let x7b = f32x8_shuffle!(x6r, x6i, [2, 10, 3, 11, 6, 14, 7, 15]);
-                let y7a = f32x8_shuffle!(y6r, y6i, [0, 8, 1, 9, 4, 12, 5, 13]);
-                let y7b = f32x8_shuffle!(y6r, y6i, [2, 10, 3, 11, 6, 14, 7, 15]);
-                let z7a = f32x8_shuffle!(z6r, z6i, [0, 8, 1, 9, 4, 12, 5, 13]);
-                let z7b = f32x8_shuffle!(z6r, z6i, [2, 10, 3, 11, 6, 14, 7, 15]);
-                let w7a = f32x8_shuffle!(w6r, w6i, [0, 8, 1, 9, 4, 12, 5, 13]);
-                let w7b = f32x8_shuffle!(w6r, w6i, [2, 10, 3, 11, 6, 14, 7, 15]);
+                let x7a = shuffle!(x6r, x6i, [0, 8, 1, 9, 4, 12, 5, 13]);
+                let x7b = shuffle!(x6r, x6i, [2, 10, 3, 11, 6, 14, 7, 15]);
+                let y7a = shuffle!(y6r, y6i, [0, 8, 1, 9, 4, 12, 5, 13]);
+                let y7b = shuffle!(y6r, y6i, [2, 10, 3, 11, 6, 14, 7, 15]);
+                let z7a = shuffle!(z6r, z6i, [0, 8, 1, 9, 4, 12, 5, 13]);
+                let z7b = shuffle!(z6r, z6i, [2, 10, 3, 11, 6, 14, 7, 15]);
+                let w7a = shuffle!(w6r, w6i, [0, 8, 1, 9, 4, 12, 5, 13]);
+                let w7b = shuffle!(w6r, w6i, [2, 10, 3, 11, 6, 14, 7, 15]);
 
                 unsafe { I::write(cur1a, x7a) };
                 unsafe { I::write(cur1b, x7b) };

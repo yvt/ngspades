@@ -23,7 +23,7 @@ use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAc
 use num_complex::Complex;
 use num_iter::range_step;
 
-use simd::x86::avx::{f32x8, u32x8};
+use packed_simd::{f32x8, u32x8};
 
 use std::{f32, mem};
 
@@ -84,7 +84,7 @@ impl AlignReqKernel<f32> for AvxRadix2Kernel1 {
             // t1a, t1b : Complex<f32> = X[x/2 .. x/2 + 2]
             let t1 = unsafe { I::read(cur) };
             // t2a, t2b = t1b, t1a
-            let t2 = f32x8_shuffle!(t1, t1, [2, 3, 8, 9, 6, 7, 12, 13]);
+            let t2 = shuffle!(t1, t1, [2, 3, 8, 9, 6, 7, 12, 13]);
             // t3a, t3b = t1a, -t1b
             let t3 = avx_f32x8_bitxor(t1, neg_mask);
             // t4a, t4b = t2a + t3a, t3b + t3b = t1a + t1b, t1a - t1b

@@ -12,12 +12,12 @@
 extern crate num_traits;
 extern crate packed_simd;
 
-#[allow(dead_code)]
-mod intrin;
-
 #[macro_use]
 mod packed;
 pub use crate::packed::*;
+
+#[macro_use]
+mod macros;
 
 pub mod kernel;
 pub mod simd16;

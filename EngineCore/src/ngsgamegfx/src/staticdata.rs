@@ -147,7 +147,7 @@ use either::Either;
 use flags_macro::flags;
 use futures::{executor, future, prelude::*, stream};
 use std::{
-    pin::Unpin,
+    marker::Unpin,
     sync::{Arc, Mutex},
 };
 use zangfx::{

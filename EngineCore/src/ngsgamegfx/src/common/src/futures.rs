@@ -73,7 +73,7 @@ where
     type Item = U;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Option<U>> {
-        let option = ready!(self.stream().poll_next(cx));
+        let option = ready!(self.as_mut().stream().poll_next(cx));
         let (f, state) = self.f_state();
         Poll::Ready(option.map(|x| f(x, state)))
     }
@@ -95,15 +95,15 @@ impl<T: Stream> Stream for WithTerminator<T> {
     type Item = (T::Item, bool);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Option<Self::Item>> {
-        if self.next().is_none() {
-            if let Some(x) = ready!(self.inner().poll_next(cx)) {
-                *self.next() = Some(x);
+        if self.as_mut().next().is_none() {
+            if let Some(x) = ready!(self.as_mut().inner().poll_next(cx)) {
+                *self.as_mut().next() = Some(x);
             } else {
                 return Poll::Ready(None);
             }
         }
 
-        let is_last = ready!(self.inner().peek(cx)).is_none();
+        let is_last = ready!(self.as_mut().inner().peek(cx)).is_none();
 
         Poll::Ready(Some((self.next().take().unwrap(), is_last)))
     }

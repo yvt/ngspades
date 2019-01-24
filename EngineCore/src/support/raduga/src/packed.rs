@@ -93,6 +93,16 @@ pub unsafe trait Packed:
         offset: <Self::Mode as SimdMode>::U32,
         scale: u8,
     ) -> Self {
+        Self::gather32_ptr_slow(base, offset, scale)
+    }
+
+    /// The default implementation of `gather32_ptr`.
+    #[inline]
+    unsafe fn gather32_ptr_slow(
+        base: *const Self::Scalar,
+        offset: <Self::Mode as SimdMode>::U32,
+        scale: u8,
+    ) -> Self {
         offset.map_to(|x| *base.offset(x as isize * scale as isize))
     }
 

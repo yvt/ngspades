@@ -7,11 +7,8 @@ use super::super::Num;
 use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper};
 use super::{Kernel, KernelParams, SliceAccessor};
 
-use simd::u32x4;
-use simd::x86::avx::u64x4;
-use simd::x86::sse2::u64x2;
+use packed_simd::{u32x4, u64x4, u64x2};
 
-use simdutils;
 use std::{mem, ptr};
 
 pub unsafe fn new_x86_avx_bit_reversal_kernel<T>(indices: &Vec<usize>) -> Option<Box<Kernel<T>>>
@@ -171,14 +168,14 @@ impl<T: Num> AlignReqKernel<T> for AvxDWordRadix2BitReversalKernel {
             let src3 = unsafe { ptr::read_unaligned(&wa[index3] as *const T as *const u64x2) };
             let src4 = unsafe { ptr::read_unaligned(&wa[index4] as *const T as *const u64x2) };
 
-            let t1a = u64x2_shuffle!(src1, src2, [0, 2]); // unpcklpd
-            let t2a = u64x2_shuffle!(src3, src4, [0, 2]); // unpcklpd
+            let t1a: u64x2 = shuffle!(src1, src2, [0, 2]); // unpcklpd
+            let t2a: u64x2 = shuffle!(src3, src4, [0, 2]); // unpcklpd
 
-            let t1b = u64x2_shuffle!(src1, src2, [1, 3]); // unpckhpd
-            let t2b = u64x2_shuffle!(src3, src4, [1, 3]); // unpckhpd
+            let t1b: u64x2 = shuffle!(src1, src2, [1, 3]); // unpckhpd
+            let t2b: u64x2 = shuffle!(src3, src4, [1, 3]); // unpckhpd
 
-            let out1: u64x4 = unsafe { simdutils::simd_shuffle4(t1a, t2a, [0, 1, 2, 3]) }; // inserti128
-            let out2: u64x4 = unsafe { simdutils::simd_shuffle4(t1b, t2b, [0, 1, 2, 3]) }; // inserti128
+            let out1: u64x4 = shuffle!(t1a, t2a, [0, 1, 2, 3]); // inserti128
+            let out2: u64x4 = shuffle!(t1b, t2b, [0, 1, 2, 3]); // inserti128
 
             let dest1: *mut u64x4 = &mut data[i * 8] as *mut T as *mut u64x4;
             let dest2: *mut u64x4 = &mut data[(i + size) * 8] as *mut T as *mut u64x4;
@@ -278,16 +275,16 @@ impl<T: Num> AlignReqKernel<T> for AvxDWordRadix4BitReversalKernel {
                 let src3 = unsafe { ptr::read_unaligned(&wa[index3] as *const T as *const u64x4) };
                 let src4 = unsafe { ptr::read_unaligned(&wa[index4] as *const T as *const u64x4) };
 
-                let t1a = u64x4_shuffle!(src1, src2, [0, 4, 2, 6]); // unpcklpd
-                let t2a = u64x4_shuffle!(src3, src4, [0, 4, 2, 6]); // unpcklpd
+                let t1a: u64x4 = shuffle!(src1, src2, [0, 4, 2, 6]); // unpcklpd
+                let t2a: u64x4 = shuffle!(src3, src4, [0, 4, 2, 6]); // unpcklpd
 
-                let t1b = u64x4_shuffle!(src1, src2, [1, 5, 3, 7]); // unpckhpd
-                let t2b = u64x4_shuffle!(src3, src4, [1, 5, 3, 7]); // unpckhpd
+                let t1b: u64x4 = shuffle!(src1, src2, [1, 5, 3, 7]); // unpckhpd
+                let t2b: u64x4 = shuffle!(src3, src4, [1, 5, 3, 7]); // unpckhpd
 
-                let out1: u64x4 = u64x4_shuffle!(t1a, t2a, [0, 1, 4, 5]); // inserti128/perm2f128
-                let out2: u64x4 = u64x4_shuffle!(t1b, t2b, [0, 1, 4, 5]); // inserti128/perm2f128
-                let out3: u64x4 = u64x4_shuffle!(t1a, t2a, [2, 3, 6, 7]); // inserti128/perm2f128
-                let out4: u64x4 = u64x4_shuffle!(t1b, t2b, [2, 3, 6, 7]); // inserti128/perm2f128
+                let out1: u64x4 = shuffle!(t1a, t2a, [0, 1, 4, 5]); // inserti128/perm2f128
+                let out2: u64x4 = shuffle!(t1b, t2b, [0, 1, 4, 5]); // inserti128/perm2f128
+                let out3: u64x4 = shuffle!(t1a, t2a, [2, 3, 6, 7]); // inserti128/perm2f128
+                let out4: u64x4 = shuffle!(t1b, t2b, [2, 3, 6, 7]); // inserti128/perm2f128
 
                 let dest1: *mut u64x4 = &mut data[i * 8] as *mut T as *mut u64x4;
                 let dest2: *mut u64x4 = &mut data[(i + size) * 8] as *mut T as *mut u64x4;

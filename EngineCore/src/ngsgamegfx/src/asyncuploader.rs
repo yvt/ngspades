@@ -70,8 +70,9 @@ use futures::{
 };
 use std::{
     fmt,
+    marker::Unpin,
     ops::Range,
-    pin::{Pin, Unpin},
+    pin::Pin,
     sync::{Arc, Mutex},
     thread,
 };
@@ -260,7 +261,7 @@ impl AsyncUploader {
                 },
             );
 
-            Box::pinned(stream) as StreamerRequestStream
+            Box::pin(stream) as StreamerRequestStream
         };
 
         // Submission fails if the uploader thread is already down. In that

@@ -23,7 +23,7 @@ use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAc
 use num_complex::Complex;
 use num_iter::range_step;
 
-use simd::f32x4;
+use packed_simd::f32x4;
 
 use std::f32;
 
@@ -81,7 +81,7 @@ impl AlignReqKernel<f32> for SseRadix2Kernel1 {
             // t1a, t1b : Complex<f32> = X[x/2 .. x/2 + 2]
             let t1 = unsafe { I::read(cur) };
             // t2a, t2b = t1b, t1a
-            let t2 = f32x4_shuffle!(t1, t1, [2, 3, 4, 5]);
+            let t2 = shuffle!(t1, t1, [2, 3, 4, 5]);
             // t3a, t3b = t1a, -t1b
             let t3 = f32x4_bitxor(t1, neg_mask);
             // t4a, t4b = t2a + t3a, t3b + t3b = t1a + t1b, t1a - t1b
@@ -170,9 +170,9 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix2Kernel2<T> {
                 // (y1a.r, y1b.r, y1a.i, y1b.i)
                 let x2 = x1;
                 let y2 = if pre_twiddle {
-                    let t1 = f32x4_shuffle!(y1, y1, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(y1, y1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     y1
                 };
@@ -186,9 +186,9 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix2Kernel2<T> {
                 // (y1a.r, y1b.r, y1a.i, y1b.i)
                 let x4 = x3;
                 let y4 = if post_twiddle {
-                    let t1 = f32x4_shuffle!(y3, y3, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(y3, y3, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     y3
                 };
@@ -289,10 +289,10 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix2Kernel3<T> {
                 let y1b = unsafe { I::read(cur2b) };
 
                 // convert riri-riri to rrrr-iiii (shufps)
-                let x2r = f32x4_shuffle!(x1a, x1b, [0, 2, 4, 6]);
-                let x2i = f32x4_shuffle!(x1a, x1b, [1, 3, 5, 7]);
-                let y2r = f32x4_shuffle!(y1a, y1b, [0, 2, 4, 6]);
-                let y2i = f32x4_shuffle!(y1a, y1b, [1, 3, 5, 7]);
+                let x2r = shuffle!(x1a, x1b, [0, 2, 4, 6]);
+                let x2i = shuffle!(x1a, x1b, [1, 3, 5, 7]);
+                let y2r = shuffle!(y1a, y1b, [0, 2, 4, 6]);
+                let y2i = shuffle!(y1a, y1b, [1, 3, 5, 7]);
 
                 // apply twiddle factor
                 let x3r = x2r;
@@ -329,10 +329,10 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix2Kernel3<T> {
                 };
 
                 // convert to rrrr-iiii to riri-riri (unpcklps/unpckups)
-                let x6a = f32x4_shuffle!(x5r, x5i, [0, 4, 1, 5]);
-                let x6b = f32x4_shuffle!(x5r, x5i, [2, 6, 3, 7]);
-                let y6a = f32x4_shuffle!(y5r, y5i, [0, 4, 1, 5]);
-                let y6b = f32x4_shuffle!(y5r, y5i, [2, 6, 3, 7]);
+                let x6a = shuffle!(x5r, x5i, [0, 4, 1, 5]);
+                let x6b = shuffle!(x5r, x5i, [2, 6, 3, 7]);
+                let y6a = shuffle!(y5r, y5i, [0, 4, 1, 5]);
+                let y6b = shuffle!(y5r, y5i, [2, 6, 3, 7]);
 
                 unsafe { I::write(cur1a, x6a) };
                 unsafe { I::write(cur1b, x6b) };

@@ -7,7 +7,6 @@
 //!
 //! Provides utility types and function to be internally used by NgsGameGFX.
 #![feature(futures_api)]
-#![feature(pin)]
 #![feature(arbitrary_self_types)]
 
 pub mod any;
