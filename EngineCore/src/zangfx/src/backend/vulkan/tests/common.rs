@@ -10,7 +10,7 @@ use zangfx_vulkan as backend;
 
 use zangfx_test::zangfx_generate_backend_tests;
 
-use ash::extensions::DebugReport;
+use ash::extensions::ext::DebugReport;
 use ash::version::*;
 use ash::vk_make_version;
 use std::ffi::{CStr, CString};
@@ -82,7 +82,7 @@ impl DebugReportScope {
             p_user_data: null_mut(),
         };
 
-        let cb = unsafe { debug_report_loader.create_debug_report_callback_ext(&debug_info, None) }
+        let cb = unsafe { debug_report_loader.create_debug_report_callback(&debug_info, None) }
             .unwrap();
         DebugReportScope(debug_report_loader, cb)
     }
@@ -91,7 +91,7 @@ impl DebugReportScope {
 impl Drop for DebugReportScope {
     fn drop(&mut self) {
         unsafe {
-            self.0.destroy_debug_report_callback_ext(self.1, None);
+            self.0.destroy_debug_report_callback(self.1, None);
         }
     }
 }

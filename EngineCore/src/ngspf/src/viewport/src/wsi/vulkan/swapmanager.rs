@@ -52,7 +52,7 @@ pub type SurfaceId = super::SurfaceRef;
 /// system.
 pub(super) struct SwapchainManager {
     device: Arc<gfx::Device>,
-    ext_swapchain: ext::Swapchain,
+    ext_swapchain: ext::khr::Swapchain,
 
     /// `SyncSender` used to request the background thread to wait on the fences.
     fences_send: ManuallyDrop<AtomicRefCell<SyncSender<FenceSet>>>,
@@ -149,7 +149,7 @@ impl Drop for SwapchainManager {
 impl SwapchainManager {
     pub fn new(
         device: &Arc<gfx::Device>,
-        ext_swapchain: ext::Swapchain,
+        ext_swapchain: ext::khr::Swapchain,
         events_loop_proxy: EventsLoopProxy,
     ) -> Self {
         let device = Arc::clone(device);
@@ -267,7 +267,7 @@ impl SwapchainManager {
                     .map_err(translate_generic_error_unwrap)?;
 
                 match unsafe {
-                    self.ext_swapchain.acquire_next_image_khr(
+                    self.ext_swapchain.acquire_next_image(
                         swapchain.vk_swapchain,
                         timeout,
                         swapchain.be_semaphore.vk_semaphore(),

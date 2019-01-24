@@ -63,9 +63,9 @@ impl Deref for UniqueDevice {
 }
 
 #[derive(Debug)]
-pub struct UniqueSurfaceKHR<T: Borrow<ext::Surface>>(pub T, pub vk::SurfaceKHR);
+pub struct UniqueSurfaceKHR<T: Borrow<ext::khr::Surface>>(pub T, pub vk::SurfaceKHR);
 
-impl<T: Borrow<ext::Surface>> AutoPtr<vk::SurfaceKHR> for UniqueSurfaceKHR<T> {
+impl<T: Borrow<ext::khr::Surface>> AutoPtr<vk::SurfaceKHR> for UniqueSurfaceKHR<T> {
     fn into_inner(self) -> vk::SurfaceKHR {
         let handle = self.1;
         forget(self); // Skip `drop`
@@ -73,15 +73,15 @@ impl<T: Borrow<ext::Surface>> AutoPtr<vk::SurfaceKHR> for UniqueSurfaceKHR<T> {
     }
 }
 
-impl<T: Borrow<ext::Surface>> Drop for UniqueSurfaceKHR<T> {
+impl<T: Borrow<ext::khr::Surface>> Drop for UniqueSurfaceKHR<T> {
     fn drop(&mut self) {
         unsafe {
-            self.0.borrow().destroy_surface_khr(self.1, None);
+            self.0.borrow().destroy_surface(self.1, None);
         }
     }
 }
 
-impl<T: Borrow<ext::Surface>> Deref for UniqueSurfaceKHR<T> {
+impl<T: Borrow<ext::khr::Surface>> Deref for UniqueSurfaceKHR<T> {
     type Target = vk::SurfaceKHR;
     fn deref(&self) -> &Self::Target {
         &self.1
@@ -89,9 +89,9 @@ impl<T: Borrow<ext::Surface>> Deref for UniqueSurfaceKHR<T> {
 }
 
 #[derive(Debug)]
-pub struct UniqueSwapchainKHR<T: Borrow<ext::Swapchain>>(pub T, pub vk::SwapchainKHR);
+pub struct UniqueSwapchainKHR<T: Borrow<ext::khr::Swapchain>>(pub T, pub vk::SwapchainKHR);
 
-impl<T: Borrow<ext::Swapchain>> AutoPtr<vk::SwapchainKHR> for UniqueSwapchainKHR<T> {
+impl<T: Borrow<ext::khr::Swapchain>> AutoPtr<vk::SwapchainKHR> for UniqueSwapchainKHR<T> {
     fn into_inner(self) -> vk::SwapchainKHR {
         let handle = self.1;
         forget(self); // Skip `drop`
@@ -99,15 +99,15 @@ impl<T: Borrow<ext::Swapchain>> AutoPtr<vk::SwapchainKHR> for UniqueSwapchainKHR
     }
 }
 
-impl<T: Borrow<ext::Swapchain>> Drop for UniqueSwapchainKHR<T> {
+impl<T: Borrow<ext::khr::Swapchain>> Drop for UniqueSwapchainKHR<T> {
     fn drop(&mut self) {
         unsafe {
-            self.0.borrow().destroy_swapchain_khr(self.1, None);
+            self.0.borrow().destroy_swapchain(self.1, None);
         }
     }
 }
 
-impl<T: Borrow<ext::Swapchain>> Deref for UniqueSwapchainKHR<T> {
+impl<T: Borrow<ext::khr::Swapchain>> Deref for UniqueSwapchainKHR<T> {
     type Target = vk::SwapchainKHR;
     fn deref(&self) -> &Self::Target {
         &self.1

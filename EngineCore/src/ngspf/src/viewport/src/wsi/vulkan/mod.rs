@@ -56,7 +56,7 @@ pub struct WindowManager<P: Painter> {
     events_loop_proxy: EventsLoopProxy,
     entry: ash::Entry,
     instance: ManuallyDrop<UniqueInstance>,
-    surface_loader: ext::Surface,
+    surface_loader: ext::khr::Surface,
     report_conduit: ManuallyDrop<Option<debugreport::DebugReportConduit>>,
 
     /// Known and compatible physical devices.
@@ -148,7 +148,7 @@ impl<P: Painter> WindowManager<P> {
             None
         };
 
-        let surface_loader = ext::Surface::new(&entry, &*instance);
+        let surface_loader = ext::khr::Surface::new(&entry, &*instance);
 
         // Enumerate physical devices
         let vk_phys_devices = unsafe { instance.enumerate_physical_devices() }
@@ -292,7 +292,7 @@ struct PhysicalDevice<P: Painter> {
     info: Arc<PhysicalDeviceInfo>,
 
     vk_device: UniqueDevice,
-    swapchain_loader: ext::Swapchain,
+    swapchain_loader: ext::khr::Swapchain,
 
     swapchain_manager: ManuallyDrop<SwapchainManager>,
     surfaces: HashMap<SurfaceRef, Surface<P>>,
@@ -414,7 +414,7 @@ impl<P: Painter> PhysicalDevice<P> {
                     )
                 })?;
 
-            builder.enable_extension(ext::Swapchain::name().to_str().unwrap());
+            builder.enable_extension(ext::khr::Swapchain::name().to_str().unwrap());
 
             builder
                 .build(queue_create_infos.as_slice(), &info.enabled_features)
@@ -426,7 +426,7 @@ impl<P: Painter> PhysicalDevice<P> {
                 })?
         };
 
-        let swapchain_loader = ext::Swapchain::new(instance, &*vk_device);
+        let swapchain_loader = ext::khr::Swapchain::new(instance, &*vk_device);
 
         let gfx_device: Box<gfx::Device> = Box::new(unsafe {
             be::device::Device::new(ash::Device::clone(&vk_device), info.info.clone(), config)?
@@ -496,11 +496,11 @@ impl<P: Painter> PhysicalDevice<P> {
     /// Return whether `self` is compatible with the surface.
     fn is_compatible_with_surface(
         &self,
-        surface_loader: &ext::Surface,
+        surface_loader: &ext::khr::Surface,
         vk_surface: vk::SurfaceKHR,
     ) -> bool {
         unsafe {
-            surface_loader.get_physical_device_surface_support_khr(
+            surface_loader.get_physical_device_surface_support(
                 self.info.vk_phys_device,
                 self.presentation_queue_family,
                 vk_surface,
@@ -508,7 +508,7 @@ impl<P: Painter> PhysicalDevice<P> {
         }
     }
 
-    fn finalize(&mut self, painter: &mut P, surface_loader: &ext::Surface) {
+    fn finalize(&mut self, painter: &mut P, surface_loader: &ext::khr::Surface) {
         // Drop all surfaces
         while let Some((&surface_ref, _)) = { self.surfaces.iter().next() } {
             self.remove_surface(surface_ref, surface_loader, painter);
@@ -525,7 +525,7 @@ impl<P: Painter> PhysicalDevice<P> {
         surface_ref: SurfaceRef,
         surface_param: P::SurfaceParam,
         vk_surface: S,
-        surface_loader: &ext::Surface,
+        surface_loader: &ext::khr::Surface,
         painter: &mut P,
     ) where
         S: AutoPtr<vk::SurfaceKHR>,
@@ -559,7 +559,7 @@ impl<P: Painter> PhysicalDevice<P> {
             // Hopefully we get a graceful error handling someday...
             let vk_swapchain = unsafe {
                 self.swapchain_loader
-                    .create_swapchain_khr(&vk_create_info, None)
+                    .create_swapchain(&vk_create_info, None)
             }
             .unwrap();
             let vk_swapchain = UniqueSwapchainKHR(&self.swapchain_loader, vk_swapchain);
@@ -604,7 +604,7 @@ impl<P: Painter> PhysicalDevice<P> {
     fn remove_surface(
         &mut self,
         surface_ref: SurfaceRef,
-        surface_loader: &ext::Surface,
+        surface_loader: &ext::khr::Surface,
         painter: &mut P,
     ) {
         let surface = self.surfaces.remove(&surface_ref).unwrap();
@@ -633,7 +633,7 @@ impl<P: Painter> PhysicalDevice<P> {
     fn update(
         &mut self,
         update_param: &P::UpdateParam,
-        surface_loader: &ext::Surface,
+        surface_loader: &ext::khr::Surface,
         painter: &mut P,
     ) {
         // Check the properties of swapchains and renew them if they are out-dated
@@ -662,7 +662,7 @@ impl<P: Painter> PhysicalDevice<P> {
                     self.swapchain_manager.remove_swapchain(surface_ref);
                     unsafe {
                         self.swapchain_loader
-                            .destroy_swapchain_khr(old_swapchain.vk_swapchain, None);
+                            .destroy_swapchain(old_swapchain.vk_swapchain, None);
                     }
                 }
 
@@ -683,7 +683,7 @@ impl<P: Painter> PhysicalDevice<P> {
                 if let Some(vk_create_info) = vk_create_info {
                     let vk_swapchain = match unsafe {
                         self.swapchain_loader
-                            .create_swapchain_khr(&vk_create_info, None)
+                            .create_swapchain(&vk_create_info, None)
                     } {
                         Ok(x) => x,
                         Err(x) => {
@@ -723,7 +723,7 @@ impl<P: Painter> PhysicalDevice<P> {
                 if let Some(ref old_swapchain) = old_swapchain {
                     unsafe {
                         self.swapchain_loader
-                            .destroy_swapchain_khr(old_swapchain.vk_swapchain, None);
+                            .destroy_swapchain(old_swapchain.vk_swapchain, None);
                     }
                 }
 
@@ -837,7 +837,7 @@ impl<P: Painter> Surface<P> {
         &self,
         base: Option<&VkSurfaceProps>,
         vk_phys_device: vk::PhysicalDevice,
-        surface_loader: &ext::Surface,
+        surface_loader: &ext::khr::Surface,
     ) -> Result<VkSurfaceProps, SurfaceError> {
         optimal_props(
             &self.window,
@@ -853,11 +853,11 @@ impl<P: Painter> Surface<P> {
 impl Swapchain {
     fn new(
         vk_swapchain: vk::SwapchainKHR,
-        swapchain_loader: &ext::Swapchain,
+        swapchain_loader: &ext::khr::Swapchain,
         import_image: &be::image::ImportImage,
         queue: &BeCmdQueue,
     ) -> Result<Self, SurfaceError> {
-        let vk_images = unsafe { swapchain_loader.get_swapchain_images_khr(vk_swapchain) }
+        let vk_images = unsafe { swapchain_loader.get_swapchain_images(vk_swapchain) }
             .map_err(SurfaceError::from)?;
 
         let images = vk_images
@@ -891,7 +891,7 @@ impl Swapchain {
         be_semaphore: &BeSemaphore,
         surface_props: &SurfaceProps,
         device: &WmDevice,
-        swapchain_loader: &ext::Swapchain,
+        swapchain_loader: &ext::khr::Swapchain,
         presentation_queue: &Arc<gfx::CmdQueue>,
         presentation_queue_family: gfx::QueueFamily,
         device_data: &mut P::DeviceData,
@@ -901,7 +901,7 @@ impl Swapchain {
     ) -> Result<bool, SwapchainUpdateError> {
         struct Drawable<'a> {
             device: &'a WmDevice,
-            swapchain_loader: &'a ext::Swapchain,
+            swapchain_loader: &'a ext::khr::Swapchain,
             vk_swapchain: vk::SwapchainKHR,
             image: gfx::ImageRef,
             image_index: u32,
@@ -1072,7 +1072,7 @@ impl Swapchain {
 
                 let result = unsafe {
                     self.swapchain_loader
-                        .queue_present_khr(be_presentation_queue.vk_queue(), &present_info)
+                        .queue_present(be_presentation_queue.vk_queue(), &present_info)
                 };
 
                 self.queue_present_result = Some(result.map_err(Into::into));
@@ -1121,10 +1121,10 @@ fn optimal_props(
     vk_surface: vk::SurfaceKHR,
     base: Option<&VkSurfaceProps>,
     vk_phys_device: vk::PhysicalDevice,
-    surface_loader: &ext::Surface,
+    surface_loader: &ext::khr::Surface,
 ) -> Result<VkSurfaceProps, SurfaceError> {
     let surface_caps = unsafe {
-        surface_loader.get_physical_device_surface_capabilities_khr(vk_phys_device, vk_surface)
+        surface_loader.get_physical_device_surface_capabilities(vk_phys_device, vk_surface)
     }
     .map_err(SurfaceError::from)?;
 
@@ -1180,10 +1180,9 @@ fn optimal_props(
     // Perform a full computation
     let present_mode = vk::PresentModeKHR::FIFO;
 
-    let surface_formats = unsafe {
-        surface_loader.get_physical_device_surface_formats_khr(vk_phys_device, vk_surface)
-    }
-    .map_err(SurfaceError::from)?;
+    let surface_formats =
+        unsafe { surface_loader.get_physical_device_surface_formats(vk_phys_device, vk_surface) }
+            .map_err(SurfaceError::from)?;
 
     // Choose the format we like
     let surface_format = choose_surface_format(
@@ -1431,12 +1430,12 @@ impl PhysicalDeviceInfo {
     /// Return the queue family compatible with the surface.
     fn queue_family_compatible_with_surface(
         &self,
-        surface_loader: &ext::Surface,
+        surface_loader: &ext::khr::Surface,
         vk_surface: vk::SurfaceKHR,
     ) -> Option<gfx::QueueFamily> {
         for i in 0..self.info.queue_families.len() {
             if unsafe {
-                surface_loader.get_physical_device_surface_support_khr(
+                surface_loader.get_physical_device_surface_support(
                     self.vk_phys_device,
                     i as _,
                     vk_surface,

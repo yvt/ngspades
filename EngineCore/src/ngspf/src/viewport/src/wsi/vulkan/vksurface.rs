@@ -5,7 +5,7 @@
 //
 //! Platform-specific code for surface creation.
 use super::super::WindowOptions;
-use super::ash::{self, extensions::Surface, version::*, vk};
+use super::ash::{self, extensions::khr::Surface, version::*, vk};
 use super::utils::InstanceBuilder;
 use winit;
 
@@ -22,7 +22,7 @@ mod os {
         window: &winit::Window,
         _options: &WindowOptions,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
-        use self::ash::extensions::Win32Surface;
+        use self::ash::extensions::khr::Win32Surface;
         use winit::os::windows::WindowExt;
         let hwnd = window.get_hwnd() as *mut _;
         let hinstance = unsafe { user32::GetWindow(hwnd, 0) as *const () };
@@ -34,7 +34,7 @@ mod os {
             hwnd: hwnd as *const _,
         };
         let win32_surface_loader = Win32Surface::new(entry, instance);
-        unsafe { win32_surface_loader.create_win32_surface_khr(&win32_create_info, None) }
+        unsafe { win32_surface_loader.create_win32_surface(&win32_create_info, None) }
     }
 
     pub fn modify_instance_builder(builder: &mut InstanceBuilder) {
@@ -46,7 +46,7 @@ mod os {
 
 #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
 mod os {
-    use self::ash::extensions::{WaylandSurface, XlibSurface};
+    use self::ash::extensions::khr::{WaylandSurface, XlibSurface};
     use super::*;
 
     pub fn create_surface<E: EntryV1_0, I: InstanceV1_0>(
@@ -71,7 +71,7 @@ mod os {
             };
             let wl_surface_loader = WaylandSurface::new(entry, instance);
             unsafe {
-                return wl_surface_loader.create_wayland_surface_khr(&wl_create_info, None);
+                return wl_surface_loader.create_wayland_surface(&wl_create_info, None);
             }
         }
 
@@ -85,7 +85,7 @@ mod os {
             dpy: x11_display as *mut vk::Display,
         };
         let xlib_surface_loader = XlibSurface::new(entry, instance);
-        unsafe { xlib_surface_loader.create_xlib_surface_khr(&x11_create_info, None) }
+        unsafe { xlib_surface_loader.create_xlib_surface(&x11_create_info, None) }
     }
 
     pub fn modify_instance_builder(builder: &mut InstanceBuilder) {
@@ -107,7 +107,7 @@ mod os {
         window: &winit::Window,
         options: &WindowOptions,
     ) -> Result<vk::SurfaceKHR, vk::Result> {
-        use self::ash::extensions::MacOSSurface;
+        use self::ash::extensions::mvk::MacOSSurface;
         use cocoa::appkit::{NSView, NSWindow};
         use cocoa::base::id as cocoa_id;
         use objc::runtime::YES;
@@ -146,7 +146,7 @@ mod os {
     }
 
     pub fn modify_instance_builder(builder: &mut InstanceBuilder) {
-        use self::ash::extensions::MacOSSurface;
+        use self::ash::extensions::mvk::MacOSSurface;
         builder.enable_extension(Surface::name().to_str().unwrap());
         builder.enable_extension(MacOSSurface::name().to_str().unwrap());
     }

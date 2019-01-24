@@ -65,7 +65,7 @@ pub enum DebugReportType {
 
 /// Wraps the interface to the `VK_EXT_debug_report` instance extension.
 pub struct DebugReportConduit {
-    ext: extensions::DebugReport,
+    ext: extensions::ext::DebugReport,
     callbacks: Vec<DebugReportCallback>,
 }
 
@@ -90,7 +90,7 @@ impl Drop for DebugReportConduit {
         for callback in self.callbacks.drain(..) {
             unsafe {
                 self.ext
-                    .destroy_debug_report_callback_ext(callback.handle, None);
+                    .destroy_debug_report_callback(callback.handle, None);
             }
         }
     }
@@ -123,7 +123,7 @@ unsafe extern "system" fn debug_callback(
 impl DebugReportConduit {
     pub fn new(entry: &ash::Entry, instance: &ash::Instance) -> Self {
         Self {
-            ext: extensions::DebugReport::new(entry, instance),
+            ext: extensions::ext::DebugReport::new(entry, instance),
             callbacks: Vec::new(),
         }
     }
@@ -162,7 +162,7 @@ impl DebugReportConduit {
                 self.callbacks.reserve(1);
                 let mut data = Box::new(DebugReportCallbackData(Arc::clone(&handler), typ));
                 let handle = unsafe {
-                    self.ext.create_debug_report_callback_ext(
+                    self.ext.create_debug_report_callback(
                         &vk::DebugReportCallbackCreateInfoEXT {
                             s_type: vk::StructureType::DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
                             p_next: ptr::null(),
