@@ -11,7 +11,7 @@ ngspf_viewport = { path = "../viewport" }
 ngspf_canvas = { path = "../canvas" }
 ngscom = { path = "../../../ngscom" }
 atomic_refcell = "0.1.3"
-cgmath = "0.16.1"
+cgmath = "0.17.0"
 cggeom = { path = "../../../support/cggeom" }
 stickylock = { path = "../../../support/stickylock", features = ["stable_deref_trait"] }
 send-cell = "0.1.3"

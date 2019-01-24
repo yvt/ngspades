@@ -13,7 +13,7 @@ ysr2_spatializer = { path = "src/spatializer" }
 [dev-dependencies]
 portaudio = "0.7.0"
 clap = "2.26.0"
-cgmath = "0.16.1"
+cgmath = "0.17.0"
 hound = "3.1.0"
 byteorder = "1.1.0"
 ngsterrain = { path = "../ngsterrain" }

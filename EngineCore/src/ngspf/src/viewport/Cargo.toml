@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 winit = "0.18.1"
-cgmath = "0.16.1"
+cgmath = "0.17.0"
 rgb = "0.8.9"
 include_data = { path = "../../../support/include_data" }
 refeq = { path = "../../../support/refeq", features = ["nightly"] }

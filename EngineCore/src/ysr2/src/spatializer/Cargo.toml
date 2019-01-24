@@ -10,7 +10,7 @@ default = ["ngsterrain"]
 ysr2_common = { path = "../common" }
 ysr2_filters = { path = "../filters" }
 ngsterrain = { path = "../../../ngsterrain", optional = true }
-cgmath = "0.16.1"
+cgmath = "0.17.0"
 rand = "0.6.0"
 
 [dev-dependencies]

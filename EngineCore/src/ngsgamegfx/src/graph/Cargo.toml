@@ -14,6 +14,6 @@ ngsgamegfx_common = { path = "../common" }
 opaque_typedef = "0.0.4"
 opaque_typedef_macros = "0.0.4"
 owning_ref = "0.4.0"
-parking_lot = "0.6"
+parking_lot = "0.7"
 xdispatch = { path = "../../../xdispatch/xdispatch" }
 zangfx = { path = "../../../zangfx" }

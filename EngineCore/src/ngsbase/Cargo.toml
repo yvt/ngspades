@@ -8,7 +8,7 @@ edition = "2018"
 ngscom = { path = "../ngscom", version = "0.1" }
 bitflags = "1.0.4"
 cggeom = { path = "../support/cggeom" }
-cgmath = "0.16.1"
+cgmath = "0.17.0"
 num-traits = "0.2.4"
 rgb = "0.8.9"
 

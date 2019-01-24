@@ -13,7 +13,7 @@ ngsbase = { path = "../ngsbase" }
 ngscom = { path = "../ngscom" }
 ngspf = { path = "../ngspf" }
 ngspf_com = { path = "../ngspf/src/com" }
-cgmath = "0.16.1"
+cgmath = "0.17.0"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies.jemallocator]
 version = "0.1.9"

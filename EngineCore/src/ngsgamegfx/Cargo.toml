@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 arrayvec = "0.4.1"
-cgmath = "0.16.1"
+cgmath = "0.17.0"
 either = { version = "1.4" }
 flags-macro = "0.1.2"
 futures-preview = "0.3.0-alpha.12"
