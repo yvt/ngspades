@@ -7,7 +7,7 @@ use super::super::Num;
 use super::utils::{if_compatible, AlignInfo, AlignReqKernel, AlignReqKernelWrapper};
 use super::{Kernel, KernelParams, SliceAccessor};
 
-use simd::x86::sse2::u64x2;
+use packed_simd::u64x2;
 
 use std::mem;
 

@@ -23,7 +23,7 @@ use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAc
 use num_complex::Complex;
 use num_iter::range_step;
 
-use simd::f32x4;
+use packed_simd::f32x4;
 
 use std::f32;
 
@@ -102,8 +102,8 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel1<T> {
             // perform size-4 small FFT (see generic2.rs for human-readable code)
             let t_1_2 = x1 + y1;
             let t_3_4 = x1 - y1;
-            let t_1_3 = f32x4_shuffle!(t_1_2, t_3_4, [0, 1, 4, 5]);
-            let t_2_4t = f32x4_shuffle!(t_1_2, t_3_4, [2, 3, 7, 6]);
+            let t_1_3 = shuffle!(t_1_2, t_3_4, [0, 1, 4, 5]);
+            let t_2_4t = shuffle!(t_1_2, t_3_4, [2, 3, 7, 6]);
 
             // multiply the last elem (t4) by I (backward) or -I (forward)
             let t_2_4 = f32x4_bitxor(t_2_4t, neg_mask);
@@ -205,23 +205,23 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel2<T> {
                 // apply twiddle factor
                 let x2 = x1;
                 let y2 = if pre_twiddle {
-                    let t1 = f32x4_shuffle!(y1, y1, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(y1, y1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     y1
                 };
                 let z2 = if pre_twiddle {
-                    let t1 = f32x4_shuffle!(z1, z1, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(z1, z1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_2, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     z1
                 };
                 let w2 = if pre_twiddle {
-                    let t1 = f32x4_shuffle!(w1, w1, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(w1, w1, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_3, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     w1
                 };
@@ -233,7 +233,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel2<T> {
                 let w3t = y2 - w2;
 
                 // w3 = w3t * i
-                let w3 = f32x4_bitxor(f32x4_shuffle!(w3t, w3t, [1, 0, 7, 6]), neg_mask2);
+                let w3 = f32x4_bitxor(shuffle!(w3t, w3t, [1, 0, 7, 6]), neg_mask2);
 
                 let (x4, y4, z4, w4) = if sparams.inverse() {
                     (x3 + y3, z3 + w3, x3 - y3, z3 - w3)
@@ -244,23 +244,23 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel2<T> {
                 // apply twiddle factor
                 let x5 = x4;
                 let y5 = if post_twiddle {
-                    let t1 = f32x4_shuffle!(y4, y4, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(y4, y4, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_1, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     y4
                 };
                 let z5 = if post_twiddle {
-                    let t1 = f32x4_shuffle!(z4, z4, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(z4, z4, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_2, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     z4
                 };
                 let w5 = if post_twiddle {
-                    let t1 = f32x4_shuffle!(w4, w4, [0, 2, 5, 7]); // riri to rrii
+                    let t1 = shuffle!(w4, w4, [0, 2, 5, 7]); // riri to rrii
                     let t2 = f32x4_complex_mul_rrii(t1, twiddle_3, neg_mask);
-                    f32x4_shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
+                    shuffle!(t2, t2, [0, 2, 5, 7]) // rrii to riri
                 } else {
                     w4
                 };
@@ -381,14 +381,14 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel3<T> {
                 let w1b = unsafe { I::read(cur4b) };
 
                 // convert riri-riri to rrrr-iiii (shufps)
-                let x2r = f32x4_shuffle!(x1a, x1b, [0, 2, 4, 6]);
-                let x2i = f32x4_shuffle!(x1a, x1b, [1, 3, 5, 7]);
-                let y2r = f32x4_shuffle!(y1a, y1b, [0, 2, 4, 6]);
-                let y2i = f32x4_shuffle!(y1a, y1b, [1, 3, 5, 7]);
-                let z2r = f32x4_shuffle!(z1a, z1b, [0, 2, 4, 6]);
-                let z2i = f32x4_shuffle!(z1a, z1b, [1, 3, 5, 7]);
-                let w2r = f32x4_shuffle!(w1a, w1b, [0, 2, 4, 6]);
-                let w2i = f32x4_shuffle!(w1a, w1b, [1, 3, 5, 7]);
+                let x2r = shuffle!(x1a, x1b, [0, 2, 4, 6]);
+                let x2i = shuffle!(x1a, x1b, [1, 3, 5, 7]);
+                let y2r = shuffle!(y1a, y1b, [0, 2, 4, 6]);
+                let y2i = shuffle!(y1a, y1b, [1, 3, 5, 7]);
+                let z2r = shuffle!(z1a, z1b, [0, 2, 4, 6]);
+                let z2i = shuffle!(z1a, z1b, [1, 3, 5, 7]);
+                let w2r = shuffle!(w1a, w1b, [0, 2, 4, 6]);
+                let w2i = shuffle!(w1a, w1b, [1, 3, 5, 7]);
 
                 // apply twiddle factor
                 let x3r = x2r;
@@ -479,14 +479,14 @@ impl<T: StaticParams> AlignReqKernel<f32> for SseRadix4Kernel3<T> {
                 };
 
                 // convert to rrrr-iiii to riri-riri (unpcklps/unpckups)
-                let x7a = f32x4_shuffle!(x6r, x6i, [0, 4, 1, 5]);
-                let x7b = f32x4_shuffle!(x6r, x6i, [2, 6, 3, 7]);
-                let y7a = f32x4_shuffle!(y6r, y6i, [0, 4, 1, 5]);
-                let y7b = f32x4_shuffle!(y6r, y6i, [2, 6, 3, 7]);
-                let z7a = f32x4_shuffle!(z6r, z6i, [0, 4, 1, 5]);
-                let z7b = f32x4_shuffle!(z6r, z6i, [2, 6, 3, 7]);
-                let w7a = f32x4_shuffle!(w6r, w6i, [0, 4, 1, 5]);
-                let w7b = f32x4_shuffle!(w6r, w6i, [2, 6, 3, 7]);
+                let x7a = shuffle!(x6r, x6i, [0, 4, 1, 5]);
+                let x7b = shuffle!(x6r, x6i, [2, 6, 3, 7]);
+                let y7a = shuffle!(y6r, y6i, [0, 4, 1, 5]);
+                let y7b = shuffle!(y6r, y6i, [2, 6, 3, 7]);
+                let z7a = shuffle!(z6r, z6i, [0, 4, 1, 5]);
+                let z7b = shuffle!(z6r, z6i, [2, 6, 3, 7]);
+                let w7a = shuffle!(w6r, w6i, [0, 4, 1, 5]);
+                let w7b = shuffle!(w6r, w6i, [2, 6, 3, 7]);
 
                 unsafe { I::write(cur1a, x7a) };
                 unsafe { I::write(cur1b, x7b) };

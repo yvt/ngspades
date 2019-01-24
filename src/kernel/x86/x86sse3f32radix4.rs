@@ -27,7 +27,7 @@ use super::{Kernel, KernelCreationParams, KernelParams, KernelType, Num, SliceAc
 use num_complex::Complex;
 use num_iter::range_step;
 
-use simd::f32x4;
+use packed_simd::f32x4;
 
 use std::f32;
 
@@ -164,7 +164,7 @@ impl<T: StaticParams> AlignReqKernel<f32> for Sse3Radix4Kernel2<T> {
                 let w3t = y2 - w2;
 
                 // w3 = w3t * i
-                let w3 = f32x4_bitxor(f32x4_shuffle!(w3t, w3t, [1, 0, 7, 6]), neg_mask2);
+                let w3 = f32x4_bitxor(shuffle!(w3t, w3t, [1, 0, 7, 6]), neg_mask2);
 
                 let (x4, y4, z4, w4) = if sparams.inverse() {
                     (x3 + y3, z3 + w3, x3 - y3, z3 - w3)
