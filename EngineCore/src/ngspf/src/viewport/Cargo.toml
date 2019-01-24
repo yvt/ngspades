@@ -5,7 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 
 [dependencies]
-winit = "0.17.0"
+winit = "0.18.1"
 cgmath = "0.16.1"
 rgb = "0.8.9"
 include_data = { path = "../../../support/include_data" }
