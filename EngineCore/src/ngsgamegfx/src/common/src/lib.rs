@@ -10,6 +10,7 @@
 #![feature(arbitrary_self_types)]
 
 pub mod any;
+pub mod asyncring;
 pub mod futures;
 pub mod iterator_mut;
 pub mod owning_ref;

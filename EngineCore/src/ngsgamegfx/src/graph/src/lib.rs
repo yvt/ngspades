@@ -13,3 +13,4 @@ pub mod cbtasks;
 pub mod passman;
 pub mod taskman;
 pub mod ring;
+pub mod ringbuffer;
