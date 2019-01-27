@@ -8,6 +8,10 @@
 //! on the clients' requests and return their byte offsets.
 //! The actual backing store must be supplied to clients via other means.
 //!
+//! The capacity of a ring buffer is constant and determined by a supplied
+//! `AsyncRing`. However, unlike [`ring`], the size and number of allocated
+//! regions can change from one frame to another.
+//!
 //! The usage pattern is shown below:
 //!
 //!  1. **Clients** calculate the number of bytes they want to allocate in a
@@ -84,6 +88,7 @@ pub type AsyncRing<E> =
     asyncring::AsyncRing<Pin<Box<Future<Output = Result<(), E>> + Send + Sync>>, u32>;
 
 impl RingBufferBuilder {
+    /// Construct a `RingBufferBuilder`.
     pub fn new() -> Self {
         Self {
             clients: Vec::new(),

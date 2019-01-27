@@ -3,8 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
-//! This module provides `taskman`-based tasks for facilitating ring buffer
-//! implementation.
+//! This module provides `taskman`-based tasks for facilitating ring
+//! buffer implementation with a fixed mapping between frame numbers and ring
+//! buffer entry indices.
 use futures::{executor::block_on, Future};
 use zangfx::{base as gfx, utils::CmdBufferResult};
 
@@ -25,6 +26,7 @@ pub struct RingBuilder {
 }
 
 impl RingBuilder {
+    /// Construct a `RingBuilder`.
     pub fn new<T>(graph_builder: &mut GraphBuilder<T>, len: usize) -> Self {
         assert!(len > 0);
 

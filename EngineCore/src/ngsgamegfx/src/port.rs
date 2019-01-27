@@ -234,6 +234,8 @@ impl PortRenderGraph {
             });
 
         // Execute the task graph
+        // FIXME: Should use the`UserInteractive` QoS class
+        // (`High` is mapped to `UserInitiated`)
         let executor = xdispatch::Queue::global(xdispatch::QueuePriority::High);
         graph.run(&executor)?;
 
