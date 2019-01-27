@@ -136,6 +136,22 @@ pub struct Queue {
     ptr: dispatch_queue_t,
 }
 
+/// Objects acting like `FnOnce`.
+pub trait RunOnce<Args> {
+    /// The return type.
+    type Output;
+    /// Perform the call operation.
+    fn run_once(self, args: Args) -> Self::Output;
+}
+
+impl<T: FnOnce()> RunOnce<()> for T {
+    type Output = ();
+
+    fn run_once(self, _: ()) -> Self::Output {
+        self()
+    }
+}
+
 fn time_after_delay(delay: Duration) -> dispatch_time_t {
     delay.as_secs().checked_mul(1_000_000_000).and_then(|i| {
         i.checked_add(delay.subsec_nanos() as u64)
@@ -146,16 +162,56 @@ fn time_after_delay(delay: Duration) -> dispatch_time_t {
     })
 }
 
-fn context_and_function<F>(closure: F) -> (*mut c_void, dispatch_function_t)
-        where F: FnOnce() {
-    extern fn work_execute_closure<F>(context: Box<F>) where F: FnOnce() {
-        (*context)();
+fn context_and_function_boxed<F>(closure: F) -> (*mut c_void, dispatch_function_t)
+where
+    F: RunOnce<(), Output = ()>,
+{
+    extern fn work_execute_closure<F>(context: Box<F>)
+    where
+        F: RunOnce<(), Output = ()>,
+    {
+        context.run_once(())
     }
 
     let closure = Box::new(closure);
     let func: extern fn(Box<F>) = work_execute_closure::<F>;
     unsafe {
         (mem::transmute(closure), mem::transmute(func))
+    }
+}
+
+fn context_and_function_unboxed<F>(closure: F) -> (*mut c_void, dispatch_function_t)
+where
+    F: RunOnce<(), Output = ()>,
+{
+    extern fn work_execute_closure<F>(context: *mut c_void)
+    where
+        F: RunOnce<(), Output = ()>,
+    {
+        let closure: F = unsafe { mem::transmute_copy(&context) };
+        closure.run_once(())
+    }
+
+    // Pad `F` so widening transmutation to `*mut c_void` does not trigger undefined behavior
+    #[repr(C)]
+    struct Padded<T>(mem::ManuallyDrop<T>, usize);
+
+    let closure: *mut c_void = unsafe {
+        mem::transmute_copy(&Padded(mem::ManuallyDrop::new(closure), 0))
+    };
+    let func = work_execute_closure::<F>;
+
+    (closure, func)
+}
+
+fn context_and_function<F>(closure: F) -> (*mut c_void, dispatch_function_t)
+where
+    F: RunOnce<(), Output = ()>,
+{
+    if mem::size_of::<F>() > mem::size_of::<usize>() {
+        context_and_function_boxed(closure)
+    } else {
+        context_and_function_unboxed(closure)
     }
 }
 
@@ -274,7 +330,7 @@ impl Queue {
 
     /// Submits a closure for asynchronous execution on self and returns
     /// immediately.
-    pub fn async<F>(&self, work: F) where F: 'static + Send + FnOnce() {
+    pub fn async<F>(&self, work: F) where F: 'static + Send + RunOnce<(), Output = ()> {
         let (context, work) = context_and_function(work);
         unsafe {
             dispatch_async_f(self.ptr, context, work);
@@ -291,7 +347,7 @@ impl Queue {
     /// After the specified delay, submits a closure for asynchronous execution
     /// on self.
     pub fn after<F>(&self, delay: Duration, work: F)
-            where F: 'static + Send + FnOnce() {
+            where F: 'static + Send + RunOnce<(), Output = ()> {
         let when = time_after_delay(delay);
         let (context, work) = context_and_function(work);
         unsafe {
@@ -392,7 +448,7 @@ impl Queue {
     /// If self is a serial queue or one of the global concurrent queues,
     /// this method behaves like the normal `async` method.
     pub fn barrier_async<F>(&self, work: F)
-            where F: 'static + Send + FnOnce() {
+            where F: 'static + Send + RunOnce<(), Output = ()> {
         let (context, work) = context_and_function(work);
         unsafe {
             dispatch_barrier_async_f(self.ptr, context, work);
@@ -490,7 +546,7 @@ impl Group {
     /// Submits a closure asynchronously to the given `Queue` and associates it
     /// with self.
     pub fn async<F>(&self, queue: &Queue, work: F)
-            where F: 'static + Send + FnOnce() {
+            where F: 'static + Send + RunOnce<(), Output = ()> {
         let (context, work) = context_and_function(work);
         unsafe {
             dispatch_group_async_f(self.ptr, queue.ptr, context, work);
@@ -501,7 +557,7 @@ impl Group {
     /// associated with self have completed.
     /// If self is empty, the closure is submitted immediately.
     pub fn notify<F>(&self, queue: &Queue, work: F)
-            where F: 'static + Send + FnOnce() {
+            where F: 'static + Send + RunOnce<(), Output = ()> {
         let (context, work) = context_and_function(work);
         unsafe {
             dispatch_group_notify_f(self.ptr, queue.ptr, context, work);
