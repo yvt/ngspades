@@ -16,5 +16,10 @@ exclude = [
   "tests-ios/**",
 ]
 
+[features]
+default = ["futures"] # doctest needs `futures`
+futures = ["futures-preview"]
+
 [dependencies]
 xdispatch-core = { path = "../xdispatch-core", version = "0.1.0" }
+futures-preview = { version = "0.3.0-alpha.12", optional = true }

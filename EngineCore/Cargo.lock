@@ -2002,6 +2002,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "xdispatch"
 version = "0.1.4"
 dependencies = [
+ "futures-preview 0.3.0-alpha.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "xdispatch-core 0.1.0",
 ]
 

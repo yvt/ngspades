@@ -52,9 +52,34 @@ assert!(nums == [2, 3]);
 let nums = queue.map(nums, |x| x.to_string());
 assert!(nums[0] == "2");
 ```
+
+# Futures
+
+Enable the `futures` Cargo feature to use a `Queue` as a spawner. This feature
+is enabled by default.
+
+```
+# extern crate futures;
+# use xdispatch::*;
+# fn main() {
+use futures::{task::SpawnExt, executor::block_on, prelude::*};
+let queue = Queue::global(QueuePriority::Default);
+
+let ultimate_answer = future::ready(42);
+
+// Perform computation in the thread pool and send the result
+// back to the main thread
+let (task, receiver) = ultimate_answer.remote_handle();
+(&queue).spawn(task).expect("spawn is infallible");
+
+assert_eq!(block_on(receiver), 42);
+# }
+```
+
 */
 
 #![warn(missing_docs)]
+#![cfg_attr(feature = "futures", feature(futures_api))]
 
 pub extern crate xdispatch_core as ffi;
 
@@ -67,6 +92,9 @@ use std::str;
 use std::time::Duration;
 
 use ffi::*;
+
+#[cfg(feature = "futures")]
+mod futures_executor;
 
 /// The type of a dispatch queue.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, Copy)]
