@@ -9,30 +9,9 @@
 //! `tokenlock::{Token, TokenRef}`.
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
-use std::mem::transmute;
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::atomic::Ordering;
 use std::{fmt, ops};
 use tokenlock::{Token, TokenRef};
-
-use crate::atom2;
-
-unsafe impl atom2::PtrSized for TokenRef {
-    type Value = usize;
-
-    fn into_raw(this: Self) -> *const Self::Value {
-        Arc::into_raw(unsafe { transmute::<_, Arc<Self::Value>>(this) })
-    }
-    unsafe fn from_raw(ptr: *const Self::Value) -> Self {
-        transmute::<Arc<Self::Value>, _>(Arc::from_raw(ptr))
-    }
-}
-unsafe impl atom2::RcLike for TokenRef {}
-
-impl atom2::AsRawPtr<usize> for Token {
-    fn as_raw_ptr(&self) -> *const usize {
-        unsafe { transmute::<_, &Arc<usize>>(self) }.as_raw_ptr()
-    }
-}
 
 /// A cell whose current owner is represented by the possession of a token.
 #[derive(Debug)]

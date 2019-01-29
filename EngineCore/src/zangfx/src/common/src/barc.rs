@@ -132,6 +132,24 @@ impl<T: ?Sized> Clone for BArc<T> {
     }
 }
 
+unsafe impl<T> atom2::PtrSized for BArc<T> {
+    type Value = T;
+
+    fn into_raw(this: Self) -> *const Self::Value {
+        BArc::into_raw(this)
+    }
+    unsafe fn from_raw(ptr: *const Self::Value) -> Self {
+        BArc::from_raw(ptr)
+    }
+}
+unsafe impl<T> atom2::RcLike for BArc<T> {}
+
+impl<T> atom2::AsRawPtr<T> for BArc<T> {
+    fn as_raw_ptr(&self) -> *const T {
+        &**self as *const _
+    }
+}
+
 impl<T: ?Sized> Clone for BWeak<T> {
     fn clone(&self) -> Self {
         BWeak(self.0.clone())

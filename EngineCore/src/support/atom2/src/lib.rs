@@ -11,6 +11,8 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Weak};
 use std::{fmt, mem, ptr};
 
+mod impl_tokenlock;
+
 /// Types whose value can be represented as a non-zero pointer-sized value.
 pub unsafe trait PtrSized: Sized {
     type Value;
@@ -55,18 +57,6 @@ unsafe impl<T> PtrSized for Weak<T> {
         mem::transmute(ptr)
     }
 }
-
-unsafe impl<T> PtrSized for crate::barc::BArc<T> {
-    type Value = T;
-
-    fn into_raw(this: Self) -> *const Self::Value {
-        crate::barc::BArc::into_raw(this)
-    }
-    unsafe fn from_raw(ptr: *const Self::Value) -> Self {
-        crate::barc::BArc::from_raw(ptr)
-    }
-}
-unsafe impl<T> RcLike for crate::barc::BArc<T> {}
 
 /// An atomic `Option<Arc<T>>` storage that can be safely shared between threads.
 pub struct AtomicArc<T: PtrSized> {
@@ -229,12 +219,6 @@ impl<'a, T> AsRawPtr<T> for &'a mut T {
 }
 
 impl<T> AsRawPtr<T> for Arc<T> {
-    fn as_raw_ptr(&self) -> *const T {
-        &**self as *const _
-    }
-}
-
-impl<T> AsRawPtr<T> for crate::barc::BArc<T> {
     fn as_raw_ptr(&self) -> *const T {
         &**self as *const _
     }
