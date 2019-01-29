@@ -239,12 +239,12 @@ where
 
 /// Like `Atom` but allows assignment only once throughout its lifetime.
 #[derive(Default)]
-pub struct OneWayAtomicPtr<T: PtrSized> {
+pub struct SetOnceAtom<T: PtrSized> {
     ptr: AtomicPtr<T::Value>,
     phantom: PhantomData<T>,
 }
 
-impl<T: PtrSized> OneWayAtomicPtr<T> {
+impl<T: PtrSized> SetOnceAtom<T> {
     pub fn empty() -> Self {
         Self {
             ptr: AtomicPtr::default(),
@@ -284,12 +284,12 @@ impl<T: PtrSized> OneWayAtomicPtr<T> {
     }
 }
 
-impl<T: PtrSized> fmt::Debug for OneWayAtomicPtr<T>
+impl<T: PtrSized> fmt::Debug for SetOnceAtom<T>
 where
     T::Value: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("OneWayAtomicPtr")
+        f.debug_tuple("SetOnceAtom")
             .field(&self.as_ref())
             .finish()
     }
