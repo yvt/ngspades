@@ -59,13 +59,13 @@ unsafe impl<T> PtrSized for Weak<T> {
 }
 
 /// An atomic `Option<Arc<T>>` storage that can be safely shared between threads.
-pub struct AtomicArc<T: PtrSized> {
+pub struct Atom<T: PtrSized> {
     ptr: AtomicPtr<T::Value>,
     phantom: PhantomData<T>,
 }
 
-unsafe impl<T: PtrSized + Sync> Sync for AtomicArc<T> {}
-unsafe impl<T: PtrSized + Send> Send for AtomicArc<T> {}
+unsafe impl<T: PtrSized + Sync> Sync for Atom<T> {}
+unsafe impl<T: PtrSized + Send> Send for Atom<T> {}
 
 unsafe fn option_arc_from_raw<T: PtrSized>(p: *const T::Value) -> Option<T> {
     if p.is_null() {
@@ -83,7 +83,7 @@ fn option_arc_into_raw<T: PtrSized>(x: Option<T>) -> *const T::Value {
     }
 }
 
-impl<T: PtrSized> AtomicArc<T> {
+impl<T: PtrSized> Atom<T> {
     pub fn empty() -> Self {
         Self {
             ptr: AtomicPtr::default(),
@@ -156,7 +156,7 @@ impl<T: PtrSized> AtomicArc<T> {
     }
 }
 
-impl<T: RcLike> AtomicArc<T> {
+impl<T: RcLike> Atom<T> {
     pub fn load(&mut self) -> Option<T> {
         let p = self.ptr.get_mut();
         if let Some(arc) = unsafe { option_arc_from_raw::<T>(*p) } {
@@ -178,21 +178,21 @@ impl<T: RcLike> AtomicArc<T> {
     }
 }
 
-impl<T: PtrSized> fmt::Debug for AtomicArc<T> {
+impl<T: PtrSized> fmt::Debug for Atom<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("AtomicArc").field(&self.ptr).finish()
+        f.debug_tuple("Atom").field(&self.ptr).finish()
     }
 }
 
-impl<T: PtrSized> Drop for AtomicArc<T> {
+impl<T: PtrSized> Drop for Atom<T> {
     fn drop(&mut self) {
         self.take(Ordering::Relaxed);
     }
 }
 
-impl<T: PtrSized> Default for AtomicArc<T> {
+impl<T: PtrSized> Default for Atom<T> {
     fn default() -> Self {
-        AtomicArc::empty()
+        Atom::empty()
     }
 }
 
@@ -237,7 +237,7 @@ where
     }
 }
 
-/// Like `AtomicArc` but allows assignment only once throughout its lifetime.
+/// Like `Atom` but allows assignment only once throughout its lifetime.
 #[derive(Default)]
 pub struct OneWayAtomicPtr<T: PtrSized> {
     ptr: AtomicPtr<T::Value>,

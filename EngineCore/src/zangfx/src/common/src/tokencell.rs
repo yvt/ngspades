@@ -16,7 +16,7 @@ use tokenlock::{Token, TokenRef};
 /// A cell whose current owner is represented by the possession of a token.
 #[derive(Debug)]
 pub struct TokenCell<T> {
-    owner: atom2::AtomicArc<TokenRef>,
+    owner: atom2::Atom<TokenRef>,
     cell: UnsafeCell<T>,
 }
 
@@ -30,7 +30,7 @@ pub enum TokenCellBorrowError {
 impl<T> TokenCell<T> {
     pub fn new(x: T) -> Self {
         TokenCell {
-            owner: atom2::AtomicArc::empty(),
+            owner: atom2::Atom::empty(),
             cell: UnsafeCell::new(x),
         }
     }
