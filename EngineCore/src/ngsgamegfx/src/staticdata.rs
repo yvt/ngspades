@@ -10,7 +10,7 @@ pub mod di {
     use std::sync::Arc;
 
     use super::*;
-    use crate::di::DeviceContainer;
+    use crate::{di::DeviceContainer, spawner::di::SpawnerDeviceContainerExt};
 
     pub trait StaticDataDeviceContainerExt {
         fn get_static_buffer<T: StaticBufferSource>(
@@ -99,6 +99,8 @@ pub mod di {
 
                 let (main_queue, _) = container.get_main_queue().clone();
 
+                let spawner = container.get_spawner_or_build().clone();
+
                 use crate::asyncuploader::di::AsyncUploaderDeviceContainerExt;
                 let uploader = match container.get_async_uploader_or_build() {
                     Ok(uploader) => uploader,
@@ -107,7 +109,7 @@ pub mod di {
                     }
                 };
 
-                StaticBuffer::new(device, main_queue, uploader, key.0.clone())
+                StaticBuffer::new(device, main_queue, uploader, &spawner, key.0.clone())
             });
         }
 
@@ -128,6 +130,8 @@ pub mod di {
 
                 let (main_queue, _) = container.get_main_queue().clone();
 
+                let spawner = container.get_spawner_or_build().clone();
+
                 use crate::asyncuploader::di::AsyncUploaderDeviceContainerExt;
                 let uploader = match container.get_async_uploader_or_build() {
                     Ok(uploader) => uploader,
@@ -136,146 +140,136 @@ pub mod di {
                     }
                 };
 
-                StaticImage::new(device, main_queue, uploader, key.0.clone())
+                StaticImage::new(device, main_queue, uploader, &spawner, key.0.clone())
             });
         }
     }
 }
 
 use arrayvec::ArrayVec;
+use asynclazy::Async;
 use either::Either;
 use flags_macro::flags;
-use futures::{executor, future, prelude::*, stream};
+use futures::{future, prelude::*, stream};
 use std::{
     marker::Unpin,
     sync::{Arc, Mutex},
 };
 use zangfx::{
     base as gfx,
-    // FIXME: `zangfx::common` is not meant to be used by an external client
-    common::{FreezableCell, FreezableCellRef},
     prelude::*,
     utils::streamer::{StageBuffer, StageImage},
 };
 
-use crate::asyncuploader::{AsyncUploader, Request, UploadError};
+use crate::{
+    asyncuploader::{AsyncUploader, Request, UploadError},
+    spawner::Spawner,
+};
 
 #[derive(Debug)]
 pub struct StaticData<T> {
-    object_cell: Mutex<Option<T>>,
-    complete_cell: FreezableCell<Option<gfx::Result<T>>>,
-    join_handle_cell: Mutex<Option<future::RemoteHandle<()>>>,
+    object_cell: Async<Option<gfx::Result<T>>>,
 }
 
 impl<T: Send + Sync + 'static> StaticData<T> {
     fn with_initiator<S, R>(
         uploader: &Arc<AsyncUploader>,
+        spawner: &Arc<dyn Spawner>,
         initiator: impl FnOnce() -> gfx::Result<(T, S)> + Send + Sync + 'static,
     ) -> Arc<Self>
     where
         S: Stream<Item = R> + Unpin + 'static,
         R: Request + Unpin + 'static,
     {
-        let this = Arc::new(Self {
-            object_cell: Mutex::new(None),
-            complete_cell: FreezableCell::new_unfrozen(None),
-            join_handle_cell: Mutex::new(None),
-        });
+        let mut spawner = spawner.get_spawn();
+
+        let object_cell = Arc::new(Mutex::new(None));
 
         // A `FnOnce() -> impl Stream` that produces zero or one requests.
         let source = {
-            let this = Arc::clone(&this);
+            let object_cell = Arc::clone(&object_cell);
 
             move || {
                 match initiator() {
                     Ok((object, requests)) => {
-                        // A resource was created and is ready. Produce a stream
-                        // containing an upload request for this buffer.
-                        *this.object_cell.lock().unwrap() = Some(object);
+                        // A resource was created and is ready. Store the
+                        // created object in `object_cell` temporarily so that
+                        // it can be retrieved again when upload is complete.
+                        *object_cell.lock().unwrap() = Some(Ok(object));
 
+                        // Produce a stream containing an upload request for
+                        // this buffer.
                         Either::Left(requests)
                     }
                     Err(err) => {
                         // An error occured while creating and allocating a
-                        // resource object. Report the error and return an empty
-                        // stream.
-                        let mut complete_cell_lock =
-                            this.complete_cell.unfrozen_borrow_mut().unwrap();
-                        *complete_cell_lock = Some(Err(err));
-                        FreezableCellRef::freeze(complete_cell_lock);
+                        // resource object. Report the error.
+                        *object_cell.lock().unwrap() = Some(Err(err));
 
+                        // Return an empty stream.
                         Either::Right(stream::empty())
                     }
                 }
             }
         };
 
-        // Create a `Future` for uploading the buffer contents
+        // Initiate upload. This returns a `Future` that becomes ready when
+        // upload is complete.
         let future_upload = uploader.upload(source);
 
-        let future = {
-            let this = Arc::clone(&this);
+        // And then for storing the result...
+        let future = future_upload.map(move |result| {
+            let object_cell = object_cell.lock().unwrap().take().unwrap();
 
-            future_upload.then(move |result| {
-                // Upload is complete. Store the result.
-                let mut complete_cell_lock = this.complete_cell.unfrozen_borrow_mut().unwrap();
-
-                match result {
-                    Ok(()) => {
-                        let buffer = this.object_cell.lock().unwrap().take().unwrap();
-                        *complete_cell_lock = Some(Ok(buffer));
-                    }
-                    Err(UploadError::Device(err)) => {
-                        *complete_cell_lock = Some(Err(err));
-                    }
-                    Err(UploadError::Cancelled) => {
-                        // *shrug*
+            match object_cell {
+                Ok(obj) => {
+                    // Upload is complete. Store the result.
+                    match result {
+                        Ok(()) => Some(Ok(obj)),
+                        Err(UploadError::Device(err)) => Some(Err(err)),
+                        Err(UploadError::Cancelled) => None,
                     }
                 }
 
-                FreezableCellRef::freeze(complete_cell_lock);
-
-                future::ready(())
-            })
-        };
+                Err(err) => {
+                    // Upload did not take place because of an error in the
+                    // first stage.
+                    Some(Err(err))
+                }
+            }
+        });
 
         // TODO: queue family ownership acquire operation
 
-        // Initiate the upload
-        // TODO: Use a global thread pool
-        use futures::task::SpawnExt;
-        use std::sync::Mutex;
-        lazy_static! {
-            static ref POOL: Mutex<executor::ThreadPool> =
-                Mutex::new(executor::ThreadPool::new().unwrap());
-        }
-        let join_handle = POOL.lock().unwrap().spawn_with_handle(future).unwrap();
-        *this.join_handle_cell.lock().unwrap() = Some(join_handle);
+        // Create a cell for receiving the result
+        let object_cell = Async::with_future(&mut *spawner, future).unwrap();
 
-        this
+        Arc::new(Self { object_cell })
     }
 
     fn with_error(error: gfx::Error) -> Arc<Self> {
         Arc::new(Self {
-            object_cell: Mutex::new(None),
-            complete_cell: FreezableCell::new_frozen(Some(Err(error))),
-            join_handle_cell: Mutex::new(None),
+            object_cell: Async::with_value(Some(Err(error))),
         })
     }
 
     fn resource(&self) -> Option<&gfx::Result<T>> {
-        match self.complete_cell.frozen_borrow() {
-            Ok(&Some(ref result)) => Some(result),
-            _ => None,
+        match self.object_cell.try_get() {
+            Some(Some(result)) => Some(result),
+
+            // Upload was cancelled because the uploader was torn down
+            Some(None) => None,
+
+            // The result is not ready yet
+            None => None,
         }
     }
 }
 
 impl<T> Drop for StaticData<T> {
     fn drop(&mut self) {
-        if let Some(join_handle) = self.join_handle_cell.lock().unwrap().take() {
-            executor::block_on(join_handle);
-        }
+        // Block until the computation is done
+        self.object_cell.get();
     }
 }
 
@@ -305,6 +299,7 @@ impl StaticBuffer {
         device: gfx::DeviceRef,
         queue: gfx::CmdQueueRef,
         uploader: &Arc<AsyncUploader>,
+        spawner: &Arc<dyn Spawner>,
         source: impl StaticBufferSource,
     ) -> Arc<Self> {
         let uploader_2 = Arc::clone(uploader);
@@ -341,7 +336,7 @@ impl StaticBuffer {
             Ok((buffer, stream_request))
         };
 
-        Self::with_initiator(uploader, initiator)
+        Self::with_initiator(uploader, spawner, initiator)
     }
 
     pub fn buffer(&self) -> Option<&gfx::Result<gfx::BufferRef>> {
@@ -398,6 +393,7 @@ impl StaticImage {
         device: gfx::DeviceRef,
         queue: gfx::CmdQueueRef,
         uploader: &Arc<AsyncUploader>,
+        spawner: &Arc<dyn Spawner>,
         source: impl StaticImageSource,
     ) -> Arc<Self> {
         let uploader_2 = Arc::clone(uploader);
@@ -439,7 +435,7 @@ impl StaticImage {
             Ok((image, stream_request))
         };
 
-        Self::with_initiator(uploader, initiator)
+        Self::with_initiator(uploader, spawner, initiator)
     }
 
     pub fn image(&self) -> Option<&gfx::Result<gfx::ImageRef>> {
