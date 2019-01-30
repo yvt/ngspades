@@ -19,15 +19,29 @@ fn arc_into_inner_none() {
 }
 
 #[test]
-fn arc_as_ref_some() {
+fn arc_as_inner_ref_some() {
     let mut aa = Atom::new(Some(Arc::new(1)));
-    assert_eq!(*aa.as_ref().unwrap(), 1);
+    assert_eq!(*aa.as_inner_ref().unwrap(), 1);
 }
 
 #[test]
-fn arc_as_ref_none() {
+fn arc_as_inner_ref_none() {
     let mut aa: Atom<Arc<u32>> = Atom::empty();
-    assert!(aa.as_ref().is_none());
+    assert!(aa.as_inner_ref().is_none());
+}
+
+#[test]
+fn box_as_inner_mut_some() {
+    let mut aa = Atom::new(Some(Box::new(1)));
+    assert_eq!(*aa.as_inner_mut().unwrap(), 1);
+    *aa.as_inner_mut().unwrap() = 2;
+    assert_eq!(*aa.into_inner().unwrap(), 2);
+}
+
+#[test]
+fn box_as_inner_mut_none() {
+    let mut aa: Atom<Box<u32>> = Atom::empty();
+    assert!(aa.as_inner_mut().is_none());
 }
 
 #[test]

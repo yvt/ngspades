@@ -34,7 +34,7 @@
 //! `BArc` stands for `Box` convertible `Arc`.
 use std::cell::UnsafeCell;
 use std::sync::{Arc, Weak};
-use std::{hash, ops};
+use std::{hash, ops, ptr::NonNull};
 
 /// `Arc` that can be converted into a type named `BArcBox` that works similar;y
 /// to `Box` and the other way around without a runtime overhead of dynamic
@@ -133,16 +133,17 @@ impl<T: ?Sized> Clone for BArc<T> {
 }
 
 unsafe impl<T> atom2::PtrSized for BArc<T> {
-    type Value = T;
-
-    fn into_raw(this: Self) -> *const Self::Value {
-        BArc::into_raw(this)
+    fn into_raw(this: Self) -> NonNull<()> {
+        NonNull::new(BArc::into_raw(this) as *mut ())
+            .expect("pointer is unexpectedly null")
     }
-    unsafe fn from_raw(ptr: *const Self::Value) -> Self {
-        BArc::from_raw(ptr)
+    unsafe fn from_raw(ptr: NonNull<()>) -> Self {
+        BArc::from_raw(ptr.as_ptr() as _)
     }
 }
-unsafe impl<T> atom2::RcLike for BArc<T> {}
+unsafe impl<T> atom2::TypedPtrSized for BArc<T> {
+    type Target = T;
+}
 
 impl<T> atom2::AsRawPtr<T> for BArc<T> {
     fn as_raw_ptr(&self) -> *const T {

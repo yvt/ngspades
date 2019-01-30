@@ -3,22 +3,29 @@
 //
 // This source code is a part of Nightingales.
 //
-use std::{sync::Arc, mem::transmute};
+use std::{sync::Arc, mem::transmute, ptr::NonNull};
 use tokenlock::{Token, TokenRef};
 
-use crate::{AsRawPtr, PtrSized, RcLike};
+use crate::{AsRawPtr, PtrSized, TypedPtrSized};
 
+#[derive(Debug, Copy, Clone,)]
+pub struct TokenValue(usize);
+
+// This implementation is highly dependent on the internals of `tokenlock`,
+// unfortunately.
 unsafe impl PtrSized for TokenRef {
-    type Value = usize;
-
-    fn into_raw(this: Self) -> *const Self::Value {
-        Arc::into_raw(unsafe { transmute::<_, Arc<Self::Value>>(this) })
+    fn into_raw(this: Self) -> NonNull<()> {
+        let p = Arc::into_raw(unsafe { transmute::<_, Arc<usize>>(this) });
+        NonNull::new(p as *mut ()).expect("pointer is unexpectedly null")
     }
-    unsafe fn from_raw(ptr: *const Self::Value) -> Self {
-        transmute::<Arc<Self::Value>, _>(Arc::from_raw(ptr))
+    unsafe fn from_raw(ptr: NonNull<()>) -> Self {
+        transmute::<Arc<usize>, _>(Arc::from_raw(ptr.as_ptr() as _))
     }
 }
-unsafe impl RcLike for TokenRef {}
+
+unsafe impl TypedPtrSized for TokenRef {
+    type Target = usize;
+}
 
 impl AsRawPtr<usize> for Token {
     fn as_raw_ptr(&self) -> *const usize {

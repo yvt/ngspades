@@ -24,13 +24,13 @@ fn barc_into_inner_none() {
 #[test]
 fn barc_as_ref_some() {
     let mut aa = Atom::new(Some(BArc::new(1)));
-    assert_eq!(*aa.as_ref().unwrap(), 1);
+    assert_eq!(*aa.as_inner_ref().unwrap(), 1);
 }
 
 #[test]
 fn barc_as_ref_none() {
     let mut aa: Atom<BArc<u32>> = Atom::empty();
-    assert!(aa.as_ref().is_none());
+    assert!(aa.as_inner_ref().is_none());
 }
 
 #[test]
