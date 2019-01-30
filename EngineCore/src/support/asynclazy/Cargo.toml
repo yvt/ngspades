@@ -1,0 +1,10 @@
+[package]
+name = "asynclazy"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+
+[dependencies]
+atom2 = { path = "../atom2" }
+futures-preview = "0.3.0-alpha.12"
+parking_lot = "0.7"

@@ -15,6 +15,7 @@ members = [
     "src/ngspf/src/viewport",
     "src/ngsterrain",
     "src/support/arclock",
+    "src/support/asynclazy",
     "src/support/attrtext",
     "src/support/atom2",
     "src/support/fast_msg_send",

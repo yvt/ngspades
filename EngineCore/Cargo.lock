@@ -62,6 +62,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "asynclazy"
+version = "0.1.0"
+dependencies = [
+ "atom2 0.1.0",
+ "futures-preview 0.3.0-alpha.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "atom2"
 version = "0.1.0"
 dependencies = [
