@@ -8,7 +8,10 @@ pub mod di {
     use std::sync::Arc;
 
     use super::*;
-    use crate::{di::DeviceContainer, staticdata::di::StaticDataDeviceContainerExt};
+    use crate::{
+        di::DeviceContainer, spawner::di::SpawnerDeviceContainerExt,
+        staticdata::di::StaticDataDeviceContainerExt,
+    };
 
     pub trait TestPassRendererDeviceContainerExt {
         fn get_test_pass_renderer_or_build(&mut self) -> &gfx::Result<Arc<TestPassRenderer>>;
@@ -23,20 +26,22 @@ pub mod di {
         fn register_test_pass_renderer_default(&mut self) {
             self.register_singleton_factory(|container| {
                 let device = container.get_device().clone();
+                let spawner = container.get_spawner_or_build().clone();
                 let vertices = container.get_huge_triangle_vertices_or_build().clone();
 
-                TestPassRenderer::new(device, vertices).map(Arc::new)
+                TestPassRenderer::new(device, spawner, vertices).map(Arc::new)
             });
         }
     }
 }
 
+use asynclazy::Async;
 use cgmath::Vector2;
 use include_data::{include_data, DataView};
 use std::sync::Arc;
 use zangfx::{base as gfx, prelude::*};
 
-use crate::staticdata::StaticBuffer;
+use crate::{spawner::Spawner, staticdata::StaticBuffer};
 use ngsgamegfx_common::progress::Progress;
 use ngsgamegfx_graph::passman::{
     ImageResource, ImageResourceInfo, Pass, PassEncodingContext, PassInfo, ResourceRef,
@@ -55,13 +60,17 @@ const VERTEX_ATTR_POSITION: gfx::VertexAttrIndex = 0;
 pub struct TestPassRenderer {
     device: gfx::DeviceRef,
     vertices: Arc<StaticBuffer>,
-    pipeline: gfx::RenderPipelineRef,
+    pipeline: Async<gfx::Result<gfx::RenderPipelineRef>>,
     render_pass: gfx::RenderPassRef,
 }
 
 impl TestPassRenderer {
-    fn new(device: gfx::DeviceRef, vertices: Arc<StaticBuffer>) -> gfx::Result<Self> {
-        // FIXME: These could be created in a background thread
+    fn new(
+        device: gfx::DeviceRef,
+        spawner: Arc<dyn Spawner>,
+        vertices: Arc<StaticBuffer>,
+    ) -> gfx::Result<Self> {
+        let mut spawn = spawner.get_spawn();
 
         let render_pass = {
             let mut builder = device.build_render_pass();
@@ -75,29 +84,33 @@ impl TestPassRenderer {
             builder.build()?
         };
 
-        let pipeline = {
-            let vertex_shader = device.new_library(SPIRV_VERT.as_u32_slice()).unwrap();
-            let fragment_shader = device.new_library(SPIRV_FRAG.as_u32_slice()).unwrap();
+        let pipeline = Async::with_future(&mut *spawn, {
+            let device = device.clone();
+            let render_pass = render_pass.clone();
+            async move {
+                let vertex_shader = device.new_library(SPIRV_VERT.as_u32_slice()).unwrap();
+                let fragment_shader = device.new_library(SPIRV_FRAG.as_u32_slice()).unwrap();
 
-            let root_sig = device.build_root_sig().build().unwrap();
+                let root_sig = device.build_root_sig().build().unwrap();
 
-            let mut builder = device.build_render_pipeline();
-            builder
-                .vertex_shader(&vertex_shader, "main")
-                .fragment_shader(&fragment_shader, "main")
-                .root_sig(&root_sig)
-                .topology(gfx::PrimitiveTopology::Triangles)
-                .render_pass(&render_pass, 0);
-            builder.vertex_buffer(VERTEX_BUFFER_MAIN, 4);
-            builder.vertex_attr(
-                VERTEX_ATTR_POSITION,
-                VERTEX_BUFFER_MAIN,
-                0,
-                <u16>::as_format_unnorm() * 2,
-            );
-            builder.rasterize();
-            builder.build()?
-        };
+                let mut builder = device.build_render_pipeline();
+                builder
+                    .vertex_shader(&vertex_shader, "main")
+                    .fragment_shader(&fragment_shader, "main")
+                    .root_sig(&root_sig)
+                    .topology(gfx::PrimitiveTopology::Triangles)
+                    .render_pass(&render_pass, 0);
+                builder.vertex_buffer(VERTEX_BUFFER_MAIN, 4);
+                builder.vertex_attr(
+                    VERTEX_ATTR_POSITION,
+                    VERTEX_BUFFER_MAIN,
+                    0,
+                    <u16>::as_format_unnorm() * 2,
+                );
+                builder.rasterize();
+                builder.build()
+            }
+        }).unwrap();
 
         Ok(Self {
             device,
@@ -108,7 +121,8 @@ impl TestPassRenderer {
     }
 
     pub fn ready_state(&self) -> Progress {
-        Progress::from(self.vertices.buffer().is_some())
+        Progress::from(self.vertices.buffer().is_some()) +
+        Progress::from(self.pipeline.try_get().is_some())
     }
 
     pub fn define_pass<C: ?Sized>(
@@ -139,6 +153,13 @@ impl TestPassRenderer {
     }
 }
 
+impl Drop for TestPassRenderer {
+    fn drop(&mut self) {
+        // Wait at least until the pipeline compilation completes
+        self.pipeline.get();
+    }
+}
+
 #[derive(Debug)]
 struct TestPass {
     renderer: Arc<TestPassRenderer>,
@@ -161,6 +182,7 @@ impl<C: ?Sized> Pass<C> for TestPass {
         let output: &ImageResource = enc_context.get_resource(self.output);
 
         let vertex_buffer = self.renderer.vertices.buffer();
+        let pipeline = self.renderer.pipeline.try_get();
 
         let viewport = gfx::Viewport {
             x: 0f32,
@@ -187,10 +209,14 @@ impl<C: ?Sized> Pass<C> for TestPass {
                 e.wait_fence(fence, gfx::AccessTypeFlags::ColorWrite);
             }
 
-            if let Some(vb) = vertex_buffer {
+            if let (Some(vb), Some(p)) = (vertex_buffer, pipeline) {
                 // FIXME: `gfx::Error` is `!Clone`, so we can't use `? `on `&gfx::Result`
                 let vb = vb.as_ref().expect("Failed to create a vertex buffer");
-                e.bind_pipeline(&self.renderer.pipeline);
+
+                // FIXME: `gfx::Error` is `!Clone`, so we can't use `? `on `&gfx::Result`
+                let p = p.as_ref().expect("Failed to create a pipeline");
+
+                e.bind_pipeline(p);
                 e.bind_vertex_buffers(0, &[(vb, 0)]);
                 e.set_viewports(0, &[viewport]);
                 e.draw(0..3, 0..1);

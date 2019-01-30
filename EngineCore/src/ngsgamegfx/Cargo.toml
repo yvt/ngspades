@@ -12,6 +12,7 @@ flags-macro = "0.1.2"
 futures-preview = "0.3.0-alpha.12"
 include_data = { path = "../support/include_data" }
 injector = { path = "../support/injector" }
+asynclazy = { path = "../support/asynclazy" }
 lazy_static = "1.1"
 ngspf = { path = "../ngspf" }
 pod = "0.5.0"

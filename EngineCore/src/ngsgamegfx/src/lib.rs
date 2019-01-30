@@ -12,12 +12,14 @@
 //!
 #![feature(arbitrary_self_types)]
 #![feature(futures_api)]
+#![feature(async_await)]
 #![feature(unsized_locals)] // For calling boxed `FnOnce`
 
 mod asyncuploader;
 pub mod config;
 mod di;
 pub mod port;
+mod spawner;
 mod staticdata;
 
 mod testpass; // TEST
