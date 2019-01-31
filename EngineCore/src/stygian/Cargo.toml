@@ -1,0 +1,10 @@
+[package]
+name = "stygian"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+
+[dependencies]
+cgmath = "0.17.0"
+ngsterrain = { path = "../ngsterrain" }
+num = "0.2.0"

@@ -14,6 +14,7 @@ members = [
     "src/ngspf/src/core",
     "src/ngspf/src/viewport",
     "src/ngsterrain",
+    "src/stygian",
     "src/support/arclock",
     "src/support/asynclazy",
     "src/support/attrtext",

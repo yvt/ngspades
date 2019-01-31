@@ -1,0 +1,86 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"><pre><![CDATA[
+
+                        **Stygian Suppelemental Notes**
+
+# Basics
+
+## Coordinate space
+
+:::
+:::   o---> +X
+:::   |
+:::   v +Y
+:::
+
+## Quadrants
+
+:::
+:::    NW  |  NE        ',  Up  ,'
+:::        |              ',  ,'
+:::  ------o------     Left    Right
+:::        |              ,'  ',
+:::    SW  |  SE        ,' Down ',
+:::
+
+# 2D beam-casting
+
+The `mipbeamcast` function performs beam-casting with adaptive mipmapping on a given map.
+
+The algorithm takes an *beam* as input. A beam is defined by one vertex `start` and direction vectors `dir1` and `dir2` of the two edges extending from the vertex ([^Figure beam]). The angle of the beam must be less than 45°. In reality, it's much smaller than that.
+
+[^Figure beam]: A beam
+
+    :::::::::::::::::::
+    :: start    dir1 ::
+    ::   o-------->  ::
+    ::    \          ::
+    ::     v         ::
+    ::       dir2    ::
+    :::::::::::::::::::
+
+Another input is a *map* which is a 2D grid of size $N_1 \times N_2$ that spans across the region $\{(x, y) | 0 \leq x < N_1 \wedge 0 \leq y < N_2\}$. The map includes a set of *cells*, which are 1×1-sized squares that cover the region. In addition, the map also includes increasingly larger sets of cells. Each set is called a *mipmap level*. The exact structure of the mipmap levels is not fundamental to the algorithm, but to ease the implementation, it's assumed that the cells in each level are twice as large as the cells in the previous level ([!Figure cells]). For example, the second level (level 1) consists of 2×2-sized squares. The largest cell entirely covers the region.
+
+[!Figure cells]: Mipmap levels
+
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    :: +---+---+---+---+     +-------+-------+      +---------------+ ::
+    :: |   |   |   |   |     |       |       |      |               | ::
+    :: +---+---+---+---+     |       |       |      |               | ::
+    :: |   |   |   |   |     |       |       |      |               | ::
+    :: +---+---+---+---+     +-------+-------+      +---------------+ ::
+    ::    Base level              Level 1                Level 2      ::
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+The goal of the algorithm is to find a set of cells such that every individual cell in the set entirely blocks the path of the beam. The secondary goal is to generate such a set without a gap between the cells.
+
+## Axis normalization
+
+To simplify the implementation, the algorithm transforms the input vectors so that `dir1` always falls into the SE-Right octant. The inverse transformation is applied to the algorithm's output to cancel the effect of axis normalization. After the transformation, `dir2` can be in one of the three octants ([^Figure dirrange]). Each case may require separate handling.
+
+[^Figure dirrange]: The possible ranges of `dir1` and `dir2` after axis normalization
+
+    :::::::::::::::::::::::::
+    ::     ,'         ,'   ::
+    ::   ,'         ,' ✓   ::
+    ::  o-----     o-----  ::
+    ::  |', ✓      |', ✓   ::
+    ::  |  ',      |✓ ',   ::
+    :::::::::::::::::::::::::
+
+## Beam-casting
+
+Each step of the main part of the algorithm proceeds as follows: (i) the portal through which the beam exits the current cell is determined; (ii) the smallest cell that intersects with or contains the portal, thus entirely occludes the path of the beam is found; (iii) move to the cell and repeat these steps until the beam exits the map. The loop invariant is that the entirety of the beam goes through the current cell.
+
+Before entering the loop, the algorithm has to determine the first cell that occludes the beam. This is easy if `start` is inside the map — the base-level cell where `start` resides is what we are looking for. This is more complicated in the other cases. It's also possible that there is no such cell, e.g., when a part or the entirety of the beam misses the map. The output of the algorithm is empty in such cases.
+
+|     |   $x_{start}$    |   $y_{start}$    |                                                            |
+|-----|------------------|------------------|------------------------------------------------------------|
+| (1) | $\geq N_1$       | any              | Empty output — never coincides with the map                |
+| (2) | any              | $\geq N_2$       | Empty output — never or only partly coincides with the map |
+| (3) | $0 \leq x < N_1$ | $< 0$            | Depends on `dir1` and `dir2`                               |
+| (4) |                  | $0 \leq y < N_2$ | Starts inside the map                                      |
+| (5) | $< 0$            | $< 0$            | Depends on `dir1` and `dir2`                               |
+| (6) |                  | $0 \leq y < N_2$ | Depends on `dir1` and `dir2`                               |
+
+]]></pre> <!-- Foremark footer -->
+<script src="https://unpkg.com/foremark/browser/foremark.js" async="async" /></html>
