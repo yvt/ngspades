@@ -10,13 +10,19 @@
 //! !["Me and My Shadow"](https://derpicdn.net/img/2018/8/24/1815256/large.png)
 
 mod debug;
-mod terrain;
 mod mipbeamcast;
+mod terrain;
+mod terrainrast;
 
-pub use crate::{terrain::Terrain, debug::{Trace, NoTrace}};
+pub use crate::{
+    debug::{NoTrace, Trace},
+    terrain::Terrain,
+    terrainrast::TerrainRast,
+};
 
 mod utils {
     pub mod float;
+    pub mod geom;
     pub mod int;
 }
 

@@ -1731,6 +1731,7 @@ dependencies = [
 name = "stygian"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ngsterrain 0.1.0",
  "num 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",

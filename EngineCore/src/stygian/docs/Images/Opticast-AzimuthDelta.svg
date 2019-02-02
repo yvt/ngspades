@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 23.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 178.7 167.2" style="enable-background:new 0 0 178.7 167.2;" xml:space="preserve">
+<style type="text/css">
+	.st0{clip-path:url(#SVGID_2_);fill:none;stroke:#000000;stroke-width:0.75;stroke-miterlimit:10;}
+	.st1{fill:none;stroke:#000000;stroke-miterlimit:10;}
+	.st2{font-family:'EBGaramond-Regular';}
+	.st3{font-size:12px;}
+	.st4{fill:none;stroke:#000000;stroke-width:0.75;stroke-miterlimit:10;}
+</style>
+<font horiz-adv-x="1000">
+<!-- Copyright 2017 The EB Garamond Project Authors \(https://github.com/octaviopardo/EBGaramond12\) -->
+<!-- Copyright: Copyright 2019 Adobe System Incorporated. All rights reserved. -->
+<font-face font-family="EBGaramond-Regular" units-per-em="1000" underline-position="-100" underline-thickness="50"/>
+<missing-glyph horiz-adv-x="500" d="M50,0l400,0l0,473l-400,0M100,50l0,373l300,0l0,-373z"/>
+<glyph unicode="&gt;" horiz-adv-x="560" d="M73,467C66,470 53,471 53,458C53,449 58,419 77,410l350,-174C430,235 431,232 428,231l-343,-174C65,47 54,18 54,6C54,0 57,-4 63,-4C64,-4 68,-3 71,-1l403,198C494,207 507,234 507,243C507,249 483,262 466,270z"/>
+<glyph unicode="&lt;" horiz-adv-x="560" d="M487,-2C494,-5 507,-6 507,7C507,16 502,46 483,55l-350,174C130,230 129,233 132,234l343,174C495,418 506,447 506,459C506,465 503,469 497,469C496,469 492,468 489,466l-403,-198C66,258 53,231 53,222C53,216 77,203 94,195z"/>
+<glyph unicode="&#x3C6;" horiz-adv-x="537" d="M255,-285C271,-285 270,-272 270,-260C270,-258 257,-159 254,-22C398,-21 502,101 502,242C502,318 460,389 394,412C402,441 370,469 327,469C171,469 35,360 35,204C35,98 114,1 215,-19C213,-115 207,-221 207,-250C207,-272 231,-285 255,-285M216,50C133,61 74,108 74,179C74,291 168,366 277,386C221,320 216,169 216,50M253,48C254,141 266,342 365,342C425,342 462,282 462,222C462,116 358,48 253,48z"/>
+<glyph unicode=" " horiz-adv-x="200"/>
+<glyph unicode="&#x394;" horiz-adv-x="676" d="M48,0l553,0C610,0 616,10 616,20C616,23 616,25 615,27l-238,629C374,665 372,670 367,670C362,670 352,645 337,638C326,633 319,632 307,628C305,627 306,611 303,600C300,588 297,579 293,570l-258,-543C34,24 33,21 33,17C33,8 37,0 48,0M151,55C132,55 115,56 115,74C115,81 118,90 124,104l197,436C326,551 329,557 331,557C334,557 336,551 340,539l146,-419C495,94 502,77 502,67C502,59 497,55 485,55z"/>
+<glyph unicode="0" horiz-adv-x="480" d="M245,-14C393,-14 455,166 455,316C455,461 391,630 255,630C107,630 45,454 45,302C45,154 109,-14 245,-14M262,12C172,12 128,170 128,320C128,470 156,602 236,602C326,602 373,448 373,298C373,148 342,12 262,12z"/>
+</font>
+
+	<g>
+	<defs>
+		<rect id="SVGID_1_" x="29.3" y="27.7" width="124.3" height="112.6"/>
+	</defs>
+	<clipPath id="SVGID_2_">
+		<use xlink:href="#SVGID_1_"  style="overflow:visible;"/>
+	</clipPath>
+	<ellipse class="st0" cx="91.5" cy="17.3" rx="42.8" ry="31.1"/>
+	<ellipse class="st0" cx="91.5" cy="17.3" rx="82.5" ry="64.6"/>
+	<ellipse class="st0" cx="91.5" cy="17.3" rx="141.9" ry="99.3"/>
+	<line class="st0" x1="92.9" y1="17.3" x2="113.7" y2="149"/>
+	<line class="st0" x1="81.8" y1="17.9" x2="22.8" y2="150.7"/>
+	<line class="st0" x1="81.8" y1="13.7" x2="23.2" y2="47"/>
+	<line class="st0" x1="101.2" y1="17.3" x2="167.3" y2="86.9"/>
+	<use xlink:href="#SVGID_1_"  style="overflow:visible;fill:none;stroke:#000000;stroke-width:0.75;stroke-miterlimit:10;"/>
+</g>
+<rect x="29.3" y="27.7" class="st1" width="124.3" height="112.6"/>
+<text transform="matrix(6.123234e-17 1 -1 6.123234e-17 6.5678 71.0745)" class="st2 st3">Δφ &gt; 0</text>
+<text transform="matrix(6.123234e-17 1 -1 6.123234e-17 168.1831 71.0746)" class="st2 st3">Δφ &gt; 0</text>
+<text transform="matrix(1 0 0 1 73.0232 161.1625)" class="st2 st3">Δφ &gt; 0</text>
+<text transform="matrix(1 0 0 1 73.0232 13.8468)" class="st2 st3">Δφ &lt; 0</text>
+<g>
+	<g>
+		<line class="st4" x1="19.5" y1="57.9" x2="19.5" y2="105.9"/>
+		<g>
+			<path d="M19.5,110.4c-0.8-2.1-2.1-4.8-3.6-6.4l3.6,1.3l3.6-1.3C21.7,105.6,20.3,108.3,19.5,110.4z"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line class="st4" x1="161" y1="110.4" x2="161" y2="62.4"/>
+		<g>
+			<path d="M161,57.9c0.8,2.1,2.1,4.8,3.6,6.4L161,63l-3.6,1.3C158.8,62.6,160.2,60,161,57.9z"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line class="st4" x1="67.3" y1="147.3" x2="115.3" y2="147.3"/>
+		<g>
+			<path d="M119.8,147.3c-2.1,0.8-4.8,2.1-6.4,3.6l1.3-3.6l-1.3-3.6C115.1,145.2,117.7,146.5,119.8,147.3z"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line class="st4" x1="119.8" y1="20.6" x2="71.8" y2="20.6"/>
+		<g>
+			<path d="M67.3,20.6c2.1-0.8,4.8-2.1,6.4-3.6l-1.3,3.6l1.3,3.6C72.1,22.8,69.4,21.4,67.3,20.6z"/>
+		</g>
+	</g>
+</g>
+<circle cx="29.3" cy="27.7" r="2.9"/>
+<circle cx="29.3" cy="140.3" r="2.9"/>
+<circle cx="153.6" cy="140.3" r="2.9"/>
+<circle cx="153.6" cy="27.7" r="2.9"/>
+</svg>

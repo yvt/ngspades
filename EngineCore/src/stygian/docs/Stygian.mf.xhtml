@@ -22,6 +22,50 @@
 :::    SW  |  SE        ,' Down ',
 :::
 
+# Terrain rasterization
+
+The terrain rasterizes creates a low-resolution depth image from terrain data and a scene setup. The generated image is guaranteed to have lower (farther from the camera) depth values compared to the ground truth image at every point, making itself useful for CPU-based occlusion culling.
+
+The process goes as follows: (i) a panorama image around the camera is generated; (ii) the panorama image is projected to the final image using the camera's projection matrix.
+
+## Sample allocation
+
+Not every portion of the panorama image contributes to the final output as it may be outside the camera's viewport. Furthermore, the algorithm wouldn't be effective if the resolution of the panorama image is not well adjusted; for example, a too high resolution only harms the runtime performance without a much effect on the output quality. Naturally, the best result is achieved if the resolutions of the terrain data, the panorama image, and the final depth image are all consistent — one element (voxel/pixel) in one step roughly corresponds to another one in the subsequent step.
+
+Each column in the panorama image is called *a beam* ([^Figure rast-beams]). Each beam corresponds to a particular range of azimuth angles, and serves as a basic unit on which a single run of the opticast algorithm is performed. A beam contains one or more *samples* for each of which the minimum (farthest from the camera) depth value is recorded. Each beam can have a varying number of samples.
+
+![^Figure rast-beams][](Images/Opticast-Beams.svg):
+    Beams and samples
+
+The optimal sample allocation is determined using the two-level algorithm: (i) firstly, the distribution of beams is determined; (ii) secondly, samples are allocated to beams according to how much portion of beams is inside the viewport. The algorithm takes an image size $N$ as input, which applies scaling to sample counts in several portions of the algorithm. This value can be adjusted independently from the actual image size as needed.
+
+The sample allocation algorithm requires the screen-space position of the zenith and nadir. In any case only one of the zenith and nadir is visible, and the visible one is called *a vanishing point*. A care must be taken when the optical axis of the camera is completely horizontal because in such cases a vanishing point is infinitely far away from the viewport ([!Figure rast-zenith]) and causes numerical problems if its screen-space position is stored explicitly. It's recommended that perspective division on its position is avoided entirely.
+
+![!Figure rast-zenith][](Images/Opticast-Zenith.svg):
+    The possible locations of a vanishing point
+
+In screen-space, every longitudinal line is a straight line starting from the vanishing point. If one of such lines goes through the viewport, it must leave the viewport through a point on the viewport's border. Therefore, projecting all viewport edges oriented toward/against the vanishing point on the sphere and examining their spherical coordinates gives us an idea of which range of azimuth angles we must blanket with beams.
+
+Alternatively, the direction of the change in the azimuth angle as you move on the edges could be examined to determine the orientations of the edges in regard to the vanishing point ([^Figure rast-azimuth-delta]). This method doesn't require the screen-space position of the vanishing point.
+
+![^Figure rast-azimuth-delta][](Images/Opticast-AzimuthDelta.svg):
+    An alternative way to obtain the range of azimuth angles
+
+How wide each beam should be? One possible answer is to match the density of longitudinal lines to the output image resolution, i.e.:
+
+$$
+\left|
+    \frac{\partial}{\partial\theta}Project(\vec{p})
+\right|
+\Delta\theta = \frac{2}{N}
+$$
+
+where $\Delta\theta$ is the width of a beam and $\vec{p}$ is a point with azimuth angle $\theta$.
+
+The number of samples in a beam can be determined from the length of its portion inside the viewport.
+
+## Opticast
+
 # 2D beam-casting
 
 The `mipbeamcast` function performs beam-casting with adaptive mipmapping on a given map.
