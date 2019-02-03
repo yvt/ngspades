@@ -217,7 +217,7 @@ impl TerrainRast {
             let chebyshev_len = [diff.x.abs(), diff.y.abs()].max();
 
             // The preliminary sample count
-            beam.num_samples = (chebyshev_len * (self.size * 2) as f32).ceil() as usize;
+            beam.num_samples = (chebyshev_len * 0.5 * self.size as f32).ceil() as usize;
 
             // Create a beam projection matrix
             let projection =
