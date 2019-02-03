@@ -25,7 +25,7 @@ struct Vertex {
 
 implement_vertex!(Vertex, pos, color);
 
-const CAPACITY: usize = 4096;
+const CAPACITY: usize = 655360;
 
 impl LineDraw {
     pub fn new(facade: &impl Facade) -> Self {

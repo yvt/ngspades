@@ -8,11 +8,15 @@ use arrayvec::ArrayVec;
 use cgmath::{prelude::*, vec3, vec4, Matrix4, Point3, Rad, Vector4};
 use std::{f32::consts::PI, ops::Range};
 
-use crate::utils::{
-    float::FloatSetExt,
-    geom::{
-        inclination_intersecting_half_space, jacobian_from_projection_matrix,
-        spherical_to_cartesian, spherical_to_cartesian_d_azimuth,
+use crate::{
+    debug::{NoTrace, Trace},
+    utils::{
+        float::FloatSetExt,
+        geom::{
+            inclination_intersecting_half_space, intersection_of_latitudinal_line_and_plane,
+            jacobian_from_projection_matrix, spherical_to_cartesian,
+            spherical_to_cartesian_d_azimuth,
+        },
     },
 };
 
@@ -30,6 +34,7 @@ pub struct TerrainRast {
 struct BeamInfo {
     azimuth: Range<f32>,
     inclination: Range<f32>,
+    /// Can be zero, in which case the beam should be excluded from the process.
     num_samples: usize,
     samples_start: usize,
     /// Maps from a beam space to a beam depth buffer (`x = 0`, `y ∈ [0, 1]`)
@@ -66,6 +71,11 @@ impl TerrainRast {
     /// Update the camera matrix (the product of projection, view, and model
     /// matrices). This triggers the recalculation of sample distribution.
     pub fn set_camera_matrix(&mut self, m: Matrix4<f32>) {
+        self.set_camera_matrix_trace(m, NoTrace);
+    }
+
+    /// `set_camera_matrix` with tracing.
+    pub fn set_camera_matrix_trace(&mut self, m: Matrix4<f32>, mut trace: impl Trace) {
         // Find the camera's position `[x y z]` by solving the equation
         // `M*[x y z 1] == [0 0 z' 0]` where `z'` is an arbitrary real number
         // and `M` is the camera matrix.
@@ -93,16 +103,20 @@ impl TerrainRast {
         // Note that a normal vector is a bivector, thus must be multiplied with
         // the inverse transpose of a matrix.
         let m_inv = m.invert().unwrap();
-        let j1 =
-            jacobian_from_projection_matrix(m_inv, Point3::new(-(1.0 + safe_margin), -(1.0 + safe_margin), 0.5).to_homogeneous())
-                .transpose()
-                .invert()
-                .unwrap();
-        let j2 =
-            jacobian_from_projection_matrix(m_inv, Point3::new(1.0 + safe_margin, 1.0 + safe_margin, 0.5).to_homogeneous())
-                .transpose()
-                .invert()
-                .unwrap();
+        let j1 = jacobian_from_projection_matrix(
+            m_inv,
+            Point3::new(-(1.0 + safe_margin), -(1.0 + safe_margin), 0.5).to_homogeneous(),
+        )
+        .transpose()
+        .invert()
+        .unwrap();
+        let j2 = jacobian_from_projection_matrix(
+            m_inv,
+            Point3::new(1.0 + safe_margin, 1.0 + safe_margin, 0.5).to_homogeneous(),
+        )
+        .transpose()
+        .invert()
+        .unwrap();
         let ms_viewport_normals = [
             j1 * vec3(0.0, -(1.0 + safe_margin), 0.0),
             j2 * vec3(1.0 + safe_margin, 0.0, 0.0),
@@ -284,13 +298,61 @@ impl TerrainRast {
             samples_start += beam.num_samples;
         }
         self.samples.resize(samples_start, 0.0);
+
+        if trace.wants_opticast_sample() {
+            for beam in self.beams.iter() {
+                if beam.num_samples == 0 {
+                    continue;
+                }
+
+                let theta = (beam.azimuth.start + beam.azimuth.end) * 0.5;
+                let p1 = m * spherical_to_cartesian(theta, beam.inclination.start).extend(0.0);
+                let p2 = m * spherical_to_cartesian(theta, beam.inclination.end).extend(0.0);
+                let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+
+                let binormal = vec3(-theta.sin(), theta.cos(), 0.0);
+
+                let unproject = |p: Point3<f32>| {
+                    let mut v = m_inv * vec4(p[0], p[1], 0.0, 1.0);
+                    let z = -v.w / m_inv.z.w; // find `z` that makes transformed `w` zero
+                    v += z * m_inv.z;
+                    v.truncate()
+                };
+
+                // Find a plane containing the viewport-space point `p` and
+                // includes a line `θ = theta ± π/2, φ = 0`
+                let to_plane_normal = |p: Point3<f32>| unproject(p).cross(binormal);
+
+                let mut last_p = to_plane_normal(p1);
+                for i in 1..=beam.num_samples {
+                    let p = to_plane_normal(p1 + (p2 - p1) * (i as f32 / beam.num_samples as f32));
+
+                    // What we do here is equivalent to
+                    // `intersection_of_latitudinal_line_and_plane_with_tangent`,
+                    // but more stable when the output of `unproject` is close to
+                    // the zenith or nadir because a binormal vector is supplied
+                    // explicitly.
+
+                    let v1 = intersection_of_latitudinal_line_and_plane(beam.azimuth.start, last_p);
+                    let v2 = intersection_of_latitudinal_line_and_plane(beam.azimuth.end, last_p);
+                    let v3 = intersection_of_latitudinal_line_and_plane(beam.azimuth.start, p);
+                    let v4 = intersection_of_latitudinal_line_and_plane(beam.azimuth.end, p);
+
+                    trace.terrainrast_sample(&[v1, v2, v4, v3]);
+
+                    last_p = p;
+                }
+            }
+        }
+
+        // end of function
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cgmath::{assert_abs_diff_eq, vec2, vec3, Perspective, Point3};
+    use cgmath::{assert_abs_diff_eq, vec3, Perspective, Point3};
 
     #[test]
     fn set_camera_matrix_sanity() {

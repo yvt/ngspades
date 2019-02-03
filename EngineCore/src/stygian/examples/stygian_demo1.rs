@@ -324,7 +324,7 @@ impl Renderer {
 
         println!("Initializing Stygian");
         let sty_terrain = stygian::Terrain::from_ngsterrain(&terrain).unwrap();
-        let sty_rast = stygian::TerrainRast::new(256);
+        let sty_rast = stygian::TerrainRast::new(64);
 
         Self {
             context,
@@ -344,8 +344,31 @@ impl Renderer {
     }
 
     fn render(&mut self, params: &RenderParams, target: &mut impl Surface) {
-        self.sty_rast.set_camera_matrix(params.camera_matrix);
+        // Set up the Stygian internal state tracing for visualization
+        use std::cell::RefCell;
+        struct Log {
+            samples: Vec<[Vector3<f32>; 4]>,
+        }
+        let mut log = RefCell::new(Log {
+            samples: Vec::new(),
+        });
 
+        #[derive(Clone)]
+        struct Tracer<'a>(&'a RefCell<Log>);
+        impl stygian::Trace for Tracer<'_> {
+            fn wants_opticast_sample(&mut self) -> bool {
+                true
+            }
+            fn terrainrast_sample(&mut self, vertices: &[Vector3<f32>; 4]) {
+                self.0.borrow_mut().samples.push(*vertices);
+            }
+        }
+
+        // Update Stygian
+        self.sty_rast
+            .set_camera_matrix_trace(params.camera_matrix, Tracer(&log));
+
+        // Render a scene
         target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 1.0);
 
         let vp_matrix = Matrix4::from_nonuniform_scale(0.9, 0.9, 1.0);
@@ -375,6 +398,7 @@ impl Renderer {
             )
             .unwrap();
 
+        // Draw a HUD
         self.linedraw.push(
             [0, 0, 0, 255],
             [
@@ -387,6 +411,22 @@ impl Renderer {
             .iter()
             .map(|x| trans_point2(vp_matrix, *x)),
         );
+
+        for sample in log.get_mut().samples.iter() {
+            use array::Array4;
+
+            let verts = sample.map(|v| {
+                let p = camera_matrix * v.extend(0.0);
+                Point2::new(p.x / p.w, p.y / p.w)
+            });
+
+            self.linedraw.push(
+                [255, 255, 0, 255],
+                [verts[0], verts[1], verts[2], verts[3], verts[0]]
+                    .iter()
+                    .cloned(),
+            );
+        }
 
         self.linedraw.flush(target);
 

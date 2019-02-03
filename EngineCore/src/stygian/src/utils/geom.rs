@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{vec3, Matrix3, Matrix4, Vector3, Vector4};
+use cgmath::{prelude::*, vec3, Matrix3, Matrix4, Vector3, Vector4};
 use std::{f32::consts::FRAC_PI_2, ops::Range};
 
 use crate::utils::float::FloatSetExt;
@@ -23,6 +23,31 @@ pub fn jacobian_from_projection_matrix(m: Matrix4<f32>, p: Vector4<f32>) -> Matr
         transformed * m.y.w,
         transformed * m.z.w,
     )) * fac
+}
+
+/// Find the intersection of a latitudinal line and a plane. The plane is
+/// defined to have `tangent` as its tangent vector and the corresponding
+/// binormal vector is horizontal.
+#[allow(dead_code)]
+pub fn intersection_of_latitudinal_line_and_plane_with_tangent(
+    azimuth: f32,
+    tangent: Vector3<f32>,
+) -> Vector3<f32> {
+    let binormal = vec3(-tangent.y, tangent.x, 0.0);
+    intersection_of_latitudinal_line_and_plane(azimuth, tangent.cross(binormal))
+}
+
+/// Find the intersection of a latitudinal line and a plane.
+pub fn intersection_of_latitudinal_line_and_plane(
+    azimuth: f32,
+    normal: Vector3<f32>,
+) -> Vector3<f32> {
+    // φ=0, θ=azimuth + π/2
+    let px = azimuth.cos();
+    let py = azimuth.sin();
+    let perp = vec3(py, -px, 0.0);
+
+    normal.cross(perp).normalize()
 }
 
 /// Find a portion on a latitudinal line where it intersects with a given
@@ -141,6 +166,24 @@ mod tests {
             assert_abs_diff_eq!(j.y, q2, epsilon = 0.001);
             assert_abs_diff_eq!(j.z, q3, epsilon = 0.001);
         }
+    }
+
+    #[test]
+    fn intersection_of_latitudinal_line_and_plane_with_tangent_sanity() {
+        let elevation = 0.7f32;
+        let yaw = 2.0f32;
+        let angle = 0.7f32;
+
+        let tangent = dbg!(spherical_to_cartesian(yaw, elevation));
+        let binormal = dbg!(vec3(-tangent.y, tangent.x, 0.0).normalize());
+        let p = dbg!(tangent * angle.cos() + binormal * angle.sin());
+
+        let p_azimuth = dbg!(p.y.atan2(p.x));
+
+        let v = intersection_of_latitudinal_line_and_plane_with_tangent(p_azimuth, tangent);
+
+        assert_abs_diff_eq!(v.y.atan2(v.x), p_azimuth, epsilon = 0.001);
+        assert_abs_diff_eq!(v, p, epsilon = 0.001);
     }
 
     #[test]
