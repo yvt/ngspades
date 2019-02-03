@@ -1,0 +1,371 @@
+//
+// Copyright 2019 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
+use cgmath::{prelude::*, vec3, Matrix3, Matrix4, Vector3};
+use glium::{
+    backend::{Context, Facade},
+    glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
+};
+use std::{fs::File, io::BufReader, rc::Rc, time::Instant};
+
+use stygian;
+
+mod lib {
+    pub mod cube;
+    pub mod vxl2mesh;
+}
+
+fn main() {
+    use clap::{App, Arg};
+    // Use `clap` to parse command-line arguments
+    let matches = App::new("stygian_demo1")
+        .about("Stygian demo app 1")
+        .arg(
+            Arg::with_name("INPUT")
+                .help("file to display; .vxl and .vox formats are supported")
+                .required(true)
+                .index(1),
+        )
+        .get_matches();
+
+    // Load the input vox file
+    println!("Loading the input file");
+    let input_low = matches.value_of("INPUT").unwrap().to_lowercase();
+    let input_path = matches.value_of_os("INPUT").unwrap();
+    let file = File::open(input_path).unwrap();
+    let mut reader = BufReader::new(file);
+    let terrain = if input_low.ends_with(".vxl") {
+        ngsterrain::io::from_voxlap_vxl(vec3(512, 512, 64), &mut reader).unwrap()
+    } else {
+        ngsterrain::io::from_magicavoxel(&mut reader).unwrap()
+    };
+    terrain.validate().unwrap();
+
+    let mut events_loop = glutin::EventsLoop::new();
+    let window = glutin::WindowBuilder::new();
+    let context = glutin::ContextBuilder::new()
+        .with_depth_buffer(24)
+        .with_vsync(true);
+    let display = glium::Display::new(window, context, &events_loop).unwrap();
+    let mut renderer = Renderer::new(&display, terrain);
+
+    let mut state = State::new(&renderer.terrain);
+
+    use glutin::{ElementState, Event, VirtualKeyCode, WindowEvent};
+
+    let mut last_time = Instant::now();
+
+    let mut keep_running = true;
+
+    while keep_running {
+        events_loop.poll_events(|event| match event {
+            Event::WindowEvent { event, .. } => {
+                state.handle_event(&event);
+
+                match event {
+                    WindowEvent::CloseRequested => {
+                        keep_running = false;
+                    }
+                    WindowEvent::KeyboardInput { input, .. } => match input.state {
+                        ElementState::Pressed => match input.virtual_keycode {
+                            Some(VirtualKeyCode::Escape) => {
+                                keep_running = false;
+                            }
+                            _ => (),
+                        },
+                        _ => (),
+                    },
+                    _ => (),
+                }
+            }
+            _ => (),
+        });
+
+        let delta_time = last_time.elapsed();
+        last_time = Instant::now();
+
+        let delta_time = delta_time.subsec_nanos() as f32 * 1.0e-9;
+
+        state.update(delta_time);
+
+        // drawing a frame
+        let mut target = display.draw();
+        renderer.render(&state.render_params(4.0 / 3.0), &mut target);
+
+        target.finish().unwrap();
+
+        let title = format!(
+            "Stygian demo app 1 [{:.2} fps]",
+            renderer.fps_counter.rate(),
+        );
+        display.gl_window().set_title(&title);
+    }
+}
+
+#[derive(Debug)]
+struct State {
+    eye: Vector3<f32>,
+    velocity: Vector3<f32>,
+    angle: Vector3<f32>,
+    angular_velocity: Vector3<f32>,
+    keys: [bool; 16],
+}
+
+impl State {
+    fn new(terrain: &ngsterrain::Terrain) -> State {
+        let size = terrain.size().cast::<f32>().unwrap();
+        State {
+            eye: vec3(size.x * 0.5, size.y * 0.5, size.z),
+            velocity: Vector3::zero(),
+            angle: vec3(-0.4, 0.0, 0.0),
+            angular_velocity: Vector3::zero(),
+            keys: [false; 16],
+        }
+    }
+
+    fn handle_event(&mut self, e: &glutin::WindowEvent) {
+        if let glutin::WindowEvent::KeyboardInput { input, .. } = e {
+            let pressed = input.state == glutin::ElementState::Pressed;
+            let key = match input.virtual_keycode {
+                Some(key) => key,
+                None => return,
+            };
+            match key {
+                glutin::VirtualKeyCode::Up => self.keys[0] = pressed,
+                glutin::VirtualKeyCode::Down => self.keys[1] = pressed,
+                glutin::VirtualKeyCode::Left => self.keys[2] = pressed,
+                glutin::VirtualKeyCode::Right => self.keys[3] = pressed,
+                glutin::VirtualKeyCode::A => self.keys[4] = pressed,
+                glutin::VirtualKeyCode::D => self.keys[5] = pressed,
+                glutin::VirtualKeyCode::W => self.keys[6] = pressed,
+                glutin::VirtualKeyCode::S => self.keys[7] = pressed,
+                glutin::VirtualKeyCode::LShift | glutin::VirtualKeyCode::RShift => {
+                    self.keys[8] = pressed
+                }
+                _ => {}
+            }
+        }
+
+        // FIXME: As it turned out, glutin didn't support relative mouse input
+    }
+
+    fn update(&mut self, dt: f32) {
+        self.eye += self.velocity * dt;
+        self.angle += self.angular_velocity * dt;
+        self.angle.y = self.angular_velocity.z * 0.03;
+
+        let view_mat = self.view_matrix();
+        self.velocity *= 0.1f32.powf(dt);
+        self.angular_velocity *= 0.1f32.powf(dt);
+
+        let speed = if self.keys[8] { 48.0 } else { 16.0 };
+        if self.keys[4] {
+            self.velocity -= view_mat.transpose().x.truncate() * (dt * speed);
+        } else if self.keys[5] {
+            self.velocity += view_mat.transpose().x.truncate() * (dt * speed);
+        }
+        if self.keys[6] {
+            self.velocity -= view_mat.transpose().z.truncate() * (dt * speed);
+        } else if self.keys[7] {
+            self.velocity += view_mat.transpose().z.truncate() * (dt * speed);
+        }
+
+        if self.keys[0] {
+            self.angular_velocity.x -= 5.0 * dt;
+        } else if self.keys[1] {
+            self.angular_velocity.x += 5.0 * dt;
+        }
+        if self.keys[2] {
+            self.angular_velocity.z += 5.0 * dt;
+        } else if self.keys[3] {
+            self.angular_velocity.z -= 5.0 * dt;
+        }
+    }
+
+    fn view_matrix(&self) -> Matrix4<f32> {
+        use cgmath::{vec4, Basis3, Rad};
+        let basis = Basis3::from_angle_x(Rad(std::f32::consts::FRAC_PI_2))
+            * Basis3::from_angle_y(Rad(self.angle.z))
+            * Basis3::from_angle_x(Rad(self.angle.x))
+            * Basis3::from_angle_z(Rad(self.angle.y));
+        let basis_mat: &Matrix3<f32> = basis.as_ref();
+
+        Matrix4::from_cols(
+            basis_mat.x.extend(0.0),
+            basis_mat.y.extend(0.0),
+            basis_mat.z.extend(0.0),
+            vec4(0.0, 0.0, 0.0, 1.0),
+        )
+        .transpose()
+            * Matrix4::from_translation(-self.eye)
+    }
+
+    fn render_params(&self, aspect: f32) -> RenderParams {
+        use cgmath::{PerspectiveFov, Rad};
+
+        let proj: Matrix4<f32> = PerspectiveFov {
+            fovy: Rad(1.0),
+            aspect,
+            near: 0.01,
+            far: 1000.0,
+        }
+        .into();
+
+        let view = self.view_matrix();
+
+        RenderParams {
+            camera_matrix: proj * view,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct PerfCounter {
+    last_measure: Instant,
+    count: f64,
+    last_rate: f64,
+}
+
+impl PerfCounter {
+    fn new() -> Self {
+        Self {
+            last_measure: Instant::now(),
+            count: 0.0,
+            last_rate: 0.0,
+        }
+    }
+
+    fn log(&mut self, value: f64) {
+        self.count += value;
+
+        let dt = self.last_measure.elapsed();
+        let dt = dt.subsec_nanos() as f64 * 1.0e-9 + dt.as_secs() as f64;
+        if dt >= 0.2 {
+            self.last_rate = self.count / dt;
+            self.count = 0.0;
+            self.last_measure = Instant::now();
+        }
+    }
+
+    fn rate(&self) -> f64 {
+        self.last_rate
+    }
+}
+
+#[derive(Debug)]
+struct RenderParams {
+    camera_matrix: Matrix4<f32>,
+}
+
+struct Renderer {
+    context: Rc<Context>,
+
+    terrain: ngsterrain::Terrain,
+    terrain_vb: VertexBuffer<lib::vxl2mesh::TerrainVertex>,
+    terrain_ib: IndexBuffer<u32>,
+    terrain_program: Program,
+
+    sty_terrain: stygian::Terrain,
+    sty_rast: stygian::TerrainRast,
+
+    fps_counter: PerfCounter,
+}
+
+impl Renderer {
+    fn new(facade: &impl Facade, terrain: ngsterrain::Terrain) -> Self {
+        let context = facade.get_context().clone();
+
+        // Convert the terrain to a mesh
+        println!("Converting the terrain into a mesh");
+        let terrain_vb;
+        let terrain_ib;
+        let terrain_program;
+        {
+            use self::lib::vxl2mesh;
+            let (verts, indices) = vxl2mesh::terrain_to_mesh(&terrain);
+            terrain_vb = VertexBuffer::new(facade, &verts).unwrap();
+            terrain_ib =
+                IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &indices)
+                    .unwrap();
+            terrain_program = program!(facade,
+            100 => {
+                vertex: r"
+                    #version 100
+
+                    uniform highp mat4 u_matrix;
+                    attribute highp vec3 pos;
+                    attribute highp vec3 norm;
+                    attribute highp vec4 color;
+                    varying lowp vec4 v_color;
+
+                    void main() {
+                        v_color = color / 255.0;
+                        v_color *= sqrt(dot(norm, normalize(vec3(0.3, 0.7, 0.8))) * 0.5 + 0.5);
+                        gl_Position = u_matrix * vec4(pos, 1.0);
+                    }
+                ",
+                fragment: r"
+                    #version 100
+
+                    varying lowp vec4 v_color;
+
+                    void main() {
+                        gl_FragColor = v_color;
+                    }
+                ",
+            })
+            .unwrap();
+        }
+
+        println!("Initializing Stygian");
+        let sty_terrain = stygian::Terrain::from_ngsterrain(&terrain).unwrap();
+        let sty_rast = stygian::TerrainRast::new(256);
+
+        Self {
+            context,
+
+            terrain,
+            terrain_vb,
+            terrain_ib,
+            terrain_program,
+
+            sty_terrain,
+            sty_rast,
+
+            fps_counter: PerfCounter::new(),
+        }
+    }
+
+    fn render(&mut self, params: &RenderParams, target: &mut impl Surface) {
+        self.sty_rast.set_camera_matrix(params.camera_matrix);
+
+        target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 1.0);
+
+        let uniforms = uniform! {
+            u_matrix: Into::<[[f32; 4]; 4]>::into(params.camera_matrix),
+        };
+
+        let params = glium::DrawParameters {
+            depth: glium::Depth {
+                test: glium::DepthTest::IfLess,
+                write: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        target
+            .draw(
+                &self.terrain_vb,
+                &self.terrain_ib,
+                &self.terrain_program,
+                &uniforms,
+                &params,
+            )
+            .unwrap();
+
+        self.fps_counter.log(1.0);
+    }
+}
