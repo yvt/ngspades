@@ -79,7 +79,7 @@ impl LineDraw {
 
         target
             .draw(
-                &self.gpu_vb,
+                self.gpu_vb.slice(0..self.vb.len()).unwrap(),
                 &NoIndices(PrimitiveType::LinesList),
                 &self.program,
                 &uniforms,
