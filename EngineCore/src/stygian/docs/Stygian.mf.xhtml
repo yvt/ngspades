@@ -66,6 +66,18 @@ The number of samples in a beam can be determined from the length of its portion
 
 ## Opticast
 
+The opticast is a procedure where beam-casting is performed on a quadrangle pyramid-shaped beam defined by two azimuth angles $\theta_1, \theta_2$ and two inclination angles $\varphi_1, \varphi_2$ against a terrain and a conservative depth value is obtained for each subdivided portion of a beam. Depth values are stored into a 1D array called *a beam depth buffer*.
+
+Each beam is associated with a unique coordinate space called *a beam space*. A beam space is a local Cartesian space whose origin is located at the projection of the camera origin upon the plane $z = 0$, Z axis is parallel to the global Z axis, and X axis is oriented toward the azimuth angle $(\theta_1+\theta_2)/2$. The latitudinal line corresponding to this angle is called *a primary latitudinal line*.
+
+*A beam projection matrix* describes the projective mapping between a beam space and a beam depth buffer. To project a beam-space point onto a beam depth buffer, the projective transformation described by a beam projection matrix is applied. After a perspective division, the Y component indicates the position (index) inside a beam depth buffer and is based on the distance from an endpoint of the visible portion of the primary latitudinal line in the viewport space. The Z component represents the depth value. The X component is not used. It's difficult to construct a beam projection matrix such that an unprojected pixel precisely covers the represented volumetric region as it's only accurate on $x_\text{beam}=0$. Use the mapping described in the next paragraph for precise results.
+
+The precise mapping from the $i$-th pixel in a beam depth buffer of size $N_B$ to a volumetric region is defined as follows: (i) project two points whose spherical coordinates are $((\theta_1+\theta_2)/2, \varphi_1)$ and $((\theta_1+\theta_2)/2, \varphi_2)$ respectively to the viewport space; (ii) draw a line segment between the two projected points (iii) uniformly divide the line segment into $N_B$ segments; (iv) choose the $i$-th segment and let $p'_{i}, p'_{i+1}$ be its endpoints; (v) project them back to the world space and call them $p_i, p_{i+1}$; (vi) finally, define four planes ($\theta$ and $\varphi$ used here are azimuth and inclination angles, respectively): the first two are $\theta=\theta_1$, $\theta=\theta_2$ respectively and the others both include the line $\theta=(\theta_1+\theta_2)/2±\pi/2$, $\varphi=0$ and include $p_i$ and $p_{i+1}$, respectively. The said pixel is represented by the volumetric region enclosed by these four planes.
+
+## Reprojection
+
+Finally, beam depth buffers are reprojected to the output depth image.
+
 # 2D beam-casting
 
 The `mipbeamcast` function performs beam-casting with adaptive mipmapping on a given map.

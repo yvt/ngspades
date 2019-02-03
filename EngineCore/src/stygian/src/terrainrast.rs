@@ -5,7 +5,7 @@
 //
 //! Terrain rasterizer.
 use arrayvec::ArrayVec;
-use cgmath::{prelude::*, vec3, vec4, Matrix4, Point3};
+use cgmath::{prelude::*, vec3, vec4, Matrix4, Point3, Rad, Vector4};
 use std::{f32::consts::PI, ops::Range};
 
 use crate::utils::{
@@ -23,6 +23,7 @@ pub struct TerrainRast {
     size: usize,
     beams: Vec<BeamInfo>,
     eye: Point3<f32>,
+    samples: Vec<f32>,
 }
 
 #[derive(Debug)]
@@ -30,6 +31,9 @@ struct BeamInfo {
     azimuth: Range<f32>,
     inclination: Range<f32>,
     num_samples: usize,
+    samples_start: usize,
+    /// Maps from a beam space to a beam depth buffer (`x = 0`, `y ∈ [0, 1]`)
+    projection: Matrix4<f32>,
 }
 
 impl Default for BeamInfo {
@@ -38,6 +42,8 @@ impl Default for BeamInfo {
             azimuth: 0.0..0.0,
             inclination: 0.0..0.0,
             num_samples: 0,
+            samples_start: 0,
+            projection: Matrix4::zero(),
         }
     }
 }
@@ -53,6 +59,7 @@ impl TerrainRast {
             size: resolution,
             beams: Vec::with_capacity(resolution * 2),
             eye: Point3::new(0.0, 0.0, 0.0),
+            samples: Vec::new(),
         }
     }
 
@@ -186,7 +193,7 @@ impl TerrainRast {
                     azimuth: last_angle..angle,
                     inclination: [range.start, last_range.start].min()
                         ..[range.end, last_range.end].max(),
-                    num_samples: 0, // TODO
+                    ..BeamInfo::default()
                 });
 
                 last_angle = angle;
@@ -198,14 +205,56 @@ impl TerrainRast {
             }
         }
 
-        // TODO
+        for beam in self.beams.iter_mut() {
+            // Project the endpoints of the primary latitudinal line
+            let theta = (beam.azimuth.start + beam.azimuth.end) * 0.5;
+            let p1 = m * spherical_to_cartesian(theta, beam.inclination.start).extend(0.0);
+            let p2 = m * spherical_to_cartesian(theta, beam.inclination.end).extend(0.0);
+            let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+
+            let diff = (p2 - p1).truncate();
+            let len = diff.magnitude();
+            let chebyshev_len = [diff.x.abs(), diff.y.abs()].max();
+
+            // The preliminary sample count
+            beam.num_samples = (chebyshev_len * (self.size * 2) as f32).ceil() as usize;
+
+            // Create a beam projection matrix
+            let projection =
+                // Reorient the output so that `p2 - p1` aligns to the Y axis
+                Matrix4::from_cols(
+                    Vector4::zero(),
+                    vec4(diff.x, diff.y, 0.0, 0.0) * (1.0 / (len * len)),
+                    vec4(0.0, 0.0, 1.0, 0.0),
+                    vec4(0.0, 0.0, 0.0, 1.0),
+                ).transpose() *
+                // Move `p1` to the origin
+                Matrix4::from_translation(vec3(-p1.x, -p1.y, 0.0)) *
+                // The camera matrix
+                m *
+                // Beam space to model space
+                Matrix4::from_angle_z(Rad(theta)) *
+                Matrix4::from_translation(vec3(-self.eye.x, -self.eye.y, 0.0));
+
+            beam.projection = projection;
+        }
+
+        // FIMXE: Adjust sample counts to hard-limit the total number?
+
+        let mut samples_start = 0;
+        for beam in self.beams.iter_mut() {
+            // Allocate a region for the beam depth buffer
+            beam.samples_start = samples_start;
+            samples_start += beam.num_samples;
+        }
+        self.samples.resize(samples_start, 0.0);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cgmath::{assert_abs_diff_eq, vec3, Perspective, Point3};
+    use cgmath::{assert_abs_diff_eq, vec2, vec3, Perspective, Point3};
 
     #[test]
     fn set_camera_matrix_sanity() {
@@ -230,5 +279,16 @@ mod tests {
 
         dbg!(&rast.beams);
         dbg!(rast.beams.len());
+
+        for beam in rast.beams.iter() {
+            let mut p1 = spherical_to_cartesian(0.0, beam.inclination.start).extend(0.0);
+            let mut p2 = spherical_to_cartesian(0.0, beam.inclination.end).extend(0.0);
+
+            let (p1, p2) = (beam.projection * p1, beam.projection * p2);
+            let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+
+            assert_abs_diff_eq!(p1, Point3::new(0.0, 0.0, p1.z), epsilon = 0.001);
+            assert_abs_diff_eq!(p2, Point3::new(0.0, 1.0, p1.z), epsilon = 0.001);
+        }
     }
 }
