@@ -81,25 +81,33 @@ impl TerrainRast {
         const VIEWPORT_VERTICES: [[f32; 2]; 4] =
             [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]];
 
+        // The viewport sizes used for azimuth range calculation and
+        // inclination range calculation must differ slightly. This fixes
+        // instability when a vanishing point is near the viewport border.
+        // I believe the performance impact is not large since this does not
+        // change the number of beam-casting operations, which has been shown
+        // to be a dominant factor in my previous work.
+        let safe_margin = 4.0 / self.size as f32;
+
         // Find the normal vectors of the viewport border edges in the model space.
         // Note that a normal vector is a bivector, thus must be multiplied with
         // the inverse transpose of a matrix.
         let m_inv = m.invert().unwrap();
         let j1 =
-            jacobian_from_projection_matrix(m_inv, Point3::new(-1.0, -1.0, 0.5).to_homogeneous())
+            jacobian_from_projection_matrix(m_inv, Point3::new(-(1.0 + safe_margin), -(1.0 + safe_margin), 0.5).to_homogeneous())
                 .transpose()
                 .invert()
                 .unwrap();
         let j2 =
-            jacobian_from_projection_matrix(m_inv, Point3::new(1.0, 1.0, 0.5).to_homogeneous())
+            jacobian_from_projection_matrix(m_inv, Point3::new(1.0 + safe_margin, 1.0 + safe_margin, 0.5).to_homogeneous())
                 .transpose()
                 .invert()
                 .unwrap();
         let ms_viewport_normals = [
-            j1 * vec3(0.0, -1.0, 0.0),
-            j2 * vec3(1.0, 0.0, 0.0),
-            j2 * vec3(0.0, 1.0, 0.0),
-            j1 * vec3(-1.0, 0.0, 0.0),
+            j1 * vec3(0.0, -(1.0 + safe_margin), 0.0),
+            j2 * vec3(1.0 + safe_margin, 0.0, 0.0),
+            j2 * vec3(0.0, 1.0 + safe_margin, 0.0),
+            j1 * vec3(-(1.0 + safe_margin), 0.0, 0.0),
         ];
 
         // They must be directed outside
@@ -113,8 +121,9 @@ impl TerrainRast {
                 .map(|normal| inclination_intersecting_half_space(azimuth, -*normal));
 
             // Take intersectons of all ranges
-            let range: Range<f32> = ranges.next().unwrap().into();
-            ranges.fold(range, |x, y| y & &x)
+            let mut range: Range<f32> = ranges.next().unwrap().into();
+            range = ranges.fold(range, |x, y| y & &x);
+            range.start..[range.start, range.end].max()
         };
 
         // Calculate the range of azimuth angles visible within the viewport.
@@ -133,9 +142,17 @@ impl TerrainRast {
             .collect();
 
         let azimuth_range = {
+            use std::f32::NAN;
+
             let mut angles: ArrayVec<[_; 4]> = ms_viewport_vertex_dirs
                 .iter()
-                .map(|dir| dir.y.atan2(dir.x))
+                .map(|dir| {
+                    if dir.x == 0.0 && dir.y == 0.0 {
+                        NAN
+                    } else {
+                        dir.y.atan2(dir.x)
+                    }
+                })
                 .collect();
 
             // Wrap-around correction: The differences in the azimuth angles of
@@ -145,12 +162,20 @@ impl TerrainRast {
                 angles[i] += ((angles[i - 1] - angles[i]) * (1.0 / PI2)).round() * PI2;
             }
 
-            if (angles[3] - angles[0]).abs() >= PI {
-                0.0..PI2
-            } else {
+            if (angles[3] - angles[0]).abs() <= PI {
                 angles.min()..angles.max()
+            } else {
+                0.0..PI2
             }
         };
+
+        debug_assert!(
+            azimuth_range.start.is_finite()
+                && azimuth_range.end.is_finite()
+                && azimuth_range.start <= azimuth_range.end,
+            "{:?}",
+            azimuth_range
+        );
 
         // Distribute beams in `azimuth_range`
         {
@@ -175,6 +200,11 @@ impl TerrainRast {
                 // Adjust the interval of latitudinal lines to match the output
                 // image resolution.
                 let width = 2.0 / self.size as f32 / ((speed1 + speed2) * 0.5);
+                debug_assert!(
+                    width.is_finite(),
+                    "{:?}",
+                    (m, last_angle, last_range, d1, d2, width)
+                );
 
                 let end;
                 let mut angle;
@@ -215,6 +245,12 @@ impl TerrainRast {
             let diff = (p2 - p1).truncate();
             let len = diff.magnitude();
             let chebyshev_len = [diff.x.abs(), diff.y.abs()].max();
+
+            // Reject zero-length beams
+            if (diff.x == 0.0 && diff.y == 0.0) || len == 0.0 || chebyshev_len == 0.0 {
+                beam.num_samples = 0;
+                continue;
+            }
 
             // The preliminary sample count
             beam.num_samples = (chebyshev_len * 0.5 * self.size as f32).ceil() as usize;
