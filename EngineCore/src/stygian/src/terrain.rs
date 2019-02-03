@@ -153,6 +153,8 @@ impl RowDownsampler {
                 }
 
                 out.push(start..z as _);
+            } else {
+                z += 1;
             }
         }
 
