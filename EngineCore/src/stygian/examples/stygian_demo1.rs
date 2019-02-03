@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{prelude::*, vec3, Matrix3, Matrix4, Vector3};
+use cgmath::{prelude::*, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
 use glium::{
     backend::{Context, Facade},
     glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
@@ -14,6 +14,7 @@ use stygian;
 
 mod lib {
     pub mod cube;
+    pub mod linedraw;
     pub mod vxl2mesh;
 }
 
@@ -270,6 +271,8 @@ struct Renderer {
     sty_terrain: stygian::Terrain,
     sty_rast: stygian::TerrainRast,
 
+    linedraw: lib::linedraw::LineDraw,
+
     fps_counter: PerfCounter,
 }
 
@@ -334,6 +337,8 @@ impl Renderer {
             sty_terrain,
             sty_rast,
 
+            linedraw: lib::linedraw::LineDraw::new(facade),
+
             fps_counter: PerfCounter::new(),
         }
     }
@@ -343,8 +348,12 @@ impl Renderer {
 
         target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 1.0);
 
+        let vp_matrix = Matrix4::from_nonuniform_scale(0.9, 0.9, 1.0);
+
+        let camera_matrix = vp_matrix * params.camera_matrix;
+
         let uniforms = uniform! {
-            u_matrix: Into::<[[f32; 4]; 4]>::into(params.camera_matrix),
+            u_matrix: Into::<[[f32; 4]; 4]>::into(camera_matrix),
         };
 
         let params = glium::DrawParameters {
@@ -366,6 +375,27 @@ impl Renderer {
             )
             .unwrap();
 
+        self.linedraw.push(
+            [0, 0, 0, 255],
+            [
+                [-1.0, -1.0],
+                [1.0, -1.0],
+                [1.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, -1.0],
+            ]
+            .iter()
+            .map(|x| trans_point2(vp_matrix, *x)),
+        );
+
+        self.linedraw.flush(target);
+
         self.fps_counter.log(1.0);
     }
+}
+
+fn trans_point2(m: Matrix4<f32>, p: impl Into<Point2<f32>>) -> Point2<f32> {
+    let p = p.into();
+    let p = m.transform_point(Point3::new(p.x, p.y, 0.0));
+    Point2::new(p.x, p.y)
 }
