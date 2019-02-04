@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{prelude::*, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
+use cgmath::{conv::array4x4, prelude::*, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
 use glium::{
     backend::{Context, Facade},
     glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
@@ -376,7 +376,7 @@ impl Renderer {
         let camera_matrix = vp_matrix * params.camera_matrix;
 
         let uniforms = uniform! {
-            u_matrix: Into::<[[f32; 4]; 4]>::into(camera_matrix),
+            u_matrix: array4x4(camera_matrix),
         };
 
         let params = glium::DrawParameters {
