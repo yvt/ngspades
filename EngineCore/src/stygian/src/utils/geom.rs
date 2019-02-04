@@ -136,6 +136,21 @@ pub fn spherical_to_cartesian_d_azimuth(azimuth: f32, inclination: f32) -> Vecto
     vec3(-a_sin * i_cos, a_cos * i_cos, 0.0)
 }
 
+/// Find a 3x3 matrix that unprojects a point on a viewport space to infinity.
+///
+/// `m` is a 4x4 matrix that transforms a 3D point from a viewport space to a
+/// model space. Let `Unproject([x y])` be a function that finds `z` such that
+/// `m * [x y z 1] == [x' y' z' 0]` and returns `[x' y' z']`. This function
+/// returns another matrix `U` representing this operation, i.e.,
+/// `U * [x y 1] = [x' y' z']`.
+pub fn unprojector_xy_to_infinity(m: Matrix4<f32>) -> Matrix3<f32> {
+    let t = 1.0 / m.z.w;
+    let x = m.x - m.z * (m.x.w * t);
+    let y = m.y - m.z * (m.y.w * t);
+    let w = m.w - m.z * (m.w.w * t);
+    Matrix3::from_cols(x.truncate(), y.truncate(), w.truncate())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,5 +231,24 @@ mod tests {
             0.0,
             epsilon = 0.1
         );
+    }
+
+    #[test]
+    fn unprojector_xy_to_infinity_sanity() {
+        let p_ws = vec3(0.5, 0.8, 1.3).normalize(); // point at infinity
+        // FIXME: Points are unprojected to the opposite direction when this `-`
+        //        is removed. Investigate why
+        let m = -Matrix4::new(
+            -1.902, 0.6093, -0.920, -1.051, -0.388, 0.4639, -1.370, -1.007, 1.3520, 1.9933, -1.944,
+            0.9541, 1.7110, -1.205, 1.3620, 0.7418,
+        );
+        let m_inv = dbg!(m.invert().unwrap());
+        let m_unproj = dbg!(unprojector_xy_to_infinity(m_inv));
+
+        let p = dbg!(m * p_ws.extend(0.0));
+        let p = Point3::from_homogeneous(p);
+
+        let p_ws2 = dbg!(m_unproj * vec3(p.x, p.y, 1.0));
+        assert_abs_diff_eq!(p_ws2.normalize(), p_ws, epsilon = 0.001);
     }
 }

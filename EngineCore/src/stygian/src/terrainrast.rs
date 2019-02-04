@@ -15,7 +15,7 @@ use crate::{
         geom::{
             inclination_intersecting_half_space, intersection_of_latitudinal_line_and_plane,
             jacobian_from_projection_matrix, spherical_to_cartesian,
-            spherical_to_cartesian_d_azimuth,
+            spherical_to_cartesian_d_azimuth, unprojector_xy_to_infinity,
         },
     },
 };
@@ -141,18 +141,14 @@ impl TerrainRast {
         };
 
         // Calculate the range of azimuth angles visible within the viewport.
+        //
+        // Transform a line through `[±1, ±1, -1]` and `[±1, ±1, 1]`.
+        // A half-line is obtained. Find where this half-line intersects
+        // with an infinitely large sphere.
+        let m_unproj = unprojector_xy_to_infinity(m_inv);
         let ms_viewport_vertex_dirs: ArrayVec<[_; 4]> = (0..4)
-            .map(|i| {
-                // Transform a line through `[±1, ±1, -1]` and `[±1, ±1, 1]`.
-                // A half-line is obtained. Find where this half-line intersects
-                // with an infinitely large sphere.
-                let vert = VIEWPORT_VERTICES[i];
-                let mut v = m_inv * vec4(vert[0], vert[1], 0.0, 1.0);
-                let z = -v.w / m_inv.z.w; // find `z` that makes transformed `w` zero
-                v += z * m_inv.z;
-                debug_assert!(v.w.abs() < 0.0001);
-                v.truncate()
-            })
+            .map(|i| VIEWPORT_VERTICES[i])
+            .map(|[x, y]| m_unproj * vec3(x, y, 1.0))
             .collect();
 
         let azimuth_range = {
@@ -313,10 +309,8 @@ impl TerrainRast {
                 let binormal = vec3(-theta.sin(), theta.cos(), 0.0);
 
                 let unproject = |p: Point3<f32>| {
-                    let mut v = m_inv * vec4(p[0], p[1], 0.0, 1.0);
-                    let z = -v.w / m_inv.z.w; // find `z` that makes transformed `w` zero
-                    v += z * m_inv.z;
-                    v.truncate()
+                    // Discard the Z coordinate and project it to infinity again
+                    m_unproj * vec3(p.x, p.y, 1.0)
                 };
 
                 // Find a plane containing the viewport-space point `p` and
