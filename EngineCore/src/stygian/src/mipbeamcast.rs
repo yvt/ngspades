@@ -242,22 +242,21 @@ pub fn mipbeamcast(
         let portal_x2;
         let portal_y1;
         let portal_y2;
-        let cur_x = cell.pos.x << cell.mip;
-        let cur_y = cell.pos.y << cell.mip;
         let top = (cell.pos.y << cell.mip) - 1;
         let bottom = (cell.pos.y + 1) << cell.mip;
         let right = (cell.pos.x + 1) << cell.mip;
 
+
         if new_dy1 < 0 {
             // Bottom
             portal_y1 = bottom;
-            portal_x1 = cur_x + (fix_mul(dy1, islope1) >> F);
+            portal_x1 = right - fix2int_ceil(dx1 - fix_mul(dy1, islope1));
 
             dx1 -= fix_mul(dy1, islope1);
             dy1 = 0;
         } else {
             // Right
-            portal_y1 = cur_y + (((1 << F << cell.mip) - new_dy1) >> F);
+            portal_y1 = bottom - fix2int_ceil(new_dy1);
             portal_x1 = right;
 
             dx1 = 0;
@@ -275,13 +274,13 @@ pub fn mipbeamcast(
                 // Bottom
                 portal_y2 = bottom;
             }
-            portal_x2 = cur_x + (fix_mul(dy2, islope2) >> F);
+            portal_x2 = right - fix2int_ceil(dx2 - fix_mul(dy2, islope2));
 
             dx2 -= fix_mul(dy2, islope2);
             dy2 = 0;
         } else {
             // Right
-            portal_y2 = cur_y + (((1 << F << cell.mip) - new_dy2) >> F);
+            portal_y2 = bottom - fix2int_ceil(new_dy2);
             portal_x2 = right;
 
             dx2 = 0;
@@ -308,7 +307,7 @@ pub fn mipbeamcast(
 
         // Calculate the displacement and adjust the state variables
         let dx = ((new_cell.pos.x + 1) << new_cell.mip) - ((cell.pos.x + 1) << cell.mip);
-        debug_assert!(dx >= 0);
+        debug_assert!(dx >= 0, "{:?}", (size, num_mip_levels, start, dir1, dir2));
         dx1 += dx << F;
         dx2 += dx << F;
 
@@ -343,6 +342,10 @@ fn fix_mul(x: i32, y: i32) -> i32 {
     (((x as i64) * (y as i64)) >> F) as i32
 }
 
+fn fix2int_ceil(x: i32) -> i32 {
+    (x + (1 << F) - 1) >> F
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -360,6 +363,28 @@ mod tests {
             mipbeamcast(vec2(16, 16), 5, start, dir1, dir2, |incidence, preproc| {
                 dbg!(incidence.cell(preproc));
             });
+        }
+    }
+
+    #[test]
+    fn sanity2() {
+        let patterns = vec![(
+            vec2(256.0, 256.0),
+            vec2(1.0, 0.936591),
+            vec2(1.0, 0.9071967),
+        )];
+        for (start, dir1, dir2) in patterns {
+            dbg!((start, dir1, dir2));
+            mipbeamcast(
+                vec2(512, 512),
+                10,
+                start,
+                dir1,
+                dir2,
+                |incidence, preproc| {
+                    dbg!(incidence.cell(preproc));
+                },
+            );
         }
     }
 }
