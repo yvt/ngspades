@@ -111,13 +111,13 @@ pub fn mipbeamcast(
     };
 
     // `dir1` must be in the SE-Right octant
-    debug_assert!(dir1.x >= 0.0);
-    debug_assert!(dir1.y >= 0.0);
-    debug_assert!(dir1.y <= dir1.x);
+    debug_assert!(dir1.x >= 0.0, "{:?}", (dir1, dir2));
+    debug_assert!(dir1.y >= 0.0, "{:?}", (dir1, dir2));
+    debug_assert!(dir1.y <= dir1.x, "{:?}", (dir1, dir2));
 
     // `dir2` must be in one of the three octants at this point
-    debug_assert!(dir2.x > 0.0);
-    debug_assert!(dir2.x + dir2.y > 0.0);
+    debug_assert!(dir2.x >= 0.0, "{:?}", (dir1, dir2));
+    debug_assert!(dir2.x + dir2.y >= 0.0, "{:?}", (dir1, dir2));
 
     // Rescale `dir1` and `dir2`
     dir1 = vec2(1.0, dir1.y / dir1.x);
@@ -227,10 +227,10 @@ pub fn mipbeamcast(
     };
 
     loop {
-        debug_assert!(dx1 >= 0);
-        debug_assert!(dy1 >= 0);
-        debug_assert!(dx2 >= 0);
-        debug_assert!(dy2 >= 0);
+        debug_assert!(dx1 >= 0, "{:?}", (size, num_mip_levels, start, dir1, dir2));
+        debug_assert!(dy1 >= 0, "{:?}", (size, num_mip_levels, start, dir1, dir2));
+        debug_assert!(dx2 >= 0, "{:?}", (size, num_mip_levels, start, dir1, dir2));
+        debug_assert!(dy2 >= 0, "{:?}", (size, num_mip_levels, start, dir1, dir2));
 
         // Find the portal (the edge to exit the current cell through).
         // A portal is a polyline and (by definiton) has two endpoints.
@@ -242,10 +242,10 @@ pub fn mipbeamcast(
         let portal_x2;
         let portal_y1;
         let portal_y2;
-        let top = (cell.pos.y << cell.mip) - 1;
+        let top_border = (cell.pos.y << cell.mip) - 1;
+        let top = cell.pos.y << cell.mip;
         let bottom = (cell.pos.y + 1) << cell.mip;
         let right = (cell.pos.x + 1) << cell.mip;
-
 
         if new_dy1 < 0 {
             // Bottom
@@ -266,7 +266,7 @@ pub fn mipbeamcast(
         if new_dy2 < 0 {
             if slope2_neg {
                 // Top
-                portal_y2 = top;
+                portal_y2 = top_border;
 
                 // The portal includes the right edge. Make sure to take it into account
                 portal_x1 = max(portal_x1, right);
@@ -280,7 +280,11 @@ pub fn mipbeamcast(
             dy2 = 0;
         } else {
             // Right
-            portal_y2 = bottom - fix2int_ceil(new_dy2);
+            if slope2_neg {
+                portal_y2 = top + fix2int_floor(new_dy2);
+            } else {
+                portal_y2 = bottom - fix2int_ceil(new_dy2);
+            }
             portal_x2 = right;
 
             dx2 = 0;
@@ -307,7 +311,6 @@ pub fn mipbeamcast(
 
         // Calculate the displacement and adjust the state variables
         let dx = ((new_cell.pos.x + 1) << new_cell.mip) - ((cell.pos.x + 1) << cell.mip);
-        debug_assert!(dx >= 0, "{:?}", (size, num_mip_levels, start, dir1, dir2));
         dx1 += dx << F;
         dx2 += dx << F;
 
@@ -342,6 +345,10 @@ fn fix_mul(x: i32, y: i32) -> i32 {
     (((x as i64) * (y as i64)) >> F) as i32
 }
 
+fn fix2int_floor(x: i32) -> i32 {
+    x >> F
+}
+
 fn fix2int_ceil(x: i32) -> i32 {
     (x + (1 << F) - 1) >> F
 }
@@ -368,11 +375,23 @@ mod tests {
 
     #[test]
     fn sanity2() {
-        let patterns = vec![(
-            vec2(256.0, 256.0),
-            vec2(1.0, 0.936591),
-            vec2(1.0, 0.9071967),
-        )];
+        let patterns = vec![
+            (
+                vec2(256.0, 256.0),
+                vec2(1.0, 0.936591),
+                vec2(1.0, 0.9071967),
+            ),
+            (
+                vec2(256.0, 256.0),
+                vec2(1.0, 0.87908727),
+                vec2(1.0, 0.8506685),
+            ),
+            (
+                vec2(256.8530883, 256.25552368),
+                vec2(1.0, 0.021339143),
+                vec2(1.0, -0.00000017484555),
+            ),
+        ];
         for (start, dir1, dir2) in patterns {
             dbg!((start, dir1, dir2));
             mipbeamcast(
