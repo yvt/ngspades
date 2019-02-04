@@ -5,7 +5,7 @@
 //
 //! Terrain rasterizer.
 use arrayvec::ArrayVec;
-use cgmath::{prelude::*, vec3, vec4, Matrix4, Point3, Rad, Vector4};
+use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector4};
 use std::{f32::consts::PI, ops::Range};
 
 use crate::{
@@ -28,6 +28,9 @@ pub struct TerrainRast {
     beams: Vec<BeamInfo>,
     eye: Point3<f32>,
     samples: Vec<f32>,
+    camera_matrix: Matrix4<f32>,
+    camera_matrix_inv: Matrix4<f32>,
+    camera_matrix_unproj: Matrix3<f32>,
 }
 
 #[derive(Debug)]
@@ -65,6 +68,9 @@ impl TerrainRast {
             beams: Vec::with_capacity(resolution * 2),
             eye: Point3::new(0.0, 0.0, 0.0),
             samples: Vec::new(),
+            camera_matrix: Matrix4::zero(),
+            camera_matrix_inv: Matrix4::zero(),
+            camera_matrix_unproj: Matrix3::zero(),
         }
     }
 
@@ -76,6 +82,8 @@ impl TerrainRast {
 
     /// `set_camera_matrix` with tracing.
     pub fn set_camera_matrix_trace(&mut self, m: Matrix4<f32>, mut trace: impl Trace) {
+        self.camera_matrix = m;
+
         // Find the camera's position `[x y z]` by solving the equation
         // `M*[x y z 1] == [0 0 z' 0]` where `z'` is an arbitrary real number
         // and `M` is the camera matrix.
@@ -103,6 +111,7 @@ impl TerrainRast {
         // Note that a normal vector is a bivector, thus must be multiplied with
         // the inverse transpose of a matrix.
         let m_inv = m.invert().unwrap();
+        self.camera_matrix_inv = m_inv;
         let j1 = jacobian_from_projection_matrix(
             m_inv,
             Point3::new(-(1.0 + safe_margin), -(1.0 + safe_margin), 0.5).to_homogeneous(),
@@ -146,6 +155,7 @@ impl TerrainRast {
         // A half-line is obtained. Find where this half-line intersects
         // with an infinitely large sphere.
         let m_unproj = unprojector_xy_to_infinity(m_inv);
+        self.camera_matrix_unproj = m_unproj;
         let ms_viewport_vertex_dirs: ArrayVec<[_; 4]> = (0..4)
             .map(|i| VIEWPORT_VERTICES[i])
             .map(|[x, y]| m_unproj * vec3(x, y, 1.0))
