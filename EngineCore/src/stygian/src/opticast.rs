@@ -78,6 +78,14 @@ pub fn opticast(
         dir1,
         dir2,
         |incidence, preproc| {
+            // Localize captured variables. This does have an impact on the
+            // generated assembly code.
+            let output_depth = &mut output_depth[..];
+            let skip_buffer = &mut skip_buffer[..];
+            let (eye, projection) = (eye, projection);
+            let dir_primary = dir_primary;
+            let (incl_tan1, incl_tan2) = (incl_tan1, incl_tan2);
+
             // TODO: Early-out by Z range
             let cell = incidence.cell(preproc);
 
@@ -98,6 +106,8 @@ pub fn opticast(
 
             // Rasterize spans
             for span in row.iter() {
+                // TODO: Calculations done here fail to be vectorized - figure
+                //       out how to make it SIMD-friendly or use SIMD explicitly
                 // FoV clip
                 let z1 = [span.start as f32, eye.z + incl_tan1 * dist].max();
                 let z2 = [span.end as f32, eye.z + incl_tan2 * dist].min();
