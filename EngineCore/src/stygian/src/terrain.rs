@@ -29,7 +29,7 @@ pub(crate) struct TerrainLevel {
     /// The number of elements of the top-level `Vec` is equal to
     /// `1 << (size_bits.x - level) << (size_bits.y - level)`.
     /// Elements are indexed by a row's X and Y coordinates using the
-    /// formula: `x + y * size().x`.
+    /// formula: `x + y * (size().x >> level)`.
     ///
     /// Each element of the top-level `Vec` is a `Vec` containing zero or more
     /// `Span`s in a row. Spans must be sorted by their Z coordinates in an

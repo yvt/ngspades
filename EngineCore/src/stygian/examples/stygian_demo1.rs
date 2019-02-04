@@ -209,15 +209,18 @@ impl State {
         let proj: Matrix4<f32> = PerspectiveFov {
             fovy: Rad(1.0),
             aspect,
-            near: 0.01,
-            far: 1000.0,
+            near: 0.5,
+            far: 500.0,
         }
         .into();
 
         let view = self.view_matrix();
 
         RenderParams {
-            camera_matrix: proj * view,
+            camera_matrix: Matrix4::from_translation(vec3(0.0, 0.0, 1.0))
+                * Matrix4::from_nonuniform_scale(1.0, 1.0, -1.0)
+                * proj
+                * view,
         }
     }
 }
@@ -350,7 +353,7 @@ impl Renderer {
         // Set up the Stygian internal state tracing for visualization
         use std::cell::RefCell;
         struct Log {
-            samples: Vec<[Vector3<f32>; 4]>,
+            samples: Vec<([Vector3<f32>; 4], f32)>,
         }
         let mut log = RefCell::new(Log {
             samples: Vec::new(),
@@ -362,8 +365,8 @@ impl Renderer {
             fn wants_opticast_sample(&mut self) -> bool {
                 true
             }
-            fn terrainrast_sample(&mut self, vertices: &[Vector3<f32>; 4]) {
-                self.0.borrow_mut().samples.push(*vertices);
+            fn opticast_sample(&mut self, vertices: &[Vector3<f32>; 4], depth: f32) {
+                self.0.borrow_mut().samples.push((*vertices, depth));
             }
         }
 
@@ -375,7 +378,7 @@ impl Renderer {
             .rasterize_trace(&self.sty_terrain, &mut self.sty_depth, Tracer(&log));
 
         // Render a scene
-        target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 1.0);
+        target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 0.0);
 
         let vp_matrix = Matrix4::from_nonuniform_scale(0.9, 0.9, 1.0);
 
@@ -387,7 +390,7 @@ impl Renderer {
 
         let params = glium::DrawParameters {
             depth: glium::Depth {
-                test: glium::DepthTest::IfLess,
+                test: glium::DepthTest::IfMore,
                 write: true,
                 ..Default::default()
             },
@@ -418,16 +421,22 @@ impl Renderer {
             .map(|x| trans_point2(vp_matrix, *x)),
         );
 
-        for sample in log.get_mut().samples.iter() {
+        for (verts, depth) in log.get_mut().samples.iter() {
             use array::Array4;
 
-            let verts = sample.map(|v| {
+            let verts = verts.map(|v| {
                 let p = camera_matrix * v.extend(0.0);
                 Point2::new(p.x / p.w, p.y / p.w)
             });
 
+            // Make polygons slightly smaller
+            let verts = verts.map(|v| v + (verts[0] - v) * 0.1);
+
+            // Color by depth
+            let color = scalar_to_color(1.0 - 0.1 / (*depth + 0.1));
+
             self.linedraw.push(
-                [255, 255, 0, 255],
+                color,
                 [verts[0], verts[1], verts[2], verts[3], verts[0]]
                     .iter()
                     .cloned(),
@@ -444,4 +453,24 @@ fn trans_point2(m: Matrix4<f32>, p: impl Into<Point2<f32>>) -> Point2<f32> {
     let p = p.into();
     let p = m.transform_point(Point3::new(p.x, p.y, 0.0));
     Point2::new(p.x, p.y)
+}
+
+fn scalar_to_color(x: f32) -> [u8; 4] {
+    //   0 1 2 3 4 5 6 7
+    // R   1 1       1 1
+    // G     1 1 1     1
+    // B         1 1 1 1
+    let r_map = [0, 1, 1, 0, 0, 0, 1, 1, 1];
+    let g_map = [0, 0, 1, 1, 1, 0, 0, 1, 1];
+    let b_map = [0, 0, 0, 0, 1, 1, 1, 1, 1];
+
+    let x = x.max(0.0).min(1.0) * 7.0;
+    let i = x as usize;
+    let f = x - i as f32;
+
+    let r = r_map[i] as f32 * (1.0 - f) + r_map[i + 1] as f32 * f;
+    let g = g_map[i] as f32 * (1.0 - f) + g_map[i + 1] as f32 * f;
+    let b = b_map[i] as f32 * (1.0 - f) + b_map[i + 1] as f32 * f;
+
+    [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, 255]
 }

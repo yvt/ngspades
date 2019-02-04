@@ -18,7 +18,6 @@
 //! densely arranged.
 //! If you use a traditional setup, you might have to manually modify a matrix
 //! to reverse Z values before passing it to a library function.
-
 mod debug;
 mod depthimage;
 mod mipbeamcast;
@@ -43,3 +42,5 @@ pub mod io {
     pub mod ngsterrain;
 }
 
+/// The depth value of the far plane.
+const DEPTH_FAR: f32 = 0.0;

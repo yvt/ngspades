@@ -14,11 +14,17 @@ use cgmath::Vector3;
 ///
 /// The demo program uses this trait to visualize the inner workings.
 pub trait Trace: Clone {
+    /// Return whether calls to `terrainrast_sample` can be skipped.
+    fn wants_terrainrast_sample(&mut self) -> bool { false }
+
+    /// Called for every generated terrainrast sample.
+    fn terrainrast_sample(&mut self, _vertices: &[Vector3<f32>; 4]) {}
+
     /// Return whether calls to `opticast_sample` can be skipped.
     fn wants_opticast_sample(&mut self) -> bool { false }
 
-    /// Called for every terrainrast sample generated.
-    fn terrainrast_sample(&mut self, _vertices: &[Vector3<f32>; 4]) {}
+    /// Called for every rasterized terrainrast sample.
+    fn opticast_sample(&mut self, _vertices: &[Vector3<f32>; 4], _depth: f32) {}
 }
 
 /// `Trace` implementation that does nothing.

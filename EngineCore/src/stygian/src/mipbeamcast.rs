@@ -40,7 +40,7 @@ pub struct MbcInputPreproc {
 }
 
 impl MbcIncidence {
-    fn cell(&self, preproc: &MbcInputPreproc) -> MbcCell {
+    pub fn cell(&self, preproc: &MbcInputPreproc) -> MbcCell {
         let mut cell = self.cell_raw;
         if preproc.flip_x {
             cell.pos.x = (preproc.size.x as i32 >> cell.mip) - 1 - cell.pos.x;
