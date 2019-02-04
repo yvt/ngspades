@@ -22,6 +22,7 @@
 mod debug;
 mod depthimage;
 mod mipbeamcast;
+mod opticast;
 mod terrain;
 mod terrainrast;
 
@@ -41,3 +42,4 @@ mod utils {
 pub mod io {
     pub mod ngsterrain;
 }
+

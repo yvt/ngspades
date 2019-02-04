@@ -76,7 +76,15 @@ The precise mapping from the $i$-th pixel in a beam depth buffer of size $N_B$ t
 
 ## Reprojection
 
-Finally, beam depth buffers are reprojected to the output depth image.
+Finally, beam depth buffers are reprojected to the output depth image. There are several possible strategies based on the fundamental loop structure.
+
+*Pixel*: The output pixels are iterated over and on each pixel one or more samples intersecting the pixel are sought. While this in principle provides a good writing memory access pattern, this is unsuitable for the current problem because the beam distribution is uneven and a binary search would be required to find a beam.
+
+*Beam, Pixel*: Each beam is rasterized. Beams are *textured* with the depth values from the beam's samples. The requirement is a mapping from screen-space coordinates to beam depth buffer locations.
+
+*Beam, Sample, Pixel*: Each sample is projected to the viewport and then rasterized. Since the overhead associated with rasterizing each polygon is somewhat high, it might be worth considering to fill an axis-aligned bounding box instead of filling the exact shape of a polygon.
+
+The output is a downsampled depth image, i.e., each pixel's depth value must not be greater than the minimum value of actual depth values inside the pixel from an infinite-resolution render output. If a pixel is covered by multiple samples, they must be coalesced into one depth value by choosing the smallest depth value. Since it's guaranteed that samples covers the entirely of an output image, this can be implemented in rasterization schemes by the use of a *minimum value* blending mode.
 
 # 2D beam-casting
 

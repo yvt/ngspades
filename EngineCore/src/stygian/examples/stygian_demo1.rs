@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{conv::array4x4, prelude::*, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
+use cgmath::{conv::array4x4, prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
 use glium::{
     backend::{Context, Facade},
     glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
@@ -270,6 +270,7 @@ struct Renderer {
 
     sty_terrain: stygian::Terrain,
     sty_rast: stygian::TerrainRast,
+    sty_depth: stygian::DepthImage,
 
     linedraw: lib::linedraw::LineDraw,
 
@@ -325,6 +326,7 @@ impl Renderer {
         println!("Initializing Stygian");
         let sty_terrain = stygian::Terrain::from_ngsterrain(&terrain).unwrap();
         let sty_rast = stygian::TerrainRast::new(64);
+        let sty_depth = stygian::DepthImage::new(vec2(64, 64));
 
         Self {
             context,
@@ -336,6 +338,7 @@ impl Renderer {
 
             sty_terrain,
             sty_rast,
+            sty_depth,
 
             linedraw: lib::linedraw::LineDraw::new(facade),
 
@@ -367,6 +370,9 @@ impl Renderer {
         // Update Stygian
         self.sty_rast
             .set_camera_matrix_trace(params.camera_matrix, Tracer(&log));
+
+        self.sty_rast
+            .rasterize_trace(&self.sty_terrain, &mut self.sty_depth, Tracer(&log));
 
         // Render a scene
         target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 1.0);

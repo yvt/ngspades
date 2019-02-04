@@ -6,10 +6,13 @@
 //! Terrain rasterizer.
 use arrayvec::ArrayVec;
 use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector4};
-use std::{f32::consts::PI, ops::Range};
+use std::{cmp::min, f32::consts::PI, ops::Range};
 
 use crate::{
     debug::{NoTrace, Trace},
+    depthimage::DepthImage,
+    opticast::opticast,
+    terrain::Terrain,
     utils::{
         float::FloatSetExt,
         geom::{
@@ -31,6 +34,7 @@ pub struct TerrainRast {
     camera_matrix: Matrix4<f32>,
     camera_matrix_inv: Matrix4<f32>,
     camera_matrix_unproj: Matrix3<f32>,
+    skip_buffer: Vec<u32>,
 }
 
 #[derive(Debug)]
@@ -71,6 +75,7 @@ impl TerrainRast {
             camera_matrix: Matrix4::zero(),
             camera_matrix_inv: Matrix4::zero(),
             camera_matrix_unproj: Matrix3::zero(),
+            skip_buffer: Vec::new(),
         }
     }
 
@@ -305,6 +310,11 @@ impl TerrainRast {
         }
         self.samples.resize(samples_start, 0.0);
 
+        self.skip_buffer.resize(
+            self.beams.iter().map(|b| b.num_samples).max().unwrap_or(0) + 1,
+            0,
+        );
+
         if trace.wants_opticast_sample() {
             for beam in self.beams.iter() {
                 if beam.num_samples == 0 {
@@ -350,6 +360,32 @@ impl TerrainRast {
         }
 
         // end of function
+    }
+
+    /// Create a conservative depth image from a terrain. A camera matrix
+    /// must have been set with [`TerrainRast::set_camera_matrix`].
+    pub fn rasterize(&mut self, terrain: &Terrain, output: &mut DepthImage) {
+        self.rasterize_trace(terrain, output, NoTrace)
+    }
+
+    /// `rasterize` with tracing.
+    pub fn rasterize_trace(
+        &mut self,
+        terrain: &Terrain,
+        output: &mut DepthImage,
+        trace: impl Trace,
+    ) {
+        for beam in self.beams.iter() {
+            opticast(
+                terrain,
+                beam.azimuth.clone(),
+                beam.projection,
+                &mut self.samples[beam.samples_start..][..beam.num_samples],
+                &mut self.skip_buffer[0..beam.num_samples + 1],
+            );
+        }
+
+        // TODO
     }
 }
 
