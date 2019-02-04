@@ -231,6 +231,9 @@ impl TerrainRast {
                     (m, last_angle, last_range, d1, d2, width)
                 );
 
+                // `width` is limited by `mipbeamcast`'s restrictuion
+                let width = [width, 0.4].min();
+
                 let end;
                 let mut angle;
 
