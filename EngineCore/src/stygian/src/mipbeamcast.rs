@@ -380,7 +380,7 @@ fn aabb_to_cell(x_min: i32, y_min: i32, x_max: i32, y_max: i32) -> MbcCell {
         let x_max_rnd = (x_max - (1 << mip_level - 1)) >> (mip_level - 1);
         let y_max_rnd = (y_max - (1 << mip_level - 1)) >> (mip_level - 1);
 
-        if x_min_rnd == x_max_rnd && y_min_rnd == y_max_rnd {
+        if x_min_rnd >= x_max_rnd && y_min_rnd >= y_max_rnd {
             MbcCell {
                 pos: vec2(x_min_rnd, y_min_rnd),
                 mip: mip_level,
