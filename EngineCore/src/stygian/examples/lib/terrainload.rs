@@ -27,8 +27,6 @@ pub fn load_terrain(input_path: impl AsRef<Path>) -> ngsterrain::Terrain {
     // Pad the input to make the dimensions powers of two
     pad_terrain(&mut terrain);
 
-    terrain.validate().unwrap();
-
     terrain
 }
 
