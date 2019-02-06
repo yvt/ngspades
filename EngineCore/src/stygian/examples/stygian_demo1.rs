@@ -3,18 +3,21 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{conv::array4x4, prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
+use cgmath::{
+    conv::array4x4, prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector2, Vector3,
+};
 use glium::{
     backend::{Context, Facade},
     glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
 };
-use std::{fs::File, io::BufReader, rc::Rc, time::Instant};
+use std::{rc::Rc, time::Instant};
 
 use stygian;
 
 mod lib {
     pub mod cube;
     pub mod linedraw;
+    pub mod terrainload;
     pub mod vxl2mesh;
 }
 
@@ -33,41 +36,8 @@ fn main() {
 
     // Load the input vox file
     println!("Loading the input file");
-    let input_low = matches.value_of("INPUT").unwrap().to_lowercase();
     let input_path = matches.value_of_os("INPUT").unwrap();
-    let file = File::open(input_path).unwrap();
-    let mut reader = BufReader::new(file);
-    let mut terrain = if input_low.ends_with(".vxl") {
-        ngsterrain::io::from_voxlap_vxl(vec3(512, 512, 64), &mut reader).unwrap()
-    } else {
-        ngsterrain::io::from_magicavoxel(&mut reader).unwrap()
-    };
-
-    // Pad the input to make the dimensions powers of two
-    let size = terrain.size();
-    if !size.x.is_power_of_two() || !size.y.is_power_of_two() || !size.z.is_power_of_two() {
-        let mut new_terrain = ngsterrain::Terrain::new(vec3(
-            size.x.next_power_of_two(),
-            size.y.next_power_of_two(),
-            size.z.next_power_of_two(),
-        ));
-
-        println!(
-            "The terrain size ({:?}) is not compliant; padding it to {:?}...",
-            size,
-            new_terrain.size()
-        );
-
-        for x in 0..size.x {
-            for y in 0..size.y {
-                (*new_terrain.get_row_mut(vec2(x, y)).unwrap().into_inner())
-                    .clone_from(terrain.get_row(vec2(x, y)).unwrap().into_inner());
-            }
-        }
-        terrain = new_terrain;
-    }
-
-    terrain.validate().unwrap();
+    let terrain = lib::terrainload::load_terrain(input_path);
 
     let mut events_loop = glutin::EventsLoop::new();
     let window = glutin::WindowBuilder::new();
