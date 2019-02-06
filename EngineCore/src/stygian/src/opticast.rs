@@ -210,3 +210,55 @@ pub fn opticast(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opticast_single() {
+        use crate::terrainload::DERBY_RACERS;
+        let terrain = Terrain::from_ngsterrain(&DERBY_RACERS).unwrap();
+        let azimuth = -2.86935139..-2.85282278;
+        let inclination = -0.575736046..0.370368004;
+        let projection = Matrix4::new(
+            0.0,
+            0.517639935,
+            -0.00174160628,
+            0.86993289,
+            0.0,
+            0.252701819,
+            -0.000962537655,
+            0.480787873,
+            0.0,
+            0.797484278,
+            0.000219854119,
+            -0.109817199,
+            0.0,
+            -11.9622612,
+            0.997703194,
+            1.64726257,
+        );
+        let eye = Point3::new(64.0, 64.0, 15.0);
+        let mut output_depth = [0.0; 69];
+        let mut skip_buffer = [0; 70];
+        opticast(
+            &terrain,
+            azimuth,
+            inclination,
+            projection,
+            eye,
+            &mut output_depth,
+            &mut skip_buffer,
+            &mut crate::NoTrace,
+        );
+
+        dbg!(&output_depth[..]);
+
+        // Check for the incorrect output illustrated in the image:
+        // <ipfs://QmPGxf4xRk8LxAoxyVWGk4czisRTXRbd7Dhi72qbYW5oGF>
+        for &x in &output_depth[37..] {
+            assert_eq!(x, 0.0);
+        }
+    }
+}
