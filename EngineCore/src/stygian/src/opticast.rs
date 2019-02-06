@@ -104,8 +104,13 @@ pub fn opticast(
             debug_assert!(row_index < level.rows.len());
             let row = unsafe { level.rows.get_unchecked(row_index) };
 
-            let dist = (cell.pos.x as f32 - eye.x) * dir_primary.x
-                + (cell.pos.y as f32 - eye.y) * dir_primary.y;
+            let cell_pos_f = vec2(
+                ((cell.pos.x as u32 * 2 + 1) << cell.mip) as f32 * 0.5,
+                ((cell.pos.y as u32 * 2 + 1) << cell.mip) as f32 * 0.5,
+            );
+
+            let dist =
+                (cell_pos_f.x - eye.x) * dir_primary.x + (cell_pos_f.y - eye.y) * dir_primary.y;
 
             if dist <= 0.0 {
                 return;
