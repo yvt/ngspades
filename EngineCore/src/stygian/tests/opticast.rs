@@ -8,7 +8,7 @@ use ngsterrain::raytrace::{raytrace, RaytraceResult};
 
 use stygian::{DepthImage, Terrain, TerrainRast};
 
-#[path = "../examples/lib/terrainload.rs"]
+#[path = "../common/terrainload.rs"]
 #[allow(dead_code)]
 mod terrainload;
 

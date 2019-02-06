@@ -14,10 +14,12 @@ use std::{rc::Rc, time::Instant};
 
 use stygian;
 
+#[path = "../common/terrainload.rs"]
+mod terrainload;
+
 mod lib {
     pub mod cube;
     pub mod linedraw;
-    pub mod terrainload;
     pub mod vxl2mesh;
 }
 
@@ -36,9 +38,9 @@ fn main() {
     // Load the input vox file
     println!("Loading the input file");
     let terrain = if let Some(input_path) = matches.value_of_os("INPUT") {
-        lib::terrainload::load_terrain(input_path)
+        terrainload::load_terrain(input_path)
     } else {
-        lib::terrainload::DERBY_RACERS.clone()
+        terrainload::DERBY_RACERS.clone()
     };
 
     let mut events_loop = glutin::EventsLoop::new();

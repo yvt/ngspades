@@ -8,7 +8,7 @@ use cgmath::{vec2, vec3, Matrix4, Perspective, Point3};
 
 use stygian::{DepthImage, Terrain, TerrainRast};
 
-#[path = "../examples/lib/terrainload.rs"]
+#[path = "../common/terrainload.rs"]
 #[allow(dead_code)]
 mod terrainload;
 

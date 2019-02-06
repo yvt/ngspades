@@ -58,7 +58,7 @@ fn pad_terrain(terrain: &mut ngsterrain::Terrain) {
 
 lazy_static! {
     pub static ref DERBY_RACERS: ngsterrain::Terrain = {
-        let bytes = &include_bytes!("../../../ngsterrain/examples/vox/Derby Racers.vox")[..];
+        let bytes = &include_bytes!("../../ngsterrain/examples/vox/Derby Racers.vox")[..];
         let mut terrain = ngsterrain::io::from_magicavoxel(&mut Cursor::new(bytes)).unwrap();
         pad_terrain(&mut terrain);
         terrain

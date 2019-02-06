@@ -44,3 +44,8 @@ pub mod io {
 
 /// The depth value of the far plane.
 const DEPTH_FAR: f32 = 0.0;
+
+#[cfg(test)]
+#[allow(dead_code)]
+#[path = "../common/terrainload.rs"]
+mod terrainload;
