@@ -93,7 +93,11 @@ pub fn opticast(
             let level = unsafe { terrain.levels.get_unchecked(cell.mip as usize) };
 
             let level_size_bits_x = terrain.size_bits.x - cell.mip;
-            let row_index = cell.pos.x as usize + ((cell.pos.y as usize) << (level_size_bits_x));
+            let row_index = cell.pos.x as usize + ((cell.pos.y as usize) << level_size_bits_x);
+            debug_assert!(cell.pos.x < (1 << terrain.size_bits.x - cell.mip));
+            debug_assert!(cell.pos.y < (1 << terrain.size_bits.y - cell.mip));
+            debug_assert!(cell.pos.x >= 0);
+            debug_assert!(cell.pos.y >= 0);
             debug_assert!(row_index < level.rows.len());
             let row = unsafe { level.rows.get_unchecked(row_index) };
 
