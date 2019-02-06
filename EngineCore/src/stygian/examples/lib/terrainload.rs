@@ -4,7 +4,13 @@
 // This source code is a part of Nightingales.
 //
 use cgmath::{vec2, vec3};
-use std::{ffi::OsStr, fs::File, io::BufReader, path::Path};
+use lazy_static::lazy_static;
+use std::{
+    ffi::OsStr,
+    fs::File,
+    io::{BufReader, Cursor},
+    path::Path,
+};
 
 pub fn load_terrain(input_path: impl AsRef<Path>) -> ngsterrain::Terrain {
     let input_path: &Path = input_path.as_ref();
@@ -19,6 +25,15 @@ pub fn load_terrain(input_path: impl AsRef<Path>) -> ngsterrain::Terrain {
     };
 
     // Pad the input to make the dimensions powers of two
+    pad_terrain(&mut terrain);
+
+    terrain.validate().unwrap();
+
+    terrain
+}
+
+/// Pad a given `Terrain` to make the dimensions powers of two.
+fn pad_terrain(terrain: &mut ngsterrain::Terrain) {
     let size = terrain.size();
     if !size.x.is_power_of_two() || !size.y.is_power_of_two() || !size.z.is_power_of_two() {
         let mut new_terrain = ngsterrain::Terrain::new(vec3(
@@ -39,10 +54,15 @@ pub fn load_terrain(input_path: impl AsRef<Path>) -> ngsterrain::Terrain {
                     .clone_from(terrain.get_row(vec2(x, y)).unwrap().into_inner());
             }
         }
-        terrain = new_terrain;
+        *terrain = new_terrain;
     }
+}
 
-    terrain.validate().unwrap();
-
-    terrain
+lazy_static! {
+    pub static ref DERBY_RACERS: ngsterrain::Terrain = {
+        let bytes = &include_bytes!("../../../ngsterrain/examples/vox/Derby Racers.vox")[..];
+        let mut terrain = ngsterrain::io::from_magicavoxel(&mut Cursor::new(bytes)).unwrap();
+        pad_terrain(&mut terrain);
+        terrain
+    };
 }

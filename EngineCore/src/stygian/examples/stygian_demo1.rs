@@ -29,15 +29,17 @@ fn main() {
         .arg(
             Arg::with_name("INPUT")
                 .help("file to display; .vxl and .vox formats are supported")
-                .required(true)
                 .index(1),
         )
         .get_matches();
 
     // Load the input vox file
     println!("Loading the input file");
-    let input_path = matches.value_of_os("INPUT").unwrap();
-    let terrain = lib::terrainload::load_terrain(input_path);
+    let terrain = if let Some(input_path) = matches.value_of_os("INPUT") {
+        lib::terrainload::load_terrain(input_path)
+    } else {
+        lib::terrainload::DERBY_RACERS.clone()
+    };
 
     let mut events_loop = glutin::EventsLoop::new();
     let window = glutin::WindowBuilder::new();
