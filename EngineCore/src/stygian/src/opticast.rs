@@ -10,7 +10,9 @@ use std::{
     ops::Range,
 };
 
-use crate::{mipbeamcast::mipbeamcast, terrain::Terrain, utils::float::FloatSetExt, DEPTH_FAR};
+use crate::{
+    debug::Trace, mipbeamcast::mipbeamcast, terrain::Terrain, utils::float::FloatSetExt, DEPTH_FAR,
+};
 
 /// In a skip buffer, this flag indicates there are no more vacant elements
 /// afterward.
@@ -34,6 +36,7 @@ pub fn opticast(
     eye: Point3<f32>,
     output_depth: &mut [f32],
     skip_buffer: &mut [u32],
+    trace: &mut impl Trace,
 ) {
     assert!(skip_buffer.len() == output_depth.len() + 1);
     if output_depth.len() == 0 {
@@ -127,6 +130,14 @@ pub fn opticast(
                 let p2 = projection * vec4(dist, 0.0, z2, 1.0);
 
                 let (mut p1, mut p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+                trace.opticast_span(
+                    vec2(
+                        (cell.pos.x as u32) << cell.mip,
+                        (cell.pos.y as u32) << cell.mip,
+                    ),
+                    1 << cell.mip,
+                    span.start as u32..span.end as u32,
+                );
 
                 p1.y *= output_depth.len() as f32;
                 p2.y *= output_depth.len() as f32;

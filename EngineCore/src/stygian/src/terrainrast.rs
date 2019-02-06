@@ -387,6 +387,7 @@ impl TerrainRast {
                 self.eye,
                 &mut self.samples[beam.samples_start..][..beam.num_samples],
                 &mut self.skip_buffer[0..beam.num_samples + 1],
+                &mut trace,
             );
         }
 
