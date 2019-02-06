@@ -22,6 +22,28 @@
 :::    SW  |  SE        ,' Down ',
 :::
 
+# Mipmapping
+
+Stygian uses *mipmapping* for scalable implementation. From an input terrain, increasingly larger sets of the original data are generated. Each set is called a *mipmap level*. Usually, mipmap levels are structured so that the elements in each level are twice as large as the elements in the previous level ([!Figure mipmap]). For example, the second level (level 1) consists of 2×2-sized squares. The largest cell entirely covers the region.
+
+[!Figure mipmap]: Mipmap levels.
+
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    :: +---+---+---+---+     +-------+-------+      +---------------+ ::
+    :: |   |   |   |   |     |       |       |      |               | ::
+    :: +---+---+---+---+     |       |       |      |               | ::
+    :: |   |   |   |   |     |       |       |      |               | ::
+    :: +---+---+---+---+     +-------+-------+      +---------------+ ::
+    ::    Base level              Level 1                Level 2      ::
+    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+This standard structure has a major issue with the opticast algorithm used by Stygian. Suppose we have a $256 \times 256 \times n$ terrain and we want to find a single downsampled cell covering the range $127 \leq x < 129, 127 \leq y < 129$. The size of the range is no larger than $2 \times 2$ but we have to use the last level (of the lowest resolution) because the range crosses cell boundaries in every level except the last one. For this reason, Stygian uses a specialized mipmapping scheme.
+
+[!Figure mipmap2] shows the mipmapping scheme used by Stygian.
+
+![!Figure mipmap2][](Images/Mipmap2.svg):
+    The mipmap scheme used in Stygian.
+
 # Terrain rasterization
 
 The terrain rasterizes creates a low-resolution depth image from terrain data and a scene setup. The generated image is guaranteed to have lower (farther from the camera) depth values compared to the ground truth image at every point, making itself useful for CPU-based occlusion culling.
@@ -102,18 +124,7 @@ The algorithm takes an *beam* as input. A beam is defined by one vertex `start` 
     ::       dir2    ::
     :::::::::::::::::::
 
-Another input is a *map* which is a 2D grid of size $N_1 \times N_2$ that spans across the region $\{(x, y) | 0 \leq x < N_1 \wedge 0 \leq y < N_2\}$. The map includes a set of *cells*, which are 1×1-sized squares that cover the region. In addition, the map also includes increasingly larger sets of cells. Each set is called a *mipmap level*. The exact structure of the mipmap levels is not fundamental to the algorithm, but to ease the implementation, it's assumed that the cells in each level are twice as large as the cells in the previous level ([!Figure cells]). For example, the second level (level 1) consists of 2×2-sized squares. The largest cell entirely covers the region.
-
-[!Figure cells]: Mipmap levels
-
-    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    :: +---+---+---+---+     +-------+-------+      +---------------+ ::
-    :: |   |   |   |   |     |       |       |      |               | ::
-    :: +---+---+---+---+     |       |       |      |               | ::
-    :: |   |   |   |   |     |       |       |      |               | ::
-    :: +---+---+---+---+     +-------+-------+      +---------------+ ::
-    ::    Base level              Level 1                Level 2      ::
-    ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+Another input is a *map* which is a 2D grid of size $N_1 \times N_2$ that spans across the region $\{(x, y) | 0 \leq x < N_1 \wedge 0 \leq y < N_2\}$. The map includes a set of *cells*, which are 1×1-sized squares that cover the region. In addition, the map also includes increasingly larger sets of cells. Each set is called a *mipmap level*. The exact structure of the mipmap levels is not fundamental to the algorithm and can be changed easily.
 
 The goal of the algorithm is to find a set of cells such that every individual cell in the set entirely blocks the path of the beam. The secondary goal is to generate such a set without a gap between the cells.
 

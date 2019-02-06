@@ -21,11 +21,30 @@ pub struct MbcIncidence {
 /// Represents a cell.
 ///
 /// The cell described by `MbcCell` occupies
-/// `x ∈ [pos.x << mip, (pos.x + 1) << mip) ∧ y ∈ [pos.y << mip, (pos.y + 1) << mip)`.
+/// `x ∈ [pos.x, (pos.x + 1)) ∧ y ∈ [pos.y, (pos.y + 1))` (if `mip == 0`) or.
+/// `x ∈ [pos.x << (mip - 1), (pos.x + 2) << (mip - 1)) ∧ y ∈ [pos.y << (mip - 1), (pos.y + 2) << (mip - 1))` (otherwise).
 #[derive(Debug, Clone, Copy)]
 pub struct MbcCell {
     pub pos: Vector2<i32>,
     pub mip: u32,
+}
+
+impl MbcCell {
+    /// The inclusive coordinates of the top-left corner of the region
+    /// represented by `self`.
+    pub fn pos_min(&self) -> Vector2<i32> {
+        if self.mip == 0 {
+            self.pos
+        } else {
+            vec2(self.pos.x << (self.mip - 1), self.pos.y << (self.mip - 1))
+        }
+    }
+
+    /// The exclusive coordinates of the bottom-right corner of the region
+    /// represented by `self`.
+    pub fn pos_max(&self) -> Vector2<i32> {
+        self.pos_min() + vec2(1 << self.mip, 1 << self.mip)
+    }
 }
 
 /// Describes preprocessing done to inputs and what should be done to
@@ -42,11 +61,20 @@ pub struct MbcInputPreproc {
 impl MbcIncidence {
     pub fn cell(&self, preproc: &MbcInputPreproc) -> MbcCell {
         let mut cell = self.cell_raw;
-        if preproc.flip_x {
-            cell.pos.x = (preproc.size.x as i32 >> cell.mip) - 1 - cell.pos.x;
-        }
-        if preproc.flip_y {
-            cell.pos.y = (preproc.size.y as i32 >> cell.mip) - 1 - cell.pos.y;
+        if cell.mip == 0 {
+            if preproc.flip_x {
+                cell.pos.x = (preproc.size.x as i32) - 1 - cell.pos.x;
+            }
+            if preproc.flip_y {
+                cell.pos.y = (preproc.size.y as i32) - 1 - cell.pos.y;
+            }
+        } else {
+            if preproc.flip_x {
+                cell.pos.x = (preproc.size.x as i32 >> (cell.mip - 1)) - 2 - cell.pos.x;
+            }
+            if preproc.flip_y {
+                cell.pos.y = (preproc.size.y as i32 >> (cell.mip - 1)) - 2 - cell.pos.y;
+            }
         }
         if preproc.swap_xy {
             swap(&mut cell.pos.x, &mut cell.pos.y);
@@ -214,12 +242,12 @@ pub fn mipbeamcast(
     // toward `dir1` and `dir2`.
 
     // Distance to the right border of the current cell from each current point
-    let mut dx1 = ((cell.pos.x + 1) << (cell.mip + F)) - start.x;
+    let mut dx1 = (cell.pos_max().x << F) - start.x;
     let mut dx2 = dx1;
 
     // Distance to the bottom/top border of the current cell from each current
     // point. It's the top border iff the corresponding `slopeX` is negative.
-    let mut dy1 = ((cell.pos.y + 1) << (cell.mip + F)) - start.y;
+    let mut dy1 = (cell.pos_max().y << F) - start.y;
     let mut dy2 = if slope2_neg {
         (1 << (cell.mip + F)) - dy1
     } else {
@@ -242,10 +270,10 @@ pub fn mipbeamcast(
         let portal_x2;
         let portal_y1;
         let portal_y2;
-        let top_border = (cell.pos.y << cell.mip) - 1;
-        let top = cell.pos.y << cell.mip;
-        let bottom = (cell.pos.y + 1) << cell.mip;
-        let right = (cell.pos.x + 1) << cell.mip;
+        let top_border = cell.pos_min().y - 1;
+        let top = cell.pos_min().y;
+        let bottom = cell.pos_max().y;
+        let right = cell.pos_max().x;
 
         if new_dy1 < 0 {
             // Bottom
@@ -299,26 +327,33 @@ pub fn mipbeamcast(
             max(portal_y1, portal_y2),
         );
 
-        if new_cell.mip >= num_mip_levels
-            || (new_cell.pos.x as u32) >= (size.x >> new_cell.mip)
-            || (new_cell.pos.y as u32) >= (size.y >> new_cell.mip)
-        {
+        if new_cell.mip >= num_mip_levels {
             return preproc;
+        } else if new_cell.mip == 0 {
+            if (new_cell.pos.x as u32) >= size.x || (new_cell.pos.y as u32) >= size.y {
+                return preproc;
+            }
+        } else {
+            if (new_cell.pos.x as u32) >= (size.x >> new_cell.mip - 1) - 1
+                || (new_cell.pos.y as u32) >= (size.y >> new_cell.mip - 1) - 1
+            {
+                return preproc;
+            }
         }
 
         // Eureka!
         incidence_handler(&MbcIncidence { cell_raw: new_cell }, &preproc);
 
         // Calculate the displacement and adjust the state variables
-        let dx = ((new_cell.pos.x + 1) << new_cell.mip) - ((cell.pos.x + 1) << cell.mip);
+        let dx = new_cell.pos_max().x - cell.pos_max().x;
         dx1 += dx << F;
         dx2 += dx << F;
 
-        dy1 += (((new_cell.pos.y + 1) << new_cell.mip) - ((cell.pos.y + 1) << cell.mip)) << F;
+        dy1 += (new_cell.pos_max().y - cell.pos_max().y) << F;
         if slope2_neg {
-            dy2 -= ((new_cell.pos.y << new_cell.mip) - (cell.pos.y << cell.mip)) << F;
+            dy2 -= (new_cell.pos_min().y - cell.pos_min().y) << F;
         } else {
-            dy2 += (((new_cell.pos.y + 1) << new_cell.mip) - ((cell.pos.y + 1) << cell.mip)) << F;
+            dy2 += (new_cell.pos_max().y - cell.pos_max().y) << F;
         }
 
         cell = new_cell;
@@ -331,11 +366,43 @@ fn aabb_to_cell(x_min: i32, y_min: i32, x_max: i32, y_max: i32) -> MbcCell {
     debug_assert!(x_min <= x_max);
     debug_assert!(y_min <= y_max);
 
-    let mip_level = 32 - ((y_min ^ y_max) | (x_min ^ x_max)).leading_zeros();
-    MbcCell {
-        pos: vec2(x_min >> mip_level, y_min >> mip_level),
-        mip: mip_level,
-    }
+    // `ceil(log2( max(y_max - y_min, x_max - x_min) + 1 ))`
+    let mip_level = 32 - ((x_max - x_min) | (y_max - y_min)).leading_zeros();
+    let cell = if mip_level == 0 {
+        MbcCell {
+            pos: vec2(x_min, y_min),
+            mip: 0,
+        }
+    } else {
+        // It might be `mip_level` or `mip_level + 1`
+        let x_min_rnd = x_min >> (mip_level - 1);
+        let y_min_rnd = y_min >> (mip_level - 1);
+        let x_max_rnd = (x_max - (1 << mip_level - 1)) >> (mip_level - 1);
+        let y_max_rnd = (y_max - (1 << mip_level - 1)) >> (mip_level - 1);
+
+        if x_min_rnd == x_max_rnd && y_min_rnd == y_max_rnd {
+            MbcCell {
+                pos: vec2(x_min_rnd, y_min_rnd),
+                mip: mip_level,
+            }
+        } else {
+            MbcCell {
+                pos: vec2(x_min >> mip_level, y_min >> mip_level),
+                mip: mip_level + 1,
+            }
+        }
+    };
+
+    debug_assert!(
+        cell.pos_min().x <= x_min
+            && cell.pos_min().y <= y_min
+            && cell.pos_max().x >= x_max
+            && cell.pos_max().y >= y_max,
+        "{:?}",
+        (x_min, y_min, x_max, y_max, mip_level, cell)
+    );
+
+    cell
 }
 
 const F: u32 = 16;
@@ -368,7 +435,9 @@ mod tests {
         for (start, dir1, dir2) in patterns {
             dbg!((start, dir1, dir2));
             mipbeamcast(vec2(16, 16), 5, start, dir1, dir2, |incidence, preproc| {
-                dbg!(incidence.cell(preproc));
+                let cell = incidence.cell(preproc);
+                dbg!(cell);
+                println!("{:?} - {:?}", cell.pos_min(), cell.pos_max());
             });
         }
     }
@@ -401,7 +470,9 @@ mod tests {
                 dir1,
                 dir2,
                 |incidence, preproc| {
-                    dbg!(incidence.cell(preproc));
+                    let cell = incidence.cell(preproc);
+                    dbg!(cell);
+                    println!("{:?} - {:?}", cell.pos_min(), cell.pos_max());
                 },
             );
         }

@@ -95,19 +95,31 @@ pub fn opticast(
             debug_assert!((cell.mip as usize) < terrain.levels.len());
             let level = unsafe { terrain.levels.get_unchecked(cell.mip as usize) };
 
-            let level_size_bits_x = terrain.size_bits.x - cell.mip;
+            let level_size_bits_x = terrain.size_bits.x + 1 - max(cell.mip, 1);
             let row_index = cell.pos.x as usize + ((cell.pos.y as usize) << level_size_bits_x);
-            debug_assert!(cell.pos.x < (1 << terrain.size_bits.x - cell.mip));
-            debug_assert!(cell.pos.y < (1 << terrain.size_bits.y - cell.mip));
+            if cell.mip > 0 {
+                debug_assert!(cell.pos.x < (1 << terrain.size_bits.x + 1 - cell.mip) - 1);
+                debug_assert!(cell.pos.y < (1 << terrain.size_bits.y + 1 - cell.mip) - 1);
+            } else {
+                debug_assert!(cell.pos.x < (1 << terrain.size_bits.x));
+                debug_assert!(cell.pos.y < (1 << terrain.size_bits.y));
+            }
             debug_assert!(cell.pos.x >= 0);
             debug_assert!(cell.pos.y >= 0);
             debug_assert!(row_index < level.rows.len());
             let row = unsafe { level.rows.get_unchecked(row_index) };
 
-            let cell_pos_f = vec2(
-                ((cell.pos.x as u32 * 2 + 1) << cell.mip) as f32 * 0.5,
-                ((cell.pos.y as u32 * 2 + 1) << cell.mip) as f32 * 0.5,
-            );
+            let cell_pos_f = if cell.mip == 0 {
+                vec2(
+                    (cell.pos.x as u32 * 2 + 1) as f32 * 0.5,
+                    (cell.pos.y as u32 * 2 + 1) as f32 * 0.5,
+                )
+            } else {
+                vec2(
+                    ((cell.pos.x as u32 + 1) << (cell.mip - 1)) as f32,
+                    ((cell.pos.y as u32 + 1) << (cell.mip - 1)) as f32,
+                )
+            };
 
             let dist =
                 (cell_pos_f.x - eye.x) * dir_primary.x + (cell_pos_f.y - eye.y) * dir_primary.y;
@@ -136,10 +148,7 @@ pub fn opticast(
 
                 let (mut p1, mut p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
                 trace.opticast_span(
-                    vec2(
-                        (cell.pos.x as u32) << cell.mip,
-                        (cell.pos.y as u32) << cell.mip,
-                    ),
+                    cell.pos_min().cast().unwrap(),
                     1 << cell.mip,
                     span.start as u32..span.end as u32,
                 );

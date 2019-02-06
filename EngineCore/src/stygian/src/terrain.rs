@@ -26,10 +26,13 @@ pub(crate) struct TerrainLevel {
     /// The RLE representation of rows. A row is a set of voxels at
     /// particular X and Y coordinates.
     ///
-    /// The number of elements of the top-level `Vec` is equal to
-    /// `1 << (size_bits.x - level) << (size_bits.y - level)`.
+    /// The number of valid elements of the top-level `Vec` is equal to
+    /// `(1 << size_bits.x) * (1 << size_bits.y)` (if `level == 0`) or
+    /// `((1 << size_bits.x + 1 - level) - 1) * ((1 << size_bits.y + 1 - level) - 1)` (otherwise).
+    /// The pitch (the distance between rows) is `size().x >> max(0, level - 1)`,
+    /// which is off by one when `level > 0`, but is faster to compute.
     /// Elements are indexed by a row's X and Y coordinates using the
-    /// formula: `x + y * (size().x >> level)`.
+    /// formula: `x + y * (size().x >> max(0, level - 1))`.
     ///
     /// Each element of the top-level `Vec` is a `Vec` containing zero or more
     /// `Span`s in a row. Spans must be sorted by their Z coordinates in an
@@ -68,15 +71,28 @@ impl Terrain {
 
         levels.push(base_level);
 
-        // Generate the rest of mip levels
+        // Generate level 1
         let mut row_downsampler = RowDownsampler::new(size.z);
-        for i in 1..num_levels {
-            let next_level = levels.last().unwrap().downsample(
-                vec3(size.x >> (i - 1), size.y >> (i - 1), size.z),
-                &mut row_downsampler,
-            );
+        let mut last_size = size;
+        if num_levels >= 2 {
+            let (next_level, next_size) = levels
+                .last()
+                .unwrap()
+                .level1(last_size, &mut row_downsampler);
 
             levels.push(next_level);
+            last_size = next_size;
+        }
+
+        // Generate the rest of mip levels
+        for _ in 2..num_levels {
+            let (next_level, next_size) = levels
+                .last()
+                .unwrap()
+                .downsample(last_size, &mut row_downsampler);
+
+            levels.push(next_level);
+            last_size = next_size;
         }
 
         Self { size_bits, levels }
@@ -84,16 +100,25 @@ impl Terrain {
 }
 
 impl TerrainLevel {
-    fn downsample(&self, size: Vector3<usize>, row_downsampler: &mut RowDownsampler) -> Self {
-        let out_size = vec3((size.x + 1) / 2, (size.y + 1) / 2, size.z);
+    /// Generate a level 1 mipmap.
+    fn level1(
+        &self,
+        size: Vector3<usize>,
+        row_downsampler: &mut RowDownsampler,
+    ) -> (Self, Vector3<usize>) {
+        debug_assert!(size.x >= 2 && size.y >= 2, "{:?}", size);
+        debug_assert!(size.x % 2 == 0, "{:?}", size);
+        debug_assert!(size.y % 2 == 0, "{:?}", size);
 
-        let mut out_rows = Vec::with_capacity(out_size.x * out_size.y);
+        let out_size = vec3(size.x - 1, size.y - 1, size.z);
+
+        let mut out_rows = Vec::with_capacity((out_size.x + 1) * out_size.y);
         for out_y in 0..out_size.y {
             for out_x in 0..out_size.x {
-                let in_x1 = out_x * 2;
-                let in_y1 = out_y * 2;
-                let in_x2 = min(in_x1 + 1, size.x - 1);
-                let in_y2 = min(in_y1 + 1, size.y - 1);
+                let in_x1 = out_x;
+                let in_y1 = out_y;
+                let in_x2 = in_x1 + 1;
+                let in_y2 = in_y1 + 1;
 
                 let in_rows = [
                     &self.rows[in_x1 + in_y1 * size.x],
@@ -104,9 +129,47 @@ impl TerrainLevel {
 
                 out_rows.push(row_downsampler.downsample(&in_rows));
             }
+            out_rows.push(Vec::new()); // pitch is off by one
         }
 
-        Self { rows: out_rows }
+        (Self { rows: out_rows }, out_size)
+    }
+
+    /// Generate a level 2 or greater mipmap.
+    fn downsample(
+        &self,
+        size: Vector3<usize>,
+        row_downsampler: &mut RowDownsampler,
+    ) -> (Self, Vector3<usize>) {
+        debug_assert!(size.x >= 3 && size.y >= 3, "{:?}", size);
+        debug_assert!(size.x % 2 == 1, "{:?}", size);
+        debug_assert!(size.y % 2 == 1, "{:?}", size);
+
+        let out_size = vec3(size.x / 2, size.y / 2, size.z);
+        debug_assert!(out_size.x % 2 == 1, "{:?}", out_size);
+        debug_assert!(out_size.y % 2 == 1, "{:?}", out_size);
+
+        let mut out_rows = Vec::with_capacity((out_size.x + 1) * out_size.y);
+        for out_y in 0..out_size.y {
+            for out_x in 0..out_size.x {
+                let in_x1 = out_x * 2;
+                let in_y1 = out_y * 2;
+                let in_x2 = in_x1 + 2;
+                let in_y2 = in_y1 + 2;
+
+                let in_rows = [
+                    &self.rows[in_x1 + in_y1 * (size.x + 1)],
+                    &self.rows[in_x2 + in_y1 * (size.x + 1)],
+                    &self.rows[in_x1 + in_y2 * (size.x + 1)],
+                    &self.rows[in_x2 + in_y2 * (size.x + 1)],
+                ];
+
+                out_rows.push(row_downsampler.downsample(&in_rows));
+            }
+            out_rows.push(Vec::new()); // pitch is off by one
+        }
+
+        (Self { rows: out_rows }, out_size)
     }
 }
 
