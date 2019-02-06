@@ -37,11 +37,36 @@ fn main() {
     let input_path = matches.value_of_os("INPUT").unwrap();
     let file = File::open(input_path).unwrap();
     let mut reader = BufReader::new(file);
-    let terrain = if input_low.ends_with(".vxl") {
+    let mut terrain = if input_low.ends_with(".vxl") {
         ngsterrain::io::from_voxlap_vxl(vec3(512, 512, 64), &mut reader).unwrap()
     } else {
         ngsterrain::io::from_magicavoxel(&mut reader).unwrap()
     };
+
+    // Pad the input to make the dimensions powers of two
+    let size = terrain.size();
+    if !size.x.is_power_of_two() || !size.y.is_power_of_two() || !size.z.is_power_of_two() {
+        let mut new_terrain = ngsterrain::Terrain::new(vec3(
+            size.x.next_power_of_two(),
+            size.y.next_power_of_two(),
+            size.z.next_power_of_two(),
+        ));
+
+        println!(
+            "The terrain size ({:?}) is not compliant; padding it to {:?}...",
+            size,
+            new_terrain.size()
+        );
+
+        for x in 0..size.x {
+            for y in 0..size.y {
+                (*new_terrain.get_row_mut(vec2(x, y)).unwrap().into_inner())
+                    .clone_from(terrain.get_row(vec2(x, y)).unwrap().into_inner());
+            }
+        }
+        terrain = new_terrain;
+    }
+
     terrain.validate().unwrap();
 
     let mut events_loop = glutin::EventsLoop::new();
@@ -116,9 +141,18 @@ struct State {
 
 impl State {
     fn new(terrain: &ngsterrain::Terrain) -> State {
-        let size = terrain.size().cast::<f32>().unwrap();
+        let size = terrain.size();
+
+        let eye_xy = vec2(size.x / 2, size.y / 2);
+        let floor = (terrain.get_row(eye_xy).unwrap())
+            .chunk_z_ranges()
+            .last()
+            .unwrap()
+            .end;
+        let eye_z = floor + size.z / 10 + 1;
+
         State {
-            eye: vec3(size.x * 0.5, size.y * 0.5, size.z),
+            eye: vec3(eye_xy.x, eye_xy.y, eye_z).cast::<f32>().unwrap(),
             velocity: Vector3::zero(),
             angle: vec3(-0.4, 0.0, 0.0),
             angular_velocity: Vector3::zero(),
