@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{vec2, vec4, Matrix4, Point3};
+use cgmath::{prelude::*, vec2, vec4, Matrix4, Point3};
 use std::{
     cmp::{max, min},
     f32::{consts::PI, INFINITY, NEG_INFINITY},
@@ -11,7 +11,11 @@ use std::{
 };
 
 use crate::{
-    debug::Trace, mipbeamcast::mipbeamcast, terrain::Terrain, utils::float::FloatSetExt, DEPTH_FAR,
+    debug::Trace,
+    mipbeamcast::{mipbeamcast, F_FAC_F},
+    terrain::Terrain,
+    utils::float::FloatSetExt,
+    DEPTH_FAR,
 };
 
 /// In a skip buffer, this flag indicates there are no more vacant elements
@@ -33,6 +37,7 @@ pub fn opticast(
     azimuth: Range<f32>,
     inclination: Range<f32>,
     projection: Matrix4<f32>,
+    lateral_projection: Matrix4<f32>,
     eye: Point3<f32>,
     output_depth: &mut [f32],
     skip_buffer: &mut [u32],
@@ -62,17 +67,6 @@ pub fn opticast(
     let theta = (azimuth.start + azimuth.end) * 0.5;
     let dir_primary = vec2(theta.cos(), theta.sin());
 
-    let incl_tan1 = if inclination.start < PI * -0.49 {
-        NEG_INFINITY
-    } else {
-        inclination.start.tan()
-    };
-    let incl_tan2 = if inclination.end > PI * 0.49 {
-        INFINITY
-    } else {
-        inclination.end.tan()
-    };
-
     // Main loop
     mipbeamcast(
         terrain.size().truncate().cast().unwrap(),
@@ -80,17 +74,39 @@ pub fn opticast(
         vec2(eye.x, eye.y),
         dir1,
         dir2,
-        |incidence, preproc| {
+        |preproc| {
+            let terrain_size = terrain.size().truncate();
+
+            let mut local_dir_primary = dir_primary;
+            let mut local_eye = eye;
+            if preproc.swap_xy {
+                std::mem::swap(&mut local_dir_primary.x, &mut local_dir_primary.y);
+                std::mem::swap(&mut local_eye.x, &mut local_eye.y);
+            }
+            if preproc.flip_x {
+                local_dir_primary.x = -local_dir_primary.x;
+                local_eye.x = terrain_size.x as f32 - local_eye.x;
+            }
+            if preproc.flip_y {
+                local_dir_primary.y = -local_dir_primary.y;
+                local_eye.y = terrain_size.y as f32 - local_eye.y;
+            }
+
+            let local_eye_dist = vec2(local_eye.x, local_eye.y).dot(local_dir_primary);
+
+            (preproc, local_dir_primary, local_eye_dist)
+        },
+        |incidence, &mut (preproc, local_dir_primary, local_eye_dist)| {
             // Localize captured variables. This does have an impact on the
             // generated assembly code.
             let output_depth = &mut output_depth[..];
             let skip_buffer = &mut skip_buffer[..];
             let (eye, projection) = (eye, projection);
-            let dir_primary = dir_primary;
-            let (incl_tan1, incl_tan2) = (incl_tan1, incl_tan2);
 
             // TODO: Early-out by Z range
-            let cell = incidence.cell(preproc);
+
+            // Get the row
+            let cell = incidence.cell(&preproc);
 
             debug_assert!((cell.mip as usize) < terrain.levels.len());
             let level = unsafe { terrain.levels.get_unchecked(cell.mip as usize) };
@@ -109,43 +125,100 @@ pub fn opticast(
             debug_assert!(row_index < level.rows.len());
             let row = unsafe { level.rows.get_unchecked(row_index) };
 
-            let cell_pos_f = if cell.mip == 0 {
-                vec2(
-                    (cell.pos.x as u32 * 2 + 1) as f32 * 0.5,
-                    (cell.pos.y as u32 * 2 + 1) as f32 * 0.5,
-                )
-            } else {
-                vec2(
-                    ((cell.pos.x as u32 + 1) << (cell.mip - 1)) as f32,
-                    ((cell.pos.y as u32 + 1) << (cell.mip - 1)) as f32,
-                )
-            };
+            // Find the left/right-most intersections
+            use array::Array2;
+            let intersections = incidence
+                .intersections_raw
+                .map(|x| x.map(|x| vec2(x.x as f32, x.y as f32) * (1.0 / F_FAC_F)));
+            let cell_raw_pos_f = incidence.cell_raw.pos_min().cast::<f32>().unwrap();
+            let cell_size = incidence.cell_raw.size();
+            let cell_size_f = cell_size as f32;
 
-            let dist =
-                (cell_pos_f.x - eye.x) * dir_primary.x + (cell_pos_f.y - eye.y) * dir_primary.y;
-
-            if dist <= 0.0 {
-                return;
-            }
+            // `dot(x, dir_primary)` for each intersections of the beam and the cell
+            let intersction_dists = intersections.map(|[i1, i2]| {
+                [
+                    local_dir_primary.dot(cell_raw_pos_f) - local_eye_dist
+                        + local_dir_primary.y * cell_size_f
+                        + local_dir_primary.x * cell_size_f
+                        - i1.dot(local_dir_primary),
+                    if preproc.slope2_neg {
+                        local_dir_primary.dot(cell_raw_pos_f) - local_eye_dist
+                            + local_dir_primary.x * cell_size_f
+                            - (i2.x * local_dir_primary.x - i2.y * local_dir_primary.y)
+                    } else {
+                        local_dir_primary.dot(cell_raw_pos_f) - local_eye_dist
+                            + local_dir_primary.y * cell_size_f
+                            + local_dir_primary.x * cell_size_f
+                            - (i2.x * local_dir_primary.x + i2.y * local_dir_primary.y)
+                    },
+                ]
+            });
+            let intersction_dists = [intersction_dists[0].max(), intersction_dists[1].min()];
 
             // Rasterize spans
             for span in row.iter() {
                 // TODO: Calculations done here fail to be vectorized - figure
                 //       out how to make it SIMD-friendly or use SIMD explicitly
-                // FoV clip
-                let z1 = [span.start as f32, eye.z + incl_tan1 * dist].max();
-                let z2 = [span.end as f32, eye.z + incl_tan2 * dist].min();
 
-                if z1 >= z2 {
-                    continue;
+                // Find the “reverse” AABB (like the incircle of a triangle)
+                let bottom_above_eye = span.start as f32 > eye.z;
+                let top_below_eye = (span.end as f32) < eye.z;
+                let span_bottom_dist = intersction_dists[bottom_above_eye as usize];
+                let span_top_dist = intersction_dists[top_below_eye as usize];
+
+                let mut p1 = projection.w
+                    + projection.x * span_bottom_dist
+                    + projection.z * span.start as f32;
+                let mut p2 =
+                    projection.w + projection.x * span_top_dist + projection.z * span.end as f32;
+
+                // Apply the lateral projection matrix.
+                // The left and right edges have different Z values. The matrix
+                // compensates for that.
+                let p1_lat = lateral_projection.x * span_bottom_dist
+                    + lateral_projection.z * span.start as f32;
+                let p2_lat =
+                    lateral_projection.x * span_top_dist + lateral_projection.z * span.end as f32;
+                // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
+                // Use this approximation to find the minimum Z value for each
+                // of the top and bottom edges.
+                if p1.z * p1_lat.w - p1.w * p1_lat.z > 0.0 {
+                    p1.z += p1_lat.z;
+                    p1.w += p1_lat.w;
+                } else {
+                    p1.z -= p1_lat.z;
+                    p1.w -= p1_lat.w;
+                }
+                if p2.z * p2_lat.w - p2.w * p2_lat.z > 0.0 {
+                    p2.z += p2_lat.z;
+                    p2.w += p2_lat.w;
+                } else {
+                    p2.z -= p2_lat.z;
+                    p2.w -= p2_lat.w;
                 }
 
-                // TODO: Precise calculation - we are currently naïvely projecting
-                //       the centroid of each row, which might not be suitable
-                //       for conservative rendering
-                let p1 = projection * vec4(dist, 0.0, z1, 1.0);
-                let p2 = projection * vec4(dist, 0.0, z2, 1.0);
+                // Clip the line segment by the plane `z == w` (near plane)
+                let clip_states = [p1.z > p1.w, p2.z > p2.w];
+                let clip_state = clip_states[0] as usize + clip_states[1] as usize;
+                if clip_state == 2 {
+                    // Completely clipped
+                    continue;
+                } else if clip_state == 1 {
+                    // Partial clipped
+                    let dot1 = p1.z - p1.w;
+                    let dot2 = p2.z - p2.w;
+                    let fraction = dot1 / (dot1 - dot2);
+                    debug_assert!(fraction >= 0.0 && fraction <= 1.0);
+                    let mut midpoint = p1.lerp(p2, fraction);
+                    midpoint.w = midpoint.z;
+                    if clip_states[0] {
+                        p1 = midpoint;
+                    } else {
+                        p2 = midpoint;
+                    }
+                }
 
+                // Rasterize the span
                 let (mut p1, mut p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
                 trace.opticast_span(
                     cell.pos_min().cast().unwrap(),
@@ -156,8 +229,8 @@ pub fn opticast(
                 p1.y *= output_depth.len() as f32;
                 p2.y *= output_depth.len() as f32;
 
-                let y1 = max(p1.y as i32 + 1, 0);
-                let y2 = min(p2.y as i32, output_depth.len() as i32);
+                let y1 = [p1.y.ceil(), 0.0].max() as i32;
+                let y2 = [p2.y, output_depth.len() as f32].min() as i32;
                 if y1 >= y2 {
                     continue;
                 }
@@ -253,6 +326,7 @@ mod tests {
             0.997703194,
             1.64726257,
         );
+        let lateral_projection = Matrix4::zero();
         let eye = Point3::new(64.0, 64.0, 15.0);
         let mut output_depth = [0.0; 69];
         let mut skip_buffer = [0; 70];
@@ -261,6 +335,7 @@ mod tests {
             azimuth,
             inclination,
             projection,
+            lateral_projection,
             eye,
             &mut output_depth,
             &mut skip_buffer,

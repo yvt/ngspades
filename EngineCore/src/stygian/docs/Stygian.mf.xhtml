@@ -96,6 +96,11 @@ Each beam is associated with a unique coordinate space called *a beam space*. A 
 
 The precise mapping from the $i$-th pixel in a beam depth buffer of size $N_B$ to a volumetric region is defined as follows: (i) project two points whose spherical coordinates are $((\theta_1+\theta_2)/2, \varphi_1)$ and $((\theta_1+\theta_2)/2, \varphi_2)$ respectively to the viewport space; (ii) draw a line segment between the two projected points (iii) uniformly divide the line segment into $N_B$ segments; (iv) choose the $i$-th segment and let $p'_{i}, p'_{i+1}$ be its endpoints; (v) project them back to the world space and call them $p_i, p_{i+1}$; (vi) finally, define four planes ($\theta$ and $\varphi$ used here are azimuth and inclination angles, respectively): the first two are $\theta=\theta_1$, $\theta=\theta_2$ respectively and the others both include the line $\theta=(\theta_1+\theta_2)/2±\pi/2$, $\varphi=0$ and include $p_i$ and $p_{i+1}$, respectively. The said pixel is represented by the volumetric region enclosed by these four planes.
 
+![!!Figure opticast-spans][](Images/Opticast-Span.svg):
+    Rasterizing spans.
+
+The 2D beam-casting produces a set of rows from an input terrain. Every produced row occpies entire the width of a beam as illustrated in [!!Figure opticast-spans]. The objective here is to project spans (sets of contiguous blocks aligned along the Z axis) onto a beam depth buffer. To do this, for each span, the largest rectangle is calculated ([!!Figure opticast-spans], dark shade). This is done by calculating the intersections of the span and the beam's left and right planes ([!!Figure opticast-spans], ●○) and choosing two of them ([!!Figure opticast-spans], ●) representing the smallest interval. The left and right edges of the rectangle may have different Z values. The difference is calculated using *a lateral projection matrix* and the smaller Z values are finally drawn to a beam depth buffer ([!!Figure opticast-spans], right).
+
 ## Reprojection
 
 Finally, beam depth buffers are reprojected to the output depth image. There are several possible strategies based on the fundamental loop structure.

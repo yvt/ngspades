@@ -46,6 +46,8 @@ struct BeamInfo {
     samples_start: usize,
     /// Maps from a beam space to a beam depth buffer (`x = 0`, `y ∈ [0, 1]`)
     projection: Matrix4<f32>,
+    /// Used to adjust Z coordinates
+    lateral_projection: Matrix4<f32>,
 }
 
 impl Default for BeamInfo {
@@ -56,6 +58,7 @@ impl Default for BeamInfo {
             num_samples: 0,
             samples_start: 0,
             projection: Matrix4::zero(),
+            lateral_projection: Matrix4::zero(),
         }
     }
 }
@@ -300,7 +303,14 @@ impl TerrainRast {
                 Matrix4::from_translation(vec3(self.eye.x, self.eye.y, 0.0)) *
                 Matrix4::from_angle_z(Rad(theta));
 
+            let scale = 1.0 / (theta - beam.azimuth.start).cos();
+            let lateral_projection = m *
+                Matrix4::from_translation(vec3(self.eye.x, self.eye.y, 0.0)) *
+                (Matrix4::from_angle_z(Rad(beam.azimuth.start)) * Matrix4::from_nonuniform_scale(scale, scale, 1.0) -
+                Matrix4::from_angle_z(Rad(theta)));
+
             beam.projection = projection;
+            beam.lateral_projection = lateral_projection;
         }
 
         // FIMXE: Adjust sample counts to hard-limit the total number?
@@ -384,6 +394,7 @@ impl TerrainRast {
                 beam.azimuth.clone(),
                 beam.inclination.clone(),
                 beam.projection,
+                beam.lateral_projection,
                 self.eye,
                 &mut self.samples[beam.samples_start..][..beam.num_samples],
                 &mut self.skip_buffer[0..beam.num_samples + 1],

@@ -58,10 +58,7 @@ fn rasterize_opticast_depth() {
                         unreachable!();
                     }
                     RaytraceResult::Hit(hit) => {
-                        // The current implementation is not correct enough.
-                        // Just check nohit/hit values for now
-                        // Point3::from_homogeneous(self.camera * hit.position.extend(1.0)).z;
-                        continue;
+                        Point3::from_homogeneous(self.camera * hit.position.extend(1.0)).z
                     }
                     RaytraceResult::NoHit => 0.0,
                 };
