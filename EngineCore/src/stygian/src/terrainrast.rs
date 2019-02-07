@@ -5,7 +5,7 @@
 //
 //! Terrain rasterizer.
 use arrayvec::ArrayVec;
-use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector4};
+use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector3, Vector4};
 use std::{f32::consts::PI, ops::Range};
 
 use crate::{
@@ -304,10 +304,11 @@ impl TerrainRast {
                 Matrix4::from_angle_z(Rad(theta));
 
             let scale = 1.0 / (theta - beam.azimuth.start).cos();
-            let lateral_projection = m *
-                Matrix4::from_translation(vec3(self.eye.x, self.eye.y, 0.0)) *
-                (Matrix4::from_angle_z(Rad(beam.azimuth.start)) * Matrix4::from_nonuniform_scale(scale, scale, 1.0) -
-                Matrix4::from_angle_z(Rad(theta)));
+            let lateral_projection = m
+                * Matrix4::from_translation(vec3(self.eye.x, self.eye.y, 0.0))
+                * (Matrix4::from_angle_z(Rad(beam.azimuth.start))
+                    * Matrix4::from_nonuniform_scale(scale, scale, 1.0)
+                    - Matrix4::from_angle_z(Rad(theta)));
 
             beam.projection = projection;
             beam.lateral_projection = lateral_projection;
@@ -334,40 +335,10 @@ impl TerrainRast {
                     continue;
                 }
 
-                let theta = (beam.azimuth.start + beam.azimuth.end) * 0.5;
-                let p1 = m * spherical_to_cartesian(theta, beam.inclination.start).extend(0.0);
-                let p2 = m * spherical_to_cartesian(theta, beam.inclination.end).extend(0.0);
-                let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
-
-                let binormal = vec3(-theta.sin(), theta.cos(), 0.0);
-
-                let unproject = |p: Point3<f32>| {
-                    // Discard the Z coordinate and project it to infinity again
-                    m_unproj * vec3(p.x, p.y, 1.0)
-                };
-
-                // Find a plane containing the viewport-space point `p` and
-                // includes a line `θ = theta ± π/2, φ = 0`
-                let to_plane_normal = |p: Point3<f32>| unproject(p).cross(binormal);
-
-                let mut last_p = to_plane_normal(p1);
-                for i in 1..=beam.num_samples {
-                    let p = to_plane_normal(p1 + (p2 - p1) * (i as f32 / beam.num_samples as f32));
-
-                    // What we do here is equivalent to
-                    // `intersection_of_latitudinal_line_and_plane_with_tangent`,
-                    // but more stable when the output of `unproject` is close to
-                    // the zenith or nadir because a binormal vector is supplied
-                    // explicitly.
-
-                    let v1 = intersection_of_latitudinal_line_and_plane(beam.azimuth.start, last_p);
-                    let v2 = intersection_of_latitudinal_line_and_plane(beam.azimuth.end, last_p);
-                    let v3 = intersection_of_latitudinal_line_and_plane(beam.azimuth.start, p);
-                    let v4 = intersection_of_latitudinal_line_and_plane(beam.azimuth.end, p);
-
-                    trace.terrainrast_sample(&[v1, v2, v4, v3]);
-
-                    last_p = p;
+                for verts in
+                    BeamSampleLocator::new(beam, self.camera_matrix, self.camera_matrix_unproj)
+                {
+                    trace.terrainrast_sample(&verts);
                 }
             }
         }
@@ -375,19 +346,14 @@ impl TerrainRast {
         // end of function
     }
 
-    /// Create a conservative depth image from a terrain. A camera matrix
-    /// must have been set with [`TerrainRast::set_camera_matrix`].
-    pub fn rasterize(&mut self, terrain: &Terrain, output: &mut DepthImage) {
-        self.rasterize_trace(terrain, output, NoTrace)
+    /// Render a terrain and updates the internal warped depth buffer.
+    /// A camera matrix must have been set with [`TerrainRast::set_camera_matrix`].
+    pub fn opticast(&mut self, terrain: &Terrain) {
+        self.opticast_trace(terrain, NoTrace)
     }
 
-    /// `rasterize` with tracing.
-    pub fn rasterize_trace(
-        &mut self,
-        terrain: &Terrain,
-        output: &mut DepthImage,
-        mut trace: impl Trace,
-    ) {
+    /// `opticast` with tracing.
+    pub fn opticast_trace(&mut self, terrain: &Terrain, mut trace: impl Trace) {
         for beam in self.beams.iter() {
             opticast(
                 terrain,
@@ -403,55 +369,128 @@ impl TerrainRast {
         }
 
         if trace.wants_opticast_sample() {
-            let m = self.camera_matrix;
-            let m_unproj = self.camera_matrix_unproj;
             for beam in self.beams.iter() {
                 if beam.num_samples == 0 {
                     continue;
                 }
 
-                let theta = (beam.azimuth.start + beam.azimuth.end) * 0.5;
-                let p1 = m * spherical_to_cartesian(theta, beam.inclination.start).extend(0.0);
-                let p2 = m * spherical_to_cartesian(theta, beam.inclination.end).extend(0.0);
-                let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
-
-                let binormal = vec3(-theta.sin(), theta.cos(), 0.0);
-
-                let unproject = |p: Point3<f32>| {
-                    // Discard the Z coordinate and project it to infinity again
-                    m_unproj * vec3(p.x, p.y, 1.0)
-                };
-
-                // Find a plane containing the viewport-space point `p` and
-                // includes a line `θ = theta ± π/2, φ = 0`
-                let to_plane_normal = |p: Point3<f32>| unproject(p).cross(binormal);
-
-                let mut last_p = to_plane_normal(p1);
-                for i in 1..=beam.num_samples {
-                    let p = to_plane_normal(p1 + (p2 - p1) * (i as f32 / beam.num_samples as f32));
-
-                    // What we do here is equivalent to
-                    // `intersection_of_latitudinal_line_and_plane_with_tangent`,
-                    // but more stable when the output of `unproject` is close to
-                    // the zenith or nadir because a binormal vector is supplied
-                    // explicitly.
-
-                    let v1 = intersection_of_latitudinal_line_and_plane(beam.azimuth.start, last_p);
-                    let v2 = intersection_of_latitudinal_line_and_plane(beam.azimuth.end, last_p);
-                    let v3 = intersection_of_latitudinal_line_and_plane(beam.azimuth.start, p);
-                    let v4 = intersection_of_latitudinal_line_and_plane(beam.azimuth.end, p);
-
-                    trace.opticast_sample(
-                        &[v1, v2, v4, v3],
-                        self.samples[beam.samples_start + i - 1],
-                    );
-
-                    last_p = p;
+                for (i, verts) in
+                    BeamSampleLocator::new(beam, self.camera_matrix, self.camera_matrix_unproj)
+                        .enumerate()
+                {
+                    trace.opticast_sample(&verts, self.samples[beam.samples_start + i]);
                 }
             }
         }
+    }
 
-        // TODO
+    /// Render a conservative depth image from the internal warped depth buffer.
+    ///
+    /// The contents of the internal warped depth buffer is produced by
+    /// [`TerrainRast::opticast`].
+    pub fn rasterize(&mut self, _output: &mut DepthImage) {
+        unimplemented!();
+    }
+}
+
+/// Produces model-space coordinates of the bounding vertices of a beam's samples.
+#[derive(Debug)]
+struct BeamSampleLocator {
+    vs_primary_start: Point3<f32>,
+    vs_primary_dir: Vector3<f32>,
+    ms_frontier: Vector3<f32>,
+    binormal: Vector3<f32>,
+    camera_matrix_unproj: Matrix3<f32>,
+    azimuth: Range<f32>,
+    inv_count: f32,
+    fraction: f32,
+    remaining_count: usize,
+}
+
+impl BeamSampleLocator {
+    fn new(
+        beam: &BeamInfo,
+        camera_matrix: Matrix4<f32>,
+        camera_matrix_unproj: Matrix3<f32>,
+    ) -> Self {
+        let theta = (beam.azimuth.start + beam.azimuth.end) * 0.5;
+        let vs_primary_start =
+            camera_matrix * spherical_to_cartesian(theta, beam.inclination.start).extend(0.0);
+        let vs_primary_end =
+            camera_matrix * spherical_to_cartesian(theta, beam.inclination.end).extend(0.0);
+        let (vs_primary_start, vs_primary_end) = (
+            Point3::from_homogeneous(vs_primary_start),
+            Point3::from_homogeneous(vs_primary_end),
+        );
+        let vs_primary_dir = vs_primary_end - vs_primary_start;
+
+        let binormal = vec3(-theta.sin(), theta.cos(), 0.0);
+
+        let ms_frontier = Self::to_plane_normal(vs_primary_start, binormal, camera_matrix_unproj);
+
+        let inv_count = 1.0 / beam.num_samples as f32;
+        let remaining_count = beam.num_samples;
+
+        Self {
+            vs_primary_start,
+            vs_primary_dir,
+            ms_frontier,
+            binormal,
+            camera_matrix_unproj,
+            azimuth: beam.azimuth.clone(),
+            inv_count,
+            fraction: 0.0,
+            remaining_count,
+        }
+    }
+
+    /// Find a plane containing the given viewport-space point `p` and
+    /// includes a line `θ = theta ± π/2, φ = 0`
+    fn to_plane_normal(
+        p: Point3<f32>,
+        binormal: Vector3<f32>,
+        m_unproj: Matrix3<f32>,
+    ) -> Vector3<f32> {
+        // Discard the Z coordinate and project it to infinity again
+        let p = m_unproj * vec3(p.x, p.y, 1.0);
+
+        p.cross(binormal)
+    }
+}
+
+impl Iterator for BeamSampleLocator {
+    type Item = [Vector3<f32>; 4];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining_count == 0 {
+            None
+        } else {
+            self.fraction += self.inv_count;
+            self.remaining_count -= 1;
+            let primary_point = self.vs_primary_start + self.vs_primary_dir * self.fraction;
+
+            // Find the next plane
+            let ms_frontier = self.ms_frontier;
+            let ms_next_frontier =
+                Self::to_plane_normal(primary_point, self.binormal, self.camera_matrix_unproj);
+
+            // Find the vertices of a polygon representing the next sample.
+
+            // What we do here is equivalent to
+            // `intersection_of_latitudinal_line_and_plane_with_tangent`.
+            // The difference is that this is more stable when the output of
+            // `unproject` is close to the zenith or nadir because a binormal
+            // vector is supplied explicitly.
+            let a = &self.azimuth;
+            let v1 = intersection_of_latitudinal_line_and_plane(a.start, ms_frontier);
+            let v2 = intersection_of_latitudinal_line_and_plane(a.end, ms_frontier);
+            let v3 = intersection_of_latitudinal_line_and_plane(a.start, ms_next_frontier);
+            let v4 = intersection_of_latitudinal_line_and_plane(a.end, ms_next_frontier);
+
+            self.ms_frontier = ms_next_frontier;
+
+            Some([v1, v2, v4, v3])
+        }
     }
 }
 

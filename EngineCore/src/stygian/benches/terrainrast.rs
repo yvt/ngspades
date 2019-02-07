@@ -32,7 +32,7 @@ fn set_camera_matrix(b: &mut Bencher) {
     });
 }
 
-fn rasterize(b: &mut Bencher, size: usize) {
+fn opticast(b: &mut Bencher, size: usize) {
     let mut rast = TerrainRast::new(size);
 
     let projection: Matrix4<f32> = Perspective {
@@ -56,30 +56,28 @@ fn rasterize(b: &mut Bencher, size: usize) {
     );
     rast.set_camera_matrix(projection * view);
 
-    let mut image = DepthImage::new(vec2(size, size));
-
     let sty_terrain = Terrain::from_ngsterrain(&terrainload::DERBY_RACERS).unwrap();
 
     b.iter(|| {
-        rast.rasterize(&sty_terrain, &mut image);
+        rast.opticast(&sty_terrain);
     });
 }
 
-fn rasterize_64(b: &mut Bencher) {
-    rasterize(b, 64);
+fn opticast_64(b: &mut Bencher) {
+    opticast(b, 64);
 }
-fn rasterize_256(b: &mut Bencher) {
-    rasterize(b, 256);
+fn opticast_256(b: &mut Bencher) {
+    opticast(b, 256);
 }
-fn rasterize_1024(b: &mut Bencher) {
-    rasterize(b, 1024);
+fn opticast_1024(b: &mut Bencher) {
+    opticast(b, 1024);
 }
 
 benchmark_group!(
     benches,
     set_camera_matrix,
-    rasterize_64,
-    rasterize_256,
-    rasterize_1024
+    opticast_64,
+    opticast_256,
+    opticast_1024
 );
 benchmark_main!(benches);

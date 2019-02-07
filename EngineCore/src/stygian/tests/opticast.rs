@@ -3,17 +3,17 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{vec2, vec3, Matrix4, PerspectiveFov, Point3, Vector3};
+use cgmath::{vec3, Matrix4, PerspectiveFov, Point3, Vector3};
 use ngsterrain::raytrace::{raytrace, RaytraceResult};
 
-use stygian::{DepthImage, Terrain, TerrainRast};
+use stygian::{Terrain, TerrainRast};
 
 #[path = "../common/terrainload.rs"]
 #[allow(dead_code)]
 mod terrainload;
 
 #[test]
-fn rasterize_opticast_depth() {
+fn opticast_depth() {
     let mut rast = TerrainRast::new(64);
 
     let projection: Matrix4<f32> = PerspectiveFov {
@@ -27,8 +27,6 @@ fn rasterize_opticast_depth() {
     let projection = Matrix4::from_translation(vec3(0.0, 0.0, 1.0))
         * Matrix4::from_nonuniform_scale(1.0, 1.0, -1.0)
         * projection;
-
-    let mut image = DepthImage::new(vec2(64, 64));
 
     let sty_terrain = Terrain::from_ngsterrain(&terrainload::DERBY_RACERS).unwrap();
 
@@ -103,6 +101,6 @@ fn rasterize_opticast_depth() {
             terrain: &*terrainload::DERBY_RACERS,
         };
 
-        rast.rasterize_trace(&sty_terrain, &mut image, tracer);
+        rast.opticast_trace(&sty_terrain, tracer);
     }
 }

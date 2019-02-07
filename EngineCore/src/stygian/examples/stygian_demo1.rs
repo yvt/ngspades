@@ -374,7 +374,7 @@ impl Renderer {
             .set_camera_matrix_trace(params.camera_matrix, Tracer(&log));
 
         self.sty_rast
-            .rasterize_trace(&self.sty_terrain, &mut self.sty_depth, Tracer(&log));
+            .opticast_trace(&self.sty_terrain, Tracer(&log));
 
         // Render a scene
         target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 0.0);
