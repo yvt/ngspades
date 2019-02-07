@@ -327,13 +327,13 @@ impl INgsPFCharStyleTrait for ComCharStyle {
     fn get_text_decoration(&self, retval: &mut ngsbase::TextDecoration) -> HResult {
         *retval = if let Some(styles) = self.with(|style| style.text_decoration) {
             let mut ret = ngsbase::TextDecoration::empty();
-            if styles.intersects(text::TextDecorationFlags::Underline) {
+            if styles.intersects(text::TextDecorationFlags::UNDERLINE) {
                 ret |= ngsbase::TextDecoration::Underline;
             }
-            if styles.intersects(text::TextDecorationFlags::Overline) {
+            if styles.intersects(text::TextDecorationFlags::OVERLINE) {
                 ret |= ngsbase::TextDecoration::Overline;
             }
-            if styles.intersects(text::TextDecorationFlags::Strikethrough) {
+            if styles.intersects(text::TextDecorationFlags::STRIKETHROUGH) {
                 ret |= ngsbase::TextDecoration::Strikethrough;
             }
             ret
@@ -351,13 +351,13 @@ impl INgsPFCharStyleTrait for ComCharStyle {
         } else {
             let mut ret = text::TextDecorationFlags::empty();
             if value.contains(ngsbase::TextDecoration::Underline) {
-                ret |= text::TextDecorationFlags::Underline;
+                ret |= text::TextDecorationFlags::UNDERLINE;
             }
             if value.contains(ngsbase::TextDecoration::Overline) {
-                ret |= text::TextDecorationFlags::Overline;
+                ret |= text::TextDecorationFlags::OVERLINE;
             }
             if value.contains(ngsbase::TextDecoration::Strikethrough) {
-                ret |= text::TextDecorationFlags::Strikethrough;
+                ret |= text::TextDecorationFlags::STRIKETHROUGH;
             }
             translated = Some(ret);
         }

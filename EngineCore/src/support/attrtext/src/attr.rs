@@ -73,8 +73,8 @@ pub enum FontStyle {
 
 bitflags! {
     pub struct TextDecorationFlags: u8 {
-        const Underline = 0b001;
-        const Overline = 0b010;
-        const Strikethrough = 0b100;
+        const UNDERLINE = 0b001;
+        const OVERLINE = 0b010;
+        const STRIKETHROUGH = 0b100;
     }
 }
