@@ -12,6 +12,7 @@
 /// This macro essentially converts an input expression into a constant. Thus,
 /// it is useful for calling intrinsic functions such as `_mm_i32gather_epi32`
 /// that only accept constant values for some parameter.
+#[allow(dead_code)]
 macro_rules! constantify {
     (
         match ($var:expr) {
