@@ -32,6 +32,11 @@ fn main() {
         )
         .get_matches();
 
+    println!("Escape - Exit");
+    println!("WASD - Move");
+    println!("←↓↑→ - Look");
+    println!("Space - Cycle through visualization modes");
+
     // Load the input vox file
     println!("Loading the input file");
     let terrain = if let Some(input_path) = matches.value_of_os("INPUT") {
@@ -89,13 +94,14 @@ fn main() {
 
         // drawing a frame
         let mut target = display.draw();
-        renderer.render(&state.render_params(4.0 / 3.0), &mut target);
+        renderer.render(&state, &mut target);
 
         target.finish().unwrap();
 
         let title = format!(
-            "Stygian demo app 1 [{:.2} fps]",
+            "Stygian demo app 1 [{:.2} fps] [{:?}]",
             renderer.fps_counter.rate(),
+            state.mode,
         );
         display.gl_window().set_title(&title);
     }
@@ -108,6 +114,7 @@ struct State {
     angle: Vector3<f32>,
     angular_velocity: Vector3<f32>,
     keys: [bool; 16],
+    mode: RenderMode,
 }
 
 impl State {
@@ -128,6 +135,7 @@ impl State {
             angle: vec3(-0.4, 0.0, 0.0),
             angular_velocity: Vector3::zero(),
             keys: [false; 16],
+            mode: RenderMode::default(),
         }
     }
 
@@ -150,6 +158,7 @@ impl State {
                 glutin::VirtualKeyCode::LShift | glutin::VirtualKeyCode::RShift => {
                     self.keys[8] = pressed
                 }
+                glutin::VirtualKeyCode::Space if pressed => self.mode = self.mode.next(),
                 _ => {}
             }
         }
@@ -226,6 +235,29 @@ impl State {
                 * Matrix4::from_nonuniform_scale(1.0, 1.0, -1.0)
                 * proj
                 * view,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RenderMode {
+    None,
+    OpticastSamples,
+    FinalDepthImage,
+}
+
+impl Default for RenderMode {
+    fn default() -> Self {
+        RenderMode::FinalDepthImage
+    }
+}
+
+impl RenderMode {
+    fn next(&self) -> Self {
+        match *self {
+            RenderMode::None => RenderMode::OpticastSamples,
+            RenderMode::OpticastSamples => RenderMode::FinalDepthImage,
+            RenderMode::FinalDepthImage => RenderMode::None,
         }
     }
 }
@@ -348,7 +380,9 @@ impl Renderer {
         }
     }
 
-    fn render(&mut self, params: &RenderParams, target: &mut impl Surface) {
+    fn render(&mut self, state: &State, target: &mut impl Surface) {
+        let params = state.render_params(4.0 / 3.0);
+
         // Set up the Stygian internal state tracing for visualization
         use std::cell::RefCell;
         struct Log {
@@ -375,6 +409,8 @@ impl Renderer {
 
         self.sty_rast
             .update_with_trace(&self.sty_terrain, Tracer(&log));
+
+        self.sty_rast.rasterize_to(&mut self.sty_depth);
 
         // Render a scene
         target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 0.0);
@@ -420,26 +456,59 @@ impl Renderer {
             .map(|x| trans_point2(vp_matrix, *x)),
         );
 
-        for (verts, depth) in log.get_mut().samples.iter() {
-            use array::Array4;
+        if state.mode == RenderMode::OpticastSamples {
+            for (verts, depth) in log.get_mut().samples.iter() {
+                use array::Array4;
 
-            let verts = verts.map(|v| {
-                let p = camera_matrix * v.extend(0.0);
-                Point2::new(p.x / p.w, p.y / p.w)
-            });
+                let verts = verts.map(|v| {
+                    let p = camera_matrix * v.extend(0.0);
+                    Point2::new(p.x / p.w, p.y / p.w)
+                });
 
-            // Make polygons slightly smaller
-            let verts = verts.map(|v| v + (verts[0] - v) * 0.1);
+                // Make polygons slightly smaller
+                let verts = verts.map(|v| v + (verts[0] - v) * 0.1);
 
-            // Color by depth
-            let color = scalar_to_color(1.0 - 0.1 / (*depth + 0.1));
+                // Color by depth
+                let color = scalar_to_color(1.0 - 0.1 / (*depth + 0.1));
 
-            self.linedraw.push(
-                color,
-                [verts[0], verts[1], verts[2], verts[3], verts[0]]
-                    .iter()
-                    .cloned(),
-            );
+                self.linedraw.push(
+                    color,
+                    [verts[0], verts[1], verts[2], verts[3], verts[0]]
+                        .iter()
+                        .cloned(),
+                );
+            }
+        } else if state.mode == RenderMode::FinalDepthImage {
+            let image = &self.sty_depth;
+            let size = image.size();
+            let bitmap = image.pixels();
+            for y in 0..size.y {
+                for x in 0..size.x {
+                    use array::Array2;
+
+                    let mut xs = [x, x + 1].map(|v| v as f32 * (2.0 / size.x as f32) - 1.0);
+                    let mut ys = [y, y + 1].map(|v| v as f32 * (2.0 / size.y as f32) - 1.0);
+
+                    // Make polygons slightly smaller
+                    xs[0] += (xs[1] - xs[0]) * 0.1;
+                    ys[0] += (ys[1] - ys[0]) * 0.1;
+
+                    let verts = [
+                        Point2::new(xs[0], ys[0]),
+                        Point2::new(xs[1], ys[0]),
+                        Point2::new(xs[1], ys[1]),
+                        Point2::new(xs[0], ys[1]),
+                        Point2::new(xs[0], ys[0]),
+                    ];
+
+                    // Color by depth
+                    let depth = bitmap[x + y * size.x];
+                    let color = scalar_to_color(1.0 - 0.1 / (depth + 0.1));
+
+                    self.linedraw
+                        .push(color, verts.iter().map(|x| trans_point2(vp_matrix, *x)));
+                }
+            }
         }
 
         self.linedraw.flush(target);

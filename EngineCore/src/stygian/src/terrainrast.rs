@@ -388,8 +388,61 @@ impl TerrainRast {
     ///
     /// The contents of the internal warped depth buffer is produced by
     /// [`TerrainRast::opticast`].
-    pub fn rasterize_to(&mut self, _output: &mut DepthImage) {
-        unimplemented!();
+    pub fn rasterize_to(&self, output: &mut DepthImage) {
+        use array::Array4;
+        use std::f32::INFINITY;
+
+        let size = output.size();
+        let bitmap = output.image.as_mut_slice();
+
+        for depth in bitmap.iter_mut() {
+            *depth = INFINITY;
+        }
+
+        let m = self.camera_matrix;
+
+        for beam in self.beams.iter() {
+            if beam.num_samples == 0 {
+                continue;
+            }
+
+            for (i, ms_verts) in
+                BeamSampleLocator::new(beam, self.camera_matrix, self.camera_matrix_unproj)
+                    .enumerate()
+            {
+                let vs_verts = ms_verts.map(|v| Point3::from_homogeneous(m * v.extend(0.0)));
+
+                let x_min = vs_verts.map(|v| (v.x + 1.0) * (size.x as f32 * 0.5)).min();
+                let y_min = vs_verts.map(|v| (v.y + 1.0) * (size.y as f32 * 0.5)).min();
+                let x_max = vs_verts.map(|v| (v.x + 1.0) * (size.x as f32 * 0.5)).max();
+                let y_max = vs_verts.map(|v| (v.y + 1.0) * (size.y as f32 * 0.5)).max();
+
+                // It's okay to inflate the bounding box - the safest guess
+                // would be stored if multiple samples overlap
+                let x_min = [x_min, 0.0].max() as isize;
+                let y_min = [y_min, 0.0].max() as isize;
+                let x_max = [x_max, (size.x - 1) as f32].min() as isize + 1;
+                let y_max = [y_max, (size.y - 1) as f32].min() as isize + 1;
+
+                if x_min >= x_max || y_min >= y_max {
+                    continue;
+                }
+                let (x_min, y_min) = (x_min as usize, y_min as usize);
+                let (x_max, y_max) = (x_max as usize, y_max as usize);
+
+                let new_depth = self.samples[beam.samples_start + i];
+
+                debug_assert!(x_max <= size.x, "{:?} <= {:?}", x_max, size.x);
+                debug_assert!(y_max <= size.y, "{:?} <= {:?}", y_max, size.y);
+
+                for y in y_min..y_max {
+                    for x in x_min..x_max {
+                        let depth = unsafe { bitmap.get_unchecked_mut(x + y * size.x) };
+                        *depth = [*depth, new_depth].min();
+                    }
+                }
+            }
+        }
     }
 }
 

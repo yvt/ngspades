@@ -101,11 +101,11 @@ The precise mapping from the $i$-th pixel in a beam depth buffer of size $N_B$ t
 
 The 2D beam-casting produces a set of rows from an input terrain. Every produced row occpies entire the width of a beam as illustrated in [!!Figure opticast-spans]. The objective here is to project spans (sets of contiguous blocks aligned along the Z axis) onto a beam depth buffer. To do this, for each span, the largest rectangle is calculated ([!!Figure opticast-spans], dark shade). This is done by calculating the intersections of the span and the beam's left and right planes ([!!Figure opticast-spans], ●○) and choosing two of them ([!!Figure opticast-spans], ●) representing the smallest interval. The left and right edges of the rectangle may have different Z values. The difference is calculated using *a lateral projection matrix* and the smaller Z values are finally drawn to a beam depth buffer ([!!Figure opticast-spans], right).
 
-## Reprojection
+## Rasterization
 
-Finally, beam depth buffers are reprojected to the output depth image. There are several possible strategies based on the fundamental loop structure.
+Finally, beam depth buffers are projected to the output depth image. There are several possible strategies based on the fundamental loop structure.
 
-*Pixel*: The output pixels are iterated over and on each pixel one or more samples intersecting the pixel are sought. While this in principle provides a good writing memory access pattern, this is unsuitable for the current problem because the beam distribution is uneven and a binary search would be required to find a beam.
+*Pixel*: The output pixels are iterated over and on each pixel one or more samples intersecting the pixel are sought. While this in principle provides a good writing memory access pattern, this is impractical for the current problem because the beam distribution is uneven and a binary search would be required to find a beam.
 
 *Beam, Pixel*: Each beam is rasterized. Beams are *textured* with the depth values from the beam's samples. The requirement is a mapping from screen-space coordinates to beam depth buffer locations.
 
