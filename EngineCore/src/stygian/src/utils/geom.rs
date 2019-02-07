@@ -236,6 +236,7 @@ mod tests {
     #[test]
     fn unprojector_xy_to_infinity_sanity() {
         let p_ws = vec3(0.5, 0.8, 1.3).normalize(); // point at infinity
+
         // FIXME: Points are unprojected to the opposite direction when this `-`
         //        is removed. Investigate why
         let m = -Matrix4::new(

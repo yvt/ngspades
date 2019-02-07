@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{Vector3, Vector2};
+use cgmath::{Vector2, Vector3};
 
 /// A trait for observing the internal behaviour of Stygian.
 ///
@@ -15,13 +15,17 @@ use cgmath::{Vector3, Vector2};
 /// The demo program uses this trait to visualize the inner workings.
 pub trait Trace: Clone {
     /// Return whether calls to `terrainrast_sample` can be skipped.
-    fn wants_terrainrast_sample(&mut self) -> bool { false }
+    fn wants_terrainrast_sample(&mut self) -> bool {
+        false
+    }
 
     /// Called for every generated terrainrast sample.
     fn terrainrast_sample(&mut self, _vertices: &[Vector3<f32>; 4]) {}
 
     /// Return whether calls to `opticast_sample` can be skipped.
-    fn wants_opticast_sample(&mut self) -> bool { false }
+    fn wants_opticast_sample(&mut self) -> bool {
+        false
+    }
 
     /// Called for every rasterized terrainrast sample.
     fn opticast_sample(&mut self, _vertices: &[Vector3<f32>; 4], _depth: f32) {}
