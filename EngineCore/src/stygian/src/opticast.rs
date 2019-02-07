@@ -3,12 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{prelude::*, vec2, vec4, Matrix4, Point3};
-use std::{
-    cmp::{max, min},
-    f32::{consts::PI, INFINITY, NEG_INFINITY},
-    ops::Range,
-};
+use cgmath::{prelude::*, vec2, Matrix4, Point3};
+use std::{cmp::max, ops::Range};
 
 use crate::{
     debug::Trace,
@@ -35,7 +31,7 @@ const EOB_BIT: u32 = 1 << 31;
 pub fn opticast(
     terrain: &Terrain,
     azimuth: Range<f32>,
-    inclination: Range<f32>,
+    _inclination: Range<f32>,
     projection: Matrix4<f32>,
     lateral_projection: Matrix4<f32>,
     eye: Point3<f32>,
@@ -400,6 +396,10 @@ mod tests {
 
         // Check for the incorrect output illustrated in the image:
         // <ipfs://QmTPFyLy76mrgWabCKsQzS15kZFXR7PjpC3mswxDmj3RyY>
-        assert!(output_depth[41] <= 0.041894495, "{:?} <= 0.04189449", output_depth[41]);
+        assert!(
+            output_depth[41] <= 0.041894495,
+            "{:?} <= 0.04189449",
+            output_depth[41]
+        );
     }
 }

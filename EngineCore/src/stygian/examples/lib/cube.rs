@@ -119,32 +119,6 @@ impl Face {
             East => Vector3::new(1, 0, 0),
         }
     }
-
-    /// Gets the face in a specific direction.
-    pub fn from_direction(d: [i32; 3]) -> Option<Self> {
-        Some(match (d[0], d[1], d[2]) {
-            (0, -1, 0) => Down,
-            (0, 1, 0) => Up,
-            (0, 0, -1) => North,
-            (0, 0, 1) => South,
-            (-1, 0, 0) => West,
-            (1, 0, 0) => East,
-            _ => return None,
-        })
-    }
-
-    /// Convert number to face.
-    pub fn from_usize(number: usize) -> Option<Self> {
-        Some(match number {
-            0 => Down,
-            1 => Up,
-            2 => North,
-            3 => South,
-            4 => West,
-            5 => East,
-            _ => return None,
-        })
-    }
 }
 
 /// The error parsing face from string.
@@ -163,30 +137,5 @@ impl FromStr for Face {
             "east" => East,
             _ => return Err(ParseError),
         })
-    }
-}
-
-/// Iterates through each face on a cube.
-#[derive(Copy, Clone)]
-pub struct FaceIterator(usize);
-
-impl FaceIterator {
-    /// Creates a new face iterator.
-    pub fn new() -> Self {
-        FaceIterator(0)
-    }
-}
-
-impl Iterator for FaceIterator {
-    type Item = Face;
-
-    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        let face = self.0;
-        if face < 6 {
-            self.0 += 1;
-            Face::from_usize(face)
-        } else {
-            None
-        }
     }
 }

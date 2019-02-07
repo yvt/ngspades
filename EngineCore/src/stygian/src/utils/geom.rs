@@ -154,7 +154,7 @@ pub fn unprojector_xy_to_infinity(m: Matrix4<f32>) -> Matrix3<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cgmath::{assert_abs_diff_eq, prelude::*, vec3, Point3};
+    use cgmath::{assert_abs_diff_eq, vec3, Point3};
 
     #[test]
     fn jacobian_from_projection_matrix_sanity() {

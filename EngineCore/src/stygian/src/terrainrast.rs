@@ -6,7 +6,7 @@
 //! Terrain rasterizer.
 use arrayvec::ArrayVec;
 use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector4};
-use std::{cmp::min, f32::consts::PI, ops::Range};
+use std::{f32::consts::PI, ops::Range};
 
 use crate::{
     debug::{NoTrace, Trace},
@@ -485,8 +485,8 @@ mod tests {
         dbg!(rast.beams.len());
 
         for beam in rast.beams.iter() {
-            let mut p1 = spherical_to_cartesian(0.0, beam.inclination.start).extend(0.0);
-            let mut p2 = spherical_to_cartesian(0.0, beam.inclination.end).extend(0.0);
+            let p1 = spherical_to_cartesian(0.0, beam.inclination.start).extend(0.0);
+            let p2 = spherical_to_cartesian(0.0, beam.inclination.end).extend(0.0);
 
             let (p1, p2) = (beam.projection * p1, beam.projection * p2);
             let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));

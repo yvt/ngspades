@@ -3,14 +3,11 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{
-    conv::array4x4, prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector2, Vector3,
-};
+use cgmath::{conv::array4x4, prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
 use glium::{
-    backend::{Context, Facade},
-    glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
+    backend::Facade, glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
 };
-use std::{rc::Rc, time::Instant};
+use std::time::Instant;
 
 use stygian;
 
@@ -272,8 +269,6 @@ struct RenderParams {
 }
 
 struct Renderer {
-    context: Rc<Context>,
-
     terrain: ngsterrain::Terrain,
     terrain_vb: VertexBuffer<lib::vxl2mesh::TerrainVertex>,
     terrain_ib: IndexBuffer<u32>,
@@ -290,8 +285,6 @@ struct Renderer {
 
 impl Renderer {
     fn new(facade: &impl Facade, terrain: ngsterrain::Terrain) -> Self {
-        let context = facade.get_context().clone();
-
         // Convert the terrain to a mesh
         println!("Converting the terrain into a mesh");
         let terrain_vb;
@@ -340,8 +333,6 @@ impl Renderer {
         let sty_depth = stygian::DepthImage::new(vec2(64, 64));
 
         Self {
-            context,
-
             terrain,
             terrain_vb,
             terrain_ib,

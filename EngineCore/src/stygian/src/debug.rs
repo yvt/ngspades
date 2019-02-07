@@ -26,7 +26,7 @@ pub trait Trace: Clone {
     /// Called for every rasterized terrainrast sample.
     fn opticast_sample(&mut self, _vertices: &[Vector3<f32>; 4], _depth: f32) {}
 
-    fn opticast_span(&mut self, pos: Vector2<u32>, size: u32, z: std::ops::Range<u32>) {}
+    fn opticast_span(&mut self, _pos: Vector2<u32>, _size: u32, _z: std::ops::Range<u32>) {}
 }
 
 /// `Trace` implementation that does nothing.
