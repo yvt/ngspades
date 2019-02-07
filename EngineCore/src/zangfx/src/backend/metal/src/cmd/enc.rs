@@ -59,13 +59,13 @@ crate trait UseResources {
 
     fn use_gfx_resource(&self, usage: command::ResourceUsageFlags, objs: base::ResourceSet<'_>) {
         let mut metal_usage = MTLResourceUsage::empty();
-        if usage.intersects(command::ResourceUsageFlags::Read) {
+        if usage.intersects(command::ResourceUsageFlags::READ) {
             metal_usage |= metal::MTLResourceUsageRead;
         }
-        if usage.intersects(command::ResourceUsageFlags::Write) {
+        if usage.intersects(command::ResourceUsageFlags::WRITE) {
             metal_usage |= metal::MTLResourceUsageWrite;
         }
-        if usage.intersects(command::ResourceUsageFlags::Sample) {
+        if usage.intersects(command::ResourceUsageFlags::SAMPLE) {
             metal_usage |= metal::MTLResourceUsageSample;
         }
 

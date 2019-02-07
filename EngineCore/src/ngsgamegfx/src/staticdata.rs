@@ -279,7 +279,7 @@ pub trait StaticBufferSource:
     std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug + Unpin
 {
     fn usage(&self) -> gfx::BufferUsageFlags {
-        flags![gfx::BufferUsageFlags::{CopyWrite | Uniform}]
+        flags![gfx::BufferUsageFlags::{COPY_WRITE | UNIFORM}]
     }
 
     fn bytes(&self) -> &[u8];
@@ -316,7 +316,7 @@ impl StaticBuffer {
             let memory_type = device
                 .try_choose_memory_type(
                     &buffer,
-                    flags![gfx::MemoryTypeCapsFlags::{DeviceLocal}],
+                    flags![gfx::MemoryTypeCapsFlags::{DEVICE_LOCAL}],
                     flags![gfx::MemoryTypeCapsFlags::{}],
                 )?
                 .unwrap();
@@ -350,7 +350,7 @@ pub unsafe trait StaticImageSource:
     std::any::Any + Send + Sync + std::hash::Hash + std::cmp::Eq + Clone + std::fmt::Debug + Unpin
 {
     fn usage(&self) -> gfx::ImageUsageFlags {
-        flags![gfx::ImageUsageFlags::{CopyWrite | Sampled}]
+        flags![gfx::ImageUsageFlags::{COPY_WRITE | SAMPLED}]
     }
 
     fn extents(&self) -> ImageExtents;
@@ -411,7 +411,7 @@ impl StaticImage {
             let memory_type = device
                 .try_choose_memory_type(
                     &image,
-                    flags![gfx::MemoryTypeCapsFlags::{DeviceLocal}],
+                    flags![gfx::MemoryTypeCapsFlags::{DEVICE_LOCAL}],
                     flags![gfx::MemoryTypeCapsFlags::{}],
                 )?
                 .unwrap();
@@ -448,7 +448,7 @@ struct QuadVertices;
 
 impl StaticBufferSource for QuadVertices {
     fn usage(&self) -> gfx::BufferUsageFlags {
-        flags![gfx::BufferUsageFlags::{CopyWrite | Vertex}]
+        flags![gfx::BufferUsageFlags::{COPY_WRITE | VERTEX}]
     }
 
     fn bytes(&self) -> &[u8] {
@@ -462,7 +462,7 @@ struct HugeTriangleVertices;
 
 impl StaticBufferSource for HugeTriangleVertices {
     fn usage(&self) -> gfx::BufferUsageFlags {
-        flags![gfx::BufferUsageFlags::{CopyWrite | Vertex}]
+        flags![gfx::BufferUsageFlags::{COPY_WRITE | VERTEX}]
     }
 
     fn bytes(&self) -> &[u8] {

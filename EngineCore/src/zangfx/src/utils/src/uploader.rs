@@ -142,7 +142,7 @@ impl Uploader {
             .build_dynamic_heap()
             .memory_type(
                 device
-                    .try_choose_memory_type_shared(base::BufferUsageFlags::CopyRead)?
+                    .try_choose_memory_type_shared(base::BufferUsageFlags::COPY_READ)?
                     .unwrap(),
             )
             .size(params.max_bytes_ongoing as u64)
@@ -291,7 +291,7 @@ impl Uploader {
                 .device
                 .build_buffer()
                 .size(session_size as _)
-                .usage(base::BufferUsageFlags::CopyRead)
+                .usage(base::BufferUsageFlags::COPY_READ)
                 .build()?;
 
             loop {
@@ -343,7 +343,7 @@ impl Uploader {
                 if let Some(ref fence) = self.sessions.last_fence {
                     // Enforce ordering
                     encoder
-                        .wait_fence(fence, flags![base::AccessTypeFlags::{CopyRead | CopyWrite}]);
+                        .wait_fence(fence, flags![base::AccessTypeFlags::{COPY_READ | COPY_WRITE}]);
                 }
 
                 // Encode copy commands
@@ -358,7 +358,7 @@ impl Uploader {
 
                 encoder.update_fence(
                     &fence,
-                    flags![base::AccessTypeFlags::{CopyRead | CopyWrite}],
+                    flags![base::AccessTypeFlags::{COPY_READ | COPY_WRITE}],
                 );
             }
             for request in sub_requests.clone() {

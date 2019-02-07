@@ -66,7 +66,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Input buffer")
             .size(input_bytes)
-            .usage(gfx::BufferUsageFlags::Storage)
+            .usage(gfx::BufferUsageFlags::STORAGE)
             .queue(&queue)
             .build()
             .unwrap();
@@ -74,7 +74,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Kernel buffer")
             .size(kernel_bytes)
-            .usage(gfx::BufferUsageFlags::Uniform)
+            .usage(gfx::BufferUsageFlags::UNIFORM)
             .queue(&queue)
             .build()
             .unwrap();
@@ -82,7 +82,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Output buffer")
             .size(output_bytes)
-            .usage(gfx::BufferUsageFlags::Storage)
+            .usage(gfx::BufferUsageFlags::STORAGE)
             .queue(&queue)
             .build()
             .unwrap();
@@ -90,7 +90,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             .build_buffer()
             .label("Indirect argument buffer")
             .size(indirect_bytes)
-            .usage(gfx::BufferUsageFlags::IndirectDraw)
+            .usage(gfx::BufferUsageFlags::INDIRECT_DRAW)
             .queue(&queue)
             .build()
             .unwrap();
@@ -108,8 +108,8 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -229,7 +229,7 @@ fn compute_conv1_common<T: TestDriver>(driver: T, direct: bool) {
             e.end_debug_group();
         }
         buffer.host_barrier(
-            gfx::AccessTypeFlags::ComputeWrite,
+            gfx::AccessTypeFlags::COMPUTE_WRITE,
             &[(0..output_bytes, &output_buffer)],
         );
 

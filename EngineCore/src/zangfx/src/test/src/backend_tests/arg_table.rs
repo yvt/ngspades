@@ -171,7 +171,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         let buffer = device
             .build_buffer()
             .size(4096)
-            .usage(flags![gfx::BufferUsageFlags::{Storage | Uniform}])
+            .usage(flags![gfx::BufferUsageFlags::{STORAGE | UNIFORM}])
             .queue(&queue)
             .build()
             .unwrap();
@@ -197,8 +197,8 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -303,7 +303,7 @@ pub fn arg_table_mixed_read<T: TestDriver>(driver: T) {
             e.bind_arg_table(0, &[(&pool, &arg_table)]);
             e.dispatch(&[]);
         }
-        cmd_buffer.host_barrier(gfx::AccessTypeFlags::ComputeWrite, &[(range(0), &buffer)]);
+        cmd_buffer.host_barrier(gfx::AccessTypeFlags::COMPUTE_WRITE, &[(range(0), &buffer)]);
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *cmd_buffer);

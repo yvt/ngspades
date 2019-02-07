@@ -25,7 +25,7 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             .build_buffer()
             .label("Buffer 1")
             .size(65536)
-            .usage(gfx::BufferUsageFlags::CopyWrite)
+            .usage(gfx::BufferUsageFlags::COPY_WRITE)
             .queue(&queue)
             .build()
             .unwrap();
@@ -35,8 +35,8 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -66,7 +66,7 @@ pub fn copy_fill_buffer<T: TestDriver>(driver: T) {
             e.fill_buffer(&buffer1, 800..1200, 0xaf);
             e.end_debug_group();
         }
-        buffer.host_barrier(gfx::AccessTypeFlags::CopyWrite, &[(0..65536, &buffer1)]);
+        buffer.host_barrier(gfx::AccessTypeFlags::COPY_WRITE, &[(0..65536, &buffer1)]);
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);
@@ -103,7 +103,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             .build_buffer()
             .label("Buffer 1")
             .size(65536)
-            .usage(gfx::BufferUsageFlags::CopyRead)
+            .usage(gfx::BufferUsageFlags::COPY_READ)
             .queue(&queue)
             .build()
             .unwrap();
@@ -111,7 +111,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             .build_buffer()
             .label("Buffer 2")
             .size(65536)
-            .usage(gfx::BufferUsageFlags::CopyWrite)
+            .usage(gfx::BufferUsageFlags::COPY_WRITE)
             .queue(&queue)
             .build()
             .unwrap();
@@ -121,8 +121,8 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-            flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+            flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
         );
         println!("  Memory Type = {}", memory_type);
 
@@ -157,7 +157,7 @@ pub fn copy_copy_buffer<T: TestDriver>(driver: T) {
             e.copy_buffer(&buffer1, 4, &buffer2, 1200, data.len() as u64 / 2);
             e.end_debug_group();
         }
-        buffer.host_barrier(gfx::AccessTypeFlags::CopyWrite, &[(0..65536, &buffer2)]);
+        buffer.host_barrier(gfx::AccessTypeFlags::COPY_WRITE, &[(0..65536, &buffer2)]);
 
         println!("- Installing a completion handler");
         let awaiter = utils::CmdBufferAwaiter::new(&mut *buffer);

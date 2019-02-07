@@ -64,13 +64,13 @@ crate fn translate_memory_req(req: &vk::MemoryRequirements) -> base::MemoryReq {
 
 crate fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::ShaderStageFlags {
     let mut ret = vk::ShaderStageFlags::empty();
-    if value.contains(base::ShaderStageFlags::Vertex) {
+    if value.contains(base::ShaderStageFlags::VERTEX) {
         ret |= vk::ShaderStageFlags::VERTEX;
     }
-    if value.contains(base::ShaderStageFlags::Fragment) {
+    if value.contains(base::ShaderStageFlags::FRAGMENT) {
         ret |= vk::ShaderStageFlags::FRAGMENT;
     }
-    if value.contains(base::ShaderStageFlags::Compute) {
+    if value.contains(base::ShaderStageFlags::COMPUTE) {
         ret |= vk::ShaderStageFlags::COMPUTE;
     }
     ret
@@ -78,44 +78,44 @@ crate fn translate_shader_stage_flags(value: base::ShaderStageFlags) -> vk::Shad
 
 crate fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::AccessFlags {
     let mut ret = vk::AccessFlags::empty();
-    if value.contains(base::AccessTypeFlags::IndirectDrawRead) {
+    if value.contains(base::AccessTypeFlags::INDIRECT_DRAW_READ) {
         ret |= vk::AccessFlags::INDIRECT_COMMAND_READ;
     }
-    if value.contains(base::AccessTypeFlags::IndexRead) {
+    if value.contains(base::AccessTypeFlags::INDEX_READ) {
         ret |= vk::AccessFlags::INDEX_READ;
     }
-    if value.contains(base::AccessTypeFlags::VertexAttrRead) {
+    if value.contains(base::AccessTypeFlags::VERTEX_ATTR_READ) {
         ret |= vk::AccessFlags::VERTEX_ATTRIBUTE_READ;
     }
     if value.intersects(
-        flags![base::AccessTypeFlags::{VertexUniformRead | FragmentUniformRead | ComputeUniformRead}],
+        flags![base::AccessTypeFlags::{VERTEX_UNIFORM_READ | FRAGMENT_UNIFORM_READ | COMPUTE_UNIFORM_READ}],
     ) {
         ret |= vk::AccessFlags::UNIFORM_READ;
     }
-    if value.intersects(flags![base::AccessTypeFlags::{VertexRead | FragmentRead | ComputeRead}]) {
+    if value.intersects(flags![base::AccessTypeFlags::{VERTEX_READ | FRAGMENT_READ | COMPUTE_READ}]) {
         ret |= vk::AccessFlags::SHADER_READ;
     }
-    if value.intersects(flags![base::AccessTypeFlags::{VertexWrite | FragmentWrite | ComputeWrite}])
+    if value.intersects(flags![base::AccessTypeFlags::{VERTEX_WRITE | FRAGMENT_WRITE | COMPUTE_WRITE}])
     {
         ret |= vk::AccessFlags::SHADER_READ;
         ret |= vk::AccessFlags::SHADER_WRITE;
     }
-    if value.contains(base::AccessTypeFlags::ColorRead) {
+    if value.contains(base::AccessTypeFlags::COLOR_READ) {
         ret |= vk::AccessFlags::COLOR_ATTACHMENT_READ;
     }
-    if value.contains(base::AccessTypeFlags::ColorWrite) {
+    if value.contains(base::AccessTypeFlags::COLOR_WRITE) {
         ret |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
     }
-    if value.contains(base::AccessTypeFlags::DsRead) {
+    if value.contains(base::AccessTypeFlags::DS_READ) {
         ret |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ;
     }
-    if value.contains(base::AccessTypeFlags::DsWrite) {
+    if value.contains(base::AccessTypeFlags::DS_WRITE) {
         ret |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE;
     }
-    if value.contains(base::AccessTypeFlags::CopyRead) {
+    if value.contains(base::AccessTypeFlags::COPY_READ) {
         ret |= vk::AccessFlags::TRANSFER_READ;
     }
-    if value.contains(base::AccessTypeFlags::CopyWrite) {
+    if value.contains(base::AccessTypeFlags::COPY_WRITE) {
         ret |= vk::AccessFlags::TRANSFER_WRITE;
     }
     ret
@@ -123,31 +123,31 @@ crate fn translate_access_type_flags(value: base::AccessTypeFlags) -> vk::Access
 
 crate fn translate_pipeline_stage_flags(value: base::StageFlags) -> vk::PipelineStageFlags {
     let mut ret = vk::PipelineStageFlags::empty();
-    if value.contains(base::StageFlags::IndirectDraw) {
+    if value.contains(base::StageFlags::INDIRECT_DRAW) {
         ret |= vk::PipelineStageFlags::DRAW_INDIRECT;
     }
-    if value.contains(base::StageFlags::VertexInput) {
+    if value.contains(base::StageFlags::VERTEX_INPUT) {
         ret |= vk::PipelineStageFlags::VERTEX_INPUT;
     }
-    if value.contains(base::StageFlags::Vertex) {
+    if value.contains(base::StageFlags::VERTEX) {
         ret |= vk::PipelineStageFlags::VERTEX_SHADER;
     }
-    if value.contains(base::StageFlags::Fragment) {
+    if value.contains(base::StageFlags::FRAGMENT) {
         ret |= vk::PipelineStageFlags::FRAGMENT_SHADER;
     }
-    if value.contains(base::StageFlags::EarlyFragTests) {
+    if value.contains(base::StageFlags::EARLY_FRAG_TESTS) {
         ret |= vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS;
     }
-    if value.contains(base::StageFlags::LateFragTests) {
+    if value.contains(base::StageFlags::LATE_FRAG_TESTS) {
         ret |= vk::PipelineStageFlags::LATE_FRAGMENT_TESTS;
     }
-    if value.contains(base::StageFlags::RenderOutput) {
+    if value.contains(base::StageFlags::RENDER_OUTPUT) {
         ret |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
     }
-    if value.contains(base::StageFlags::Compute) {
+    if value.contains(base::StageFlags::COMPUTE) {
         ret |= vk::PipelineStageFlags::COMPUTE_SHADER;
     }
-    if value.contains(base::StageFlags::Copy) {
+    if value.contains(base::StageFlags::COPY) {
         ret |= vk::PipelineStageFlags::TRANSFER;
     }
     ret
@@ -245,16 +245,16 @@ crate fn translate_sample_count(value: u32) -> vk::SampleCountFlags {
 crate fn translate_color_channel_flags(value: base::ColorChannelFlags) -> vk::ColorComponentFlags {
     let mut mask = vk::ColorComponentFlags::empty();
 
-    if value.contains(base::ColorChannelFlags::Red) {
+    if value.contains(base::ColorChannelFlags::RED) {
         mask |= vk::ColorComponentFlags::R;
     }
-    if value.contains(base::ColorChannelFlags::Green) {
+    if value.contains(base::ColorChannelFlags::GREEN) {
         mask |= vk::ColorComponentFlags::G;
     }
-    if value.contains(base::ColorChannelFlags::Blue) {
+    if value.contains(base::ColorChannelFlags::BLUE) {
         mask |= vk::ColorComponentFlags::B;
     }
-    if value.contains(base::ColorChannelFlags::Alpha) {
+    if value.contains(base::ColorChannelFlags::ALPHA) {
         mask |= vk::ColorComponentFlags::A;
     }
 

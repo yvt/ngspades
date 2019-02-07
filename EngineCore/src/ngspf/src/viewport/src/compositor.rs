@@ -157,23 +157,23 @@ impl Compositor {
                 let mut builder = device.build_arg_table_sig();
                 builder
                     .arg(composite::ARG_G_SPRITE_PARAMS, gfx::ArgType::StorageBuffer)
-                    .set_stages(gfx::ShaderStageFlags::Vertex);
+                    .set_stages(gfx::ShaderStageFlags::VERTEX);
                 builder.build()?
             },
             {
                 let mut builder = device.build_arg_table_sig();
                 builder
                     .arg(composite::ARG_C_IMAGE, gfx::ArgType::SampledImage)
-                    .set_stages(gfx::ShaderStageFlags::Fragment);
+                    .set_stages(gfx::ShaderStageFlags::FRAGMENT);
                 builder
                     .arg(composite::ARG_C_IMAGE_SAMPLER, gfx::ArgType::Sampler)
-                    .set_stages(gfx::ShaderStageFlags::Fragment);
+                    .set_stages(gfx::ShaderStageFlags::FRAGMENT);
                 builder
                     .arg(composite::ARG_C_MASK, gfx::ArgType::SampledImage)
-                    .set_stages(gfx::ShaderStageFlags::Fragment);
+                    .set_stages(gfx::ShaderStageFlags::FRAGMENT);
                 builder
                     .arg(composite::ARG_C_MASK_SAMPLER, gfx::ArgType::Sampler)
-                    .set_stages(gfx::ShaderStageFlags::Fragment);
+                    .set_stages(gfx::ShaderStageFlags::FRAGMENT);
                 builder.build()?
             },
         ];
@@ -216,7 +216,7 @@ impl Compositor {
             let memory_type = device
                 .choose_memory_type(
                     white_image.get_memory_req()?.memory_types,
-                    gfx::MemoryTypeCapsFlags::DeviceLocal,
+                    gfx::MemoryTypeCapsFlags::DEVICE_LOCAL,
                     flags![gfx::MemoryTypeCapsFlags::{}],
                 )
                 .unwrap();
@@ -254,13 +254,13 @@ impl Compositor {
         let box_vertices = device
             .build_buffer()
             .size(size_of_val(BOX_VERTICES) as u64)
-            .usage(flags![gfx::BufferUsageFlags::{Vertex | CopyWrite}])
+            .usage(flags![gfx::BufferUsageFlags::{VERTEX | COPY_WRITE}])
             .build()?;
         {
             let memory_type = device
                 .choose_memory_type(
                     box_vertices.get_memory_req()?.memory_types,
-                    gfx::MemoryTypeCapsFlags::DeviceLocal,
+                    gfx::MemoryTypeCapsFlags::DEVICE_LOCAL,
                     flags![gfx::MemoryTypeCapsFlags::{}],
                 )
                 .unwrap();
@@ -309,7 +309,7 @@ impl Compositor {
             samplers,
 
             buffer_memory_type: device
-                .try_choose_memory_type_shared(gfx::BufferUsageFlags::Storage)?
+                .try_choose_memory_type_shared(gfx::BufferUsageFlags::STORAGE)?
                 .unwrap(),
             backing_store_memory_type: device
                 .try_choose_memory_type_private(gfx::ImageFormat::SrgbBgra8)?
@@ -645,7 +645,7 @@ impl CompositorWindow {
                     .build_image()
                     .extents(&pixel_size[..])
                     .format(gfx::ImageFormat::SrgbRgba8)
-                    .usage(flags![gfx::ImageUsageFlags::{Render | Sampled}])
+                    .usage(flags![gfx::ImageUsageFlags::{RENDER | SAMPLED}])
                     .build()?;
 
                 c.compositor.temp_res_pool.bind(
@@ -697,7 +697,7 @@ impl CompositorWindow {
                         .build_image()
                         .extents(&pixel_size[..])
                         .format(gfx::ImageFormat::SrgbBgra8)
-                        .usage(flags![gfx::ImageUsageFlags::{Render | Sampled}])
+                        .usage(flags![gfx::ImageUsageFlags::{RENDER | SAMPLED}])
                         .build()?;
 
                     c.compositor.temp_res_pool.bind(
@@ -866,7 +866,7 @@ impl CompositorWindow {
             .device
             .build_buffer()
             .size(sprites_size)
-            .usage(gfx::BufferUsageFlags::Storage)
+            .usage(gfx::BufferUsageFlags::STORAGE)
             .build()?;
         compositor.temp_res_pool.bind(
             &mut c.temp_res_table,
@@ -1120,7 +1120,7 @@ impl CompositorWindow {
                         enc = cb.encode_render(fb);
 
                         if let Some(ref fence) = fence.take() {
-                            enc.wait_fence(fence, gfx::AccessTypeFlags::FragmentRead);
+                            enc.wait_fence(fence, gfx::AccessTypeFlags::FRAGMENT_READ);
                         }
 
                         enc.bind_pipeline(&compositor.statesets[0].composite_pipeline);
@@ -1156,7 +1156,7 @@ impl CompositorWindow {
 
                                         enc.wait_fence(
                                             &port_output.fence,
-                                            gfx::AccessTypeFlags::FragmentRead,
+                                            gfx::AccessTypeFlags::FRAGMENT_READ,
                                         );
                                     }
                                     _ => {}
@@ -1178,8 +1178,8 @@ impl CompositorWindow {
             drawable.encode_prepare_present(
                 &mut cb,
                 compositor.gfx_objects.main_queue.queue_family,
-                gfx::StageFlags::RenderOutput,
-                gfx::AccessTypeFlags::ColorWrite,
+                gfx::StageFlags::RENDER_OUTPUT,
+                gfx::AccessTypeFlags::COLOR_WRITE,
             );
 
             cb.commit()?;

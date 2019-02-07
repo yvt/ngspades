@@ -119,7 +119,7 @@ impl<T: CopyRequest> CmdGenerator<T> for CopyCmdGenerator {
                 if ops.len() > 0 {
                     cmd_buffer.queue_ownership_acquire(
                         src_queue_family,
-                        base::AccessTypeFlags::CopyRead,
+                        base::AccessTypeFlags::COPY_READ,
                         &ops,
                     );
                 }
@@ -142,7 +142,7 @@ impl<T: CopyRequest> CmdGenerator<T> for CopyCmdGenerator {
                 if ops.len() > 0 {
                     cmd_buffer.queue_ownership_release(
                         dst_queue_family,
-                        base::AccessTypeFlags::CopyWrite,
+                        base::AccessTypeFlags::COPY_WRITE,
                         &ops,
                     );
                 }

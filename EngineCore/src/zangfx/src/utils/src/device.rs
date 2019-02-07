@@ -30,14 +30,14 @@ pub trait DeviceUtils: base::Device {
     ///     # ) -> Result<()> {
     ///     let buffer = device.build_buffer()
     ///         .size(64 as u64)
-    ///         .usage(flags![BufferUsageFlags::{Vertex}])
+    ///         .usage(flags![BufferUsageFlags::{VERTEX}])
     ///         .build()?;
     ///
     ///     let memory_type = device
     ///         .choose_memory_type(
     ///             buffer.get_memory_req()?.memory_types,
-    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+    ///             flags![MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
     ///         )
     ///         .expect("suitable memory type was not found");
     ///
@@ -74,13 +74,13 @@ pub trait DeviceUtils: base::Device {
     /// If [`zangfx_base::BufferUsageFlags`] is provided as `valid_memory_types`,
     /// unless any error occurs during the process, this method is guaranteed to
     /// return some memory type provided that `required_caps` is a subset of at
-    /// least one of the following: `DeviceLocal` and
+    /// least one of the following: `DEVICE_LOCAL` and
     /// `HostVisible | HostCoherent`.
     ///
     /// If [`zangfx_base::ImageFormat`] is provided as `valid_memory_types`,
     /// unless any error occurs during the process, this method is guaranteed to
     /// return some memory type provided that `required_caps` is a subset of at
-    /// least one of the following: `DeviceLocal`.
+    /// least one of the following: `DEVICE_LOCAL`.
     ///
     /// Note: Images are never host-visible in ZanGFX.
     ///
@@ -95,15 +95,15 @@ pub trait DeviceUtils: base::Device {
     ///     // Create a buffer. At this point, this buffer is not bound to any heap yet.
     ///     let buffer = device.build_buffer()
     ///         .size(64 as u64)
-    ///         .usage(flags![BufferUsageFlags::{Vertex}])
+    ///         .usage(flags![BufferUsageFlags::{VERTEX}])
     ///         .build()?;
     ///
     ///     // Figure out the best memory type for this buffer
     ///     let memory_type = device
     ///         .try_choose_memory_type(
     ///             &buffer,
-    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+    ///             flags![MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+    ///             flags![MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
     ///         )?
     ///         .expect("suitable memory type was not found");
     ///
@@ -125,9 +125,9 @@ pub trait DeviceUtils: base::Device {
     ///     # ) -> Result<()> {
     ///     let memory_type = device
     ///         .try_choose_memory_type(
-    ///             flags![BufferUsageFlags::{Vertex}],
-    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-    ///             flags![MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+    ///             flags![BufferUsageFlags::{VERTEX}],
+    ///             flags![MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+    ///             flags![MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
     ///         )?
     ///         .expect("suitable memory type was not found");
     ///     # Ok(())
@@ -144,7 +144,7 @@ pub trait DeviceUtils: base::Device {
     ///     let memory_type = device
     ///         .try_choose_memory_type(
     ///             ImageFormat::SrgbBgra8,
-    ///             flags![MemoryTypeCapsFlags::{DeviceLocal}],
+    ///             flags![MemoryTypeCapsFlags::{DEVICE_LOCAL}],
     ///             flags![MemoryTypeCapsFlags::{}],
     ///         )?
     ///         .expect("suitable memory type was not found");
@@ -212,13 +212,13 @@ pub trait DeviceUtils: base::Device {
     ) -> StdResult<Option<base::MemoryType>, T::Error> {
         self.try_choose_memory_type(
             valid_memory_types,
-            flags![base::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-            flags![base::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+            flags![base::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+            flags![base::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
         )
     }
 
     /// A shortcut method of `choose_memory_type` for private accesses by the
-    /// device (`DeviceLocal`).
+    /// device (`DEVICE_LOCAL`).
     fn choose_memory_type_private(
         &self,
         valid_memory_types: impl TryValidMemoryTypes<Error = !>,
@@ -228,7 +228,7 @@ pub trait DeviceUtils: base::Device {
     }
 
     /// A shortcut method of `try_choose_memory_type` for private accesses by
-    /// the device (`DeviceLocal`).
+    /// the device (`DEVICE_LOCAL`).
     ///
     /// Note: Images are never host-visible in ZanGFX.
     ///
@@ -241,7 +241,7 @@ pub trait DeviceUtils: base::Device {
     ///     #     device: &Device,
     ///     # ) -> Result<()> {
     ///     let memory_type = device
-    ///         .try_choose_memory_type_shared(flags![BufferUsageFlags::{Vertex}])?
+    ///         .try_choose_memory_type_shared(flags![BufferUsageFlags::{VERTEX}])?
     ///         .expect("suitable memory type was not found - this should never happen!");
     ///     # Ok(())
     ///     # }
@@ -251,7 +251,7 @@ pub trait DeviceUtils: base::Device {
     ) -> StdResult<Option<base::MemoryType>, T::Error> {
         self.try_choose_memory_type(
             valid_memory_types,
-            flags![base::MemoryTypeCapsFlags::{DeviceLocal}],
+            flags![base::MemoryTypeCapsFlags::{DEVICE_LOCAL}],
             flags![base::MemoryTypeCapsFlags::{}],
         )
     }
@@ -272,7 +272,7 @@ pub trait DeviceUtils: base::Device {
         let image = self
             .build_image()
             .extents(&[1, 1])
-            .usage(flags![base::ImageUsageFlags::{CopyRead | CopyWrite}])
+            .usage(flags![base::ImageUsageFlags::{COPY_READ | COPY_WRITE}])
             .format(format)
             .build()?;
         Ok(image.get_memory_req()?.memory_types)

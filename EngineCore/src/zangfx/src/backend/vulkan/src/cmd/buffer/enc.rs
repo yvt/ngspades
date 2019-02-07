@@ -625,7 +625,7 @@ impl CmdBufferData {
     /// Encode `vkCmdSetEvent` to do the fence updating operation.
     crate fn cmd_update_fence(&self, fence: &Fence, src_access: base::AccessTypeFlags) {
         let traits = self.device.caps().info.traits;
-        if traits.intersects(DeviceTraitFlags::MoltenVK) {
+        if traits.intersects(DeviceTraitFlags::MOLTEN_VK) {
             // Skip all event operations on MoltenVK
             return;
         }
@@ -717,14 +717,14 @@ impl base::CmdEncoder for CmdBufferData {
 
         // TODO: Add "access type" to the base API
         let mut access = base::AccessTypeFlags::empty();
-        if usage.intersects(flags![base::ResourceUsageFlags::{Read | Sample}]) {
+        if usage.intersects(flags![base::ResourceUsageFlags::{READ | SAMPLE}]) {
             access |= flags![base::AccessTypeFlags::{
-                VertexUniformRead | VertexRead | FragmentUniformRead | FragmentRead |
-                ComputeUniformRead | ComputeRead}];
+                VERTEX_UNIFORM_READ | VERTEX_READ | FRAGMENT_UNIFORM_READ | FRAGMENT_READ |
+                COMPUTE_UNIFORM_READ | COMPUTE_READ}];
         }
-        if usage.intersects(base::ResourceUsageFlags::Write) {
+        if usage.intersects(base::ResourceUsageFlags::WRITE) {
             access |= flags![base::AccessTypeFlags::{
-                VertexWrite | FragmentWrite | ComputeWrite}];
+                VERTEX_WRITE | FRAGMENT_WRITE | COMPUTE_WRITE}];
         }
 
         // We must use every access flags bit supported by any of render and
@@ -755,14 +755,14 @@ impl base::CmdEncoder for CmdBufferData {
         use zangfx_base::QueueFamilyCapsFlags;
         let mut supported = base::AccessTypeFlags::empty();
         let qf_caps = self.device.caps().info.queue_families[self.queue_family as usize].caps;
-        if qf_caps.contains(QueueFamilyCapsFlags::Render) {
+        if qf_caps.contains(QueueFamilyCapsFlags::RENDER) {
             supported |= flags![base::AccessTypeFlags::{
-                VertexUniformRead | VertexRead | FragmentUniformRead | FragmentRead |
-                VertexWrite | FragmentWrite}];
+                VERTEX_UNIFORM_READ | VERTEX_READ | FRAGMENT_UNIFORM_READ | FRAGMENT_READ |
+                VERTEX_WRITE | FRAGMENT_WRITE}];
         }
-        if qf_caps.contains(QueueFamilyCapsFlags::Compute) {
+        if qf_caps.contains(QueueFamilyCapsFlags::COMPUTE) {
             supported |= flags![base::AccessTypeFlags::{
-                    ComputeUniformRead | ComputeRead | ComputeWrite}];
+                    COMPUTE_UNIFORM_READ | COMPUTE_READ | COMPUTE_WRITE}];
         }
 
         access &= supported;

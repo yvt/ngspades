@@ -33,7 +33,7 @@ pub struct DeviceInfo {
 bitflags! {
     pub struct DeviceTraitFlags: u8 {
         /// Enables work-arounds for MoltenVK (Vulkan-on-Metal emulation layer).
-        const MoltenVK = 0b1;
+        const MOLTEN_VK = 0b1;
     }
 }
 
@@ -58,7 +58,7 @@ impl DeviceInfo {
             .iter()
             .any(|p| unsafe { CStr::from_ptr(p.extension_name.as_ptr()) } == mvk_ext_name);
         if is_molten_vk {
-            traits |= DeviceTraitFlags::MoltenVK;
+            traits |= DeviceTraitFlags::MOLTEN_VK;
         }
 
         let dev_prop = unsafe { instance.get_physical_device_properties(phys_device) };
@@ -158,15 +158,15 @@ impl DeviceInfo {
 fn translate_queue_flags(flags: vk::QueueFlags) -> base::QueueFamilyCapsFlags {
     let mut ret = flags![base::QueueFamilyCapsFlags::{}];
     if flags.intersects(vk::QueueFlags::GRAPHICS) {
-        ret |= base::QueueFamilyCapsFlags::Render;
-        ret |= base::QueueFamilyCapsFlags::Copy;
+        ret |= base::QueueFamilyCapsFlags::RENDER;
+        ret |= base::QueueFamilyCapsFlags::COPY;
     }
     if flags.intersects(vk::QueueFlags::COMPUTE) {
-        ret |= base::QueueFamilyCapsFlags::Compute;
-        ret |= base::QueueFamilyCapsFlags::Copy;
+        ret |= base::QueueFamilyCapsFlags::COMPUTE;
+        ret |= base::QueueFamilyCapsFlags::COPY;
     }
     if flags.intersects(vk::QueueFlags::TRANSFER) {
-        ret |= base::QueueFamilyCapsFlags::Copy;
+        ret |= base::QueueFamilyCapsFlags::COPY;
     }
     ret
 }
@@ -174,16 +174,16 @@ fn translate_queue_flags(flags: vk::QueueFlags) -> base::QueueFamilyCapsFlags {
 fn translate_memory_type_flags(flags: vk::MemoryPropertyFlags) -> base::MemoryTypeCapsFlags {
     let mut ret = flags![base::MemoryTypeCapsFlags::{}];
     if flags.intersects(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
-        ret |= base::MemoryTypeCapsFlags::DeviceLocal;
+        ret |= base::MemoryTypeCapsFlags::DEVICE_LOCAL;
     }
     if flags.intersects(vk::MemoryPropertyFlags::HOST_VISIBLE) {
-        ret |= base::MemoryTypeCapsFlags::HostVisible;
+        ret |= base::MemoryTypeCapsFlags::HOST_VISIBLE;
     }
     if flags.intersects(vk::MemoryPropertyFlags::HOST_CACHED) {
-        ret |= base::MemoryTypeCapsFlags::HostCached;
+        ret |= base::MemoryTypeCapsFlags::HOST_CACHED;
     }
     if flags.intersects(vk::MemoryPropertyFlags::HOST_COHERENT) {
-        ret |= base::MemoryTypeCapsFlags::HostCoherent;
+        ret |= base::MemoryTypeCapsFlags::HOST_COHERENT;
     }
     ret
 }
@@ -191,33 +191,33 @@ fn translate_memory_type_flags(flags: vk::MemoryPropertyFlags) -> base::MemoryTy
 fn translate_image_format_caps_flags(value: vk::FormatFeatureFlags) -> base::ImageFormatCapsFlags {
     let mut ret = flags![base::ImageFormatCapsFlags::{}];
     if value.intersects(vk::FormatFeatureFlags::SAMPLED_IMAGE) {
-        ret |= base::ImageFormatCapsFlags::Sampled;
+        ret |= base::ImageFormatCapsFlags::SAMPLED;
     }
     if value.intersects(vk::FormatFeatureFlags::STORAGE_IMAGE) {
-        ret |= base::ImageFormatCapsFlags::Storage;
+        ret |= base::ImageFormatCapsFlags::STORAGE;
     }
     if value.intersects(vk::FormatFeatureFlags::STORAGE_IMAGE_ATOMIC) {
-        ret |= base::ImageFormatCapsFlags::StorageAtomic;
+        ret |= base::ImageFormatCapsFlags::STORAGE_ATOMIC;
     }
     if value.intersects(vk::FormatFeatureFlags::COLOR_ATTACHMENT) {
-        ret |= base::ImageFormatCapsFlags::Render;
+        ret |= base::ImageFormatCapsFlags::RENDER;
     }
     if value.intersects(vk::FormatFeatureFlags::COLOR_ATTACHMENT_BLEND) {
-        ret |= base::ImageFormatCapsFlags::RenderBlend;
+        ret |= base::ImageFormatCapsFlags::RENDER_BLEND;
     }
     if value.intersects(vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT) {
-        ret |= base::ImageFormatCapsFlags::Render;
+        ret |= base::ImageFormatCapsFlags::RENDER;
     }
     if value.intersects(vk::FormatFeatureFlags::SAMPLED_IMAGE_FILTER_LINEAR) {
-        ret |= base::ImageFormatCapsFlags::SampledFilterLinear;
+        ret |= base::ImageFormatCapsFlags::SAMPLED_FILTER_LINEAR;
     }
     // Without the extension `VK_KHR_maintenance1`, any other flags imply that
     // transfer is possible
     if value.is_empty() {
         // TODO: `FORMAT_FEATURE_TRANSFER_{SRC,DST}_BIT_KHR`
     } else {
-        ret |= base::ImageFormatCapsFlags::CopyRead;
-        ret |= base::ImageFormatCapsFlags::CopyWrite;
+        ret |= base::ImageFormatCapsFlags::COPY_READ;
+        ret |= base::ImageFormatCapsFlags::COPY_WRITE;
     }
     ret
 }
@@ -227,7 +227,7 @@ fn translate_vertex_format_caps_flags(
 ) -> base::VertexFormatCapsFlags {
     let mut ret = flags![base::VertexFormatCapsFlags::{}];
     if value.intersects(vk::FormatFeatureFlags::VERTEX_BUFFER) {
-        ret |= base::VertexFormatCapsFlags::Vertex;
+        ret |= base::VertexFormatCapsFlags::VERTEX;
     }
     ret
 }

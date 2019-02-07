@@ -76,7 +76,7 @@ pub trait PortInstance: fmt::Debug + Send + Sync + 'static {
 pub trait PortFrame: fmt::Debug + Send {
     /// The usage of the backing store image (`PortRenderContext::image`).
     fn image_usage(&mut self) -> gfx::ImageUsageFlags {
-        gfx::ImageUsageFlags::Render
+        gfx::ImageUsageFlags::RENDER
     }
 
     /// The format of the backing store image (`PortRenderContext::image`).

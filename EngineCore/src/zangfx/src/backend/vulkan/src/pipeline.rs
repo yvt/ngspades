@@ -115,7 +115,7 @@ impl base::ComputePipelineBuilder for ComputePipelineBuilder {
         let root_sig = self.root_sig.as_ref().expect("root_sig");
 
         let stage = new_shader_stage_description(
-            base::ShaderStageFlags::Compute,
+            base::ShaderStageFlags::COMPUTE,
             &compute_shader.0,
             &compute_shader.1,
         );
@@ -321,12 +321,12 @@ impl base::RenderPipelineBuilder for RenderPipelineBuilder {
         let vertex_stage = self
             .vertex_shader
             .as_ref()
-            .map(|s| new_shader_stage_description(base::ShaderStageFlags::Vertex, &s.0, &s.1));
+            .map(|s| new_shader_stage_description(base::ShaderStageFlags::VERTEX, &s.0, &s.1));
 
         let fragment_stage = self
             .fragment_shader
             .as_ref()
-            .map(|s| new_shader_stage_description(base::ShaderStageFlags::Fragment, &s.0, &s.1));
+            .map(|s| new_shader_stage_description(base::ShaderStageFlags::FRAGMENT, &s.0, &s.1));
 
         let stages: Vec<vk::PipelineShaderStageCreateInfo> = [&vertex_stage, &fragment_stage]
             .iter()

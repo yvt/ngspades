@@ -206,7 +206,7 @@ impl<C: ?Sized> Pass<C> for TestPass {
             let e = cmd_buffer.encode_render(&rtt);
 
             for fence in wait_fences {
-                e.wait_fence(fence, gfx::AccessTypeFlags::ColorWrite);
+                e.wait_fence(fence, gfx::AccessTypeFlags::COLOR_WRITE);
             }
 
             if let (Some(vb), Some(p)) = (vertex_buffer, pipeline) {
@@ -222,7 +222,7 @@ impl<C: ?Sized> Pass<C> for TestPass {
                 e.draw(0..3, 0..1);
             }
 
-            e.update_fence(update_fences[0], gfx::AccessTypeFlags::ColorWrite);
+            e.update_fence(update_fences[0], gfx::AccessTypeFlags::COLOR_WRITE);
         }
 
         Ok(())

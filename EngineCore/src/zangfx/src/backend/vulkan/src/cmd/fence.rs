@@ -86,7 +86,7 @@ impl Fence {
             .caps()
             .info
             .traits
-            .intersects(DeviceTraitFlags::MoltenVK)
+            .intersects(DeviceTraitFlags::MOLTEN_VK)
         {
             let vk_device: &crate::AshDevice = device.vk_device();
             match vk_device.fp_v1_0().create_event(
@@ -136,7 +136,7 @@ impl Drop for FenceData {
             .caps()
             .info
             .traits
-            .intersects(DeviceTraitFlags::MoltenVK)
+            .intersects(DeviceTraitFlags::MOLTEN_VK)
         {
             let vk_device: &crate::AshDevice = self.device.vk_device();
             unsafe {

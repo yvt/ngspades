@@ -347,15 +347,15 @@ bitflags! {
         /// Enables uses of the image as the source of [copy commands].
         ///
         /// [copy commands]: crate::CopyCmdEncoder
-        const CopyRead = 0b00000001;
+        const COPY_READ = 0b00000001;
         /// Enables uses of the image as the destination of [copy commands].
         ///
         /// [copy commands]: crate::CopyCmdEncoder
-        const CopyWrite = 0b00000010;
+        const COPY_WRITE = 0b00000010;
         /// Enables uses of the image as a [sampled image shader argument].
         ///
         /// [sampled image shader argument]: crate::ArgType::SampledImage
-        const Sampled = 0b00000100;
+        const SAMPLED = 0b00000100;
         /// Enables uses of the image as a [storage image shader argument].
         ///
         /// Note: The [`use_heap`] command ignores images that include this usage
@@ -363,22 +363,22 @@ bitflags! {
         ///
         /// [storage image shader argument]: crate::ArgType::StorageImage
         /// [`use_heap`]: crate::CmdEncoder::use_heap
-        const Storage = 0b00001000;
+        const STORAGE = 0b00001000;
         /// Enables uses of the image as a render target.
         ///
         /// Note: The [`use_heap`] command ignores images that include this usage
         /// flag.
         ///
         /// [`use_heap`]: crate::CmdEncoder::use_heap
-        const Render = 0b00010000;
+        const RENDER = 0b00010000;
 
         /// Enables the creation of an image view with a different type (2D/3D/...).
-        const MutableType = 0b00100000;
+        const MUTABLE_TYPE = 0b00100000;
         /// Enables the creation of an image view with a different image format.
-        const MutableFormat = 0b01000000;
+        const MUTABLE_FORMAT = 0b01000000;
         /// Enables the creation of an image view using a partial layer range of
         /// the original image.
-        const PartialView = 0b10000000;
+        const PARTIAL_VIEW = 0b10000000;
 
         /// This flag serves as a hint that the backend should trade off the use of
         /// the generic image layout in memory for fewer image layout transitions.
@@ -386,25 +386,25 @@ bitflags! {
         /// Using this flag removes [the additional fencing requirement].
         ///
         /// [the additional fencing requirement]: Image
-        const Mutable = 0b100000000;
+        const MUTABLE = 0b100000000;
 
         /// Controls the size of [state-tracking units]. This flag instructs the
         /// backend to track the state of each mipmap level individually.
         ///
         /// [state-tracking units]: Image
-        const TrackStatePerMipmapLevel = 0b1000000000;
+        const TRACK_STATE_PER_MIPMAP_LEVEL = 0b1000000000;
         /// Controls the size of [state-tracking units]. This flag instructs the
         /// backend to track the state of each array layer individually.
         ///
         /// [state-tracking units]: Image
-        const TrackStatePerArrayLayer = 0b10000000000;
+        const TRACK_STATE_PER_ARRAY_LAYER = 0b10000000000;
     }
 }
 
 impl Default for ImageUsageFlags {
     /// Get the default image usage flags used by [`ImageBuilder`](ImageBuilder).
     fn default() -> ImageUsageFlags {
-        flags![ImageUsageFlags::{CopyWrite | Sampled}]
+        flags![ImageUsageFlags::{COPY_WRITE | SAMPLED}]
     }
 }
 
@@ -459,20 +459,20 @@ pub trait BufferBuilder: Object {
 
 bitflags! {
     pub struct BufferUsageFlags: u8 {
-        const CopyRead = 0b0000001;
-        const CopyWrite = 0b0000010;
-        const Uniform = 0b0000100;
-        const Storage = 0b0001000;
-        const Index = 0b0010000;
-        const Vertex = 0b0100000;
-        const IndirectDraw = 0b1000000;
+        const COPY_READ = 0b0000001;
+        const COPY_WRITE = 0b0000010;
+        const UNIFORM = 0b0000100;
+        const STORAGE = 0b0001000;
+        const INDEX = 0b0010000;
+        const VERTEX = 0b0100000;
+        const INDIRECT_DRAW = 0b1000000;
     }
 }
 
 impl Default for BufferUsageFlags {
     /// Get the default image usage flags used by `BufferBuilder`.
     fn default() -> BufferUsageFlags {
-        flags![BufferUsageFlags::{CopyWrite | Uniform}]
+        flags![BufferUsageFlags::{COPY_WRITE | UNIFORM}]
     }
 }
 

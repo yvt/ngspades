@@ -60,25 +60,25 @@ impl base::BufferBuilder for BufferBuilder {
         let size = self.size.expect("size");
 
         let mut usage = vk::BufferUsageFlags::empty();
-        if self.usage.contains(base::BufferUsageFlags::Vertex) {
+        if self.usage.contains(base::BufferUsageFlags::VERTEX) {
             usage |= vk::BufferUsageFlags::VERTEX_BUFFER;
         }
-        if self.usage.contains(base::BufferUsageFlags::CopyRead) {
+        if self.usage.contains(base::BufferUsageFlags::COPY_READ) {
             usage |= vk::BufferUsageFlags::TRANSFER_SRC;
         }
-        if self.usage.contains(base::BufferUsageFlags::CopyWrite) {
+        if self.usage.contains(base::BufferUsageFlags::COPY_WRITE) {
             usage |= vk::BufferUsageFlags::TRANSFER_DST;
         }
-        if self.usage.contains(base::BufferUsageFlags::Uniform) {
+        if self.usage.contains(base::BufferUsageFlags::UNIFORM) {
             usage |= vk::BufferUsageFlags::UNIFORM_BUFFER;
         }
-        if self.usage.contains(base::BufferUsageFlags::Storage) {
+        if self.usage.contains(base::BufferUsageFlags::STORAGE) {
             usage |= vk::BufferUsageFlags::STORAGE_BUFFER;
         }
-        if self.usage.contains(base::BufferUsageFlags::Index) {
+        if self.usage.contains(base::BufferUsageFlags::INDEX) {
             usage |= vk::BufferUsageFlags::INDEX_BUFFER;
         }
-        if self.usage.contains(base::BufferUsageFlags::IndirectDraw) {
+        if self.usage.contains(base::BufferUsageFlags::INDIRECT_DRAW) {
             usage |= vk::BufferUsageFlags::INDIRECT_BUFFER;
         }
 

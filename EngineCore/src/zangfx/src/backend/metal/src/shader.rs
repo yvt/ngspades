@@ -138,9 +138,9 @@ impl Library {
         let mut s2m = SpirV2Msl::new(self.spirv_code());
 
         let model = [
-            (shader::ShaderStageFlags::Fragment, ExecutionModel::Fragment),
-            (shader::ShaderStageFlags::Vertex, ExecutionModel::Vertex),
-            (shader::ShaderStageFlags::Compute, ExecutionModel::GLCompute),
+            (shader::ShaderStageFlags::FRAGMENT, ExecutionModel::Fragment),
+            (shader::ShaderStageFlags::VERTEX, ExecutionModel::Vertex),
+            (shader::ShaderStageFlags::COMPUTE, ExecutionModel::GLCompute),
         ]
         .iter()
         .cloned()

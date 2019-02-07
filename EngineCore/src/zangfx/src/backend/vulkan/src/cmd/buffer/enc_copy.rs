@@ -38,7 +38,7 @@ impl CmdBufferData {
             return self.use_image_for_pass(
                 layout,
                 layout,
-                flags![base::AccessTypeFlags::{CopyRead | CopyWrite}],
+                flags![base::AccessTypeFlags::{COPY_READ | COPY_WRITE}],
                 image,
             );
         }
@@ -97,7 +97,7 @@ impl CmdBufferData {
                 unit_index: i,
                 initial_layout: layout,
                 final_layout: layout,
-                access: flags![base::AccessTypeFlags::{CopyRead | CopyWrite}],
+                access: flags![base::AccessTypeFlags::{COPY_READ | COPY_WRITE}],
             });
 
             op.units[i] = Some(ImageUnitOp {

@@ -154,7 +154,7 @@ impl<'a> PortRenderFrame<'a> {
             let ref device = gfx_objects.device;
             let image_format = port_frame.image_format();
             let image_extents = port_frame.image_extents();
-            let image_usage = port_frame.image_usage() | gfx::ImageUsageFlags::Sampled;
+            let image_usage = port_frame.image_usage() | gfx::ImageUsageFlags::SAMPLED;
             let image = device
                 .build_image()
                 .extents(&image_extents)

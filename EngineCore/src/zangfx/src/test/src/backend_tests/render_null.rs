@@ -41,7 +41,7 @@ pub fn render_null<T: TestDriver>(driver: T) {
             .build_image()
             .extents(&[256, 256])
             .format(<u8>::as_rgba_norm())
-            .usage(gfx::ImageUsageFlags::Render)
+            .usage(gfx::ImageUsageFlags::RENDER)
             .queue(&queue)
             .build()
             .unwrap();
@@ -51,8 +51,8 @@ pub fn render_null<T: TestDriver>(driver: T) {
         let memory_type = utils::choose_memory_type(
             device,
             valid_memory_types,
-            gfx::MemoryTypeCapsFlags::DeviceLocal,
-            gfx::MemoryTypeCapsFlags::DeviceLocal,
+            gfx::MemoryTypeCapsFlags::DEVICE_LOCAL,
+            gfx::MemoryTypeCapsFlags::DEVICE_LOCAL,
         );
         println!("  Memory Type = {}", memory_type);
 

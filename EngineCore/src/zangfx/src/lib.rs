@@ -92,11 +92,11 @@
 //! use zangfx::base::AccessTypeFlags;
 //! let no_access: AccessTypeFlags = AccessTypeFlags::empty();
 //!
-//! let oneway_access: AccessTypeFlags = AccessTypeFlags::CopyRead;
+//! let oneway_access: AccessTypeFlags = AccessTypeFlags::COPY_READ;
 //!
 //! let twoway_access: AccessTypeFlags =
-//!     AccessTypeFlags::CopyRead |
-//!     AccessTypeFlags::CopyWrite;
+//!     AccessTypeFlags::COPY_READ |
+//!     AccessTypeFlags::COPY_WRITE;
 //! ```
 //!
 //! Or, by using the [`flags!`](flags_macro::flags) macro:
@@ -109,8 +109,8 @@
 //! # fn main() {
 //!
 //! let no_access = flags![AccessTypeFlags::{}];
-//! let oneway_access = flags![AccessTypeFlags::{CopyRead}];
-//! let twoway_access = flags![AccessTypeFlags::{CopyRead | CopyWrite}];
+//! let oneway_access = flags![AccessTypeFlags::{COPY_READ}];
+//! let twoway_access = flags![AccessTypeFlags::{COPY_READ | COPY_WRITE}];
 //! # }
 //! ```
 //!

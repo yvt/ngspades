@@ -53,7 +53,7 @@ pub fn heap_dynamic_alloc_buffer<T: TestDriver>(driver: T) {
         let mut builder = device.build_buffer();
         builder
             .size(1001)
-            .usage(flags![gfx::BufferUsageFlags::{CopyRead | CopyWrite}]);
+            .usage(flags![gfx::BufferUsageFlags::{COPY_READ | COPY_WRITE}]);
 
         println!("- Creating a buffer");
         let mut buffer = builder.build().unwrap();
@@ -80,7 +80,7 @@ pub fn heap_dynamic_alloc_buffer<T: TestDriver>(driver: T) {
             println!("  - Retrieving the pointer to the storage");
             if memory_types[memory_type as usize]
                 .caps
-                .intersects(gfx::MemoryTypeCapsFlags::HostVisible)
+                .intersects(gfx::MemoryTypeCapsFlags::HOST_VISIBLE)
             {
                 println!("    Pointer = {:p}", buffer.as_ptr());
             } else {
@@ -157,7 +157,7 @@ pub fn heap_dedicated_alloc_buffer<T: TestDriver>(driver: T) {
         let mut builder = device.build_buffer();
         builder
             .size(1001)
-            .usage(flags![gfx::BufferUsageFlags::{CopyRead | CopyWrite}]);
+            .usage(flags![gfx::BufferUsageFlags::{COPY_READ | COPY_WRITE}]);
 
         println!("- Creating a buffer");
         let mut buffer = builder.build().unwrap();
@@ -180,7 +180,7 @@ pub fn heap_dedicated_alloc_buffer<T: TestDriver>(driver: T) {
             println!("  - Retrieving the pointer to the storage");
             if memory_types[memory_type as usize]
                 .caps
-                .intersects(gfx::MemoryTypeCapsFlags::HostVisible)
+                .intersects(gfx::MemoryTypeCapsFlags::HOST_VISIBLE)
             {
                 println!("    Pointer = {:p}", buffer.as_ptr());
             } else {

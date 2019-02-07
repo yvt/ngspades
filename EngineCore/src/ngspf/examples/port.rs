@@ -187,15 +187,15 @@ mod triangle {
             let buffer = device
                 .build_buffer()
                 .size(size as u64)
-                .usage(gfx::BufferUsageFlags::Vertex)
+                .usage(gfx::BufferUsageFlags::VERTEX)
                 .build()
                 .unwrap();
 
             let memory_type = device
                 .choose_memory_type(
                     buffer.get_memory_req().unwrap().memory_types,
-                    flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
-                    flags![gfx::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+                    flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
+                    flags![gfx::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
                 )
                 .unwrap();
 
@@ -272,7 +272,7 @@ mod triangle {
                 e.set_viewports(0, &[viewport]);
                 e.draw(0..3, frame_index..frame_index + 1); // easiest way to pass a number
 
-                e.update_fence(&context.fence, gfx::AccessTypeFlags::ColorWrite);
+                e.update_fence(&context.fence, gfx::AccessTypeFlags::COLOR_WRITE);
             }
             buffer.commit().unwrap();
 

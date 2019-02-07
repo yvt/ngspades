@@ -72,11 +72,11 @@ impl DeviceCaps {
 
         let memory_types = [
             limits::MemoryTypeInfo {
-                caps: flags![limits::MemoryTypeCapsFlags::{DeviceLocal}],
+                caps: flags![limits::MemoryTypeCapsFlags::{DEVICE_LOCAL}],
                 region: MEMORY_REGION_GLOBAL,
             },
             limits::MemoryTypeInfo {
-                caps: flags![limits::MemoryTypeCapsFlags::{HostVisible | HostCoherent}],
+                caps: flags![limits::MemoryTypeCapsFlags::{HOST_VISIBLE | HOST_COHERENT}],
                 region: MEMORY_REGION_GLOBAL,
             },
         ];
@@ -86,7 +86,7 @@ impl DeviceCaps {
         }];
 
         let queue_families = [limits::QueueFamilyInfo {
-            caps: flags![limits::QueueFamilyCapsFlags::{Render | Compute | Copy}],
+            caps: flags![limits::QueueFamilyCapsFlags::{RENDER | COMPUTE | COPY}],
             count: <usize>::max_value(),
         }];
 
@@ -115,8 +115,8 @@ impl limits::DeviceCaps for DeviceCaps {
         use zangfx_base::formats::Signedness::*;
         use zangfx_base::limits::ImageFormatCapsFlags;
 
-        let trans = flags![ImageFormatCapsFlags::{CopyRead | CopyWrite}];
-        let all = flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Storage | Render | RenderBlend}]
+        let trans = flags![ImageFormatCapsFlags::{COPY_READ | COPY_WRITE}];
+        let all = flags![ImageFormatCapsFlags::{SAMPLED | SAMPLED_FILTER_LINEAR | STORAGE | RENDER | RENDER_BLEND}]
             | trans; // + MSAA w/Resolve
 
         // "Unavailable"
@@ -135,11 +135,11 @@ impl limits::DeviceCaps for DeviceCaps {
             ImageFormat::SrgbR8 => empty,
             ImageFormat::SrgbRg8 => empty,
             ImageFormat::SrgbRgba8 => {
-                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render | RenderBlend}]
+                flags![ImageFormatCapsFlags::{SAMPLED | SAMPLED_FILTER_LINEAR | RENDER | RENDER_BLEND}]
                     | trans
             } // + MSAA w/Resolve
             ImageFormat::SrgbBgra8 => {
-                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render | RenderBlend}]
+                flags![ImageFormatCapsFlags::{SAMPLED | SAMPLED_FILTER_LINEAR | RENDER | RENDER_BLEND}]
                     | trans
             } // + MSAA w/Resolve
 
@@ -171,7 +171,7 @@ impl limits::DeviceCaps for DeviceCaps {
             | ImageFormat::R32(_, Unnormalized)
             | ImageFormat::Rg32(_, Unnormalized)
             | ImageFormat::Rgba32(_, Unnormalized) => {
-                flags![ImageFormatCapsFlags::{Sampled | Storage | Render}] | trans
+                flags![ImageFormatCapsFlags::{SAMPLED | STORAGE | RENDER}] | trans
             } // + MSAA
 
             ImageFormat::R32(_, Normalized) => undefined,
@@ -180,19 +180,19 @@ impl limits::DeviceCaps for DeviceCaps {
 
             // Since macOS_GPUFamily1_v2 (macOS 10.12)
             ImageFormat::Depth16 => {
-                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render}] | trans
+                flags![ImageFormatCapsFlags::{SAMPLED | SAMPLED_FILTER_LINEAR | RENDER}] | trans
             } // + MSAA w/Resolve
 
             ImageFormat::Depth24 => undefined,
             ImageFormat::Depth24Stencil8 => {
                 if self.d24_s8_supported {
-                    flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render}] | trans
+                    flags![ImageFormatCapsFlags::{SAMPLED | SAMPLED_FILTER_LINEAR | RENDER}] | trans
                 } else {
                     empty
                 }
             }
             ImageFormat::DepthFloat32 | ImageFormat::DepthFloat32Stencil8 => {
-                flags![ImageFormatCapsFlags::{Sampled | SampledFilterLinear | Render}] | trans
+                flags![ImageFormatCapsFlags::{SAMPLED | SAMPLED_FILTER_LINEAR | RENDER}] | trans
             } // + MSAA w/Resolve
         }
     }
@@ -203,7 +203,7 @@ impl limits::DeviceCaps for DeviceCaps {
     ) -> limits::VertexFormatCapsFlags {
         use crate::formats::translate_vertex_format;
         if translate_vertex_format(format).is_some() {
-            limits::VertexFormatCapsFlags::Vertex
+            limits::VertexFormatCapsFlags::VERTEX
         } else {
             limits::VertexFormatCapsFlags::empty()
         }

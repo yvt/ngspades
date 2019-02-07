@@ -39,7 +39,7 @@ impl CmdBufferData {
             self.use_image_for_pass(
                 *initial_layout,
                 *final_layout,
-                flags![base::AccessTypeFlags::{ColorRead | ColorWrite}],
+                flags![base::AccessTypeFlags::{COLOR_READ | COLOR_WRITE}],
                 image,
             );
         }

@@ -76,14 +76,14 @@ bitflags! {
     /// Indicates a set of operations on a specific `ImageFormat` supported by
     /// a device.
     pub struct ImageFormatCapsFlags: u16 {
-        const Sampled = 0b000000001;
-        const SampledFilterLinear = 0b000000010;
-        const Storage = 0b000000100;
-        const StorageAtomic = 0b000001000;
-        const Render = 0b000010000;
-        const RenderBlend = 0b000100000;
-        const CopyRead = 0b010000000;
-        const CopyWrite = 0b100000000;
+        const SAMPLED = 0b000000001;
+        const SAMPLED_FILTER_LINEAR = 0b000000010;
+        const STORAGE = 0b000000100;
+        const STORAGE_ATOMIC = 0b000001000;
+        const RENDER = 0b000010000;
+        const RENDER_BLEND = 0b000100000;
+        const COPY_READ = 0b010000000;
+        const COPY_WRITE = 0b100000000;
     }
 }
 
@@ -91,7 +91,7 @@ bitflags! {
     /// Indicates a set of operations on a specific `VertexFormat` supported by a
     /// device.
     pub struct VertexFormatCapsFlags: u8 {
-        const Vertex = 0b1;
+        const VERTEX = 0b1;
     }
 }
 
@@ -100,7 +100,7 @@ bitflags! {
     ///
     /// See Vulkan 1.0 Specification "10.2. Device Memory" for details and usage.
     pub struct MemoryTypeCapsFlags: u8 {
-        const HostVisible = 0b0001;
+        const HOST_VISIBLE = 0b0001;
         /// Indicates that the coherency of the memory contents between the host and
         /// the device is maintained automatically. Note that even with this flag
         /// you still have to insert appropriate memory barriers by issuing
@@ -112,9 +112,9 @@ bitflags! {
         /// useless.)
         ///
         /// [`host_barrier`]: crate::CmdBuffer::host_barrier
-        const HostCoherent = 0b0010;
-        const HostCached = 0b0100;
-        const DeviceLocal = 0b1000;
+        const HOST_COHERENT = 0b0010;
+        const HOST_CACHED = 0b0100;
+        const DEVICE_LOCAL = 0b1000;
     }
 }
 
@@ -136,9 +136,9 @@ bitflags! {
     ///
     /// See Vulkan 1.0 Specification "4.1. Physical Devices" for details and usage.
     pub struct QueueFamilyCapsFlags: u8 {
-        const Render = 0b001;
-        const Compute = 0b010;
-        const Copy = 0b100;
+        const RENDER = 0b001;
+        const COMPUTE = 0b010;
+        const COPY = 0b100;
     }
 }
 

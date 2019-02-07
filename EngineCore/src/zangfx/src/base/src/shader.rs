@@ -50,8 +50,8 @@ pub trait LibraryBuilder: Object {
 
 bitflags! {
     pub struct ShaderStageFlags: u8 {
-        const Vertex = 0b001;
-        const Fragment = 0b010;
-        const Compute = 0b100;
+        const VERTEX = 0b001;
+        const FRAGMENT = 0b010;
+        const COMPUTE = 0b100;
     }
 }

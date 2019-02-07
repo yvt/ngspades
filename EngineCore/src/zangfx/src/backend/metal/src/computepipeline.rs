@@ -79,7 +79,7 @@ impl pipeline::ComputePipelineBuilder for ComputePipelineBuilder {
 
         let compute_fn = compute_shader.0.new_metal_function(
             &compute_shader.1,
-            shader::ShaderStageFlags::Compute,
+            shader::ShaderStageFlags::COMPUTE,
             root_sig,
             ::std::iter::empty(),
             *self.metal_device,

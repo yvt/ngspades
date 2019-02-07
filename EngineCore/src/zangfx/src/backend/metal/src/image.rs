@@ -136,19 +136,19 @@ impl base::ImageBuilder for ImageBuilder {
         let mut usage = metal::MTLTextureUsage::empty();
         if self
             .usage
-            .intersects(flags![base::ImageUsageFlags::{Sampled | Storage}])
+            .intersects(flags![base::ImageUsageFlags::{SAMPLED | STORAGE}])
         {
             usage |= metal::MTLTextureUsageShaderRead;
         }
-        if self.usage.intersects(base::ImageUsageFlags::Storage) {
+        if self.usage.intersects(base::ImageUsageFlags::STORAGE) {
             usage |= metal::MTLTextureUsageShaderWrite;
         }
-        if self.usage.intersects(base::ImageUsageFlags::Render) {
+        if self.usage.intersects(base::ImageUsageFlags::RENDER) {
             usage |= metal::MTLTextureUsageRenderTarget;
         }
         if self
             .usage
-            .intersects(flags![base::ImageUsageFlags::{MutableType | MutableFormat | PartialView}])
+            .intersects(flags![base::ImageUsageFlags::{MUTABLE_TYPE | MUTABLE_FORMAT | PARTIAL_VIEW}])
         {
             usage |= metal::MTLTextureUsagePixelFormatView;
         }

@@ -48,10 +48,10 @@ pub type ArgTableSigBuilderRef = Box<dyn ArgTableSigBuilder>;
 ///     # fn test(device: &Device) {
 ///     let mut builder = device.build_arg_table_sig();
 ///     builder.arg(0, ArgType::SampledImage)
-///         .set_stages(ShaderStageFlags::Fragment)
+///         .set_stages(ShaderStageFlags::FRAGMENT)
 ///         .set_len(16);
 ///     builder.arg(1, ArgType::Sampler)
-///         .set_stages(ShaderStageFlags::Fragment);
+///         .set_stages(ShaderStageFlags::FRAGMENT);
 ///     builder.arg(2, ArgType::StorageBuffer);
 ///
 ///     let arg_table_sig = builder.build()

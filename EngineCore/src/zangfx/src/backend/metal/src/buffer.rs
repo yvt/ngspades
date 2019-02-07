@@ -107,10 +107,10 @@ impl Buffer {
         );
 
         use std::cmp::max;
-        if usage.contains(base::BufferUsageFlags::Storage) {
+        if usage.contains(base::BufferUsageFlags::STORAGE) {
             metal_req.align = max(metal_req.align, crate::STORAGE_BUFFER_MIN_ALIGN);
         }
-        if usage.contains(base::BufferUsageFlags::Uniform) {
+        if usage.contains(base::BufferUsageFlags::UNIFORM) {
             metal_req.align = max(metal_req.align, crate::UNIFORM_BUFFER_MIN_ALIGN);
         }
 

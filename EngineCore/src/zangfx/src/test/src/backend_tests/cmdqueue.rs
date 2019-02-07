@@ -75,16 +75,16 @@ pub fn cmdqueue_create_encoder<T: TestDriver>(driver: T) {
             let mut buffer = queue.new_cmd_buffer().unwrap();
 
             let caps = queue_family.caps;
-            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::Render) {
+            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::RENDER) {
                 println!("- Skipping a render encoder");
                 // Starting a render encoder requires other multiple structures
                 // to be set up -- let's not do it here
             }
-            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::Compute) {
+            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::COMPUTE) {
                 println!("- Creating a compute encoder");
                 buffer.encode_compute();
             }
-            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::Copy) {
+            if caps.intersects(gfx::limits::QueueFamilyCapsFlags::COPY) {
                 println!("- Creating a copy encoder");
                 buffer.encode_copy();
             }

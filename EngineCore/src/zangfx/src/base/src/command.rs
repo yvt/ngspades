@@ -773,27 +773,27 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///     # fn test(encoder: &mut CmdEncoder, image: ImageRef, buffer: BufferRef) {
     ///     // Single resource
     ///     encoder.use_resource(
-    ///         flags![ResourceUsageFlags::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{READ | SAMPLE}],
     ///         &image,
     ///     );
     ///     encoder.use_resource(
-    ///         flags![ResourceUsageFlags::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{READ | SAMPLE}],
     ///         &buffer,
     ///     );
     ///
     ///     // Homogeneous list
     ///     encoder.use_resource(
-    ///         flags![ResourceUsageFlags::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{READ | SAMPLE}],
     ///         &[&image, &image][..],
     ///     );
     ///     encoder.use_resource(
-    ///         flags![ResourceUsageFlags::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{READ | SAMPLE}],
     ///         &[&buffer, &buffer][..],
     ///     );
     ///
     ///     // Heterogeneous list
     ///     encoder.use_resource(
-    ///         flags![ResourceUsageFlags::{Read | Sample}],
+    ///         flags![ResourceUsageFlags::{READ | SAMPLE}],
     ///         &resources![&image, &buffer][..],
     ///     );
     ///     # }
@@ -811,7 +811,7 @@ pub trait CmdEncoderExt: CmdEncoder {
 
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder. The usage is limited to read
-    /// accesses (`flags![ResourceUsageFlags::{Read | Sample}]`).
+    /// accesses (`flags![ResourceUsageFlags::{READ | SAMPLE}]`).
     ///
     /// This is an ergonomic wrapper for [`CmdEncoder::use_resource_core`].
     ///
@@ -835,12 +835,12 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///
     /// See [`CmdEncoder::use_resource_core`].
     fn use_resource_read<'a, T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
-        self.use_resource(flags![ResourceUsageFlags::{Read | Sample}], objs)
+        self.use_resource(flags![ResourceUsageFlags::{READ | SAMPLE}], objs)
     }
 
     /// Declare that the specified resources are referenced by the descriptor
     /// sets used on this command encoder. All accesses are allowed
-    /// (`flags![ResourceUsageFlags::{Read | Write | Sample}]`).
+    /// (`flags![ResourceUsageFlags::{READ | WRITE | SAMPLE}]`).
     ///
     /// This is an ergonomic wrapper for [`CmdEncoder::use_resource_core`].
     ///
@@ -852,7 +852,7 @@ pub trait CmdEncoderExt: CmdEncoder {
     ///
     /// See [`CmdEncoder::use_resource_core`].
     fn use_resource_read_write<'a, T: Into<resources::ResourceSet<'a>>>(&mut self, objs: T) {
-        self.use_resource(flags![ResourceUsageFlags::{Read | Write | Sample}], objs)
+        self.use_resource(flags![ResourceUsageFlags::{READ | WRITE | SAMPLE}], objs)
     }
 
     /// Insert a barrier and establish an execution dependency within the
@@ -884,18 +884,18 @@ bitflags! {
         /// [`StorageImage`]: crate::ArgType::StorageImage
         /// [`UniformBuffer`]: crate::ArgType::UniformBuffer
         /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
-        const Read = 0b001;
+        const READ = 0b001;
         /// Enables writing to the resource via arguments of the [`StorageImage`],
         /// or [`StorageBuffer`] types.
         ///
         /// [`StorageImage`]: crate::ArgType::StorageImage
         /// [`StorageBuffer`]: crate::ArgType::StorageBuffer
-        const Write = 0b010;
+        const WRITE = 0b010;
         /// Enables texture sampling from the resource via arguments of the
         /// [`SampledImage`] type.
         ///
         /// [`SampledImage`]: crate::ArgType::SampledImage
-        const Sample = 0b100;
+        const SAMPLE = 0b100;
     }
 }
 

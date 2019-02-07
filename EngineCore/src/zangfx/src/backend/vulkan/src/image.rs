@@ -134,7 +134,7 @@ impl base::ImageBuilder for ImageBuilder {
         };
 
         let mut flags = vk::ImageCreateFlags::empty();
-        if self.usage.contains(base::ImageUsageFlags::MutableFormat) {
+        if self.usage.contains(base::ImageUsageFlags::MUTABLE_FORMAT) {
             flags |= vk::ImageCreateFlags::MUTABLE_FORMAT;
         }
         if let ImageExtents::Cube(_) = extents {
@@ -692,19 +692,19 @@ fn translate_image_usage(
     format: base::ImageFormat,
 ) -> vk::ImageUsageFlags {
     let mut usage = vk::ImageUsageFlags::empty();
-    if value.contains(base::ImageUsageFlags::CopyRead) {
+    if value.contains(base::ImageUsageFlags::COPY_READ) {
         usage |= vk::ImageUsageFlags::TRANSFER_SRC;
     }
-    if value.contains(base::ImageUsageFlags::CopyWrite) {
+    if value.contains(base::ImageUsageFlags::COPY_WRITE) {
         usage |= vk::ImageUsageFlags::TRANSFER_DST;
     }
-    if value.contains(base::ImageUsageFlags::Sampled) {
+    if value.contains(base::ImageUsageFlags::SAMPLED) {
         usage |= vk::ImageUsageFlags::SAMPLED;
     }
-    if value.contains(base::ImageUsageFlags::Storage) {
+    if value.contains(base::ImageUsageFlags::STORAGE) {
         usage |= vk::ImageUsageFlags::STORAGE;
     }
-    if value.contains(base::ImageUsageFlags::Render) {
+    if value.contains(base::ImageUsageFlags::RENDER) {
         if format.has_depth() || format.has_stencil() {
             usage |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
         } else {
@@ -727,8 +727,8 @@ crate fn translate_image_layout(
     value: base::ImageLayout,
     is_depth_stencil: bool,
 ) -> vk::ImageLayout {
-    let mutable = usage.contains(base::ImageUsageFlags::Mutable);
-    let storage = usage.contains(base::ImageUsageFlags::Storage);
+    let mutable = usage.contains(base::ImageUsageFlags::MUTABLE);
+    let storage = usage.contains(base::ImageUsageFlags::STORAGE);
 
     match (value, is_depth_stencil, mutable, storage) {
         // The render layouts cannot be controlled via the `Mutable` flag
@@ -861,9 +861,9 @@ impl ImageStateAddresser {
         // is used as a render target and at the same time another portion is
         // access by a shader.
         let track_per_layer =
-            usage.intersects(flags![base::ImageUsageFlags::{TrackStatePerMipmapLevel | Render}]);
+            usage.intersects(flags![base::ImageUsageFlags::{TRACK_STATE_PER_MIPMAP_LEVEL | RENDER}]);
         let track_per_mip =
-            usage.intersects(flags![base::ImageUsageFlags::{TrackStatePerArrayLayer | Render}]);
+            usage.intersects(flags![base::ImageUsageFlags::{TRACK_STATE_PER_ARRAY_LAYER | RENDER}]);
 
         Self {
             num_layers: image.num_layers,

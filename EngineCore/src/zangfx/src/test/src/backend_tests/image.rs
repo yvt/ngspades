@@ -44,20 +44,20 @@ pub fn image_all_formats<T: TestDriver>(driver: T) {
 
             let mut usage = flags![gfx::ImageUsageFlags::{}];
 
-            if caps.contains(gfx::ImageFormatCapsFlags::Render) {
-                usage |= gfx::ImageUsageFlags::Render;
+            if caps.contains(gfx::ImageFormatCapsFlags::RENDER) {
+                usage |= gfx::ImageUsageFlags::RENDER;
             }
-            if caps.contains(gfx::ImageFormatCapsFlags::CopyRead) {
-                usage |= gfx::ImageUsageFlags::CopyRead;
+            if caps.contains(gfx::ImageFormatCapsFlags::COPY_READ) {
+                usage |= gfx::ImageUsageFlags::COPY_READ;
             }
-            if caps.contains(gfx::ImageFormatCapsFlags::CopyWrite) {
-                usage |= gfx::ImageUsageFlags::CopyWrite;
+            if caps.contains(gfx::ImageFormatCapsFlags::COPY_WRITE) {
+                usage |= gfx::ImageUsageFlags::COPY_WRITE;
             }
-            if caps.contains(gfx::ImageFormatCapsFlags::Sampled) {
-                usage |= gfx::ImageUsageFlags::Sampled;
+            if caps.contains(gfx::ImageFormatCapsFlags::SAMPLED) {
+                usage |= gfx::ImageUsageFlags::SAMPLED;
             }
-            if caps.contains(gfx::ImageFormatCapsFlags::Storage) {
-                usage |= gfx::ImageUsageFlags::Storage;
+            if caps.contains(gfx::ImageFormatCapsFlags::STORAGE) {
+                usage |= gfx::ImageUsageFlags::STORAGE;
             }
 
             try_all_memory_types(

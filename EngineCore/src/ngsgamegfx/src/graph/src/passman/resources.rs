@@ -23,7 +23,7 @@ impl ImageResourceInfo {
         Self {
             extents,
             format,
-            usage: flags![gfx::ImageUsageFlags::{Render | Sampled}],
+            usage: flags![gfx::ImageUsageFlags::{RENDER | SAMPLED}],
         }
     }
 
@@ -99,7 +99,7 @@ impl BufferResourceInfo {
     pub fn new(size: gfx::DeviceSize) -> Self {
         Self {
             size,
-            usage: flags![gfx::BufferUsageFlags::{Storage}],
+            usage: flags![gfx::BufferUsageFlags::{STORAGE}],
         }
     }
 

@@ -177,7 +177,7 @@ impl<G> Builder<G> {
     }
 
     /// Build a [`Streamer`], consuming `self`. A new `AsyncHeap` with a
-    /// specified size, suitable for the `CopyRead` usage is automatically
+    /// specified size, suitable for the `COPY_READ` usage is automatically
     /// constructed during the process.
     pub fn build_with_heap_size<T>(self, heap_size: DeviceSize) -> Result<Streamer<T, AsyncHeap, G>>
     where
@@ -191,7 +191,7 @@ impl<G> Builder<G> {
             .build_dynamic_heap()
             .memory_type(
                 self.device
-                    .try_choose_memory_type_shared(base::BufferUsageFlags::CopyRead)?
+                    .try_choose_memory_type_shared(base::BufferUsageFlags::COPY_READ)?
                     .unwrap(),
             )
             .size(heap_size)
@@ -222,7 +222,7 @@ pub trait Request {
 
     /// Get the usage flags required for the staging buffer.
     fn staging_buffer_usage(&self) -> base::BufferUsageFlags {
-        base::BufferUsageFlags::CopyRead
+        base::BufferUsageFlags::COPY_READ
     }
 
     /// Retrieve the data stored in the staging buffer after the device operation.

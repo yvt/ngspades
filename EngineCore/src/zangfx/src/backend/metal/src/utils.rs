@@ -99,13 +99,13 @@ crate fn translate_render_stage(stage: base::StageFlags) -> metal::MTLRenderStag
     let mut stages = metal::MTLRenderStages::empty();
 
     if stage.intersects(flags![
-        base::StageFlags::{IndirectDraw | VertexInput | Vertex}])
+        base::StageFlags::{INDIRECT_DRAW | VERTEX_INPUT | VERTEX}])
     {
         stages |= metal::MTLRenderStageVertex;
     }
 
     if stage.intersects(flags![
-        base::StageFlags::{Fragment | EarlyFragTests | LateFragTests | RenderOutput}])
+        base::StageFlags::{FRAGMENT | EARLY_FRAG_TESTS | LATE_FRAG_TESTS | RENDER_OUTPUT}])
     {
         stages |= metal::MTLRenderStageFragment;
     }

@@ -177,7 +177,7 @@ impl CmdBufferData {
 
             // Events are not supported by MoltenVK and will cause
             // a `FeatureNotPresent` error
-            if vk_events.len() > 0 && !traits.intersects(DeviceTraitFlags::MoltenVK) {
+            if vk_events.len() > 0 && !traits.intersects(DeviceTraitFlags::MOLTEN_VK) {
                 let src_stage = event_src_stages;
                 let dst_stage = barrier_dst_access.supported_stages();
 
@@ -192,8 +192,8 @@ impl CmdBufferData {
                     src_access_mask: translate_access_type_flags(
                         // Read-to-write hazards need only pipeline barrier to deal with
                         barrier_src_access
-                            & flags![base::AccessTypeFlags::{VertexWrite | FragmentWrite |
-                            ColorWrite | DsWrite | CopyWrite | ComputeWrite}],
+                            & flags![base::AccessTypeFlags::{VERTEX_WRITE | FRAGMENT_WRITE |
+                            COLOR_WRITE | DS_WRITE | COPY_WRITE | COMPUTE_WRITE}],
                     ),
                     dst_access_mask: translate_access_type_flags(barrier_dst_access),
                 };

@@ -15,7 +15,7 @@ pub trait BenchDriver {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf
                     .caps
-                    .intersects(gfx::limits::QueueFamilyCapsFlags::Compute)
+                    .intersects(gfx::limits::QueueFamilyCapsFlags::COMPUTE)
                 {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
@@ -30,7 +30,7 @@ pub trait BenchDriver {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
                 if qf
                     .caps
-                    .intersects(gfx::limits::QueueFamilyCapsFlags::Render)
+                    .intersects(gfx::limits::QueueFamilyCapsFlags::RENDER)
                 {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
@@ -43,7 +43,7 @@ pub trait BenchDriver {
     fn choose_copy_queue(&self, runner: &mut dyn FnMut(&gfx::DeviceRef, gfx::QueueFamily)) {
         self.choose_device(&mut |device| {
             for (i, qf) in device.caps().queue_families().iter().enumerate() {
-                if qf.caps.intersects(gfx::limits::QueueFamilyCapsFlags::Copy) {
+                if qf.caps.intersects(gfx::limits::QueueFamilyCapsFlags::COPY) {
                     println!("[Queue Family #{}]", i);
                     runner(device, i as _);
                     break;
