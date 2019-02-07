@@ -101,6 +101,6 @@ fn opticast_depth() {
             terrain: &*terrainload::DERBY_RACERS,
         };
 
-        rast.opticast_trace(&sty_terrain, tracer);
+        rast.update_with_trace(&sty_terrain, tracer);
     }
 }

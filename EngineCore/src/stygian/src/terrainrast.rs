@@ -348,12 +348,12 @@ impl TerrainRast {
 
     /// Render a terrain and updates the internal warped depth buffer.
     /// A camera matrix must have been set with [`TerrainRast::set_camera_matrix`].
-    pub fn opticast(&mut self, terrain: &Terrain) {
-        self.opticast_trace(terrain, NoTrace)
+    pub fn update_with(&mut self, terrain: &Terrain) {
+        self.update_with_trace(terrain, NoTrace)
     }
 
-    /// `opticast` with tracing.
-    pub fn opticast_trace(&mut self, terrain: &Terrain, mut trace: impl Trace) {
+    /// `update_with` with tracing.
+    pub fn update_with_trace(&mut self, terrain: &Terrain, mut trace: impl Trace) {
         for beam in self.beams.iter() {
             opticast(
                 terrain,
@@ -384,11 +384,11 @@ impl TerrainRast {
         }
     }
 
-    /// Render a conservative depth image from the internal warped depth buffer.
+    /// Produce a conservative depth image from the internal warped depth buffer.
     ///
     /// The contents of the internal warped depth buffer is produced by
     /// [`TerrainRast::opticast`].
-    pub fn rasterize(&mut self, _output: &mut DepthImage) {
+    pub fn rasterize_to(&mut self, _output: &mut DepthImage) {
         unimplemented!();
     }
 }

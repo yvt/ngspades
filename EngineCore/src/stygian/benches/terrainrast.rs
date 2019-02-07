@@ -59,7 +59,7 @@ fn opticast(b: &mut Bencher, size: usize) {
     let sty_terrain = Terrain::from_ngsterrain(&terrainload::DERBY_RACERS).unwrap();
 
     b.iter(|| {
-        rast.opticast(&sty_terrain);
+        rast.update_with(&sty_terrain);
     });
 }
 
