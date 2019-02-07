@@ -182,20 +182,8 @@ pub fn opticast(
                 // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
                 // Use this approximation to find the minimum Z value for each
                 // of the top and bottom edges.
-                if p1.z * p1_lat.w - p1.w * p1_lat.z > 0.0 {
-                    p1.z += p1_lat.z;
-                    p1.w += p1_lat.w;
-                } else {
-                    p1.z -= p1_lat.z;
-                    p1.w -= p1_lat.w;
-                }
-                if p2.z * p2_lat.w - p2.w * p2_lat.z > 0.0 {
-                    p2.z += p2_lat.z;
-                    p2.w += p2_lat.w;
-                } else {
-                    p2.z -= p2_lat.z;
-                    p2.w -= p2_lat.w;
-                }
+                p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
+                p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
 
                 // Clip the line segment by the plane `z == w` (near plane)
                 let clip_states = [p1.z > p1.w, p2.z > p2.w];
