@@ -28,19 +28,19 @@ bitflags! {
     pub struct DebugReportTypeFlags: u32 {
         /// Informational messages that may be handy when debugging an
         /// application.
-        const Information = 0b00001;
+        const INFORMATION = 0b00001;
 
         /// Reports for potentially wrong, but not immediately harmful API usages.
-        const Warning = 0b00010;
+        const WARNING = 0b00010;
 
         /// Reports for non-optimal API usages.
-        const PerformanceWarning = 0b00100;
+        const PERFORMANCE_WARNING = 0b00100;
 
         /// Reports for usages that may cause undefined results.
-        const Error = 0b01000;
+        const ERROR = 0b01000;
 
         /// Diagnostic informations.
-        const Debug = 0b10000;
+        const DEBUG = 0b10000;
     }
 }
 
@@ -131,27 +131,27 @@ impl DebugReportConduit {
     pub fn add_handler(&mut self, flags: DebugReportTypeFlags, handler: Arc<DebugReportHandler>) {
         for &(typ_flag, vk_typ, typ) in [
             (
-                DebugReportTypeFlags::Information,
+                DebugReportTypeFlags::INFORMATION,
                 vk::DebugReportFlagsEXT::INFORMATION,
                 DebugReportType::Information,
             ),
             (
-                DebugReportTypeFlags::Warning,
+                DebugReportTypeFlags::WARNING,
                 vk::DebugReportFlagsEXT::WARNING,
                 DebugReportType::Warning,
             ),
             (
-                DebugReportTypeFlags::PerformanceWarning,
+                DebugReportTypeFlags::PERFORMANCE_WARNING,
                 vk::DebugReportFlagsEXT::PERFORMANCE_WARNING,
                 DebugReportType::PerformanceWarning,
             ),
             (
-                DebugReportTypeFlags::Error,
+                DebugReportTypeFlags::ERROR,
                 vk::DebugReportFlagsEXT::ERROR,
                 DebugReportType::Error,
             ),
             (
-                DebugReportTypeFlags::Debug,
+                DebugReportTypeFlags::DEBUG,
                 vk::DebugReportFlagsEXT::DEBUG,
                 DebugReportType::Debug,
             ),

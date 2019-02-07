@@ -139,7 +139,7 @@ impl<P: Painter> WindowManager<P> {
             let mut report_conduit = debugreport::DebugReportConduit::new(&entry, &instance);
 
             let flags = flags![debugreport::DebugReportTypeFlags::
-                {Warning | PerformanceWarning | Error}];
+                {WARNING | PERFORMANCE_WARNING | ERROR}];
             report_conduit
                 .add_handler(flags, Arc::new(debugreport::PrintDebugReportHandler::new()));
 
@@ -944,8 +944,8 @@ impl Swapchain {
                     let cmd_buffer: &mut BeCmdBuffer = cmd_buffer.query_mut().unwrap();
                     let image: &be::image::Image = self.image.downcast_ref().unwrap();
 
-                    assert_eq!(access, gfx::AccessTypeFlags::ColorWrite);
-                    assert_eq!(stage, gfx::StageFlags::RenderOutput);
+                    assert_eq!(access, gfx::AccessTypeFlags::COLOR_WRITE);
+                    assert_eq!(stage, gfx::StageFlags::RENDER_OUTPUT);
 
                     let mut barrier = vk::ImageMemoryBarrier {
                         s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
@@ -1405,7 +1405,7 @@ impl PhysicalDeviceInfo {
 
             // Choose the main queue. (Mandatory)
             let result = choose(&|caps| {
-                caps.contains(flags![gfx::QueueFamilyCapsFlags::{Render | Compute | Copy}])
+                caps.contains(flags![gfx::QueueFamilyCapsFlags::{RENDER | COMPUTE | COPY}])
             });
             main_queue_family = if let Some(x) = result {
                 x
@@ -1415,7 +1415,7 @@ impl PhysicalDeviceInfo {
 
             // Choose the copy queue. Popular discrete GPUs have one or more
             // DMA engines dedicated for copy operations.
-            copy_queue_family = choose(&|caps| caps == gfx::QueueFamilyCapsFlags::Copy);
+            copy_queue_family = choose(&|caps| caps == gfx::QueueFamilyCapsFlags::COPY);
         }
 
         Ok(Some(Self {
