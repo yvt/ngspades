@@ -16,11 +16,11 @@ pub struct ENetPacket {
 bitflags! {
     #[repr(C)]
     pub struct ENetPacketFlags: u32 {
-        const Reliable = 1;
-        const Unsequenced = 0b10;
-        const NoAllocate = 0b100;
-        const UnreliableFragment = 0b1000;
-        const Sent = 0b100000000;
+        const RELIABLE = 1;
+        const UNSEQUENCED = 0b10;
+        const NO_ALLOCATE = 0b100;
+        const UNRELIABLE_FRAGMENT = 0b1000;
+        const SENT = 0b100000000;
     }
 }
 
