@@ -19,7 +19,6 @@ members = [
     "src/support/asynclazy",
     "src/support/attrtext",
     "src/support/atom2",
-    "src/support/fast_msg_send",
     "src/support/itervalues",
     "src/support/itervalues/itervalues_derive",
     "src/support/iterpool",

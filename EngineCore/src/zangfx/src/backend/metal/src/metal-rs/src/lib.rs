@@ -17,10 +17,9 @@ extern crate cocoa;
 #[macro_use]
 extern crate bitflags;
 extern crate libc;
+#[macro_use]
 extern crate objc;
 extern crate objc_foundation;
-#[macro_use]
-extern crate fast_msg_send;
 extern crate block;
 
 use objc::runtime::{Class, Object, BOOL, NO, YES};

@@ -1,7 +1,0 @@
-[package]
-name = "fast_msg_send"
-version = "0.1.0"
-authors = ["yvt <i@yvt.jp>"]
-
-[dependencies]
-objc = "0.2.2"
