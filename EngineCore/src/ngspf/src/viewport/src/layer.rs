@@ -32,7 +32,7 @@ bitflags! {
         ///
         /// The bounding rectangle of the rasterized image is defined by the
         /// `bounds` property.
-        const FlattenContents = 0b1;
+        const FLATTEN_CONTENTS = 0b1;
     }
 }
 
@@ -137,9 +137,9 @@ pub enum LayerContents {
     Port(RefEqArc<Port>),
 
     /// Copies contents from the contents of layers with lower Z order in the
-    /// nearest rasterization context (root or a layer with `FlattenContents`).
+    /// nearest rasterization context (root or a layer with `FLATTEN_CONTENTS`).
     ///
-    /// The layer with this flag must have the `FlattenContents` attribute.
+    /// The layer with this flag must have the `FLATTEN_CONTENTS` attribute.
     BackDrop,
 
     /// Specifies to use a solid color image.
@@ -191,7 +191,7 @@ impl LayerRef {
     }
 
     /// Set or retrieve the bounding rectangle of the contents or an intermediate
-    /// raster image (if `FlattenContents` is set).
+    /// raster image (if `FLATTEN_CONTENTS` is set).
     pub fn bounds<'a>(&'a self) -> impl PropertyAccessor<Box2<f32>> + 'a {
         fn select(this: &Arc<Layer>) -> &KeyedProperty<Box2<f32>> {
             &this.bounds
@@ -209,7 +209,7 @@ impl LayerRef {
 
     /// Set or retrieve the mask image for this layer.
     ///
-    /// To enable the mask, this layer must have the `FlattenContents` attribute.
+    /// To enable the mask, this layer must have the `FLATTEN_CONTENTS` attribute.
     ///
     /// Root nodes cannot have a mask enabled.
     pub fn mask<'a>(&'a self) -> impl PropertyAccessor<Option<NodeRef>> + 'a {

@@ -306,16 +306,16 @@ impl WindowSet {
                     input.virtual_keycode.map(|vk| {
                         let mut keymod = KeyModifierFlags::empty();
                         if input.modifiers.shift {
-                            keymod |= KeyModifierFlags::Shift;
+                            keymod |= KeyModifierFlags::SHIFT;
                         }
                         if input.modifiers.ctrl {
-                            keymod |= KeyModifierFlags::Control;
+                            keymod |= KeyModifierFlags::CONTROL;
                         }
                         if input.modifiers.alt {
-                            keymod |= KeyModifierFlags::Alt;
+                            keymod |= KeyModifierFlags::ALT;
                         }
                         if input.modifiers.logo {
-                            keymod |= KeyModifierFlags::Meta;
+                            keymod |= KeyModifierFlags::META;
                         }
 
                         let pressed = input.state == winit::ElementState::Pressed;
@@ -387,9 +387,9 @@ impl WindowSet {
                 .map(|x| x.cast::<f64>().unwrap());
 
             let mut builder = winit::WindowBuilder::new()
-                .with_transparency(flags.contains(WindowFlags::Transparent))
-                .with_decorations(!flags.contains(WindowFlags::Borderless))
-                .with_resizable(flags.contains(WindowFlags::Resizable))
+                .with_transparency(flags.contains(WindowFlags::TRANSPARENT))
+                .with_decorations(!flags.contains(WindowFlags::BORDERLESS))
+                .with_resizable(flags.contains(WindowFlags::RESIZABLE))
                 .with_title(title)
                 .with_dimensions(LogicalSize {
                     width: inner_size.x,
@@ -415,7 +415,7 @@ impl WindowSet {
             let winit_window_id = winit_window.id();
 
             let wm_window_options = wsi::WindowOptions {
-                transparent: flags.contains(WindowFlags::Transparent),
+                transparent: flags.contains(WindowFlags::TRANSPARENT),
             };
 
             let surface =
@@ -452,7 +452,7 @@ impl WindowSet {
                 window.action.write_presenter(frame).unwrap(),
                 WindowActionFlags::empty(),
             );
-            if action.contains(WindowActionFlags::ChangeSize) {
+            if action.contains(WindowActionFlags::CHANGE_SIZE) {
                 let size = (window.size.read_presenter(frame).unwrap())
                     .cast::<f64>()
                     .unwrap();
@@ -475,7 +475,7 @@ impl WindowSet {
                     height: t.y,
                 }));
             }
-            if action.contains(WindowActionFlags::ChangeTitle) {
+            if action.contains(WindowActionFlags::CHANGE_TITLE) {
                 let new_value = window.title.read_presenter(frame).unwrap();
                 winit_window.set_title(new_value);
             }

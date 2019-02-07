@@ -90,7 +90,7 @@ pub mod composite {
 
     bitflags! {
         pub struct SpriteFlags: u32 {
-            const StraightAlpha = 1;
+            const STRAIGHT_ALPHA = 1;
         }
     }
 
@@ -486,7 +486,7 @@ impl CompositorWindow {
                         if premul {
                             flags![composite::SpriteFlags::{}]
                         } else {
-                            flags![composite::SpriteFlags::{StraightAlpha}]
+                            flags![composite::SpriteFlags::{STRAIGHT_ALPHA}]
                         },
                         Vector4::new(1.0, 1.0, 1.0, opacity),
                     ))
@@ -510,7 +510,7 @@ impl CompositorWindow {
                     Vector4::new(1.0, 1.0, 1.0, opacity),
                 )),
                 &BackDrop => {
-                    let backdrop = backdrop.expect("BackDrop used without FlattenContents");
+                    let backdrop = backdrop.expect("BackDrop used without FLATTEN_CONTENTS");
                     Some((
                         (
                             backdrop.image.into(),
@@ -574,7 +574,7 @@ impl CompositorWindow {
             let bounds: Box2<f32> = *layer.bounds.read_presenter(c.frame).unwrap();
             let opacity = opacity * *layer.opacity.read_presenter(c.frame).unwrap();
 
-            let flatten = flags.contains(LayerFlags::FlattenContents);
+            let flatten = flags.contains(LayerFlags::FLATTEN_CONTENTS);
             let use_backdrop = match contents {
                 &BackDrop => true,
                 _ => false,

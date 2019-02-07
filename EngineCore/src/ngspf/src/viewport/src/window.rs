@@ -16,20 +16,20 @@ use refeq::RefEqArc;
 bitflags! {
     pub struct WindowFlags: u8 {
         /// Specifies that the window can be resized by the user.
-        const Resizable = 0b0001;
+        const RESIZABLE = 0b0001;
 
         /// Hides the window's decoration (title bar, border, etc.).
-        const Borderless = 0b0010;
+        const BORDERLESS = 0b0010;
 
         /// Makes the background of the window transparent.
-        const Transparent = 0b0100;
+        const TRANSPARENT = 0b0100;
     }
 }
 
 bitflags! {
     pub(super) struct WindowActionFlags: u8 {
-        const ChangeSize = 0b1;
-        const ChangeTitle = 0b10;
+        const CHANGE_SIZE = 0b1;
+        const CHANGE_TITLE = 0b10;
     }
 }
 
@@ -176,7 +176,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.size.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionFlags::ChangeSize;
+                            *a = *a | WindowActionFlags::CHANGE_SIZE;
                         }
                     },
                 );
@@ -207,7 +207,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.min_size.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionFlags::ChangeSize;
+                            *a = *a | WindowActionFlags::CHANGE_SIZE;
                         }
                     },
                 );
@@ -238,7 +238,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.max_size.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionFlags::ChangeSize;
+                            *a = *a | WindowActionFlags::CHANGE_SIZE;
                         }
                     },
                 );
@@ -276,7 +276,7 @@ impl WindowRef {
                         move |frame, value| {
                             *c.title.write_presenter(frame).unwrap() = value;
                             let a = c.action.write_presenter(frame).unwrap();
-                            *a = *a | WindowActionFlags::ChangeTitle;
+                            *a = *a | WindowActionFlags::CHANGE_TITLE;
                         }
                     },
                 );
@@ -370,9 +370,9 @@ pub use winit::VirtualKeyCode;
 
 bitflags! {
     pub struct KeyModifierFlags: u8 {
-        const Shift = 0b0001;
-        const Control = 0b0010;
-        const Alt = 0b0100;
-        const Meta = 0b1000;
+        const SHIFT = 0b0001;
+        const CONTROL = 0b0010;
+        const ALT = 0b0100;
+        const META = 0b1000;
     }
 }

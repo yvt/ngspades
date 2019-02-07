@@ -166,7 +166,7 @@ fn main() {
         );
 
         window = WindowBuilder::new()
-            .flags(WindowFlags::Resizable)
+            .flags(WindowFlags::RESIZABLE)
             .child(Some(group.into_node_ref()))
             .listener(Some(Box::new(move |event| {
                 // Send the event to the producer loop
