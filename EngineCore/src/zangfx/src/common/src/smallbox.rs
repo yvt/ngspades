@@ -305,8 +305,8 @@ macro_rules! impl_stable_vtable {
             #[inline]
             #[doc(hidden)]
             fn __vtable_cell() -> &'static std::sync::atomic::AtomicUsize {
-                use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
-                static VTABLE_CELL: AtomicUsize = ATOMIC_USIZE_INIT;
+                use std::sync::atomic::AtomicUsize;
+                static VTABLE_CELL: AtomicUsize = AtomicUsize::new(0);
                 &VTABLE_CELL
             }
 
