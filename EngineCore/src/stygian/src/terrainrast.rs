@@ -411,6 +411,8 @@ impl TerrainRast {
                 continue;
             }
 
+            let samples = &self.samples[beam.samples_start..][..beam.num_samples];
+
             for (i, vs_verts) in
                 beam_sample_vertices_vp(beam, self.camera_matrix, self.camera_matrix_unproj, m)
                     .enumerate()
@@ -433,7 +435,7 @@ impl TerrainRast {
                 let (x_min, y_min) = (x_min as usize, y_min as usize);
                 let (x_max, y_max) = (x_max as usize, y_max as usize);
 
-                let new_depth = self.samples[beam.samples_start + i];
+                let new_depth = samples[i];
 
                 debug_assert!(x_max <= size.x, "{:?} <= {:?}", x_max, size.x);
                 debug_assert!(y_max <= size.y, "{:?} <= {:?}", y_max, size.y);
