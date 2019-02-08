@@ -53,3 +53,15 @@ impl FloatSetExt for [f32] {
         output
     }
 }
+
+impl FloatSetExt for [f32; 4] {
+    type Float = f32;
+
+    fn min(&self) -> Self::Float {
+        [[self[0], self[1]].min(), [self[2], self[3]].min()].min()
+    }
+
+    fn max(&self) -> Self::Float {
+        [[self[0], self[1]].max(), [self[2], self[3]].max()].max()
+    }
+}
