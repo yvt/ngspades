@@ -424,10 +424,10 @@ impl TerrainRast {
 
                 // It's okay to inflate the bounding box - the safest guess
                 // would be stored if multiple samples overlap
-                let x_min = [x_min, 0.0].max() as isize;
-                let y_min = [y_min, 0.0].max() as isize;
-                let x_max = [x_max, (size.x - 1) as f32].min() as isize + 1;
-                let y_max = [y_max, (size.y - 1) as f32].min() as isize + 1;
+                let x_min = [x_min, 0.0].max() as i32;
+                let y_min = [y_min, 0.0].max() as i32;
+                let x_max = [x_max, (size.x - 1) as f32].min() as i32 + 1;
+                let y_max = [y_max, (size.y - 1) as f32].min() as i32 + 1;
 
                 if x_min >= x_max || y_min >= y_max {
                     continue;
