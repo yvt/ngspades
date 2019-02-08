@@ -25,29 +25,33 @@ pub fn jacobian_from_projection_matrix(m: Matrix4<f32>, p: Vector4<f32>) -> Matr
     )) * fac
 }
 
-/// Find the intersection of a latitudinal line and a plane. The plane is
-/// defined to have `tangent` as its tangent vector and the corresponding
-/// binormal vector is horizontal.
-#[allow(dead_code)]
-pub fn intersection_of_latitudinal_line_and_plane_with_tangent(
-    azimuth: f32,
-    tangent: Vector3<f32>,
-) -> Vector3<f32> {
-    let binormal = vec3(-tangent.y, tangent.x, 0.0);
-    intersection_of_latitudinal_line_and_plane(azimuth, tangent.cross(binormal))
-}
-
-/// Find the intersection of a latitudinal line and a plane.
-pub fn intersection_of_latitudinal_line_and_plane(
-    azimuth: f32,
-    normal: Vector3<f32>,
-) -> Vector3<f32> {
-    // φ=0, θ=azimuth + π/2
-    let px = azimuth.cos();
-    let py = azimuth.sin();
-    let perp = vec3(py, -px, 0.0);
-
-    normal.cross(perp).normalize()
+/// Find a matrix that transforms a directional vector to a given latitudinal line.
+///
+/// The transformation is defined as follows: A directional vector `x` is
+/// supplied as input. A plane `P` including `x` and `elev_axis` is found.
+/// `P` intersects with a latitudinal line (θ = `azimuth`, -π/2 ≤ φ < π/2) at
+/// one point `x'`, which is the output of the transformation. The magnitude of
+/// `x'` is not specified. It can be expressed as:
+/// ```text
+/// x' = (x × elev_axis) × p  where p = [-sin(azimuth), cos(azimuth), 0]ᵀ
+///    = elev_axis (x⋅p) - x (elev_axis⋅p)
+///    = (elev_axis pᵀ - E elev_axis⋅p) x
+/// ```
+///
+pub fn projector_to_latitudinal_line(azimuth: f32, elev_axis: Vector3<f32>) -> Matrix3<f32> {
+    let p = vec3(azimuth.sin(), -azimuth.cos(), 0.0);
+    let dot = elev_axis.dot(p);
+    Matrix3::new(
+        elev_axis.x * p.x - dot,
+        elev_axis.y * p.x,
+        elev_axis.z * p.x,
+        elev_axis.x * p.y,
+        elev_axis.y * p.y - dot,
+        elev_axis.z * p.y,
+        elev_axis.x * p.z,
+        elev_axis.y * p.z,
+        elev_axis.z * p.z - dot,
+    )
 }
 
 /// Find a portion on a latitudinal line where it intersects with a given
@@ -184,21 +188,25 @@ mod tests {
     }
 
     #[test]
-    fn intersection_of_latitudinal_line_and_plane_with_tangent_sanity() {
+    fn projector_to_latitudinal_line_sanity() {
         let elevation = 0.7f32;
         let yaw = 2.0f32;
         let angle = 0.7f32;
+        let angle_in = 0.6f32;
 
         let tangent = dbg!(spherical_to_cartesian(yaw, elevation));
         let binormal = dbg!(vec3(-tangent.y, tangent.x, 0.0).normalize());
-        let p = dbg!(tangent * angle.cos() + binormal * angle.sin());
 
+        let p = dbg!(tangent * angle.cos() + binormal * angle.sin());
         let p_azimuth = dbg!(p.y.atan2(p.x));
 
-        let v = intersection_of_latitudinal_line_and_plane_with_tangent(p_azimuth, tangent);
+        let p_in = dbg!(tangent * angle_in.cos() + binormal * angle_in.sin());
+
+        let proj = dbg!(projector_to_latitudinal_line(p_azimuth, binormal));
+        let v = dbg!(proj * p_in);
 
         assert_abs_diff_eq!(v.y.atan2(v.x), p_azimuth, epsilon = 0.001);
-        assert_abs_diff_eq!(v, p, epsilon = 0.001);
+        assert_abs_diff_eq!(v.normalize(), p, epsilon = 0.001);
     }
 
     #[test]

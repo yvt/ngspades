@@ -5,7 +5,8 @@
 //
 //! Terrain rasterizer.
 use arrayvec::ArrayVec;
-use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector3, Vector4};
+use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Rad, Vector3, Vector4};
+use itertools::Itertools;
 use std::{f32::consts::PI, ops::Range};
 
 use crate::{
@@ -16,10 +17,11 @@ use crate::{
     utils::{
         float::FloatSetExt,
         geom::{
-            inclination_intersecting_half_space, intersection_of_latitudinal_line_and_plane,
-            jacobian_from_projection_matrix, spherical_to_cartesian,
+            inclination_intersecting_half_space, jacobian_from_projection_matrix,
+            projector_to_latitudinal_line, spherical_to_cartesian,
             spherical_to_cartesian_d_azimuth, unprojector_xy_to_infinity,
         },
+        iter::LinePoints,
     },
 };
 
@@ -336,7 +338,7 @@ impl TerrainRast {
                 }
 
                 for verts in
-                    BeamSampleLocator::new(beam, self.camera_matrix, self.camera_matrix_unproj)
+                    beam_sample_vertices(beam, self.camera_matrix, self.camera_matrix_unproj)
                 {
                     trace.terrainrast_sample(&verts);
                 }
@@ -375,7 +377,7 @@ impl TerrainRast {
                 }
 
                 for (i, verts) in
-                    BeamSampleLocator::new(beam, self.camera_matrix, self.camera_matrix_unproj)
+                    beam_sample_vertices(beam, self.camera_matrix, self.camera_matrix_unproj)
                         .enumerate()
                 {
                     trace.opticast_sample(&verts, self.samples[beam.samples_start + i]);
@@ -399,23 +401,24 @@ impl TerrainRast {
             *depth = INFINITY;
         }
 
-        let m = self.camera_matrix;
+        // `[-1, 1]` → `[0, size]`
+        let m = Matrix4::from_nonuniform_scale(size.x as f32 * 0.5, size.y as f32 * 0.5, 1.0)
+            * Matrix4::from_translation(vec3(1.0, 1.0, 0.0))
+            * self.camera_matrix;
 
         for beam in self.beams.iter() {
             if beam.num_samples == 0 {
                 continue;
             }
 
-            for (i, ms_verts) in
-                BeamSampleLocator::new(beam, self.camera_matrix, self.camera_matrix_unproj)
+            for (i, vs_verts) in
+                beam_sample_vertices_vp(beam, self.camera_matrix, self.camera_matrix_unproj, m)
                     .enumerate()
             {
-                let vs_verts = ms_verts.map(|v| Point3::from_homogeneous(m * v.extend(0.0)));
-
-                let x_min = vs_verts.map(|v| (v.x + 1.0) * (size.x as f32 * 0.5)).min();
-                let y_min = vs_verts.map(|v| (v.y + 1.0) * (size.y as f32 * 0.5)).min();
-                let x_max = vs_verts.map(|v| (v.x + 1.0) * (size.x as f32 * 0.5)).max();
-                let y_max = vs_verts.map(|v| (v.y + 1.0) * (size.y as f32 * 0.5)).max();
+                let x_min = vs_verts.map(|v| v.x).min();
+                let y_min = vs_verts.map(|v| v.y).min();
+                let x_max = vs_verts.map(|v| v.x).max();
+                let y_max = vs_verts.map(|v| v.y).max();
 
                 // It's okay to inflate the bounding box - the safest guess
                 // would be stored if multiple samples overlap
@@ -446,105 +449,119 @@ impl TerrainRast {
     }
 }
 
-/// Produces model-space coordinates of the bounding vertices of a beam's samples.
-#[derive(Debug)]
-struct BeamSampleLocator {
-    vs_primary_start: Point3<f32>,
-    vs_primary_dir: Vector3<f32>,
-    ms_frontier: Vector3<f32>,
-    binormal: Vector3<f32>,
+/// Produce two sequences of `Vector3<f32>` each representing a vertex of
+/// a beam's sample.
+///
+/// The returned iterators produces an inifite number of elements, but only
+/// the first `beam.num_samples + 1` elements are valid.
+///
+/// ```text
+///   aN represents the N-th element of the first iterator.
+///   bN represents the N-th element of the second iterator.
+///  a0     a1     a2     a3
+///  o------o------o------o---- ...
+///  |      |      |      |
+///  |      |      |      |
+///  o------o------o------o---- ...
+///  b0     b1     b2     b3
+/// ```
+fn beam_sample_side_points(
+    beam: &BeamInfo,
+    camera_matrix: Matrix4<f32>,
     camera_matrix_unproj: Matrix3<f32>,
-    azimuth: Range<f32>,
-    inv_count: f32,
-    fraction: f32,
-    remaining_count: usize,
-}
+) -> [LinePoints<Vector3<f32>>; 2] {
+    // The primary latitudinal line
+    let theta = (beam.azimuth.start + beam.azimuth.end) * 0.5;
+    let vs_primary_start =
+        camera_matrix * spherical_to_cartesian(theta, beam.inclination.start).extend(0.0);
+    let vs_primary_end =
+        camera_matrix * spherical_to_cartesian(theta, beam.inclination.end).extend(0.0);
+    let (vs_primary_start, vs_primary_end) = (
+        Point3::from_homogeneous(vs_primary_start),
+        Point3::from_homogeneous(vs_primary_end),
+    );
 
-impl BeamSampleLocator {
-    fn new(
-        beam: &BeamInfo,
-        camera_matrix: Matrix4<f32>,
-        camera_matrix_unproj: Matrix3<f32>,
-    ) -> Self {
-        let theta = (beam.azimuth.start + beam.azimuth.end) * 0.5;
-        let vs_primary_start =
-            camera_matrix * spherical_to_cartesian(theta, beam.inclination.start).extend(0.0);
-        let vs_primary_end =
-            camera_matrix * spherical_to_cartesian(theta, beam.inclination.end).extend(0.0);
-        let (vs_primary_start, vs_primary_end) = (
-            Point3::from_homogeneous(vs_primary_start),
-            Point3::from_homogeneous(vs_primary_end),
-        );
-        let vs_primary_dir = vs_primary_end - vs_primary_start;
+    // Drop the Z coordinate and replace it with `1`.
+    // (See `unprojector_xy_to_infinity`'s defintion. `camera_matrix_unproj`
+    // is the result of `camera_matrix_unproj`.)
+    let vs_primary_start = vec3(vs_primary_start.x, vs_primary_start.y, 1.0);
+    let vs_primary_end = vec3(vs_primary_end.x, vs_primary_end.y, 1.0);
 
-        let binormal = vec3(-theta.sin(), theta.cos(), 0.0);
+    let vs_primary_step = (vs_primary_end - vs_primary_start) * (1.0 / beam.num_samples as f32);
 
-        let ms_frontier = Self::to_plane_normal(vs_primary_start, binormal, camera_matrix_unproj);
+    let binormal = vec3(-theta.sin(), theta.cos(), 0.0);
+    let proj1 = projector_to_latitudinal_line(beam.azimuth.start, binormal);
+    let proj2 = projector_to_latitudinal_line(beam.azimuth.end, binormal);
 
-        let inv_count = 1.0 / beam.num_samples as f32;
-        let remaining_count = beam.num_samples;
-
-        Self {
-            vs_primary_start,
-            vs_primary_dir,
-            ms_frontier,
-            binormal,
-            camera_matrix_unproj,
-            azimuth: beam.azimuth.clone(),
-            inv_count,
-            fraction: 0.0,
-            remaining_count,
-        }
-    }
-
-    /// Find a plane containing the given viewport-space point `p` and
-    /// includes a line `θ = theta ± π/2, φ = 0`
-    fn to_plane_normal(
-        p: Point3<f32>,
-        binormal: Vector3<f32>,
-        m_unproj: Matrix3<f32>,
-    ) -> Vector3<f32> {
+    let m1 =
+        // Find a point on `θ = θ₁`
+        proj1 *
         // Discard the Z coordinate and project it to infinity again
-        let p = m_unproj * vec3(p.x, p.y, 1.0);
+        camera_matrix_unproj;
+    let m2 = proj2 * camera_matrix_unproj; // similar to above
 
-        p.cross(binormal)
-    }
+    [
+        LinePoints::new(m1 * vs_primary_start, m1 * vs_primary_step),
+        LinePoints::new(m2 * vs_primary_start, m2 * vs_primary_step),
+    ]
 }
 
-impl Iterator for BeamSampleLocator {
-    type Item = [Vector3<f32>; 4];
+/// Produce a series of polygons each representing the model-space shape of
+/// a beam's sample.
+///
+/// ```text
+///   aN, bN, cN, and dN represent the vertices of the N-th element.
+///  a0   d0a1   d1a2   d2a3
+///  o------o------o------o---- ...
+///  |      |      |      |
+///  |      |      |      |
+///  o------o------o------o---- ...
+///  b0   c0b1   c1b2   c2b3
+/// ```
+fn beam_sample_vertices(
+    beam: &BeamInfo,
+    camera_matrix: Matrix4<f32>,
+    camera_matrix_unproj: Matrix3<f32>,
+) -> impl Iterator<Item = [Vector3<f32>; 4]> {
+    let [seq1, seq2] = beam_sample_side_points(beam, camera_matrix, camera_matrix_unproj);
+    seq1.zip(seq2)
+        .tuple_windows::<(_, _)>()
+        .map(|((p1, p2), (p3, p4))| [p1, p2, p4, p3])
+        .take(beam.num_samples)
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.remaining_count == 0 {
-            None
-        } else {
-            self.fraction += self.inv_count;
-            self.remaining_count -= 1;
-            let primary_point = self.vs_primary_start + self.vs_primary_dir * self.fraction;
+/// Similarly to `beam_sample_vertices`, produce a series of polygons each
+/// representing the viewport-space shape of a beam's sample.
+///
+/// This is equivalent to transforming the result of `beam_sample_vertices` with
+/// `output_camera_matrix`, only it's more efficient.
+fn beam_sample_vertices_vp(
+    beam: &BeamInfo,
+    camera_matrix: Matrix4<f32>,
+    camera_matrix_unproj: Matrix3<f32>,
+    output_camera_matrix: Matrix4<f32>,
+) -> impl Iterator<Item = [Point2<f32>; 4]> {
+    let [seq1, seq2] = beam_sample_side_points(beam, camera_matrix, camera_matrix_unproj);
 
-            // Find the next plane
-            let ms_frontier = self.ms_frontier;
-            let ms_next_frontier =
-                Self::to_plane_normal(primary_point, self.binormal, self.camera_matrix_unproj);
+    let transform_seq = move |seq: LinePoints<Vector3<f32>>| {
+        seq.map_linear(|v| {
+            let v = output_camera_matrix * v.extend(0.0);
+            vec3(v.x, v.y, v.w)
+        })
+        .map(|v| {
+            // `Point2::from_homogeneous` doesn't exist, so...
+            let s = 1.0 / v.z;
+            Point2::new(v.x * s, v.y * s)
+        })
+    };
 
-            // Find the vertices of a polygon representing the next sample.
+    let seq1 = transform_seq(seq1);
+    let seq2 = transform_seq(seq2);
 
-            // What we do here is equivalent to
-            // `intersection_of_latitudinal_line_and_plane_with_tangent`.
-            // The difference is that this is more stable when the output of
-            // `unproject` is close to the zenith or nadir because a binormal
-            // vector is supplied explicitly.
-            let a = &self.azimuth;
-            let v1 = intersection_of_latitudinal_line_and_plane(a.start, ms_frontier);
-            let v2 = intersection_of_latitudinal_line_and_plane(a.end, ms_frontier);
-            let v3 = intersection_of_latitudinal_line_and_plane(a.start, ms_next_frontier);
-            let v4 = intersection_of_latitudinal_line_and_plane(a.end, ms_next_frontier);
-
-            self.ms_frontier = ms_next_frontier;
-
-            Some([v1, v2, v4, v3])
-        }
-    }
+    seq1.zip(seq2)
+        .tuple_windows::<(_, _)>()
+        .map(|((p1, p2), (p3, p4))| [p1, p2, p4, p3])
+        .take(beam.num_samples)
 }
 
 #[cfg(test)]
