@@ -18,6 +18,7 @@
 //! densely arranged.
 //! If you use a traditional setup, you might have to manually modify a matrix
 //! to reverse Z values before passing it to a library function.
+#![feature(asm)]
 mod debug;
 mod depthimage;
 mod mipbeamcast;

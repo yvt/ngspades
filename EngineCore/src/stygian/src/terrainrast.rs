@@ -444,6 +444,16 @@ impl TerrainRast {
                     for x in x_min..x_max {
                         let depth = unsafe { bitmap.get_unchecked_mut(x + y * size.x) };
                         *depth = [*depth, new_depth].min();
+
+                        // Prevent loop unrolling. The iteration count of this
+                        // loop is usually no more than 2 or 3 and unrolling
+                        // only adds a dozen instructions worth of overhead.
+                        // Sadly, Rust doesn't have a pragma for controlling
+                        // loop unrolling yet:
+                        // <https://github.com/rust-lang/rfcs/issues/2219>
+                        unsafe {
+                            asm!("");
+                        }
                     }
                 }
             }
