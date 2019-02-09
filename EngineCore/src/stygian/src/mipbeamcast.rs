@@ -434,13 +434,24 @@ mod tests {
 
     #[test]
     fn sanity() {
-        let patterns = vec![
-            (vec2(0.5, 0.5), vec2(1.0, 0.6), vec2(1.0, 0.9)),
-            (vec2(-0.5, -0.5), vec2(1.0, 0.6), vec2(1.0, 0.9)),
-            (vec2(-0.5, -0.5), vec2(1.0, -0.1), vec2(1.0, 0.1)),
-            (vec2(-0.5, 16.5), vec2(1.0, -0.4), vec2(1.0, -0.2)),
+        let mut patterns = vec![
+            [vec2(0.5, 0.5), vec2(1.0, 0.6), vec2(1.0, 0.9)],
+            [vec2(-0.5, -0.5), vec2(1.0, 0.6), vec2(1.0, 0.9)],
+            [vec2(-0.5, -0.5), vec2(1.0, -0.1), vec2(1.0, 0.1)],
+            [vec2(-0.5, 16.5), vec2(1.0, -0.4), vec2(1.0, -0.2)],
         ];
-        for (start, dir1, dir2) in patterns {
+
+        use array::Array3;
+        use cgmath::{Deg, Matrix2};
+        for i in 0..360 {
+            let m = Matrix2::from_angle(Deg(i as f32));
+            let mut verts = [vec2(-20.0, 0.0), vec2(1.0, -0.2), vec2(1.0, 0.2)];
+            verts = verts.map(|v| m * v);
+            verts[0] += vec2(8.0, 8.0);
+            patterns.push(verts);
+        }
+
+        for [start, dir1, dir2] in patterns {
             dbg!((start, dir1, dir2));
             mipbeamcast(
                 vec2(16, 16),
@@ -461,23 +472,23 @@ mod tests {
     #[test]
     fn sanity2() {
         let patterns = vec![
-            (
+            [
                 vec2(256.0, 256.0),
                 vec2(1.0, 0.936591),
                 vec2(1.0, 0.9071967),
-            ),
-            (
+            ],
+            [
                 vec2(256.0, 256.0),
                 vec2(1.0, 0.87908727),
                 vec2(1.0, 0.8506685),
-            ),
-            (
+            ],
+            [
                 vec2(256.8530883, 256.25552368),
                 vec2(1.0, 0.021339143),
                 vec2(1.0, -0.00000017484555),
-            ),
+            ],
         ];
-        for (start, dir1, dir2) in patterns {
+        for [start, dir1, dir2] in patterns {
             dbg!((start, dir1, dir2));
             mipbeamcast(
                 vec2(512, 512),
