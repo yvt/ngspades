@@ -397,7 +397,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
     /// The contents of the internal warped depth buffer is produced by
     /// [`TerrainRast::opticast`].
     pub fn rasterize_to(&self, output: &mut DepthImage) {
-        use array::Array4;
+        use array::Array2;
         use std::f32::INFINITY;
 
         let size = output.size();
@@ -419,14 +419,14 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
 
             let samples = &self.samples[beam.samples_start..][..beam.num_samples];
 
-            for (i, vs_verts) in
-                beam_sample_vertices_vp(beam, self.camera_matrix, self.camera_matrix_unproj, m)
+            for (i, [[vs_min1, vs_max1], [vs_min2, vs_max2]]) in
+                beam_sample_vertices_vp_aabb(beam, self.camera_matrix, self.camera_matrix_unproj, m)
                     .enumerate()
             {
-                let x_min = vs_verts.map(|v| v.x).min();
-                let y_min = vs_verts.map(|v| v.y).min();
-                let x_max = vs_verts.map(|v| v.x).max();
-                let y_max = vs_verts.map(|v| v.y).max();
+                let x_min = [vs_min1, vs_min2].map(|v| v.x).min();
+                let y_min = [vs_min1, vs_min2].map(|v| v.y).min();
+                let x_max = [vs_max1, vs_max2].map(|v| v.x).max();
+                let y_max = [vs_max1, vs_max2].map(|v| v.y).max();
 
                 // It's okay to inflate the bounding box - the safest guess
                 // would be stored if multiple samples overlap
@@ -446,8 +446,11 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
                 debug_assert!(x_max <= size.x, "{:?} <= {:?}", x_max, size.x);
                 debug_assert!(y_max <= size.y, "{:?} <= {:?}", y_max, size.y);
 
-                for y in y_min..y_max {
-                    for x in x_min..x_max {
+                // `for` loop generates `callq` to `std::iter::Map::new`. Why?
+                let mut y = y_min;
+                while y < y_max {
+                    let mut x = x_min;
+                    while x < x_max {
                         let depth = unsafe { bitmap.get_unchecked_mut(x + y * size.x) };
                         *depth = [*depth, new_depth].min();
 
@@ -460,8 +463,13 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
                         unsafe {
                             asm!("");
                         }
+
+                        x += 1;
                     }
+                    y += 1;
                 }
+
+                // This sample is done
             }
         }
     }
@@ -548,17 +556,24 @@ fn beam_sample_vertices(
         .take(beam.num_samples)
 }
 
-/// Similarly to `beam_sample_vertices`, produce a series of polygons each
+/// Produce a series of pairs of AABBs of the edges between polygons each
 /// representing the viewport-space shape of a beam's sample.
 ///
-/// This is equivalent to transforming the result of `beam_sample_vertices` with
-/// `output_camera_matrix`, only it's more efficient.
-fn beam_sample_vertices_vp(
+/// ```text
+///  The N-th element represents the AABB of the edge aN-bN.
+///  a0    a1    a2    a3
+///  o------o------o------o---- ...
+///  |      |      |      |
+///  |      |      |      |
+///  o------o------o------o---- ...
+///  b0    b1    b2    b3
+/// ```
+fn beam_sample_vertices_vp_aabb(
     beam: &BeamInfo,
     camera_matrix: Matrix4<f32>,
     camera_matrix_unproj: Matrix3<f32>,
     output_camera_matrix: Matrix4<f32>,
-) -> impl Iterator<Item = [Point2<f32>; 4]> {
+) -> impl Iterator<Item = [[Point2<f32>; 2]; 2]> {
     let [seq1, seq2] = beam_sample_side_points(beam, camera_matrix, camera_matrix_unproj);
 
     let transform_seq = move |seq: LinePoints<Vector3<f32>>| {
@@ -566,19 +581,27 @@ fn beam_sample_vertices_vp(
             let v = output_camera_matrix * v.extend(0.0);
             vec3(v.x, v.y, v.w)
         })
-        .map(|v| {
-            // `Point2::from_homogeneous` doesn't exist, so...
-            let s = 1.0 / v.z;
-            Point2::new(v.x * s, v.y * s)
-        })
     };
 
     let seq1 = transform_seq(seq1);
     let seq2 = transform_seq(seq2);
 
     seq1.zip(seq2)
+        .map(|(p1, p2)| {
+            // `Point2::from_homogeneous` doesn't exist, so...
+            // Dividing every element is actually faster than multiplying
+            // them with a reciprocal - `vdivps` never beats `vdivss` + `vmulps`.
+            // (The best option would be `vrcpps` + `vmulps`, though)
+            let p1 = Point2::new(p1.x / p1.z, p1.y / p1.z);
+            let p2 = Point2::new(p2.x / p2.z, p2.y / p2.z);
+
+            [
+                Point2::new([p1.x, p2.x].min(), [p1.y, p2.y].min()),
+                Point2::new([p1.x, p2.x].max(), [p1.y, p2.y].max()),
+            ]
+        })
         .tuple_windows::<(_, _)>()
-        .map(|((p1, p2), (p3, p4))| [p1, p2, p4, p3])
+        .map(|(c1, c2)| [c1, c2])
         .take(beam.num_samples)
 }
 
