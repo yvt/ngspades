@@ -44,6 +44,8 @@ This standard structure has a major issue with the opticast algorithm used by St
 ![!Figure mipmap2][](Images/Mipmap2.svg):
     The mipmap scheme used in Stygian.
 
+The base level (level 0) is not used to simply the implementation and thus maximize the execution performance.
+
 # Terrain rasterization
 
 The terrain rasterizes creates a low-resolution depth image from terrain data and a scene setup. The generated image is guaranteed to have lower (farther from the camera) depth values compared to the ground truth image at every point, making itself useful for CPU-based occlusion culling.

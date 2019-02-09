@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use cgmath::{prelude::*, vec2, Matrix4, Point3};
-use std::{cmp::max, ops::Range};
+use std::ops::Range;
 
 use crate::{
     debug::Trace,
@@ -104,18 +104,13 @@ pub fn opticast(
             // Get the row
             let cell = incidence.cell(&preproc);
 
-            debug_assert!((cell.mip as usize) < terrain.levels.len());
-            let level = unsafe { terrain.levels.get_unchecked(cell.mip as usize) };
+            debug_assert!((cell.mip as usize + 1) < terrain.levels.len());
+            let level = unsafe { terrain.levels.get_unchecked(cell.mip as usize + 1) };
 
-            let level_size_bits_x = terrain.size_bits.x + 1 - max(cell.mip, 1);
+            let level_size_bits_x = terrain.size_bits.x - cell.mip;
             let row_index = cell.pos.x as usize + ((cell.pos.y as usize) << level_size_bits_x);
-            if cell.mip > 0 {
-                debug_assert!(cell.pos.x < (1 << terrain.size_bits.x + 1 - cell.mip) - 1);
-                debug_assert!(cell.pos.y < (1 << terrain.size_bits.y + 1 - cell.mip) - 1);
-            } else {
-                debug_assert!(cell.pos.x < (1 << terrain.size_bits.x));
-                debug_assert!(cell.pos.y < (1 << terrain.size_bits.y));
-            }
+            debug_assert!(cell.pos.x < (1 << terrain.size_bits.x - cell.mip) - 1);
+            debug_assert!(cell.pos.y < (1 << terrain.size_bits.y - cell.mip) - 1);
             debug_assert!(cell.pos.x >= 0);
             debug_assert!(cell.pos.y >= 0);
             debug_assert!(row_index < level.rows.len());
@@ -206,7 +201,7 @@ pub fn opticast(
                 let (mut p1, mut p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
                 trace.opticast_span(
                     cell.pos_min().cast().unwrap(),
-                    1 << cell.mip,
+                    2 << cell.mip,
                     span.start as u32..span.end as u32,
                 );
 
