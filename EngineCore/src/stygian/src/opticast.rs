@@ -32,7 +32,7 @@ pub fn opticast(
     terrain: &Terrain,
     azimuth: Range<f32>,
     _inclination: Range<f32>,
-    projection: Matrix4<f32>,
+    mut projection: Matrix4<f32>,
     lateral_projection: Matrix4<f32>,
     eye: Point3<f32>,
     output_depth: &mut [f32],
@@ -62,6 +62,12 @@ pub fn opticast(
     let dir2 = vec2(azimuth.end.cos(), azimuth.end.sin());
     let theta = (azimuth.start + azimuth.end) * 0.5;
     let dir_primary = vec2(theta.cos(), theta.sin());
+
+    // Scale the beam projection matrix
+    projection.x.y *= output_depth.len() as f32;
+    projection.y.y *= output_depth.len() as f32;
+    projection.z.y *= output_depth.len() as f32;
+    projection.w.y *= output_depth.len() as f32;
 
     // Main loop
     mipbeamcast(
@@ -198,15 +204,12 @@ pub fn opticast(
                 }
 
                 // Rasterize the span
-                let (mut p1, mut p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+                let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
                 trace.opticast_span(
                     cell.pos_min().cast().unwrap(),
                     2 << cell.mip,
                     span.start as u32..span.end as u32,
                 );
-
-                p1.y *= output_depth.len() as f32;
-                p2.y *= output_depth.len() as f32;
 
                 let y1 = [p1.y.ceil(), 0.0].max() as i32;
                 let y2 = [p2.y, output_depth.len() as f32].min() as i32;
