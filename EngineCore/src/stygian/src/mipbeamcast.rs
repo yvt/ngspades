@@ -203,6 +203,7 @@ pub fn mipbeamcast<T>(
         // Intercepts
         let y1 = start.y + (size.x as f32 - start.x) * s1; // at `x = size.x`
         let y2 = start.y - start.x * s2; // at `x = 0`
+        let y3 = start.y - start.x * s1; // at `x = 0`
 
         if y1 <= 0.0 {
             // Never or only partly conincides with the map
@@ -220,6 +221,9 @@ pub fn mipbeamcast<T>(
         } else if y2 > size.y as f32 {
             // Only partly conincides with the map
             return custom_preproc;
+        } else if y3 >= 0.0 {
+            // The beam enters the map from the left side
+            cell = aabb_to_cell(0, y3 as i32, 0, y2 as i32);
         } else {
             if x2 < 0.0 {
                 // The beam enters the map from the top and left sides
