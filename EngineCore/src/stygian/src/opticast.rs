@@ -225,13 +225,19 @@ unsafe fn paint_span(
 
     let (y1, y2) = (y1 as u32, y2 as u32);
     let delta_z = (p2.z - p1.z) / (p2.y - p1.y);
-    let last_z = p1.z + delta_z * (y1 as f32 - p1.y);
+    let mut next_z = p1.z + delta_z * (y1 as f32 - p1.y);
+
+    // The minimum value of the function `y = ax + b` within the interval `[n, n + 1]`
+    // is `a(n + 1)` (if `a < 0`) or `an` (otherwise).
+    if delta_z < 0.0 {
+        next_z += delta_z;
+    }
 
     cov_buffer.paint(
         y1..y2,
         SpanPainter {
             output_depth,
-            last_z,
+            next_z,
             delta_z,
         },
     );
@@ -239,23 +245,22 @@ unsafe fn paint_span(
 
 struct SpanPainter<'a> {
     output_depth: &'a mut [f32],
-    last_z: f32,
+    next_z: f32,
     delta_z: f32,
 }
 impl CovPainter for SpanPainter<'_> {
     #[inline]
     fn skip(&mut self, count: u32) {
-        self.last_z += self.delta_z * count as f32;
+        self.next_z += self.delta_z * count as f32;
     }
 
     #[inline]
     fn paint(&mut self, i: u32) {
-        let (last_z, delta_z) = (&mut self.last_z, self.delta_z);
+        let (next_z, delta_z) = (&mut self.next_z, self.delta_z);
         let output_depth = &mut self.output_depth[..];
 
-        let next_z = *last_z + delta_z;
-        *unsafe { output_depth.get_unchecked_mut(i as usize) } = [*last_z, next_z].min();
-        *last_z = next_z;
+        *unsafe { output_depth.get_unchecked_mut(i as usize) } = *next_z;
+        *next_z += delta_z;
     }
 }
 
