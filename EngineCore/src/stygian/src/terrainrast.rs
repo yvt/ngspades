@@ -10,6 +10,7 @@ use itertools::Itertools;
 use std::{f32::consts::PI, ops::Range};
 
 use crate::{
+    cov::{CovBuffer, SkipBuffer},
     debug::{NoTrace, Trace},
     depthimage::DepthImage,
     opticast::opticast,
@@ -28,7 +29,7 @@ use crate::{
 /// The terrain rasterizer. This type contains a temporary storage required to
 /// run the terrain rasterizer.
 #[derive(Debug)]
-pub struct TerrainRast {
+pub struct TerrainRast<Cov = SkipBuffer> {
     size: usize,
     beams: Vec<BeamInfo>,
     eye: Point3<f32>,
@@ -36,7 +37,7 @@ pub struct TerrainRast {
     camera_matrix: Matrix4<f32>,
     camera_matrix_inv: Matrix4<f32>,
     camera_matrix_unproj: Matrix3<f32>,
-    skip_buffer: Vec<u32>,
+    cov_buffer: Cov,
 }
 
 #[derive(Debug)]
@@ -65,13 +66,20 @@ impl Default for BeamInfo {
     }
 }
 
-impl TerrainRast {
+impl TerrainRast<SkipBuffer> {
     /// Construct a `TerrainRast`.
     ///
     /// `resolution` is a value used to adjust the resolution of the internal
     /// buffer. A good value to start with is the resolution (the number of
     /// pixels on each side) of the output depth image.
     pub fn new(resolution: usize) -> Self {
+        Self::with_cov_buffer(resolution, SkipBuffer::default())
+    }
+}
+
+impl<Cov: CovBuffer> TerrainRast<Cov> {
+    /// Construct a `TerrainRast` with a custom `CovBuffer`.
+    pub fn with_cov_buffer(resolution: usize, cov_buffer: Cov) -> Self {
         Self {
             size: resolution,
             beams: Vec::with_capacity(resolution * 2),
@@ -80,7 +88,7 @@ impl TerrainRast {
             camera_matrix: Matrix4::zero(),
             camera_matrix_inv: Matrix4::zero(),
             camera_matrix_unproj: Matrix3::zero(),
-            skip_buffer: Vec::new(),
+            cov_buffer,
         }
     }
 
@@ -326,10 +334,8 @@ impl TerrainRast {
         }
         self.samples.resize(samples_start, 0.0);
 
-        self.skip_buffer.resize(
-            self.beams.iter().map(|b| b.num_samples).max().unwrap_or(0) + 1,
-            0,
-        );
+        self.cov_buffer
+            .reserve(self.beams.iter().map(|b| b.num_samples).max().unwrap_or(0) as u32);
 
         if trace.wants_terrainrast_sample() {
             for beam in self.beams.iter() {
@@ -365,7 +371,7 @@ impl TerrainRast {
                 beam.lateral_projection,
                 self.eye,
                 &mut self.samples[beam.samples_start..][..beam.num_samples],
-                &mut self.skip_buffer[0..beam.num_samples + 1],
+                &mut self.cov_buffer,
                 &mut trace,
             );
         }

@@ -7,21 +7,13 @@ use cgmath::{prelude::*, vec2, Matrix4, Point3};
 use std::ops::Range;
 
 use crate::{
+    cov::{CovBuffer, CovPainter},
     debug::Trace,
     mipbeamcast::{mipbeamcast, F_FAC_F},
     terrain::Terrain,
     utils::float::FloatSetExt,
     DEPTH_FAR,
 };
-
-/// In a skip buffer, this flag indicates there are no more vacant elements
-/// afterward.
-///
-/// Why use a flag instead of a specific value? Some of x86's status registers
-/// update automatically based on MSB. See <https://godbolt.org/z/tqCzQC>
-///
-/// Why `u32`? x86 doesn't allow 16-bit registers for indexed addressing!
-const EOB_BIT: u32 = 1 << 31;
 
 /// Perfom a beam casting and create a 1D depth image.
 ///
@@ -36,26 +28,19 @@ pub fn opticast(
     lateral_projection: Matrix4<f32>,
     eye: Point3<f32>,
     output_depth: &mut [f32],
-    skip_buffer: &mut [u32],
+    cov_buffer: &mut impl CovBuffer,
     trace: &mut impl Trace,
 ) {
-    assert!(skip_buffer.len() == output_depth.len() + 1);
     if output_depth.len() == 0 {
         return;
     }
 
-    // Skip buffer would overflow if `output_depth` is too large
+    // Prepare the coverage buffer
     assert!(
         output_depth.len() <= 0x40000000,
         "beam depth buffer is too large"
     );
-
-    // The skip buffer is used to implement the reverse painter's algorithm.
-    // Clear the skip buffer
-    for x in skip_buffer.iter_mut() {
-        *x = 0;
-    }
-    skip_buffer[output_depth.len()] = EOB_BIT;
+    cov_buffer.resize(output_depth.len() as u32);
 
     // Prepare beam-casting
     let dir1 = vec2(azimuth.start.cos(), azimuth.start.sin());
@@ -102,7 +87,7 @@ pub fn opticast(
             // Localize captured variables. This does have an impact on the
             // generated assembly code.
             let output_depth = &mut output_depth[..];
-            let skip_buffer = &mut skip_buffer[..];
+            let cov_buffer = &mut *cov_buffer;
             let (eye, projection) = (eye, projection);
 
             // TODO: Early-out by Z range
@@ -211,78 +196,84 @@ pub fn opticast(
                     span.start as u32..span.end as u32,
                 );
 
-                let y1 = [p1.y.ceil(), 0.0].max() as i32;
-                let y2 = [p2.y, output_depth.len() as f32].min() as i32;
-                if y1 >= y2 {
-                    continue;
-                }
-
-                let (y1, y2) = (y1 as u32, y2 as u32);
-                let delta_z = (p2.z - p1.z) / (p2.y - p1.y);
-                let mut last_z = p1.z + delta_z * (y1 as f32 - p1.y);
-
-                let mut i = y1;
-
-                let end_skip = *unsafe { skip_buffer.get_unchecked(y2 as usize) };
-
-                'draw: while (i & EOB_BIT) == 0 {
-                    let skip = *unsafe { skip_buffer.get_unchecked(i as usize) };
-                    if skip != 0 {
-                        i += skip;
-                        if i >= y2 {
-                            break;
-                        }
-                        last_z += delta_z * skip as f32;
-                        continue;
-                    }
-
-                    loop {
-                        let next_z = last_z + delta_z;
-                        *unsafe { output_depth.get_unchecked_mut(i as usize) } =
-                            [last_z, next_z].min();
-                        *unsafe { skip_buffer.get_unchecked_mut(i as usize) } = end_skip + (y2 - i);
-                        i += 1;
-
-                        if i >= y2 {
-                            break 'draw;
-                        }
-
-                        last_z = next_z;
-
-                        if *unsafe { skip_buffer.get_unchecked(i as usize) } != 0 {
-                            break;
-                        }
-                    }
+                unsafe {
+                    paint_span(p1, p2, &mut output_depth[..], &mut *cov_buffer);
                 }
             }
         },
     );
 
     // Draw sky
-    {
-        let mut i = 0;
-        while (i & EOB_BIT) == 0 {
-            let skip = *unsafe { skip_buffer.get_unchecked(i as usize) };
-            if skip != 0 {
-                i += skip;
-                continue;
-            }
+    cov_buffer.paint_all(SkyPainter {
+        output_depth: &mut output_depth[..],
+    });
+}
 
-            loop {
-                *unsafe { output_depth.get_unchecked_mut(i as usize) } = DEPTH_FAR;
-                i += 1;
+/// Unsafety: `cov_buffer` must have been `resize`d with `output_depth.len()`.
+#[inline]
+unsafe fn paint_span(
+    p1: Point3<f32>,
+    p2: Point3<f32>,
+    output_depth: &mut [f32],
+    cov_buffer: &mut impl CovBuffer,
+) {
+    let y1 = [p1.y.ceil(), 0.0].max() as i32;
+    let y2 = [p2.y, output_depth.len() as f32].min() as i32;
+    if y1 >= y2 {
+        return;
+    }
 
-                if *unsafe { skip_buffer.get_unchecked(i as usize) } != 0 {
-                    break;
-                }
-            }
-        }
+    let (y1, y2) = (y1 as u32, y2 as u32);
+    let delta_z = (p2.z - p1.z) / (p2.y - p1.y);
+    let last_z = p1.z + delta_z * (y1 as f32 - p1.y);
+
+    cov_buffer.paint(
+        y1..y2,
+        SpanPainter {
+            output_depth,
+            last_z,
+            delta_z,
+        },
+    );
+}
+
+struct SpanPainter<'a> {
+    output_depth: &'a mut [f32],
+    last_z: f32,
+    delta_z: f32,
+}
+impl CovPainter for SpanPainter<'_> {
+    #[inline]
+    fn skip(&mut self, count: u32) {
+        self.last_z += self.delta_z * count as f32;
+    }
+
+    #[inline]
+    fn paint(&mut self, i: u32) {
+        let (last_z, delta_z) = (&mut self.last_z, self.delta_z);
+        let output_depth = &mut self.output_depth[..];
+
+        let next_z = *last_z + delta_z;
+        *unsafe { output_depth.get_unchecked_mut(i as usize) } = [*last_z, next_z].min();
+        *last_z = next_z;
+    }
+}
+
+struct SkyPainter<'a> {
+    output_depth: &'a mut [f32],
+}
+impl CovPainter for SkyPainter<'_> {
+    #[inline]
+    fn paint(&mut self, i: u32) {
+        *unsafe { self.output_depth.get_unchecked_mut(i as usize) } = DEPTH_FAR;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::cov::SkipBuffer;
 
     #[test]
     fn opticast_single1() {
@@ -311,7 +302,8 @@ mod tests {
         let lateral_projection = Matrix4::zero();
         let eye = Point3::new(64.0, 64.0, 15.0);
         let mut output_depth = [0.0; 69];
-        let mut skip_buffer = [0; 70];
+        let mut cov_buffer = SkipBuffer::default();
+        cov_buffer.reserve(69);
         opticast(
             &terrain,
             azimuth,
@@ -320,7 +312,7 @@ mod tests {
             lateral_projection,
             eye,
             &mut output_depth,
-            &mut skip_buffer,
+            &mut cov_buffer,
             &mut crate::NoTrace,
         );
 
@@ -377,7 +369,8 @@ mod tests {
         );
         let eye = Point3::new(64.0, 64.0, 15.0);
         let mut output_depth = [0.0; 69];
-        let mut skip_buffer = [0; 70];
+        let mut cov_buffer = SkipBuffer::default();
+        cov_buffer.reserve(69);
         opticast(
             &terrain,
             azimuth,
@@ -386,7 +379,7 @@ mod tests {
             lateral_projection,
             eye,
             &mut output_depth,
-            &mut skip_buffer,
+            &mut cov_buffer,
             &mut crate::NoTrace,
         );
 
