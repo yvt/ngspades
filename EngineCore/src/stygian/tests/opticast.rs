@@ -24,8 +24,8 @@ fn opticast_depth() {
     }
     .into();
 
-    let projection = Matrix4::from_translation(vec3(0.0, 0.0, 1.0))
-        * Matrix4::from_nonuniform_scale(1.0, 1.0, -1.0)
+    let projection = Matrix4::from_translation(vec3(0.0, 0.0, 0.5))
+        * Matrix4::from_nonuniform_scale(1.0, 1.0, -0.5)
         * projection;
 
     let sty_terrain = Terrain::from_ngsterrain(&terrainload::DERBY_RACERS).unwrap();

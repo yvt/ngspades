@@ -231,8 +231,8 @@ impl State {
         let view = self.view_matrix();
 
         RenderParams {
-            camera_matrix: Matrix4::from_translation(vec3(0.0, 0.0, 1.0))
-                * Matrix4::from_nonuniform_scale(1.0, 1.0, -1.0)
+            camera_matrix: Matrix4::from_translation(vec3(0.0, 0.0, 0.5))
+                * Matrix4::from_nonuniform_scale(1.0, 1.0, -0.5)
                 * proj
                 * view,
         }
@@ -344,6 +344,9 @@ impl Renderer {
                         v_color = color / 255.0;
                         v_color *= sqrt(dot(norm, normalize(vec3(0.3, 0.7, 0.8))) * 0.5 + 0.5);
                         gl_Position = u_matrix * vec4(pos, 1.0);
+
+                        // Simulate [0, 1] Z range
+                        gl_Position.z = gl_Position.z * 2.0 - gl_Position.w;
                     }
                 ",
                 fragment: r"

@@ -105,6 +105,8 @@ impl MbcIncidence {
 /// another option is to do it later using the `MbcInputPreproc` returned by
 /// this function (all `MbcInputPreproc`s are equal).
 ///
+/// Traversal is terminated if `incidence_handler` returns `true`.
+///
 /// `preproc_filter` is called once to perform pre-computations based on
 /// `MbcInputPreproc` for the caller.
 ///
@@ -116,7 +118,7 @@ pub fn mipbeamcast<T>(
     mut dir1: Vector2<f32>,
     mut dir2: Vector2<f32>,
     preproc_filter: impl FnOnce(MbcInputPreproc) -> T,
-    mut incidence_handler: impl FnMut(&MbcIncidence, &mut T),
+    mut incidence_handler: impl FnMut(&MbcIncidence, &mut T) -> bool,
 ) -> T {
     // Axis normalization
     let swap_xy = dir1.y.abs() > dir1.x.abs();
@@ -349,7 +351,7 @@ pub fn mipbeamcast<T>(
         );
 
         // Eureka!
-        incidence_handler(
+        let terminate = incidence_handler(
             &MbcIncidence {
                 cell_raw: cell,
                 intersections_raw: [last_intersections, [vec2(dx1, dy1), vec2(dx2, dy2)]],
@@ -357,6 +359,9 @@ pub fn mipbeamcast<T>(
             },
             &mut custom_preproc,
         );
+        if terminate {
+            return custom_preproc;
+        }
 
         if new_cell.mip >= num_mip_levels - 1
             || (new_cell.pos.x as u32) >= size.x - 1 >> new_cell.mip
@@ -475,6 +480,7 @@ mod tests {
                     let cell = incidence.cell(preproc);
                     dbg!(cell);
                     println!("{:?} - {:?}", cell.pos_min(), cell.pos_max());
+                    false
                 },
             );
         }
@@ -512,6 +518,7 @@ mod tests {
                     let cell = incidence.cell(preproc);
                     dbg!(cell);
                     println!("{:?} - {:?}", cell.pos_min(), cell.pos_max());
+                    false
                 },
             );
         }

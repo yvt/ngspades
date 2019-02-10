@@ -4,7 +4,8 @@
 // This source code is a part of Nightingales.
 //
 use alt_fp::{u16_to_f32, u23_to_f32, FloatOrdSet};
-use cgmath::{prelude::*, vec2, Matrix4, Point3, Vector4};
+use cgmath::{prelude::*, vec2, vec4, Matrix4, Point3, Vector4};
+use packed_simd::f32x4;
 use std::ops::Range;
 
 use crate::{
@@ -48,6 +49,51 @@ pub fn opticast(
     let theta = (azimuth.start + azimuth.end) * 0.5;
     let dir_primary = vec2(theta.cos(), theta.sin());
 
+    // Set up frustum termination. A beam is terminated if `dist * fac < ref`
+    // becomes false for any components.
+    let (terminate_factor, terminate_ref) = {
+        let (fac0, fac1, fac2);
+        let (ref0, ref1, ref2);
+        let depth = terrain.size().z as f32;
+
+        let start1 = projection * vec4(0.0, 0.0, 0.0, 1.0);
+        let start2 = projection * vec4(0.0, 0.0, depth, 1.0);
+        let dir = projection.x;
+
+        // y_beam >= 0
+        if dir.y >= 0.0 {
+            fac0 = 0.0;
+            ref0 = 1.0;
+        } else {
+            fac0 = -dir.y;
+            ref0 = [start1.y, start2.y].fmax();
+        };
+
+        // y_beam <= 1 (y_cs - w_cs <= 0)
+        if dir.y - dir.w <= 0.0 {
+            fac1 = 0.0;
+            ref1 = 1.0;
+        } else {
+            fac1 = dir.y - dir.w;
+            ref1 = [start1.w - start1.y, start2.w - start2.y].fmax();
+        };
+
+        // z_beam >= 0
+        if dir.z >= 0.0 {
+            // Actually, reaching here means something went wrong, though...
+            fac2 = 0.0;
+            ref2 = 1.0;
+        } else {
+            fac2 = -dir.z;
+            ref2 = [start1.z, start2.z].fmax();
+        };
+
+        (
+            f32x4::new(fac0, fac1, fac2, 0.0),
+            f32x4::new(ref0, ref1, ref2, 1.0),
+        )
+    };
+
     // Scale the beam projection matrix
     projection.x.y *= output_depth.len() as f32;
     projection.y.y *= output_depth.len() as f32;
@@ -89,8 +135,6 @@ pub fn opticast(
             let output_depth = &mut output_depth[..];
             let cov_buffer = &mut *cov_buffer;
             let (eye, projection) = (eye, projection);
-
-            // TODO: Early-out by Z range
 
             // Get the row
             let cell = incidence.cell(&preproc);
@@ -190,9 +234,17 @@ pub fn opticast(
                     }
                 }
 
-                return;
+                return false;
             }
             // Otherwise...
+
+            // Check termination
+            if (terminate_factor * intersction_dists[0])
+                .ge(terminate_ref)
+                .any()
+            {
+                return true;
+            }
 
             // Rasterize spans
             for span in row.iter() {
@@ -241,6 +293,9 @@ pub fn opticast(
                     paint_span(p1, p2, &mut output_depth[..], &mut *cov_buffer);
                 }
             }
+
+            // Do not terminate the beam casting yet...
+            false
         },
     );
 
