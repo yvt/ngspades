@@ -26,6 +26,9 @@ pub struct MbcIncidence {
     ///
     /// The values are represented in the `s?.F` fixed-point format.
     pub intersections_raw: [[Vector2<i32>; 2]; 2],
+    /// Indicates whether the cell includes the starting point (`start` of
+    /// `mipbeamcast`).
+    pub includes_start: bool,
 }
 
 /// Represents a cell.
@@ -166,6 +169,7 @@ pub fn mipbeamcast<T>(
 
     // Find the first cell.
     let mut cell;
+    let mut includes_start = false;
     if start.x >= size.x as f32 || start.y >= size.y as f32 {
         // Never or only partly conincides with the map
         return custom_preproc;
@@ -176,6 +180,7 @@ pub fn mipbeamcast<T>(
                 pos: start.cast::<i32>().unwrap(),
                 mip: 0,
             };
+            includes_start = true;
         } else {
             // Intercepts
             let y1 = start.y - start.x * dir1.y;
@@ -349,6 +354,7 @@ pub fn mipbeamcast<T>(
             &MbcIncidence {
                 cell_raw: cell,
                 intersections_raw: [last_intersections, [vec2(dx1, dy1), vec2(dx2, dy2)]],
+                includes_start,
             },
             &mut custom_preproc,
         );
@@ -359,6 +365,8 @@ pub fn mipbeamcast<T>(
         {
             return custom_preproc;
         }
+
+        includes_start = false;
 
         // Calculate the displacement and adjust the state variables
         let dx = new_cell.pos_max().x - cell.pos_max().x;

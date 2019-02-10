@@ -137,6 +137,63 @@ pub fn opticast(
             });
             let intersction_dists = [intersction_dists[0].max(), intersction_dists[1].min()];
 
+            if incidence.includes_start {
+                // The camera is inside this row. Draw the floor/ceiling instead.
+                let floor_ceil = floor_and_ceiling_of_row(eye.z, row);
+
+                for &z in floor_ceil.iter() {
+                    if z == NO_FLOOR_CEILING {
+                        continue;
+                    }
+
+                    let z = z as f32;
+                    // let span_near_dist = 0.0; // just below/above of the camera!
+                    let span_far_dist = intersction_dists[1];
+
+                    let mut p1 = projection.w + projection.z * z /*+ projection.x * span_near_dist*/;
+                    let mut p2 = projection.w + projection.z * z + projection.x * span_far_dist;
+
+                    // Apply the lateral projection matrix.
+                    // The left and right edges have different Z values. The matrix
+                    // compensates for that.
+                    let p1_lat = /*lateral_projection.x * span_near_dist +*/ lateral_projection.z * z;
+                    let p2_lat = lateral_projection.x * span_far_dist + lateral_projection.z * z;
+                    // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
+                    // Use this approximation to find the minimum Z value for each
+                    // of the top and bottom edges.
+                    p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
+                    p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
+
+                    // Clip the line segment by the plane `z == w` (near plane)
+                    let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
+                        (p1, p2)
+                    } else {
+                        // Completely clipped
+                        continue;
+                    };
+
+                    // Rasterize the span
+                    let (mut p1, mut p2) =
+                        (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+
+                    // `p1.y` should be already close enough to `0`, but snap it to `0`
+                    // so that no gaps can be seen
+                    p1.y = 0.0;
+
+                    if p1.y > p2.y {
+                        std::mem::swap(&mut p1.y, &mut p2.y);
+                        std::mem::swap(&mut p1.z, &mut p2.z);
+                    }
+
+                    unsafe {
+                        paint_span(p1, p2, &mut output_depth[..], &mut *cov_buffer);
+                    }
+                }
+
+                return;
+            }
+            // Otherwise...
+
             // Rasterize spans
             for span in row.iter() {
                 // TODO: Calculations done here fail to be vectorized - figure
@@ -191,6 +248,25 @@ pub fn opticast(
     cov_buffer.paint_all(SkyPainter {
         output_depth: &mut output_depth[..],
     });
+}
+
+const NO_FLOOR_CEILING: u32 = 0xffffffff;
+
+/// Get the Z coordinates of the floor and ceiling (if any) assuming the
+/// camera is inside a given row. Returns `NO_FLOOR_CEILING` if no spans were
+/// found for each direction.
+fn floor_and_ceiling_of_row(eye: f32, row: &[Range<u16>]) -> [u32; 2] {
+    let eye = eye as i32;
+
+    let mut last = NO_FLOOR_CEILING;
+    for span in row.iter() {
+        if span.start as i32 >= eye {
+            return [last, span.start as u32];
+        }
+        last = span.end as u32;
+    }
+
+    [last, NO_FLOOR_CEILING]
 }
 
 /// Clip the line segment by the plane `z == w` (near plane)
