@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{prelude::*, vec2, Matrix4, Point3};
+use cgmath::{prelude::*, vec2, Matrix4, Point3, Vector4};
 use std::ops::Range;
 
 use crate::{
@@ -168,25 +168,12 @@ pub fn opticast(
                 p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
 
                 // Clip the line segment by the plane `z == w` (near plane)
-                let clip_states = [p1.z > p1.w, p2.z > p2.w];
-                let clip_state = clip_states[0] as usize + clip_states[1] as usize;
-                if clip_state == 2 {
+                let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
+                    (p1, p2)
+                } else {
                     // Completely clipped
                     continue;
-                } else if clip_state == 1 {
-                    // Partial clipped
-                    let dot1 = p1.z - p1.w;
-                    let dot2 = p2.z - p2.w;
-                    let fraction = dot1 / (dot1 - dot2);
-                    debug_assert!(fraction >= 0.0 && fraction <= 1.0);
-                    let mut midpoint = p1.lerp(p2, fraction);
-                    midpoint.w = midpoint.z;
-                    if clip_states[0] {
-                        p1 = midpoint;
-                    } else {
-                        p2 = midpoint;
-                    }
-                }
+                };
 
                 // Rasterize the span
                 let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
@@ -207,6 +194,32 @@ pub fn opticast(
     cov_buffer.paint_all(SkyPainter {
         output_depth: &mut output_depth[..],
     });
+}
+
+/// Clip the line segment by the plane `z == w` (near plane)
+#[inline]
+fn clip_near_plane(p1: Vector4<f32>, p2: Vector4<f32>) -> Option<(Vector4<f32>, Vector4<f32>)> {
+    let clip_states = [p1.z > p1.w, p2.z > p2.w];
+    let clip_state = clip_states[0] as usize + clip_states[1] as usize;
+    if clip_state == 2 {
+        // Completely clipped
+        None
+    } else if clip_state == 1 {
+        // Partial clipped
+        let dot1 = p1.z - p1.w;
+        let dot2 = p2.z - p2.w;
+        let fraction = dot1 / (dot1 - dot2);
+        debug_assert!(fraction >= 0.0 && fraction <= 1.0);
+        let mut midpoint = p1.lerp(p2, fraction);
+        midpoint.w = midpoint.z;
+        if clip_states[0] {
+            Some((midpoint, p2))
+        } else {
+            Some((p1, midpoint))
+        }
+    } else {
+        Some((p1, p2))
+    }
 }
 
 /// Unsafety: `cov_buffer` must have been `resize`d with `output_depth.len()`.
