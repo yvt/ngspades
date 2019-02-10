@@ -60,6 +60,12 @@ impl Terrain {
         assert!(size.y.is_power_of_two());
         assert!(size.z.is_power_of_two());
 
+        // If the terrain was too large, inputs to `alt_fp::u23_to_f32` would
+        // overflow
+        assert!(size.x < (1 << 20));
+        assert!(size.y < (1 << 20));
+        assert!(size.z < (1 << 20));
+
         let size_bits = vec3(
             size.x.trailing_zeros(),
             size.y.trailing_zeros(),

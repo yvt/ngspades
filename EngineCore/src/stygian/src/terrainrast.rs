@@ -296,6 +296,13 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
             // The preliminary sample count
             beam.num_samples = (chebyshev_len * 0.5 * self.size as f32).ceil() as usize;
 
+            // Limit the sample count.
+            // There are several reasons to do this: `alt_fp::f32_to_u23` range
+            // limitation, skip buffer range, etc.
+            if beam.num_samples > 1 << 20 {
+                beam.num_samples = 1 << 20;
+            }
+
             // Create a beam projection matrix
             let projection =
                 // Reorient the output so that `p2 - p1` aligns to the Y axis

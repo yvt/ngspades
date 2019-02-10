@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use alt_fp::FloatOrdSet;
+use alt_fp::{u16_to_f32, u23_to_f32, FloatOrdSet};
 use cgmath::{prelude::*, vec2, Matrix4, Point3, Vector4};
 use std::ops::Range;
 
@@ -114,7 +114,7 @@ pub fn opticast(
                 .map(|x| x.map(|x| vec2(x.x as f32, x.y as f32) * (1.0 / F_FAC_F)));
             let cell_raw_pos_f = incidence.cell_raw.pos_min().cast::<f32>().unwrap();
             let cell_size = incidence.cell_raw.size();
-            let cell_size_f = cell_size as f32;
+            let cell_size_f = u23_to_f32(cell_size as u32);
 
             // `dot(x, dir_primary)` for each intersections of the beam and the cell
             let intersction_dists = intersections.map(|[i1, i2]| {
@@ -146,7 +146,7 @@ pub fn opticast(
                         continue;
                     }
 
-                    let z = z as f32;
+                    let z = u23_to_f32(z);
                     // let span_near_dist = 0.0; // just below/above of the camera!
                     let span_far_dist = intersction_dists[1];
 
@@ -176,7 +176,7 @@ pub fn opticast(
                     let (mut p1, mut p2) =
                         (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
 
-                    // `p1.y` should be already close enough to `0`, but snap it to `0`
+                    // `p1.y` should be already close enough to `0`, but snap the value
                     // so that no gaps can be seen
                     p1.y = 0.0;
 
@@ -198,8 +198,8 @@ pub fn opticast(
             for span in row.iter() {
                 // TODO: Calculations done here fail to be vectorized - figure
                 //       out how to make it SIMD-friendly or use SIMD explicitly
-                let z1 = span.start as f32;
-                let z2 = span.end as f32;
+                let z1 = u16_to_f32(span.start);
+                let z2 = u16_to_f32(span.end);
 
                 // Find the “reverse” AABB (like the incircle of a triangle)
                 let bottom_above_eye = z1 > eye.z;
@@ -311,7 +311,7 @@ unsafe fn paint_span(
 
     let (y1, y2) = (y1 as u32, y2 as u32);
     let delta_z = (p2.z - p1.z) / (p2.y - p1.y);
-    let mut next_z = p1.z + delta_z * (y1 as f32 - p1.y);
+    let mut next_z = p1.z + delta_z * (u23_to_f32(y1) - p1.y);
 
     // The minimum value of the function `y = ax + b` within the interval `[n, n + 1]`
     // is `a(n + 1)` (if `a < 0`) or `an` (otherwise).
@@ -337,7 +337,7 @@ struct SpanPainter<'a> {
 impl CovPainter for SpanPainter<'_> {
     #[inline]
     fn skip(&mut self, count: u32) {
-        self.next_z += self.delta_z * count as f32;
+        self.next_z = self.delta_z.mul_add(u23_to_f32(count), self.next_z);
     }
 
     #[inline]

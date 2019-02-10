@@ -17,6 +17,7 @@
 ///     assert_eq!(u23_to_f32(8388606), 8388606.0);
 ///     assert_eq!(u23_to_f32(8388607), 8388607.0);
 ///
+#[inline]
 pub fn u23_to_f32(x: u32) -> f32 {
     <f32>::from_bits(x | 0x4b000000) - 8388608.0
 }
@@ -32,6 +33,7 @@ pub fn u23_to_f32(x: u32) -> f32 {
 ///     assert_eq!(u16_to_f32(65534), 65534.0);
 ///     assert_eq!(u16_to_f32(65535), 65535.0);
 ///
+#[inline]
 pub fn u16_to_f32(x: u16) -> f32 {
     u23_to_f32(x as u32)
 }
@@ -56,6 +58,7 @@ pub fn u16_to_f32(x: u16) -> f32 {
 ///     assert_eq!(f32_to_u23(8388606.0), 8388606);
 ///     assert_eq!(f32_to_u23(8388607.0), 8388607);
 ///
+#[inline]
 pub fn f32_to_u23(x: f32) -> u32 {
     (x + 8388608.0).to_bits() & 0x7fffff
 }
