@@ -141,26 +141,23 @@ pub fn opticast(
             for span in row.iter() {
                 // TODO: Calculations done here fail to be vectorized - figure
                 //       out how to make it SIMD-friendly or use SIMD explicitly
+                let z1 = span.start as f32;
+                let z2 = span.end as f32;
 
                 // Find the “reverse” AABB (like the incircle of a triangle)
-                let bottom_above_eye = span.start as f32 > eye.z;
-                let top_below_eye = (span.end as f32) < eye.z;
+                let bottom_above_eye = z1 > eye.z;
+                let top_below_eye = z2 < eye.z;
                 let span_bottom_dist = intersction_dists[bottom_above_eye as usize];
                 let span_top_dist = intersction_dists[top_below_eye as usize];
 
-                let mut p1 = projection.w
-                    + projection.x * span_bottom_dist
-                    + projection.z * span.start as f32;
-                let mut p2 =
-                    projection.w + projection.x * span_top_dist + projection.z * span.end as f32;
+                let mut p1 = projection.w + projection.x * span_bottom_dist + projection.z * z1;
+                let mut p2 = projection.w + projection.x * span_top_dist + projection.z * z2;
 
                 // Apply the lateral projection matrix.
                 // The left and right edges have different Z values. The matrix
                 // compensates for that.
-                let p1_lat = lateral_projection.x * span_bottom_dist
-                    + lateral_projection.z * span.start as f32;
-                let p2_lat =
-                    lateral_projection.x * span_top_dist + lateral_projection.z * span.end as f32;
+                let p1_lat = lateral_projection.x * span_bottom_dist + lateral_projection.z * z1;
+                let p2_lat = lateral_projection.x * span_top_dist + lateral_projection.z * z2;
                 // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
                 // Use this approximation to find the minimum Z value for each
                 // of the top and bottom edges.
