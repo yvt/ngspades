@@ -455,30 +455,48 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
 
                 // `for` loop generates `callq` to `std::iter::Map::new`. Why?
                 let mut y = y_min;
+                let mut depth_ptr =
+                    unsafe { bitmap.as_mut_ptr().offset((x_min + y * size.x) as isize) };
                 while y < y_max {
-                    let mut x = x_min;
-                    while x < x_max {
-                        let depth = unsafe { bitmap.get_unchecked_mut(x + y * size.x) };
-                        *depth = [*depth, new_depth].fmin();
+                    depth_blend_min(
+                        unsafe { std::slice::from_raw_parts_mut(depth_ptr, x_max - x_min) },
+                        new_depth,
+                    );
+                    depth_ptr = unsafe { depth_ptr.offset(size.x as isize) };
 
-                        // Prevent loop unrolling. The iteration count of this
-                        // loop is usually no more than 2 or 3 and unrolling
-                        // only adds a dozen instructions worth of overhead.
-                        // Sadly, Rust doesn't have a pragma for controlling
-                        // loop unrolling yet:
-                        // <https://github.com/rust-lang/rfcs/issues/2219>
-                        unsafe {
-                            asm!("");
-                        }
-
-                        x += 1;
-                    }
                     y += 1;
                 }
 
                 // This sample is done
             }
         }
+    }
+}
+
+/// Replace elements with `in_depth` if the old value is greater than
+/// `out_depth`.
+///
+///  - All depth values are greater than or equal to zero.
+///  - NaN handling is not required.
+///
+#[inline]
+fn depth_blend_min(out_depth: &mut [f32], in_depth: f32) {
+    let mut i = 0;
+    while i < out_depth.len() {
+        let x = &mut out_depth[i];
+        *x = [in_depth, *x].fmin();
+
+        // Prevent loop unrolling. The iteration count of this
+        // loop is usually no more than 2 or 3 and unrolling
+        // only adds a dozen instructions worth of overhead.
+        // Sadly, Rust doesn't have a pragma for controlling
+        // loop unrolling yet:
+        // <https://github.com/rust-lang/rfcs/issues/2219>
+        unsafe {
+            asm!("");
+        }
+
+        i += 1;
     }
 }
 
