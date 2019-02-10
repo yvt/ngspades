@@ -171,7 +171,7 @@ pub fn mipbeamcast<T>(
 
     // Find the first cell.
     let mut cell;
-    let mut includes_start = false;
+    let mut inner_start = None;
     if start.x >= size.x as f32 || start.y >= size.y as f32 {
         // Never or only partly conincides with the map
         return custom_preproc;
@@ -182,15 +182,20 @@ pub fn mipbeamcast<T>(
                 pos: start.cast::<i32>().unwrap(),
                 mip: 0,
             };
-            includes_start = true;
         } else {
             // Intercepts
             let y1 = start.y - start.x * dir1.y;
             let y2 = start.y - start.x * dir2.y;
+            let swapped = y1 > y2;
             let (y1, y2) = ([y1, y2].fmin(), [y1, y2].fmax());
             if y1 >= 0.0 && y2 < size.y as f32 {
                 // The beam enters the map from the left side
                 cell = aabb_to_cell(0, y1 as i32, 0, y2 as i32);
+                inner_start = if swapped {
+                    Some((vec2(0.0, y2), vec2(0.0, y1)))
+                } else {
+                    Some((vec2(0.0, y1), vec2(0.0, y2)))
+                };
             } else {
                 // Only partly conincides with the map
                 return custom_preproc;
@@ -206,6 +211,7 @@ pub fn mipbeamcast<T>(
 
         // Slopes of the half lines
         let (s1, s2) = ([dir1.y, dir2.y].fmin(), [dir1.y, dir2.y].fmax());
+        let swapped = dir1.y > dir2.y;
 
         // Intercepts
         let y1 = start.y + (size.x as f32 - start.x) * s1; // at `x = size.x`
@@ -225,19 +231,31 @@ pub fn mipbeamcast<T>(
         if start.x >= 0.0 {
             // The beam enters the map from the top side
             cell = aabb_to_cell(x2 as i32, 0, x1 as i32, 0);
+            inner_start = Some((vec2(x1, 0.0), vec2(x2, 0.0)));
         } else if y2 > size.y as f32 {
             // Only partly conincides with the map
             return custom_preproc;
         } else if y3 >= 0.0 {
             // The beam enters the map from the left side
             cell = aabb_to_cell(0, y3 as i32, 0, y2 as i32);
+            inner_start = Some((vec2(0.0, y3), vec2(0.0, y2)));
         } else {
             if x2 < 0.0 {
                 // The beam enters the map from the top and left sides
                 cell = aabb_to_cell(0, 0, x1 as i32, y2 as i32);
+                inner_start = Some((vec2(x1, 0.0), vec2(0.0, y2)));
             } else {
                 // The beam enters the map from the top side
                 cell = aabb_to_cell(x2 as i32, 0, x1 as i32, 0);
+                inner_start = Some((vec2(x1, 0.0), vec2(x2, 0.0)));
+            }
+        }
+
+        if swapped {
+            if let Some((ref mut p1, ref mut p2)) = inner_start {
+                swap(p1, p2);
+            } else {
+                unreachable!();
             }
         }
     }
@@ -248,6 +266,8 @@ pub fn mipbeamcast<T>(
     {
         return custom_preproc;
     }
+
+    let mut includes_start = inner_start.is_none();
 
     // Convert the coordinates to s?.F fixed-point
     let start = (start * F_FAC_F).cast::<i32>().unwrap();
@@ -261,19 +281,28 @@ pub fn mipbeamcast<T>(
     let islope2 = ((1i64 << (F * 2)) / max(slope2, 1) as i64) as i32;
 
     // Thera are two moving points. Both of them start at `start` and moves
-    // toward `dir1` and `dir2`.
+    // toward `dir1` and `dir2`. `start` may be inside the map. Otherwise,
+    // `inner_start` indicates where the two points enter the map.
+    let (start1, start2) = if let Some((p1, p2)) = inner_start {
+        (
+            (p1 * F_FAC_F).cast::<i32>().unwrap(),
+            (p2 * F_FAC_F).cast::<i32>().unwrap(),
+        )
+    } else {
+        (start, start)
+    };
 
     // Distance to the right border of the current cell from each current point
-    let mut dx1 = (cell.pos_max().x << F) - start.x;
-    let mut dx2 = dx1;
+    let mut dx1 = (cell.pos_max().x << F) - start1.x;
+    let mut dx2 = (cell.pos_max().x << F) - start2.x;
 
     // Distance to the bottom/top border of the current cell from each current
     // point. It's the top border iff the corresponding `slopeX` is negative.
-    let mut dy1 = (cell.pos_max().y << F) - start.y;
+    let mut dy1 = (cell.pos_max().y << F) - start1.y;
     let mut dy2 = if slope2_neg {
-        (2 << (cell.mip + F)) - dy1
+        start2.y - (cell.pos_min().y << F)
     } else {
-        dy1
+        (cell.pos_max().y << F) - start2.y
     };
 
     loop {
