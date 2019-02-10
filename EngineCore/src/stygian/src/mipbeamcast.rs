@@ -111,6 +111,7 @@ impl MbcIncidence {
 /// `MbcInputPreproc` for the caller.
 ///
 /// `num_mip_levels` must be equal to `log2(min(size.x, size.y)) + 1`.
+#[inline]
 pub fn mipbeamcast<T>(
     mut size: Vector2<u32>,
     num_mip_levels: u32,
