@@ -1823,6 +1823,7 @@ dependencies = [
 name = "stygian"
 version = "0.1.0"
 dependencies = [
+ "alt_fp 0.1.0",
  "array 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "arrayvec 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "bencher 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",

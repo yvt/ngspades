@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use alt_fp::FloatOrdSet;
 use cgmath::{prelude::*, vec2, Matrix4, Point3, Vector4};
 use std::ops::Range;
 
@@ -11,7 +12,6 @@ use crate::{
     debug::Trace,
     mipbeamcast::{mipbeamcast, F_FAC_F},
     terrain::Terrain,
-    utils::float::FloatSetExt,
     DEPTH_FAR,
 };
 
@@ -135,7 +135,7 @@ pub fn opticast(
                     },
                 ]
             });
-            let intersction_dists = [intersction_dists[0].max(), intersction_dists[1].min()];
+            let intersction_dists = [intersction_dists[0].fmax(), intersction_dists[1].fmin()];
 
             if incidence.includes_start {
                 // The camera is inside this row. Draw the floor/ceiling instead.
@@ -296,15 +296,15 @@ fn clip_near_plane(p1: Vector4<f32>, p2: Vector4<f32>) -> Option<(Vector4<f32>, 
 }
 
 /// Unsafety: `cov_buffer` must have been `resize`d with `output_depth.len()`.
-#[inline]
+#[inline(always)]
 unsafe fn paint_span(
     p1: Point3<f32>,
     p2: Point3<f32>,
     output_depth: &mut [f32],
     cov_buffer: &mut impl CovBuffer,
 ) {
-    let y1 = [p1.y.ceil(), 0.0].max() as i32;
-    let y2 = [p2.y, output_depth.len() as f32].min() as i32;
+    let y1 = [p1.y.ceil(), 0.0].fmax() as i32;
+    let y2 = [p2.y, output_depth.len() as f32].fmin() as i32;
     if y1 >= y2 {
         return;
     }

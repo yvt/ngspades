@@ -34,7 +34,6 @@ pub use crate::{
 };
 
 mod utils {
-    pub mod float;
     pub mod geom;
     pub mod iter;
 }

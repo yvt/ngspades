@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 //! Terrain rasterizer.
+use alt_fp::FloatOrdSet;
 use arrayvec::ArrayVec;
 use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Rad, Vector3, Vector4};
 use itertools::Itertools;
@@ -16,7 +17,6 @@ use crate::{
     opticast::opticast,
     terrain::Terrain,
     utils::{
-        float::FloatSetExt,
         geom::{
             inclination_intersecting_half_space, jacobian_from_projection_matrix,
             projector_to_latitudinal_line, spherical_to_cartesian,
@@ -164,7 +164,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
             // Take intersectons of all ranges
             let mut range: Range<f32> = ranges.next().unwrap().into();
             range = ranges.fold(range, |x, y| y & &x);
-            range.start..[range.start, range.end].max()
+            range.start..[range.start, range.end].fmax()
         };
 
         // Calculate the range of azimuth angles visible within the viewport.
@@ -201,7 +201,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
             }
 
             if (angles[3] - angles[0]).abs() <= PI {
-                angles.min()..angles.max()
+                angles.fmin()..angles.fmax()
             } else {
                 0.0..PI2
             }
@@ -245,7 +245,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
                 );
 
                 // `width` is limited by `mipbeamcast`'s restrictuion
-                let width = [width, 0.4].min();
+                let width = [width, 0.4].fmin();
 
                 let end;
                 let mut angle;
@@ -262,8 +262,8 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
 
                 self.beams.push(BeamInfo {
                     azimuth: last_angle..angle,
-                    inclination: [range.start, last_range.start].min()
-                        ..[range.end, last_range.end].max(),
+                    inclination: [range.start, last_range.start].fmin()
+                        ..[range.end, last_range.end].fmax(),
                     ..BeamInfo::default()
                 });
 
@@ -285,7 +285,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
 
             let diff = (p2 - p1).truncate();
             let len = diff.magnitude();
-            let chebyshev_len = [diff.x.abs(), diff.y.abs()].max();
+            let chebyshev_len = [diff.x.abs(), diff.y.abs()].fmax();
 
             // Reject zero-length beams
             if (diff.x == 0.0 && diff.y == 0.0) || len == 0.0 || chebyshev_len == 0.0 {
@@ -423,17 +423,17 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
                 beam_sample_vertices_vp_aabb(beam, self.camera_matrix, self.camera_matrix_unproj, m)
                     .enumerate()
             {
-                let x_min = [vs_min1, vs_min2].map(|v| v.x).min();
-                let y_min = [vs_min1, vs_min2].map(|v| v.y).min();
-                let x_max = [vs_max1, vs_max2].map(|v| v.x).max();
-                let y_max = [vs_max1, vs_max2].map(|v| v.y).max();
+                let x_min = [vs_min1, vs_min2].map(|v| v.x).fmin();
+                let y_min = [vs_min1, vs_min2].map(|v| v.y).fmin();
+                let x_max = [vs_max1, vs_max2].map(|v| v.x).fmax();
+                let y_max = [vs_max1, vs_max2].map(|v| v.y).fmax();
 
                 // It's okay to inflate the bounding box - the safest guess
                 // would be stored if multiple samples overlap
-                let x_min = [x_min, 0.0].max() as i32;
-                let y_min = [y_min, 0.0].max() as i32;
-                let x_max = [x_max, (size.x - 1) as f32].min() as i32 + 1;
-                let y_max = [y_max, (size.y - 1) as f32].min() as i32 + 1;
+                let x_min = [x_min, 0.0].fmax() as i32;
+                let y_min = [y_min, 0.0].fmax() as i32;
+                let x_max = [x_max, (size.x - 1) as f32].fmin() as i32 + 1;
+                let y_max = [y_max, (size.y - 1) as f32].fmin() as i32 + 1;
 
                 if x_min >= x_max || y_min >= y_max {
                     continue;
@@ -452,7 +452,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
                     let mut x = x_min;
                     while x < x_max {
                         let depth = unsafe { bitmap.get_unchecked_mut(x + y * size.x) };
-                        *depth = [*depth, new_depth].min();
+                        *depth = [*depth, new_depth].fmin();
 
                         // Prevent loop unrolling. The iteration count of this
                         // loop is usually no more than 2 or 3 and unrolling
@@ -596,8 +596,8 @@ fn beam_sample_vertices_vp_aabb(
             let p2 = Point2::new(p2.x / p2.z, p2.y / p2.z);
 
             [
-                Point2::new([p1.x, p2.x].min(), [p1.y, p2.y].min()),
-                Point2::new([p1.x, p2.x].max(), [p1.y, p2.y].max()),
+                Point2::new([p1.x, p2.x].fmin(), [p1.y, p2.y].fmin()),
+                Point2::new([p1.x, p2.x].fmax(), [p1.y, p2.y].fmax()),
             ]
         })
         .tuple_windows::<(_, _)>()

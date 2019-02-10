@@ -3,10 +3,9 @@
 //
 // This source code is a part of Nightingales.
 //
+use alt_fp::FloatOrdSet;
 use cgmath::{prelude::*, vec3, Matrix3, Matrix4, Vector3, Vector4};
 use std::{f32::consts::FRAC_PI_2, ops::Range};
-
-use crate::utils::float::FloatSetExt;
 
 /// Calculate the Jacobian matrix of a specified projective transformation at a
 /// specified point specified in homogeneous coordinates.
@@ -119,8 +118,8 @@ impl std::ops::BitAnd<&Range<f32>> for InclinationRange {
 
     fn bitand(self, rhs: &Range<f32>) -> Self::Output {
         match self {
-            InclinationRange::UpperBound(x) => rhs.start..[rhs.end, x].min(),
-            InclinationRange::LowerBound(x) => [rhs.start, x].max()..rhs.end,
+            InclinationRange::UpperBound(x) => rhs.start..[rhs.end, x].fmin(),
+            InclinationRange::LowerBound(x) => [rhs.start, x].fmax()..rhs.end,
         }
     }
 }
