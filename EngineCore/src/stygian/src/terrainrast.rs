@@ -11,7 +11,7 @@ use itertools::Itertools;
 use std::{f32::consts::PI, ops::Range};
 
 use crate::{
-    cov::{CovBuffer, SkipBuffer},
+    cov::{CovBuffer, BitArray},
     debug::{NoTrace, Trace},
     depthimage::DepthImage,
     opticast::opticast,
@@ -29,7 +29,7 @@ use crate::{
 /// The terrain rasterizer. This type contains a temporary storage required to
 /// run the terrain rasterizer.
 #[derive(Debug)]
-pub struct TerrainRast<Cov = SkipBuffer> {
+pub struct TerrainRast<Cov = BitArray> {
     size: usize,
     beams: Vec<BeamInfo>,
     eye: Point3<f32>,
@@ -66,14 +66,14 @@ impl Default for BeamInfo {
     }
 }
 
-impl TerrainRast<SkipBuffer> {
+impl TerrainRast<BitArray> {
     /// Construct a `TerrainRast`.
     ///
     /// `resolution` is a value used to adjust the resolution of the internal
     /// buffer. A good value to start with is the resolution (the number of
     /// pixels on each side) of the output depth image.
     pub fn new(resolution: usize) -> Self {
-        Self::with_cov_buffer(resolution, SkipBuffer::default())
+        Self::with_cov_buffer(resolution, BitArray::default())
     }
 }
 

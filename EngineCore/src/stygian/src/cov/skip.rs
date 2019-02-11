@@ -8,7 +8,7 @@ use std::{ops::Range, mem::replace};
 
 use super::{CovBuffer, CovPainter};
 
-/// A skip buffer.
+/// A coverage buffer implemented using a skip buffer.
 #[derive(Debug, Default, Clone)]
 pub struct SkipBuffer {
     buffer: Vec<u32>,

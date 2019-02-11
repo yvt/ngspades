@@ -58,5 +58,7 @@ pub trait CovPainter {
     fn paint(&mut self, _i: u32) {}
 }
 
+mod bitarray;
 mod skip;
+pub use self::bitarray::*;
 pub use self::skip::*;
