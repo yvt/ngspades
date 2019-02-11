@@ -90,6 +90,7 @@ fn opticast_depth() {
         (Point3::new(64.0, 64.0, 15.0), Point3::new(128.0, 64.0, 5.0)),
         (Point3::new(64.0, 64.0, 15.0), Point3::new(65.0, 65.0, 5.0)),
         (Point3::new(64.0, 64.0, 15.0), Point3::new(65.0, 65.0, 25.0)),
+        (Point3::new(62.0, 94.0, 15.0), Point3::new(65.0, 65.0, 25.0)),
     ] {
         dbg!((eye, at));
 

@@ -185,7 +185,7 @@ pub fn opticast(
                 // The camera is inside this row. Draw the floor/ceiling instead.
                 let floor_ceil = floor_and_ceiling_of_row(eye.z, row);
 
-                for &z in floor_ceil.iter() {
+                for (i, &z) in floor_ceil.iter().enumerate() {
                     if z == NO_FLOOR_CEILING {
                         continue;
                     }
@@ -220,9 +220,9 @@ pub fn opticast(
                     let (mut p1, mut p2) =
                         (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
 
-                    // `p1.y` should be already close enough to `0`, but snap the value
-                    // so that no gaps can be seen
-                    p1.y = 0.0;
+                    // `p1.y` should be already close enough to one of the ends, but
+                    // snap the value so that no gaps can be seen
+                    p1.y = [0.0, output_depth.len() as f32][i];
 
                     if p1.y > p2.y {
                         std::mem::swap(&mut p1.y, &mut p2.y);
