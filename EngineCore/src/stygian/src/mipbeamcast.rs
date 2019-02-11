@@ -358,8 +358,9 @@ pub fn mipbeamcast<T>(
         let last_intersections = [vec2(dx1, dy1), vec2(dx2, dy2)];
 
         let portal_y1_right = bottom - fix2int_ceil(new_dy1);
-        let portal_x1_bottom = right - fix2int_ceil(dx1 - fix_mul(dy1, islope1));
-        if new_dy1 < 0 { // unpredictable branch
+        let portal_x1_bottom = right - fix2int_ceil(dx1.wrapping_sub(fix_mul(dy1, islope1)));
+        if new_dy1 < 0 {
+            // unpredictable branch
             // Bottom
             portal_y1 = bottom;
             portal_x1 = portal_x1_bottom;
@@ -375,18 +376,18 @@ pub fn mipbeamcast<T>(
             dy1 = new_dy1;
         }
 
-        let portal_x2_top_bottom = right - fix2int_ceil(dx2 - fix_mul(dy2, islope2));
+        let portal_x2_top_bottom = right - fix2int_ceil(dx2.wrapping_sub(fix_mul(dy2, islope2)));
         let mut ko_shape_x = 0;
         if preproc.slope2_neg() {
             let portal_y2_right = top + fix2int_floor(new_dy2);
-            let portal_y2_top_bottom = top_border;
-            if new_dy2 < 0 { // unpredictable branch
+            if new_dy2 < 0 {
+                // unpredictable branch
                 // Top
                 // The portal includes the right edge (thus looks like "コ" - ko).
                 // Make sure to take it into account.
                 ko_shape_x = right;
                 portal_x2 = portal_x2_top_bottom;
-                portal_y2 = portal_y2_top_bottom;
+                portal_y2 = top_border;
 
                 dx2 = new_dx2;
                 dy2 = 0;
@@ -400,11 +401,11 @@ pub fn mipbeamcast<T>(
             }
         } else {
             let portal_y2_right = bottom - fix2int_ceil(new_dy2);
-            let portal_y2_top_bottom = bottom;
-            if new_dy2 < 0 { // unpredictable branch
+            if new_dy2 < 0 {
+                // unpredictable branch
                 // Bottom
                 portal_x2 = portal_x2_top_bottom;
-                portal_y2 = portal_y2_top_bottom;
+                portal_y2 = bottom;
 
                 dx2 = new_dx2;
                 dy2 = 0;
