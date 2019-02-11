@@ -13,6 +13,7 @@ num = "0.2.0"
 array = "0.0.1"
 itertools = "0.8.0"
 packed_simd = "0.3.0"
+bitflags = "1.0.4"
 
 [dev-dependencies]
 bencher = "0.1.5"

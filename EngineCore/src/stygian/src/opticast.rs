@@ -112,15 +112,15 @@ pub fn opticast(
 
             let mut local_dir_primary = dir_primary;
             let mut local_eye = eye;
-            if preproc.swap_xy {
+            if preproc.swap_xy() {
                 std::mem::swap(&mut local_dir_primary.x, &mut local_dir_primary.y);
                 std::mem::swap(&mut local_eye.x, &mut local_eye.y);
             }
-            if preproc.flip_x {
+            if preproc.flip_x() {
                 local_dir_primary.x = -local_dir_primary.x;
                 local_eye.x = terrain_size.x as f32 - local_eye.x;
             }
-            if preproc.flip_y {
+            if preproc.flip_y() {
                 local_dir_primary.y = -local_dir_primary.y;
                 local_eye.y = terrain_size.y as f32 - local_eye.y;
             }
@@ -167,7 +167,7 @@ pub fn opticast(
                         + local_dir_primary.y * cell_size_f
                         + local_dir_primary.x * cell_size_f
                         - i1.dot(local_dir_primary),
-                    if preproc.slope2_neg {
+                    if preproc.slope2_neg() {
                         local_dir_primary.dot(cell_raw_pos_f) - local_eye_dist
                             + local_dir_primary.x * cell_size_f
                             - (i2.x * local_dir_primary.x - i2.y * local_dir_primary.y)

@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use alt_fp::FloatOrdSet;
+use bitflags::bitflags;
 use cgmath::{vec2, Vector2};
 use std::{
     cmp::{max, min},
@@ -66,23 +67,44 @@ impl MbcCell {
 /// preprocessing.
 #[derive(Debug, Clone, Copy)]
 pub struct MbcInputPreproc {
-    pub swap_xy: bool,
-    pub flip_x: bool,
-    pub flip_y: bool,
+    pub flags: MbcPreprocFlags,
     pub size: Vector2<u32>,
-    pub slope2_neg: bool,
+}
+
+bitflags! {
+    pub struct MbcPreprocFlags: u8 {
+        const SWAP_XY = 0b0001;
+        const FLIP_X = 0b0010;
+        const FLIP_Y = 0b0100;
+        const SLOPE2_NEG = 0b1000;
+    }
+}
+
+impl MbcInputPreproc {
+    pub fn swap_xy(&self) -> bool {
+        self.flags.contains(MbcPreprocFlags::SWAP_XY)
+    }
+    pub fn flip_x(&self) -> bool {
+        self.flags.contains(MbcPreprocFlags::FLIP_X)
+    }
+    pub fn flip_y(&self) -> bool {
+        self.flags.contains(MbcPreprocFlags::FLIP_Y)
+    }
+    pub fn slope2_neg(&self) -> bool {
+        self.flags.contains(MbcPreprocFlags::SLOPE2_NEG)
+    }
 }
 
 impl MbcIncidence {
     pub fn cell(&self, preproc: &MbcInputPreproc) -> MbcCell {
         let mut cell = self.cell_raw;
-        if preproc.flip_x {
+        if preproc.flip_x() {
             cell.pos.x = (preproc.size.x as i32 >> cell.mip) - 2 - cell.pos.x;
         }
-        if preproc.flip_y {
+        if preproc.flip_y() {
             cell.pos.y = (preproc.size.y as i32 >> cell.mip) - 2 - cell.pos.y;
         }
-        if preproc.swap_xy {
+        if preproc.swap_xy() {
             swap(&mut cell.pos.x, &mut cell.pos.y);
         }
         cell
@@ -121,38 +143,45 @@ pub fn mipbeamcast<T>(
     preproc_filter: impl FnOnce(MbcInputPreproc) -> T,
     mut incidence_handler: impl FnMut(&MbcIncidence, &mut T) -> bool,
 ) -> T {
-    // Axis normalization
-    let swap_xy = dir1.y.abs() > dir1.x.abs();
-    if swap_xy {
-        swap(&mut size.x, &mut size.y);
-        swap(&mut start.x, &mut start.y);
-        swap(&mut dir1.x, &mut dir1.y);
-        swap(&mut dir2.x, &mut dir2.y);
-    }
+    let flags = {
+        // Axis normalization
+        let swap_xy = dir1.y.abs() > dir1.x.abs();
+        if swap_xy {
+            swap(&mut size.x, &mut size.y);
+            swap(&mut start.x, &mut start.y);
+            swap(&mut dir1.x, &mut dir1.y);
+            swap(&mut dir2.x, &mut dir2.y);
+        }
 
-    let flip_x = dir1.x < 0.0;
-    if flip_x {
-        start.x = size.x as f32 - start.x;
-        dir1.x = -dir1.x;
-        dir2.x = -dir2.x;
-    }
+        let flip_x = dir1.x < 0.0;
+        if flip_x {
+            start.x = size.x as f32 - start.x;
+            dir1.x = -dir1.x;
+            dir2.x = -dir2.x;
+        }
 
-    let flip_y = dir1.y < 0.0;
-    if flip_y {
-        start.y = size.y as f32 - start.y;
-        dir1.y = -dir1.y;
-        dir2.y = -dir2.y;
-    }
+        let flip_y = dir1.y < 0.0;
+        if flip_y {
+            start.y = size.y as f32 - start.y;
+            dir1.y = -dir1.y;
+            dir2.y = -dir2.y;
+        }
 
-    let slope2_neg = dir2.y < 0.0;
+        let slope2_neg = dir2.y < 0.0;
 
-    let preproc = MbcInputPreproc {
-        size,
-        swap_xy,
-        flip_x,
-        flip_y,
-        slope2_neg,
+        // LLVM has a tendency to evaluate the above variables by repeating
+        // these comparisons on every use of these variables, causing
+        // memory loads + `pxor` + `ucomiss` all the time.
+        // It doesn't happen we put all of them in a single `u8` variable.
+        let mut val = MbcPreprocFlags::empty();
+        val.set(MbcPreprocFlags::SWAP_XY, swap_xy);
+        val.set(MbcPreprocFlags::FLIP_X, flip_x);
+        val.set(MbcPreprocFlags::FLIP_Y, flip_y);
+        val.set(MbcPreprocFlags::SLOPE2_NEG, slope2_neg);
+        val
     };
+
+    let preproc = MbcInputPreproc { size, flags };
 
     let mut custom_preproc = preproc_filter(preproc);
 
@@ -299,7 +328,7 @@ pub fn mipbeamcast<T>(
     // Distance to the bottom/top border of the current cell from each current
     // point. It's the top border iff the corresponding `slopeX` is negative.
     let mut dy1 = (cell.pos_max().y << F) - start1.y;
-    let mut dy2 = if slope2_neg {
+    let mut dy2 = if preproc.slope2_neg() {
         start2.y - (cell.pos_min().y << F)
     } else {
         (cell.pos_max().y << F) - start2.y
@@ -317,10 +346,10 @@ pub fn mipbeamcast<T>(
         // it's shaped like "コ".
         let new_dy1 = dy1 - fix_mul(slope1, dx1);
         let new_dy2 = dy2 - fix_mul(slope2, dx2);
-        let mut portal_x1;
-        let portal_x2;
-        let portal_y1;
-        let portal_y2;
+        let new_dx1 = dx1 - fix_mul(dy1, islope1);
+        let new_dx2 = dx2 - fix_mul(dy2, islope2);
+        let (portal_x1, portal_x2);
+        let (portal_y1, portal_y2);
         let top_border = cell.pos_min().y - 1;
         let top = cell.pos_min().y;
         let bottom = cell.pos_max().y;
@@ -328,55 +357,72 @@ pub fn mipbeamcast<T>(
 
         let last_intersections = [vec2(dx1, dy1), vec2(dx2, dy2)];
 
-        if new_dy1 < 0 {
+        let portal_y1_right = bottom - fix2int_ceil(new_dy1);
+        let portal_x1_bottom = right - fix2int_ceil(dx1 - fix_mul(dy1, islope1));
+        if new_dy1 < 0 { // unpredictable branch
             // Bottom
             portal_y1 = bottom;
-            portal_x1 = right - fix2int_ceil(dx1 - fix_mul(dy1, islope1));
+            portal_x1 = portal_x1_bottom;
 
-            dx1 -= fix_mul(dy1, islope1);
+            dx1 = new_dx1;
             dy1 = 0;
         } else {
             // Right
-            portal_y1 = bottom - fix2int_ceil(new_dy1);
+            portal_y1 = portal_y1_right;
             portal_x1 = right;
 
             dx1 = 0;
             dy1 = new_dy1;
         }
 
-        if new_dy2 < 0 {
-            if slope2_neg {
+        let portal_x2_top_bottom = right - fix2int_ceil(dx2 - fix_mul(dy2, islope2));
+        let mut ko_shape_x = 0;
+        if preproc.slope2_neg() {
+            let portal_y2_right = top + fix2int_floor(new_dy2);
+            let portal_y2_top_bottom = top_border;
+            if new_dy2 < 0 { // unpredictable branch
                 // Top
-                portal_y2 = top_border;
+                // The portal includes the right edge (thus looks like "コ" - ko).
+                // Make sure to take it into account.
+                ko_shape_x = right;
+                portal_x2 = portal_x2_top_bottom;
+                portal_y2 = portal_y2_top_bottom;
 
-                // The portal includes the right edge. Make sure to take it into account
-                portal_x1 = max(portal_x1, right);
+                dx2 = new_dx2;
+                dy2 = 0;
             } else {
-                // Bottom
-                portal_y2 = bottom;
-            }
-            portal_x2 = right - fix2int_ceil(dx2 - fix_mul(dy2, islope2));
+                // Right
+                portal_y2 = portal_y2_right;
+                portal_x2 = right;
 
-            dx2 -= fix_mul(dy2, islope2);
-            dy2 = 0;
+                dx2 = 0;
+                dy2 = new_dy2;
+            }
         } else {
-            // Right
-            if slope2_neg {
-                portal_y2 = top + fix2int_floor(new_dy2);
-            } else {
-                portal_y2 = bottom - fix2int_ceil(new_dy2);
-            }
-            portal_x2 = right;
+            let portal_y2_right = bottom - fix2int_ceil(new_dy2);
+            let portal_y2_top_bottom = bottom;
+            if new_dy2 < 0 { // unpredictable branch
+                // Bottom
+                portal_x2 = portal_x2_top_bottom;
+                portal_y2 = portal_y2_top_bottom;
 
-            dx2 = 0;
-            dy2 = new_dy2;
+                dx2 = new_dx2;
+                dy2 = 0;
+            } else {
+                // Right
+                portal_y2 = portal_y2_right;
+                portal_x2 = right;
+
+                dx2 = 0;
+                dy2 = new_dy2;
+            }
         }
 
         // Find the next cell that includes the entirety of the portal
         let new_cell = aabb_to_cell(
             min(portal_x1, portal_x2),
             min(portal_y1, portal_y2),
-            max(portal_x1, portal_x2),
+            max(max(portal_x1, portal_x2), ko_shape_x),
             max(portal_y1, portal_y2),
         );
 
@@ -408,7 +454,7 @@ pub fn mipbeamcast<T>(
         dx2 += dx << F;
 
         dy1 += (new_cell.pos_max().y - cell.pos_max().y) << F;
-        if slope2_neg {
+        if preproc.slope2_neg() {
             dy2 -= (new_cell.pos_min().y - cell.pos_min().y) << F;
         } else {
             dy2 += (new_cell.pos_max().y - cell.pos_max().y) << F;
@@ -434,16 +480,11 @@ fn aabb_to_cell(x_min: i32, y_min: i32, x_max: i32, y_max: i32) -> MbcCell {
         let x_max_rnd = (x_max - (1 << mip_level)) >> mip_level;
         let y_max_rnd = (y_max - (1 << mip_level)) >> mip_level;
 
-        if x_min_rnd >= x_max_rnd && y_min_rnd >= y_max_rnd {
-            MbcCell {
-                pos: vec2(x_min_rnd, y_min_rnd),
-                mip: mip_level,
-            }
-        } else {
-            MbcCell {
-                pos: vec2(x_min_rnd >> 1, y_min_rnd >> 1),
-                mip: mip_level + 1,
-            }
+        let enlarge = (x_min_rnd < x_max_rnd) as u32 | (y_min_rnd < y_max_rnd) as u32;
+
+        MbcCell {
+            pos: vec2(x_min_rnd >> enlarge, y_min_rnd >> enlarge),
+            mip: mip_level + enlarge,
         }
     };
 
