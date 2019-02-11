@@ -36,7 +36,7 @@ pub struct MbcIncidence {
 /// The cell described by `MbcCell` occupies
 /// `x ∈ [pos.x, (pos.x + 1)) ∧ y ∈ [pos.y, (pos.y + 1))` (if `mip == 0`) or.
 /// `x ∈ [pos.x << (mip - 1), (pos.x + 2) << (mip - 1)) ∧ y ∈ [pos.y << (mip - 1), (pos.y + 2) << (mip - 1))` (otherwise).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MbcCell {
     pub pos: Vector2<i32>,
     /// The mip level. `0` represents the level 1. The base level (level 0)
@@ -211,6 +211,9 @@ pub fn mipbeamcast<T>(
                 pos: start.cast::<i32>().unwrap(),
                 mip: 0,
             };
+            if preproc.slope2_neg() && (start.y.fract() < 0.5) {
+                cell.pos.y -= 1;
+            }
         } else {
             // Intercepts
             let y1 = start.y - start.x * dir1.y;
@@ -594,5 +597,30 @@ mod tests {
                 },
             );
         }
+    }
+
+    #[test]
+    fn sanity3() {
+        mipbeamcast(
+            vec2(16, 16),
+            5,
+            vec2(4.1, 4.01),
+            vec2(1.0, -0.1),
+            vec2(1.0, 0.1),
+            |x| x,
+            |incidence, preproc| {
+                let cell = incidence.cell(preproc);
+                dbg!(cell);
+                println!("{:?} - {:?}", cell.pos_min(), cell.pos_max());
+                assert_eq!(
+                    cell,
+                    MbcCell {
+                        pos: vec2(4, 3),
+                        mip: 0,
+                    }
+                );
+                true
+            },
+        );
     }
 }
