@@ -346,8 +346,8 @@ pub fn mipbeamcast<T>(
         // it's shaped like "コ".
         let new_dy1 = dy1 - fix_mul(slope1, dx1);
         let new_dy2 = dy2 - fix_mul(slope2, dx2);
-        let new_dx1 = dx1 - fix_mul(dy1, islope1);
-        let new_dx2 = dx2 - fix_mul(dy2, islope2);
+        let new_dx1 = dx1.wrapping_sub(fix_mul(dy1, islope1));
+        let new_dx2 = dx2.wrapping_sub(fix_mul(dy2, islope2));
         let (portal_x1, portal_x2);
         let (portal_y1, portal_y2);
         let top_border = cell.pos_min().y - 1;
