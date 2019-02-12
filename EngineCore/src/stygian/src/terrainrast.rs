@@ -6,12 +6,13 @@
 //! Terrain rasterizer.
 use alt_fp::FloatOrdSet;
 use arrayvec::ArrayVec;
-use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Rad, Vector3, Vector4};
+use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector2, Vector3, Vector4};
 use itertools::Itertools;
+use packed_simd::{f32x4, i32x4, shuffle, Cast};
 use std::{f32::consts::PI, ops::Range};
 
 use crate::{
-    cov::{CovBuffer, BitArray},
+    cov::{BitArray, CovBuffer},
     debug::{NoTrace, Trace},
     depthimage::DepthImage,
     opticast::opticast,
@@ -404,7 +405,6 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
     /// The contents of the internal warped depth buffer is produced by
     /// [`TerrainRast::opticast`].
     pub fn rasterize_to(&self, output: &mut DepthImage) {
-        use array::Array2;
         use std::f32::INFINITY;
 
         let size = output.size();
@@ -426,38 +426,53 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
 
             let samples = &self.samples[beam.samples_start..][..beam.num_samples];
 
-            for (i, [[vs_min1, vs_max1], [vs_min2, vs_max2]]) in
-                beam_sample_vertices_vp_aabb(beam, self.camera_matrix, self.camera_matrix_unproj, m)
-                    .enumerate()
+            for (i, [ltrb1, ltrb2]) in beam_sample_vertices_vp_aabb_simd(
+                beam,
+                self.camera_matrix,
+                self.camera_matrix_unproj,
+                m,
+                size,
+            )
+            .enumerate()
             {
-                let x_min = [vs_min1, vs_min2].map(|v| v.x).fmin();
-                let y_min = [vs_min1, vs_min2].map(|v| v.y).fmin();
-                let x_max = [vs_max1, vs_max2].map(|v| v.x).fmax();
-                let y_max = [vs_max1, vs_max2].map(|v| v.y).fmax();
+                // Take the union of the two AABBs
+                let ltrb = [ltrb1, ltrb2].fmin();
 
                 // It's okay to inflate the bounding box - the safest guess
                 // would be stored if multiple samples overlap
-                let x_min = [x_min, 0.0].fmax() as i32;
-                let y_min = [y_min, 0.0].fmax() as i32;
-                let x_max = [x_max, (size.x - 1) as f32].fmin() as i32 + 1;
-                let y_max = [y_max, (size.y - 1) as f32].fmin() as i32 + 1;
+                let ltrb = [ltrb, f32x4::splat(0.0)].fmax(); // clip by viewport
+                let ltrb: i32x4 = ltrb.cast();
 
-                if x_min >= x_max || y_min >= y_max {
+                // Convert to the standard AABB format.
+                // Actually we don't need the upper parts, but `packed_simd`
+                // does not expose `vmovmskps`, so they must be initialized as well
+                let xy_min: i32x4 = shuffle!(ltrb, ltrb, [0, 1, 0, 1]);
+                let xy_max = i32x4::new(size.x as i32, size.y as i32, size.x as i32, size.y as i32)
+                    - shuffle!(ltrb, ltrb, [2, 3, 2, 3]);
+
+                // x_min >= x_max || y_min >= y_max
+                if xy_min.ge(xy_max).any() {
                     continue;
                 }
+
+                let (x_min, y_min) = (xy_min.extract(0) as u32, xy_min.extract(1) as u32);
+                let (x_max, y_max) = (xy_max.extract(0) as u32, xy_max.extract(1) as u32);
                 let (x_min, y_min) = (x_min as usize, y_min as usize);
                 let (x_max, y_max) = (x_max as usize, y_max as usize);
 
-                let new_depth = samples[i];
-
+                debug_assert!(x_min < x_max, "{:?} <= {:?}", x_min, x_max);
+                debug_assert!(y_min < y_max, "{:?} <= {:?}", y_min, y_max);
                 debug_assert!(x_max <= size.x, "{:?} <= {:?}", x_max, size.x);
                 debug_assert!(y_max <= size.y, "{:?} <= {:?}", y_max, size.y);
+
+                debug_assert!(i < samples.len());
+                let new_depth = *unsafe { samples.get_unchecked(i) };
 
                 // `for` loop generates `callq` to `std::iter::Map::new`. Why?
                 let mut y = y_min;
                 let mut depth_ptr =
                     unsafe { bitmap.as_mut_ptr().offset((x_min + y * size.x) as isize) };
-                while y < y_max {
+                loop {
                     depth_blend_min(
                         unsafe { std::slice::from_raw_parts_mut(depth_ptr, x_max - x_min) },
                         new_depth,
@@ -465,6 +480,9 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
                     depth_ptr = unsafe { depth_ptr.offset(size.x as isize) };
 
                     y += 1;
+                    if y >= y_max {
+                        break;
+                    }
                 }
 
                 // This sample is done
@@ -481,9 +499,11 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
 ///
 #[inline]
 fn depth_blend_min(out_depth: &mut [f32], in_depth: f32) {
+    debug_assert!(out_depth.len() > 0);
+
     let mut i = 0;
-    while i < out_depth.len() {
-        let x = &mut out_depth[i];
+    loop {
+        let x = unsafe { out_depth.get_unchecked_mut(i) };
         *x = [in_depth, *x].fmin();
 
         // Prevent loop unrolling. The iteration count of this
@@ -497,6 +517,9 @@ fn depth_blend_min(out_depth: &mut [f32], in_depth: f32) {
         }
 
         i += 1;
+        if i >= out_depth.len() {
+            break;
+        }
     }
 }
 
@@ -585,7 +608,8 @@ fn beam_sample_vertices(
 /// representing the viewport-space shape of a beam's sample.
 ///
 /// ```text
-///  The N-th element represents the AABB of the edge aN-bN.
+///  The N-th element represents the AABB of the edge aN-bN and the AABB of
+///  the edge a(N+1)-b(N+1).
 ///  a0    a1    a2    a3
 ///  o------o------o------o---- ...
 ///  |      |      |      |
@@ -593,12 +617,25 @@ fn beam_sample_vertices(
 ///  o------o------o------o---- ...
 ///  b0    b1    b2    b3
 /// ```
-fn beam_sample_vertices_vp_aabb(
+///
+/// AABB is represented by the following four components, which we call
+/// LTRB or the "distance to the corresponding edge" format:
+///
+///  - The distance to the left edge of the image.
+///  - The distance to the top edge of the image.
+///  - The distance to the right edge of the image.
+///  - The distance to the bottom edge of the image.
+///
+/// This format is easier to vectorize since the same `min` operation can be
+/// applied on all elements to compute unions. Converting back to the standard
+/// "distnace to top-left corner" format wouldn't be costly.
+fn beam_sample_vertices_vp_aabb_simd(
     beam: &BeamInfo,
     camera_matrix: Matrix4<f32>,
     camera_matrix_unproj: Matrix3<f32>,
     output_camera_matrix: Matrix4<f32>,
-) -> impl Iterator<Item = [[Point2<f32>; 2]; 2]> {
+    size: Vector2<usize>,
+) -> impl Iterator<Item = [f32x4; 2]> {
     let [seq1, seq2] = beam_sample_side_points(beam, camera_matrix, camera_matrix_unproj);
 
     let transform_seq = move |seq: LinePoints<Vector3<f32>>| {
@@ -611,23 +648,34 @@ fn beam_sample_vertices_vp_aabb(
     let seq1 = transform_seq(seq1);
     let seq2 = transform_seq(seq2);
 
-    seq1.zip(seq2)
-        .map(|(p1, p2)| {
-            // `Point2::from_homogeneous` doesn't exist, so...
-            // Dividing every element is actually faster than multiplying
-            // them with a reciprocal - `vdivps` never beats `vdivss` + `vmulps`.
-            // (The best option would be `vrcpps` + `vmulps`, though)
-            let p1 = Point2::new(p1.x / p1.z, p1.y / p1.z);
-            let p2 = Point2::new(p2.x / p2.z, p2.y / p2.z);
+    let seq_xy = LinePoints::new(
+        f32x4::new(seq1.cur.x, seq1.cur.y, seq2.cur.x, seq2.cur.y),
+        f32x4::new(seq1.step.x, seq1.step.y, seq2.step.x, seq2.step.y),
+    );
+    let seq_w = LinePoints::new(
+        f32x4::new(seq1.cur.z, seq1.cur.z, seq2.cur.z, seq2.cur.z),
+        f32x4::new(seq1.step.z, seq1.step.z, seq2.step.z, seq2.step.z),
+    );
 
-            [
-                Point2::new([p1.x, p2.x].fmin(), [p1.y, p2.y].fmin()),
-                Point2::new([p1.x, p2.x].fmax(), [p1.y, p2.y].fmax()),
-            ]
+    seq_xy
+        .zip(seq_w)
+        .take(beam.num_samples + 1)
+        .map(move |(xyxy, wwww)| {
+            // `(p1, p2) = (Point2::from_homogeneous(p1), ...`
+            let xyxy12 = xyxy / wwww;
+
+            // Convert from "distance from top-left corner" to "distance to the
+            // corresponding edge" format
+            let xyxy12rb =
+                f32x4::new(size.x as f32, size.y as f32, size.x as f32, size.y as f32) - xyxy12;
+            let ltrb1 = shuffle!(xyxy12, xyxy12rb, [0, 1, 4, 5]);
+            let ltrb2 = shuffle!(xyxy12, xyxy12rb, [2, 3, 6, 7]);
+
+            // Take the union of the two AABBs
+            [ltrb1, ltrb2].fmin()
         })
         .tuple_windows::<(_, _)>()
         .map(|(c1, c2)| [c1, c2])
-        .take(beam.num_samples)
 }
 
 #[cfg(test)]

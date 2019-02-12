@@ -4,6 +4,16 @@
 // This source code is a part of Nightingales.
 //
 //! Fast maximum/minimum value functions for floating-point types.
+use packed_simd::f32x4;
+
+#[cfg(target_feature = "sse")]
+#[cfg(target_arch = "x86")]
+use std::arch::x86::*;
+#[cfg(target_feature = "sse")]
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
+
+use std::mem::transmute;
 
 /// Implements fast maximum/minimum value functions for floating-point types.
 ///
@@ -87,6 +97,32 @@ impl FloatOrd for f64 {
         } else {
             x
         }
+    }
+}
+
+#[cfg(not(target_feature = "sse"))]
+impl FloatOrd for f32x4 {
+    #[inline]
+    fn fmin(self, x: Self) -> Self {
+        self.lt(x).select(self, x)
+    }
+
+    #[inline]
+    fn fmax(self, x: Self) -> Self {
+        self.gt(x).select(self, x)
+    }
+}
+
+#[cfg(target_feature = "sse")]
+impl FloatOrd for f32x4 {
+    #[inline]
+    fn fmin(self, x: Self) -> Self {
+        unsafe { transmute(_mm_min_ps(transmute(self), transmute(x))) }
+    }
+
+    #[inline]
+    fn fmax(self, x: Self) -> Self {
+        unsafe { transmute(_mm_max_ps(transmute(self), transmute(x))) }
     }
 }
 
