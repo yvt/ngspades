@@ -3,7 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
-use alt_fp::{u16_to_f32, u23_to_f32, FloatOrdSet};
+use alt_fp::{fma, u16_to_f32, u23_to_f32, FloatOrdSet};
 use cgmath::{prelude::*, vec2, vec4, Matrix4, Point3, Vector4};
 use packed_simd::f32x4;
 use std::ops::Range;
@@ -395,7 +395,7 @@ impl CovPainter for SpanPainter<'_> {
         let output_depth = &mut self.output_depth[..];
 
         *unsafe { output_depth.get_unchecked_mut(i as usize) } =
-            self.delta_z.mul_add(i as f32, self.base_z);
+            fma![(self.delta_z) * (i as f32) + (self.base_z)];
     }
 }
 

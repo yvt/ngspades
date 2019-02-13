@@ -7,6 +7,7 @@
 //! floating-point operations.
 pub mod cast;
 pub mod cmp;
+pub mod fma;
 
 #[doc(no_inline)]
-pub use self::{cast::*, cmp::*};
+pub use self::{cast::*, cmp::*, fma::*};
