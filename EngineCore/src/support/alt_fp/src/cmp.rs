@@ -34,6 +34,7 @@ use std::mem::transmute;
 ///
 /// They handle NaN differently from `<f32>::{min, max}`:
 ///
+///     # use alt_fp::FloatOrd;
 ///     assert!(<f32>::from_bits(0x7f801234).is_nan());
 ///     assert!(<f32>::from_bits(0x7f804321).is_nan());
 ///
