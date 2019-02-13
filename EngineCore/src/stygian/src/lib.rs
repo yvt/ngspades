@@ -43,6 +43,7 @@ pub mod io {
 }
 
 pub mod cov;
+pub mod gen;
 
 /// The depth value of the far plane.
 const DEPTH_FAR: f32 = 0.0;

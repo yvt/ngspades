@@ -163,6 +163,32 @@ Before entering the loop, the algorithm has to determine the first cell that occ
 | (4) |                  | $0 \leq y < N_2$ | Starts inside the map                                      |
 | (5) | $< 0$            | $< 0$            | Depends on `dir1` and `dir2`                               |
 | (6) |                  | $0 \leq y < N_2$ | Depends on `dir1` and `dir2`                               |
+# Terrain generation
+
+## Conservative triangle voxelization
+
+The triangle voxelization algorithm finds the smallest set of columns whose union entirely contains a given triangle ([!Figure voxel-slice]). A column is defined as an axis-aligned box $x' \leq x < x'+1$, $y' \leq y < y'+1$, $z_1 \leq z < z_2$, $x', y' \in \mathbb{Z}$, $z_1, z_2 \in \mathbb{R}$.
+
+![!Figure voxel-slice][](Images/Voxel-Slice.svg):
+    Conservative triangle voxelization.
+
+A naïve implementation would be based on a [linear programming][] algorithm. For each $x', y'$, the following linear program is solved:
+
+$$\begin{aligned}
+\text{Maximize or minimize} \ \ & z(\vec{x}) \\
+\text{subject to} \ \  & x' \leq x < x'+1 \\
+    & y' \leq y < y'+1 \\
+    & \begin{bmatrix}p_1^T \\ p_2^T \\ p_3^T\end{bmatrix} \begin{bmatrix}x \\ y\end{bmatrix} \leq \begin{bmatrix}d_1 \\ d_2 \\ d_3\end{bmatrix}
+\end{aligned}$$
+
+If the minimum and maximum values exist, output them as $z_1$ and $z_2$ respectively. Otherwise (i.e., if some of the constraints are inconsistent), no column is generated.
+
+[linear programming]: https://en.wikipedia.org/wiki/Linear_programming
+
+Instead, Stygian implements a scanline-based algorithm. Firstly, the vertices of the input triangle is sorted by their Y coordinates. After that, the triangle is split into slices aligned with scanlines, each having a different shape depending on which of the vertices are in the scanline ([^Figure voxel-slice-types]). The coordinates of the vertices of the polygon forming each slice are evaluated. The maximum and minimum Z values of each cell can be found by clipping the slice's border edges to the cell and evaluating the Z coordinates of the vertices of the clipped edges. This gives a correct solution because the convex hull of the clipped edge is identical to the feasible region of the aforementioned linear program.
+
+![^Figure voxel-slice-types][](Images/Voxel-SliceType.svg):
+    The shapes of slices.
 
 ]]></pre> <!-- Foremark footer -->
 <script src="https://unpkg.com/foremark/browser/foremark.js" async="async" /></html>
