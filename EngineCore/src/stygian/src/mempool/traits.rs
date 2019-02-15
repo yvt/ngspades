@@ -4,6 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use std::{
+    fmt::{self, Debug},
     marker::PhantomData,
     ops::{Deref, DerefMut},
     ptr::{self, NonNull},
@@ -12,7 +13,7 @@ use std::{
 /// A memory pool object.
 pub trait MemPool {
     /// Create a new memory store.
-    fn new_store<'a, T: Send + Sync + 'a>(&'a self) -> Box<dyn MemStore<T> + 'a>;
+    fn new_store<'a, T: Send + Sync + Debug + 'a>(&'a self) -> Box<dyn MemStore<T> + 'a>;
 }
 
 /// The memory page identifier for [`MemStore`].
@@ -42,7 +43,7 @@ impl<T> Default for PageRefInner<T> {
 /// A memory store is a collection of memory pages. A page is a collection of
 /// objects of a particular type (`T`) with a fixed capacity. A memory page may
 /// or may not correspond to an operating system's memory pages.
-pub trait MemStore<T: Send + Sync>: Send + Sync {
+pub trait MemStore<T>: Send + Sync + Debug {
     /// Allocate an empty page with a given capacity.
     fn new_page(&self, capacity: usize) -> MemPageId<T>;
 
@@ -128,13 +129,11 @@ impl<T, P: MemPageRef<T> + ?Sized> MemPageRefExt<T> for P {
     }
 }
 
-#[derive(Debug)]
 pub struct ReadGuard<'a, P: MemPageRef<T> + ?Sized, T> {
     page: &'a P,
     _phantom: PhantomData<*mut T>,
 }
 
-#[derive(Debug)]
 pub struct WriteGuard<'a, P: MemPageRef<T> + ?Sized, T> {
     page: &'a P,
     _phantom: PhantomData<*mut T>,
@@ -161,6 +160,24 @@ where
     type Target = [T];
     fn deref(&self) -> &[T] {
         unsafe { std::slice::from_raw_parts(self.page.as_ptr(), *self.page.len().as_ref()) }
+    }
+}
+
+impl<P, T: Debug> Debug for ReadGuard<'_, P, T>
+where
+    P: MemPageRef<T> + ?Sized,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("ReadGuard").field(&&**self).finish()
+    }
+}
+
+impl<P, T: Debug> Debug for WriteGuard<'_, P, T>
+where
+    P: MemPageRef<T> + ?Sized,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("WriteGuard").field(&&**self).finish()
     }
 }
 

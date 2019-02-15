@@ -8,6 +8,7 @@ use parking_lot::RwLock;
 use std::{
     alloc,
     cell::UnsafeCell,
+    fmt,
     marker::PhantomData,
     mem::{forget, needs_drop},
     ptr::NonNull,
@@ -19,19 +20,18 @@ use super::{MemPageId, MemPageRef, MemPageRefExt, MemPool, MemStore};
 pub struct SysMemPool;
 
 impl MemPool for SysMemPool {
-    fn new_store<'a, T: Send + Sync + 'a>(&'a self) -> Box<dyn MemStore<T> + 'a> {
+    fn new_store<'a, T: Send + Sync + fmt::Debug + 'a>(&'a self) -> Box<dyn MemStore<T> + 'a> {
         Box::new(SysMemStore {
             pages: RwLock::new(Vec::new()),
         })
     }
 }
 
-#[derive(Debug)]
 pub struct SysMemStore<T> {
     pages: RwLock<Vec<Box<SysMemPage<T>>>>,
 }
 
-impl<T: Send + Sync> MemStore<T> for SysMemStore<T> {
+impl<T: Send + Sync + fmt::Debug> MemStore<T> for SysMemStore<T> {
     fn new_page(&self, capacity: usize) -> MemPageId<T> {
         let page = Box::new(SysMemPage::new(capacity));
 
@@ -55,7 +55,14 @@ impl<T: Send + Sync> MemStore<T> for SysMemStore<T> {
     }
 }
 
-#[derive(Debug)]
+impl<T: fmt::Debug> fmt::Debug for SysMemStore<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.pages.read().iter())
+            .finish()
+    }
+}
+
 pub struct SysMemPage<T> {
     cell: *mut u8,
     capacity: usize,
@@ -88,6 +95,12 @@ unsafe impl<T> MemPageRef<T> for SysMemPage<T> {
     }
     unsafe fn unlock_write(&self) {
         self.lock.force_unlock_write();
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for SysMemPage<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("SysMemPage").field(&&*self.read()).finish()
     }
 }
 
@@ -147,6 +160,8 @@ mod tests {
                 assert_eq!(*lock[2], 3);
                 assert_eq!(*lock[3], 4);
             }
+
+            dbg!(&store);
         }
 
         // Check for memory leak
