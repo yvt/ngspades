@@ -165,6 +165,20 @@ Before entering the loop, the algorithm has to determine the first cell that occ
 | (6) |                  | $0 \leq y < N_2$ | Depends on `dir1` and `dir2`                               |
 # Terrain generation
 
+Normally, terrain data is generated from polygonal geometry data.
+
+The outline of the process is as following ([!!Figure voxel-overview]): (i) The input geometry is rasterized on the initial grid. (ii) Perform a flood fill starting from specified points, called *view points*. (iii) Invert the result of the previous step. (iv) Erode the result of the previous step by 1 block, cancelling the dilation effect of voxel rasterization done in the first step. (v) Finally, downsample the grid to the resolution suitable for run-time processing.
+
+![!!Figure voxel-overview][](Images/Voxel-Overview.svg):
+    The terrain generation process.
+
+The process introduces two types of notable changes into the geometry: (a) *Hole filling*. Small gaps between objects are filled by the step (i) and they are not recovered by the erosion process of the step (iv). The maximum size of gaps affected by this effect is twice of the cell size. (b) *Occluder filtering*. The step (v) filters out small occluders. Furthermore, the mipmapping scheme used by Stygian affects the effective minimum occluder size. In the case of an axis-aligned occluder, the maximum size of the occluder size affected by this effect is $(3r + 2)s$ where `s` is the cell size and `r` is the reduction (downsampling) ratio.
+
+The voxel grid used during the process (before downsampling) is called *an initial domain* ([!Figure voxel-inital-domain]). The size of an initial grid may be several times larger than the output size. The data density may be much higher as well because it may not be able to employ compression techniques like the final output does. For this reason, an initial domain is broken into regions called *tiles*. The memory usage of the process is kept in control by operating on a limited number of tiles at once.
+
+![!Figure voxel-inital-domain][](Images/Voxel-InitialDomain.svg):
+    An initial domain.
+
 ## Conservative triangle voxelization
 
 The triangle voxelization algorithm finds the smallest set of columns whose union entirely contains a given triangle ([!Figure voxel-slice]). A column is defined as an axis-aligned box $x' \leq x < x'+1$, $y' \leq y < y'+1$, $z_1 \leq z < z_2$, $x', y' \in \mathbb{Z}$, $z_1, z_2 \in \mathbb{R}$.

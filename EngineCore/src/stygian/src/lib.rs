@@ -18,6 +18,12 @@
 //! densely arranged.
 //! If you use a traditional setup, you might have to manually modify a matrix
 //! to reverse Z values before passing it to a library function.
+//!
+//! # Cargo features
+//!
+//!  - `gen` (enabled by default): Builds [`crate::gen`], the terrain generator
+//!    module.
+//!
 #![feature(asm)]
 #![feature(alloc_layout_extra)]
 mod debug;
@@ -44,7 +50,9 @@ pub mod io {
 }
 
 pub mod cov;
+#[cfg(feature = "gen")]
 pub mod mempool;
+#[cfg(feature = "gen")]
 pub mod gen;
 
 /// The depth value of the far plane.

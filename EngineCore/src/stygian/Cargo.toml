@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 
+[features]
+default = ["gen"]
+gen = ["parking_lot", "ndarray"]
+
 [dependencies]
 arrayvec = "0.4.1"
 cgmath = "0.17.0"
@@ -14,7 +18,8 @@ array = "0.0.1"
 itertools = "0.8.0"
 packed_simd = "0.3.0"
 bitflags = "1.0.4"
-parking_lot = "0.7"
+parking_lot = { version = "0.7", optional = true }
+ndarray = { version = "0.12.1", optional = true }
 
 [dev-dependencies]
 bencher = "0.1.5"
