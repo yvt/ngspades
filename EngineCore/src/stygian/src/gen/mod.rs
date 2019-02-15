@@ -11,6 +11,7 @@ use crate::mempool::{MemPageId, MemStore};
 
 mod binner;
 mod tri;
+mod voxelize;
 
 pub use self::binner::PolygonBinner;
 
@@ -29,6 +30,11 @@ pub struct InitialDomain {
 }
 
 impl InitialDomain {
+    /// Get the dimensions (including depth) of a tile.
+    pub fn tile_size(&self) -> Vector3<u32> {
+        self.tile_size.extend(self.depth)
+    }
+
     /// Get the size of an initial domain.
     pub fn size(&self) -> Vector3<u32> {
         let InitialDomain {
@@ -47,6 +53,7 @@ impl InitialDomain {
 /// A binned polygon soup (an unorganized set of polygons).
 #[derive(Debug)]
 pub struct BinnedGeometry {
+    /// The element `[[x, y]]` describes the tile `(x, y)`.
     pub(crate) tiles: Array2<BinnedGeometryTile>,
     pub(crate) polygon_store: Box<dyn MemStore<Polygon>>,
 }
@@ -57,3 +64,46 @@ pub(crate) struct BinnedGeometryTile {
 }
 
 pub(crate) type Polygon = [Point3<f32>; 3];
+
+/// A RLE-encoded voxel bitmap.
+#[derive(Debug)]
+pub struct VoxelBitmap {
+    /// The element `[[x, y]]` describes the tile `(x, y)`.
+    pub(crate) tiles: Array2<VoxelBitmapTile>,
+
+    /// The memory store where each page contains an RLE-encoded voxel bitmap
+    /// for a tile.
+    ///
+    /// Each row is associated with a sequence of one or more `Span`s.
+    /// The sequence is terminated by a `Span` whose Z value is equal to the
+    /// depth of the domain.
+    pub(crate) rle_store: Box<dyn MemStore<Span>>,
+
+    /// The memory store where each page contains a mapping from tile-local
+    /// coordinates to indices into `rle_store`'s corresponding page.
+    ///
+    /// An index range is calculated as
+    /// `page[x + y * tile_size.x] .. page[x + y * tile_size.x + 1]`.
+    pub(crate) rle_index_store: Box<dyn MemStore<usize>>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct VoxelBitmapTile {
+    pub(crate) rle_page_id: MemPageId<Span>,
+    pub(crate) rle_index_page_id: MemPageId<usize>,
+}
+
+/// A span of consecutive voxels having the same attribute.
+///
+/// - The first element represents the type of the voxels.
+/// - THe second element is the exclusive upper bound of the Z coordinates.
+///
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) struct Span(SpanType, u16);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) enum SpanType {
+    Empty,
+    Solid,
+    View,
+}
