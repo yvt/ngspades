@@ -20,7 +20,7 @@ use super::{MemPageId, MemPageRef, MemPageRefExt, MemPool, MemStore};
 pub struct SysMemPool;
 
 impl MemPool for SysMemPool {
-    fn new_store<'a, T: Send + Sync + fmt::Debug + 'a>(&'a self) -> Box<dyn MemStore<T> + 'a> {
+    fn new_store<T: Send + Sync + fmt::Debug + 'static>(&self) -> Box<dyn MemStore<T>> {
         Box::new(SysMemStore {
             pages: RwLock::new(Vec::new()),
         })

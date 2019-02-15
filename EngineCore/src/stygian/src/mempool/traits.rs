@@ -13,7 +13,7 @@ use std::{
 /// A memory pool object.
 pub trait MemPool {
     /// Create a new memory store.
-    fn new_store<'a, T: Send + Sync + Debug + 'a>(&'a self) -> Box<dyn MemStore<T> + 'a>;
+    fn new_store<T: Send + Sync + Debug + 'static>(&self) -> Box<dyn MemStore<T>>;
 }
 
 /// The memory page identifier for [`MemStore`].
