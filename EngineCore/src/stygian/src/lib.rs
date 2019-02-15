@@ -43,6 +43,7 @@ pub mod io {
 }
 
 pub mod cov;
+pub mod mempool;
 pub mod gen;
 
 /// The depth value of the far plane.
