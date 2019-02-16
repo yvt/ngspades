@@ -65,16 +65,22 @@ fn gen_from_gltf() {
         binner.flush();
     }
 
+    println!("from_geometry");
     let mut voxels = gen::VoxelBitmap::from_geometry(&pool, &domain, &binned_geometry);
-    dbg!(&voxels);
+    // dbg!(&voxels);
 
+    println!("flood_fill_in_place");
     voxels.flood_fill_in_place(
         &domain,
         &[Point3::new(64, 32, 16)],
         gen::VoxelType::Empty,
         gen::VoxelType::View,
     );
-    dbg!(&voxels);
+    // dbg!(&voxels);
+
+    println!("erode_view");
+    let voxels2 = voxels.erode_view(&pool, &domain);
+    dbg!(&voxels2);
 }
 
 fn vertex_fetch<T: Pod>(view: &gltf::buffer::View, blob: &[u8], i: usize) -> T {

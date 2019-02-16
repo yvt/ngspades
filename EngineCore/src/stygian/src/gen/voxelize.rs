@@ -6,11 +6,11 @@
 use alt_fp::FloatOrdSet;
 use cgmath::{vec2, Vector3};
 use ndarray::{s, Array3};
-use std::cmp::min;
 
 use super::{
-    tri::tricrast, BinnedGeometry, InitialDomain, Polygon, Span, VoxelType, VoxelBitmap,
-    VoxelBitmapTile,
+    tri::tricrast,
+    utils::{bitarray_enum_spans, bitarray_set_range, BITS},
+    BinnedGeometry, InitialDomain, Polygon, Span, VoxelBitmap, VoxelBitmapTile, VoxelType,
 };
 use crate::mempool::{MemPageRefExt, MemPool};
 
@@ -144,131 +144,5 @@ impl Voxelizer {
             }
         }
         out_rle_index.push(out_rle.len());
-    }
-}
-
-/// The number of bits in `usize` (an element of `BitArray::buffer`).
-const BITS: u32 = std::mem::size_of::<usize>() as u32 * 8;
-
-fn bitarray_set_range(b: &mut [usize], range: std::ops::Range<u32>) {
-    let (mut start, end) = (range.start, range.end);
-    let mut next_boundary = (start / BITS + 1) * BITS;
-
-    let end = min(end, b.len() as u32 * BITS);
-    if start >= end {
-        return;
-    }
-
-    loop {
-        if end <= next_boundary {
-            b[(start / BITS) as usize] |= ones(start) ^ ones2(end);
-            break;
-        } else {
-            b[(start / BITS) as usize] |= ones(start);
-            start = next_boundary;
-            next_boundary += BITS;
-        }
-    }
-}
-
-fn bitarray_enum_spans(array: &[usize], end: u32, mut cb: impl FnMut(u32, bool)) {
-    let mut start = 0;
-    let mut next_boundary = BITS;
-
-    let mut mask = 0usize.wrapping_sub(array[0] & 0);
-    let mut bits = array[0];
-
-    loop {
-        let count = (bits ^ mask).trailing_zeros();
-
-        if start + count >= next_boundary {
-            if next_boundary >= end {
-                cb(end, mask != 0);
-                return;
-            }
-            start = next_boundary;
-            next_boundary += BITS;
-            bits = array[(start / BITS) as usize];
-            continue;
-        }
-
-        start += count;
-        if start >= end {
-            cb(end, mask != 0);
-            return;
-        }
-
-        cb(start, mask != 0);
-        mask = !mask;
-        bits >>= count;
-    }
-}
-
-#[inline]
-fn one(x: u32) -> usize {
-    1usize.wrapping_shl(x)
-}
-
-// [0, x % BITS]
-//
-// |  x | out                                 |
-// | -- | ----------------------------------- |
-// |  0 | 00000000 00000000 00000000 00000000 |
-// |  8 | 00000000 00000000 00000000 11111111 |
-// | 31 | 11111111 11111111 11111111 11111111 |
-// | 32 | 00000000 00000000 00000000 00000000 |
-#[inline]
-fn ones(x: u32) -> usize {
-    one(x) - 1
-}
-
-// [0, (x - 1) % BITS + 1]
-//
-// |  x | out                                 |
-// | -- | ----------------------------------- |
-// |  1 | 00000000 00000000 00000000 00000001 |
-// | 31 | 01111111 11111111 11111111 11111111 |
-// | 32 | 11111111 11111111 11111111 11111111 |
-#[inline]
-fn ones2(x: u32) -> usize {
-    2usize.wrapping_shl(x.wrapping_sub(1)).wrapping_sub(1)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn bitarray_set_range_sanity() {
-        let mut bits = [0usize];
-        bitarray_set_range(&mut bits, 4..8);
-        assert_eq!(bits[0], 0b11110000);
-    }
-
-    #[test]
-    fn bitarray_enum_spans_sanity() {
-        let mut bits = [0usize; 4];
-        bitarray_set_range(&mut bits, 4..15);
-        bitarray_set_range(&mut bits, 20..36);
-        bitarray_set_range(&mut bits, 50..52);
-
-        dbg!(&bits);
-
-        let mut results = Vec::new();
-        bitarray_enum_spans(&bits, 54, |z_end, set| {
-            results.push((z_end, set));
-        });
-        assert_eq!(
-            &results[..],
-            &[
-                (4, false),
-                (15, true),
-                (20, false),
-                (36, true),
-                (50, false),
-                (52, true),
-                (54, false),
-            ][..]
-        );
     }
 }

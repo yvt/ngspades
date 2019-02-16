@@ -10,6 +10,7 @@ use ndarray::Array2;
 use crate::mempool::{MemPageId, MemStore};
 
 mod binner;
+mod erode;
 mod floodfill;
 mod lock;
 mod tri;
