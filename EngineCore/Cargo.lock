@@ -2113,6 +2113,7 @@ dependencies = [
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.23.0 (git+https://github.com/yvt/glium?rev=8f5354483d22a5617c2258a68f7cb0660e5d3b9a)",
  "gltf 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "iterpool 0.1.0",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ndarray 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -10,6 +10,7 @@ use ndarray::Array2;
 use crate::mempool::{MemPageId, MemStore};
 
 mod binner;
+mod floodfill;
 mod lock;
 mod tri;
 mod voxelize;
@@ -36,7 +37,11 @@ impl InitialDomain {
     /// It's calculated by the expression:
     /// `(1 << tile_size_bits, 1 << tile_size_bits, depth)`.
     pub fn tile_size(&self) -> Vector3<u32> {
-        vec3(1 << self.tile_size_bits, 1 << self.tile_size_bits, self.depth)
+        vec3(
+            1 << self.tile_size_bits,
+            1 << self.tile_size_bits,
+            self.depth,
+        )
     }
 
     /// Get the size of an initial domain.
