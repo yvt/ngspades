@@ -52,6 +52,9 @@ pub trait MemStore<T>: Send + Sync + Debug {
 
     /// Get a `MemPageRef` representing a memory page.
     fn get_page(&self, page: MemPageId<T>) -> &dyn MemPageRef<T>;
+
+    /// Set the name of a memory store for debugging/profiling uses.
+    fn set_name(&self, _name: &str) {}
 }
 
 /// Provides a low-level API for accessing the contents of [`MemStore`]'s memory

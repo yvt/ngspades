@@ -15,9 +15,13 @@ impl BinnedGeometry {
     /// Construct an empty `BinnedGeometry`.
     pub fn new(pool: &impl MemPool, initial_domain: &InitialDomain) -> Self {
         let tile_count = initial_domain.tile_count;
+        let polygon_store = pool.new_store();
+
+        polygon_store.set_name("Binned geometry");
+
         Self {
             tiles: Array2::default([tile_count.x as usize, tile_count.y as usize]),
-            polygon_store: pool.new_store(),
+            polygon_store,
         }
     }
 }

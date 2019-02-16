@@ -26,6 +26,9 @@ impl VoxelBitmap {
         let rle_store = pool.new_store();
         let rle_index_store = pool.new_store();
 
+        rle_store.set_name("RLE voxels");
+        rle_index_store.set_name("RLE voxel index");
+
         let mut rle = Vec::new();
         let mut rle_index = Vec::new();
 
