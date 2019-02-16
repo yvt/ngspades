@@ -6,7 +6,7 @@
 //! Fast fused multiply-add operations that gracefully fall-back to unused
 //! operations (involving a change in the precision and a slight but not
 //! drastic loss in the performance).
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Mul, Neg, Sub};
 
 /// Implements fused mutliply-add with an unfused fall-back.
 ///
@@ -18,7 +18,7 @@ use std::ops::{Add, Mul, Sub};
 ///     assert_eq!(2.0f32.fmsub(3.0f32, 5.0f32), 2.0 * 3.0 - 5.0);
 ///
 pub trait Fma:
-    Mul<Output = Self> + Add<Output = Self> + Sub<Output = Self> + Clone + Sized
+    Mul<Output = Self> + Add<Output = Self> + Sub<Output = Self> + Clone + Sized + Neg<Output = Self>
 {
     /// Fused multiply-add. Computes `(self * a) + b`.
     #[inline]
@@ -41,7 +41,7 @@ pub trait Fma:
     /// Fused multiply-sub assignment. Computes `self -= a * b`.
     #[inline]
     fn fmsub_assign(&mut self, a: Self, b: Self) {
-        *self = a.fmsub(b, self.clone());
+        *self = a.fmadd(-b, self.clone());
     }
 }
 
@@ -92,6 +92,10 @@ macro_rules! __p {
 ///     let mut x2 = 2.0;
 ///     fma![x1 += 3.0 * 5.0];
 ///     x2 += 3.0 * 5.0;
+///     assert_eq!(x1, x2);
+///
+///     fma![x1 -= 3.0 * 5.0];
+///     x2 -= 3.0 * 5.0;
 ///     assert_eq!(x1, x2);
 ///
 /// Each placeholder matches a single token tree. You have to wrap it with
