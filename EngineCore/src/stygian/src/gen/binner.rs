@@ -8,7 +8,7 @@ use cgmath::{prelude::*, vec2, vec3, Vector2};
 use ndarray::Array2;
 use std::collections::HashMap;
 
-use super::{BinnedGeometry, InitialDomain, Polygon};
+use super::{BinnedGeometry, InitialDomain, Lock, Polygon};
 use crate::mempool::{MemPageRefExt, MemPool};
 
 impl BinnedGeometry {
@@ -48,8 +48,8 @@ pub struct PolygonBinner<T> {
 impl<T> PolygonBinner<T> {
     /// Construct a `PolygonBinner`.
     ///
-    /// `bin_set_source` is a `FnMut() -> impl DerefMut<Target = BinnedGeometry>`
-    /// used to acquire a lock on `BinnedGeometry`.
+    /// `bin_set_source` is a `Lock<Target = BinnedGeometry>` used to acquire a
+    /// lock on `BinnedGeometry`.
     ///
     /// `capacity` specifies the number of polygons that can be buffered by
     /// the constructed `PolygonBinner`. The buffer is automatically flushed
@@ -71,10 +71,9 @@ impl<T> PolygonBinner<T> {
     }
 }
 
-impl<T, S> PolygonBinner<T>
+impl<T> PolygonBinner<T>
 where
-    T: FnMut() -> S,
-    S: std::ops::DerefMut<Target = BinnedGeometry>,
+    T: Lock<Target = BinnedGeometry>,
 {
     /// Flush the polygons in the buffer.
     pub fn flush(&mut self) {
@@ -82,8 +81,8 @@ where
             return;
         }
 
-        let mut bin_set = (self.set)();
-        let bin_set = &mut *bin_set; // enable split borrow
+        let mut bin_set = self.set.lock();
+        let bin_set = &mut **bin_set; // enable split borrow
 
         let polygon_store = &bin_set.polygon_store;
 

@@ -10,10 +10,11 @@ use ndarray::Array2;
 use crate::mempool::{MemPageId, MemStore};
 
 mod binner;
+mod lock;
 mod tri;
 mod voxelize;
 
-pub use self::binner::PolygonBinner;
+pub use self::{binner::PolygonBinner, lock::Lock};
 
 /// Defines an initial domain.
 ///
