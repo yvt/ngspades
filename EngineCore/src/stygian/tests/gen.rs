@@ -29,8 +29,9 @@ fn gen_from_gltf() {
     {
         let mut binner = gen::PolygonBinner::new(256, &domain, &mut binned_geometry);
 
-        let model_matrix =
-            Matrix4::from_scale(3.5) * Matrix4::from_translation(vec3(17.0, 8.0, 0.0));
+        let model_matrix = Matrix4::from_scale(3.5)
+            * Matrix4::from_translation(vec3(17.0, 8.0, 0.0))
+            * Matrix4::from_angle_x(cgmath::Deg(90.0));
 
         let gltf_blob = decompress(include_bytes!("sponza.glb.xz")).unwrap();
         let gltf = gltf::Gltf::from_slice(&gltf_blob).unwrap();
@@ -69,7 +70,7 @@ fn gen_from_gltf() {
 
     voxels.flood_fill_in_place(
         &domain,
-        &[Point3::new(18, 32, 16)],
+        &[Point3::new(64, 32, 16)],
         gen::VoxelType::Empty,
         gen::VoxelType::View,
     );
