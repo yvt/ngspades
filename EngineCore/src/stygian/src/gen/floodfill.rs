@@ -216,13 +216,6 @@ impl VoxelBitmap {
             }
         }
     }
-
-    fn prefetch_tile(&self, tile: [u32; 2]) {
-        let tile = &self.tiles[[tile[0] as usize, tile[1] as usize]];
-        self.rle_store.prefetch_page(&[tile.rle_page_id]);
-        self.rle_index_store
-            .prefetch_page(&[tile.rle_index_page_id]);
-    }
 }
 
 struct RangeFlattener<T> {
