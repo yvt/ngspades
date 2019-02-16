@@ -359,12 +359,16 @@ fn draw_scanline(x0: f32, z0: f32, x1: f32, z1: f32, z_buffer: &mut [Range<f32>]
 mod tests {
     use super::*;
 
+    use array::Array3;
+    use cgmath::Vector3;
+    use ndarray::Array2;
+
     #[test]
     fn tricrast_sanity() {
         let size = Vector2::new(16, 16);
         let mut z_buffer = vec![0.0..0.0; size.x as usize];
 
-        for vertices in vec![
+        let patterns = vec![
             [
                 Point3::new(4.5, 2.5, 1.0),
                 Point3::new(15.5, 11.5, 3.0),
@@ -454,35 +458,68 @@ mod tests {
                 Point3::new(15.5, 14.0, 3.0),
                 Point3::new(7.5, 16.0, 7.0),
             ],
-        ] {
-            let mut columns = vec![0.0..0.0; (size.x * size.y) as usize];
+            // Other
+            [
+                Point3::new(10.8, 2.5, 1.0),
+                Point3::new(11.5, 11.5, 20.0),
+                Point3::new(-9.3, 14.5, 7.0),
+            ],
+        ];
+
+        for vertices in patterns {
+            let mut columns: Array2<Option<Range<f32>>> =
+                Array2::default([size.y as usize, size.x as usize]);
+            let mut visited: Array2<u8> = Array2::default([size.y as usize, size.x as usize]);
 
             dbg!(vertices);
 
+            let z_min = vertices.map(|v| v.z).fmin();
+            let z_max = vertices.map(|v| v.z).fmax();
+
             tricrast(vertices, size, &mut z_buffer, |origin, z_buffer| {
                 dbg!((origin, &z_buffer));
-                for (i, z_range) in z_buffer.iter().enumerate() {
-                    columns[(origin.x + origin.y * size.x) as usize + i] = z_range.clone();
+                for (x, z_range) in (origin.x..).zip(z_buffer.iter()) {
+                    columns[[origin.y as usize, x as usize]] = Some(z_range.clone());
+                    visited[[origin.y as usize, x as usize]] |= 0b11;
+                    assert!(z_range.start >= z_min - 0.0001);
+                    assert!(z_range.end <= z_max + 0.0001);
                 }
             });
 
-            for x in 0..=50 {
-                for y in 0..=50 {
+            for x in 1..=49 {
+                for y in 1..=49 {
                     let bx = x as f32 / 50.0;
                     let by = y as f32 / 50.0;
                     let p = vertices[0] + (vertices[1] - vertices[0]) * bx;
                     let p = p + (vertices[2] - p) * by;
+
+                    let pi = p.cast::<isize>().unwrap();
+                    for ix in pi.x - 1..=pi.x + 1 {
+                        for iy in pi.y - 1..=pi.y + 1 {
+                            if let Some(v) = visited.get_mut([iy as usize, ix as usize]) {
+                                *v &= 0b1;
+                            }
+                        }
+                    }
+
                     if p.x < 0.0 || p.y < 0.0 || p.x >= size.x as f32 || p.y >= size.y as f32 {
                         continue;
                     }
-                    let pi = p.cast::<u32>().unwrap();
-                    let z_range = &columns[(pi.x + pi.y * size.x) as usize];
+                    let pi = p.cast::<usize>().unwrap();
+                    let z_range = columns[[pi.y, pi.x]].clone().unwrap_or(0.0..0.0);
                     assert!(
-                        p.z >= z_range.start && p.z <= z_range.end,
-                        "{:?}.z is not in {:?}",
+                        p.z >= z_range.start - 0.0001 && p.z <= z_range.end + 0.0001,
+                        "{:?}.z is not in {:?}.\nMap: {:?}",
                         p,
-                        z_range
+                        columns[[pi.y, pi.x]],
+                        &columns,
                     );
+                }
+            }
+
+            for (i, v) in visited.indexed_iter() {
+                if *v == 0b11 {
+                    panic!("overconservativism: {:?}.\nMap: {:#?}", i, &visited);
                 }
             }
         }
