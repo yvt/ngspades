@@ -9,7 +9,7 @@ use ndarray::{s, Array3};
 use std::cmp::min;
 
 use super::{
-    tri::tricrast, BinnedGeometry, InitialDomain, Polygon, Span, SpanType, VoxelBitmap,
+    tri::tricrast, BinnedGeometry, InitialDomain, Polygon, Span, VoxelType, VoxelBitmap,
     VoxelBitmapTile,
 };
 use crate::mempool::{MemPageRefExt, MemPool};
@@ -135,9 +135,9 @@ impl Voxelizer {
                 out_rle_index.push(out_rle.len());
                 bitarray_enum_spans(row_slice, self.depth, |z_end, is_solid| {
                     let span_type = if is_solid {
-                        SpanType::Solid
+                        VoxelType::Solid
                     } else {
-                        SpanType::Empty
+                        VoxelType::Empty
                     };
                     out_rle.push(Span(span_type, z_end as u16));
                 });

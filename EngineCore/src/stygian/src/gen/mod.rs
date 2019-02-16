@@ -100,10 +100,10 @@ pub(crate) struct VoxelBitmapTile {
 /// - THe second element is the exclusive upper bound of the Z coordinates.
 ///
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) struct Span(SpanType, u16);
+pub(crate) struct Span(VoxelType, u16);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum SpanType {
+pub enum VoxelType {
     Empty,
     Solid,
     View,
