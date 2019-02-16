@@ -25,6 +25,9 @@ ndarray = { version = "0.12.1", optional = true }
 bencher = "0.1.5"
 clap = "2.26.0"
 lazy_static = "1.1"
+xz-decom = "0.2.0"
+gltf = "0.11.2"
+pod = "0.5.0"
 
 [dev-dependencies.glium]
 git = "https://github.com/yvt/glium"
