@@ -403,7 +403,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
     /// Produce a conservative depth image from the internal warped depth buffer.
     ///
     /// The contents of the internal warped depth buffer is produced by
-    /// [`TerrainRast::opticast`].
+    /// `TerrainRast::opticast`.
     pub fn rasterize_to(&self, output: &mut DepthImage) {
         use std::f32::INFINITY;
 
