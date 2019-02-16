@@ -94,7 +94,7 @@ pub fn bitarray_set_range(b: &mut [usize], range: std::ops::Range<u32>) {
             b[(start / BITS) as usize] |= ones(start) ^ ones2(end);
             break;
         } else {
-            b[(start / BITS) as usize] |= ones(start);
+            b[(start / BITS) as usize] |= !ones(start);
             start = next_boundary;
             next_boundary += BITS;
         }
@@ -115,7 +115,7 @@ pub fn bitarray_clear_range(b: &mut [usize], range: std::ops::Range<u32>) {
             b[(start / BITS) as usize] &= !(ones(start) ^ ones2(end));
             break;
         } else {
-            b[(start / BITS) as usize] &= !ones(start);
+            b[(start / BITS) as usize] &= ones(start);
             start = next_boundary;
             next_boundary += BITS;
         }
@@ -160,26 +160,26 @@ pub fn one(x: u32) -> usize {
     1usize.wrapping_shl(x)
 }
 
-// [0, x % BITS]
-//
-// |  x | out                                 |
-// | -- | ----------------------------------- |
-// |  0 | 00000000 00000000 00000000 00000000 |
-// |  8 | 00000000 00000000 00000000 11111111 |
-// | 31 | 11111111 11111111 11111111 11111111 |
-// | 32 | 00000000 00000000 00000000 00000000 |
+/// [0, x % BITS]
+///
+/// |  x | out                                 |
+/// | -- | ----------------------------------- |
+/// |  0 | 00000000 00000000 00000000 00000000 |
+/// |  8 | 00000000 00000000 00000000 11111111 |
+/// | 31 | 11111111 11111111 11111111 11111111 |
+/// | 32 | 00000000 00000000 00000000 00000000 |
 #[inline]
 pub fn ones(x: u32) -> usize {
     one(x) - 1
 }
 
-// [0, (x - 1) % BITS + 1]
-//
-// |  x | out                                 |
-// | -- | ----------------------------------- |
-// |  1 | 00000000 00000000 00000000 00000001 |
-// | 31 | 01111111 11111111 11111111 11111111 |
-// | 32 | 11111111 11111111 11111111 11111111 |
+/// [0, (x - 1) % BITS + 1]
+///
+/// |  x | out                                 |
+/// | -- | ----------------------------------- |
+/// |  1 | 00000000 00000000 00000000 00000001 |
+/// | 31 | 01111111 11111111 11111111 11111111 |
+/// | 32 | 11111111 11111111 11111111 11111111 |
 #[inline]
 pub fn ones2(x: u32) -> usize {
     2usize.wrapping_shl(x.wrapping_sub(1)).wrapping_sub(1)
@@ -194,6 +194,11 @@ mod tests {
         let mut bits = [0usize];
         bitarray_set_range(&mut bits, 4..8);
         assert_eq!(bits[0], 0b11110000);
+
+        let mut bits = [0usize; 2];
+        bitarray_set_range(&mut bits, 4..BITS + 4);
+        assert_eq!(!(bits[0] | 0b1111), 0, "{:?}", &bits);
+        assert_eq!(bits[1], 0b1111, "{:?}", &bits);
     }
 
     #[test]
