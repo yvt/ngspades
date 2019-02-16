@@ -21,31 +21,34 @@ pub use self::{binner::PolygonBinner, lock::Lock};
 /// An initial domain describes the organization of the data used in the
 /// first part (before downsampling) of the generation process. It is comprised
 /// of `tile_count.x * tile_count.y` tiles arranged on a X-Y grid. Each tile is
-/// an AABB whose dimensions are `tile_size.extend(depth)` and associated
-/// with a voxel bitmap of size `tile_size.extend(depth)`.
+/// an AABB whose dimensions are `tile_size()` and associated with a voxel
+/// bitmap wherein each voxel corresponds to a 1x1x1 cube.
 #[derive(Debug, Copy, Clone)]
 pub struct InitialDomain {
-    pub tile_size: Vector2<u32>,
+    pub tile_size_bits: u32,
     pub depth: u32,
     pub tile_count: Vector2<u32>,
 }
 
 impl InitialDomain {
     /// Get the dimensions (including depth) of a tile.
+    ///
+    /// It's calculated by the expression:
+    /// `(1 << tile_size_bits, 1 << tile_size_bits, depth)`.
     pub fn tile_size(&self) -> Vector3<u32> {
-        self.tile_size.extend(self.depth)
+        vec3(1 << self.tile_size_bits, 1 << self.tile_size_bits, self.depth)
     }
 
     /// Get the size of an initial domain.
     pub fn size(&self) -> Vector3<u32> {
         let InitialDomain {
-            tile_size,
+            tile_size_bits,
             depth,
             tile_count,
         } = self;
         vec3(
-            tile_size.x * tile_count.x,
-            tile_size.y * tile_count.y,
+            tile_count.x << tile_size_bits,
+            tile_count.y << tile_size_bits,
             *depth,
         )
     }

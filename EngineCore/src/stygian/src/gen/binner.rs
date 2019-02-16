@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use alt_fp::FloatOrdSet;
-use cgmath::{prelude::*, vec2, vec3, Vector2};
+use cgmath::{vec2, vec3, Vector2};
 use ndarray::Array2;
 use std::collections::HashMap;
 
@@ -43,8 +43,8 @@ pub struct PolygonBinner<T> {
     set: T,
     num_polygons: usize,
     max_polygons: usize,
-    tile_size: Vector2<f32>,
-    tile_size_inv: Vector2<f32>,
+    tile_size: f32,
+    tile_size_inv: f32,
     tile_count: Vector2<f32>,
     tiles: HashMap<[usize; 2], Vec<Polygon>>,
 }
@@ -59,9 +59,9 @@ impl<T> PolygonBinner<T> {
     /// the constructed `PolygonBinner`. The buffer is automatically flushed
     /// when the number of the stored buffer reaches `capacity`.
     pub fn new(capacity: usize, initial_domain: &InitialDomain, bin_set_source: T) -> Self {
-        let tile_size = initial_domain.tile_size.cast::<f32>().unwrap();
+        let tile_size = (1u32 << initial_domain.tile_size_bits) as f32;
         let tile_count = initial_domain.tile_count.cast::<f32>().unwrap() - vec2(1.0, 1.0);
-        let tile_size_inv = vec2(1.0, 1.0).div_element_wise(tile_size);
+        let tile_size_inv = 1.0 / tile_size;
 
         Self {
             set: bin_set_source,
@@ -123,10 +123,10 @@ where
         let tile_size = self.tile_size;
         let tile_size_inv = self.tile_size_inv;
 
-        let x_min = polygon.map(|p| p.x * tile_size_inv.x).fmin();
-        let y_min = polygon.map(|p| p.y * tile_size_inv.y).fmin();
-        let x_max = polygon.map(|p| p.x * tile_size_inv.x).fmax();
-        let y_max = polygon.map(|p| p.y * tile_size_inv.y).fmax();
+        let x_min = polygon.map(|p| p.x * tile_size_inv).fmin();
+        let y_min = polygon.map(|p| p.y * tile_size_inv).fmin();
+        let x_max = polygon.map(|p| p.x * tile_size_inv).fmax();
+        let y_max = polygon.map(|p| p.y * tile_size_inv).fmax();
 
         let x_min = [x_min, 0.0].fmax() as i32;
         let y_min = [y_min, 0.0].fmax() as i32;
@@ -147,7 +147,7 @@ where
         for x in x_min..=x_max {
             for y in y_min..=y_max {
                 let polys = self.tiles.entry([x, y]).or_default();
-                let origin = vec3((x as f32) * tile_size.x, (y as f32) * tile_size.y, 0.0);
+                let origin = vec3((x as f32) * tile_size, (y as f32) * tile_size, 0.0);
                 polys.push(polygon.map(|p| p - origin));
                 self.num_polygons += 1;
             }

@@ -17,7 +17,7 @@ mod profmempool;
 #[test]
 fn gen_from_gltf() {
     let domain = gen::InitialDomain {
-        tile_size: vec2(32, 32),
+        tile_size_bits: 5, // 2⁵ == 32
         tile_count: vec2(4, 4),
         depth: 32,
     };
