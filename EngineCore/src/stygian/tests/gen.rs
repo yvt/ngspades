@@ -65,6 +65,7 @@ fn gen_from_gltf() {
     }
 
     let mut voxels = gen::VoxelBitmap::from_geometry(&pool, &domain, &binned_geometry);
+    dbg!(&voxels);
 
     voxels.flood_fill_in_place(
         &domain,
@@ -72,6 +73,7 @@ fn gen_from_gltf() {
         gen::VoxelType::Empty,
         gen::VoxelType::View,
     );
+    dbg!(&voxels);
 }
 
 fn vertex_fetch<T: Pod>(view: &gltf::buffer::View, blob: &[u8], i: usize) -> T {
