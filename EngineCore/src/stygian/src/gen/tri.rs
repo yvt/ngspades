@@ -307,10 +307,10 @@ fn draw_scanline(x0: f32, z0: f32, x1: f32, z1: f32, z_buffer: &mut [Range<f32>]
         (x0, z0, x1, z1)
     };
 
-    let v0xi = max(x0 as i32, 0);
-    let v1xi = min(x1 as i32, z_buffer.len() as i32 - 1);
+    let v0xi = x0 as i32;
+    let v1xi = x1 as i32;
 
-    if v0xi > v1xi {
+    if max(v0xi, 0) > min(v1xi, z_buffer.len() as i32 - 1) {
         return;
     }
 
@@ -460,16 +460,18 @@ mod tests {
             ],
             // Other
             [
-                Point3::new(10.8, 2.5, 1.0),
-                Point3::new(11.5, 11.5, 20.0),
-                Point3::new(-9.3, 14.5, 7.0),
+                Point3::new(6.387413, 22.655037, 10.262598),
+                Point3::new(34.602814, 3.326641, 33.970768),
+                Point3::new(13.196243, -2.00811, 8.0031395),
             ],
         ];
 
         for vertices in patterns {
-            let mut columns: Array2<Option<Range<f32>>> =
+            let mut z_predicted: Array2<Option<Range<f32>>> =
                 Array2::default([size.y as usize, size.x as usize]);
             let mut visited: Array2<u8> = Array2::default([size.y as usize, size.x as usize]);
+            let mut z_visited: Array2<Option<Range<f32>>> =
+                Array2::default([size.y as usize, size.x as usize]);
 
             dbg!(vertices);
 
@@ -479,7 +481,7 @@ mod tests {
             tricrast(vertices, size, &mut z_buffer, |origin, z_buffer| {
                 dbg!((origin, &z_buffer));
                 for (x, z_range) in (origin.x..).zip(z_buffer.iter()) {
-                    columns[[origin.y as usize, x as usize]] = Some(z_range.clone());
+                    z_predicted[[origin.y as usize, x as usize]] = Some(z_range.clone());
                     visited[[origin.y as usize, x as usize]] |= 0b11;
                     assert!(z_range.start >= z_min - 0.0001);
                     assert!(z_range.end <= z_max + 0.0001);
@@ -499,6 +501,10 @@ mod tests {
                             if let Some(v) = visited.get_mut([iy as usize, ix as usize]) {
                                 *v &= 0b1;
                             }
+                            if let Some(v) = z_visited.get_mut([iy as usize, ix as usize]) {
+                                let r = v.clone().unwrap_or(10000.0..-10000.0);
+                                *v = Some([r.start, p.z].fmin()..[r.end, p.z].fmax());
+                            }
                         }
                     }
 
@@ -506,13 +512,13 @@ mod tests {
                         continue;
                     }
                     let pi = p.cast::<usize>().unwrap();
-                    let z_range = columns[[pi.y, pi.x]].clone().unwrap_or(0.0..0.0);
+                    let z_range = z_predicted[[pi.y, pi.x]].clone().unwrap_or(0.0..0.0);
                     assert!(
                         p.z >= z_range.start - 0.0001 && p.z <= z_range.end + 0.0001,
                         "{:?}.z is not in {:?}.\nMap: {:?}",
                         p,
-                        columns[[pi.y, pi.x]],
-                        &columns,
+                        z_predicted[[pi.y, pi.x]],
+                        &z_predicted,
                     );
                 }
             }
@@ -520,6 +526,19 @@ mod tests {
             for (i, v) in visited.indexed_iter() {
                 if *v == 0b11 {
                     panic!("overconservativism: {:?}.\nMap: {:#?}", i, &visited);
+                } else {
+                    let row_z_visited = &z_visited[i];
+                    let row_z_predicted = &z_predicted[i];
+                    if let (Some(visited), Some(predicted)) = (row_z_visited, row_z_predicted) {
+                        if predicted.start < visited.start - 0.5
+                            || predicted.end > visited.end + 0.5
+                        {
+                            panic!(
+                                "overconservativism: {:?} (pred = {:?}, actual = {:?}).\nMap: {:?}",
+                                i, predicted, visited, &z_predicted
+                            );
+                        }
+                    }
                 }
             }
         }
