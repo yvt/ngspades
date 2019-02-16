@@ -176,6 +176,10 @@ pub fn tricrast(
             yi += 1;
         }
 
+        if yi >= size.y as i32 {
+            return;
+        }
+
         if yi == v1yi {
             if yi == v2yi {
                 if let Some((origin, range)) =
@@ -258,6 +262,10 @@ pub fn tricrast(
         side_z2 = next_side_z2;
 
         yi += 1;
+    }
+
+    if yi >= size.y as i32 {
+        return;
     }
 
     if yi == v2yi {
@@ -427,6 +435,24 @@ mod tests {
                 Point3::new(4.5, -7.5, 1.0),
                 Point3::new(15.5, -6.5, 3.0),
                 Point3::new(7.5, -3.5, 7.0),
+            ],
+            // 0 is on `size.y`
+            [
+                Point3::new(4.5, 16.0, 1.0),
+                Point3::new(15.5, 18.0, 3.0),
+                Point3::new(7.5, 20.0, 7.0),
+            ],
+            // 1 is on `size.y`
+            [
+                Point3::new(4.5, 14.0, 1.0),
+                Point3::new(15.5, 16.0, 3.0),
+                Point3::new(7.5, 18.0, 7.0),
+            ],
+            // 2 is on `size.y`
+            [
+                Point3::new(4.5, 12.0, 1.0),
+                Point3::new(15.5, 14.0, 3.0),
+                Point3::new(7.5, 16.0, 7.0),
             ],
         ] {
             let mut columns = vec![0.0..0.0; (size.x * size.y) as usize];

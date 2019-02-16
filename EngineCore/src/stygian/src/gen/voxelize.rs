@@ -105,7 +105,7 @@ impl Voxelizer {
         // Voxelize the given triangle
         tricrast(
             p,
-            vec2(bitmap.shape()[0] as u32, bitmap.shape()[1] as u32),
+            vec2(bitmap.shape()[1] as u32, bitmap.shape()[0] as u32),
             &mut self.z_buffer,
             |origin, z_ranges| {
                 let y = origin.y as usize;
