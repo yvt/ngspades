@@ -3,20 +3,18 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{conv::array4x4, prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
-use glium::{
-    backend::Facade, glutin, program, uniform, IndexBuffer, Program, Surface, VertexBuffer,
-};
+use cgmath::{prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
+use glium::{backend::Facade, glutin, Surface};
 use std::time::Instant;
 
 use stygian;
 
-#[path = "../common/terrainload.rs"]
-mod terrainload;
-
 mod lib {
     pub mod cube;
     pub mod linedraw;
+    pub mod scene;
+    #[path = "../../common/terrainload.rs"]
+    pub mod terrainload;
     pub mod vxl2mesh;
 }
 
@@ -39,11 +37,13 @@ fn main() {
 
     // Load the input vox file
     println!("Loading the input file");
-    let terrain = if let Some(input_path) = matches.value_of_os("INPUT") {
-        terrainload::load_terrain(input_path)
+    let scene = if let Some(input_path) = matches.value_of_os("INPUT") {
+        lib::scene::Scene::load(input_path)
     } else {
-        terrainload::DERBY_RACERS.clone()
+        lib::scene::Scene::load_derby_racers()
     };
+
+    let mut state = State::new(&scene);
 
     let mut events_loop = glutin::EventsLoop::new();
     let window = glutin::WindowBuilder::new();
@@ -51,9 +51,7 @@ fn main() {
         .with_depth_buffer(24)
         .with_vsync(true);
     let display = glium::Display::new(window, context, &events_loop).unwrap();
-    let mut renderer = Renderer::new(&display, terrain);
-
-    let mut state = State::new(&renderer.terrain);
+    let mut renderer = Renderer::new(&display, &scene);
 
     use glutin::{ElementState, Event, VirtualKeyCode, WindowEvent};
 
@@ -118,19 +116,9 @@ struct State {
 }
 
 impl State {
-    fn new(terrain: &ngsterrain::Terrain) -> State {
-        let size = terrain.size();
-
-        let eye_xy = vec2(size.x / 2, size.y / 2);
-        let floor = (terrain.get_row(eye_xy).unwrap())
-            .chunk_z_ranges()
-            .last()
-            .unwrap()
-            .end;
-        let eye_z = floor + size.z / 10 + 1;
-
+    fn new(scene: &lib::scene::Scene) -> State {
         State {
-            eye: vec3(eye_xy.x, eye_xy.y, eye_z).cast::<f32>().unwrap(),
+            eye: scene.camera_initial_position() - Point3::new(0.0, 0.0, 0.0),
             velocity: Vector3::zero(),
             angle: vec3(-0.4, 0.0, 0.0),
             angular_velocity: Vector3::zero(),
@@ -301,14 +289,13 @@ struct RenderParams {
 }
 
 struct Renderer {
-    terrain: ngsterrain::Terrain,
-    terrain_vb: VertexBuffer<lib::vxl2mesh::TerrainVertex>,
-    terrain_ib: IndexBuffer<u32>,
-    terrain_program: Program,
+    scene_renderer: lib::scene::SceneRenderer,
+    scene_instance: lib::scene::SceneInstance,
 
     sty_terrain: stygian::Terrain,
     sty_rast: stygian::TerrainRast,
     sty_depth: stygian::DepthImage,
+    sty_model_matrix: Matrix4<f32>,
 
     linedraw: lib::linedraw::LineDraw,
 
@@ -316,66 +303,23 @@ struct Renderer {
 }
 
 impl Renderer {
-    fn new(facade: &impl Facade, terrain: ngsterrain::Terrain) -> Self {
-        // Convert the terrain to a mesh
-        println!("Converting the terrain into a mesh");
-        let terrain_vb;
-        let terrain_ib;
-        let terrain_program;
-        {
-            use self::lib::vxl2mesh;
-            let (verts, indices) = vxl2mesh::terrain_to_mesh(&terrain);
-            terrain_vb = VertexBuffer::new(facade, &verts).unwrap();
-            terrain_ib =
-                IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &indices)
-                    .unwrap();
-            terrain_program = program!(facade,
-            100 => {
-                vertex: r"
-                    #version 100
-
-                    uniform highp mat4 u_matrix;
-                    attribute highp vec3 pos;
-                    attribute highp vec3 norm;
-                    attribute highp vec4 color;
-                    varying lowp vec4 v_color;
-
-                    void main() {
-                        v_color = color / 255.0;
-                        v_color *= sqrt(dot(norm, normalize(vec3(0.3, 0.7, 0.8))) * 0.5 + 0.5);
-                        gl_Position = u_matrix * vec4(pos, 1.0);
-
-                        // Simulate [0, 1] Z range
-                        gl_Position.z = gl_Position.z * 2.0 - gl_Position.w;
-                    }
-                ",
-                fragment: r"
-                    #version 100
-
-                    varying lowp vec4 v_color;
-
-                    void main() {
-                        gl_FragColor = v_color;
-                    }
-                ",
-            })
-            .unwrap();
-        }
+    fn new(facade: &impl Facade, scene: &lib::scene::Scene) -> Self {
+        let scene_renderer = lib::scene::SceneRenderer::new(facade);
+        let scene_instance = scene_renderer.prepare_scene(facade, scene);
 
         println!("Initializing Stygian");
-        let sty_terrain = stygian::Terrain::from_ngsterrain(&terrain).unwrap();
+        let (sty_terrain, sty_model_matrix) = scene.make_sty_terrain();
         let sty_rast = stygian::TerrainRast::new(64);
         let sty_depth = stygian::DepthImage::new(vec2(64, 64));
 
         Self {
-            terrain,
-            terrain_vb,
-            terrain_ib,
-            terrain_program,
+            scene_renderer,
+            scene_instance,
 
             sty_terrain,
             sty_rast,
             sty_depth,
+            sty_model_matrix,
 
             linedraw: lib::linedraw::LineDraw::new(facade),
 
@@ -408,7 +352,7 @@ impl Renderer {
 
         // Update Stygian
         self.sty_rast
-            .set_camera_matrix_trace(params.camera_matrix, Tracer(&log));
+            .set_camera_matrix_trace(params.camera_matrix * self.sty_model_matrix, Tracer(&log));
 
         self.sty_rast
             .update_with_trace(&self.sty_terrain, Tracer(&log));
@@ -421,29 +365,8 @@ impl Renderer {
         let vp_matrix = Matrix4::from_nonuniform_scale(0.9, 0.9, 1.0);
 
         let camera_matrix = vp_matrix * params.camera_matrix;
-
-        let uniforms = uniform! {
-            u_matrix: array4x4(camera_matrix),
-        };
-
-        let params = glium::DrawParameters {
-            depth: glium::Depth {
-                test: glium::DepthTest::IfMore,
-                write: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
-        target
-            .draw(
-                &self.terrain_vb,
-                &self.terrain_ib,
-                &self.terrain_program,
-                &uniforms,
-                &params,
-            )
-            .unwrap();
+        self.scene_renderer
+            .draw_scene(&self.scene_instance, target, camera_matrix);
 
         // Draw a HUD
         self.linedraw.push(
