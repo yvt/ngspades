@@ -16,6 +16,8 @@ mod lib {
     #[path = "../../common/terrainload.rs"]
     pub mod terrainload;
     pub mod vxl2mesh;
+    #[path = "../../common/profmempool.rs"]
+    pub mod profmempool;
 }
 
 fn main() {
