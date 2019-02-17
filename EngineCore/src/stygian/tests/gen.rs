@@ -81,6 +81,9 @@ fn gen_from_gltf() {
     println!("erode_view");
     let voxels2 = voxels.erode_view(&pool, &domain);
     dbg!(&voxels2);
+
+    println!("to_terrain");
+    let _terrain = voxels2.to_terrain(&domain, 2);
 }
 
 fn vertex_fetch<T: Pod>(view: &gltf::buffer::View, blob: &[u8], i: usize) -> T {

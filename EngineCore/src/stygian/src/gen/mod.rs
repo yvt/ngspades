@@ -11,13 +11,14 @@ use crate::mempool::{MemPageId, MemStore};
 
 mod binner;
 mod erode;
+mod export;
 mod floodfill;
 mod lock;
 mod tri;
 mod utils;
 mod voxelize;
 
-pub use self::{binner::PolygonBinner, lock::Lock};
+pub use self::{binner::PolygonBinner, export::TerrainConversionError, lock::Lock};
 
 /// Defines an initial domain.
 ///
