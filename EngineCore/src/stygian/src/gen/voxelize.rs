@@ -110,8 +110,8 @@ impl Voxelizer {
             |origin, z_ranges| {
                 let y = origin.y as usize;
                 for (x, z_range) in (origin.x as usize..).zip(z_ranges.iter()) {
-                    let z_min = [z_range.start, 0.0].fmax() as i32;
-                    let z_max = [z_range.end.ceil(), z_max_f].fmin() as i32;
+                    let z_min = [z_range.start.ceil() - 1.0, 0.0].fmax() as i32;
+                    let z_max = [z_range.end + 1.0, z_max_f].fmin() as i32;
                     if z_min >= z_max {
                         continue;
                     }
