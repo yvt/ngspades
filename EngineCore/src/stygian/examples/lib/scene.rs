@@ -83,12 +83,42 @@ impl Scene {
 
                 let [ms_min, ms_max] = gltf_get_aabb(gltf, &scene);
 
+                const SMALLEST_HOLE: f32 = 0.25;
+                const SMALLEST_OCCLUDER: f32 = 1.0;
+
                 let size = ms_max - ms_min;
-                let mut terrain_size = (size / 0.5).cast::<u32>().unwrap();
+                let mut terrain_size = (size / (SMALLEST_HOLE * 0.5)).cast::<u32>().unwrap();
                 terrain_size.x = terrain_size.x.next_power_of_two();
                 terrain_size.y = terrain_size.y.next_power_of_two();
                 terrain_size.z = terrain_size.z.next_power_of_two();
                 println!("Initial domain size: {:?}", terrain_size);
+
+                let mut downsample_bits = 0;
+                let cell_size = [
+                    size.x / terrain_size.x as f32,
+                    size.y / terrain_size.y as f32,
+                ]
+                .fmax();
+                loop {
+                    downsample_bits += 1;
+                    if cell_size * ((3 << downsample_bits) + 2) as f32 > SMALLEST_OCCLUDER {
+                        downsample_bits -= 1;
+                        break;
+                    }
+                }
+                println!("Smallest hole size: {:?}", cell_size * 2.0);
+                println!(
+                    "Downsampled domain size: {:?}",
+                    [
+                        terrain_size.x >> downsample_bits,
+                        terrain_size.y >> downsample_bits,
+                        terrain_size.z,
+                    ]
+                );
+                println!(
+                    "Smallest occluder size: {:?}",
+                    cell_size * ((3 << downsample_bits) + 2) as f32
+                );
 
                 let matrix = Matrix4::from_nonuniform_scale(
                     terrain_size.x as f32 / size.x,
@@ -140,9 +170,11 @@ impl Scene {
                 let voxels2 = voxels.erode_view(&pool, &domain);
 
                 println!("to_terrain...");
+                let downsample = (1 << downsample_bits) as f32;
                 (
-                    voxels2.to_terrain(&domain, 0).unwrap(),
-                    matrix.invert().unwrap(),
+                    voxels2.to_terrain(&domain, downsample_bits).unwrap(),
+                    matrix.invert().unwrap()
+                        * Matrix4::from_nonuniform_scale(downsample, downsample, 1.0),
                 )
             }
         }
