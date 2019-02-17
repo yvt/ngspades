@@ -112,9 +112,11 @@ pub fn opticast(
 
             let mut local_dir_primary = dir_primary;
             let mut local_eye = eye;
+            let mut terrain_size = terrain_size;
             if preproc.swap_xy() {
                 std::mem::swap(&mut local_dir_primary.x, &mut local_dir_primary.y);
                 std::mem::swap(&mut local_eye.x, &mut local_eye.y);
+                std::mem::swap(&mut terrain_size.x, &mut terrain_size.y);
             }
             if preproc.flip_x() {
                 local_dir_primary.x = -local_dir_primary.x;

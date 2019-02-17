@@ -129,6 +129,8 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
         // Find the normal vectors of the viewport border edges in the model space.
         // Note that a normal vector is a bivector, thus must be multiplied with
         // the inverse transpose of a matrix.
+        //
+        // The found vectors are all directed toward outside of the viewport.
         let m_inv = m.invert().unwrap();
         self.camera_matrix_inv = m_inv;
         let j1 = jacobian_from_projection_matrix(
@@ -151,10 +153,6 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
             j2 * vec3(0.0, 1.0 + safe_margin, 0.0),
             j1 * vec3(-(1.0 + safe_margin), 0.0, 0.0),
         ];
-
-        // They must be directed outside
-        assert!(ms_viewport_normals[0].dot(ms_viewport_normals[2]) <= 0.0);
-        assert!(ms_viewport_normals[1].dot(ms_viewport_normals[3]) <= 0.0);
 
         // Here's how to calculate the visible portion of a latitudinal line
         let inclination_range_for_azimuth = |azimuth| -> Range<f32> {

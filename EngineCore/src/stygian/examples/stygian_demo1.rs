@@ -12,12 +12,12 @@ use stygian;
 mod lib {
     pub mod cube;
     pub mod linedraw;
+    #[path = "../../common/profmempool.rs"]
+    pub mod profmempool;
     pub mod scene;
     #[path = "../../common/terrainload.rs"]
     pub mod terrainload;
     pub mod vxl2mesh;
-    #[path = "../../common/profmempool.rs"]
-    pub mod profmempool;
 }
 
 fn main() {
