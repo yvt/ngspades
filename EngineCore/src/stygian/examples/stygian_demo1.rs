@@ -385,11 +385,12 @@ impl Renderer {
         );
 
         if state.mode == RenderMode::OpticastSamples {
+            let m = camera_matrix * self.sty_model_matrix;
             for (verts, depth) in log.get_mut().samples.iter() {
                 use array::Array4;
 
                 let verts = verts.map(|v| {
-                    let p = camera_matrix * v.extend(0.0);
+                    let p = m * v.extend(0.0);
                     Point2::new(p.x / p.w, p.y / p.w)
                 });
 
