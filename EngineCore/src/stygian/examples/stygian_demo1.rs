@@ -25,7 +25,7 @@ fn main() {
         .about("Stygian demo app 1")
         .arg(
             Arg::with_name("INPUT")
-                .help("file to display; .vxl and .vox formats are supported")
+                .help("file to display; .vxl, .vox, and .glb.xz formats are supported")
                 .index(1),
         )
         .get_matches();
