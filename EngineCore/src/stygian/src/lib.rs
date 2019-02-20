@@ -30,12 +30,14 @@ mod debug;
 mod depthimage;
 mod mipbeamcast;
 mod opticast;
+mod query;
 mod terrain;
 mod terrainrast;
 
 pub use crate::{
     debug::{NoTrace, Trace},
     depthimage::DepthImage,
+    query::{clip_w_cs_aabb, QueryContext},
     terrain::Terrain,
     terrainrast::TerrainRast,
 };
@@ -51,9 +53,9 @@ pub mod io {
 
 pub mod cov;
 #[cfg(feature = "gen")]
-pub mod mempool;
-#[cfg(feature = "gen")]
 pub mod gen;
+#[cfg(feature = "gen")]
+pub mod mempool;
 
 /// The depth value of the far plane.
 const DEPTH_FAR: f32 = 0.0;

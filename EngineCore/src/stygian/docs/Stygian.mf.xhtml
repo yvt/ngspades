@@ -204,5 +204,30 @@ Instead, Stygian implements a scanline-based algorithm. Firstly, the vertices of
 ![^Figure voxel-slice-types][](Images/Voxel-SliceType.svg):
     The shapes of slices.
 
+# Occlusion query
+
+The clients query whether objects are occluded by occluders or not in order to skip the processing of objects which are invisible from a camera. A conservative depth buffer produced by terrain rasterization is used to quickly determine objects which are completely occluded by the terrain. This process is called *an occlusion query*.
+
+The clients provide a convex four-dimensional polyhedron, which is specified using four or more vertices in clip-space coordinates. The query function returns `false` only if it's guaranteed that the polyhedron is completely occluded. Otherwise, it returns `true`. Because dealing with arbitrary polyhedra is complicated and computing-intensive, an input polyhedron is approximated using an AABB.
+
+## Frustum clipping
+
+Implemented by `clip_w_cs_aabb`.
+
+This step removes some portion of the input AABB $Ω$ that does not intersect with the view volume. The view volume is defined by:
+
+$$\begin{aligned}
+-w_c \leq x_c \leq w_c \\
+-w_c \leq y_c \leq w_c \\
+0 \leq z_c \leq w_c
+\end{aligned}$$
+
+The subsequent step implicitly does frustum clipping after perspective division. The purpose of having a separate clipping step is to limit the range of the W values before perspective division with the goal of reducing the overestimation caused by taking an AABB of a post-division geometry. Consider the example where the input clip-space AABB stretches toward the negative W direction ([!Figure cull-w]).
+
+![!Figure cull-w][](Images/Cull-W.svg):
+    Clipping a clip-space AABB in the W direction.
+
+The W values sent to the subsequent step must be restricted within the range $w \geq 0$ and should it touch $w = 0$, it must be positive zero.
+
 ]]></pre> <!-- Foremark footer -->
 <script src="https://unpkg.com/foremark/browser/foremark.js" async="async" /></html>
