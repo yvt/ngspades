@@ -6,8 +6,9 @@
 use alt_fp::FloatOrdSet;
 use cgmath::{prelude::*, vec2, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Vector3, Vector4};
 use glium::{backend::Facade, glutin, Surface};
-use imgui::ImGui;
+use imgui::{im_str, ImGui, ImString};
 use std::time::Instant;
+use {itervalues::IterValues, itervalues_derive::IterValues};
 
 use stygian;
 
@@ -37,7 +38,6 @@ fn main() {
     println!("Escape - Exit");
     println!("WASD - Move");
     println!("←↓↑→ - Look");
-    println!("Space - Cycle through visualization modes");
 
     // Load the input vox file
     println!("Loading the input file");
@@ -132,7 +132,6 @@ struct State {
     angular_velocity: Vector3<f32>,
     keys: [bool; 16],
     mode: RenderMode,
-    demo_window_open: bool,
 }
 
 impl State {
@@ -144,7 +143,6 @@ impl State {
             angular_velocity: Vector3::zero(),
             keys: [false; 16],
             mode: RenderMode::default(),
-            demo_window_open: true,
         }
     }
 
@@ -167,7 +165,6 @@ impl State {
                 glutin::VirtualKeyCode::LShift | glutin::VirtualKeyCode::RShift => {
                     self.keys[8] = pressed
                 }
-                glutin::VirtualKeyCode::Space if pressed => self.mode = self.mode.next(),
                 _ => {}
             }
         }
@@ -216,7 +213,11 @@ impl State {
     ) -> imgui::Ui<'ui> {
         let ui = imgui.frame(frame_size, dt);
 
-        ui.show_demo_window(&mut self.demo_window_open);
+        ui.window(im_str!("Options"))
+            .always_auto_resize(true)
+            .build(|| {
+                imgui_iter_values_combo(&ui, im_str!("Render mode"), &mut self.mode);
+            });
 
         ui
     }
@@ -261,7 +262,26 @@ impl State {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+fn imgui_iter_values_combo<T: IterValues + PartialEq + std::fmt::Debug>(
+    ui: &imgui::Ui,
+    label: &imgui::ImStr,
+    value: &mut T,
+) {
+    let names: Vec<_> = T::iter_values()
+        .map(|x| ImString::new(format!("{:?}", x)))
+        .collect();
+    let names_imstr: Vec<_> = names.iter().map(|x| &**x).collect();
+    let mut i = T::iter_values()
+        .enumerate()
+        .filter(|x| x.1 == *value)
+        .nth(0)
+        .unwrap()
+        .0 as i32;
+    ui.combo(label, &mut i, &names_imstr, 0);
+    *value = T::iter_values().nth(i as _).unwrap();
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IterValues)]
 enum RenderMode {
     None,
     OpticastSamples,
@@ -271,16 +291,6 @@ enum RenderMode {
 impl Default for RenderMode {
     fn default() -> Self {
         RenderMode::FinalDepthImage
-    }
-}
-
-impl RenderMode {
-    fn next(&self) -> Self {
-        match *self {
-            RenderMode::None => RenderMode::OpticastSamples,
-            RenderMode::OpticastSamples => RenderMode::FinalDepthImage,
-            RenderMode::FinalDepthImage => RenderMode::None,
-        }
     }
 }
 
