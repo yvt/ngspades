@@ -67,3 +67,6 @@ git = "https://github.com/yvt/glutin"
 # This includes a work-around for this issue:
 # <https://github.com/glium/glium/issues/1721>
 rev = "17618bff5b7e954ed5af4d49fdc1b40a2b9a68f7"
+
+[patch.crates-io.array]
+path = "src/support/array"

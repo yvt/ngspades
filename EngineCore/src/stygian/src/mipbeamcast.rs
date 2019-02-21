@@ -47,16 +47,19 @@ pub struct MbcCell {
 impl MbcCell {
     /// The inclusive coordinates of the top-left corner of the region
     /// represented by `self`.
+    #[inline]
     pub fn pos_min(&self) -> Vector2<i32> {
         vec2(self.pos.x << self.mip, self.pos.y << self.mip)
     }
 
     /// The exclusive coordinates of the bottom-right corner of the region
     /// represented by `self`.
+    #[inline]
     pub fn pos_max(&self) -> Vector2<i32> {
         self.pos_min() + vec2(self.size(), self.size())
     }
 
+    #[inline]
     pub fn size(&self) -> i32 {
         2 << self.mip
     }
@@ -81,21 +84,26 @@ bitflags! {
 }
 
 impl MbcInputPreproc {
+    #[inline]
     pub fn swap_xy(&self) -> bool {
         self.flags.contains(MbcPreprocFlags::SWAP_XY)
     }
+    #[inline]
     pub fn flip_x(&self) -> bool {
         self.flags.contains(MbcPreprocFlags::FLIP_X)
     }
+    #[inline]
     pub fn flip_y(&self) -> bool {
         self.flags.contains(MbcPreprocFlags::FLIP_Y)
     }
+    #[inline]
     pub fn slope2_neg(&self) -> bool {
         self.flags.contains(MbcPreprocFlags::SLOPE2_NEG)
     }
 }
 
 impl MbcIncidence {
+    #[inline]
     pub fn cell(&self, preproc: &MbcInputPreproc) -> MbcCell {
         let mut cell = self.cell_raw;
         if preproc.flip_x() {
@@ -470,6 +478,7 @@ pub fn mipbeamcast<T>(
 
 /// Find the smallest cell that includes a specified rectangular region.
 /// All endpoints are inclusive.
+#[inline]
 fn aabb_to_cell(x_min: i32, y_min: i32, x_max: i32, y_max: i32) -> MbcCell {
     debug_assert!(x_min <= x_max);
     debug_assert!(y_min <= y_max);
@@ -507,14 +516,17 @@ fn aabb_to_cell(x_min: i32, y_min: i32, x_max: i32, y_max: i32) -> MbcCell {
 pub const F: u32 = 16;
 pub const F_FAC_F: f32 = (1 << F) as f32;
 
+#[inline(always)]
 fn fix_mul(x: i32, y: i32) -> i32 {
     (((x as i64) * (y as i64)) >> F) as i32
 }
 
+#[inline(always)]
 fn fix2int_floor(x: i32) -> i32 {
     x >> F
 }
 
+#[inline(always)]
 fn fix2int_ceil(x: i32) -> i32 {
     (x + (1 << F) - 1) >> F
 }

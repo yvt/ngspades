@@ -31,6 +31,7 @@ pub trait Array2<T> {
 }
 
 impl<T: Copy> Array2<T> for [T; 2] {
+    #[inline]
     fn map<U, F>(self, f: F) -> [U; 2] where F: Fn(T) -> U {
         [f(self[0]), f(self[1])]
     }
@@ -58,6 +59,7 @@ pub trait Array3<T> {
 }
 
 impl<T: Copy> Array3<T> for [T; 3] {
+    #[inline]
     fn map<U, F>(self, f: F) -> [U; 3] where F: Fn(T) -> U {
         [f(self[0]), f(self[1]), f(self[2])]
     }
@@ -88,6 +90,7 @@ pub trait Array4<T> {
 }
 
 impl<T: Copy> Array4<T> for [T; 4] {
+    #[inline]
     fn map<U, F>(self, f: F) -> [U; 4] where F: Fn(T) -> U {
         [f(self[0]), f(self[1]), f(self[2]), f(self[3])]
     }
