@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+#![feature(duration_float)]
 use alt_fp::FloatOrdSet;
 use cgmath::{prelude::*, vec2, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Vector3, Vector4};
 use glium::{backend::Facade, glutin, Surface};
@@ -218,7 +219,24 @@ impl State {
         ui.window(im_str!("Metrics"))
             .always_auto_resize(true)
             .build(|| {
-                ui.text(format!("{:.2} fps", metrics.fps_counter.rate()));
+                ui.text(format!("{:3.2} fps", metrics.fps_counter.rate()));
+
+                ui.separator();
+                ui.text(format!(
+                    "Depth build time: {:5.2}us",
+                    metrics.history_depth_build_time.last().unwrap_or(&0.0) * 1.0e6
+                ));
+                ui.plot_lines(im_str!(""), &metrics.history_depth_build_time)
+                    .build();
+                ui.text(format!(
+                    "Objects: {:4}/{:4}",
+                    metrics.num_rendered_objects, metrics.num_objects
+                ));
+                ui.plot_lines(
+                    im_str!(""),
+                    &metrics.history_num_rendered_objects,
+                )
+                .build();
             });
 
         ui
@@ -332,13 +350,37 @@ impl PerfCounter {
 #[derive(Debug)]
 struct Metrics {
     fps_counter: PerfCounter,
+    history_depth_build_time: Vec<f32>,
+    history_num_rendered_objects: Vec<f32>,
+    num_rendered_objects: usize,
+    num_objects: usize,
 }
 
 impl Metrics {
     fn new() -> Self {
         Metrics {
             fps_counter: PerfCounter::new(),
+            history_depth_build_time: Vec::new(),
+            history_num_rendered_objects: Vec::new(),
+            num_rendered_objects: 0,
+            num_objects: 0,
         }
+    }
+
+    fn log_depth_build_time(&mut self, t: f32) {
+        if self.history_depth_build_time.len() > 300 {
+            self.history_depth_build_time.remove(0);
+        }
+        self.history_depth_build_time.push(t);
+    }
+
+    fn log_num_objects(&mut self, rendered: usize, total: usize) {
+        if self.history_num_rendered_objects.len() > 300 {
+            self.history_num_rendered_objects.remove(0);
+        }
+        self.history_num_rendered_objects.push(rendered as f32);
+        self.num_rendered_objects = rendered;
+        self.num_objects = total;
     }
 }
 
@@ -418,13 +460,23 @@ impl Renderer {
         }
 
         // Update Stygian
-        self.sty_rast
-            .set_camera_matrix_trace(params.camera_matrix * self.sty_model_matrix, Tracer(&log));
+        let sty_depth_build_start = Instant::now();
+        {
+            self.sty_rast.set_camera_matrix_trace(
+                params.camera_matrix * self.sty_model_matrix,
+                Tracer(&log),
+            );
 
-        self.sty_rast
-            .update_with_trace(&self.sty_terrain, Tracer(&log));
+            if state.mode != RenderMode::None {
+                self.sty_rast
+                    .update_with_trace(&self.sty_terrain, Tracer(&log));
+            } else {
+                self.sty_rast.update_with(&self.sty_terrain);
+            }
 
-        self.sty_rast.rasterize_to(&mut self.sty_depth);
+            self.sty_rast.rasterize_to(&mut self.sty_depth);
+        }
+        metrics.log_depth_build_time(sty_depth_build_start.elapsed().as_float_secs() as f32);
 
         // Render a scene
         target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 0.0);
@@ -433,14 +485,24 @@ impl Renderer {
 
         let camera_matrix = vp_matrix * params.camera_matrix;
         let query = stygian::QueryContext::new(&self.sty_depth);
+        let mut num_objects = 0;
+        let mut num_rendered_objects = 0;
         self.scene_renderer.draw_scene(
             &self.scene_instance,
             target,
             camera_matrix,
             |transform, ms_aabb| {
-                query.query_cs_aabb(transform_aabb(ms_aabb, params.camera_matrix * transform))
+                let visible =
+                    query.query_cs_aabb(transform_aabb(ms_aabb, params.camera_matrix * transform));
+
+                num_objects += 1;
+                num_rendered_objects += visible as usize;
+
+                visible
             },
         );
+
+        metrics.log_num_objects(num_rendered_objects, num_objects);
 
         // Draw a HUD
         self.linedraw.push(
