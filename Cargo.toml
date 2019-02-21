@@ -1,0 +1,20 @@
+[package]
+
+name = "array"
+version = "0.0.1"
+authors = [
+    "Ty Overby <ty@pre-alpha.com>",
+    "eddyb",
+    "Sven Nilsen <bvssvni@gmail.com>"
+]
+keywords = ["array", "convenience", "piston"]
+description = "Convenience methods for working with arrays."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/PistonDevelopers/array.git"
+homepage = "https://github.com/PistonDevelopers/array"
+
+[lib]
+
+name = "array"
+path = "src/lib.rs"
