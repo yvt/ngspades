@@ -54,9 +54,7 @@ members = [
 ]
 
 [profile.release]
-lto = true
 debug = true
-incremental = false
 
 [profile.bench]
 lto = true
