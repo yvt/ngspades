@@ -8,7 +8,7 @@ use array::Array3;
 use cgmath::{
     conv::{array3, array4x4},
     prelude::*,
-    vec2, Matrix4, Point3,
+    vec2, Matrix4, Point3, Vector4,
 };
 use glium::{
     backend::Facade,
@@ -228,38 +228,66 @@ fn gltf_get_aabb(gltf: &gltf::Gltf, scene: &gltf::scene::Scene) -> [Point3<f32>;
     [min.into(), max.into()]
 }
 
+fn gltf_primitive_get_aabb(gltf: &gltf::Gltf, prim: &gltf::mesh::Primitive) -> [Point3<f32>; 2] {
+    use std::f32::{INFINITY, NEG_INFINITY};
+    let mut min = [INFINITY; 3];
+    let mut max = [NEG_INFINITY; 3];
+
+    gltf_primitive_enum_triangles(gltf, prim, |vertices| {
+        for &vert in &vertices {
+            for (i, &x) in array3(vert).iter().enumerate() {
+                min[i] = [min[i], x].fmin();
+                max[i] = [max[i], x].fmax();
+            }
+        }
+    });
+
+    [min.into(), max.into()]
+}
+
 fn gltf_enum_triangles(
     gltf: &gltf::Gltf,
     scene: &gltf::scene::Scene,
     mut tri_callback: impl FnMut([Point3<f32>; 3]),
 ) {
-    let blob = gltf.blob.as_ref().unwrap();
     for node in scene.nodes() {
         if let Some(mesh) = node.mesh() {
             let m = Matrix4::from(node.transform().matrix());
             for prim in mesh.primitives() {
-                let positions = prim.get(&gltf::Semantic::Positions).unwrap();
-                let indices = prim.indices().unwrap();
-
-                assert_eq!(positions.size(), 12);
-                assert_eq!(positions.data_type(), gltf::accessor::DataType::F32);
-
-                assert_eq!(indices.data_type(), gltf::accessor::DataType::U16);
-
-                for i in (0..indices.count()).step_by(3) {
-                    let idx: [u16; 3] = [
-                        vertex_fetch(&indices.view(), blob, i),
-                        vertex_fetch(&indices.view(), blob, i + 1),
-                        vertex_fetch(&indices.view(), blob, i + 2),
-                    ];
-                    let positions: [Point3<f32>; 3] = idx
-                        .map(|i| vertex_fetch::<[f32; 3]>(&positions.view(), blob, i as usize))
-                        .map(|v| v.into());
-
+                gltf_primitive_enum_triangles(gltf, &prim, |positions| {
                     tri_callback(positions.map(|p| m.transform_point(p)));
-                }
+                });
             }
         }
+    }
+}
+
+fn gltf_primitive_enum_triangles(
+    gltf: &gltf::Gltf,
+    prim: &gltf::mesh::Primitive,
+    mut tri_callback: impl FnMut([Point3<f32>; 3]),
+) {
+    let blob = gltf.blob.as_ref().unwrap();
+
+    let positions = prim.get(&gltf::Semantic::Positions).unwrap();
+    let indices = prim.indices().unwrap();
+
+    assert_eq!(positions.size(), 12);
+    assert_eq!(positions.data_type(), gltf::accessor::DataType::F32);
+
+    assert_eq!(indices.data_type(), gltf::accessor::DataType::U16);
+
+    for i in (0..indices.count()).step_by(3) {
+        let idx: [u16; 3] = [
+            vertex_fetch(&indices.view(), blob, i),
+            vertex_fetch(&indices.view(), blob, i + 1),
+            vertex_fetch(&indices.view(), blob, i + 2),
+        ];
+        let positions: [Point3<f32>; 3] = idx
+            .map(|i| vertex_fetch::<[f32; 3]>(&positions.view(), blob, i as usize))
+            .map(|v| v.into());
+
+        tri_callback(positions);
     }
 }
 
@@ -359,6 +387,7 @@ struct Mesh {
     vb: Vec<VertexBufferAny>,
     ib: IndexBufferAny,
     program: usize,
+    aabb: [Point3<f32>; 2],
 }
 
 #[derive(Debug)]
@@ -377,10 +406,16 @@ impl SceneRenderer {
                 let vb = VertexBuffer::new(facade, &verts).unwrap();
                 let ib = IndexBuffer::new(facade, PrimitiveType::TrianglesList, &indices).unwrap();
 
+                let size = ngs_terrain.size().cast::<f32>().unwrap();
+
                 let mesh = Mesh {
                     vb: vec![vb.into()],
                     ib: ib.into(),
                     program: 0,
+                    aabb: [
+                        Point3::new(0.0, 0.0, 0.0),
+                        Point3::new(size.x, size.y, size.z),
+                    ],
                 };
 
                 SceneInstance {
@@ -415,6 +450,7 @@ impl SceneRenderer {
                             vb: vec![positions, normals],
                             ib: ib_from_gltf_accessor(facade, blob, &indices),
                             program: 1,
+                            aabb: gltf_primitive_get_aabb(gltf, &prim),
                         });
                     }
                     index_map.insert(gltf_mesh.index(), mesh_indices);
@@ -454,6 +490,7 @@ impl SceneRenderer {
         instance: &SceneInstance,
         target: &mut impl Surface,
         pvm_matrix: Matrix4<f32>,
+        mut filter: impl FnMut(Matrix4<f32>, [Vector4<f32>; 2]) -> bool,
     ) {
         let params = glium::DrawParameters {
             depth: glium::Depth {
@@ -465,11 +502,16 @@ impl SceneRenderer {
         };
 
         for mesh_instance in instance.mesh_instances.iter() {
+            let mesh = &instance.meshes[mesh_instance.mesh_index];
+
+            let aabb = [mesh.aabb[0].to_homogeneous(), mesh.aabb[1].to_homogeneous()];
+            if !filter(mesh_instance.transform, aabb) {
+                continue;
+            }
+
             let uniforms = uniform! {
                 u_matrix: array4x4(pvm_matrix * mesh_instance.transform),
             };
-
-            let mesh = &instance.meshes[mesh_instance.mesh_index];
 
             match &mesh.vb[..] {
                 [vb1] => {

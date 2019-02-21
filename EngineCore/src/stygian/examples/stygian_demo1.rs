@@ -3,7 +3,8 @@
 //
 // This source code is a part of Nightingales.
 //
-use cgmath::{prelude::*, vec2, vec3, Matrix3, Matrix4, Point2, Point3, Vector3};
+use alt_fp::FloatOrdSet;
+use cgmath::{prelude::*, vec2, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Vector3, Vector4};
 use glium::{backend::Facade, glutin, Surface};
 use std::time::Instant;
 
@@ -190,7 +191,7 @@ impl State {
     }
 
     fn view_matrix(&self) -> Matrix4<f32> {
-        use cgmath::{vec4, Basis3, Rad};
+        use cgmath::{Basis3, Rad};
         let basis = Basis3::from_angle_x(Rad(std::f32::consts::FRAC_PI_2))
             * Basis3::from_angle_y(Rad(self.angle.z))
             * Basis3::from_angle_x(Rad(self.angle.x))
@@ -367,8 +368,15 @@ impl Renderer {
         let vp_matrix = Matrix4::from_nonuniform_scale(0.9, 0.9, 1.0);
 
         let camera_matrix = vp_matrix * params.camera_matrix;
-        self.scene_renderer
-            .draw_scene(&self.scene_instance, target, camera_matrix);
+        let query = stygian::QueryContext::new(&self.sty_depth);
+        self.scene_renderer.draw_scene(
+            &self.scene_instance,
+            target,
+            camera_matrix,
+            |transform, ms_aabb| {
+                query.query_cs_aabb(transform_aabb(ms_aabb, params.camera_matrix * transform))
+            },
+        );
 
         // Draw a HUD
         self.linedraw.push(
@@ -470,4 +478,58 @@ fn scalar_to_color(x: f32) -> [u8; 4] {
     let b = b_map[i] as f32 * (1.0 - f) + b_map[i + 1] as f32 * f;
 
     [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, 255]
+}
+
+fn transform_aabb(aabb: [Vector4<f32>; 2], m: Matrix4<f32>) -> [Vector4<f32>; 2] {
+    debug_assert_eq!(aabb[0].w, aabb[1].w);
+
+    let p = [
+        m * vec4(aabb[0].x, aabb[0].y, aabb[0].z, aabb[0].w),
+        m * vec4(aabb[0].x, aabb[0].y, aabb[1].z, aabb[0].w),
+        m * vec4(aabb[0].x, aabb[1].y, aabb[0].z, aabb[0].w),
+        m * vec4(aabb[0].x, aabb[1].y, aabb[1].z, aabb[0].w),
+        m * vec4(aabb[1].x, aabb[0].y, aabb[0].z, aabb[0].w),
+        m * vec4(aabb[1].x, aabb[0].y, aabb[1].z, aabb[0].w),
+        m * vec4(aabb[1].x, aabb[1].y, aabb[0].z, aabb[0].w),
+        m * vec4(aabb[1].x, aabb[1].y, aabb[1].z, aabb[0].w),
+    ];
+
+    [
+        vec4(
+            [
+                p[0].x, p[1].x, p[2].x, p[3].x, p[4].x, p[5].x, p[6].x, p[7].x,
+            ]
+            .fmin(),
+            [
+                p[0].y, p[1].y, p[2].y, p[3].y, p[4].y, p[5].y, p[6].y, p[7].y,
+            ]
+            .fmin(),
+            [
+                p[0].z, p[1].z, p[2].z, p[3].z, p[4].z, p[5].z, p[6].z, p[7].z,
+            ]
+            .fmin(),
+            [
+                p[0].w, p[1].w, p[2].w, p[3].w, p[4].w, p[5].w, p[6].w, p[7].w,
+            ]
+            .fmin(),
+        ),
+        vec4(
+            [
+                p[0].x, p[1].x, p[2].x, p[3].x, p[4].x, p[5].x, p[6].x, p[7].x,
+            ]
+            .fmax(),
+            [
+                p[0].y, p[1].y, p[2].y, p[3].y, p[4].y, p[5].y, p[6].y, p[7].y,
+            ]
+            .fmax(),
+            [
+                p[0].z, p[1].z, p[2].z, p[3].z, p[4].z, p[5].z, p[6].z, p[7].z,
+            ]
+            .fmax(),
+            [
+                p[0].w, p[1].w, p[2].w, p[3].w, p[4].w, p[5].w, p[6].w, p[7].w,
+            ]
+            .fmax(),
+        ),
+    ]
 }
