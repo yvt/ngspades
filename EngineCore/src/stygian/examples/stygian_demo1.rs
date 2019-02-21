@@ -6,6 +6,7 @@
 use alt_fp::FloatOrdSet;
 use cgmath::{prelude::*, vec2, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Vector3, Vector4};
 use glium::{backend::Facade, glutin, Surface};
+use imgui::ImGui;
 use std::time::Instant;
 
 use stygian;
@@ -47,6 +48,7 @@ fn main() {
     };
 
     let mut state = State::new(&scene);
+    let mut imgui = ImGui::init();
 
     let mut events_loop = glutin::EventsLoop::new();
     let window = glutin::WindowBuilder::new();
@@ -54,7 +56,8 @@ fn main() {
         .with_depth_buffer(24)
         .with_vsync(true);
     let display = glium::Display::new(window, context, &events_loop).unwrap();
-    let mut renderer = Renderer::new(&display, &scene);
+    let mut renderer = Renderer::new(&display, &mut imgui, &scene);
+    let window = display.gl_window();
 
     use glutin::{ElementState, Event, VirtualKeyCode, WindowEvent};
 
@@ -63,27 +66,36 @@ fn main() {
     let mut keep_running = true;
 
     while keep_running {
-        events_loop.poll_events(|event| match event {
-            Event::WindowEvent { event, .. } => {
-                state.handle_event(&event);
+        events_loop.poll_events(|event| {
+            imgui_winit_support::handle_event(
+                &mut imgui,
+                &event,
+                window.get_hidpi_factor(),
+                window.get_hidpi_factor(),
+            );
 
-                match event {
-                    WindowEvent::CloseRequested => {
-                        keep_running = false;
-                    }
-                    WindowEvent::KeyboardInput { input, .. } => match input.state {
-                        ElementState::Pressed => match input.virtual_keycode {
-                            Some(VirtualKeyCode::Escape) => {
-                                keep_running = false;
-                            }
+            match event {
+                Event::WindowEvent { event, .. } => {
+                    state.handle_event(&event);
+
+                    match event {
+                        WindowEvent::CloseRequested => {
+                            keep_running = false;
+                        }
+                        WindowEvent::KeyboardInput { input, .. } => match input.state {
+                            ElementState::Pressed => match input.virtual_keycode {
+                                Some(VirtualKeyCode::Escape) => {
+                                    keep_running = false;
+                                }
+                                _ => (),
+                            },
                             _ => (),
                         },
                         _ => (),
-                    },
-                    _ => (),
+                    }
                 }
+                _ => (),
             }
-            _ => (),
         });
 
         let delta_time = last_time.elapsed();
@@ -92,10 +104,15 @@ fn main() {
         let delta_time = delta_time.subsec_nanos() as f32 * 1.0e-9;
 
         state.update(delta_time);
+        let ui = state.ui(
+            &mut imgui,
+            imgui_winit_support::get_frame_size(&window, window.get_hidpi_factor()).unwrap(),
+            delta_time,
+        );
 
         // drawing a frame
         let mut target = display.draw();
-        renderer.render(&state, &mut target);
+        renderer.render(&state, ui, &mut target);
 
         target.finish().unwrap();
 
@@ -108,7 +125,6 @@ fn main() {
     }
 }
 
-#[derive(Debug)]
 struct State {
     eye: Vector3<f32>,
     velocity: Vector3<f32>,
@@ -116,6 +132,7 @@ struct State {
     angular_velocity: Vector3<f32>,
     keys: [bool; 16],
     mode: RenderMode,
+    demo_window_open: bool,
 }
 
 impl State {
@@ -127,6 +144,7 @@ impl State {
             angular_velocity: Vector3::zero(),
             keys: [false; 16],
             mode: RenderMode::default(),
+            demo_window_open: true,
         }
     }
 
@@ -188,6 +206,19 @@ impl State {
         } else if self.keys[3] {
             self.angular_velocity.z -= 5.0 * dt;
         }
+    }
+
+    fn ui<'ui, 'a: 'ui>(
+        &mut self,
+        imgui: &'a mut ImGui,
+        frame_size: imgui::FrameSize,
+        dt: f32,
+    ) -> imgui::Ui<'ui> {
+        let ui = imgui.frame(frame_size, dt);
+
+        ui.show_demo_window(&mut self.demo_window_open);
+
+        ui
     }
 
     fn view_matrix(&self) -> Matrix4<f32> {
@@ -292,6 +323,8 @@ struct RenderParams {
 }
 
 struct Renderer {
+    imgui_renderer: imgui_glium_renderer::Renderer,
+
     scene_renderer: lib::scene::SceneRenderer,
     scene_instance: lib::scene::SceneInstance,
 
@@ -306,7 +339,9 @@ struct Renderer {
 }
 
 impl Renderer {
-    fn new(facade: &impl Facade, scene: &lib::scene::Scene) -> Self {
+    fn new(facade: &impl Facade, imgui: &mut ImGui, scene: &lib::scene::Scene) -> Self {
+        let imgui_renderer = imgui_glium_renderer::Renderer::init(imgui, facade).unwrap();
+
         let scene_renderer = lib::scene::SceneRenderer::new(facade);
         let scene_instance = scene_renderer.prepare_scene(facade, scene);
 
@@ -316,6 +351,8 @@ impl Renderer {
         let sty_depth = stygian::DepthImage::new(vec2(64, 64));
 
         Self {
+            imgui_renderer,
+
             scene_renderer,
             scene_instance,
 
@@ -330,7 +367,7 @@ impl Renderer {
         }
     }
 
-    fn render(&mut self, state: &State, target: &mut impl Surface) {
+    fn render(&mut self, state: &State, ui: imgui::Ui, target: &mut impl Surface) {
         let params = state.render_params(4.0 / 3.0);
 
         // Set up the Stygian internal state tracing for visualization
@@ -449,6 +486,8 @@ impl Renderer {
         }
 
         self.linedraw.flush(target);
+
+        self.imgui_renderer.render(target, ui).unwrap();
 
         self.fps_counter.log(1.0);
     }

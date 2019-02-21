@@ -29,12 +29,10 @@ lazy_static = "1.1"
 xz-decom = "0.2.0"
 gltf = "0.11.2"
 pod = "0.5.0"
-
-[dev-dependencies.glium]
-git = "https://github.com/yvt/glium"
-# “Remove an assertion as a temporary work-around for #1721”
-# #1721: <https://github.com/glium/glium/issues/1721>
-rev = "8f5354483d22a5617c2258a68f7cb0660e5d3b9a"
+imgui = "0.0.22"
+imgui-winit-support = "0.0.22"
+imgui-glium-renderer = "0.0.22"
+glium = "0.23"
 
 [[bench]]
 name = "terrainrast"

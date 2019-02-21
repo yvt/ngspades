@@ -60,3 +60,9 @@ debug = true
 lto = true
 debug = true
 incremental = false
+
+[patch.crates-io.glium]
+git = "https://github.com/yvt/glium"
+# “Remove an assertion as a temporary work-around for #1721”
+# #1721: <https://github.com/glium/glium/issues/1721>
+rev = "8f5354483d22a5617c2258a68f7cb0660e5d3b9a"

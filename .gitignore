@@ -28,3 +28,4 @@ x64/
 /Ngs.Application/*.dylib
 /Ngs.Application/*.so
 /Ngs.Application/*.dll
+imgui.ini
