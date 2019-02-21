@@ -6,6 +6,7 @@
 use cgmath::Vector2;
 
 /// A depth image on memory.
+#[derive(Debug)]
 pub struct DepthImage {
     pub(crate) image: Vec<f32>,
     size: Vector2<usize>,
