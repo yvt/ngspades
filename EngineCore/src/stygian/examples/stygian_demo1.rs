@@ -49,6 +49,7 @@ fn main() {
 
     let mut state = State::new(&scene);
     let mut imgui = ImGui::init();
+    let mut metrics = Metrics::new();
 
     let mut events_loop = glutin::EventsLoop::new();
     let window = glutin::WindowBuilder::new();
@@ -107,21 +108,15 @@ fn main() {
         let ui = state.ui(
             &mut imgui,
             imgui_winit_support::get_frame_size(&window, window.get_hidpi_factor()).unwrap(),
+            &metrics,
             delta_time,
         );
 
         // drawing a frame
         let mut target = display.draw();
-        renderer.render(&state, ui, &mut target);
+        renderer.render(&state, ui, &mut metrics, &mut target);
 
         target.finish().unwrap();
-
-        let title = format!(
-            "Stygian demo app 1 [{:.2} fps] [{:?}]",
-            renderer.fps_counter.rate(),
-            state.mode,
-        );
-        display.gl_window().set_title(&title);
     }
 }
 
@@ -209,6 +204,7 @@ impl State {
         &mut self,
         imgui: &'a mut ImGui,
         frame_size: imgui::FrameSize,
+        metrics: &Metrics,
         dt: f32,
     ) -> imgui::Ui<'ui> {
         let ui = imgui.frame(frame_size, dt);
@@ -217,6 +213,12 @@ impl State {
             .always_auto_resize(true)
             .build(|| {
                 imgui_iter_values_combo(&ui, im_str!("Render mode"), &mut self.mode);
+            });
+
+        ui.window(im_str!("Metrics"))
+            .always_auto_resize(true)
+            .build(|| {
+                ui.text(format!("{:.2} fps", metrics.fps_counter.rate()));
             });
 
         ui
@@ -328,6 +330,19 @@ impl PerfCounter {
 }
 
 #[derive(Debug)]
+struct Metrics {
+    fps_counter: PerfCounter,
+}
+
+impl Metrics {
+    fn new() -> Self {
+        Metrics {
+            fps_counter: PerfCounter::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
 struct RenderParams {
     camera_matrix: Matrix4<f32>,
 }
@@ -344,8 +359,6 @@ struct Renderer {
     sty_model_matrix: Matrix4<f32>,
 
     linedraw: lib::linedraw::LineDraw,
-
-    fps_counter: PerfCounter,
 }
 
 impl Renderer {
@@ -372,12 +385,16 @@ impl Renderer {
             sty_model_matrix,
 
             linedraw: lib::linedraw::LineDraw::new(facade),
-
-            fps_counter: PerfCounter::new(),
         }
     }
 
-    fn render(&mut self, state: &State, ui: imgui::Ui, target: &mut impl Surface) {
+    fn render(
+        &mut self,
+        state: &State,
+        ui: imgui::Ui,
+        metrics: &mut Metrics,
+        target: &mut impl Surface,
+    ) {
         let params = state.render_params(4.0 / 3.0);
 
         // Set up the Stygian internal state tracing for visualization
@@ -499,7 +516,7 @@ impl Renderer {
 
         self.imgui_renderer.render(target, ui).unwrap();
 
-        self.fps_counter.log(1.0);
+        metrics.fps_counter.log(1.0);
     }
 }
 
