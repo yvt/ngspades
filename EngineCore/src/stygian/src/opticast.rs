@@ -18,8 +18,8 @@ use crate::{
 
 /// Perfom a beam casting and create a 1D depth image.
 ///
-/// `skip_buffer` is a temporary buffer that must have `output_depth.len() + 1`
-/// elements. They don't have to be initialized.
+/// `cov_buffer` is a coverage buffer that must have `output_depth.len()`
+/// elements.
 #[inline(never)]
 pub fn opticast(
     terrain: &Terrain,
