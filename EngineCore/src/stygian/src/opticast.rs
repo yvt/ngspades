@@ -5,16 +5,45 @@
 //
 use alt_fp::{fma, u16_to_f32, u23_to_f32, FloatOrdSet};
 use cgmath::{prelude::*, vec2, vec4, Matrix4, Point3, Vector4};
+use lazy_static::lazy_static;
 use packed_simd::f32x4;
-use std::ops::Range;
+use prefetch::prefetch as pf;
+use std::{mem::uninitialized, ops::Range};
 
 use crate::{
     cov::{CovBuffer, CovPainter},
-    debug::Trace,
     mipbeamcast::{mipbeamcast, F_FAC_F},
-    terrain::Terrain,
+    terrain::{Span, Terrain},
     DEPTH_FAR,
 };
+
+#[derive(Debug)]
+struct OpticastIncidence {
+    /// This is actually a reference whose lifetime is tied to the body of
+    /// `opticast`. However, the caller cannot pre-allocate
+    /// `Vec<OpticastIncidence>` if this is defined as a reference.
+    row: *const Vec<Span>,
+    /// Ditto.
+    row_slice: *const [Span],
+    distance_range: [f32; 2],
+}
+
+/// The number of iterations between prefetching a row pointer and row contents.
+const ROW_PREFETCH_DELAY: usize = 4;
+
+#[derive(Debug)]
+pub struct OpticastIncidenceBuffer(Vec<OpticastIncidence>);
+
+impl OpticastIncidenceBuffer {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self::with_capacity(ROW_PREFETCH_DELAY)
+    }
+
+    pub fn with_capacity(size: usize) -> Self {
+        Self(Vec::with_capacity(size + ROW_PREFETCH_DELAY))
+    }
+}
 
 /// Perfom a beam casting and create a 1D depth image.
 ///
@@ -30,7 +59,7 @@ pub fn opticast(
     eye: Point3<f32>,
     output_depth: &mut [f32],
     cov_buffer: &mut impl CovBuffer,
-    trace: &mut impl Trace,
+    incidence_buffer: &mut OpticastIncidenceBuffer,
 ) {
     if output_depth.len() == 0 {
         return;
@@ -100,7 +129,27 @@ pub fn opticast(
     projection.z.y *= output_depth.len() as f32;
     projection.w.y *= output_depth.len() as f32;
 
+    let incidence_buffer = &mut incidence_buffer.0;
+    incidence_buffer.truncate(ROW_PREFETCH_DELAY);
+
+    lazy_static! {
+        static ref INVALID_ROW: Vec<Span> = vec![0..0];
+    }
+    let invalid_row = &*INVALID_ROW;
+    pf::prefetch::<pf::Read, pf::High, pf::Data, _>(invalid_row);
+
+    if incidence_buffer.len() < ROW_PREFETCH_DELAY {
+        for _ in 0..ROW_PREFETCH_DELAY {
+            incidence_buffer.push(OpticastIncidence {
+                row: invalid_row,
+                row_slice: invalid_row.as_slice(),
+                distance_range: Default::default(),
+            })
+        }
+    }
+
     // Main loop
+    let mut includes_start = false;
     mipbeamcast(
         terrain.size().truncate().cast().unwrap(),
         terrain.levels.len() as u32,
@@ -132,12 +181,6 @@ pub fn opticast(
             (preproc, local_dir_primary, local_eye_dist)
         },
         |incidence, &mut (preproc, local_dir_primary, local_eye_dist)| {
-            // Localize captured variables. This does have an impact on the
-            // generated assembly code.
-            let output_depth = &mut output_depth[..];
-            let cov_buffer = &mut *cov_buffer;
-            let (eye, projection) = (eye, projection);
-
             // Get the row
             let cell = incidence.cell(&preproc);
 
@@ -183,63 +226,6 @@ pub fn opticast(
             });
             let intersction_dists = [intersction_dists[0].fmax(), intersction_dists[1].fmin()];
 
-            if incidence.includes_start {
-                // The camera is inside this row. Draw the floor/ceiling instead.
-                let floor_ceil = floor_and_ceiling_of_row(eye.z, row);
-
-                for (i, &z) in floor_ceil.iter().enumerate() {
-                    if z == NO_FLOOR_CEILING {
-                        continue;
-                    }
-
-                    let z = u23_to_f32(z);
-                    // let span_near_dist = 0.0; // just below/above of the camera!
-                    let span_far_dist = intersction_dists[1];
-
-                    let mut p1 = projection.w + projection.z * z /*+ projection.x * span_near_dist*/;
-                    let mut p2 = projection.w + projection.z * z + projection.x * span_far_dist;
-
-                    // Apply the lateral projection matrix.
-                    // The left and right edges have different Z values. The matrix
-                    // compensates for that.
-                    let p1_lat = /*lateral_projection.x * span_near_dist +*/ lateral_projection.z * z;
-                    let p2_lat = lateral_projection.x * span_far_dist + lateral_projection.z * z;
-                    // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
-                    // Use this approximation to find the minimum Z value for each
-                    // of the top and bottom edges.
-                    p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
-                    p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
-
-                    // Clip the line segment by the plane `z == w` (near plane)
-                    let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
-                        (p1, p2)
-                    } else {
-                        // Completely clipped
-                        continue;
-                    };
-
-                    // Rasterize the span
-                    let (mut p1, mut p2) =
-                        (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
-
-                    // `p1.y` should be already close enough to one of the ends, but
-                    // snap the value so that no gaps can be seen
-                    p1.y = [0.0, output_depth.len() as f32][i];
-
-                    if p1.y > p2.y {
-                        std::mem::swap(&mut p1.y, &mut p2.y);
-                        std::mem::swap(&mut p1.z, &mut p2.z);
-                    }
-
-                    unsafe {
-                        paint_span(p1, p2, &mut output_depth[..], &mut *cov_buffer);
-                    }
-                }
-
-                return false;
-            }
-            // Otherwise...
-
             // Check termination
             if (terminate_factor * intersction_dists[0])
                 .ge(terminate_ref)
@@ -248,58 +234,151 @@ pub fn opticast(
                 return true;
             }
 
-            // Rasterize spans
-            for span in row.iter() {
-                // TODO: Calculations done here fail to be vectorized - figure
-                //       out how to make it SIMD-friendly or use SIMD explicitly
-                let z1 = u16_to_f32(span.start);
-                let z2 = u16_to_f32(span.end);
+            let incidence_buffer = &mut *incidence_buffer;
+            incidence_buffer.push(OpticastIncidence {
+                row,
+                row_slice: unsafe { uninitialized() },
+                distance_range: intersction_dists,
+            });
 
-                // Find the “reverse” AABB (like the incircle of a triangle)
-                let bottom_above_eye = z1 > eye.z;
-                let top_below_eye = z2 < eye.z;
-                let span_bottom_dist = intersction_dists[bottom_above_eye as usize];
-                let span_top_dist = intersction_dists[top_below_eye as usize];
+            // Prefetch the row
+            pf::prefetch::<pf::Read, pf::High, pf::Data, _>(row);
 
-                let mut p1 = projection.w + projection.x * span_bottom_dist + projection.z * z1;
-                let mut p2 = projection.w + projection.x * span_top_dist + projection.z * z2;
+            // Prefetch the row contents from a previous iteration
+            {
+                let len = incidence_buffer.len();
+                let prev_incidence =
+                    unsafe { incidence_buffer.get_unchecked_mut(len - ROW_PREFETCH_DELAY) };
+                let slice = unsafe { &*prev_incidence.row }.as_slice();
+                prev_incidence.row_slice = slice;
 
-                // Apply the lateral projection matrix.
-                // The left and right edges have different Z values. The matrix
-                // compensates for that.
-                let p1_lat = lateral_projection.x * span_bottom_dist + lateral_projection.z * z1;
-                let p2_lat = lateral_projection.x * span_top_dist + lateral_projection.z * z2;
-                // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
-                // Use this approximation to find the minimum Z value for each
-                // of the top and bottom edges.
-                p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
-                p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
-
-                // Clip the line segment by the plane `z == w` (near plane)
-                let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
-                    (p1, p2)
-                } else {
-                    // Completely clipped
-                    continue;
-                };
-
-                // Rasterize the span
-                let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
-                trace.opticast_span(
-                    cell.pos_min().cast().unwrap(),
-                    2 << cell.mip,
-                    span.start as u32..span.end as u32,
-                );
-
-                unsafe {
-                    paint_span(p1, p2, &mut output_depth[..], &mut *cov_buffer);
-                }
+                pf::prefetch::<pf::Read, pf::Medium, pf::Data, _>(slice.as_ptr());
             }
+
+            includes_start |= incidence.includes_start;
 
             // Do not terminate the beam casting yet...
             false
         },
     );
+
+    // Process pending prefetches
+    for i in 0..ROW_PREFETCH_DELAY {
+        let len = incidence_buffer.len();
+        let prev_incidence =
+            unsafe { incidence_buffer.get_unchecked_mut(len - ROW_PREFETCH_DELAY + i) };
+        let slice = unsafe { &*prev_incidence.row }.as_slice();
+        prev_incidence.row_slice = slice;
+
+        pf::prefetch::<pf::Read, pf::Medium, pf::Data, _>(slice.as_ptr());
+    }
+
+    // Process incidences
+    let mut it = incidence_buffer[ROW_PREFETCH_DELAY..].iter();
+    if includes_start {
+        let first_incidence = it.next().unwrap();
+        let row = unsafe { &*first_incidence.row };
+
+        // The camera is inside this row. Draw the floor/ceiling instead.
+        let floor_ceil = floor_and_ceiling_of_row(eye.z, row);
+
+        for (i, &z) in floor_ceil.iter().enumerate() {
+            if z == NO_FLOOR_CEILING {
+                continue;
+            }
+
+            let z = u23_to_f32(z);
+            // let span_near_dist = 0.0; // just below/above of the camera!
+            let span_far_dist = first_incidence.distance_range[1];
+
+            let mut p1 = projection.w + projection.z * z /*+ projection.x * span_near_dist*/;
+            let mut p2 = projection.w + projection.z * z + projection.x * span_far_dist;
+
+            // Apply the lateral projection matrix.
+            // The left and right edges have different Z values. The matrix
+            // compensates for that.
+            let p1_lat = /*lateral_projection.x * span_near_dist +*/ lateral_projection.z * z;
+            let p2_lat = lateral_projection.x * span_far_dist + lateral_projection.z * z;
+            // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
+            // Use this approximation to find the minimum Z value for each
+            // of the top and bottom edges.
+            p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
+            p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
+
+            // Clip the line segment by the plane `z == w` (near plane)
+            let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
+                (p1, p2)
+            } else {
+                // Completely clipped
+                continue;
+            };
+
+            // Rasterize the span
+            let (mut p1, mut p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+
+            // `p1.y` should be already close enough to one of the ends, but
+            // snap the value so that no gaps can be seen
+            p1.y = [0.0, output_depth.len() as f32][i];
+
+            if p1.y > p2.y {
+                std::mem::swap(&mut p1.y, &mut p2.y);
+                std::mem::swap(&mut p1.z, &mut p2.z);
+            }
+
+            unsafe {
+                paint_span(p1, p2, &mut output_depth[..], &mut *cov_buffer);
+            }
+        }
+    }
+
+    // Process the rest of the incidences
+    while let Some(incidence) = it.next() {
+        let row = unsafe { &*incidence.row_slice };
+
+        // Rasterize spans
+        let mut spans = row.iter();
+        while let Some(span) = spans.next() {
+            // TODO: Calculations done here fail to be vectorized - figure
+            //       out how to make it SIMD-friendly or use SIMD explicitly
+            let z1 = u16_to_f32(span.start);
+            let z2 = u16_to_f32(span.end);
+
+            // Find the “reverse” AABB (like the incircle of a triangle)
+            let bottom_above_eye = z1 > eye.z;
+            let top_below_eye = z2 < eye.z;
+            let span_bottom_dist = incidence.distance_range[bottom_above_eye as usize];
+            let span_top_dist = incidence.distance_range[top_below_eye as usize];
+
+            let mut p1 = projection.w + projection.x * span_bottom_dist + projection.z * z1;
+            let mut p2 = projection.w + projection.x * span_top_dist + projection.z * z2;
+
+            // Apply the lateral projection matrix.
+            // The left and right edges have different Z values. The matrix
+            // compensates for that.
+            let p1_lat = lateral_projection.x * span_bottom_dist + lateral_projection.z * z1;
+            let p2_lat = lateral_projection.x * span_top_dist + lateral_projection.z * z2;
+            // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
+            // Use this approximation to find the minimum Z value for each
+            // of the top and bottom edges.
+            p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
+            p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
+
+            // Clip the line segment by the plane `z == w` (near plane)
+            let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
+                (p1, p2)
+            } else {
+                // Completely clipped
+                continue;
+            };
+
+            // Rasterize the span
+            let (p1, p2) = (Point3::from_homogeneous(p1), Point3::from_homogeneous(p2));
+
+            unsafe {
+                paint_span(p1, p2, &mut output_depth[..], &mut *cov_buffer);
+            }
+        }
+    }
 
     // Draw sky
     cov_buffer.paint_all(SkyPainter {
@@ -455,7 +534,7 @@ mod tests {
             eye,
             &mut output_depth,
             &mut cov_buffer,
-            &mut crate::NoTrace,
+            &mut OpticastIncidenceBuffer::new(),
         );
 
         dbg!(&output_depth[..]);
@@ -522,7 +601,7 @@ mod tests {
             eye,
             &mut output_depth,
             &mut cov_buffer,
-            &mut crate::NoTrace,
+            &mut OpticastIncidenceBuffer::new(),
         );
 
         dbg!(&output_depth[..]);

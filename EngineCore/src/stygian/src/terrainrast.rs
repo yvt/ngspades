@@ -9,13 +9,13 @@ use arrayvec::ArrayVec;
 use cgmath::{prelude::*, vec3, vec4, Matrix3, Matrix4, Point3, Rad, Vector2, Vector3, Vector4};
 use itertools::Itertools;
 use packed_simd::{f32x4, i32x4, shuffle, Cast};
-use std::{f32::consts::PI, ops::Range};
+use std::{cmp::max, f32::consts::PI, ops::Range};
 
 use crate::{
     cov::{BitArray, CovBuffer},
     debug::{NoTrace, Trace},
     depthimage::DepthImage,
-    opticast::opticast,
+    opticast::{opticast, OpticastIncidenceBuffer},
     terrain::Terrain,
     utils::{
         geom::{
@@ -368,6 +368,9 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
 
     /// `update_with` with tracing.
     pub fn update_with_trace(&mut self, terrain: &Terrain, mut trace: impl Trace) {
+        let mut incidence_buffer =
+            OpticastIncidenceBuffer::with_capacity(max(terrain.size().x, terrain.size().y) * 3);
+
         for beam in self.beams.iter() {
             opticast(
                 terrain,
@@ -378,7 +381,7 @@ impl<Cov: CovBuffer> TerrainRast<Cov> {
                 self.eye,
                 &mut self.samples[beam.samples_start..][..beam.num_samples],
                 &mut self.cov_buffer,
-                &mut trace,
+                &mut incidence_buffer,
             );
         }
 

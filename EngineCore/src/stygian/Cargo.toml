@@ -21,6 +21,8 @@ bitflags = "1.0.4"
 parking_lot = { version = "0.7", optional = true }
 ndarray = { version = "0.12.1", optional = true }
 iterpool = { path = "../support/iterpool", optional = true }
+prefetch = "0.2.0"
+lazy_static = "1.1"
 
 [dev-dependencies]
 bencher = "0.1.5"
