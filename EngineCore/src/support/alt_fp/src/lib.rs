@@ -8,6 +8,7 @@
 pub mod cast;
 pub mod cmp;
 pub mod fma;
+pub mod simd;
 
 #[doc(no_inline)]
-pub use self::{cast::*, cmp::*, fma::*};
+pub use self::{cast::*, cmp::*, fma::*, simd::*};

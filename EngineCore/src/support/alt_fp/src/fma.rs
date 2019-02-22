@@ -7,6 +7,7 @@
 //! operations (involving a change in the precision and a slight but not
 //! drastic loss in the performance).
 use std::ops::{Add, Mul, Neg, Sub};
+use packed_simd::f32x4;
 
 /// Implements fused mutliply-add with an unfused fall-back.
 ///
@@ -68,6 +69,17 @@ impl Fma for f64 {
     #[inline]
     fn fmsub(self, a: Self, b: Self) -> Self {
         self.mul_add(a, -b)
+    }
+}
+
+impl Fma for f32x4 {
+    #[inline]
+    fn fmadd(self, a: Self, b: Self) -> Self {
+        self.mul_adde(a, b)
+    }
+    #[inline]
+    fn fmsub(self, a: Self, b: Self) -> Self {
+        self.mul_adde(a, -b)
     }
 }
 

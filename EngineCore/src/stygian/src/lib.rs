@@ -26,6 +26,7 @@
 //!
 #![feature(asm)]
 #![feature(alloc_layout_extra)]
+#![feature(type_ascription)]
 mod debug;
 mod depthimage;
 mod mipbeamcast;

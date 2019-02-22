@@ -3,10 +3,10 @@
 //
 // This source code is a part of Nightingales.
 //
-use alt_fp::{fma, u16_to_f32, u23_to_f32, FloatOrdSet};
+use alt_fp::{fma, u16_to_f32, u23_to_f32, FloatOrdSet, SimdExt};
 use cgmath::{prelude::*, vec2, vec4, Matrix4, Point3, Vector4};
 use lazy_static::lazy_static;
-use packed_simd::f32x4;
+use packed_simd::{f32x4, i32x4, shuffle};
 use prefetch::prefetch as pf;
 use std::{mem::uninitialized, ops::Range};
 
@@ -197,34 +197,65 @@ pub fn opticast(
             let row = unsafe { level.rows.get_unchecked(row_index) };
 
             // Find the left/right-most intersections
-            use array::Array2;
-            let intersections = incidence
-                .intersections_raw
-                .map(|x| x.map(|x| vec2(x.x as f32, x.y as f32) * (1.0 / F_FAC_F)));
-            let cell_raw_pos_f = incidence.cell_raw.pos_min().cast::<f32>().unwrap();
-            let cell_size = incidence.cell_raw.size();
-            let cell_size_f = u23_to_f32(cell_size as u32);
+            use packed_simd::Cast;
+            let cell_raw_pos = incidence.cell_raw.pos_min();
+            let cell_raw_pos = i32x4::new(cell_raw_pos.x, cell_raw_pos.y, 0, 0);
+            let cell_raw_pos_f: f32x4 = cell_raw_pos.cast();
+            let cell_size_f = incidence.cell_raw.size_f();
+
+            let local_dir_primary_s =
+                f32x4::new(local_dir_primary.x, local_dir_primary.y, 0.0, 0.0);
+
+            let intersections_x = i32x4::new(
+                incidence.intersections_raw[0][0].x, // beam1, enter
+                incidence.intersections_raw[1][0].x, // beam1, leave
+                incidence.intersections_raw[0][1].x, // beam2, enter
+                incidence.intersections_raw[1][1].x, // beam2, leave
+            );
+            let intersections_y = i32x4::new(
+                incidence.intersections_raw[0][0].y,
+                incidence.intersections_raw[1][0].y,
+                incidence.intersections_raw[0][1].y,
+                incidence.intersections_raw[1][1].y,
+            );
+            let intersections_x = intersections_x.cast(): f32x4 * (1.0 / F_FAC_F);
+            let mut intersections_y = intersections_y.cast(): f32x4 * (1.0 / F_FAC_F);
+
+            if preproc.slope2_neg() {
+                intersections_y = shuffle!(
+                    intersections_y,
+                    f32x4::splat(cell_size_f) - intersections_y,
+                    [0, 1, 6, 7]
+                );
+            }
+
+            // `dot(cell_raw_pos_f, dir_primary) - local_eye_dist`
+            let cell_dist = local_dir_primary_s.dot2_splat(cell_raw_pos_f) - local_eye_dist;
 
             // `dot(x, dir_primary)` for each intersections of the beam and the cell
-            let intersction_dists = intersections.map(|[i1, i2]| {
-                [
-                    local_dir_primary.dot(cell_raw_pos_f) - local_eye_dist
-                        + local_dir_primary.y * cell_size_f
-                        + local_dir_primary.x * cell_size_f
-                        - i1.dot(local_dir_primary),
-                    if preproc.slope2_neg() {
-                        local_dir_primary.dot(cell_raw_pos_f) - local_eye_dist
-                            + local_dir_primary.x * cell_size_f
-                            - (i2.x * local_dir_primary.x - i2.y * local_dir_primary.y)
-                    } else {
-                        local_dir_primary.dot(cell_raw_pos_f) - local_eye_dist
-                            + local_dir_primary.y * cell_size_f
-                            + local_dir_primary.x * cell_size_f
-                            - (i2.x * local_dir_primary.x + i2.y * local_dir_primary.y)
-                    },
-                ]
-            });
-            let intersction_dists = [intersction_dists[0].fmax(), intersction_dists[1].fmin()];
+            //
+            //     dot(x, dir_primary) - local_eye_dist
+            //      = dot(cell_raw_pos_f
+            //            + [cell_size_f - intersection_x, cell_size_f - intersection_y],
+            //          dir_primary) - local_eye_dist
+            //      = dot(cell_raw_pos_f, dir_primary) - local_eye_dist
+            //        + dot([cell_size_f, cell_size_f], dir_primary)
+            //        - dot([intersection_x, intersection_y], dir_primary)
+            //      = cell_dist
+            //        + dot([cell_size_f, cell_size_f], dir_primary)
+            //        - dot([intersection_x, intersection_y], dir_primary)
+            //
+            let intersction_dists = cell_dist
+                + f32x4::splat(cell_size_f).dot2_splat(local_dir_primary_s)
+                - fma![
+                    intersections_x * (f32x4::splat(local_dir_primary.x))
+                        + (intersections_y * f32x4::splat(local_dir_primary.y))
+                ];
+
+            // let intersction_dists = [intersction_dists[0].fmax(), intersction_dists[1].fmin()];
+            let d1 = intersction_dists;
+            let d2 = shuffle!(d1, [2, 3, 0, 1]);
+            let intersction_dists = [[d1, d2].fmax().extract(0), [d1, d2].fmin().extract(1)];
 
             // Check termination
             if (terminate_factor * intersction_dists[0])
@@ -338,8 +369,6 @@ pub fn opticast(
         // Rasterize spans
         let mut spans = row.iter();
         while let Some(span) = spans.next() {
-            // TODO: Calculations done here fail to be vectorized - figure
-            //       out how to make it SIMD-friendly or use SIMD explicitly
             let z1 = u16_to_f32(span.start);
             let z2 = u16_to_f32(span.end);
 

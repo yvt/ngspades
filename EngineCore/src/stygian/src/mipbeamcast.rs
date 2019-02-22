@@ -63,6 +63,11 @@ impl MbcCell {
     pub fn size(&self) -> i32 {
         2 << self.mip
     }
+
+    #[inline]
+    pub fn size_f(&self) -> f32 {
+        <f32>::from_bits(0x40000000 + (self.mip * 0x800000))
+    }
 }
 
 /// Describes preprocessing done to inputs and what should be done to
