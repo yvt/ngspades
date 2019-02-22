@@ -39,7 +39,7 @@ fn configs() -> (Matrix4<f32>, Terrain) {
         top: 0.5,
         bottom: -0.5,
         near: 1.0,
-        far: 100.0,
+        far: 200.0,
     }
     .into();
 
@@ -48,7 +48,7 @@ fn configs() -> (Matrix4<f32>, Terrain) {
         * projection;
 
     let view = Matrix4::look_at(
-        Point3::new(64.0, 64.0, 15.0),
+        Point3::new(128.0, 128.0, 15.0),
         Point3::new(0.0, 0.0, 5.0),
         vec3(0.0, 0.0, 1.0),
     );
