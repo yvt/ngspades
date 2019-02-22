@@ -360,7 +360,6 @@ mod tests {
     use super::*;
 
     use array::Array3;
-    use cgmath::Vector3;
     use ndarray::Array2;
 
     #[test]
