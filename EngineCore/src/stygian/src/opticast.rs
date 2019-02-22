@@ -302,8 +302,8 @@ pub fn opticast(
             // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
             // Use this approximation to find the minimum Z value for each
             // of the top and bottom edges.
-            p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
-            p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
+            p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() / p1.w;
+            p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() / p2.w;
 
             // Clip the line segment by the plane `z == w` (near plane)
             let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
@@ -360,8 +360,8 @@ pub fn opticast(
             // D[(a + ct) / (b + dt), t = 0] = (bc - ad) / b²
             // Use this approximation to find the minimum Z value for each
             // of the top and bottom edges.
-            p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() * (1.0 / p1.w);
-            p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() * (1.0 / p2.w);
+            p1.z -= (p1.z * p1_lat.w - p1.w * p1_lat.z).abs() / p1.w;
+            p2.z -= (p2.z * p2_lat.w - p2.w * p2_lat.z).abs() / p2.w;
 
             // Clip the line segment by the plane `z == w` (near plane)
             let (p1, p2) = if let Some((p1, p2)) = clip_near_plane(p1, p2) {
