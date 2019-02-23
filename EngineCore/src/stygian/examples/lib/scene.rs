@@ -489,18 +489,10 @@ impl SceneRenderer {
         &self,
         instance: &SceneInstance,
         target: &mut impl Surface,
+        draw_params: &glium::DrawParameters,
         pvm_matrix: Matrix4<f32>,
         mut filter: impl FnMut(Matrix4<f32>, [Vector4<f32>; 2]) -> bool,
     ) {
-        let params = glium::DrawParameters {
-            depth: glium::Depth {
-                test: glium::DepthTest::IfMore,
-                write: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
         for mesh_instance in instance.mesh_instances.iter() {
             let mesh = &instance.meshes[mesh_instance.mesh_index];
 
@@ -521,7 +513,7 @@ impl SceneRenderer {
                             &mesh.ib,
                             &self.program[mesh.program],
                             &uniforms,
-                            &params,
+                            draw_params,
                         )
                         .unwrap();
                 }
@@ -532,7 +524,7 @@ impl SceneRenderer {
                             &mesh.ib,
                             &self.program[mesh.program],
                             &uniforms,
-                            &params,
+                            draw_params,
                         )
                         .unwrap();
                 }

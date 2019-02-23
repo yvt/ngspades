@@ -7,14 +7,14 @@
 use alt_fp::FloatOrdSet;
 use cgmath::{prelude::*, vec2, vec3, vec4, Matrix3, Matrix4, Point2, Point3, Vector3, Vector4};
 use glium::{backend::Facade, glutin, Surface};
-use imgui::{im_str, ImGui, ImString};
+use imgui::{im_str, ImGui};
 use std::time::Instant;
-use {itervalues::IterValues, itervalues_derive::IterValues};
 
 use stygian;
 
 mod lib {
     pub mod cube;
+    pub mod depthvis;
     pub mod linedraw;
     #[path = "../../common/profmempool.rs"]
     pub mod profmempool;
@@ -115,7 +115,7 @@ fn main() {
 
         // drawing a frame
         let mut target = display.draw();
-        renderer.render(&state, ui, &mut metrics, &mut target);
+        renderer.render(&display, &state, ui, &mut metrics, &mut target);
 
         target.finish().unwrap();
     }
@@ -127,7 +127,9 @@ struct State {
     angle: Vector3<f32>,
     angular_velocity: Vector3<f32>,
     keys: [bool; 16],
-    mode: RenderMode,
+    show_opticast_samples: bool,
+    show_depth: bool,
+    show_birds_eye_view: bool,
 }
 
 impl State {
@@ -138,7 +140,9 @@ impl State {
             angle: vec3(-0.4, 0.0, 0.0),
             angular_velocity: Vector3::zero(),
             keys: [false; 16],
-            mode: RenderMode::default(),
+            show_opticast_samples: false,
+            show_depth: true,
+            show_birds_eye_view: true,
         }
     }
 
@@ -213,7 +217,15 @@ impl State {
         ui.window(im_str!("Options"))
             .always_auto_resize(true)
             .build(|| {
-                imgui_iter_values_combo(&ui, im_str!("Render mode"), &mut self.mode);
+                ui.checkbox(
+                    im_str!("Show opticast samples"),
+                    &mut self.show_opticast_samples,
+                );
+                ui.checkbox(im_str!("Show depth"), &mut self.show_depth);
+                ui.checkbox(
+                    im_str!("Show birds'eye view"),
+                    &mut self.show_birds_eye_view,
+                );
             });
 
         ui.window(im_str!("Metrics"))
@@ -280,38 +292,6 @@ impl State {
                 * proj
                 * view,
         }
-    }
-}
-
-fn imgui_iter_values_combo<T: IterValues + PartialEq + std::fmt::Debug>(
-    ui: &imgui::Ui,
-    label: &imgui::ImStr,
-    value: &mut T,
-) {
-    let names: Vec<_> = T::iter_values()
-        .map(|x| ImString::new(format!("{:?}", x)))
-        .collect();
-    let names_imstr: Vec<_> = names.iter().map(|x| &**x).collect();
-    let mut i = T::iter_values()
-        .enumerate()
-        .filter(|x| x.1 == *value)
-        .nth(0)
-        .unwrap()
-        .0 as i32;
-    ui.combo(label, &mut i, &names_imstr, 0);
-    *value = T::iter_values().nth(i as _).unwrap();
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, IterValues)]
-enum RenderMode {
-    None,
-    OpticastSamples,
-    FinalDepthImage,
-}
-
-impl Default for RenderMode {
-    fn default() -> Self {
-        RenderMode::FinalDepthImage
     }
 }
 
@@ -402,6 +382,8 @@ struct Renderer {
     sty_model_matrix: Matrix4<f32>,
 
     linedraw: lib::linedraw::LineDraw,
+
+    depthvis: lib::depthvis::DepthVis,
 }
 
 impl Renderer {
@@ -428,11 +410,14 @@ impl Renderer {
             sty_model_matrix,
 
             linedraw: lib::linedraw::LineDraw::new(facade),
+
+            depthvis: lib::depthvis::DepthVis::new(facade),
         }
     }
 
     fn render(
         &mut self,
+        facade: &impl Facade,
         state: &State,
         ui: imgui::Ui,
         metrics: &mut Metrics,
@@ -468,7 +453,7 @@ impl Renderer {
                 Tracer(&log),
             );
 
-            if state.mode != RenderMode::None {
+            if state.show_opticast_samples {
                 self.sty_rast
                     .update_with_trace(&self.sty_terrain, Tracer(&log));
             } else {
@@ -488,9 +473,20 @@ impl Renderer {
         let query = stygian::QueryContext::new(&self.sty_depth);
         let mut num_objects = 0;
         let mut num_rendered_objects = 0;
+
+        let draw_params = glium::DrawParameters {
+            depth: glium::Depth {
+                test: glium::DepthTest::IfMore,
+                write: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
         self.scene_renderer.draw_scene(
             &self.scene_instance,
             target,
+            &draw_params,
             camera_matrix,
             |transform, ms_aabb| {
                 let visible =
@@ -519,7 +515,7 @@ impl Renderer {
             .map(|x| trans_point2(vp_matrix, *x)),
         );
 
-        if state.mode == RenderMode::OpticastSamples {
+        if state.show_opticast_samples {
             let m = camera_matrix * self.sty_model_matrix;
             for (verts, depth) in log.get_mut().samples.iter() {
                 use array::Array4;
@@ -542,40 +538,13 @@ impl Renderer {
                         .cloned(),
                 );
             }
-        } else if state.mode == RenderMode::FinalDepthImage {
-            let image = &self.sty_depth;
-            let size = image.size();
-            let bitmap = image.pixels();
-            for y in 0..size.y {
-                for x in 0..size.x {
-                    use array::Array2;
-
-                    let mut xs = [x, x + 1].map(|v| v as f32 * (2.0 / size.x as f32) - 1.0);
-                    let mut ys = [y, y + 1].map(|v| v as f32 * (2.0 / size.y as f32) - 1.0);
-
-                    // Make polygons slightly smaller
-                    xs[0] += (xs[1] - xs[0]) * 0.1;
-                    ys[0] += (ys[1] - ys[0]) * 0.1;
-
-                    let verts = [
-                        Point2::new(xs[0], ys[0]),
-                        Point2::new(xs[1], ys[0]),
-                        Point2::new(xs[1], ys[1]),
-                        Point2::new(xs[0], ys[1]),
-                        Point2::new(xs[0], ys[0]),
-                    ];
-
-                    // Color by depth
-                    let depth = bitmap[x + y * size.x];
-                    let color = scalar_to_color(1.0 - 0.1 / (depth + 0.1));
-
-                    self.linedraw
-                        .push(color, verts.iter().map(|x| trans_point2(vp_matrix, *x)));
-                }
-            }
         }
 
         self.linedraw.flush(target);
+
+        if state.show_depth {
+            self.depthvis.draw(facade, target, &self.sty_depth);
+        }
 
         self.imgui_renderer.render(target, ui).unwrap();
 
