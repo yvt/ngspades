@@ -222,21 +222,22 @@ impl State {
                 ui.text(format!("{:3.2} fps", metrics.fps_counter.rate()));
 
                 ui.separator();
-                ui.text(format!(
-                    "Depth build time: {:5.2}us",
-                    metrics.history_depth_build_time.last().unwrap_or(&0.0) * 1.0e6
-                ));
-                ui.plot_lines(im_str!(""), &metrics.history_depth_build_time)
-                    .build();
+                if metrics.history_depth_build_time.len() > 0 {
+                    let history = &metrics.history_depth_build_time;
+                    ui.text(format!(
+                        "Depth build time: {:5.2}us - {:5.2}us (avg: {:5.2}us)",
+                        history.fmin() * 1.0e6,
+                        history.fmax() * 1.0e6,
+                        history.iter().fold(0.0, |x, &y| x + y) * 1.0e6 / history.len() as f32
+                    ));
+                    ui.plot_lines(im_str!(""), &history).build();
+                }
                 ui.text(format!(
                     "Objects: {:4}/{:4}",
                     metrics.num_rendered_objects, metrics.num_objects
                 ));
-                ui.plot_lines(
-                    im_str!(""),
-                    &metrics.history_num_rendered_objects,
-                )
-                .build();
+                ui.plot_lines(im_str!(""), &metrics.history_num_rendered_objects)
+                    .build();
             });
 
         ui
