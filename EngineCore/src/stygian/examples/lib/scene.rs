@@ -20,8 +20,8 @@ use glium::{
 use gltf;
 use ngsterrain;
 use pod::Pod;
-use std::{cmp::min, collections::HashMap, ffi::OsStr, fs::File, io::Read, path::Path};
-use xz_decom::decompress;
+use std::{cmp::min, collections::HashMap, ffi::OsStr, fs::File, io::prelude::*, path::Path};
+use xz2::read::XzDecoder;
 
 use crate::lib::{profmempool, terrainload, vxl2mesh};
 use stygian::{gen, mempool};
@@ -42,12 +42,12 @@ impl Scene {
         let input_path: &Path = input_path.as_ref();
         // Assume `.xz` is a XZ-compressed glTF
         if input_path.extension().map(OsStr::to_str) == Some(Some("xz")) {
-            let mut file = File::open(input_path).unwrap();
+            let file = File::open(input_path).unwrap();
+            let mut decoder = XzDecoder::new(file);
             let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer).unwrap();
+            decoder.read_to_end(&mut buffer).unwrap();
 
-            let gltf_blob = decompress(&buffer).unwrap();
-            let gltf = gltf::Gltf::from_slice(&gltf_blob).unwrap();
+            let gltf = gltf::Gltf::from_slice(&buffer).unwrap();
 
             let scene = gltf.scenes().nth(0).expect("no scene was found");
             let scene_index = scene.index();
