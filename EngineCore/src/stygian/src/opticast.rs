@@ -29,7 +29,7 @@ struct OpticastIncidence {
 }
 
 /// The number of iterations between prefetching a row pointer and row contents.
-const ROW_PREFETCH_DELAY: usize = 4;
+const ROW_PREFETCH_DELAY: usize = 16;
 
 #[derive(Debug)]
 pub struct OpticastIncidenceBuffer(Vec<OpticastIncidence>);
@@ -283,7 +283,7 @@ pub fn opticast(
                 let slice = unsafe { &*prev_incidence.row }.as_slice();
                 prev_incidence.row_slice = slice;
 
-                pf::prefetch::<pf::Read, pf::Medium, pf::Data, _>(slice.as_ptr());
+                pf::prefetch::<pf::Read, pf::High, pf::Data, _>(slice.as_ptr());
             }
 
             includes_start |= incidence.includes_start;
@@ -301,7 +301,7 @@ pub fn opticast(
         let slice = unsafe { &*prev_incidence.row }.as_slice();
         prev_incidence.row_slice = slice;
 
-        pf::prefetch::<pf::Read, pf::Medium, pf::Data, _>(slice.as_ptr());
+        pf::prefetch::<pf::Read, pf::High, pf::Data, _>(slice.as_ptr());
     }
 
     // Process incidences
