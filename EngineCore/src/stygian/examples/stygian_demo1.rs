@@ -384,6 +384,8 @@ struct Renderer {
     linedraw: lib::linedraw::LineDraw,
 
     depthvis: lib::depthvis::DepthVis,
+
+    birds_eye_view_matrix: Matrix4<f32>,
 }
 
 impl Renderer {
@@ -397,6 +399,18 @@ impl Renderer {
         let (sty_terrain, sty_model_matrix) = scene.make_sty_terrain();
         let sty_rast = stygian::TerrainRast::new(64);
         let sty_depth = stygian::DepthImage::new(vec2(64, 64));
+
+        let p1 = sty_model_matrix.transform_point(Point3::new(
+            sty_terrain.size().x as f32 * 0.5,
+            sty_terrain.size().y as f32 * 0.5,
+            sty_terrain.size().z as f32,
+        ));
+        let p2 = sty_model_matrix.transform_point(Point3::new(
+            sty_terrain.size().x as f32 * 0.6,
+            sty_terrain.size().y as f32 * 0.6,
+            sty_terrain.size().z as f32 * 5.0,
+        ));
+        let birds_eye_view_matrix = Matrix4::look_at(p2, p1, vec3(0.0, 0.0, 1.0));
 
         Self {
             imgui_renderer,
@@ -412,6 +426,8 @@ impl Renderer {
             linedraw: lib::linedraw::LineDraw::new(facade),
 
             depthvis: lib::depthvis::DepthVis::new(facade),
+
+            birds_eye_view_matrix,
         }
     }
 
@@ -465,7 +481,7 @@ impl Renderer {
         metrics.log_depth_build_time(sty_depth_build_start.elapsed().as_float_secs() as f32);
 
         // Render a scene
-        target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), 0.0);
+        target.clear_color_and_depth((0.3, 0.3, 0.5, 1.0), 0.0);
 
         let vp_matrix = Matrix4::from_nonuniform_scale(0.9, 0.9, 1.0);
 
@@ -500,6 +516,79 @@ impl Renderer {
         );
 
         metrics.log_num_objects(num_rendered_objects, num_objects);
+
+        if state.show_birds_eye_view {
+            use cgmath::{PerspectiveFov, Rad};
+
+            let proj: Matrix4<f32> = PerspectiveFov {
+                fovy: Rad(1.0),
+                aspect: 4.0 / 3.0,
+                near: 0.5,
+                far: 2000.0,
+            }
+            .into();
+
+            let camera_matrix = Matrix4::from_translation(vec3(0.0, 0.0, 0.5))
+                * Matrix4::from_nonuniform_scale(1.0, 1.0, -0.5)
+                * proj
+                * self.birds_eye_view_matrix;
+
+            let (w, h) = target.get_dimensions();
+            let rect = glium::Rect {
+                left: w * 5 / 100,
+                bottom: h * 5 / 100,
+                width: w * 30 / 100,
+                height: h * 30 / 100,
+            };
+
+            target.clear(
+                Some(&rect),
+                Some((0.5, 0.3, 0.3, 1.0)),
+                true,
+                Some(0.0),
+                None,
+            );
+
+            let draw_params = glium::DrawParameters {
+                depth: glium::Depth {
+                    test: glium::DepthTest::IfMore,
+                    write: true,
+                    ..Default::default()
+                },
+                viewport: Some(rect),
+                ..Default::default()
+            };
+
+            // Visible
+            self.scene_renderer.draw_scene(
+                &self.scene_instance,
+                target,
+                &draw_params,
+                camera_matrix,
+                |transform, ms_aabb| {
+                    query.query_cs_aabb(transform_aabb(ms_aabb, params.camera_matrix * transform))
+                },
+            );
+
+            let draw_params = glium::DrawParameters {
+                polygon_mode: glium::PolygonMode::Line,
+                ..draw_params
+            };
+
+            // Occluded but not frustum culled
+            let sty_empty_depth = stygian::DepthImage::new(vec2(1, 1));
+            let empty_query = stygian::QueryContext::new(&sty_empty_depth);
+            self.scene_renderer.draw_scene(
+                &self.scene_instance,
+                target,
+                &draw_params,
+                camera_matrix,
+                |transform, ms_aabb| {
+                    let cs_aabb = transform_aabb(ms_aabb, params.camera_matrix * transform);
+                    empty_query.query_cs_aabb(cs_aabb) && !query.query_cs_aabb(cs_aabb)
+                },
+            );
+        }
 
         // Draw a HUD
         self.linedraw.push(
