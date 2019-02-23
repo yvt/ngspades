@@ -327,7 +327,7 @@ where
     }
 
     /// Submit `next_batch.*` and make it empty.
-    fn poll_dispatch_batch(&mut self, cx: &task::LocalWaker) -> Poll<Result<()>> {
+    fn poll_dispatch_batch(&mut self, cx: &task::Waker) -> Poll<Result<()>> {
         if self.next_batch.is_empty() {
             return Ok(()).into();
         }
@@ -394,7 +394,7 @@ where
 
     fn poll_flush_inner(
         mut self: Pin<&mut Self>,
-        cx: &task::LocalWaker,
+        cx: &task::Waker,
         should_wait_completion: bool,
     ) -> Poll<Result<()>> {
         let this = &mut *self;
@@ -423,7 +423,7 @@ where
     type SinkItem = T;
     type SinkError = base::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Result<()>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &task::Waker) -> Poll<Result<()>> {
         let this = &mut *self;
         assert_eq!(
             this.batch_ring.poll_flush(this.heap.borrow(), false, cx)?,
@@ -460,7 +460,7 @@ where
 
     /// Flush any remaining requests. The behavior of flushing is dependent on
     /// the value of [`Builder::should_wait_completion`].
-    fn poll_flush(self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Result<()>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &task::Waker) -> Poll<Result<()>> {
         let should_wait_completion = self.should_wait_completion;
         self.poll_flush_inner(cx, should_wait_completion)
     }
@@ -468,7 +468,7 @@ where
     /// Flush any remaining requests and wait for the completion of all
     /// associated command buffers (no matter what value
     /// `should_wait_completion` is set to).
-    fn poll_close(self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Result<()>> {
+    fn poll_close(self: Pin<&mut Self>, cx: &task::Waker) -> Poll<Result<()>> {
         self.poll_flush_inner(cx, true)
     }
 }
@@ -506,7 +506,7 @@ impl<T: Request> BatchRing<T> {
         &mut self,
         heap: &AsyncHeap,
         should_wait_completion: bool,
-        cx: &task::LocalWaker,
+        cx: &task::Waker,
     ) -> Poll<Result<()>> {
         while self.queue.len() > 0 {
             {

@@ -97,7 +97,7 @@ where
 {
     type Output = Result<Option<T>, E>;
 
-    fn poll(self: Pin<&mut Self>, lw: &futures::task::LocalWaker) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, lw: &futures::task::Waker) -> Poll<Self::Output> {
         let this = self.get_mut(); // because `Self: Unpin`
         let async_ring: &mut AsyncRing<F, T> = &mut *this.parent.ring;
 

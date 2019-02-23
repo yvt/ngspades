@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 atomic_refcell = "0.1.3"
-futures-preview = "0.3.0-alpha.12"
+futures-preview = "0.3.0-alpha.13"
 owning_ref = "0.4.0"
 pin-utils = "0.1.0-alpha.3"
 xalloc = { path = "../../../support/xalloc-rs", features = ["nightly"] }

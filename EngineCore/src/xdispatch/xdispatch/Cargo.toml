@@ -22,4 +22,4 @@ futures = ["futures-preview"]
 
 [dependencies]
 xdispatch-core = { path = "../xdispatch-core", version = "0.1.0" }
-futures-preview = { version = "0.3.0-alpha.12", optional = true }
+futures-preview = { version = "0.3.0-alpha.13", optional = true }

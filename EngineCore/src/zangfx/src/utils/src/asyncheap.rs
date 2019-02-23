@@ -138,7 +138,7 @@ impl AsyncHeap {
 impl Future for Bind {
     type Output = Result<()>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &task::LocalWaker) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &task::Waker) -> Poll<Self::Output> {
         use std::mem::replace;
 
         match replace(&mut self.0, BindState::Done) {
@@ -158,7 +158,7 @@ impl Future for Bind {
                 }
 
                 let item = Arc::new(Item {
-                    waker: Mutex::new(cx.as_waker().clone()),
+                    waker: Mutex::new(cx.clone()),
                     resource,
                     result: Mutex::new(None),
                 });
@@ -174,8 +174,8 @@ impl Future for Bind {
                     Ok(result?).into()
                 } else {
                     let mut waker = item.waker.lock();
-                    if !waker.will_wake_local(cx) {
-                        *waker = cx.as_waker().clone();
+                    if !waker.will_wake(cx) {
+                        *waker = cx.clone();
                     }
                     Poll::Pending
                 }

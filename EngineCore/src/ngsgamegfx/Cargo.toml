@@ -9,7 +9,7 @@ arrayvec = "0.4.1"
 cgmath = "0.17.0"
 either = { version = "1.4" }
 flags-macro = "0.1.2"
-futures-preview = "0.3.0-alpha.12"
+futures-preview = "0.3.0-alpha.13"
 include_data = { path = "../support/include_data" }
 injector = { path = "../support/injector" }
 asynclazy = { path = "../support/asynclazy" }
