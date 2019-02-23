@@ -16,7 +16,7 @@ asynclazy = { path = "../support/asynclazy" }
 lazy_static = "1.1"
 ngspf = { path = "../ngspf" }
 pod = "0.5.0"
-query_interface = "0.3.4"
+query_interface = "0.3.5"
 rand = "0.6.0"
 volatile_view = { path = "../support/volatile_view" }
 xdispatch = { path = "../xdispatch/xdispatch" }

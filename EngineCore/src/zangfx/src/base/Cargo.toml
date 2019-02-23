@@ -11,7 +11,4 @@ itervalues = { path = "../../../support/itervalues" }
 itervalues_derive = { path = "../../../support/itervalues/itervalues_derive" }
 lazy_static = "1.1"
 flags-macro = "0.1.2"
-
-[dependencies.query_interface]
-git = "https://github.com/yvt/query_interface.git"
-rev = "da91498339411afd6acd749353295dc57b9229b2"
+query_interface = "0.3.5"

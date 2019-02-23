@@ -70,3 +70,7 @@ rev = "17618bff5b7e954ed5af4d49fdc1b40a2b9a68f7"
 
 [patch.crates-io.array]
 path = "src/support/array"
+
+[patch.crates-io.query_interface]
+git = "https://github.com/yvt/query_interface.git"
+rev = "da91498339411afd6acd749353295dc57b9229b2"
