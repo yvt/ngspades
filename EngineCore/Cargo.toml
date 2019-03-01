@@ -28,7 +28,6 @@ members = [
     "src/support/prebuild-glslang",
     "src/support/raduga",
     "src/support/refeq",
-    "src/support/retire",
     "src/support/stickylock",
     "src/support/tokenlock",
     "src/support/volatile_view",

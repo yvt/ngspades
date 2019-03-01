@@ -1,7 +1,0 @@
-[package]
-name = "retire"
-version = "0.1.0"
-authors = ["yvt <i@yvt.jp>"]
-
-[dependencies]
-tokenlock = { path = "../tokenlock" }
