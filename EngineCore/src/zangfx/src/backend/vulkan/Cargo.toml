@@ -13,7 +13,7 @@ parking_lot = "0.7"
 tokenlock = { path = "../../../../support/tokenlock" }
 iterpool = { path = "../../../../support/iterpool" }
 refeq = { path = "../../../../support/refeq" }
-xalloc = { path = "../../../../support/xalloc-rs", features = ["nightly"] }
+xalloc = { version = "0.2.6", features = ["nightly"] }
 arrayvec = "0.4.1"
 ash = "0.27.1"
 snowflake = "1.3.0"
