@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "src/enet",
+    "src/ngsasset",
     "src/ngsbase",
     "src/ngscom",
     "src/ngsengine",

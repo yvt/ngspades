@@ -1,0 +1,38 @@
+//
+// Copyright 2019 yvt, all rights reserved.
+//
+// This source code is a part of Nightingales.
+//
+
+/// Defines parameters for a perfect hash function that maps from blob UUIDs
+/// to indices into `ChunkHdr::blobs`.
+table PhfMap {
+    key: ulong;
+    disps: [PhfDisp] (required);
+}
+
+struct PhfDisp {
+    disp1: uint;
+    disp2: uint;
+}
+
+/// The metadata for a blob indicating where the actual content of the blob is
+/// located.
+table BlobMeta {
+    /// The blob's identifier.
+    id: [ubyte];
+    /// The blob data's position.
+    offset: ulong;
+    /// The length of the blob data.
+    len: ulong;
+}
+
+/// An index used to locate a blob in `ChunkHdr::blobs` quickly.
+union BlobMap { PhfMap }
+
+table ChunkHdr {
+    blob_map: BlobMap;
+    blobs: [BlobMeta] (required);
+}
+
+root_type ChunkHdr;

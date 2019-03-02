@@ -56,6 +56,7 @@ The following programs must be installed to build this project.
 - [.NET Core] 2.1 or later
 - [PowerShell Core] 6.0 or later
 - [LunarG Vulkan SDK] 1.0 or later. [glslang], which is distributed as a part of it, must be in `$PATH` to build ZanGFX and the rendering engine.
+- [`flatc`](https://github.com/google/flatbuffers), the latest `master` version. (On macOS, it can be installed by `brew install flatc --HEAD` using Homebrew.)
 
 Furthermore, some dependent crates require the following programs:
 
