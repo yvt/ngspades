@@ -21,6 +21,15 @@ use crate::{
 };
 
 /// The asset loader.
+///
+/// `BI: `[`BlobIndex`] is used by [`Manager::get_blob`] to find the chunk
+/// where a specified blob is located.
+///
+/// `Manager` maintains a hash map of chunks and blobs which are currently
+/// loaded on memory. If a blob is already on the hash map, `get_blob` directly
+/// access the containing chunk without consulting `BlobIndex`. This behavior
+/// can be utilized to load blobs which are not included in `BlobIndex` by
+/// loading the chunk first via [`Manager::get_chunk`].
 #[derive(Debug)]
 pub struct Manager<BI: BlobIndex, CS: ChunkStore> {
     blob_index: BI,
@@ -253,17 +262,29 @@ pub trait BlobIndex {
 }
 
 /// An empty `BlobIndex`.
-///
-/// When `NoBlobIndex` is supplied as a `BlobIndex`, [`Manager`] cannot locate
-/// a chunk when an unseen blob is requested through [`Manager::get_blob`].
-/// However, [`Manager::get_chunk`] still works and [`Manager::get_blob`] can
-/// read blobs using the cache created by `get_chunk`.
 #[derive(Debug, Clone, Copy)]
 pub struct NoBlobIndex;
 
 impl BlobIndex for NoBlobIndex {
     fn chunk_for_blob(&self, _blob_id: Uuid) -> io::Result<Option<Uuid>> {
         Ok(None)
+    }
+}
+
+/// An in-memory implementation of `BlobIndex`.
+#[derive(Debug, Clone)]
+pub struct MemBlobIndex(HashMap<Uuid, Uuid>);
+
+impl MemBlobIndex {
+    /// Construct a `MemBlobIndex` from an iterator of `(blob ID, chunk ID)`.
+    pub fn new(blob_chunk: impl Iterator<Item = (Uuid, Uuid)>) -> Self {
+        Self(blob_chunk.collect())
+    }
+}
+
+impl BlobIndex for MemBlobIndex {
+    fn chunk_for_blob(&self, blob_id: Uuid) -> io::Result<Option<Uuid>> {
+        Ok(self.0.get(&blob_id).cloned())
     }
 }
 
