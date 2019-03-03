@@ -112,6 +112,10 @@ where
 
             self.chunks.remove(&chunk_id);
 
+            if self.blob_index.is_fast() {
+                continue;
+            }
+
             for blob_id in chunk_hdr
                 .get_blobs()
                 .map_err(|x| -> io::Error { x.into() })?
@@ -213,8 +217,10 @@ where
         *chunk_weak = Arc::downgrade(&chunk_arc);
 
         // Update the cache
-        for blob_id in chunk_arc.chunk_hdr().get_blobs()? {
-            self.blobs.insert(blob_id, chunk_id);
+        if !self.blob_index.is_fast() {
+            for blob_id in chunk_arc.chunk_hdr().get_blobs()? {
+                self.blobs.insert(blob_id, chunk_id);
+            }
         }
 
         Ok(Some(chunk_arc))
@@ -259,6 +265,14 @@ unsafe impl<CH> StableAddress for ManagerChunk<CH> {}
 pub trait BlobIndex {
     /// Locate a chunk containing the blob with a given UUID.
     fn chunk_for_blob(&self, blob_id: Uuid) -> io::Result<Option<Uuid>>;
+
+    /// Returns `true` if `Self` is memory-based.
+    ///
+    /// [`Manager`] does not create an in-memory hash map if this method returns
+    /// `true`.
+    fn is_fast(&self) -> bool {
+        false
+    }
 }
 
 /// An empty `BlobIndex`.
@@ -268,6 +282,10 @@ pub struct NoBlobIndex;
 impl BlobIndex for NoBlobIndex {
     fn chunk_for_blob(&self, _blob_id: Uuid) -> io::Result<Option<Uuid>> {
         Ok(None)
+    }
+
+    fn is_fast(&self) -> bool {
+        true
     }
 }
 
@@ -285,6 +303,10 @@ impl MemBlobIndex {
 impl BlobIndex for MemBlobIndex {
     fn chunk_for_blob(&self, blob_id: Uuid) -> io::Result<Option<Uuid>> {
         Ok(self.0.get(&blob_id).cloned())
+    }
+
+    fn is_fast(&self) -> bool {
+        true
     }
 }
 
