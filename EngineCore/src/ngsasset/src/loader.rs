@@ -295,8 +295,8 @@ pub struct MemBlobIndex(HashMap<Uuid, Uuid>);
 
 impl MemBlobIndex {
     /// Construct a `MemBlobIndex` from an iterator of `(blob ID, chunk ID)`.
-    pub fn new(blob_chunk: impl Iterator<Item = (Uuid, Uuid)>) -> Self {
-        Self(blob_chunk.collect())
+    pub fn new(blob_chunk: impl IntoIterator<Item = (Uuid, Uuid)>) -> Self {
+        Self(blob_chunk.into_iter().collect())
     }
 }
 
