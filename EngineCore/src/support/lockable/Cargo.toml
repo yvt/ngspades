@@ -1,0 +1,11 @@
+[package]
+name = "lockable"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+
+[dependencies]
+lock_api = "0.1.5"
+
+[dev-dependencies]
+parking_lot = "0.7.1"
