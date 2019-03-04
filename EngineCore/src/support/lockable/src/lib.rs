@@ -34,10 +34,15 @@
 //!
 //!     use lockable::BorrowLock;
 //!     fn hoge<'a>(
-//!         mut x: impl BorrowLock<Inner = u32> + 'a
+//!         mut x: impl BorrowLock<u32> + 'a
 //!     ) -> impl FnOnce() -> u32 + 'a {
 //!         move || { *x.borrow_lock() += 1; *x.borrow_lock() }
 //!     }
+//!
+//!     // u32
+//!     let counter = 1;
+//!     let a = hoge(counter);
+//!     assert_eq!(a(), 2);
 //!
 //!     // &mut u32
 //!     let mut counter = 1;
@@ -71,7 +76,7 @@
 //!     struct Counter(u32);
 //!     impl Counter {
 //!         fn incrementer<'a>(
-//!             mut this: impl BorrowLock<Inner = Self> + 'a
+//!             mut this: impl BorrowLock<Self> + 'a
 //!         ) -> impl FnOnce() -> u32 + 'a {
 //!             move || { this.borrow_lock().0 += 1; this.borrow_lock().0 }
 //!         }
@@ -94,16 +99,13 @@ use std::{
 
 /// Extends the notion of `BorrowMut` to types with run-time borrow uniqueness
 /// checking.
-pub unsafe trait BorrowLock {
-    /// The type of the inner object.
-    type Inner;
-
+pub unsafe trait BorrowLock<T> {
     /// Acquire a lock and get a pointer to the inner object.
     ///
     /// If `self` is already locked, there are two possible consequences
     /// depending on the implementation: (a) the current thread is blocked until
     /// a lock can be acquired; or (b) a panic.
-    fn raw_lock(&mut self) -> *mut Self::Inner;
+    fn raw_lock(&mut self) -> *mut T;
 
     /// Release an acquired lock.
     ///
@@ -114,7 +116,7 @@ pub unsafe trait BorrowLock {
     unsafe fn raw_unlock(&mut self);
 
     /// Acquire a lock and return an RAII lock guard.
-    fn borrow_lock(&mut self) -> BorrowLockGuard<Self>
+    fn borrow_lock(&mut self) -> BorrowLockGuard<T, Self>
     where
         Self: Sized,
     {
@@ -123,8 +125,14 @@ pub unsafe trait BorrowLock {
     }
 }
 
-unsafe impl<T> BorrowLock for &mut T {
-    type Inner = T;
+unsafe impl<T> BorrowLock<T> for T {
+    fn raw_lock(&mut self) -> *mut T {
+        self
+    }
+    unsafe fn raw_unlock(&mut self) {}
+}
+
+unsafe impl<T> BorrowLock<T> for &mut T {
     fn raw_lock(&mut self) -> *mut T {
         *self
     }
@@ -134,8 +142,7 @@ unsafe impl<T> BorrowLock for &mut T {
 // `for impl Deref<Target = lock_api::Mutex<_, _>> + !DerefMut`
 macro_rules! impl_borrow_lock_lock_api_mutex {
     ($t:ty) => {
-        unsafe impl<R: lock_api::RawMutex, T> BorrowLock for $t {
-            type Inner = T;
+        unsafe impl<R: lock_api::RawMutex, T> BorrowLock<T> for $t {
             fn raw_lock(&mut self) -> *mut T {
                 let mut guard = (**self).lock();
                 let ptr = (&mut *guard) as *mut _;
@@ -159,14 +166,14 @@ impl_borrow_lock_lock_api_mutex!(Pin<Rc<lock_api::Mutex<R, T>>>);
 
 /// The lock guard of [`BorrowLock`].
 #[derive(Debug)]
-pub struct BorrowLockGuard<'a, L: BorrowLock> {
+pub struct BorrowLockGuard<'a, T, L: BorrowLock<T>> {
     lock: &'a mut L,
-    ptr: *mut L::Inner,
+    ptr: *mut T,
 }
 
-unsafe impl<'a, L: BorrowLock> Sync for BorrowLockGuard<'a, L> where L::Inner: Sync {}
+unsafe impl<'a, T: Sync, L: BorrowLock<T>> Sync for BorrowLockGuard<'a, T, L> {}
 
-impl<'a, L: BorrowLock> Drop for BorrowLockGuard<'a, L> {
+impl<'a, T, L: BorrowLock<T>> Drop for BorrowLockGuard<'a, T, L> {
     fn drop(&mut self) {
         unsafe {
             self.lock.raw_unlock();
@@ -174,14 +181,14 @@ impl<'a, L: BorrowLock> Drop for BorrowLockGuard<'a, L> {
     }
 }
 
-impl<'a, L: BorrowLock> Deref for BorrowLockGuard<'a, L> {
-    type Target = L::Inner;
+impl<'a, T, L: BorrowLock<T>> Deref for BorrowLockGuard<'a, T, L> {
+    type Target = T;
     fn deref(&self) -> &Self::Target {
         unsafe { &*self.ptr }
     }
 }
 
-impl<'a, L: BorrowLock> DerefMut for BorrowLockGuard<'a, L> {
+impl<'a, T, L: BorrowLock<T>> DerefMut for BorrowLockGuard<'a, T, L> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *self.ptr }
     }
