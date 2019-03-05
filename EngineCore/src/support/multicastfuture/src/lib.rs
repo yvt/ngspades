@@ -30,6 +30,8 @@
 //! assert_eq!(block_on(consumer1.join(consumer2)), (42, 42));
 //! ```
 //!
+//! ## Do not stall consumers
+//!
 //! Make sure all consuming `Future`s are polled simultaneously. `MultiCast`
 //! assumes that all live consumers are equally polled. The following code will
 //! deadlock:
@@ -63,6 +65,19 @@
 //! block_on(consumer2);
 //! ```
 //!
+//! ## Unsizing
+//!
+//! `MultiCast` supports unsized coercions on the `Future` type parameter:
+//!
+//! ```
+//! # #![feature(futures_api)]
+//! # use futures::future::{lazy, Future};
+//! # use multicastfuture::MultiCast;
+//! # let mut producer = lazy(|_| 42u32);
+//! let mc = MultiCast::new(producer);
+//! let _: &MultiCast<dyn Future<Output = u32>> = &mc;
+//! ```
+//!
 #![feature(arbitrary_self_types)]
 #![feature(futures_api)]
 #![feature(maybe_uninit)]
@@ -82,50 +97,70 @@ use std::{
 /// Broadcasts the result of a `Future` (the producing `Future`) to one or more
 /// `Future`s (the consuming `Future`s).
 ///
+/// `T` is uniquely determined from `F` but it's defined as a type parameter
+/// to enable unsized coercions. This type has a type alias [`MultiCast`] that
+/// doesn't have this redundant type parameter.
+///
 /// See [the crate documentation](index.html) for details.
-pub struct MultiCast<F: Future> {
-    /// The producing `Future`. Only can be accessed by a leader.
-    future: UnsafeCell<F>,
-
+pub struct MultiCastInner<F: Future<Output = T> + ?Sized, T> {
     /// The result cell.
-    result: UnsafeCell<MaybeUninit<F::Output>>,
+    result: UnsafeCell<MaybeUninit<T>>,
 
     /// The pointer to a consumer's `ConsumerState` which is responsible for
     /// polling the producing `Future`. `null` indicates there's no consumer.
     ///
-    /// The modification to this field is protected by `MultiCast::mutex`.
+    /// The modification to this field is protected by `MultiCastInner::mutex`.
     ///
     /// This field becomes `null` after the completion of
     /// the producing `Future`.
     leader: AtomicPtr<ConsumerState>,
 
-    /// Indicates whether the producing `Future` (`MultiCast::future`) has been
+    /// Indicates whether the producing `Future` (`MultiCastInner::future`) has been
     /// completed or not.
     complete: AtomicBool,
 
     /// The mutex for protecting the state of the consumer list.
     mutex: Mutex<()>,
+
+    /// The producing `Future`. Only can be accessed by a leader.
+    future: UnsafeCell<F>,
 }
 
-/// The consuming `Future` of [`MultiCast`].
+/// Broadcasts the result of a `Future` (the producing `Future`) to one or more
+/// `Future`s (the consuming `Future`s).
+///
+/// See [the crate documentation](index.html) for details.
+pub type MultiCast<F> = MultiCastInner<F, <F as Future>::Output>;
+
+/// The consuming `Future` of [`MultiCastInner`].
+///
+/// `T` is uniquely determined from `F` but it's defined as a type parameter
+/// to enable unsized coercions. This type has a type alias [`Consumer`] that
+/// doesn't have this redundant type parameter.
 ///
 /// See [the crate documentation](index.html) for details.
 #[derive(Debug)]
-pub struct Consumer<P: Deref<Target = MultiCast<F>>, F: Future> {
+pub struct ConsumerInner<P: Deref<Target = MultiCastInner<F, T>>, F: Future<Output = T> + ?Sized, T>
+{
     producer: Pin<P>,
     state: Option<Pin<Box<ConsumerState>>>,
 }
 
+/// The consuming `Future` of [`MultiCastInner`].
+///
+/// See [the crate documentation](index.html) for details.
+pub type Consumer<P, F> = ConsumerInner<P, F, <F as Future>::Output>;
+
 /// The state of a consumer.
 ///
-/// This must be a separate struct from `Consumer` because `Consumer` can vanish
+/// This must be a separate struct from `ConsumerInner` because `ConsumerInner` can vanish
 /// anytime through the use of `std::mem::forget`.
 #[derive(Debug, Default)]
 struct ConsumerState {
     /// The waker used in the following situations:
     ///
     ///  - This consumer receives a leadership (i.e, being assigned to
-    ///    `MultiCast::leader`).
+    ///    `MultiCastInner::leader`).
     ///  - The completion of the producing `Future`.
     ///
     task: Mutex<Option<Waker>>,
@@ -133,12 +168,12 @@ struct ConsumerState {
     /// The pointers to the previous and next `ConsumerState`s in a circular
     /// linked list.
     ///
-    /// The modification to this field is protected by `MultiCast::mutex`.
+    /// The modification to this field is protected by `MultiCastInner::mutex`.
     prev_next: [AtomicPtr<ConsumerState>; 2],
 }
 
-impl<F: Future> MultiCast<F> {
-    /// Construct a `MultiCast` by wrapping a given `Future`.
+impl<F: Future<Output = T>, T> MultiCastInner<F, T> {
+    /// Construct a `MultiCastInner` by wrapping a given `Future`.
     pub fn new(inner: F) -> Self {
         Self {
             future: UnsafeCell::new(inner),
@@ -148,9 +183,11 @@ impl<F: Future> MultiCast<F> {
             mutex: Mutex::new(()),
         }
     }
+}
 
+impl<F: Future<Output = T> + ?Sized, T> MultiCastInner<F, T> {
     /// Create a consuming `Future`.
-    pub fn subscribe<P: Deref<Target = Self>>(self: Pin<P>) -> Consumer<P, F> {
+    pub fn subscribe<P: Deref<Target = Self>>(self: Pin<P>) -> ConsumerInner<P, F, T> {
         let state = loop {
             let this = &*self;
             let _lock = this.mutex.lock();
@@ -185,7 +222,7 @@ impl<F: Future> MultiCast<F> {
             break Some(state);
         };
 
-        Consumer {
+        ConsumerInner {
             producer: self,
             state,
         }
@@ -216,7 +253,10 @@ impl<F: Future> MultiCast<F> {
 
     /// Attempt to get the result. Returns the original object if the result is
     /// is not ready yet.
-    pub fn try_into_result(mut self) -> Result<F::Output, Self> {
+    pub fn try_into_result(mut self) -> Result<F::Output, Self>
+    where
+        Self: Sized,
+    {
         if *self.complete.get_mut() {
             *self.complete.get_mut() = false; // Suppress `drop`
             unsafe { Ok((&*self.result.get()).as_ptr().read()) }
@@ -226,7 +266,7 @@ impl<F: Future> MultiCast<F> {
     }
 }
 
-impl<F: Future> Drop for MultiCast<F> {
+impl<F: Future<Output = T> + ?Sized, T> Drop for MultiCastInner<F, T> {
     fn drop(&mut self) {
         if *self.complete.get_mut() {
             unsafe {
@@ -236,41 +276,44 @@ impl<F: Future> Drop for MultiCast<F> {
     }
 }
 
-unsafe impl<F: Future> Sync for MultiCast<F>
+unsafe impl<F: Future<Output = T> + ?Sized, T> Sync for MultiCastInner<F, T>
 where
     F: Sync,
     F::Output: Sync,
 {
 }
 
-impl<F: Future> fmt::Debug for MultiCast<F>
+impl<F: Future<Output = T> + ?Sized, T> fmt::Debug for MultiCastInner<F, T>
 where
     F: fmt::Debug,
     F::Output: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.complete.load(Ordering::Acquire) {
-            f.debug_struct("MultiCast")
-                .field("future", unsafe { &*self.future.get() })
+            f.debug_struct("MultiCastInner")
+                .field("future", unsafe { &&*self.future.get() })
                 .field("result", self.result().unwrap())
                 .field("complete", &true)
                 .finish()
         } else {
-            f.debug_struct("MultiCast")
+            f.debug_struct("MultiCastInner")
                 .field("complete", &false)
                 .finish()
         }
     }
 }
 
-impl<P: Deref<Target = MultiCast<F>>, F: Future> Consumer<P, F> {
-    /// Get the original reference to [`MultiCast`].
+impl<P: Deref<Target = MultiCastInner<F, T>>, F: Future<Output = T> + ?Sized, T>
+    ConsumerInner<P, F, T>
+{
+    /// Get the original reference to [`MultiCastInner`].
     pub fn multi_cast(&self) -> &Pin<P> {
         &self.producer
     }
 }
 
-impl<P: Deref<Target = MultiCast<F>>, F: Future> Future for Consumer<P, F>
+impl<P: Deref<Target = MultiCastInner<F, T>>, F: Future<Output = T> + ?Sized, T> Future
+    for ConsumerInner<P, F, T>
 where
     F::Output: Clone,
 {
@@ -290,8 +333,8 @@ where
                 // `&mut *producer.future.get()` because this consumer is the
                 // current leader.
                 // `Pin::new_unchecked` is safe here because we do not move the
-                // contents of `MultiCast::future` once `Pin<P>` started
-                // existing and `MultiCast` itself is pinned by `Pin<P>`.
+                // contents of `MultiCastInner::future` once `Pin<P>` started
+                // existing and `MultiCastInner` itself is pinned by `Pin<P>`.
                 let inner = unsafe { Pin::new_unchecked(&mut *producer.future.get()) };
 
                 // Poll the future
@@ -332,7 +375,9 @@ where
     }
 }
 
-impl<P: Deref<Target = MultiCast<F>>, F: Future> Drop for Consumer<P, F> {
+impl<P: Deref<Target = MultiCastInner<F, T>>, F: Future<Output = T> + ?Sized, T> Drop
+    for ConsumerInner<P, F, T>
+{
     fn drop(&mut self) {
         if let Some(state) = &self.state {
             let producer = &*self.producer;

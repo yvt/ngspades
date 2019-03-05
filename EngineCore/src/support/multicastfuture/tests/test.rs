@@ -1,7 +1,7 @@
 #![feature(futures_api)]
 use futures::{executor::block_on, future::lazy, prelude::*};
 use multicastfuture::MultiCast;
-use std::pin::Pin;
+use std::{marker::Unpin, pin::Pin};
 
 #[test]
 fn consumers_one() {
@@ -93,4 +93,12 @@ fn already_has_result() {
     assert_eq!(block_on(con1), 42);
     let con2 = Pin::new(&mc).subscribe();
     assert_eq!(block_on(con2), 42);
+}
+
+#[test]
+fn unsize() {
+    let mc = MultiCast::new(lazy(|_| 42u32));
+    let mc: &MultiCast<dyn Future<Output = u32> + Unpin> = &mc;
+    let con1 = Pin::new(mc).subscribe();
+    assert_eq!(block_on(con1), 42);
 }
