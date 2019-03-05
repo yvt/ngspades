@@ -1,0 +1,9 @@
+[package]
+name = "multicastfuture"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+
+[dependencies]
+futures-preview = "0.3.0-alpha.13"
+parking_lot = "0.7"

@@ -1052,6 +1052,14 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "multicastfuture"
+version = "0.1.0"
+dependencies = [
+ "futures-preview 0.3.0-alpha.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "ndarray"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -27,6 +27,7 @@ members = [
     "src/support/include_data",
     "src/support/injector",
     "src/support/lockable",
+    "src/support/multicastfuture",
     "src/support/prebuild-glslang",
     "src/support/raduga",
     "src/support/refeq",
