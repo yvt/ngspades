@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use futures::executor::block_on;
 use std::{
     collections::HashMap,
     io::{self, prelude::*},
@@ -17,7 +18,7 @@ struct MemOpenChunk(HashMap<Uuid, Box<[u8]>>);
 impl loader::OpenChunk for MemOpenChunk {
     type ReadSeek = io::Cursor<Vec<u8>>;
 
-    fn open_chunk(&mut self, chunk_id: Uuid) -> io::Result<Option<Self::ReadSeek>> {
+    fn open_chunk(&self, chunk_id: Uuid) -> io::Result<Option<Self::ReadSeek>> {
         Ok(self
             .0
             .get(&chunk_id)
@@ -58,14 +59,13 @@ fn manager() {
     let blob_index = loader::MemBlobIndex::new(blobs.iter().map(|&blob| (blob, chunk_id)));
 
     let mut manager = loader::Manager::new(blob_index, chunk_store);
-    dbg!(&manager);
 
     // Load a blob from the `Manager`
     assert_eq!(
-        &manager.get_blob(blobs[0]).unwrap().unwrap()[..],
+        &block_on(manager.get_blob_mut(blobs[0])).unwrap().unwrap()[..],
         &blobs[0].as_bytes()[..]
     );
 
     let alio = Uuid::parse_str("31d0516d-6d77-417c-b9ed-05ee4502da4e").unwrap();
-    assert!(&manager.get_blob(alio).unwrap().is_none());
+    assert!(&block_on(manager.get_blob_mut(alio)).unwrap().is_none());
 }

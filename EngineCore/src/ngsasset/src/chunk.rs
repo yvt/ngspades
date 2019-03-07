@@ -6,6 +6,7 @@
 //! The reader and writer of the standard chunk format.
 use azure_functions_shared_codegen::generated_mod;
 use flatbuffers::FlatBufferBuilder;
+use futures::prelude::*;
 use std::{
     borrow::Borrow,
     cmp::max,
@@ -50,6 +51,29 @@ pub fn chunk_reader<R: Read + Seek>(
 
     let mut header = vec![0; hdr_len as usize - 4];
     reader.read_exact(&mut header[..])?;
+
+    let data_offset = reader.seek(io::SeekFrom::Current(0))?;
+    let data = ChunkDataReader {
+        reader,
+        data_offset,
+    };
+
+    Ok((data, header))
+}
+
+/// An asycnhronous version of [`chunk_reader`].
+pub async fn async_chunk_reader<R: AsyncRead + Seek>(
+    mut reader: R,
+) -> Result<(ChunkDataReader<R>, Vec<u8>), ChunkError> {
+    // Read the header
+    let hdr_len = {
+        let mut bytes = [0; 4];
+        await!(reader.read_exact(&mut bytes))?;
+        <u32>::from_le_bytes(bytes)
+    };
+
+    let mut header = vec![0; hdr_len as usize - 4];
+    await!(reader.read_exact(&mut header[..]))?;
 
     let data_offset = reader.seek(io::SeekFrom::Current(0))?;
     let data = ChunkDataReader {
@@ -499,7 +523,7 @@ mod tests {
                 dbg!((blob_id, &blob_meta));
                 let mut blob_reader = chunk_reader.read_blob(&blob_meta).unwrap();
                 let mut buf = Vec::new();
-                blob_reader.read_to_end(&mut buf).unwrap();
+                Read::read_to_end(&mut blob_reader, &mut buf).unwrap();
                 assert_eq!(&buf[..], &blob_id.as_bytes()[..]);
             }
 

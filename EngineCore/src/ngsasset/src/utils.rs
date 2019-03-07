@@ -3,6 +3,7 @@
 //
 // This source code is a part of Nightingales.
 //
+use futures::{io::AsyncRead, task::Waker, try_ready, Poll};
 use phf_shared::PhfHash;
 use std::hash::Hasher;
 use std::{
@@ -29,7 +30,7 @@ pub struct ReadWindow<T> {
     cursor: u64,
 }
 
-impl<T: Read + Seek> ReadWindow<T> {
+impl<T: Seek> ReadWindow<T> {
     pub fn new(mut reader: T, range: Range<u64>) -> io::Result<Self> {
         reader.seek(io::SeekFrom::Start(range.start))?;
         Ok(Self {
@@ -51,7 +52,17 @@ impl<T: Read + Seek> Read for ReadWindow<T> {
     }
 }
 
-impl<T: Read + Seek> Seek for ReadWindow<T> {
+impl<T: AsyncRead + Seek> AsyncRead for ReadWindow<T> {
+    fn poll_read(&mut self, waker: &Waker, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+        let left = min(self.len.saturating_sub(self.cursor), buf.len() as u64);
+        let buf = &mut buf[0..left as usize];
+        let bytes_read = try_ready!(self.reader.poll_read(waker, buf));
+        self.cursor += bytes_read as u64;
+        Poll::Ready(Ok(bytes_read))
+    }
+}
+
+impl<T: Seek> Seek for ReadWindow<T> {
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         let pos = match pos {
             io::SeekFrom::Start(x) => x,
