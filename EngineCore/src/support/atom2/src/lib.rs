@@ -368,6 +368,12 @@ impl<T: PtrSized> SetOnceAtom<T> {
 
         ret
     }
+
+    /// Remove and return the inner object.
+    pub fn take(&mut self) -> Option<T> {
+        let ret = mem::replace(self.ptr.get_mut(), ptr::null_mut());
+        unsafe { T::option_from_raw(ret) }
+    }
 }
 
 impl<T: TrivialPtrSized> SetOnceAtom<T> {
