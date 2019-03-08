@@ -4,7 +4,7 @@
 // This source code is a part of Nightingales.
 //
 use flatc_rust;
-use std::{path::Path, env};
+use std::{env, path::Path};
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();

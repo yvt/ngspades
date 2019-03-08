@@ -232,24 +232,26 @@ where
                     Mutex::new(mpsc::Sender::clone(this_g.send_retired_chunk.get_mut()));
 
                 let get_chunk_stream = this_g.chunk_store.get_chunk_stream(chunk_id);
-                let multi_cast = Arc::pin(MultiCast::new(async {
-                    match r#await!(get_chunk_stream) {
-                        Ok(Some((chunk_hdr, mut chunk_stream))) => {
-                            // Read the chunk data stream
-                            let mut chunk_data = Vec::new();
-                            await!(chunk_stream.read_to_end(&mut chunk_data))?;
+                let multi_cast = Arc::pin(MultiCast::new(
+                    async {
+                        match r#await!(get_chunk_stream) {
+                            Ok(Some((chunk_hdr, mut chunk_stream))) => {
+                                // Read the chunk data stream
+                                let mut chunk_data = Vec::new();
+                                await!(chunk_stream.read_to_end(&mut chunk_data))?;
 
-                            let data = ManagerChunkData {
-                                chunk_hdr,
-                                chunk_data: chunk_data.into(),
-                            };
+                                let data = ManagerChunkData {
+                                    chunk_hdr,
+                                    chunk_data: chunk_data.into(),
+                                };
 
-                            Ok(Some(Arc::new(data)))
+                                Ok(Some(Arc::new(data)))
+                            }
+                            Ok(None) => Ok(None),
+                            Err(x) => Err(x.into()),
                         }
-                        Ok(None) => Ok(None),
-                        Err(x) => Err(x.into()),
-                    }
-                }));
+                    },
+                ));
 
                 let chunk = ManagerChunk {
                     id: chunk_id,
@@ -514,9 +516,12 @@ where
     /// documented as a normal `type` as a work-around for this rustdoc-related
     /// bug: <https://github.com/rust-lang/rust/issues/58624>
     #[cfg(rustdoc)]
-    type GetChunkStream = Box<dyn Future<
-            Output = io::Result<Option<(ChunkHdrReader<Box<[u8]>>, ReadWindow<OC::ReadSeek>)>>,
-        > + std::marker::Unpin + 'static>;
+    type GetChunkStream = Box<
+        dyn Future<
+                Output = io::Result<Option<(ChunkHdrReader<Box<[u8]>>, ReadWindow<OC::ReadSeek>)>>,
+            > + std::marker::Unpin
+            + 'static,
+    >;
 
     fn get_chunk_stream(self: &Pin<Arc<Self>>, chunk_id: Uuid) -> Self::GetChunkStream {
         let stream = self.open_chunk.open_chunk(chunk_id);
