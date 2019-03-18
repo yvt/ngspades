@@ -478,7 +478,7 @@ impl Renderer {
 
             self.sty_rast.rasterize_to(&mut self.sty_depth);
         }
-        metrics.log_depth_build_time(sty_depth_build_start.elapsed().as_float_secs() as f32);
+        metrics.log_depth_build_time(sty_depth_build_start.elapsed().as_secs_f64() as f32);
 
         // Render a scene
         target.clear_color_and_depth((0.3, 0.3, 0.5, 1.0), 0.0);
