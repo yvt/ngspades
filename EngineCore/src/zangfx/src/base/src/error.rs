@@ -104,8 +104,8 @@ impl StdError for Error {
         }
     }
 
-    fn cause(&self) -> Option<&dyn StdError> {
-        self.error.as_ref().and_then(|x| x.cause())
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        self.error.as_ref().and_then(|x| x.source())
     }
 }
 
