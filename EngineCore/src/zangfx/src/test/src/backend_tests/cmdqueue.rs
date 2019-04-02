@@ -117,7 +117,6 @@ pub fn cmdqueue_buffer_noop_completes<T: TestDriver>(driver: T) {
 }
 
 pub fn cmdqueue_buffer_noop_completes_dropped_soon<T: TestDriver>(driver: T) {
-    use std::mem::drop;
     driver.for_each_device(&mut |device| {
         println!("- Creating a command queue");
         let queue: gfx::CmdQueueRef = device.build_cmd_queue().queue_family(0).build().unwrap();

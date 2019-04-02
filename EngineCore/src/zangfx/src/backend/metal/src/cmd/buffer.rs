@@ -128,9 +128,6 @@ impl base::SetLabel for CmdBuffer {
 
 impl command::CmdBuffer for CmdBuffer {
     fn commit(&mut self) -> Result<()> {
-        use block;
-        use std::mem::replace;
-
         let mut uncommited = self
             .uncommited
             .take()
