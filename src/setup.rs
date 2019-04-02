@@ -113,10 +113,6 @@ impl error::Error for PlanError {
             PlanError::InvalidInput => "Invalid input",
         }
     }
-
-    fn cause(&self) -> Option<&error::Error> {
-        None
-    }
 }
 
 /// Encapsulates the FFT kernel configuration.
