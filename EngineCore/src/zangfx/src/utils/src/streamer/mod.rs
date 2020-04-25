@@ -7,10 +7,12 @@
 //! automatic allocation from a internally-managed fixed-size staging buffer
 //! and coordination of command buffer generation and submission.
 //!
+//! <!--
 //! <a href="https://derpibooru.org/868433?"
 //! title="&quot;Oh no, that's too many balloons. More candy! Oh, less candy. Oh wait, I know. Streamers!&quot; — Pinkie Pie">
 //! ![""](https://derpicdn.net/img/2015/4/8/868433/large.png)
 //! </a>
+//! -->
 //!
 //! # Terminology
 //!

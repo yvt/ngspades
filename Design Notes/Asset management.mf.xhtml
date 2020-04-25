@@ -1,0 +1,59 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"><pre><![CDATA[
+
+                         **Asset management**
+The Nightingales game engine
+
+# Concepts
+
+*A blob* is a sequence of bytes. Blobs are identified by UUIDs.
+
+*Chunks* are the loading unit of assets and each chunk includes one or more blobs. Similarly to blobs, chunks are identified by UUIDs.
+
+# Operations
+
+## Loading chunks
+
+Chunk loading is initiated by one of the following actions: (i) The loader is instructed to load a chunk explicitly by specifying its GUID (*explicit load*). (ii) The application attempts to acccess a blob which is not included in any currently-loadded chunks (*implicit load*).
+
+Explicit chunk load is used when resources to be used are known beforehand. For example, a chunk containing the lowest LOD meshes in a game level could be loaded explicitly via the level's metadata.
+
+On the other hand, implict chunk load happens whenever access to a blob which is currently not loaded is requested. The loader uses *blob indexes* to locate the chunk where a blob is located.
+
+A chunk is represented as a single file on a filesystem. Other loading methods can be supported as well.
+
+A chunk is unloaded when its reference count reaches zero.
+
+## Data compression
+
+Data compression can be enabled on a per-blob and/or per-chunk basis.
+
+## Ephemeral blob
+
+The application create a nonce blob from data on memory so that it can be used with an API designed to accept blob UUIDs.
+
+# Examples
+
+## Graphics
+
+Mesh metadata
+:   Includes references to other blobs.
+    Can be unloaded as soon as they are converted to the internal representation.
+
+Mesh verticies
+:   Unloaded as soon as they are uploaded to VRAM.
+    The lowest LOD and the rest could be stored in two separate chunks.
+
+Materials
+:   Can be unloaded as soon as they are converted to the internal representation.
+
+Textures
+:   Unloaded as soon as they are uploaded to VRAM.
+
+Animation data
+:   blah
+
+Stygian terrain
+:   Streamed load might be desirable.
+
+]]></pre> <!-- Foremark footer -->
+<script src="https://unpkg.com/foremark/browser/foremark.js" async="async" /></html>

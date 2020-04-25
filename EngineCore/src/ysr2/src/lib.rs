@@ -24,7 +24,7 @@
 //! point is that, auditory stimuli play an important role in immersive
 //! environments.
 //!
-//! [![The Sound of Silence](https://derpicdn.net/img/2016/10/7/1266994/large.png)](https://derpibooru.org/1266994)
+//! <!-- [![The Sound of Silence](https://derpicdn.net/img/2016/10/7/1266994/large.png)](https://derpibooru.org/1266994) -->
 //!
 //! [^fn1]: Michael A. Cohen, Todd S. Horowitz, and Jeremy M. Wolfe,
 //!     "[Auditory recognition memory is inferior to visual recognition memory],"

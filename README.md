@@ -1,5 +1,9 @@
-Nightingales
-============
+ngspades
+========
+
+**This project was abandoned and has been left here for archival purposes.**
+
+This repository holds several subprojects that possibly have uses outside of this project. If you find something useful and/or want something to be released under a more lenient license, please contact me. Some of them are already released as independent projects (e.g., [yfft-rs](https://github.com/yvt/yfft-rs)).
 
 ## Project structure
 
@@ -10,7 +14,7 @@ Nightingales
 ### Game engine
 
 - `EngineCore` contains the Rust part of the engine and its dependent crates (libraries).
-    - `ngsengine` is the engine core. It is compiled as a dynamic library which is loaded by the .NET part of the engine at runtime.
+    - `ngsengine` is the engine core. It is compiled as a dynamic library which is loaded by the .NET part of the engine at runtime. It includes a presentation framework based on ZanGFX, a cross-platform graphics library.
     - `ngsloader` is another dynamic library required by the game engine. The engine loader uses this library to examine the capability of the processor on which it runs and chooses the appropriate version of the engine core.
     - `NgsLoaderConfig.xml` contains an information required to locate the engine core dynamic library and must be deployed to the same directory as the dynamic library. This file is loaded by the engine loader of `Ngs.Engine.Core`.
 

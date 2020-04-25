@@ -1,0 +1,361 @@
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://casual-effects.com/markdeep/latest/apidoc.css?">
+
+                            **Nightingales GFX: 3rd Iteration**
+
+The third iteration of NgsGFX is intended to be a minor modification to the second iteration (ZanGFX).
+
+# Motivation / Goals
+
+- The number of resources writable at the same time is usually much lower compared to the total number of resources. Therefore, automatic tracking of resource states should be feasible without introducing much overhead.
+    - In Metal 2, heap allocated resources should be explicitly made writable on every encoder, so we wouldn't want to have a large number of writable resources simultaneously anyway.
+    - Automatic tracking of resource states might imply serializing command buffer submissions on all device queues.
+    - Limit tracking to the per-queue granularity. That is, developers would have to explicitly insert memory barriers only when resourecs are passed around between queues.
+- Bring the universal heap back. But this time it serves as a global (API-managed) heap. Even for bare Vulkan there is a global memory allocation library which I don't find a compelling reason not to use. I guess global lock shouldn't be problem as long as we try to use explicit heaps whenever it's feasible.
+- Design the object destruction APIs with regards to error handling. In most cases it's simply impossible to handle errors from object destruction methods.
+- "An undefined behavior would result if the child object outlives the parent" was too extreme. Took half a day (2018-04-01) to diagnose a problem caused by this.
+- Resolve various inconsistencies remaining in the API.
+
+# Uncurated ideas
+
+- We could leverage the arena-like object ownership model where every subobject is directly owned by the device object and the application only owns a (indirect) handle of it. *Upside*: Destroying a `Device` guarantees all child objects are destroyed. *Downside*: Extra indirection. Thread contention. Discourages RAII.
+- Encourage static binding for the sake of improved type safety, performance, and to make reverse engineering from the compiled code harder (because run-time check code often includes the names of the objects and operations it's dealing with, and with static binding such code is more likely to be removed via inlining and dead-code elimination).
+- Work around the overhead of reference counting somehow.
+    - RC is known to be very expensive in its atomic form. Using atomics is inevitable in a multi-threaded environment.
+    - Rifat Shahriyar, et al., "[Taking Off the Gloves with Reference Counting Immix](http://users.cecs.anu.edu.au/~steveb/downloads/pdf/rcix-oopsla-2013.pdf)"
+    - Do all objects really have to be implicitly `Arc`? Maybe we could achieve lower overhead if resources are not `Arc` by default? Important things to consider: (a) The number of resources referenced by multiple queues at the same time is very low compared to the overall number. (b) Clients can employ reference counting anyway, but using more coarse granularity.
+- GPU-accelerated reference counting
+- `encode_render` should return `SmallBox` instead?
+
+# Unimplemented features
+
+The following features are not part of the short-term goals, but may be added in the future.
+
+- Secondary command buffers.
+- Query objects.
+- Pipeline cache.
+- Multi-sample render targets and images.
+- Semaphores using [`MTLEvent`](https://developer.apple.com/documentation/metal/mtlevent?language=objc) (added in macOS 10.14).
+- Subpass self dependencies.
+- Multiple subpasses in a render pass.
+
+# Removal of `ImageView`
+
+`ImageView` is removed. Each `Image` has `VkImageView`s created upfront for each image state (filtered by image usage flags). A shader access type parameter (read-only/read-write) is added to where `ImageView` had been specified.
+
+A proxy object cannot be created from an image view.
+
+An image view cannot be created from an unbound image. (Vulkan 1.1.70 "11.5. Image Views" valid usage of `VkImageViewCreateInfo`)
+
+# Samplers
+
+Since samplers are immutable and they contain not-so-many parameters, the number of unique sampler objects used in an application is usually quite low. Metal even imposes a hard limit on it (2048 on macOS).
+
+We do not implement garbage collection for samplers; once they are created, they can be destroyed only with their originating device.
+
+# Command buffers
+
+## Command buffer pool
+
+Each queue can have up to a fixed number (`NUM_COMMAND_BUFFERS`) of active (i.e., being recorded or executed) command buffers at the same time. This enables the automatic tracking of the resource states while recording multiple command buffers at the same time without extra dynamic allocations, which is described in the "Automatic resource state tracking" section.
+
+## Command buffer execution
+
+`CmdBuffer::enqueue` is removed.
+
+A command buffer completion handler now has a parameter of the type `zangfx::Result<()>` indicating the result of the execution.
+
+# Render passes
+
+Specifying image layouts is now optional and they default to the optimal layouts for rendering.
+
+# Automatic resource state tracking
+
+The new API includes automatic resource state tracking. This model is based on Metal's API and designed to be implementable on Vulkan.
+
+The following objects are tracked: images, buffers, arugment pools, and heaps.
+
+Command buffers maintain *reference tables* to retain references to tracked resources until the command buffers are retired (i.e., their execution is completed). Each tracked object contains an index into the reference table of each corresponding active command buffer. The local state of a resource is stored in a reference table.
+
+```rust
+/// An index into the reference table of the corresponding command buffer.
+type RefTableIndex = usize;
+
+struct ResourceHeader&lt;LastKnownState> {
+    ref_count: AtomicUsize,
+    last_known_state: LastKnownState,
+    cb_states: [Option&lt;RefTableIndex>; NUM_COMMAND_BUFFERS],
+}
+```
+
+Each entry in the table only can be accessed through a method call on the corresponding mutably-borrowed command buffer. Therefore accessing them does not require atomic operations. Each entry is an `Option` indicating whether the resource is already added to the reference table. Consequently, the reference table can be implemented as a plain `Vec` (rather than `HashSet`).
+
+## Pipeline hazard tracking
+
+Dependencies between command encoders are specified by fences in a way similar to Metal.
+
+```rust
+fn update_fence(&mut self, fence: &Fence, access: AccessTypeFlags);
+fn wait_fence(&mut self, fence: &Fence, access: AccessTypeFlags);
+```
+
+Note the presence of parameters specifying the access type flags. They define global memory barriers (`VkMemoryBarrier`).
+
+Fence operations are processed and converted to `vkCmdWaitEvent` calls at submission time.
+
+We do not use render-pass external dependencies.
+
+In addition to memory barriers, images require layout transition between the different usages of the images. See the following section for how image states are tracked.
+
+## Images
+
+**Image states**:
+
+The state of each image is tracked automatically and can be one of the following:
+
+- *Fixed-function*: The image is in the layout specified by the operation that uses the image.
+    - *Render*: A render pass specifies the layout of attachments at its creation time.
+    - *Copy Read*
+    - *Copy Write*
+- *Shader*: The image can be accessed by a shader program. This state is entered by the `use_resource` and `use_heap` command.
+- *Undefined*
+
+In each command encoder, every image can be in one of the aforementioned states. The new state is entered by the following methods:
+
+- `use_resources`: Transitions the specified image(s) to the *Shader* states.
+- `use_heap`: Transitions images supporting the `use_heap` operation to the *Shader* state.
+- Starting a render command encoder: Transitions render target images to the *Render* state.
+- Copy commands: Transitions render target images to the *Copy Read* or *Copy Write* state.
+
+The effect lasts until the next command that operates on the same image. Because of how image memory barriers are resolved, however, the effect may take earlier than where these commands are inserted into the command buffer unless the *fine-grained barrier generation* takes place.
+
+Transitions from the *Undefined* state to any of read-only states are no-op.
+
+**Image memory barriers**:
+
+Image memory barriers are resolved and inserted at command buffer submission time. They are merged with global memory barriers which are generated by `wait_fence` operations. This might result in over-conservatism in rare cases.
+
+In some cases, image memory barriers can be resolved between adjacent commands inside a single command encoder (the *fine-grained barrier generation*). Specifically,
+
+- The old image layout must be known. That is, there is a preceding command within the same command buffer that mandates the final layout of the image.
+- Images capable of `use_heap` do *not* support fine-grained barrier generation.
+
+The exception is copy command encoders where layout transitions may happen between commands inside them.
+
+**Invalidate/discard operations**:
+
+An application can specify in a command encoder that the old contents of an image is not required. This is called an *invalidate* operation and can target individual images or entire a heap. This causes the corresponding image layout transition to use the "undefined" layout as the source layout. The "don't care" load action of a render-pass has a similar effect. Invalidate operations are evaluated before `use_heap` and `use_resoureces` operations.
+
+Also, an application can specify in a command encoder that the contents of an image can be safely discarded after the command encoder execution. This is called a *discard* operation and can target individual images or entire a heap. The "don't care" store action of a render-pass has a similar effect. Discard operations are evaluated after all command encoder operations.
+
+!!! WARNING
+    The application must not perform use/invalidate/discard operations on render targets.
+
+**Image usage flags**:
+
+The following flags affect the image layout mapping and other operations.
+
+- *Render Target*: Enables the uses of the image as a render target.
+- *Storage*: Enables the uses of the image with `ArgType::StorqgeImage`. Mapped to `MTLTextureUsageShader(Read|Write)`.
+- *Mutable*: Specifies that the image is written frequently. Trades off the use of the generic image layout for fewer image layout transitions. (Absence of this flag does not preclude write accesses. This flag (and lack of it) is merely a hint.)
+
+**Image layout mapping**:
+
+There exists an unique mapping from pairs of (image properties, image state) to image layouts.
+
+| Conditions |       Copy      |    Shader    |
+|------------|-----------------|--------------|
+| M          | Generic         | Generic      |
+| S          | Copy read/write | Generic      |
+| DS         | Copy read/write | DS read-only |
+|            | Copy read/write | Shader read  |
+
+*S = Storage, M = Mutable, DS = Depth/stencil. The first row with matching conditions is chosen.*
+
+**Subresources**:
+
+The states of mipmap levels and layers can be tracked individually. This is optional as it introduces an additional run-time cost.
+
+*Image views* can be created from images. Image views have the same handle type (`Image`) as normal images, but each only represents a subset of an image.
+
+!!! WARNING
+    In some cases, the new *image view* serves the same role as the former `ImageView` (which is removed in this iteration), but the way in which it works is fundamentally different. Notably, the new "image views" are just `Image` objects which are aliases reflecting certain mipmap levels and layers of the original `Image` objects.
+
+**Presentation**:
+
+The image layout for presentation (the former `zangfx::base::ImageLayout::Present` or `VK_IMAGE_LAYOUT_PRESENT_SRC_KHR`) is no longer exposed as a part of the ZanGFX API.
+
+## Pool objects
+
+**Argument tables**:
+
+Argument tables are not ref-counted. Their parents, argument table pools are.
+
+**Heaps**:
+
+When images and buffers are retained, their containing heaps are also automatically retained.
+
+Using heaps has a benefit of being able to transition multiple images contained within a heap to the *Sampled* state by using the `use_heap` command. This functionality must be explicitly enabled at the heap's creation time.
+
+!!! NOTE: Rationale
+    `use_heap` is designed to reflect Metal's `useHeap:` method.
+
+To match the behavior of Metal's `useHeap:`, `use_heap` is only effective on images that do not have *Render Target* or *Storage* usage flags.
+
+`use_heap` only can be enabled on "dedicated" heaps. It cannot be enabled on dynamic heaps because in such heaps the set of alive objects might change asynchronously from the timeline of the device's operation. (Consider the case where a resource is removed from a dynamic heap while it is still in use by a device.)
+
+To implement this efficiently, each heap maintains a list containing a subset of the contained images. The lists are updated as image states are changed during the command buffer submission. The criteria for an image to be included in the list is shown below:
+
+- It does not have *Render Target* or *Storage* usage flags (`use_heap` is effective on the image).
+- The layout computed based on the current state of the image is different from that of the *Sampled* state.
+    - This rule automatically excludes images with a *Mutable* usage flag.
+
+Because of how objects are created, proxy images don't contain a reference to the corresponding heap proxy object. Consequently, the `use_heap` functionality cannot be used on a heap proxy object.
+
+*********************************************
+*       state           state
+*    +--for queue 0  +--for queue 1
+*  .-+------.     .--+---------.
+*  |  Heap  |     | Heap proxy |
+*  '-----+--'     '------------'
+*     ^  |
+*     |  |non-shader-read-layout image list
+*     |  |
+*     +--+------------+
+*     |  |            |parent
+*     |  v            |(backing store)
+* .---+-----.     .---+---------.
+* |  Image  |     | Image proxy |
+* '-+-------'     '-+-----------'
+*   +--state        +--state
+*      for queue 0     for queue 1
+*********************************************
+
+## Inter-queue operation
+
+Each image, buffer, and dedicated heap (with `use_heap` enabled) is associated with a single queue. The automatic resource state tracking works on the per-queue basis — it does not have knowledge outside a single queue.
+
+***********************************
+*  .-----------------------.
+*  | VkImage & VkImageView |
+*  '----------+------------'
+*             ^
+*             |
+*     +-------+-------+
+*     |               |
+* .---+---.       .---+---------.
+* | Image |       | Image proxy |
+* '-+-----'       '-+-----------'
+*   +--state        +--state
+*      for queue 0     for queue 1
+***********************************
+
+The queue to which an object belongs is specified as a part of the object creation parameter. It is specified using a reference to `Queue`. The default value is defined in a backend-specific fashion.
+
+The application must create *proxy objects* to use them for certain operations (described later) on a different queue. Furthermore, the application must do the following to use objects in a different queue from one where they were previously used:
+
+- Use semaphores or CB completion callbacks to ensure the proper ordering of command buffer execution.
+- Perform *queue family ownership transfer operations*. Specifically,
+    - Execute the *queue family ownership release operation* on the source queue.
+    - Execute the *queue family ownership acquire operation* on the destination queue.
+
+The application uses parameters like the following to define a queue family ownership transfer operation. The sending end and receiving end must use an identical value of `OwnershipTransfer`.
+
+```rust
+type QueueIndex = usize;
+enum ImageLayout {
+    Generic,
+    ShaderRead,
+    ShaderReadWrite,
+    RenderRead,
+    RenderWrite,
+    CopyRead,
+    CopyWrite,
+}
+struct OwnershipTransfer {
+    resource: &Resource,
+
+    // The following fields are only for images
+    src_layout: ImageLayout,
+    dst_layout: ImageLayout,
+
+    // (Fields specifying a subresource range is not shown here)
+}
+struct OwnershipAcquire {
+    transfer: OwnershipTransfer,
+    dst_access: AccessTypeFlags,
+    src_queue: QueueIndex,
+}
+struct OwnershipRelease {
+    transfer: OwnershipTransfer,
+    src_access: AccessTypeFlags,
+    dst_queue: QueueIndex,
+}
+```
+
+!!! WARNING
+    Creating more than one proxy object for each combination of object and queue is prohibited. Doing so might lead to a `panic!` or an undefined behavior.
+
+Fences and heaps do not support creation of proxy objects.
+
+The following objects and operations require matching associated queues:
+
+ - Heap handles passed to `use_heap`.
+ - Resource (buffer/image) handles passed to any methods of `*CmdEncoder` and `CmdBuffer` that accept them, which include but are not limited to: `use_resource`, `draw_indirect`, and `host_barrier`.
+ - Render target images (specified via `RenderTargetTableBuilder`) passed to `encoder_render`.
+ - Fences passed to `update_fence` or `wait_fence`. (Note: Proxies cannot be created for fences.)
+
+For a particular object, creating a proxy object for a queue where there already exists a proxy object of the same original object is not allowed.
+
+# Memory allocation
+
+Resource memory allocation is fundamentally unchanged except that:
+
+- Remove the `unbind` method from `Heap` since it was practically a synonym for `make_aliasable`.
+- Move the `as_ptr` method from `Heap` to `Buffer`.
+- Remove `HeapAlloc`. `make_aliasable` now accepts resource handles.
+- The application no longer has to call `bind` manually after creating a dedicated heap. Previously it had to because otherwise it could not obtain `HeapAlloc` handles.
+- `Device` has global `Heap` instances which can be accessed via `Device::global_heap(memory_type)`. These `Heap`s does not support `use_heap`. Also, allocated memory is automatically reclaimed when a resource bound to them was released. It does not support `make_aliasable`. Finally, they don't have specific associated queues.
+
+# Cleaning up
+
+UB no longer results if a parent object was dropped before its children.
+
+!!! TODO: Yet to be written about...
+    Releasing objects in an arbitrary order — How can the client be sure that a device is destroyed during clean-up? How can the client ensure that an object is no longer in use? (Which is mandatory when updating a swapchain)
+
+# Typing
+
+All objects, including `Device`, have compact type names like `ImageRef` (not `Arc&lt;dyn Image>`), and are moved to their respective modules. Some objects requiring mutable borrows for modification, especially `CmdBuffer` and builder objects, must be `Box`
+
+There are four classes of object types:
+
+|      Name      |    Type    |   Clone   |
+|----------------|------------|-----------|
+| Boxed Handle   | `Arc`      | Reference |
+| Fat handle     | `SmallBox` | Reference |
+| Unsynchronized | `Box`      | N/A       |
+| RAII guard     | `SmallBox` | N/A       |
+
+For each object type, there is a wrapper type (like `ImageRef`) and an optional trait type (like `Image`).
+
+# Not TODO
+
+- Using `futures-rs` or [Rust 2018](https://blog.rust-lang.org/2018/03/12/roadmap.html)'s [task system](https://doc.rust-lang.org/nightly/std/task/index.html) to notify the CB execution completion ... or do away with CB complete handlers and take `Event`s from NgsGFX back.
+- Allowing fences to be updated for multiple times.
+
+# Other changes to the API
+
+- `ArgTablePool` no longer requires a mutable borrow for allocating/deallocating argument tables. All accesses to `ArgTablePool` are implicitly synchronized (like `Heap`).
+- `(ArgTablePool, ArgTable)` must be specified instead of just `ArgTable`.
+- Remove `CmdBufferPool`.
+- Move errors types to `zangfx_base`.
+- Remove `ErrorKind::{NotSupported, InvalidUsage}`. It's hard to track the source of the errors when they are propagated to callers.
+- Prepare for Rust 2018.
+
+<!-- Markdeep footer -->
+    <style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style>
+    <script>markdeepOptions={tocStyle:'medium'};</script>
+    <script src="markdeep.min.js"></script>
+    <script src="https://casual-effects.com/markdeep/latest/markdeep.min.js"></script>
+    <script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
